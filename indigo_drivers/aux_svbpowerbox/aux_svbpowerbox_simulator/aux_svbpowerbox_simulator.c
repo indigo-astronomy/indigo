@@ -44,6 +44,7 @@ typedef struct {
 	const char *ready_file;
 	bool no_ds18b20;
 	bool no_sht40;
+	int refuse_port_once;
 } simulator_options;
 
 static simulator_options options = {
@@ -51,7 +52,8 @@ static simulator_options options = {
 	.trace = true,
 	.ready_file = NULL,
 	.no_ds18b20 = false,
-	.no_sht40 = false
+	.no_sht40 = false,
+	.refuse_port_once = -1
 };
 
 static const char *simulator_name = "svbpowerbox";
@@ -65,6 +67,7 @@ static void usage(const char *name) {
 	printf("  --model <svbpowerbox>   Select simulated model, default is svbpowerbox\n");
 	printf("  -T, --no-ds18b20        Simulate missing DS18B20 (returns -127 C)\n");
 	printf("  -H, --no-sht40          Simulate missing SHT40 (temp -2 C, random RH)\n");
+	printf("  --refuse-port-once <n>  Reject the first set_port for port index <n> (0xAA echo, port unchanged)\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -174,6 +177,12 @@ static bool parse_args(int argc, char *argv[]) {
 			options.no_ds18b20 = true;
 		} else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--no-sht40")) {
 			options.no_sht40 = true;
+		} else if (!strcmp(argv[i], "--refuse-port-once")) {
+			if (++i == argc) {
+				fprintf(stderr, "--refuse-port-once requires a port index\n");
+				return false;
+			}
+			options.refuse_port_once = atoi(argv[i]);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -304,6 +313,14 @@ static void handle_set_port(int fd, const unsigned char *cmd) {
 	uint8_t port_idx = cmd[1];
 	uint8_t value = cmd[2];
 
+	if (port_idx == options.refuse_port_once) {
+		// The firmware rejects a command with the 0xAA echo (PROTOCOL.md, Error Handling).
+		options.refuse_port_once = -1;
+		serial_simulator_trace_line(options.trace, "!!", "set_port refused");
+		unsigned char res[2] = { 0x00, 0x00 };
+		sim_send_response(fd, 0xAA, res, 2);
+		return;
+	}
 	pthread_mutex_lock(&state_mutex);
 	if (port_idx <= 4) {
 		dc[port_idx] = value != 0 ? 1 : 0;

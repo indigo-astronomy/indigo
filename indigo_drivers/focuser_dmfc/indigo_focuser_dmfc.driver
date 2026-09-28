@@ -26,7 +26,7 @@ driver dmfc {
 	label = "PegasusAstro DMFC Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 15;
+	version = 19;
 	serial {
 		pattern {
 			product = "DMFC";
@@ -41,8 +41,14 @@ driver dmfc {
 	// define { }
 	data {
 		char response[128];
+		// A motion the controller runs: the poll ends FOCUSER_POSITION / FOCUSER_STEPS BUSY only for it, not
+		// for a request that is copied and queued but whose handler has not sent the move yet.
+		bool moving;
 	}
 	code {
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+
 		static bool dmfc_command(indigo_device *device, char *command, ...) {
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
@@ -51,7 +57,7 @@ driver dmfc {
 				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0 && command[0] != 'C' && command[0] != 'H' && command[0] != 'M' && command[0] != 'G' && command[0] != 'S' && command[0] != 'W') {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 				}
 			}
 			return result > 0;
@@ -104,12 +110,14 @@ driver dmfc {
 			}
 			if (dmfc_command(device, "I")) {
 				if (PRIVATE_DATA->response[0] == '0') {
-					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
+					if (PRIVATE_DATA->moving) {
+						PRIVATE_DATA->moving = false;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 						update = true;
 					}
 				} else {
+					PRIVATE_DATA->moving = true;
 					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -145,7 +153,8 @@ driver dmfc {
 				}
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // moving status
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					PRIVATE_DATA->moving = *token == '1';
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				}
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // led status
@@ -183,7 +192,6 @@ driver dmfc {
 			name = "X_FOCUSER_MOTOR_TYPE";
 			group = FOCUSER_MAIN_GROUP;
 			label = "Motor type";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_FOCUSER_MOTOR_TYPE_STEPPER {
 				name = "STEPPER";
@@ -207,7 +215,6 @@ driver dmfc {
 			name = "X_FOCUSER_ENCODER";
 			group = FOCUSER_MAIN_GROUP;
 			label = "Encoder state";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_FOCUSER_ENCODER_ENABLED {
 				name = "ENABLED";
@@ -231,7 +238,6 @@ driver dmfc {
 			name = "X_FOCUSER_LED";
 			group = FOCUSER_MAIN_GROUP;
 			label = "LED status";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_FOCUSER_LED_ENABLED {
 				name = "ENABLED";
@@ -289,8 +295,13 @@ driver dmfc {
 			// on_detach { }
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				if (dmfc_command(device, "G:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1))) {
+					PRIVATE_DATA->moving = true;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				} else {
@@ -314,6 +325,10 @@ driver dmfc {
 		}
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.target;
 				if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
@@ -325,6 +340,7 @@ driver dmfc {
 				FOCUSER_POSITION_ITEM->number.target = position;
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 					if (dmfc_command(device, "M:%d", position)) {
+						PRIVATE_DATA->moving = true;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					} else {
@@ -344,8 +360,11 @@ driver dmfc {
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					indigo_cancel_pending_handler(device, focuser_position_handler);
+					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 					if (dmfc_command(device, "H")) {
+						PRIVATE_DATA->moving = false;
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;

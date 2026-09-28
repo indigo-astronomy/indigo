@@ -24,11 +24,11 @@
   - [Guider Agent](../indigo_drivers/agent_guider/README.md)
   - [aux Agent](../indigo_drivers/agent_auxiliary/README.md)
   - [Astrometry Agent](../indigo_drivers/agent_astrometry/README.md)
-  - [Astap Agent](../indigo_drivers/agent_astap/README.md)
+  - [Astap Agent](../obsoleted_drivers/agent_astap/README.md)
   - [Config Agent](../indigo_drivers/agent_config/README.md)
   - [Script Agent](../indigo_drivers/agent_scripting/README.md)
   - [Alpaca Agent](../indigo_drivers/agent_alpaca/README.md)
-  - [Snoop Agent](../indigo_drivers/agent_snoop/README.md)
+  - [Snoop Agent](../obsoleted_drivers/agent_snoop/README.md)
 
 ## Advanced Topics
 - [RAW Image Format](INDIGO_RAW_IMAGE_FORMAT.md)

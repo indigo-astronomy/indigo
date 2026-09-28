@@ -1,0 +1,180 @@
+## connect
+S RX d#ser_num
+S TX d#3141592
+S RX d#getazim
+S TX d#azi0900
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U CONNECTION BUSY CONNECTED
+U INFO OK DEVICE_SERIAL_NUMBER=3141592
+D X_EMERGENCY_CLOSE IDLE RO count=4 RAIN=IDLE WIND=IDLE OPERATION_TIMEOUT=IDLE POWER_CUT=IDLE
+U DOME_PARK OK UNPARKED
+D DOME_DIRECTION OK RW count=2 MOVE_CLOCKWISE
+D DOME_STEPS OK RW count=1 STEPS=0/0
+D DOME_HORIZONTAL_COORDINATES OK RW count=1 AZ=90/90
+D DOME_SLAVING_PARAMETERS OK RW count=1 MOVE_THRESHOLD=1/1
+D DOME_ABORT_MOTION OK RW count=1
+D DOME_SHUTTER OK RW count=2 CLOSED
+D DOME_FLAP OK RW count=2 CLOSED
+D DOME_PARK OK RW count=2 UNPARKED
+U CONNECTION OK CONNECTED
+U DOME_SHUTTER OK CLOSED
+M DOME_SHUTTER "Shutter closed"
+U DOME_FLAP OK CLOSED
+M DOME_FLAP "Flap closed"
+U X_EMERGENCY_CLOSE OK RAIN=OK WIND=OK OPERATION_TIMEOUT=OK POWER_CUT=OK
+## goto 180
+S RX d#azi1800
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_STEPS BUSY STEPS=0/0
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_HORIZONTAL_COORDINATES OK AZ=180/180
+U DOME_STEPS OK STEPS=0/0
+## steps clockwise 30
+S RX d#getazim
+S TX d#azi1800
+S RX d#azi2100
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_DIRECTION OK MOVE_CLOCKWISE
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_STEPS BUSY STEPS=30/30
+U DOME_HORIZONTAL_COORDINATES OK AZ=210/180
+U DOME_STEPS OK STEPS=30/30
+## steps counterclockwise 40
+S RX d#getazim
+S TX d#azi2100
+S RX d#azi1700
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_DIRECTION OK MOVE_COUNTERCLOCKWISE
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_STEPS BUSY STEPS=40/40
+U DOME_HORIZONTAL_COORDINATES OK AZ=170/180
+U DOME_STEPS OK STEPS=40/40
+## direction clockwise
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_DIRECTION OK MOVE_CLOCKWISE
+## park
+S RX d#azi0000
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_STEPS BUSY STEPS=40/40
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_PARK BUSY UNPARKED
+U DOME_HORIZONTAL_COORDINATES OK AZ=0/180
+U DOME_STEPS OK STEPS=40/40
+U DOME_PARK OK PARKED
+## goto while parked
+S RX d#getazim
+S TX d#azi0000
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_STEPS ALERT STEPS=40/40
+U DOME_HORIZONTAL_COORDINATES ALERT AZ=0/90
+M DOME_HORIZONTAL_COORDINATES "Dome is parked"
+## steps while parked
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_STEPS ALERT STEPS=10/10
+M DOME_STEPS "Dome is parked"
+## unpark
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_PARK OK UNPARKED
+## abort in motion
+S RX d#azi2000
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+S RX d#stopdom
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_STEPS BUSY STEPS=#/#
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_ABORT_MOTION OK
+U DOME_SHUTTER OK CLOSED
+U DOME_HORIZONTAL_COORDINATES OK AZ=#/#
+U DOME_STEPS OK STEPS=#/#
+U DOME_FLAP OK CLOSED
+## goto 300 after abort
+S RX d#azi3000
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_STEPS BUSY STEPS=10/10
+U DOME_HORIZONTAL_COORDINATES BUSY AZ=*
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+## abort idle
+S RX d#stopdom
+S TX d#gotmess
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_ABORT_MOTION OK
+U DOME_SHUTTER OK CLOSED
+U DOME_HORIZONTAL_COORDINATES OK AZ=300/300
+U DOME_STEPS OK STEPS=10/10
+U DOME_SHUTTER OK CLOSED
+U DOME_FLAP OK CLOSED
+## failed abort
+S RX d#stopdom
+S FAULT d#stopdom domerro
+S TX d#domerro
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_ABORT_MOTION ALERT
+M DOME_ABORT_MOTION "Abort failed with DOME_ERROR. Please inspect the dome!"
+## flap without shutter
+S RX d#opeflap
+S TX d#err_sht
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_FLAP ALERT CLOSED
+M DOME_FLAP "Flap open/close failed. Is the shutter open enough?"
+## shutter open
+S RX d#opeshut
+S TX d#gotmess
+S POLL d#azi# d#shut_# d#flapclo d#eme0000
+S POLL d#azi# d#shutope d#flapclo d#eme0000
+U DOME_SHUTTER BUSY OPENED
+M DOME_SHUTTER "Opening shutter..."
+U DOME_SHUTTER OK OPENED
+M DOME_SHUTTER "Shutter open"
+## flap open
+S RX d#opeflap
+S TX d#gotmess
+S POLL d#azi# d#shutope d#flaprop d#eme0000
+S POLL d#azi# d#shutope d#flapope d#eme0000
+U DOME_FLAP BUSY OPENED
+M DOME_FLAP "Opening flap..."
+U DOME_FLAP BUSY
+U DOME_FLAP OK OPENED
+M DOME_FLAP "Flap open"
+## flap close
+S RX d#cloflap
+S TX d#gotmess
+S POLL d#azi# d#shutope d#flaprcl d#eme0000
+S POLL d#azi# d#shutope d#flapclo d#eme0000
+U DOME_FLAP BUSY CLOSED
+M DOME_FLAP "Closing flap..."
+U DOME_FLAP BUSY
+U DOME_FLAP OK CLOSED
+M DOME_FLAP "Flap closed"
+## shutter close
+S RX d#closhut
+S TX d#gotmess
+S POLL d#azi# d#shut_# d#flapclo d#eme0000
+S POLL d#azi# d#shutclo d#flapclo d#eme0000
+U DOME_SHUTTER BUSY CLOSED
+M DOME_SHUTTER "Closing shutter..."
+U DOME_SHUTTER BUSY OPENED
+U DOME_SHUTTER OK CLOSED
+M DOME_SHUTTER "Shutter closed"
+## emergency rain
+S POLL d#azi# d#shutclo d#flapclo d#eme1000
+U X_EMERGENCY_CLOSE OK RAIN=ALERT WIND=OK OPERATION_TIMEOUT=OK POWER_CUT=OK
+## disconnect
+U CONNECTION BUSY DISCONNECTED
+X X_EMERGENCY_CLOSE
+X DOME_DIRECTION
+X DOME_STEPS
+X DOME_HORIZONTAL_COORDINATES
+X DOME_SLAVING_PARAMETERS
+X DOME_ABORT_MOTION
+X DOME_SHUTTER
+X DOME_FLAP
+X DOME_PARK
+U CONNECTION OK DISCONNECTED

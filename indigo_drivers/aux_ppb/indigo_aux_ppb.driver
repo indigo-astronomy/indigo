@@ -26,7 +26,7 @@ driver ppb {
 	label = "PegasusAstro Pocket Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, PPBA support by Aaron Freimark <abf@mac.com>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 27;
+	version = 31;
 	serial {
 		pattern {
 			product = "PPB";
@@ -41,6 +41,9 @@ driver ppb {
 		bool is_micro;
 		bool is_saddle;
 		char response[128];
+		bool power_outlets[2];
+		int dslr_power;
+		bool automatic_dew;
 	}
 	code {
 		static bool ppb_command(indigo_device *device, char *command, ...) {
@@ -51,7 +54,7 @@ driver ppb {
 				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 				}
 			}
 			return result > 0;
@@ -103,6 +106,21 @@ driver ppb {
 						if (ppb_command(device, "PV")) {
 							INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 						}
+						// The identified model and firmware have to be published, otherwise a client
+						// keeps showing the "Unknown" the attach handler seeded and only ever sees the
+						// reset that the close handler publishes.
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						// Until the first poll a failed request shows the switch states the client already sees.
+						for (int i = 0; i < 2; i++) {
+							PRIVATE_DATA->power_outlets[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+						}
+						PRIVATE_DATA->dslr_power = -1;
+						for (int i = 0; i < AUX_DSLR_POWER_PROPERTY->count; i++) {
+							if (AUX_DSLR_POWER_PROPERTY->items[i].sw.value) {
+								PRIVATE_DATA->dslr_power = i;
+							}
+						}
+						PRIVATE_DATA->automatic_dew = AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value;
 						ppb_command(device, "PL:1");
 						return true;
 					}
@@ -169,28 +187,33 @@ driver ppb {
 						AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
 					}
 				}
+				// These two fields carry the outlet switches themselves, so they publish
+				// AUX_POWER_OUTLET. AUX_POWER_OUTLET_STATE carries only the power alert below,
+				// and it is hidden on the models without one.
+				// The switch states the box reports are always recorded, a failed request shows them; a pending request
+				// owns the values of its property and its handler sends the targets, which the poll never writes.
 				if ((token = strtok_r(NULL, ":", &pnt))) { // power ports status
-					bool state = token[0] == '1';
-					if (AUX_POWER_OUTLET_1_ITEM->sw.value != state) {
-						AUX_POWER_OUTLET_1_ITEM->sw.value = state;
-						updatePowerOutletState = true;
+					PRIVATE_DATA->power_outlets[0] = token[0] == '1';
+					if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE && AUX_POWER_OUTLET_1_ITEM->sw.value != PRIVATE_DATA->power_outlets[0]) {
+						AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->power_outlets[0];
+						updatePowerOutlet = true;
 					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // DSLR ports status
-					bool state = token[0] == '1';
-					if (AUX_POWER_OUTLET_2_ITEM->sw.value != state) {
-						AUX_POWER_OUTLET_2_ITEM->sw.value = state;
-						updatePowerOutletState = true;
+					PRIVATE_DATA->power_outlets[1] = token[0] == '1';
+					if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE && AUX_POWER_OUTLET_2_ITEM->sw.value != PRIVATE_DATA->power_outlets[1]) {
+						AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->power_outlets[1];
+						updatePowerOutlet = true;
 					}
 				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
+				if ((token = strtok_r(NULL, ":", &pnt)) && AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) { // Dew1
 					double value = round(indigo_atod(token) * 100.0 / 255.0);
 					if (AUX_HEATER_OUTLET_1_ITEM->number.value != value) {
 						updateHeaterOutlet = true;
 						AUX_HEATER_OUTLET_1_ITEM->number.value = value;
 					}
 				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
+				if ((token = strtok_r(NULL, ":", &pnt)) && AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) { // Dew2
 					double value = round(indigo_atod(token) * 100.0 / 255.0);
 					if (AUX_HEATER_OUTLET_2_ITEM->number.value != value) {
 						updateHeaterOutlet = true;
@@ -198,9 +221,9 @@ driver ppb {
 					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-					bool state = token[0] == '1';
-					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != state) {
-						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+					PRIVATE_DATA->automatic_dew = token[0] == '1';
+					if (AUX_DEW_CONTROL_PROPERTY->state != INDIGO_BUSY_STATE && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != PRIVATE_DATA->automatic_dew) {
+						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 						updateAutoHeater = true;
 					}
 				}
@@ -213,37 +236,32 @@ driver ppb {
 					}
 				}
 				if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt))) { // DSLR power
-					if (!strcmp(token, "3")) {
-						updateDSLRPower = !AUX_DSLR_POWER_3_ITEM->sw.value;
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_3_ITEM, true);
-					} else if (!strcmp(token, "5")) {
-						updateDSLRPower = !AUX_DSLR_POWER_5_ITEM->sw.value;
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_5_ITEM, true);
-					} else if (!strcmp(token, "8")) {
-						updateDSLRPower = !AUX_DSLR_POWER_8_ITEM->sw.value;
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_8_ITEM, true);
-					} else if (!strcmp(token, "9")) {
-						updateDSLRPower = !AUX_DSLR_POWER_9_ITEM->sw.value;
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_9_ITEM, true);
-					} else if (!strcmp(token, "12")) {
-						updateDSLRPower = !AUX_DSLR_POWER_12_ITEM->sw.value;
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_12_ITEM, true);
+					// The item names are the voltages the box reports.
+					for (int i = 0; i < AUX_DSLR_POWER_PROPERTY->count; i++) {
+						if (!strcmp(token, AUX_DSLR_POWER_PROPERTY->items[i].name)) {
+							PRIVATE_DATA->dslr_power = i;
+							if (AUX_DSLR_POWER_PROPERTY->state != INDIGO_BUSY_STATE && !AUX_DSLR_POWER_PROPERTY->items[i].sw.value) {
+								indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_PROPERTY->items + i, true);
+								updateDSLRPower = true;
+							}
+						}
 					}
 				}
 			}
-			if (updatePowerOutlet) {
+			// A request copied after the checks above owns the state of its property, its handler publishes the result.
+			if (updatePowerOutlet && AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
 				INDIGO_UPDATE_PROPERTY_STATE(AUX_POWER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 			if (updatePowerOutletState) {
 				INDIGO_UPDATE_PROPERTY_STATE(AUX_POWER_OUTLET_STATE_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
-			if (updateDSLRPower) {
+			if (updateDSLRPower && AUX_DSLR_POWER_PROPERTY->state != INDIGO_BUSY_STATE) {
 				INDIGO_UPDATE_PROPERTY_STATE(AUX_DSLR_POWER_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 			if (updateHeaterOutlet) {
 				INDIGO_UPDATE_PROPERTY_STATE(AUX_HEATER_OUTLET_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
-			if (updateAutoHeater) {
+			if (updateAutoHeater && AUX_DEW_CONTROL_PROPERTY->state != INDIGO_BUSY_STATE) {
 				INDIGO_UPDATE_PROPERTY_STATE(AUX_DEW_CONTROL_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 			if (updateWeather) {
@@ -290,10 +308,29 @@ driver ppb {
 			group = AUX_GROUP;
 			label = "Power outlets";
 			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change_request {
+				// The poll writes the outlet states the box reports into the values only and the handler sends the targets,
+				// so the outlets a request does not carry must keep the reported state in their targets as well. A BUSY
+				// property is left alone, the framework drops the request and its handler reads the targets.
+				if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+					for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+						AUX_POWER_OUTLET_PROPERTY->items[i].sw.target = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+					}
+				}
+			}
 			on_change {
-				ppb_command(device, "P1:%d", AUX_POWER_OUTLET_1_ITEM->sw.value ? 1 : 0);
-				if (!PRIVATE_DATA->is_saddle) {
-					ppb_command(device, "P2:%d", AUX_POWER_OUTLET_2_ITEM->sw.value ? 1 : 0);
+				// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+				// request. An outlet the box did not answer for shows the state it last reported. The Saddle box has only
+				// the first outlet (count 1).
+				for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+					indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+					bool on = item->sw.target;
+					if (ppb_command(device, "P%d:%d", i + 1, on ? 1 : 0)) {
+						item->sw.value = PRIVATE_DATA->power_outlets[i] = on;
+					} else {
+						item->sw.value = PRIVATE_DATA->power_outlets[i];
+						AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				}
 			}
 			item AUX_POWER_OUTLET_1 {
@@ -313,16 +350,25 @@ driver ppb {
 			label = "DSLR Power";
 			hidden = true;
 			on_change {
-				if (AUX_DSLR_POWER_3_ITEM->sw.value) {
-					ppb_command(device, "P2:3");
-				} else if (AUX_DSLR_POWER_5_ITEM->sw.value)
-					ppb_command(device, "P2:5");
-				else if (AUX_DSLR_POWER_8_ITEM->sw.value)
-					ppb_command(device, "P2:8");
-				else if (AUX_DSLR_POWER_9_ITEM->sw.value)
-					ppb_command(device, "P2:9");
-				else if (AUX_DSLR_POWER_12_ITEM->sw.value)
-					ppb_command(device, "P2:12");
+				// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+				// request. The item names are the voltages; on failure the switch shows the voltage the box last reported.
+				int selected = -1;
+				for (int i = 0; i < AUX_DSLR_POWER_PROPERTY->count && selected < 0; i++) {
+					if (indigo_get_switch_target(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_PROPERTY->items[i].name)) {
+						selected = i;
+					}
+				}
+				if (selected < 0) {
+					indigo_apply_switch_targets(AUX_DSLR_POWER_PROPERTY);
+				} else if (ppb_command(device, "P2:%s", AUX_DSLR_POWER_PROPERTY->items[selected].name)) {
+					PRIVATE_DATA->dslr_power = selected;
+					indigo_apply_switch_targets(AUX_DSLR_POWER_PROPERTY);
+				} else {
+					for (int i = 0; i < AUX_DSLR_POWER_PROPERTY->count; i++) {
+						AUX_DSLR_POWER_PROPERTY->items[i].sw.value = i == PRIVATE_DATA->dslr_power;
+					}
+					AUX_DSLR_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			item AUX_DSLR_POWER_3 {
 				name = "3";
@@ -391,7 +437,16 @@ driver ppb {
 			group = AUX_GROUP;
 			label = "Dew control";
 			on_change {
-				ppb_command(device, "PD:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
+				// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+				// request. On failure the switch shows the mode the box last reported.
+				bool automatic = indigo_get_switch_target(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME);
+				if (ppb_command(device, "PD:%d", automatic ? 1 : 0)) {
+					PRIVATE_DATA->automatic_dew = automatic;
+					indigo_apply_switch_targets(AUX_DEW_CONTROL_PROPERTY);
+				} else {
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+					AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			item AUX_DEW_CONTROL_MANUAL {
 				name = AUX_DEW_CONTROL_MANUAL_ITEM_NAME;

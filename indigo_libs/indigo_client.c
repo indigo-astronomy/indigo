@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -25,6 +26,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <signal.h>
@@ -101,8 +103,8 @@ static driver_entry_point get_entry_point(INDIGO_DL_HANDLE dl_handle, const char
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	driver_entry_point entry_point = dlsym(dl_handle, entry_point_name);
 	if (entry_point == NULL) {
+		// the caller unloads the library
 		INDIGO_ERROR(indigo_error("Can't load %s() (%s)", entry_point_name, dlerror()));
-		dlclose(dl_handle);
 		return NULL;
 	}
 	return entry_point;
@@ -223,17 +225,30 @@ indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indig
 }
 
 indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver) {
-	char driver_name[INDIGO_NAME_SIZE];
-	char so_name[INDIGO_NAME_SIZE];
-	char *entry_point_name, *cp;
-	strncpy(driver_name, name, sizeof(driver_name));
-	strncpy(so_name, name, sizeof(so_name));
-	entry_point_name = indigo_uni_basename(driver_name);
-	cp = strchr(entry_point_name, '.');
+	assert(name != NULL);
+	// name is a driver name or a library path, optionally with its extension
+	char path[PATH_MAX];
+	char so_name[PATH_MAX];
+	char entry_point_name[INDIGO_NAME_SIZE];
+	if (snprintf(path, sizeof(path), "%s", name) >= (int)sizeof(path)) {
+		indigo_error("Driver %s can't be loaded (name too long)", name);
+		return INDIGO_FAILED;
+	}
+	if (snprintf(entry_point_name, sizeof(entry_point_name), "%s", indigo_uni_basename(path)) >= (int)sizeof(entry_point_name)) {
+		indigo_error("Driver %s can't be loaded (name too long)", name);
+		return INDIGO_FAILED;
+	}
+	char *cp = strchr(entry_point_name, '.');
+	int length;
 	if (cp) {
 		*cp = '\0';
+		length = snprintf(so_name, sizeof(so_name), "%s", name);
 	} else {
-		strncat(so_name, SO_NAME, INDIGO_NAME_SIZE);
+		length = snprintf(so_name, sizeof(so_name), "%s%s", name, SO_NAME);
+	}
+	if (length >= (int)sizeof(so_name)) {
+		indigo_error("Driver %s can't be loaded (name too long)", name);
+		return INDIGO_FAILED;
 	}
 	INDIGO_DL_HANDLE dl_handle = load_library(so_name);
 	if (dl_handle == NULL) {
@@ -505,25 +520,25 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, double value) {
 	int format_length = (int)strlen(format);
 	if (!strcmp(format + format_length - 3, "10m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%06.3f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%06.3f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "9m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%05.2f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%05.2f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "8m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%04.1f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "6m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%02d"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%02d", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "5m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%04.1f"), buffer_size);
+		indigo_dtos_r(value, "%d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 2, "3m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d", buffer, buffer_size);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 1, "m")) {
-		strncpy(buffer, indigo_dtos(value, "%d:%02d:%04.1f"), buffer_size);
+		indigo_dtos_r(value, "%d:%02d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else {
 		return snprintf(buffer, buffer_size, format, value) == 1 ? INDIGO_OK : INDIGO_FAILED;

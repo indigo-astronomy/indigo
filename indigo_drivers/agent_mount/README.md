@@ -19,3 +19,8 @@ INDIGO Astronomy open-source license.
 indigo_server indigo_agent_mount indigo_mount_... indigo_dome_... indigo_gps_....
 
 ## Status: Stable
+
+## Testing
+
+2026-09-24 12:56 3.0.0.23 linux x64 simulator 69/69 OK
+2026-09-27 20:12 3.0.0.24 mac arm64 simulator 69/69 OK

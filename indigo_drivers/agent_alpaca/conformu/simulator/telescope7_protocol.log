@@ -1,0 +1,20 @@
+00:47:11.895 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:47:11.896                                     
+00:47:11.896 Test Telescope device:  - localhost:7678 through URL: http://localhost:7678 
+00:47:11.896                                     
+00:47:11.899 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:47:11.899                                     
+00:47:11.899 Connecting to device...             
+00:47:11.985                                     
+00:47:11.985 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:47:12.043                                     
+00:47:12.043 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:47:12.043                                     
+00:47:12.098 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:47:12.098                                     
+00:47:12.103 Device exposes interface version 3  
+00:47:37.216                                     
+00:47:37.277                                     
+00:47:37.277 Successfully disconnected from device. 
+00:47:37.277                                     
+00:47:37.277 Congratulations there were no errors, issues or information alerts - Your device passes ASCOM Alpaca protocol validation!! 

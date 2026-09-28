@@ -24,3 +24,7 @@ indigo_server indigo_guider_asi
 
 Driver is developed without the physical hardware and tested by ZWO with:
 * ZWO ASI USB-ST4 guider adapter
+
+## Testing
+
+2026-09-26 19:49 3.0.0.13 mac arm64 fake SDK 16/16 OK

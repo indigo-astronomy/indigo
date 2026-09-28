@@ -1,0 +1,29 @@
+00:49:51.574 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 06 August 2026 12:47:41          
+00:49:51.574                                              
+00:49:51.575 Operating system is macOS 26.7.0, Processor is ARM 64bit, Application is 64bit.          
+00:49:51.575                                              
+00:49:51.575 Alpaca device:  (localhost:7683 Focuser/1)          
+00:49:51.575                                              
+00:49:51.576 CreateDevice                        INFO     Creating Alpaca device: IP address: localhost, IP Port: 7683, Alpaca device number: 1
+00:49:51.582 CreateDevice                        INFO     Alpaca device created OK
+00:49:51.582 CreateDevice                        INFO     Successfully created driver
+00:49:52.640 CreateDevice                        OK       Found a valid interface version: 3
+00:49:52.640 CreateDevice                        OK       Driver instance created successfully
+00:49:52.640                                              
+00:49:52.640 Connect to device                            
+00:49:52.825 ConnectToDevice                     ISSUE    Connection exception - further testing abandoned: Unspecified error
+00:49:52.827                                              
+00:49:52.827 ConnectToDevice                              Cannot connect to device, further tests abandoned.
+00:49:52.827                                              
+00:49:52.827 Your device had 1 issue, 0 errors and 0 configuration alerts          
+00:49:52.827                                              
+00:49:52.827 Issue Summary                                
+00:49:52.827 ConnectToDevice                     ISSUE    Connection exception - further testing abandoned: Unspecified error
+00:49:52.827                                     
+00:49:52.827 Timing Summary                               See Help for further information.
+00:49:52.827 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+00:49:52.827 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+00:49:52.827 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+00:49:52.827 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+00:49:52.827                                              
+00:49:52.827 No member timings were recorded.             

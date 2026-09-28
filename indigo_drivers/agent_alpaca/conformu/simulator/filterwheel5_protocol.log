@@ -1,0 +1,19 @@
+00:43:15.810 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:43:15.810                                     
+00:43:15.811 Test FilterWheel device:  - localhost:7677 through URL: http://localhost:7677 
+00:43:15.811                                     
+00:43:15.814 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:43:15.814                                     
+00:43:15.814 Connecting to device...             
+00:43:15.909                                     
+00:43:15.909 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:43:15.967                                     
+00:43:15.967 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:43:15.967                                     
+00:43:16.020 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:43:16.020                                     
+00:43:16.026 Device exposes interface version 2  
+00:43:16.168                                     
+00:43:16.168 Successfully disconnected from device. 
+00:43:16.168                                     
+00:43:16.168 Congratulations there were no errors, issues or information alerts - Your device passes ASCOM Alpaca protocol validation!! 

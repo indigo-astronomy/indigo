@@ -1,0 +1,537 @@
+00:50:01.692 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:50:01.693                                     
+00:50:01.693 Test Focuser device:  - localhost:7683 through URL: http://localhost:7683 
+00:50:01.693                                     
+00:50:01.696 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:50:01.696                                     
+00:50:01.696 Connecting to device...             
+00:50:01.896 PUT Connected                       INFO     True - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:01.897                                     
+00:50:01.897 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:50:01.897                                     
+00:50:01.897 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:50:01.897                                     
+00:50:02.067 PUT Connected                       INFO     True - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.067 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:50:02.067                                     
+00:50:02.070 Device exposes interface version 3  
+00:50:02.246 GET Absolute                        INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.246 GET Absolute                        INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.247 GET Absolute                        INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.247 GET Absolute                        INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.247 GET Absolute                        INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.248 GET Absolute                        INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.248 GET Absolute                        INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.248 GET Absolute                        INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.248 GET Absolute                        INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.249 GET Absolute                        INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.249 GET Absolute                        INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.249 GET Absolute                        INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.249 GET IsMoving                        INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.250 GET IsMoving                        INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.250 GET IsMoving                        INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.250 GET IsMoving                        INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.251 GET IsMoving                        INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.251 GET IsMoving                        INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.251 GET IsMoving                        INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.251 GET IsMoving                        INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.252 GET IsMoving                        INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.252 GET IsMoving                        INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.252 GET IsMoving                        INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.253 GET IsMoving                        INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.253 GET MaxIncrement                    INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.253 GET MaxIncrement                    INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.253 GET MaxIncrement                    INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.254 GET MaxIncrement                    INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.254 GET MaxIncrement                    INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.254 GET MaxIncrement                    INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.254 GET MaxIncrement                    INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.255 GET MaxIncrement                    INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.255 GET MaxIncrement                    INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.255 GET MaxIncrement                    INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.256 GET MaxIncrement                    INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.256 GET MaxIncrement                    INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.256 GET MaxStep                         INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.257 GET MaxStep                         INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.257 GET MaxStep                         INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.257 GET MaxStep                         INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.257 GET MaxStep                         INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.258 GET MaxStep                         INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.258 GET MaxStep                         INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.258 GET MaxStep                         INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.259 GET MaxStep                         INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.259 GET MaxStep                         INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.259 GET MaxStep                         INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.259 GET MaxStep                         INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.260 GET Position                        INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.260 GET Position                        INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.260 GET Position                        INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.261 GET Position                        INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.261 GET Position                        INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.261 GET Position                        INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.261 GET Position                        INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.262 GET Position                        INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.262 GET Position                        INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.262 GET Position                        INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.262 GET Position                        INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.263 GET Position                        INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.263 GET StepSize                        INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.263 GET StepSize                        INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.264 GET StepSize                        INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.264 GET StepSize                        INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.264 GET StepSize                        INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.264 GET StepSize                        INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.265 GET StepSize                        INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.265 GET StepSize                        INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.265 GET StepSize                        INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.265 GET StepSize                        INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.266 GET StepSize                        INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.266 GET StepSize                        INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.266 GET TempComp                        INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.267 GET TempComp                        INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.267 GET TempComp                        INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.267 GET TempComp                        INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.267 GET TempComp                        INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.268 GET TempComp                        INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.268 GET TempComp                        INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.268 GET TempComp                        INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.269 GET TempComp                        INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.269 GET TempComp                        INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.269 GET TempComp                        INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.269 GET TempComp                        INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.281 PUT TempComp                        INFO     Parameter TempComp (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.282 PUT TempComp                        INFO     Parameter TempComp (Good casing + extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.283 PUT TempComp                        INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.283 PUT TempComp                        INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.283 PUT TempComp                        INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.284 PUT TempComp                        INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.284 PUT TempComp                        INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.284 PUT TempComp                        INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.285 PUT TempComp                        INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.285 PUT TempComp                        INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.285 PUT TempComp                        INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.286 PUT TempComp                        INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.286 GET TempCompAvailable               INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.286 GET TempCompAvailable               INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.286 GET TempCompAvailable               INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.287 GET TempCompAvailable               INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.287 GET TempCompAvailable               INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.287 GET TempCompAvailable               INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.288 GET TempCompAvailable               INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.288 GET TempCompAvailable               INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.288 GET TempCompAvailable               INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.289 GET TempCompAvailable               INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.289 GET TempCompAvailable               INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.289 GET TempCompAvailable               INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.290 GET Temperature                     INFO     Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.290 GET Temperature                     INFO     Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.290 GET Temperature                     INFO     Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.290 GET Temperature                     INFO     Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.291 GET Temperature                     INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.291 GET Temperature                     INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.291 GET Temperature                     INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.291 GET Temperature                     INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.292 GET Temperature                     INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.292 GET Temperature                     INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.292 GET Temperature                     INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.292 GET Temperature                     INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.294 PUT Halt                            INFO     Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:50:02.299                                     ERROR    ASCOM.NotConnectedException: Not connected
+   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary`2 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 815
+   at ASCOM.Alpaca.Clients.RemoteDevice.GetValue[T](Parameters clientParameters) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 510
+   at ASCOM.Alpaca.Clients.AlpacaFocuser.get_IsMoving() in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaFocuser.cs:line 223
+   at ConformU.AlpacaProtocolTestManager.<>c__DisplayClass58_0.<TestFocuser>b__2() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 916
+   at ConformU.AlpacaProtocolTestManager.<WaitWhile>g__loggedWaitFunction|75_0(<>c__DisplayClass75_0&) in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 2963
+   at ConformU.AlpacaProtocolTestManager.WaitWhile(String actionName, Func`1 waitFunction, Int32 pollInterval, Int32 timeoutSeconds, Func`1 statusString) in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 2970
+   at ConformU.AlpacaProtocolTestManager.<>c__DisplayClass58_0.<TestFocuser>b__0() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 916
+   at ConformU.AlpacaProtocolTestManager.PutNoParameters(String method, Action waitForCompletion) in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 1622
+   at ConformU.AlpacaProtocolTestManager.TestFocuser() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 914
+   at ConformU.AlpacaProtocolTestManager.TestAlpacaProtocol() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 301
+00:50:02.299                                     
+00:50:02.299 Found 1 error, 0 issues and 123 information messages. 
+00:50:02.299                                     
+00:50:02.299 Error Summary                       
+00:50:02.299  ==> ASCOM.NotConnectedException: Not connected
+   at ASCOM.Alpaca.Clients.RemoteDevice.Send[T](Parameters clientParameters, Dictionary`2 formParameters, HttpMethod httpMethod) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 815
+   at ASCOM.Alpaca.Clients.RemoteDevice.GetValue[T](Parameters clientParameters) in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/RemoteDevice.cs:line 510
+   at ASCOM.Alpaca.Clients.AlpacaFocuser.get_IsMoving() in /_/ASCOM.Alpaca/ASCOM.Alpaca.Clients/AlpacaDevices/AlpacaFocuser.cs:line 223
+   at ConformU.AlpacaProtocolTestManager.<>c__DisplayClass58_0.<TestFocuser>b__2() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 916
+   at ConformU.AlpacaProtocolTestManager.<WaitWhile>g__loggedWaitFunction|75_0(<>c__DisplayClass75_0&) in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 2963
+   at ConformU.AlpacaProtocolTestManager.WaitWhile(String actionName, Func`1 waitFunction, Int32 pollInterval, Int32 timeoutSeconds, Func`1 statusString) in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 2970
+   at ConformU.AlpacaProtocolTestManager.<>c__DisplayClass58_0.<TestFocuser>b__0() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 916
+   at ConformU.AlpacaProtocolTestManager.PutNoParameters(String method, Action waitForCompletion) in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 1622
+   at ConformU.AlpacaProtocolTestManager.TestFocuser() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 914
+   at ConformU.AlpacaProtocolTestManager.TestAlpacaProtocol() in J:\ConformU\ConformU\AlpacaProtocolTestManager.cs:line 301
+  Response: 
+ 
+00:50:02.300                                     
+00:50:02.300 Information Message Summary         
+00:50:02.300 PUT Connected ==> True - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a UnspecifiedError error (0x000004FF) for client transaction: 67890, server transaction: 2. Error message: Unspecified error
+ 
+00:50:02.300 PUT Connected ==> True - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a UnspecifiedError error (0x000004FF) for client transaction: 67890, server transaction: 4. Error message: Unspecified error
+ 
+00:50:02.300 GET Absolute ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 93. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 94. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 95. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 96. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 97. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 98. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 99. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 100. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 101. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 102. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 103. Error message: Not connected
+ 
+00:50:02.300 GET Absolute ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 104. Error message: Not connected
+ 
+00:50:02.300 GET IsMoving ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 105. Error message: Not connected
+ 
+00:50:02.300 GET IsMoving ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 106. Error message: Not connected
+ 
+00:50:02.300 GET IsMoving ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 107. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 108. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 109. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 110. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 111. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 112. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 113. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 114. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 115. Error message: Not connected
+ 
+00:50:02.301 GET IsMoving ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 116. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 117. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 118. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 119. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 120. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 121. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 122. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 123. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 124. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 125. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 126. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 127. Error message: Not connected
+ 
+00:50:02.301 GET MaxIncrement ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 128. Error message: Not connected
+ 
+00:50:02.301 GET MaxStep ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 129. Error message: Not connected
+ 
+00:50:02.301 GET MaxStep ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 130. Error message: Not connected
+ 
+00:50:02.301 GET MaxStep ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 131. Error message: Not connected
+ 
+00:50:02.301 GET MaxStep ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 132. Error message: Not connected
+ 
+00:50:02.301 GET MaxStep ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 133. Error message: Not connected
+ 
+00:50:02.301 GET MaxStep ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 134. Error message: Not connected
+ 
+00:50:02.301 GET MaxStep ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 135. Error message: Not connected
+ 
+00:50:02.302 GET MaxStep ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 136. Error message: Not connected
+ 
+00:50:02.302 GET MaxStep ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 137. Error message: Not connected
+ 
+00:50:02.302 GET MaxStep ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 138. Error message: Not connected
+ 
+00:50:02.302 GET MaxStep ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 139. Error message: Not connected
+ 
+00:50:02.302 GET MaxStep ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 140. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 141. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 142. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 143. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 144. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 145. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 146. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 147. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 148. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 149. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 150. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 151. Error message: Not connected
+ 
+00:50:02.302 GET Position ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 152. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 153. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 154. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 155. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 156. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 157. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 158. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 159. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 160. Error message: Not connected
+ 
+00:50:02.302 GET StepSize ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 161. Error message: Not connected
+ 
+00:50:02.303 GET StepSize ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 162. Error message: Not connected
+ 
+00:50:02.303 GET StepSize ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 163. Error message: Not connected
+ 
+00:50:02.303 GET StepSize ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 164. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 165. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 166. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 167. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 168. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 169. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 170. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 171. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 172. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 173. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 174. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 175. Error message: Not connected
+ 
+00:50:02.303 GET TempComp ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 176. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> Parameter TempComp (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 178. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> Parameter TempComp (Good casing + extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 179. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 180. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 181. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 182. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 183. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 184. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 185. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 186. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 187. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 188. Error message: Not connected
+ 
+00:50:02.303 PUT TempComp ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 189. Error message: Not connected
+ 
+00:50:02.303 GET TempCompAvailable ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 190. Error message: Not connected
+ 
+00:50:02.303 GET TempCompAvailable ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 191. Error message: Not connected
+ 
+00:50:02.303 GET TempCompAvailable ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 192. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 193. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 194. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 195. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 196. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 197. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 198. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 199. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 200. Error message: Not connected
+ 
+00:50:02.304 GET TempCompAvailable ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 201. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> Good ClientID and ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 202. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> Good ClientID and ClientTransactionID casing with additional parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 203. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> Different ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 204. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> Different ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 205. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 206. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 207. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 208. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 209. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 210. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 211. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 212. Error message: Not connected
+ 
+00:50:02.304 GET Temperature ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 0, server transaction: 213. Error message: Not connected
+ 
+00:50:02.304 PUT Halt ==> Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a NotConnected error (0x00000407) for client transaction: 67890, server transaction: 214. Error message: Not connected
+ 

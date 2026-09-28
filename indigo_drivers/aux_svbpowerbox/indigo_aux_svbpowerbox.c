@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000002
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_aux_svbpowerbox"
 #define DRIVER_LABEL         "SVBONY PowerBox"
 #define AUX_DEVICE_NAME      "SVBONY PowerBox"
@@ -144,6 +143,10 @@ typedef struct {
 	indigo_property *aux_temperature_sensors_property;
 	indigo_property *aux_dew_warning_property;
 	indigo_property *aux_info_property;
+	//+ data
+	bool power_outlets[6];
+	bool usb_ports[2];
+	//- data
 } svbpowerbox_private_data;
 
 #pragma mark - Low level code
@@ -253,6 +256,13 @@ static bool svbpowerbox_open(indigo_device *device) {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device handshake successful");
+			// Until the first poll a failed request shows the switch states of the handshake.
+			for (int i = 0; i < 5; i++) {
+				PRIVATE_DATA->power_outlets[i] = state[i] != 0;
+			}
+			PRIVATE_DATA->power_outlets[5] = state[7] != 0;
+			PRIVATE_DATA->usb_ports[0] = state[5] != 0;
+			PRIVATE_DATA->usb_ports[1] = state[6] != 0;
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "SVBONY PowerBox");
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -377,13 +387,16 @@ static void aux_timer_callback(indigo_device *device) {
 			res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7], res[8], res[9]);
 
 		// Power outlets (DC1-DC5) + regulated
+		// The switch states the box reports are always recorded, a failed request shows them; a pending request
+		// owns the values of its property and its handler sends the targets, which the poll never writes.
+		for (int i = 0; i < 5; i++) {
+			PRIVATE_DATA->power_outlets[i] = res[i] != 0;
+		}
+		PRIVATE_DATA->power_outlets[5] = res[7] != 0;
 		if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
-			AUX_POWER_OUTLET_1_ITEM->sw.value = (res[0] != 0);
-			AUX_POWER_OUTLET_2_ITEM->sw.value = (res[1] != 0);
-			AUX_POWER_OUTLET_3_ITEM->sw.value = (res[2] != 0);
-			AUX_POWER_OUTLET_4_ITEM->sw.value = (res[3] != 0);
-			AUX_POWER_OUTLET_5_ITEM->sw.value = (res[4] != 0);
-			AUX_POWER_OUTLET_6_ITEM->sw.value = (res[7] != 0);
+			for (int i = 0; i < 6; i++) {
+				AUX_POWER_OUTLET_PROPERTY->items[i].sw.value = PRIVATE_DATA->power_outlets[i];
+			}
 			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		}
 
@@ -395,9 +408,12 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 
 		// USB ports
+		PRIVATE_DATA->usb_ports[0] = res[5] != 0;
+		PRIVATE_DATA->usb_ports[1] = res[6] != 0;
 		if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
-			AUX_USB_PORT_1_ITEM->sw.value = (res[5] != 0);
-			AUX_USB_PORT_2_ITEM->sw.value = (res[6] != 0);
+			for (int i = 0; i < 2; i++) {
+				AUX_USB_PORT_PROPERTY->items[i].sw.value = PRIVATE_DATA->usb_ports[i];
+			}
 			indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		}
 
@@ -461,7 +477,6 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -471,6 +486,27 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_POWER_OUTLET_PROPERTY,
+			AUX_POWER_OUTLET_VOLTAGE_PROPERTY,
+			AUX_POWER_OUTLET_CURRENT_PROPERTY,
+			AUX_USB_PORT_PROPERTY,
+			AUX_HEATER_OUTLET_PROPERTY,
+			AUX_DEW_CONTROL_PROPERTY,
+			AUX_WEATHER_PROPERTY,
+			AUX_TEMPERATURE_SENSORS_PROPERTY,
+			AUX_DEW_WARNING_PROPERTY,
+			AUX_INFO_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (AUX_OUTLET_NAMES_PROPERTY != NULL && AUX_OUTLET_NAMES_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_OUTLET_NAMES_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
@@ -486,6 +522,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 static void aux_outlet_names_handler(indigo_device *device) {
@@ -516,17 +555,23 @@ static void aux_outlet_names_handler(indigo_device *device) {
 static void aux_power_outlet_handler(indigo_device *device) {
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET.on_change
-	svbpb_set_port(device, SVB_PORT_DC1, AUX_POWER_OUTLET_1_ITEM->sw.value ? 0xFF : 0x00);
-	svbpb_set_port(device, SVB_PORT_DC2, AUX_POWER_OUTLET_2_ITEM->sw.value ? 0xFF : 0x00);
-	svbpb_set_port(device, SVB_PORT_DC3, AUX_POWER_OUTLET_3_ITEM->sw.value ? 0xFF : 0x00);
-	svbpb_set_port(device, SVB_PORT_DC4, AUX_POWER_OUTLET_4_ITEM->sw.value ? 0xFF : 0x00);
-	svbpb_set_port(device, SVB_PORT_DC5, AUX_POWER_OUTLET_5_ITEM->sw.value ? 0xFF : 0x00);
-	// Regulated output: if outlet 6 is OFF, set voltage to 0; otherwise keep target voltage
-	if (!AUX_POWER_OUTLET_6_ITEM->sw.value) {
-		svbpb_set_port(device, SVB_PORT_REGULATED, 0x00);
-	} else {
-		uint8_t pwm = (uint8_t)round((AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target / SVB_MAX_VOLTAGE) * 255.0);
-		svbpb_set_port(device, SVB_PORT_REGULATED, pwm);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. An outlet the box did not accept shows the state it last reported.
+	static const uint8_t ports[] = { SVB_PORT_DC1, SVB_PORT_DC2, SVB_PORT_DC3, SVB_PORT_DC4, SVB_PORT_DC5, SVB_PORT_REGULATED };
+	for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+		bool on = item->sw.target;
+		uint8_t value = on ? 0xFF : 0x00;
+		// Regulated output: if outlet 6 is OFF, set voltage to 0; otherwise keep target voltage
+		if (ports[i] == SVB_PORT_REGULATED && on) {
+			value = (uint8_t)round((AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target / SVB_MAX_VOLTAGE) * 255.0);
+		}
+		if (svbpb_set_port(device, ports[i], value)) {
+			item->sw.value = PRIVATE_DATA->power_outlets[i] = on;
+		} else {
+			item->sw.value = PRIVATE_DATA->power_outlets[i];
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	indigo_usleep(ONE_SECOND_DELAY / 2);
 	//- aux.AUX_POWER_OUTLET.on_change
@@ -547,8 +592,19 @@ static void aux_power_outlet_voltage_handler(indigo_device *device) {
 static void aux_usb_port_handler(indigo_device *device) {
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_USB_PORT.on_change
-	svbpb_set_port(device, SVB_PORT_USB_A, AUX_USB_PORT_1_ITEM->sw.value ? 0xFF : 0x00);
-	svbpb_set_port(device, SVB_PORT_USB_B, AUX_USB_PORT_2_ITEM->sw.value ? 0xFF : 0x00);
+	// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+	// request. A port group the box did not accept shows the state it last reported.
+	static const uint8_t ports[] = { SVB_PORT_USB_A, SVB_PORT_USB_B };
+	for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+		indigo_item *item = AUX_USB_PORT_PROPERTY->items + i;
+		bool on = item->sw.target;
+		if (svbpb_set_port(device, ports[i], on ? 0xFF : 0x00)) {
+			item->sw.value = PRIVATE_DATA->usb_ports[i] = on;
+		} else {
+			item->sw.value = PRIVATE_DATA->usb_ports[i];
+			AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
 	indigo_usleep(ONE_SECOND_DELAY / 2);
 	//- aux.AUX_USB_PORT.on_change
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
@@ -700,22 +756,38 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, aux_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(aux_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, aux_outlet_names_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
+		//+ aux.AUX_POWER_OUTLET.on_change_request
+		// The poll writes the outlet states the box reports into the values only and the handler sends the targets,
+		// so the outlets a request does not carry must keep the reported state in their targets as well. A BUSY
+		// property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+				AUX_POWER_OUTLET_PROPERTY->items[i].sw.target = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_POWER_OUTLET.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_POWER_OUTLET_PROPERTY, aux_power_outlet_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_VOLTAGE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_POWER_OUTLET_VOLTAGE_PROPERTY, aux_power_outlet_voltage_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_USB_PORT_PROPERTY, property)) {
+		//+ aux.AUX_USB_PORT.on_change_request
+		// The poll writes the port states the box reports into the values only and the handler sends the targets,
+		// so the ports a request does not carry must keep the reported state in their targets as well. A BUSY
+		// property is left alone, the framework drops the request and its handler reads the targets.
+		if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+				AUX_USB_PORT_PROPERTY->items[i].sw.target = AUX_USB_PORT_PROPERTY->items[i].sw.value;
+			}
+		}
+		//- aux.AUX_USB_PORT.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_USB_PORT_PROPERTY, aux_usb_port_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
@@ -770,28 +842,30 @@ indigo_result indigo_aux_svbpowerbox(indigo_driver_action action, indigo_driver_
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(svbpowerbox_private_data));
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			private_data = (svbpowerbox_private_data *)indigo_safe_malloc(sizeof(svbpowerbox_private_data));
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);
-				free(aux);
+				indigo_safe_free(aux);
 				aux = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

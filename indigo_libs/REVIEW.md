@@ -5,11 +5,19 @@
 | Field | Value |
 | --- | --- |
 | Last reviewed commit | `017ba602857378e4aed489c065c76eacae15924c` |
-| Review state | Focused baseline review recorded findings; full subtree review not complete. All recorded findings resolved. |
+| Review state | Focused baseline and timer/queue reimplementation reviews recorded findings; full subtree review not complete. |
 
 ## Scope
 
 Core INDIGO library code, including the bus, timers, protocol adapters, base drivers, utility helpers, portable I/O, image/format helpers, and shared public headers.
+
+## Scoped review — Rumen's text ownership fix (2026-09-14)
+
+Reviewed `db1ac15fd69f55fd773249cea9dedfa8c418c92a` against its parent, including both changed functions in `indigo_bus.c`; the reviewed source is unchanged at workspace HEAD `5dd7a9415`. No new regression found. This author/commit-scoped review does not advance the whole-folder baseline.
+
+The reported Scripting Agent crash is consistent with configuration restoration: `agent_scripting/indigo_agent_scripting.c:100–106` saves script text, and `indigo_driver.c:405–411` copies parsed configuration properties into pending restore requests. For text of at least `INDIGO_VALUE_SIZE` (512 bytes), the old `indigo_copy_property()` duplicated the source `long_value` pointer and passed it to a setter that freed it before `strlen()`. That both read freed memory and invalidated the source owner's allocation. The fix clears the borrowed pointer before allocating the copy and delays freeing the setter's old buffer until all source reads finish.
+
+Validation on macOS arm64: rebuilt `indigo_libs` for arm64/x86_64; existing bus property suite passed 6/6 cases. A temporary public-API harness linked the complete before/after `indigo_bus.c` translation units, instrumented with AddressSanitizer, against the built library. Both pre-fix scenarios (copy a 2,047-byte script and set a long item from its own value) reproduced heap-use-after-free in the setter. Both post-fix scenarios passed, including independent copy ownership after source release and replacement by a short suffix of the old long buffer. The rest of the linked library was not sanitizer-instrumented. No original crash dump or end-to-end Scripting Agent session was available; the configuration path was traced statically. Temporary harness files were not added to the repository.
 
 ## Current Findings
 
@@ -17,6 +25,20 @@ Core INDIGO library code, including the bus, timers, protocol adapters, base dri
 | --- | --- | --- | --- | --- |
 | LIB-001 | High | `indigo_timer.c:556` | Claimed `indigo_queue_add()` leaves `indigo_queue_task.data` uninitialized so queue dispatch could read a garbage pointer. False positive: the task is allocated with `indigo_safe_malloc()`, which zeroes the allocation, so `data` is always `NULL`. See finding summary below. | Closed (false positive) |
 | LIB-002 | Medium | `indigo/indigo_names.h:2686` | `AGENT_MOUNT_ENABLE_DEROTATION_ITEM_NAME` published the item name as `ENABLE_DEROTACTION` instead of `ENABLE_DEROTATION`. This misspelled the new public protocol/config item and would either force clients to use the typo or break saved settings and integrations when corrected later. | Closed (fixed) |
+| LIB-003 | High | `indigo_timer.c:243` | The `pthread_atfork()` child handler called mutex/condition-variable initialization and condition-variable attribute APIs. After `fork()` from a multithreaded process, those are not async-signal-safe operations. The fork protocol now locks the existing scheduler mutex in the prepare handler and only resets ordinary state in the child while that mutex is held. | Closed (fixed) |
+| LIB-004 | Medium | `indigo_timer.c:253` | The child reset dropped the live registry without clearing inherited public timer slots or device timer lists. The child fork handler now discards inherited timers by clearing both forms of ownership before resetting the registry. | Closed (fixed) |
+| LIB-005 | Medium | `indigo_timer.c:578` | `indigo_reschedule_timer_with_callback()` changed only the callback pointer. It now explicitly discards a prior data payload and changes the timer to the plain callback form before dispatch. | Closed (fixed) |
+| LIB-006 | Medium | `indigo_timer.c:753` | Queue dispatch initialized priority selection to `-1`. Runnable negative-priority tasks were never dequeued, leaving the worker in a busy loop. Selection now initializes from the first due task, so the complete signed `int` priority domain is supported. | Closed (fixed) |
+| LIB-007 | Medium | `indigo_bus.c:indigo_property_copy_values`, `indigo_property_copy_targets` | Range comparisons did not reject NaN. | Closed (fixed) |
+| LIB-008 | Medium | `indigo_ccd_driver.c:92` | A countdown callback arriving after `countdown_endtime` skips the value update and deadline reset, but keeps rescheduling while exposure remains BUSY. The displayed remainder can stay positive during readout. LOW priority can aggravate delays; increasing priority alone does not fix the expired-deadline path. | Closed (fixed) |
+| LIB-009 | Low | `indigo_ccd_driver.c:78` | Countdown deadlines and remaining time use `gettimeofday()`. A wall-clock adjustment can increase the displayed remainder or move the countdown past its deadline independently of elapsed exposure time. | Closed (fixed) |
+| LIB-010 | High | `indigo_filter.c:selection_property`, `indigo_driver.c:config_restore_handler` | Controlled-device selection became OK after dispatching CONFIG.LOAD, before asynchronous saved settings and property enumeration finished. Initial agent settings could be ignored by a BUSY device or overwritten by restoration. | Closed (fixed; scoped validation) |
+| LIB-011 | High | `indigo_server_tcp.c:344` | The `/blob/` HTTP handler read request headers into `char header[BUFFER_SIZE]` (1024 bytes) but passed `INDIGO_BUFFER_SIZE` (131072) as the length. `indigo_uni_read_section2()` fills up to `length` payload bytes, so any header line longer than 1024 bytes overflowed the stack by up to 127 KiB. Remotely reachable from any client that can open a blob request. Now bounded by `sizeof(header) - 1`. | Closed (fixed) |
+| LIB-012 | Medium | `indigo_uni_io.c:1598`, `indigo_server_tcp.c:117,132`, `indigo_json.c:356`, `indigo_bus.c:1438,1452,1551,1560`, `indigo_rotator_driver.c:63`, `indigo_mount_driver.c:319,326` | `indigo_uni_read_section2()` treats `length` as the payload capacity and stores the terminating NUL at `buffer[length]`, so a caller must reserve one extra byte. These call sites passed the full buffer size, so a reply that filled the buffer without a terminator wrote one byte past its end. All now pass `size - 1`. | Closed (fixed) |
+| LIB-013 | Medium | `indigo_bus.c:552` (`indigo_attach_device`) | The device is published into `devices[]` and the bus mutex released *before* `device->attach()` runs, so there is a window in which a device is globally visible with `DEVICE_CONTEXT == NULL`. A client enumerating in that window reaches the half-attached device and trips `assert(DEVICE_CONTEXT != NULL)` in `indigo_rotator_enumerate_properties` (`indigo_rotator_driver.c:176`); every class-level enumerate has the same assertion. Reproduced with `test_rotator_lunatico_simulator`, whose port devices are attached from an async handler while the test enumerates: `Assertion failed: (DEVICE_CONTEXT != NULL)`, SIGABRT. Not fixed. Two shapes were considered. Holding the mutex across `attach()` does **not** self-deadlock - `bus_mutex` is `PTHREAD_RECURSIVE_MUTEX_INITIALIZER` and `device_mutex`/`client_mutex` are both `#define`s of it, so a driver's `attach()` re-entering `indigo_define_property()` on the same thread is fine - but it would lock the whole bus while arbitrary driver code runs and invites the cross-thread inversion of DRV-192, where a thread holding `bus_mutex` waits on a device queue whose task blocks on `bus_mutex` in `indigo_update_property()`. It would also break an existing invariant: `indigo_detach_device` deliberately unlocks before calling `device->detach()`. The other shape, publishing the device only after `attach()` returns, takes no lock across driver code and is workable - `indigo_define_property()` walks `clients[]`, not `devices[]`, so a device that is not in the table yet can still define its properties - but the slot has to be reserved so two threads cannot claim it, every `devices[]` iteration (`indigo_enumerate_properties`, property routing, `indigo_detach_device`, `indigo_stop`) has to skip a reserved but unpublished slot, and `indigo_stop` needs a rule for a device that is mid-attach. `indigo_attach_device` is core to every driver, so this needs a deliberate decision rather than a drive-by change. The test now waits on the definitions the new device broadcasts instead of polling enumerate. | Open |
+| LIB-014 | High | `indigo_uni_io.c:1565,1574` | `indigo_uni_read_section2()` looped over `ignore` and `terminators` with `for (const char *s = list; *s; s++)`, no NULL check, although `indigo_uni_io.h` documents the ignore list as optional ("or NULL"). A caller following the documented contract crashed the process on the first byte read; every driver that uses the delimited readers is exposed. Found while migrating `aux_dragonfly`/`dome_dragonfly` and measuring whether those readers work on a UDP handle. Both loops now stop at NULL, so NULL means "nothing to ignore" and "no terminator"; behaviour for a non-NULL list is unchanged. Regression test `indigo_test/unit/test_uni_io.c`: against the unfixed library the executable dies with SIGSEGV (`rc=139`), against the fixed one all three cases pass; `make -C indigo_test test-unit` 154/154. | Closed (fixed) |
+| LIB-015 | Medium | `indigo_driver.c` (`config_restore_handler`, `config_restore_observe_property`, `config_restore_pop`) | A configuration restore dispatched the saved properties in file order and waited for each one, but could not survive a property that did not cooperate. A driver that accepted a change without publishing anything left the restore waiting out its whole 120 s deadline, and an `INDIGO_ALERT_STATE` answer set `restore->failed`; either way every setting after that property in the file was discarded and the client got only "Configuration restore failed or timed out". Reproduced through `ccd_touptek` (DRV-213) by holding `CCD_EXPOSURE` BUSY across a `CONFIG LOAD`: the restore stalled on `X_CCD_BIN_MODE` and never applied `CCD_GAIN`. A refused or unanswered property is now recorded and skipped, the rest of the file is applied, and `CONFIG` ends in `INDIGO_ALERT_STATE` with a message naming the properties the driver did not accept, which is what makes such a failure diagnosable at all. `CONFIG_RESTORE_ACK_TIMEOUT` (2 s) distinguishes "no answer" from "legitimately BUSY", because `INDIGO_COPY_*_PROCESS_CHANGE` and the generated `reject_change` both publish synchronously inside `indigo_change_property()`. `config_restore_pop()` also now resets `restore->state`, which previously leaked the finished property's state into the next request until its probe arrived. Regression test `Configuration restore survives a refused property` in `indigo_test/integration/test_ccd_touptek_sdk.c`, which fails against the unfixed library at its `CCD_GAIN` assertion. Verification: `make -C indigo_test test-unit` 154/154, and every test that actually drives a `CONFIG LOAD` was run individually on macOS arm64 and passes — `test_agent_config` 56/56, `test_ccd_touptek_sdk` 30/30, plus `test_agent_scripting`, `test_agent_scripting_sequencer`, `test_ccd_asi_sdk`, `test_ccd_atik_sdk`, `test_ccd_playerone_sdk`, `test_ccd_svb_sdk`, `test_focuser_astroasis_sdk`, `test_focuser_dmfc_simulator`, `test_focuser_fc3_simulator`, `test_focuser_fcusb_sdk`, `test_focuser_usbv3_simulator`, `test_wheel_astroasis_sdk` and `test_wheel_playerone_sdk`. `test_ccd_qhy_sdk` could not be run at all: its vendor SDK makes it an x86_64-only executable on an arm64 host. A first sweep that ran every integration binary in one loop reported `missing_ds18b20_keeps_the_ambient_sensor`, `reference_trace` and `configuration_roundtrip` as failures; all three pass when run without that load, so they were contention flakes rather than regressions. `selection subframe restore` in `test_agent_guider` also failed under that load and is a known open item unrelated to this finding. | Closed (fixed) |
+| LIB-016 | Low | `indigo_bus.c`, `indigo/indigo_bus.h`, `indigo/indigo_driver.h` | The refusal LIB-015 depends on was written out by hand at every site: force `do_update` on every item, set `INDIGO_ALERT_STATE`, publish. The `do_update` loop is the subtle part — without it `indigo_update_property()` suppresses an unchanged property and the client never learns which values to roll back — and it was duplicated in 150 generated blocks across 49 drivers plus several hand-written drivers. `indigo_reject_change(device, property, format, ...)` is now the one implementation, wrapped for change branches by `INDIGO_REJECT_CHANGE_IF(c, p, f, ...)` next to the `INDIGO_COPY_*_PROCESS_CHANGE` family. The same pass added `INDIGO_PROCESS_CONNECT(h)` and `INDIGO_PROCESS_QUEUED_CONNECT(q, m, h)` for the CONNECTION admission block, which was repeated in 164 places in two variants; those encode the ordering DRV-211 showed is easy to get wrong, namely that CONNECTION must be published BUSY before the handler is queued, because the handler runs on another thread. No behaviour change: for four sampled drivers the preprocessed translation unit before and after is byte-identical apart from the new declaration and shifted `assert()` line numbers. The generator emission was changed with the user's explicit approval and all 115 inputs regenerated, which removed 2428 lines and added 586. `make all` is clean and twelve complete suites pass — ccd_touptek 30, ccd_asi 51, ccd_playerone 49, ccd_svb 47, ccd_simulator 19, ccd_mi 17, agent_config 56, mount_simulator 16, dome_simulator 7, rotator_optec 11, focuser_dmfc 24, ccd_fli 22. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -44,7 +66,96 @@ false positive.
 the misspelled `ENABLE_DEROTACTION`, so the public item name matches the macro and
 intended feature name.
 
+### LIB-003 (Closed — fixed)
+
+`reset_timer_scheduler_after_fork_child()` is registered as the child callback
+of `pthread_atfork()` and invokes `pthread_mutex_init()`, `pthread_cond_init()`,
+and, on Linux, `pthread_condattr_init()`, `pthread_condattr_setclock()`, and
+`pthread_condattr_destroy()`. A child created from a multithreaded parent may
+only safely call async-signal-safe functions before `exec()`. These pthread
+initialization APIs do not meet that requirement. The fork recovery path can
+therefore hang or otherwise misbehave precisely when it is intended to recover
+from inherited thread state.
+
+Resolution: the at-fork prepare handler locks the existing scheduler mutex, the
+parent handler unlocks it, and the child handler resets only ordinary scheduler
+state before unlocking it. No pthread mutex, condition variable, or condition
+attribute is initialized or destroyed after `fork()`. The timer unit suite now
+forks while a callback is running and verifies that the child can start and
+complete a timer with its replacement scheduler.
+
+### LIB-004 (Closed — fixed)
+
+The child handler resets `timer_scheduler.timers` and `pending` to `NULL`, but
+does not clear each inherited timer's public `reference` slot or unlink its
+`device->device_context->timers` node. A child which inherits a pending timer
+then has a non-NULL slot that fails the live-registry validation, preventing a
+new timer from being scheduled into the usual slot. Calling cancel-all happens
+to unlink the stale node, but it is accidental cleanup rather than a defined
+fork lifecycle.
+
+Resolution: inherited timers are explicitly discarded in the child fork handler.
+It clears each timer's public reference slot only when that slot still points to
+the timer, unlinks device timer-list ownership, then drops the scheduler
+registry. The unit suite verifies that a child sees the inherited slot and
+device list cleared, and can immediately reuse the exact same slot for a new
+timer.
+
+### LIB-005 (Closed — fixed)
+
+`indigo_reschedule_timer_with_callback()` accepts an `indigo_timer_callback`,
+but `reschedule_timer_with_callback_locked()` does not reset `has_data` when it
+replaces the callback. The callback worker consequently casts the replacement
+one-argument callback to `indigo_timer_with_data_callback` whenever the prior
+schedule used `indigo_set_timer_with_data()`. Extra arguments happen to be
+tolerated on common current ABIs, but the call is undefined in C and is not a
+valid cross-platform API implementation.
+
+Resolution: the internal reschedule helper now distinguishes preserving a
+timer's existing callback form from replacing it through the public plain
+callback API. `indigo_reschedule_timer_with_callback()` clears `has_data` and
+`timer_data` for both pending and self-rescheduled running timers. The unit
+suite covers both paths and confirms the next callback uses the plain form.
+
+### LIB-006 (Closed — fixed)
+
+`dequeue_runnable_task_locked()` starts priority selection at `-1`. It returns
+no task when every due task has a priority below zero. The outer worker loop
+then immediately observes the same overdue task again, so it spins instead of
+waiting, while the callback never runs. `indigo_queue_add()` and
+`indigo_queue_add_with_data()` take arbitrary `int priority` values and expose
+no range restriction.
+
+Resolution: both queue selection helpers now initialize their choice from the
+first due task rather than an out-of-domain sentinel. The resulting selection
+accepts every signed `int` value and retains the pending-list order for equal
+priorities. A regression test submits three negative-priority tasks while a
+barrier task holds the worker and verifies execution in descending priority
+order.
+
+### LIB-007 (Closed — fixed)
+
+Range comparisons did not reject NaN. Both copy helpers now handle non-finite requests centrally: they retain the affected item's accepted value/target and continue copying other valid items. Finite values retain existing min/max clamping. This replaces redundant driver input validation.
+
+Validation: NaN/infinity preservation, valid sibling copying and finite clamping unit tests pass.
+
+### LIB-008 (Closed — countdown termination)
+
+The update guard requires both `countdown_endtime >= now` and a displayed value of at least 1, while the rescheduling guard requires neither. Consequently an expired deadline, or a driver setting value to 0 while retaining BUSY for image readout, leaves a recurring task with no useful update. DSI's `ccd_exposure_finalizer` explicitly sets value to 0 before readout and can retain BUSY while polling (`ccd_dsi/indigo_ccd_dsi.driver:219`). Countdown termination must handle elapsed deadlines and a driver-supplied zero without changing exposure state to OK; only the driver knows when acquisition/readout has completed.
+
+Priority analysis: LOW is -5, normal immediate handlers use 0, and `indigo_execute_handler_in()` uses TIME (10). Selection considers only due tasks, so a future exposure finalizer does not prevent countdown updates. Selection has no priority aging, and callback execution is synchronous on a single queue worker with the device/master mutex. Sustained due higher-priority work can starve countdown; a running callback or held task mutex can delay it regardless of priority. Changing countdown priority alone cannot repair its termination conditions.
+
+Proposed correction: reject inactive/canceled/non-BUSY countdowns, terminate on a driver-supplied zero, compute remaining time without excluding elapsed deadlines, clear the deadline before publishing zero, and reschedule only an active positive countdown. Preserve the current <=0.25 s zero-display tolerance in the minimal fix. Keep LOW initially; consider priority tuning only with measured queue contention. Keep countdown on the existing serialized queue rather than introducing another property writer. Preserve suspend/resume behavior used by FLI RBI flushing and SBIG exposure coordination.
+
+### LIB-009 (Closed — wall-clock dependence)
+
+Use a portable elapsed-time clock consistently for countdown start, resume and callback calculations. `indigo_delay_to_time(0)` exposes the scheduler's clock domain, but the scheduler currently falls back to realtime where CLOCK_MONOTONIC is unavailable, including its Windows implementation. It is not an unconditional portable monotonic-clock fix. Do not globally replace `get_time_hd()` without auditing its image timing/FPS callers. Clock portability can be a separate shared-layer change from the minimal countdown termination correction.
+
+Resolution (2026-09-09): countdown now runs on the shared background queue defined in `indigo_bus.c` and owned by bus start/stop. The final implementation deliberately preserves the original direct property-update model, with no new mutexes, device locks or device registry. It terminates on elapsed deadlines or a driver-supplied zero and cancels old countdown work on replacement, suspension and detach. It preserves BUSY and target. `indigo_monotonic_time()` uses POSIX CLOCK_MONOTONIC or Windows QueryPerformanceCounter; image timing is unchanged. Dedicated countdown and CCD simulator validation is recorded in `indigo_test/CHANGES.md`. No Windows/hardware execution or comprehensive race-freedom claim; shared callbacks must remain short. No subtree baseline advancement.
+
 ## Review Focus
+
+Focused countdown inspection at `48442826a` (2026-09-09): `LIB-008` follows directly from the expired-deadline guard at line 92 and rescheduling guard at line 105. For example, with value 1, deadline 100 and callback time 100.1, the value stays 1 and another callback is scheduled. This remains true until exposure leaves BUSY or another path clears/disables the countdown. Queue dispatch correctly accepts negative priorities after `279fbd064`; sustained higher-priority ready work can still starve LOW tasks, and running handlers cannot be preempted. No hardware reproduction or full-subtree review; the baseline is unchanged.
 
 - Memory ownership, allocation, copying, and release paths.
 - Timer, queue, async, and callback lifetime behavior.
@@ -61,3 +172,16 @@ intended feature name.
 | Repository start | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Initial review baseline only. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Focused baseline review of timer queue dispatch and selected property helper ownership paths; recorded `LIB-001`. |
 | `d9b39b84e3780dca0c9e7cbb901b63a62586b106` | `afdd54618e5520c4983598c33b662c022962df7c` | 2026-08-18 | Requested review of the last two commits touching shared INDIGO names; recorded `LIB-002`. |
+| `3bf23ba0f062b98ce881c0026da973125d517b8b` | `3fe6337a09e4847d2688389c57c9d533b1cfb387` | 2026-09-04 | Focused deep review of timer/queue reimplementation and its three follow-up review commits. Recorded `LIB-003` through `LIB-006`; this does not advance the subtree-wide review marker. |
+| `84298256404b3aee1028d29ce152233ffd8afe2e` | working tree | 2026-09-09 | Focused review of non-finite numeric input in `indigo_property_copy_values()` and `indigo_property_copy_targets()`; recorded and closed `LIB-007`. Preservation of accepted values/targets, valid sibling copying and finite clamping are covered by passing unit tests; the full unit suite passed. No full-subtree review or baseline advancement. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `48442826a` | 2026-09-09 | Focused countdown and scheduling analysis; recorded LIB-008 and LIB-009. Existing timer unit suite passed during the initial investigation, including negative-priority and future-priority ordering cases; no dedicated countdown runtime reproduction or hardware validation. No full-subtree review or baseline advancement. |
+
+## Scoped empty-START follow-up — 2026-09-10
+
+At the user's request, the shared platesolver empty-selection defect and its fix are tracked under the same [DRV-145](../indigo_drivers/REVIEW.md) as Mount/Imager/Guider. `indigo_platesolver.c` now returns OK without scheduling an exposure for an all-false START request and no longer copies values before its BUSY guard. The minimal shared-platesolver bus fixture in `indigo_test/integration/test_agent_imager.c` fails against the original object and passes after the fix. See the driver finding and `indigo_test/CHANGES.md` for scope and validation. No full library review or baseline advance is claimed.
+
+## Scoped configuration completion follow-up — 2026-09-11
+
+At the user's request, the Mount Agent workaround was removed and the correction moved to the shared filter and device framework on `refactoring` (base `14917c207`). CONFIG.LOAD now applies saved requests in order and acknowledges their property completions, including delayed timer/queue finalizers. The filter waits for that acknowledgement and stages its cache until the final CONNECTION definition before publishing selection/OK. Cancellation, disconnect and errors clear pending selection; unrelated BUSY properties are not part of the restore barrier.
+
+The guarantee depends on drivers reporting asynchronous request state correctly and on the standard specific-properties-before-base enumeration order. Older remote frameworks that acknowledge parsing immediately do not supply this completion contract. Direct `indigo_load_properties()` initialization callers retain their prior dispatch-only semantics. No blanket driver audit, hardware validation, comprehensive race-freedom claim or subtree baseline advancement is made. Regression coverage and results belong in `indigo_test/CHANGES.md`.

@@ -5,311 +5,346 @@
 //
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
+//
+// This simulator was refactored by a Codex agent.
 
-#include <pthread.h>
+#include <ctype.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <string.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <signal.h>
+#include <sys/select.h>
+#include <unistd.h>
 
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
-typedef struct {
-	bool headless;
-	bool trace;
-	const char *ready_file;
-} simulator_options;
-
-static simulator_options options = {
-	.headless = false,
-	.trace = true,
-	.ready_file = NULL
-};
-
+static const char *profile = "normal", *ready_file, *fault_file;
+static FILE *events;
+static bool headless, trace, moving, stalled, automatic;
 static volatile sig_atomic_t running = 1;
-static int serial_fd = -1;
-static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int serial_fd = -1, backlash, reverse, active_slope = 1, last_reported_position;
+static int slope[2] = { 10, 20 }, slope_direction[2] = { 0, 1 }, slope_deadband[2] = { 5, 10 }, slope_period[2] = { 6, 12 };
+static double temperature = 23.0;
+static serial_motion motion;
 
-static unsigned direction = 0;
-static unsigned temperature = 23;
-static unsigned current_position = 0x8000;
-static unsigned target_position = 0x8000;
-static unsigned backlash = 0;
-static unsigned max_travel = 0xFFFF;
-static unsigned step_size = 1;
-static unsigned active_slope = 1;
-static unsigned slope[2] = { 10, 20 };
-static unsigned slope_direction[2] = { 0, 1 };
-static unsigned slope_deadband[2] = { 5, 10 };
-static unsigned slope_period[2] = { 1, 10 };
-
-static void usage(const char *name) {
-	printf("LakesideAstro focuser simulator\n");
-	printf("Usage: %s [OPTIONS]\n", name);
-	printf("  --headless              Disable interactive output suitable for terminals\n");
-	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
-	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  -h, --help              Show this help and exit\n");
-}
-
-static void signal_handler(int sig) {
-	(void)sig;
-	running = 0;
-	if (serial_fd >= 0) {
-		close(serial_fd);
-		serial_fd = -1;
+static void event(const char *kind, const char *value) {
+	if (events) {
+		fprintf(events, "%.6f %s %s\n", serial_motion_time(), kind, value);
+		fflush(events);
 	}
 }
 
-static bool parse_args(int argc, char *argv[]) {
-	for (int i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			usage(argv[0]);
-			exit(0);
-		} else if (!strcmp(argv[i], "--headless")) {
-			options.headless = true;
-			options.trace = false;
-		} else if (!strcmp(argv[i], "--trace")) {
-			options.trace = true;
-		} else if (!strcmp(argv[i], "--ready-file")) {
-			if (++i == argc) {
-				fprintf(stderr, "--ready-file requires a path\n");
-				return false;
-			}
-			options.ready_file = argv[i];
-		} else {
-			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
+static bool reply(const char *format, ...) {
+	char buffer[256];
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+	if (length < 0 || length >= (int)sizeof(buffer)) {
+		return false;
+	}
+	event("TX", buffer);
+	serial_simulator_trace_line(trace, "<-", buffer);
+	if (!strcmp(profile, "split") && length > 2) {
+		int first = length / 2;
+		if (!serial_simulator_write_all(serial_fd, buffer, (size_t)first)) {
 			return false;
 		}
+		usleep(10000);
+		return serial_simulator_write_all(serial_fd, buffer + first, (size_t)(length - first));
+	}
+	return serial_simulator_write_all(serial_fd, buffer, (size_t)length);
+}
+
+static void stop_signal(int signal) {
+	(void)signal;
+	running = 0;
+}
+
+static bool parse_unsigned(const char *text, int minimum, int maximum, int *value) {
+	if (!text || !*text) {
+		return false;
+	}
+	long result = 0;
+	for (const char *p = text; *p; p++) {
+		if (!isdigit((unsigned char)*p)) {
+			return false;
+		}
+		result = result * 10 + *p - '0';
+		if (result > maximum) {
+			return false;
+		}
+	}
+	if (result < minimum) {
+		return false;
+	}
+	*value = (int)result;
+	return true;
+}
+
+static bool read_fault(const char *command, char *action) {
+	char key[64] = { 0 };
+	FILE *file = fault_file ? fopen(fault_file, "r") : NULL;
+	if (!file) {
+		return false;
+	}
+	if (fscanf(file, "%63s %63s", key, action) != 2) {
+		*action = 0;
+	}
+	fclose(file);
+	if (!strcmp(key, "external")) {
+		int position;
+		if (parse_unsigned(action, 0, 65535, &position)) {
+			serial_motion_sync(&motion, position);
+			moving = false;
+			last_reported_position = position;
+		}
+		unlink(fault_file);
+		return false;
+	}
+	if (!strcmp(key, "temperature")) {
+		char *end;
+		double value = strtod(action, &end);
+		if (*action && !*end && value >= -100 && value <= 100) {
+			temperature = value;
+		}
+		unlink(fault_file);
+		return false;
+	}
+	if (strcmp(key, command)) {
+		*action = 0;
+	} else {
+		unlink(fault_file);
+	}
+	return *action != 0;
+}
+
+static bool inject(const char *command, char expected) {
+	char action[64] = { 0 };
+	if (!read_fault(command, action)) {
+		return false;
+	}
+	event("FAULT", action);
+	if (!strcmp(action, "silent")) {
+		return true;
+	} else if (!strcmp(action, "close")) {
+		running = 0;
+		return true;
+	} else if (!strcmp(action, "partial")) {
+		reply("%c12", expected ? expected : 'X');
+	} else if (!strcmp(action, "overlong")) {
+		char buffer[180];
+		memset(buffer, '7', sizeof(buffer));
+		buffer[0] = expected ? expected : 'X';
+		buffer[sizeof(buffer) - 2] = '#';
+		buffer[sizeof(buffer) - 1] = 0;
+		reply("%s", buffer);
+	} else if (!strcmp(action, "wrong_prefix")) {
+		reply("Z12#");
+	} else if (!strcmp(action, "reject")) {
+		reply("!#");
+	} else if (!strcmp(action, "negative")) {
+		reply("%c-1#", expected ? expected : 'X');
+	} else if (!strcmp(action, "overflow")) {
+		reply("%c999999999999999999999#", expected ? expected : 'X');
+	} else if (!strcmp(action, "stall")) {
+		stalled = true;
+		return false;
+	} else {
+		reply("%cBAD#", expected ? expected : 'X');
 	}
 	return true;
 }
 
-static int sim_read_command(int handle, char *buffer, int length) {
-	char c = '\0';
-	int total_bytes = 0;
-
-	while (running && total_bytes < length - 1) {
-		ssize_t bytes_read = read(handle, &c, 1);
-		if (bytes_read < 0) {
-			if (errno == EINTR) {
-				continue;
-			}
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				return 0;
-			}
-			if (errno == EIO) {
-				return 0;
-			}
-			return -1;
-		}
-		if (bytes_read == 0) {
-			return 0;
-		}
-		if (c == '#') {
-			break;
-		}
-		buffer[total_bytes++] = c;
+static void update_motion(void) {
+	if (!moving || stalled) {
+		return;
 	}
-	buffer[total_bytes] = '\0';
-	if (*buffer) {
-		serial_simulator_trace_line(options.trace, "->", buffer);
+	int position = (int)serial_motion_update(&motion);
+	if (position != last_reported_position) {
+		last_reported_position = position;
+		if (!inject("progress", 'P')) {
+			reply("P%d#", position);
+		}
 	}
-	return total_bytes;
+	if (motion.duration == 0) {
+		moving = false;
+		if (!inject("DONE", 'D')) {
+			reply("DONE#");
+		}
+		event("DONE", "motion");
+	}
 }
 
-static bool sim_printf(int handle, const char *format, ...) {
-	char buffer[128];
-	va_list args;
-
-	va_start(args, format);
-	int length = vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-
-	if (length < 0) {
-		return false;
+static void start_move(int target) {
+	serial_motion_start(&motion, target, 2000);
+	last_reported_position = (int)motion.position;
+	moving = motion.duration > 0;
+	if (!moving) {
+		reply("DONE#");
 	}
-	if ((size_t)length >= sizeof(buffer)) {
-		length = (int)sizeof(buffer) - 1;
-	}
-
-	if (options.trace) {
-		fprintf(stderr, "<- %s", buffer);
-	}
-	return serial_simulator_write_all(handle, buffer, (size_t)length);
 }
 
-static void *movement_thread(void *arg) {
-	(void)arg;
-	while (running) {
-		pthread_mutex_lock(&state_mutex);
-		int delta = 0;
-		if (target_position > current_position) {
-			current_position++;
-			delta = 1;
-		} else if (target_position < current_position) {
-			current_position--;
-			delta = -1;
-		}
-		unsigned position = current_position;
-		bool done = delta != 0 && target_position == current_position;
-		pthread_mutex_unlock(&state_mutex);
+static void value_reply(char prefix, int value) {
+	reply("%c%d#", prefix, value);
+}
 
-		if (delta != 0 && serial_fd >= 0) {
-			sim_printf(serial_fd, "P%u#", position);
-			if (done) {
-				sim_printf(serial_fd, "DONE#");
-			}
-		}
-		usleep(delta == 0 ? 10000 : 5000);
+static void dispatch(const char *command) {
+	event("RX", command);
+	serial_simulator_trace_line(trace, "->", command);
+	char expected = 0;
+	if (!strcmp(command, "??")) expected = 'O';
+	else if (!strcmp(command, "?P")) expected = 'P';
+	else if (!strcmp(command, "?B")) expected = 'B';
+	else if (!strcmp(command, "?D")) expected = 'D';
+	else if (!strcmp(command, "?T")) expected = 'T';
+	else if (command[0] == '?' && command[1] && !command[2]) expected = command[1];
+	else if (!strncmp(command, "CR", 2)) expected = 'O';
+	if (inject(command, expected)) {
+		return;
 	}
-	return NULL;
-}
-
-static void respond_value(int handle, const char *prefix, unsigned value) {
-	sim_printf(handle, "%s%u#", prefix, value);
-}
-
-static void dispatch_command(int handle, const char *command) {
-	pthread_mutex_lock(&state_mutex);
+	int value;
 	if (!strcmp(command, "??")) {
-		sim_printf(handle, "OK#");
-	} else if (!strcmp(command, "?D")) {
-		respond_value(handle, "D", direction);
-	} else if (!strcmp(command, "?T")) {
-		respond_value(handle, "T", temperature * 2);
+		reply("OK#");
 	} else if (!strcmp(command, "?P")) {
-		respond_value(handle, "P", current_position);
+		value_reply('P', (int)serial_motion_update(&motion));
 	} else if (!strcmp(command, "?B")) {
-		respond_value(handle, "B", backlash);
-	} else if (!strcmp(command, "?I")) {
-		respond_value(handle, "I", max_travel);
-	} else if (!strcmp(command, "?S")) {
-		respond_value(handle, "S", step_size);
-	} else if (!strncmp(command, "CRB", 3)) {
-		backlash = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRS", 3)) {
-		step_size = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRg", 3)) {
-		active_slope = (unsigned)atoi(command + 3);
-		if (active_slope < 1 || active_slope > 2) {
-			active_slope = 1;
-		}
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRD", 3)) {
-		direction = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CT", 2)) {
-	} else if (!strncmp(command, "CI", 2)) {
-		unsigned steps = (unsigned)atoi(command + 2);
-		target_position = current_position > steps ? current_position - steps : 0;
-	} else if (!strncmp(command, "CO", 2)) {
-		target_position = current_position + (unsigned)atoi(command + 2);
-		if (target_position > max_travel) {
-			target_position = max_travel;
-		}
+		value_reply('B', backlash);
+	} else if (!strcmp(command, "?D")) {
+		value_reply('D', reverse);
+	} else if (!strcmp(command, "?T")) {
+		value_reply('T', (int)(temperature * 2));
+	} else if (!strcmp(command, "CTF")) {
+		automatic = false;
+	} else if (!strcmp(command, "CTN")) {
+		automatic = true;
 	} else if (!strcmp(command, "CH")) {
-		target_position = current_position;
-	} else if (!strcmp(command, "?1")) {
-		respond_value(handle, "1", slope[0]);
-	} else if (!strcmp(command, "?a")) {
-		respond_value(handle, "a", slope_direction[0]);
-	} else if (!strcmp(command, "?c")) {
-		respond_value(handle, "c", slope_deadband[0]);
-	} else if (!strcmp(command, "?e")) {
-		respond_value(handle, "e", slope_period[0]);
-	} else if (!strcmp(command, "?2")) {
-		respond_value(handle, "2", slope[1]);
-	} else if (!strcmp(command, "?b")) {
-		respond_value(handle, "b", slope_direction[1]);
-	} else if (!strcmp(command, "?d")) {
-		respond_value(handle, "d", slope_deadband[1]);
-	} else if (!strcmp(command, "?f")) {
-		respond_value(handle, "f", slope_period[1]);
-	} else if (!strncmp(command, "CR1", 3)) {
-		slope[0] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRa", 3)) {
-		slope_direction[0] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRc", 3)) {
-		slope_deadband[0] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRe", 3)) {
-		slope_period[0] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CR2", 3)) {
-		slope[1] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRb", 3)) {
-		slope_direction[1] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRd", 3)) {
-		slope_deadband[1] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
-	} else if (!strncmp(command, "CRf", 3)) {
-		slope_period[1] = (unsigned)atoi(command + 3);
-		sim_printf(handle, "OK#");
+		serial_motion_stop(&motion);
+		moving = stalled = false;
+		last_reported_position = (int)motion.position;
+	} else if (!strncmp(command, "CI", 2) && parse_unsigned(command + 2, 0, 65535, &value)) {
+		int position = (int)serial_motion_update(&motion);
+		start_move(position > value ? position - value : 0);
+	} else if (!strncmp(command, "CO", 2) && parse_unsigned(command + 2, 0, 65535, &value)) {
+		int position = (int)serial_motion_update(&motion);
+		start_move(position + value > 65535 ? 65535 : position + value);
+	} else if (!strncmp(command, "CRB", 3) && parse_unsigned(command + 3, 0, 65535, &value)) {
+		backlash = value;
+		reply("OK#");
+	} else if (!strncmp(command, "CRD", 3) && parse_unsigned(command + 3, 0, 1, &value)) {
+		reverse = value;
+		reply("OK#");
+	} else if (!strncmp(command, "CRg", 3) && parse_unsigned(command + 3, 1, 2, &value)) {
+		active_slope = value;
+		reply("OK#");
+	} else if (!strcmp(command, "?1") || !strcmp(command, "?2")) {
+		int index = command[1] - '1';
+		value_reply(command[1], slope[index]);
+	} else if (!strcmp(command, "?a") || !strcmp(command, "?b")) {
+		int index = command[1] - 'a';
+		value_reply(command[1], slope_direction[index]);
+	} else if (!strcmp(command, "?c") || !strcmp(command, "?d")) {
+		int index = command[1] - 'c';
+		value_reply(command[1], slope_deadband[index]);
+	} else if (!strcmp(command, "?e") || !strcmp(command, "?f")) {
+		int index = command[1] - 'e';
+		value_reply(command[1], slope_period[index]);
+	} else if ((!strncmp(command, "CR1", 3) || !strncmp(command, "CR2", 3)) && parse_unsigned(command + 3, 0, 127, &value)) {
+		int index = command[2] - '1';
+		slope[index] = value;
+		reply("OK#");
+	} else if ((!strncmp(command, "CRa", 3) || !strncmp(command, "CRb", 3)) && parse_unsigned(command + 3, 0, 1, &value)) {
+		int index = command[2] - 'a';
+		slope_direction[index] = value;
+		reply("OK#");
+	} else if ((!strncmp(command, "CRc", 3) || !strncmp(command, "CRd", 3)) && parse_unsigned(command + 3, 0, 65535, &value)) {
+		int index = command[2] - 'c';
+		slope_deadband[index] = value;
+		reply("OK#");
+	} else if ((!strncmp(command, "CRe", 3) || !strncmp(command, "CRf", 3)) && parse_unsigned(command + 3, 0, 65535, &value)) {
+		int index = command[2] - 'e';
+		slope_period[index] = value;
+		reply("OK#");
 	} else {
-		sim_printf(handle, "!#");
+		reply("!#");
 	}
-	pthread_mutex_unlock(&state_mutex);
+	(void)automatic;
+	(void)active_slope;
 }
 
-int main(int argc, char *argv[]) {
-	pthread_t thread;
-	char port[128];
-	char buffer[128];
-
-	if (!parse_args(argc, argv)) {
-		return 1;
+int main(int argc, char **argv) {
+	for (int i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--headless")) {
+			headless = true;
+		} else if (!strcmp(argv[i], "--trace")) {
+			trace = true;
+		} else if (i + 1 < argc && !strcmp(argv[i], "--ready-file")) {
+			ready_file = argv[++i];
+		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
+			profile = argv[++i];
+		} else {
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate]\n", argv[0]);
+			return 1;
+		}
 	}
-
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-
+	serial_motion_sync(&motion, !strcmp(profile, "alternate") ? 1000 : 32768);
+	temperature = !strcmp(profile, "alternate") ? -5.5 : 23.0;
+	last_reported_position = (int)motion.position;
+	const char *event_path = getenv("INDIGO_LAKESIDE_EVENTS");
+	events = event_path ? fopen(event_path, "w") : NULL;
+	fault_file = getenv("INDIGO_LAKESIDE_FAULT");
+	signal(SIGTERM, stop_signal);
+	signal(SIGINT, stop_signal);
+	char port[128], command[128];
+	size_t used = 0;
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
-	if (serial_fd < 0) {
+	if (serial_fd < 0 || (ready_file && !serial_simulator_write_ready_file(ready_file, "focuser_lakeside", port))) {
 		return 1;
 	}
-
-	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, "focuser_lakeside_simulator", port)) {
-		close(serial_fd);
-		return 1;
-	}
-
-	if (!options.headless) {
-		printf("LakesideAstro focuser simulator is listening on %s\n", port);
+	if (!headless) {
+		printf("LakesideAstro simulator on %s\n", port);
 		fflush(stdout);
 	}
-
-	if (pthread_create(&thread, NULL, movement_thread, NULL) != 0) {
-		perror("pthread_create");
-		close(serial_fd);
-		return 1;
-	}
-
 	while (running) {
-		int bytes = sim_read_command(serial_fd, buffer, sizeof(buffer));
-		if (bytes < 0) {
-			break;
+		update_motion();
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(serial_fd, &fds);
+		struct timeval timeout = { 0, 10000 };
+		int selected = select(serial_fd + 1, &fds, NULL, NULL, &timeout);
+		if (selected <= 0) {
+			continue;
 		}
-		if (bytes > 0) {
-			dispatch_command(serial_fd, buffer);
-		} else {
-			usleep(1000);
+		char buffer[64];
+		ssize_t count = read(serial_fd, buffer, sizeof(buffer));
+		if (count <= 0) {
+			if (count < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK && errno != EIO) {
+				break;
+			}
+			continue;
+		}
+		for (ssize_t i = 0; i < count; i++) {
+			if (buffer[i] == '#') {
+				command[used] = 0;
+				if (used) {
+					dispatch(command);
+				}
+				used = 0;
+			} else if (used + 1 < sizeof(command)) {
+				command[used++] = buffer[i];
+			} else {
+				used = 0;
+				reply("!#");
+			}
 		}
 	}
-
-	running = 0;
-	pthread_join(thread, NULL);
+	if (events) {
+		fclose(events);
+	}
 	if (serial_fd >= 0) {
 		close(serial_fd);
 	}

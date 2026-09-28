@@ -1075,7 +1075,9 @@ double dsi_get_pixel_height(dsi_camera_t *dsi) {
 
 double dsi_get_temperature(dsi_camera_t *dsi) {
 	int raw_temp = dsicmd_get_temperature(dsi);
-	if (raw_temp == NO_TEMP_SENSOR) return (double)NO_TEMP_SENSOR;
+	if (raw_temp == NO_TEMP_SENSOR) {
+		return (double)NO_TEMP_SENSOR;
+	}
 	return floor((double) raw_temp / 25.6) / 10.0;
 }
 
@@ -1168,8 +1170,11 @@ int dsicmd_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
 }
 
 enum DSI_BIN_MODE dsi_get_max_binning(dsi_camera_t *dsi) {
-	if (dsi->is_binnable) return BIN2X2;
-	else return BIN1X1;
+	if (dsi->is_binnable) {
+		return BIN2X2;
+	} else {
+		return BIN1X1;
+	}
 }
 
 int dsi_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
@@ -1332,7 +1337,9 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 }
 
 void dsi_close_camera(dsi_camera_t *dsi) {
-	if (dsi == NULL) return;
+	if (dsi == NULL) {
+		return;
+	}
 	/* Next is guesswork but seems to work! */
 	if (dsi->is_interlaced) {
 		dsicmd_command_1(dsi, RESET);
@@ -1342,8 +1349,12 @@ void dsi_close_camera(dsi_camera_t *dsi) {
 
 	libusb_release_interface(dsi->handle, 0);
 	libusb_close(dsi->handle);
-	if (dsi->read_buffer_odd) free(dsi->read_buffer_odd);
-	if (dsi->read_buffer_even) free(dsi->read_buffer_even);
+	if (dsi->read_buffer_odd) {
+		free(dsi->read_buffer_odd);
+	}
+	if (dsi->read_buffer_even) {
+		free(dsi->read_buffer_even);
+	}
 	free(dsi);
 }
 
@@ -1494,7 +1505,7 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, bool noblock) {
 	int status;
 	int ticks_left, read_size_odd, read_size_even;
 	int read_width, read_height_even, read_height_odd;
-	
+
 	if (dsi == NULL || buffer == NULL) {
 		return EINVAL;
 	}

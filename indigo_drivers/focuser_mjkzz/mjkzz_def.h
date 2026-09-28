@@ -3,7 +3,7 @@
 //  indigo
 //
 //  Created by Peter Polakovic on 10/10/2018.
-//  Copyright © 2018 CloudMakers, s. r. o. All rights reserved.
+//  Copyright © 2018-2026 CloudMakers, s. r. o. All rights reserved.
 //
 
 #ifndef mjkzz_def_h
@@ -40,8 +40,18 @@
 #define CMD_EXEC 'X' // execute commands
 #define CMD_STOP 'x' // stop execution of commands
 
+enum enumMOVE {
+	move_normal,
+	move_bounded,
+	move_last
+};
+
+#define MOTOR_4STEP 0
+#define MOTOR_8STEP 1
+#define MOTOR_HSTEP 2
+
 enum enumREG {
-	reg_STAT = 100, reg_LPWR, reg_HPWR, reg_MSTEP, reg_MAXP, reg_EXEC, reg_ADDR
+	reg_STAT = 100, reg_LPWR, reg_HPWR, reg_MSTEP, reg_MAXP, reg_EXEC, reg_ADDR, reg_last
 };
 
 typedef struct {

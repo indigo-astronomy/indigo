@@ -63,3 +63,7 @@ Sensor configuration:
 * *Relays \#1 - \#3* and *Sensors \#1, \#2* and *\#8* are reserved for dome control and are not exposed in the Relay Control GPIO device.
 
 * This driver can not be loaded if *indigo_aux_dragonfly* driver is loaded.
+
+## Testing
+
+2026-09-27 22:18 3.0.0.10 mac arm64 simulator 22/22 OK

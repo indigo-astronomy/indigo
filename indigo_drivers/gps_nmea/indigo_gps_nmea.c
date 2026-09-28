@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_gps_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_gps_nmea"
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
@@ -75,6 +74,7 @@ typedef struct {
 	//+ data
 	int satellites_in_view[MAX_NB_OF_SYSTEMS];
 	char selected_system;
+	bool position_valid, time_valid;
 	//- data
 } nmea_private_data;
 
@@ -96,14 +96,36 @@ static void nmea_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
+static bool nmea_number(const char *text, double minimum, double maximum, bool empty, bool integer) {
+	if (*text == 0) {
+		return empty;
+	}
+	char *end;
+	double value = strtod(text, &end);
+	return end != text && *end == 0 && isfinite(value) && value >= minimum && value <= maximum && (!integer || value == floor(value));
+}
+
+static bool nmea_coordinate(const char *text, const char *hemisphere, bool latitude, bool empty) {
+	if (*text == 0) {
+		return empty;
+	}
+	if (!nmea_number(text, 0, latitude ? 9000 : 18000, false, false)) {
+		return false;
+	}
+	return hemisphere[0] != 0 && hemisphere[1] == 0 && strchr(latitude ? "NS" : "EW", hemisphere[0]) != NULL && fmod(strtod(text, NULL), 100) < 60;
+}
+
 static char **nmea_parse(char *buffer) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
-	if (strncmp("$G", buffer, 2)) {// Disregard "non positioning" sentences
+	if (strlen(buffer) < 6 || strncmp("$G", buffer, 2) || buffer[2] < 'A' || buffer[2] > 'Z') {// Disregard "non positioning" sentences
 		return NULL;
 	}
 	char *index = strchr(buffer, '*');
 	if (index) {
 		*index++ = 0;
+		if (strlen(index) != 2 || !strchr("0123456789abcdefABCDEF", index[0]) || !strchr("0123456789abcdefABCDEF", index[1])) {
+			return NULL;
+		}
 		int c1 = (int)strtol(index, NULL, 16);
 		int c2 = 0;
 		index = buffer + 1;
@@ -119,16 +141,47 @@ static char **nmea_parse(char *buffer) {
 	memset(tokens, 0, 32 * sizeof(char *));
 	index = buffer + 3;
 	while (index) {
+		if (token == 31) {
+			indigo_safe_free(tokens);
+			return NULL;
+		}
 		tokens[token++] = index;
 		index = strchr(index, ',');
 		if (index) {
 			*index++ = 0;
 		}
 	}
+	int required = !strcmp(tokens[0], "RMC") || !strcmp(tokens[0], "GGA") ? 10 : (!strcmp(tokens[0], "GSA") ? 18 : (!strcmp(tokens[0], "GSV") ? 4 : 1));
+	if (token < required) {
+		indigo_safe_free(tokens);
+		return NULL;
+	}
+	bool valid = true;
+	if (!strcmp(tokens[0], "RMC")) {
+		bool empty = !strcmp(tokens[2], "V");
+		valid = (empty || !strcmp(tokens[2], "A")) && nmea_number(tokens[1], 0, 235959.999, empty, false) && nmea_number(tokens[9], 10100, 311299, empty, true) && nmea_coordinate(tokens[3], tokens[4], true, empty) && nmea_coordinate(tokens[5], tokens[6], false, empty);
+		if (valid && *tokens[1] && *tokens[9]) {
+			int time = atoi(tokens[1]), date = atoi(tokens[9]);
+			valid = time % 100 < 60 && (time / 100) % 100 < 60 && (date / 100) % 100 >= 1 && (date / 100) % 100 <= 12;
+		}
+	} else if (!strcmp(tokens[0], "GGA")) {
+		bool empty = !strcmp(tokens[6], "0");
+		valid = nmea_number(tokens[6], 0, 8, false, true) && nmea_coordinate(tokens[2], tokens[3], true, empty) && nmea_coordinate(tokens[4], tokens[5], false, empty) && nmea_number(tokens[7], 0, 999, empty, true) && nmea_number(tokens[9], -INFINITY, INFINITY, empty, false);
+	} else if (!strcmp(tokens[0], "GSV")) {
+		valid = nmea_number(tokens[3], 0, 999, false, true);
+	} else if (!strcmp(tokens[0], "GSA")) {
+		bool empty = !strcmp(tokens[2], "1");
+		valid = nmea_number(tokens[2], 1, 3, false, true) && nmea_number(tokens[15], 0, INFINITY, empty, false) && nmea_number(tokens[16], 0, INFINITY, empty, false) && nmea_number(tokens[17], 0, INFINITY, empty, false);
+	}
+	if (!valid) {
+		indigo_safe_free(tokens);
+		return NULL;
+	}
 	return tokens;
 }
 
 static void nmea_reset(indigo_device *device) {
+	PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = false;
 	if (AUTOMATIC_SYSTEM_ITEM->sw.value) {
 		PRIVATE_DATA->selected_system = 0;
 	} else if (MULTIPLE_SYSTEM_ITEM->sw.value) {
@@ -158,10 +211,16 @@ static void nmea_reset(indigo_device *device) {
 	GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = 0.0;
 	GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = 0.0;
 	GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-	indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
-	indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-	indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+	// This runs from on_connect too, where the connection handler has not defined these
+	// properties yet, so publish them only once the client has them.
+	if (IS_CONNECTED) {
+		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		}
+	}
 	memset(PRIVATE_DATA->satellites_in_view, 0, sizeof(int) * MAX_NB_OF_SYSTEMS);
 }
 
@@ -176,15 +235,16 @@ static void gps_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ gps.on_timer
-	char buffer[128];
-	long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
-	char **tokens = nmea_parse(buffer);
+	char buffer[128] = { 0 };
+	long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
+	char **tokens = length > 0 ? nmea_parse(buffer) : NULL;
 
 	if (length > 0 && tokens) {
 		char nmea_system = buffer[2];
 		if (!strcmp(tokens[0], "RMC") && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
 			// Recommended Minimum sentence C
 			bool hasFix = (*tokens[2] == 'A');
+			PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = hasFix;
 			int time = atoi(tokens[1]);
 			int date = atoi(tokens[9]);
 			sprintf(GPS_UTC_ITEM->text.value, "20%02d-%02d-%02dT%02d:%02d:%02d", date % 100, (date / 100) % 100, date / 10000, time / 10000, (time / 100) % 100, time % 100);
@@ -202,7 +262,7 @@ static void gps_timer_callback(indigo_device *device) {
 				lon = -lon;
 			}
 			lon = round(lon * 10000) / 10000;
-			if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
+			if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat || GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != (hasFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE)) {
 				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
 				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 				GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = hasFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -215,6 +275,7 @@ static void gps_timer_callback(indigo_device *device) {
 		} else if (!strcmp(tokens[0], "GGA") && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
 			// Global Positioning System Fix Data
 			bool hasFix = (*tokens[6] != 0 && *tokens[6] != '0');
+			PRIVATE_DATA->position_valid = hasFix;
 			double lat = indigo_atod(tokens[2]);
 			lat = floor(lat / 100) + fmod(lat, 100) / 60;
 			if (!strcmp(tokens[3], "S")) {
@@ -278,18 +339,24 @@ static void gps_timer_callback(indigo_device *device) {
 			// As the fix is a combined fix, the values should be the same in each GSA, as observed with the receiver I have in hand.
 			// We therefore process equally all GSA in this specific case
 			char fix = *tokens[2] - '0';
-			if (fix == 1 && GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-				if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-					INDIGO_UPDATE_PROPERTY_STATE(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			if (fix == 1) {
+				PRIVATE_DATA->position_valid = PRIVATE_DATA->time_valid = false;
+				// A receiver without a fix repeats this sentence once per second. Only the
+				// transition into no fix may force the busy state, otherwise it fights the alert
+				// state the RMC and the GGA of the same cycle publish.
+				if (GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
+					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+						INDIGO_UPDATE_PROPERTY_STATE(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
+					}
+					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+						INDIGO_UPDATE_PROPERTY_STATE(GPS_UTC_TIME_PROPERTY, INDIGO_BUSY_STATE, NULL);
+					}
+					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 				}
-				if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
-					INDIGO_UPDATE_PROPERTY_STATE(GPS_UTC_TIME_PROPERTY, INDIGO_BUSY_STATE, NULL);
-				}
-				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 			} else if (fix == 2 && GPS_STATUS_2D_FIX_ITEM->light.value != INDIGO_BUSY_STATE) {
 				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
@@ -306,10 +373,10 @@ static void gps_timer_callback(indigo_device *device) {
 				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
 				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-				if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_OK_STATE) {
+				if (PRIVATE_DATA->position_valid && GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_OK_STATE) {
 					INDIGO_UPDATE_PROPERTY_STATE(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, INDIGO_OK_STATE, NULL);
 				}
-				if (GPS_UTC_TIME_PROPERTY->state != INDIGO_OK_STATE) {
+				if (PRIVATE_DATA->time_valid && GPS_UTC_TIME_PROPERTY->state != INDIGO_OK_STATE) {
 					INDIGO_UPDATE_PROPERTY_STATE(GPS_UTC_TIME_PROPERTY, INDIGO_OK_STATE, NULL);
 				}
 				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
@@ -327,11 +394,13 @@ static void gps_timer_callback(indigo_device *device) {
 				}
 			}
 		}
-		indigo_safe_free(tokens);
-		indigo_execute_handler_in(device, 0, gps_timer_callback);
+	}
+	indigo_safe_free(tokens);
+	if (length > 0) {
+		indigo_execute_handler(device, gps_timer_callback);
 	} else {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		indigo_set_timer(device, 0, gps_connection_handler, NULL);
+		indigo_execute_handler(device, gps_connection_handler);
 	}
 	//- gps.on_timer
 }
@@ -350,7 +419,6 @@ static void gps_connection_handler(indigo_device *device) {
 			//- gps.on_connect
 		}
 		if (connection_result) {
-			indigo_execute_handler(device, gps_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -360,11 +428,17 @@ static void gps_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		if (GPS_SELECTED_SYSTEM_PROPERTY != NULL && GPS_SELECTED_SYSTEM_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(GPS_SELECTED_SYSTEM_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		nmea_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, gps_timer_callback);
+	}
 }
 
 static void gps_selected_system_handler(indigo_device *device) {
@@ -417,11 +491,7 @@ static indigo_result gps_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, gps_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(gps_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GPS_SELECTED_SYSTEM_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(GPS_SELECTED_SYSTEM_PROPERTY, gps_selected_system_handler);
@@ -458,32 +528,34 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[2] = { 0 };
 			strcpy(patterns[0].product_string, "GPS");
 			strcpy(patterns[1].product_string, "GNSS");
 			INDIGO_REGISER_MATCH_PATTERNS(gps_template, patterns, 2);
-			private_data = indigo_safe_malloc(sizeof(nmea_private_data));
-			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+			private_data = (nmea_private_data *)indigo_safe_malloc(sizeof(nmea_private_data));
+			gps = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 			gps->private_data = private_data;
 			indigo_attach_device(gps);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(gps);
 			last_action = action;
 			if (gps != NULL) {
 				indigo_detach_device(gps);
-				free(gps);
+				indigo_safe_free(gps);
 				gps = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

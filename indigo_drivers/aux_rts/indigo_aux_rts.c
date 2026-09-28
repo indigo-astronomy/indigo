@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_aux_rts"
 #define DRIVER_LABEL         "RTS-on-COM shutter release"
 #define AUX_DEVICE_NAME      "RTS-on-COM shutter"
@@ -53,23 +52,40 @@ typedef struct {
 	indigo_uni_handle *handle;
 	indigo_property *ccd_abort_exposure_property;
 	indigo_property *ccd_exposure_property;
+	//+ data
+	double exposure_endtime;
+	//- data
 } rts_private_data;
 
 #pragma mark - Low level code
 
 //+ code
 
-static void rts_on(indigo_device *device) {
-	indigo_uni_set_rts(PRIVATE_DATA->handle, true);
+static void aux_ccd_exposure_handler(indigo_device *device);
+
+static bool rts_on(indigo_device *device) {
+	return indigo_uni_set_rts(PRIVATE_DATA->handle, true) == 0;
 }
 
-static void rts_off(indigo_device *device) {
-	indigo_uni_set_rts(PRIVATE_DATA->handle, false);
+static bool rts_off(indigo_device *device) {
+	return indigo_uni_set_rts(PRIVATE_DATA->handle, false) == 0;
 }
 
 static bool rts_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
-	return PRIVATE_DATA->handle != NULL;
+	if (PRIVATE_DATA->handle == NULL) {
+		return false;
+	}
+	// Opening a serial port asserts RTS, and on this device RTS is the shutter contact. Without
+	// this the camera fires the moment the driver connects and stays open until the end of the
+	// first exposure, which also comes out longer than it was asked for. Measured on a serial
+	// loopback of two FTDI adapters by indigo_test/hardware/test_aux_rts_hw.c. A port whose line
+	// cannot be lowered cannot serve a shutter at all, so the open fails and releases the handle.
+	if (!rts_off(device)) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
+		return false;
+	}
+	return true;
 }
 
 static void rts_close(indigo_device *device) {
@@ -85,16 +101,25 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ aux.on_timer
+	// This is an AUX shutter, not a CCD, so the shared countdown of indigo_ccd_driver.c is
+	// out of reach - it lives in CCD_CONTEXT, which indigo_aux_attach() never allocates. The
+	// countdown is therefore kept here, the same way aux_dsusb keeps it for the other AUX
+	// shutter in the tree: the deadline is held in monotonic time and the published value is
+	// only a whole-second view of it. The previous version decremented CCD_EXPOSURE once per
+	// tick, which published a fractional remainder and made the length of the exposure
+	// depend on how many callbacks happened to fire rather than on the time asked for.
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CCD_EXPOSURE_ITEM->number.value--;
-		if (CCD_EXPOSURE_ITEM->number.value <= 0) {
+		double time_left = PRIVATE_DATA->exposure_endtime - indigo_monotonic_time();
+		if (time_left <= 0) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			rts_off(device);
+			PRIVATE_DATA->exposure_endtime = 0;
+			CCD_EXPOSURE_PROPERTY->state = rts_off(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		} else {
+			CCD_EXPOSURE_ITEM->number.value = ceil(time_left);
 		}
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_EXPOSURE_ITEM->number.value > 0) {
-			indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+		if (time_left > 0) {
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, time_left < 1 ? time_left : 1, aux_timer_callback);
 		}
 	}
 	//- aux.on_timer
@@ -108,12 +133,12 @@ static void aux_connection_handler(indigo_device *device) {
 			//+ aux.on_connect
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->exposure_endtime = 0;
 			//- aux.on_connect
 		}
 		if (connection_result) {
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -124,8 +149,19 @@ static void aux_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ aux.on_disconnect
+		PRIVATE_DATA->exposure_endtime = 0;
 		rts_off(device);
 		//- aux.on_disconnect
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			CCD_ABORT_EXPOSURE_PROPERTY,
+			CCD_EXPOSURE_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		rts_close(device);
@@ -133,28 +169,41 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_ABORT_EXPOSURE.on_change
-	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+		indigo_cancel_pending_handler(device, aux_ccd_exposure_handler);
 		indigo_cancel_pending_handler(device, aux_timer_callback);
-		rts_off(device);
+		if (!rts_off(device)) {
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		PRIVATE_DATA->exposure_endtime = 0;
+		CCD_EXPOSURE_ITEM->number.value = 0;
 		INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//- aux.CCD_ABORT_EXPOSURE.on_change
 	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 }
 
 static void aux_ccd_exposure_handler(indigo_device *device) {
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_EXPOSURE.on_change
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	rts_on(device);
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+	// number.target keeps the exact requested duration while number.value counts down.
+	if (rts_on(device)) {
+		PRIVATE_DATA->exposure_endtime = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.target;
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.target < 1 ? CCD_EXPOSURE_ITEM->number.target : 1, aux_timer_callback);
+	} else {
+		PRIVATE_DATA->exposure_endtime = 0;
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	//- aux.CCD_EXPOSURE.on_change
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
@@ -196,14 +245,10 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, aux_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(aux_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, aux_ccd_exposure_handler);
@@ -241,28 +286,30 @@ indigo_result indigo_aux_rts(indigo_driver_action action, indigo_driver_info *in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(rts_private_data));
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			private_data = (rts_private_data *)indigo_safe_malloc(sizeof(rts_private_data));
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);
-				free(aux);
+				indigo_safe_free(aux);
 				aux = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

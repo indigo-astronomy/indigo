@@ -25,3 +25,7 @@ indigo_server indigo_aux_geoptikflat
 
 ## Notes:
 Make sure that the ON/OFF potentiometer on the flat field generator is turned ON and is turned to its MAX position for maximum brightness.
+
+## Testing
+
+2026-09-27 20:50 3.0.0.9 mac arm64 simulator 12/12 OK

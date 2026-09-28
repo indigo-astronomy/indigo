@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_guider_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_guider_cgusbst4"
 #define DRIVER_LABEL         "CG-USB-ST4 Adapter"
 #define GUIDER_DEVICE_NAME   "CG-USB-ST4 Adapter"
@@ -87,13 +86,13 @@ static void cgusbst4_close(indigo_device *device) {
 	}
 }
 
-static void guider_guide_dec_finish_handler(indigo_device *device) {
+static void guider_guide_dec_finalizer(indigo_device *device) {
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
-static void guider_guide_ra_finish_handler(indigo_device *device) {
-	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+static void guider_guide_ra_finalizer(indigo_device *device) {
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
@@ -115,6 +114,16 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_GUIDE_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		cgusbst4_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -123,43 +132,47 @@ static void guider_connection_handler(indigo_device *device) {
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-	if (duration > 0) {
-		cgusbst4_command(device, ":Mgn%4d#", 0, (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
-	} else {
+	char direction = 'n';
+	if (duration <= 0) {
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		direction = 's';
+	}
+	if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
 		if (duration > 0) {
-			cgusbst4_command(device, ":Mgs%4d#", 0, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finalizer);
+		} else {
+			guider_guide_dec_finalizer(device);
 		}
 	}
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_dec_finish_handler);
-	}
 	//- guider.GUIDER_GUIDE_DEC.on_change
-	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-	if (duration > 0) {
-		cgusbst4_command(device, ":Mge%4d#", 0, (int)GUIDER_GUIDE_EAST_ITEM->number.value);
-	} else {
+	char direction = 'e';
+	if (duration <= 0) {
 		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		direction = 'w';
+	}
+	if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
 		if (duration > 0) {
-			cgusbst4_command(device, ":Mgw%4d#", 0, (int)GUIDER_GUIDE_WEST_ITEM->number.value);
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finalizer);
+		} else {
+			guider_guide_ra_finalizer(device);
 		}
 	}
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_ra_finish_handler);
-	}
 	//- guider.GUIDER_GUIDE_RA.on_change
-	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (guider)
@@ -185,17 +198,21 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, guider_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(guider_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_RA.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
@@ -228,31 +245,33 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "USB to ST4 Astrogene_1000");
 			INDIGO_REGISER_MATCH_PATTERNS(guider_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(cgusbst4_private_data));
-			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			private_data = (cgusbst4_private_data *)indigo_safe_malloc(sizeof(cgusbst4_private_data));
+			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
 			indigo_attach_device(guider);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
 			if (guider != NULL) {
 				indigo_detach_device(guider);
-				free(guider);
+				indigo_safe_free(guider);
 				guider = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

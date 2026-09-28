@@ -1,5 +1,13 @@
 # Serial Device Simulators
 
+Revision: 26.09.2026 (draft)
+
+Author: **Peter Polakovic**
+
+e-mail: *peter.polakovic@cloudmakers.eu*
+
+Co-authored by: **Claude** (Anthropic, Claude Opus 5.5)
+
 This document defines the recommended contract for standalone serial device simulators used by automated INDIGO driver tests.
 
 The reference model is a simulator executable that implements the hardware serial protocol behind a pseudo terminal. The INDIGO driver under test connects to the pseudo-terminal slave path through its normal `DEVICE_PORT` property, so the same driver code path is exercised as with real hardware.
@@ -74,7 +82,7 @@ Example:
 
 ```sh
 tmp_dir=$(mktemp -d /tmp/indigo-falcon2.XXXXXX)
-./rotator_falcon2_simulator --headless --ready-file "$tmp_dir/ready.env" &
+./rotator_falcon_simulator --headless --ready-file "$tmp_dir/ready.env" &
 sim_pid=$!
 
 # The test harness should implement bounded waiting and validation here.
@@ -344,95 +352,17 @@ int main(int argc, char *argv[]) {
 
 Device-specific simulators should replace `simulator_name`, extend `parse_device_option()` for options such as `--model`, `--device-id`, or fault injection, and implement `dispatch_command()` plus any state update threads or timers required by the hardware protocol.
 
-The nonblocking reader must never treat `EAGAIN`, `EWOULDBLOCK`, or `EIO` as fatal: INDIGO drivers probe by opening and closing the pseudo-terminal slave repeatedly during baud-rate and model detection, so the read loop has to keep running until the process is signalled. Copy the read loop from an existing simulator (`rotator_falcon2_simulator.c`, `aux_wcv4ec_simulator.c`) rather than reimplementing it.
+The nonblocking reader must never treat `EAGAIN`, `EWOULDBLOCK`, or `EIO` as fatal: INDIGO drivers probe by opening and closing the pseudo-terminal slave repeatedly during baud-rate and model detection, so the read loop has to keep running until the process is signalled. Copy the read loop from an existing simulator (`rotator_falcon_simulator.c`, `aux_wcv4ec_simulator.c`) rather than reimplementing it.
 
 ## Build and Test Integration
 
-A refactored simulator is not complete until it is wired into the automated test build. The simulator source lives beside the `.ino` under `indigo_drivers/`, but its build target, its integration test, and the `Makefile` targets that link them live in `indigo_test/`. See the "Wiring a Host-Side Serial Simulator Into the Test Build" and "Serial Simulator Integration Test Skeleton" sections of `indigo_test/AGENTS.md` for the exact four `Makefile` edits (including when `-pthread` is required) and the integration-test template. After adding the test, register it in the implemented-simulators table below, remove the matching row from the candidates table, and update `indigo_test/CHANGES.md`.
-
-## Simulators Fulfilling This Contract
-
-The following simulators implement this contract. This list should grow as more host-side serial simulators are refactored.
-
-| Simulator | Device class | Status |
-| --- | --- | --- |
-| `indigo_drivers/rotator_falcon/rotator_falcon2_simulator/rotator_falcon2_simulator.c` | Rotator | Implements the split runtime/state/protocol structure, `--headless`, `--ready-file`, `--trace`, `--model`, `--device-id`, and `--firmware`. |
-| `indigo_drivers/aux_upb3/aux_upb3_simulator/aux_upb3_simulator.c` | AUX and focuser | Implements the split runtime/state/protocol structure, `--headless`, `--ready-file`, `--trace`, `--model`, `--device-id`, and `--firmware`. |
-| `indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c` | Focuser | Implements the split runtime/state/protocol structure for FocusCube 3, `--headless`, `--ready-file`, `--trace`, `--model`, `--device-id`, and `--firmware`. |
-| `indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c` | Focuser | Implements the split runtime/state/protocol structure for QHY Q-Focuser, `--headless`, `--ready-file`, `--trace`, `--model`, `--firmware`, `--board-version`, and `--no-out-temp`. |
-| `indigo_drivers/focuser_askar/focuser_askar_simulator/focuser_askar_simulator.c` | Focuser | Implements the split runtime/state/protocol structure for Askar-WAF, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
-| `indigo_drivers/aux_svbpowerbox/aux_svbpowerbox_simulator/aux_svbpowerbox_simulator.c` | AUX | Implements the split runtime/state/protocol structure for SVBONY PowerBox, `--headless`, `--ready-file`, `--trace`, `--model`, `--no-ds18b20`, and `--no-sht40`. |
-| `indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c` | Focuser | Implements the split runtime/state/protocol structure for Optec FocusLynx, `--headless`, `--ready-file`, `--trace`, and `--model`. |
-| `indigo_drivers/focuser_lacerta/focuser_lacerta_simulator/focuser_lacerta_simulator.c` | Focuser | Implements the split runtime/state/protocol structure for LACERTA Motorfocus, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
-| `indigo_drivers/aux_wbplusv3/aux_wbplusv3_simulator/aux_wbplusv3_simulator.c` | AUX | Implements the split runtime/state/protocol structure for WandererBox Plus V3, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
-| `indigo_drivers/aux_wbprov3/aux_wbprov3_simulator/aux_wbprov3_simulator.c` | AUX | Implements the split runtime/state/protocol structure for WandererBox Pro V3, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
-| `indigo_drivers/aux_wcv4ec/aux_wcv4ec_simulator/aux_wcv4ec_simulator.c` | AUX | Implements the split runtime/state/protocol structure for WandererCover V4-EC, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
-| `indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Artesky Flat Box, `--headless`, `--ready-file`, `--trace`, and `--device-id`. |
-| `indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the ASTROMECHANICS LPM sky quality meter, `--headless`, `--ready-file`, `--trace`, and `--sky-brightness`. |
-| `indigo_drivers/aux_fbc/aux_fbc_simulator/aux_fbc_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Lacerta FBC, including the `: I #`/`: P #`/`: V #` handshake with `D -` debug-line skipping, `--headless`, `--ready-file`, `--trace`, and `--firmware`. |
-| `indigo_drivers/aux_flatmaster/aux_flatmaster_simulator/aux_flatmaster_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Pegasus Astro FlatMaster, including the `#`/`V` handshake and clamped `L:`/`E:` state, `--headless`, `--ready-file`, `--trace`, and `--firmware`. |
-| `indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Optec/Alnitak Flip-Flat, including the `>`/`*` command framing, monotonic-clock cover motion timing reported through `>SOOO` status, `--headless`, `--ready-file`, `--trace`, `--device-id`, and `--firmware`. |
-| `indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c` | AO | Implements the split runtime/state/protocol structure for the StarlightXpress AO. Character-framed binary protocol (single-letter commands, fixed-length byte replies) rather than line based; supports the `X`/`V` handshake, `G` tip/tilt pulses, `M` guider pulses, `K`/`R` reset, `L` limit status, `--headless`, `--ready-file`, `--trace`, `--firmware`, and `--limit`. |
-| `indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.c` | Mount | Implements the split runtime/state/protocol structure for SynScan/EQ8, `--headless`, `--ready-file`, `--trace`, and `--pcdirect`. |
-| `indigo_drivers/wheel_quantum/wheel_quantum_simulator/wheel_quantum_simulator.c` | Wheel | Implements the split runtime/state/protocol structure for Brightstar Quantum filter wheels, `--headless`, `--ready-file`, `--trace`, `--serial`, and `--slots`. |
-| `indigo_drivers/wheel_optec/wheel_optec_simulator/wheel_optec_simulator.c` | Wheel | Implements the split runtime/state/protocol structure for Optec filter wheels, `--headless`, `--ready-file`, `--trace`, `--goto-error`, and `--slots`. |
-| `indigo_drivers/wheel_qhy/wheel_qhy_simulator/wheel_qhy_simulator.c` | Wheel | Implements the split runtime/state/protocol structure for QHY CFW1, CFW2, and CFW3 filter wheels, `--headless`, `--ready-file`, `--trace`, `--model`, `--firmware`, and `--slots`. |
-| `indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c` | Wheel | Implements the split runtime/state/protocol structure for Trutek filter wheels, `--headless`, `--ready-file`, `--trace`, and `--slots`. |
-| `indigo_drivers/wheel_xagyl/wheel_xagyl_simulator/wheel_xagyl_simulator.c` | Wheel | Implements the split runtime/state/protocol structure for Xagyl filter wheels, `--headless`, `--ready-file`, `--trace`, `--model`, `--firmware`, `--serial`, and `--slots`. |
-
-## Candidates for refactoring
-
-The following Arduino simulator sketches are firmware-side serial protocol references. They should be considered candidates for future host-side pseudo-terminal simulators using the contract above.
-
-When a candidate is refactored into a host-side pseudo-terminal simulator, add the `.c` simulator to the implemented list above and remove the corresponding `.ino` row from this candidates list.
-
-| Simulator | Device class | Notes |
-| --- | --- | --- |
-| `indigo_drivers/aux_ppb/aux_ppb_simulator/aux_ppb_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_skyalert/aux_skyalert_simulator/aux_skyalert_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_sqm/aux_sqm_simulator/aux_sqm_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_usbdp/aux_usbdp_simulator/aux_usbdp_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.ino` | Dome | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/dome_nexdome/dome_nexdome_simulator/dome_nexdome_simulator.ino` | Dome | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.ino` | Dome | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/dome_skyroof/dome_skyroof_simulator/dome_skyroof_simulator.ino` | Dome | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/dome_talon6ror/dome_talon6ror_simulator/dome_talon6ror_simulator.ino` | Dome | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_astromechanics/focuser_astromechanics_simulator/focuser_astromechanics_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_efa/focuser_efa_simulator/focuser_efa_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_lakeside/focuser_lakeside_simulator/focuser_lakeside_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_mjkzz/focuser_mjkzz_simulator/focuser_mjkzz_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_moonlite/focuser_moonlite_simulator/focuser_moonlite_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_nfocus/focuser_nfocus_simulator/focuser_nfocus_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_nstep/focuser_nstep_simulator/focuser_nstep_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_optec/focuser_optec_simulator/focuser_optec_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_prodigy/focuser_prodigy_simulator/focuser_prodigy_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.ino` | Focuser | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_1.0_simulator/mount_ioptron_1.0_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_2.0_simulator/mount_ioptron_2.0_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_2.5_simulator/mount_ioptron_2.5_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_3.0_simulator/mount_ioptron_3.0_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_8406_simulator/mount_ioptron_8406_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_ioptron/ioptron_simulator/mount_ioptron_8407_simulator/mount_ioptron_8407_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.ino` | Mount | Arduino sketch colocated with the refactored host-side SynScan simulator. |
-| `indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino` | Mount | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/rotator_optec/rotator_optec_simulator/rotator_optec_simulator.ino` | Rotator | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/wheel_indigo/wheel_indigo_simulator/wheel_indigo_simulator.ino` | Wheel | Arduino sketch; candidate for future host-side serial simulator refactor. |
-
-New serial simulator refactors should copy the host-side contract used by the implemented simulators above.
+A refactored simulator is not complete until it is wired into the automated test build. The simulator source lives beside the `.ino` under `indigo_drivers/`, but its build target, its integration test, and the `Makefile` targets that link them live in `indigo_test/`. See the "Wiring a Host-Side Serial Simulator Into the Test Build" and "Serial Simulator Integration Test Skeleton" sections of `indigo_test/AGENTS.md` for the exact `Makefile` edits (including when `-pthread` is required) and the integration-test template. After adding the test, update the relevant driver's `REFACTOR.md` with the simulator coverage, remaining gaps and validation results.
 
 ## Out of Scope
 
 Not every directory named `*_simulator` should use this contract.
 
-The `.ino` candidates above are firmware-side simulators. They are useful for hardware-in-the-loop testing, but they do not create a pseudo terminal by themselves. Automated tests can use them only through whatever real serial port the board exposes, so they need a different test setup.
+Firmware-side `.ino` simulator sketches are useful for hardware-in-the-loop testing, but they do not create a pseudo terminal by themselves. Automated tests can use them only through whatever real serial port the board exposes, so they need a different test setup.
 
 INDIGO-native simulator drivers, such as `ccd_simulator`, `mount_simulator`, `dome_simulator`, `rotator_simulator`, `gps_simulator`, and `polaralign_simulator`, are not external serial protocol simulators. They are already INDIGO drivers and should be tested through normal INDIGO driver compliance tests.
 

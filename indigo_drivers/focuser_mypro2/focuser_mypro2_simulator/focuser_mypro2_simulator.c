@@ -17,6 +17,7 @@
 #include <signal.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 typedef struct {
 	bool headless;
@@ -30,12 +31,21 @@ static simulator_options options = {
 	.ready_file = NULL
 };
 
+// normal            - myFP2 board with a temperature probe
+// gemini            - Gemini board, which supports full and half step only
+// no-sensor         - the DS18B20 probe is absent, :06# answers -127
+// silent            - the controller never answers, every transaction times out
+// moving-error      - :01# never answers, the rest of the protocol works
+// maxpos-error      - :08# never answers, the rest of the protocol works
+// temperature-drift - the probe cools by 2 degrees after the third reading
+static const char *profile = "normal";
+static int temperature_readings;
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 
-static unsigned position = 1000;
-static unsigned target_position = 1000;
+static serial_motion motion;
 static unsigned max_position = 100000;
+// Motor speed 0, 1 and 2 are slow, medium and fast.
 static unsigned speed = 0;
 static unsigned step_mode = 8;
 static unsigned coils_mode = 0;
@@ -45,7 +55,12 @@ static unsigned backlash_out = 0;
 static bool backlash_in_enabled = false;
 static bool backlash_out_enabled = false;
 static bool reversed = false;
-static bool moving = false;
+
+// The controller runs faster in a finer step mode and with a higher motor
+// speed setting, which is what makes an abort observable in the tests.
+static double steps_per_second(void) {
+	return 400.0 * (1 << speed);
+}
 
 static void usage(const char *name) {
 	printf("myFocuserPro2 focuser simulator\n");
@@ -53,6 +68,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --profile <name>        normal, gemini, no-sensor, silent, moving-error,\n");
+	printf("                          maxpos-error or temperature-drift\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -81,6 +98,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--profile")) {
+			if (++i == argc) {
+				fprintf(stderr, "--profile requires a name\n");
+				return false;
+			}
+			profile = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -141,9 +164,7 @@ static bool sim_printf(int handle, const char *format, ...) {
 	if ((size_t)length >= sizeof(buffer)) {
 		length = (int)sizeof(buffer) - 1;
 	}
-	if (options.trace) {
-		fprintf(stderr, "<- %s", buffer);
-	}
+	serial_simulator_trace_line(options.trace, "<-", buffer);
 	return serial_simulator_write_all(handle, buffer, (size_t)length);
 }
 
@@ -152,33 +173,39 @@ static unsigned parse_value(const char *text) {
 }
 
 static void dispatch_command(int handle, const char *command) {
+	if (!strcmp(profile, "silent")) {
+		return;
+	}
 	if (!strcmp(command, "00")) {
-		sim_printf(handle, "P%u#", position);
+		sim_printf(handle, "P%u#", (unsigned)serial_motion_update(&motion));
 	} else if (!strcmp(command, "01")) {
-		if (moving) {
-			position = target_position;
-			moving = false;
-			sim_printf(handle, "I1#");
-		} else {
-			sim_printf(handle, "I0#");
+		if (!strcmp(profile, "moving-error")) {
+			return;
 		}
+		serial_motion_update(&motion);
+		sim_printf(handle, motion.duration > 0 ? "I1#" : "I0#");
 	} else if (!strcmp(command, "04")) {
-		sim_printf(handle, "FmyFP2\n3.0\r#");
+		sim_printf(handle, !strcmp(profile, "gemini") ? "FmyFP2Gemini\n3.0\r#" : "FmyFP2\n3.0\r#");
 	} else if (!strncmp(command, "05", 2)) {
-		target_position = parse_value(command + 2);
-		if (target_position > max_position) {
-			target_position = max_position;
-		}
-		moving = true;
+		unsigned target = parse_value(command + 2);
+		serial_motion_start(&motion, target > max_position ? max_position : target, steps_per_second());
 	} else if (!strcmp(command, "06")) {
-		sim_printf(handle, "Z22.5#");
+		if (!strcmp(profile, "no-sensor")) {
+			sim_printf(handle, "Z-127.00#");
+		} else if (!strcmp(profile, "temperature-drift")) {
+			sim_printf(handle, ++temperature_readings > 3 ? "Z20.5#" : "Z22.5#");
+		} else {
+			sim_printf(handle, "Z22.5#");
+		}
 	} else if (!strncmp(command, "07", 2)) {
 		max_position = parse_value(command + 2);
-		if (position > max_position) {
-			position = max_position;
-			target_position = position;
+		if (serial_motion_update(&motion) > max_position) {
+			serial_motion_sync(&motion, max_position);
 		}
 	} else if (!strcmp(command, "08")) {
+		if (!strcmp(profile, "maxpos-error")) {
+			return;
+		}
 		sim_printf(handle, "M%u#", max_position);
 	} else if (!strcmp(command, "11")) {
 		sim_printf(handle, "O%u#", coils_mode);
@@ -191,15 +218,13 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (!strncmp(command, "15", 2)) {
 		speed = parse_value(command + 2);
 	} else if (!strcmp(command, "27")) {
-		moving = false;
-		target_position = position;
+		serial_motion_stop(&motion);
 	} else if (!strcmp(command, "29")) {
 		sim_printf(handle, "S%u#", step_mode);
 	} else if (!strncmp(command, "30", 2)) {
 		step_mode = parse_value(command + 2);
 	} else if (!strncmp(command, "31", 2)) {
-		position = target_position = parse_value(command + 2);
-		moving = false;
+		serial_motion_sync(&motion, parse_value(command + 2));
 	} else if (!strcmp(command, "48")) {
 	} else if (!strncmp(command, "71", 2)) {
 		settle_time = parse_value(command + 2);
@@ -224,7 +249,6 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (!strcmp(command, "03")) {
 		sim_printf(handle, "F304#");
 	}
-	(void)speed;
 }
 
 int main(int argc, char *argv[]) {
@@ -238,6 +262,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
+	serial_motion_sync(&motion, 1000);
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
 	if (serial_fd < 0) {
 		return 1;

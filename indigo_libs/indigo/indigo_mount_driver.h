@@ -438,6 +438,8 @@ extern "C" {
 #define MOUNT_SIDE_OF_PIER_PROPERTY										(MOUNT_CONTEXT->mount_side_of_pier_property)
 
 /** MOUNT_SIDE_OF_PIER.EAST property item pointer.
+ The side of the pier the OTA is on (ASCOM and INDI convention): EAST means the OTA is east of the pier pointing west,
+ i.e. the normal (not flipped) pointing state for hour angle >= 0, WEST means the OTA is west of the pier pointing east.
  */
 #define MOUNT_SIDE_OF_PIER_EAST_ITEM									(MOUNT_SIDE_OF_PIER_PROPERTY->items+0)
 
@@ -480,8 +482,8 @@ extern "C" {
 /** Definition of side of pier
  */
 
-#define MOUNT_SIDE_EAST																0
-#define MOUNT_SIDE_WEST																1
+#define MOUNT_SIDE_EAST																0	///< OTA east of the pier, pointing west
+#define MOUNT_SIDE_WEST																1	///< OTA west of the pier, pointing east
 
 /** Aligment point structure.
  */
@@ -533,6 +535,10 @@ typedef struct {
 	indigo_property *mount_pec_training_property;						///< MOUNT_PEC_TRAINING property pointer
 	indigo_property *mount_alignment_reset_property;				///< MOUNT_ALIGNMENT_RESET property pointer
 	indigo_property *mount_state_property;									///< MOUNT_STATE property pointer
+	indigo_client_ref motion_dec_client;										///< attachment of the client that last requested MOUNT_MOTION_DEC, written in change_property() under the bus mutex, read only by the bus under its mutex
+	indigo_client_ref motion_ra_client;											///< attachment of the client that last requested MOUNT_MOTION_RA, written in change_property() under the bus mutex, read only by the bus under its mutex
+	time_t utc_target;																			///< UTC time of the last admitted MOUNT_UTC_TIME request, -1 if it was missing or unparsable, see indigo_mount_set_utc_target()
+	int utc_offset_target;																	///< UTC offset in hours of the last admitted MOUNT_UTC_TIME request, see indigo_mount_set_utc_target()
 } indigo_mount_context;
 
 /** Attach callback function.
@@ -547,6 +553,43 @@ INDIGO_EXTERN indigo_result indigo_mount_change_property(indigo_device *device, 
 /** Detach callback function.
  */
 INDIGO_EXTERN indigo_result indigo_mount_detach(indigo_device *device);
+
+/** Record the client requesting manual motion, call it from the MOUNT_MOTION_DEC and MOUNT_MOTION_RA change branches
+    of change_property() with the incoming request once it passed the driver's admission checks, just before its values
+    are copied and processed. It records the reference of the client's current bus attachment (indigo_current_client_ref()),
+    so the motion is not handed to another client attached at the same address if the requester detaches before the
+    commit. A request without a client, or from a client no longer attached, records no client. Generated drivers call it
+    automatically.
+ */
+INDIGO_EXTERN void indigo_mount_record_motion_client(indigo_device *device, indigo_client *client, indigo_property *property);
+
+/** Commit the client recorded by indigo_mount_record_motion_client() as the owner of the manual motion of MOUNT_MOTION_DEC
+    or MOUNT_MOTION_RA (property), call it from their change handlers after the driver started or stopped the motion. If
+    an item is On and the property is not in ALERT state, the release of the motion (all items switched Off) is registered
+    by indigo_register_detach_abort() to be sent if that client detaches, e.g. because its network connection was lost;
+    if that attachment has already ended (or the request had no client), the release is sent at once through
+    indigo_change_property(). Otherwise the motion is unregistered. Called with MOUNT_ABORT_MOTION_PROPERTY from the abort
+    handler it unregisters both axes. It does not publish the property. The base class also unregisters both axes when
+    the device disconnects or detaches. Generated drivers call it automatically.
+ */
+INDIGO_EXTERN void indigo_mount_commit_motion_client(indigo_device *device, indigo_property *property);
+
+/** Record the time requested by a MOUNT_UTC_TIME change, call it from the MOUNT_UTC_TIME change branch of change_property()
+    with the incoming request, before its values are copied and processed. A driver whose status poll refreshes
+    MOUNT_UTC_ITEM and MOUNT_UTC_OFFSET_ITEM on the device queue cannot rely on the copied items: the poll's check of the
+    BUSY state and its write are not atomic with the copy on the bus thread, so the requested time can be replaced by
+    the mount clock before the handler reads it. The handler therefore sends the target recorded here (read it with
+    indigo_mount_get_utc_target()) and writes it back into the items once the mount accepted it.
+    The time and the offset are parsed from the request itself; a missing or unparsable time is recorded as -1, a
+    missing offset keeps the current MOUNT_UTC_OFFSET_ITEM. The target is recorded only while MOUNT_UTC_TIME_PROPERTY is
+    not BUSY, so a request the framework drops as BUSY does not replace the target of the handler it is waiting for.
+ */
+INDIGO_EXTERN void indigo_mount_set_utc_target(indigo_device *device, indigo_property *request);
+
+/** Get the target recorded by indigo_mount_set_utc_target(), call it from the MOUNT_UTC_TIME change handler.
+    Returns the requested UTC time, or -1 if the request carried no valid time; offset receives the UTC offset in hours.
+ */
+INDIGO_EXTERN time_t indigo_mount_get_utc_target(indigo_device *device, int *offset);
 
 /** Translate coordinates to native.
  */
@@ -583,6 +626,33 @@ INDIGO_EXTERN void indigo_mount_save_alignment_points(indigo_device *device);
  */
 
 INDIGO_EXTERN void indigo_mount_update_alignment_points(indigo_device *device);
+
+/** Pointing of a simulated mount shared with simulated cameras loaded into the same process.
+ */
+typedef struct {
+	double ra;					///< raw (physical) RA in hours, in the epoch below
+	double dec;					///< raw (physical) Dec in degrees, in the epoch below
+	double epoch;				///< epoch of ra/dec, 0 = JNow
+	double latitude;		///< site latitude in degrees
+	double longitude;		///< site longitude in degrees
+	bool west;					///< OTA is on the west side of the pier
+	bool guidable;			///< mount follows guide pulses (it is neither parked nor slewing)
+} indigo_simulated_mount_state;
+
+/** Publish the pointing of a simulated mount, or withdraw it if state is NULL and device is the last publisher.
+ Guide offsets requested by indigo_simulated_mount_guide() since the last call are added to state->ra and state->dec,
+ the mount has to move its own position by the same amount.
+ */
+INDIGO_EXTERN void indigo_set_simulated_mount_state(indigo_device *device, indigo_simulated_mount_state *state);
+
+/** Get the pointing of a simulated mount, return false if no simulated mount is connected.
+ */
+INDIGO_EXTERN bool indigo_get_simulated_mount_state(indigo_simulated_mount_state *state);
+
+/** Move a simulated mount by ra hours and dec degrees, return true if a connected simulated mount accepted the request.
+ Return false if no simulated mount is connected or the connected mount can not follow guide pulses.
+ */
+INDIGO_EXTERN bool indigo_simulated_mount_guide(double ra, double dec);
 
 #ifdef __cplusplus
 }

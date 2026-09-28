@@ -55,8 +55,21 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --slow-status <ms>      Delay the PA status reply\n");
+	printf("  --slow-uptime <ms>      Delay the PC uptime reply\n");
+	printf("  --fault-once <command>  Ignore the first such command, leaving the ports and sending no reply\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
+
+// Delay applied before the status reply, so a test can issue a change request while
+// the driver's poll is still waiting for it and exercise that race deterministically.
+static int slow_status_ms = 0;
+
+// Delay applied before the uptime reply, which the driver reads after the status frame in the same poll.
+static int slow_uptime_ms = 0;
+
+// A command the hub ignores once, as if it never arrived: nothing changes and no reply is sent.
+static const char *fault_once_command = NULL;
 
 static bool parse_args(int argc, char *argv[]) {
 	for (int i = 1; i < argc; i++) {
@@ -68,6 +81,24 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
+		} else if (!strcmp(argv[i], "--slow-status")) {
+			if (++i == argc) {
+				fprintf(stderr, "--slow-status requires a delay in milliseconds\n");
+				return false;
+			}
+			slow_status_ms = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--slow-uptime")) {
+			if (++i == argc) {
+				fprintf(stderr, "--slow-uptime requires a delay in milliseconds\n");
+				return false;
+			}
+			slow_uptime_ms = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--fault-once")) {
+			if (++i == argc) {
+				fprintf(stderr, "--fault-once requires a command\n");
+				return false;
+			}
+			fault_once_command = argv[i];
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -89,6 +120,9 @@ static int serial_fd = -1;
 
 // All six USB ports default to on
 static bool usb[6] = { true, true, true, true, true, true };
+
+// Power status on boot (PE:bbbbbb), restored by a reboot (PF)
+static bool boot[6] = { true, true, true, true, true, true };
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -162,6 +196,17 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 }
 
 static void dispatch_command(int fd, const char *cmd) {
+	if (fault_once_command != NULL && !strcmp(cmd, fault_once_command)) {
+		fault_once_command = NULL;
+		serial_simulator_trace_line(options.trace, "!!", cmd);
+		return;
+	}
+	if (slow_status_ms > 0 && !strcmp(cmd, "PA")) {
+		usleep((useconds_t)slow_status_ms * 1000);
+	}
+	if (slow_uptime_ms > 0 && !strcmp(cmd, "PC")) {
+		usleep((useconds_t)slow_uptime_ms * 1000);
+	}
 	if (!strcmp(cmd, "P#")) {
 		sim_printf(fd, "UCH_OK\n");
 	} else if (!strcmp(cmd, "PV")) {
@@ -178,20 +223,22 @@ static void dispatch_command(int fd, const char *cmd) {
 		usb[port] = cmd[3] == '1';
 		sim_printf(fd, "%s\n", cmd);
 	} else if (!strncmp(cmd, "PE:", 3)) {
-		// Set boot defaults; echo back, or respond PE:1 for save-as-default pattern
+		// Power status on boot: PE:99 prints it, PE:bbbbbb sets it and is echoed; the ports keep their current state
 		if (!strcmp(cmd + 3, "99")) {
 			sim_printf(fd, "PE:%d%d%d%d%d%d\n",
-				usb[0], usb[1], usb[2], usb[3], usb[4], usb[5]);
+				boot[0], boot[1], boot[2], boot[3], boot[4], boot[5]);
 		} else {
-			// Update defaults and echo
 			const char *mask = cmd + 3;
 			for (int i = 0; i < 6 && mask[i] != '\0'; i++) {
-				usb[i] = mask[i] == '1';
+				boot[i] = mask[i] == '1';
 			}
 			sim_printf(fd, "%s\n", cmd);
 		}
 	} else if (!strcmp(cmd, "PF")) {
-		// Reboot: no response per spec; driver ignores return value
+		// Reboot: no response per spec; the ports come up in their power status on boot
+		for (int i = 0; i < 6; i++) {
+			usb[i] = boot[i];
+		}
 	} else {
 		serial_simulator_trace_line(options.trace, "??", cmd);
 	}

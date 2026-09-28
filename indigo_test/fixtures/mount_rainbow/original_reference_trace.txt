@@ -1,0 +1,17 @@
+# Normalized command trace captured from the original hand-written driver.
+# One logical command per line; compound writes retain their original ordering.
+AV
+AV
+AT
+Ct?
+CU0
+Gt
+Gg
+GR
+GD
+CL
+AT
+Ct?
+GC
+GG
+GL

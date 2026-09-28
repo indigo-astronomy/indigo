@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_wheel_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -34,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_wheel_sx"
 #define DRIVER_LABEL         "Starlight Xpress Filter Wheel"
 #define WHEEL_DEVICE_NAME    "SX Filter Wheel"
@@ -52,12 +51,15 @@
 typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
-	int current_slot, target_slot;
+	int current_slot, target_slot, motion_polls;
 	int count;
 	//- data
 } sx_private_data;
 
 #pragma mark - Low level code
+
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
 
@@ -70,16 +72,26 @@ static bool sx_message(indigo_device *device, int a, int b) {
 	if (indigo_uni_read(PRIVATE_DATA->handle, buf, 2) != 2) {
 		return false;
 	}
-	PRIVATE_DATA->current_slot = buf[0];
-	PRIVATE_DATA->count = buf[1];
+	int count = (unsigned char)buf[1];
+	int slot = (unsigned char)buf[0];
+	if (count < 1 || count > WHEEL_SLOT_NAME_PROPERTY->allocated_count || slot > count) {
+		return false;
+	}
+	PRIVATE_DATA->current_slot = slot;
+	PRIVATE_DATA->count = count;
 	return true;
 }
 
 static bool sx_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_hid(SX_VENDOR_ID, SX_PRODUCT_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
 	if (PRIVATE_DATA->handle != NULL) {
-		sx_message(device, 0, 0);
-		return true;
+		// A wheel that is still turning answers the query with slot 0 and a valid slot
+		// count, so only the count has to be readable here. The slot is resolved by the
+		// movement finalizer once the wheel arrives.
+		if (sx_message(device, 0, 0)) {
+			return true;
+		}
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;
 }
@@ -93,13 +105,27 @@ static void sx_close(indigo_device *device) {
 //+ wheel.code
 
 static void wheel_move_finalizer(indigo_device *device) {
-	sx_message(device, 0, 0);
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
-		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	if (!sx_message(device, 0, 0)) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		if (PRIVATE_DATA->current_slot > 0) {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+			// A zero target means the wheel was already turning when the driver
+			// connected, so wherever it stops is the slot to publish.
+			if (PRIVATE_DATA->target_slot == 0) {
+				WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+			}
+		}
+		if (PRIVATE_DATA->current_slot > 0 && PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (--PRIVATE_DATA->motion_polls <= 0) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		}
 	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 //- wheel.code
@@ -114,7 +140,16 @@ static void wheel_connection_handler(indigo_device *device) {
 			//+ wheel.on_connect
 			WHEEL_SLOT_ITEM->number.min = 1;
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count;
-			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+			PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+			if (PRIVATE_DATA->current_slot > 0) {
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+			} else {
+				// Connected while the wheel is turning: keep the last known slot published as busy
+				// until the finalizer reads the slot the wheel settles on.
+				PRIVATE_DATA->motion_polls = 120;
+				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+			}
 			//- wheel.on_connect
 		}
 		if (connection_result) {
@@ -127,6 +162,15 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		sx_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -136,15 +180,20 @@ static void wheel_connection_handler(indigo_device *device) {
 
 static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
-	if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
-		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	double requested = WHEEL_SLOT_ITEM->number.target;
+	if (requested == PRIVATE_DATA->current_slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-		sx_message(device, 0x80 + PRIVATE_DATA->target_slot, 0);
-		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		PRIVATE_DATA->target_slot = requested;
+		if (sx_message(device, 0x80 + PRIVATE_DATA->target_slot, 0)) {
+			PRIVATE_DATA->motion_polls = 120;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	//- wheel.WHEEL_SLOT.on_change
 }
 
@@ -167,14 +216,10 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, wheel_connection_handler);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);
@@ -195,44 +240,61 @@ static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(WHEEL_DEVICE_NAM
 
 #pragma mark - Hot-plug code
 
-static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *wheel = NULL;
 
-static void process_plug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static indigo_result verify_devices_disconnected(void) {
+	VERIFY_NOT_CONNECTED(wheel);
+	return INDIGO_OK;
+}
+
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
 	if (wheel == NULL) {
 		char usb_path[INDIGO_NAME_SIZE];
 		indigo_get_usb_path(dev, usb_path);
-		sx_private_data *private_data = indigo_safe_malloc(sizeof(sx_private_data));
-		wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+		sx_private_data *private_data = (sx_private_data *)indigo_safe_malloc(sizeof(sx_private_data));
+		wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 		snprintf(wheel->name, INDIGO_NAME_SIZE, "%s #%s", "SX Filter Wheel", usb_path);
 		wheel->private_data = private_data;
-		indigo_attach_device(wheel);
+		if (indigo_attach_device(wheel) != INDIGO_OK) {
+			indigo_safe_free(wheel->private_data);
+			indigo_safe_free(wheel);
+			wheel = NULL;
+			libusb_unref_device(dev);
+			return;
+		}
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	libusb_unref_device(dev);
 }
 
-static void process_unplug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
 	if (wheel != NULL) {
 		indigo_detach_device(wheel);
-		free(wheel->private_data);
-		free(wheel);
+		indigo_safe_free(wheel->private_data);
+		indigo_safe_free(wheel);
 		wheel = NULL;
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	if (dev != NULL) {
+		libusb_unref_device(dev);
+	}
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_ASYNC(process_plug_event, dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			process_unplug_event(dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
 }
@@ -251,22 +313,43 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			wheel = NULL;
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
-			VERIFY_NOT_CONNECTED(wheel);
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			process_unplug_event(NULL);
+			indigo_queue_drain(driver_queue);
+			process_unplug_event_handler(NULL, NULL);
+			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

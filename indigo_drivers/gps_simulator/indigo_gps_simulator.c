@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_gps_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -141,7 +140,6 @@ static void gps_connection_handler(indigo_device *device) {
 		GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 		GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 		//- gps.on_connect
-		indigo_execute_handler(device, gps_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
@@ -150,6 +148,9 @@ static void gps_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, gps_timer_callback);
+	}
 }
 
 #pragma mark - Device API (gps)
@@ -180,11 +181,7 @@ static indigo_result gps_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, gps_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(gps_connection_handler);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);
@@ -217,28 +214,30 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
-			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+			private_data = (simulator_private_data *)indigo_safe_malloc(sizeof(simulator_private_data));
+			gps = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 			gps->private_data = private_data;
 			indigo_attach_device(gps);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(gps);
 			last_action = action;
 			if (gps != NULL) {
 				indigo_detach_device(gps);
-				free(gps);
+				indigo_safe_free(gps);
 				gps = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

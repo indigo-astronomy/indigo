@@ -30,6 +30,7 @@
 #include <stdarg.h>
 #include <signal.h>
 #include <limits.h>
+#include <time.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
@@ -41,6 +42,9 @@ typedef struct {
 	const char *ready_file;
 	const char *model;
 	const char *firmware;
+	int detect_reply_delay;
+	bool lose_detect_reply;
+	int stall_frame_at;
 } simulator_options;
 
 static simulator_options options = {
@@ -48,7 +52,10 @@ static simulator_options options = {
 	.trace = true,
 	.ready_file = NULL,
 	.model = "WandererCoverV4",
-	.firmware = "20240618"
+	.firmware = "20240618",
+	.detect_reply_delay = 0,
+	.lose_detect_reply = false,
+	.stall_frame_at = 0
 };
 
 static const char *simulator_name = "aux_wcv4ec";
@@ -61,6 +68,9 @@ static void usage(const char *name) {
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --model <WandererCoverV4> Select simulated model, default is WandererCoverV4\n");
 	printf("  --firmware <version>    Set reported firmware version\n");
+	printf("  --detect-reply-delay <ms> Delay the OpenSet/CloseSet reply to 100001/100000\n");
+	printf("  --lose-detect-reply     Teach the angle on 100001/100000 but lose the OpenSet/CloseSet reply on the wire\n");
+	printf("  --stall-frame-at <ms>   Stall the first status frame sent <ms> after start mid-line, one byte every 2 s\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -96,6 +106,20 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.firmware = argv[i];
+		} else if (!strcmp(argv[i], "--detect-reply-delay")) {
+			if (++i == argc) {
+				fprintf(stderr, "--detect-reply-delay requires milliseconds\n");
+				return false;
+			}
+			options.detect_reply_delay = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--lose-detect-reply")) {
+			options.lose_detect_reply = true;
+		} else if (!strcmp(argv[i], "--stall-frame-at")) {
+			if (++i == argc) {
+				fprintf(stderr, "--stall-frame-at requires milliseconds\n");
+				return false;
+			}
+			options.stall_frame_at = atoi(argv[i]);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -120,6 +144,13 @@ static bool do_open = false;
 static bool do_close = false;
 static bool pending_done = false;
 
+// one status frame stalls after its first STALL_HEAD bytes and trickles the next STALL_BYTES bytes one every
+// STALL_GAP_US, a gap shorter than the 5 s serial read timeout, so each byte keeps a read without its own
+// inter-byte timeout going; the rest of the frame follows at once and the frames resume
+#define STALL_HEAD    25
+#define STALL_BYTES   6
+#define STALL_GAP_US  2000000
+
 static void signal_handler(int sig) {
 	(void)sig;
 	running = 0;
@@ -143,6 +174,23 @@ static bool sim_printf(int fd, const char *format, ...) {
 	}
 	serial_simulator_trace_line(options.trace, "<-", buffer);
 	return serial_simulator_write_all(fd, buffer, (size_t)length);
+}
+
+static void send_stalled_status(int fd) {
+	char frame[256];
+	pthread_mutex_lock(&state_mutex);
+	int length = snprintf(frame, sizeof(frame), "%sA%sA%.2fA%.2fA%.2fA%.2fA%dA\n", options.model, options.firmware, close_position, open_position, current_position, voltage, brightness);
+	pthread_mutex_unlock(&state_mutex);
+	if (length < STALL_HEAD + STALL_BYTES || length >= (int)sizeof(frame)) {
+		return;
+	}
+	serial_simulator_trace_line(options.trace, "<-", "(stalled frame)");
+	serial_simulator_write_all(fd, frame, STALL_HEAD);
+	for (int i = STALL_HEAD; i < STALL_HEAD + STALL_BYTES && running; i++) {
+		usleep(STALL_GAP_US);
+		serial_simulator_write_all(fd, frame + i, 1);
+	}
+	serial_simulator_write_all(fd, frame + STALL_HEAD + STALL_BYTES, (size_t)(length - STALL_HEAD - STALL_BYTES));
 }
 
 static void send_status(int fd) {
@@ -189,8 +237,19 @@ static void update_cover_position(void) {
 
 static void *background(void *arg) {
 	(void)arg;
+	struct timespec start;
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	bool stall_pending = options.stall_frame_at > 0;
 	while (running) {
-		send_status(serial_fd);
+		struct timespec now;
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		long elapsed = (now.tv_sec - start.tv_sec) * 1000 + (now.tv_nsec - start.tv_nsec) / 1000000;
+		if (stall_pending && elapsed >= options.stall_frame_at) {
+			stall_pending = false;
+			send_stalled_status(serial_fd);
+		} else {
+			send_status(serial_fd);
+		}
 		usleep(1000000);
 		update_cover_position();
 	}
@@ -295,6 +354,14 @@ static void dispatch_command(int fd, const char *buffer) {
 	pthread_mutex_unlock(&state_mutex);
 
 	if (response != NULL) {
+		// the detection itself has already taken effect; only its confirmation is delayed or lost
+		if (options.lose_detect_reply) {
+			serial_simulator_trace_line(options.trace, "xx", response);
+			return;
+		}
+		if (options.detect_reply_delay > 0) {
+			usleep(options.detect_reply_delay * 1000);
+		}
 		sim_printf(fd, "%s", response);
 	}
 }

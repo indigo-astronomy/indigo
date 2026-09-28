@@ -25,8 +25,12 @@ driver svbpowerbox {
 	label = "SVBONY PowerBox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2026 Rumen G. Bogdanovski";
-	version = 2;
+	version = 4;
 	serial;
+	data {
+		bool power_outlets[6];
+		bool usb_ports[2];
+	}
 	define {
 		#define AUX_GROUP		"Powerbox"
 		#define WEATHER_GROUP	"Weather"
@@ -160,6 +164,13 @@ driver svbpowerbox {
 					indigo_uni_close(&PRIVATE_DATA->handle);
 				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device handshake successful");
+					// Until the first poll a failed request shows the switch states of the handshake.
+					for (int i = 0; i < 5; i++) {
+						PRIVATE_DATA->power_outlets[i] = state[i] != 0;
+					}
+					PRIVATE_DATA->power_outlets[5] = state[7] != 0;
+					PRIVATE_DATA->usb_ports[0] = state[5] != 0;
+					PRIVATE_DATA->usb_ports[1] = state[6] != 0;
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "SVBONY PowerBox");
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 					indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -285,13 +296,16 @@ driver svbpowerbox {
 					res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7], res[8], res[9]);
 
 				// Power outlets (DC1-DC5) + regulated
+				// The switch states the box reports are always recorded, a failed request shows them; a pending request
+				// owns the values of its property and its handler sends the targets, which the poll never writes.
+				for (int i = 0; i < 5; i++) {
+					PRIVATE_DATA->power_outlets[i] = res[i] != 0;
+				}
+				PRIVATE_DATA->power_outlets[5] = res[7] != 0;
 				if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
-					AUX_POWER_OUTLET_1_ITEM->sw.value = (res[0] != 0);
-					AUX_POWER_OUTLET_2_ITEM->sw.value = (res[1] != 0);
-					AUX_POWER_OUTLET_3_ITEM->sw.value = (res[2] != 0);
-					AUX_POWER_OUTLET_4_ITEM->sw.value = (res[3] != 0);
-					AUX_POWER_OUTLET_5_ITEM->sw.value = (res[4] != 0);
-					AUX_POWER_OUTLET_6_ITEM->sw.value = (res[7] != 0);
+					for (int i = 0; i < 6; i++) {
+						AUX_POWER_OUTLET_PROPERTY->items[i].sw.value = PRIVATE_DATA->power_outlets[i];
+					}
 					indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 				}
 
@@ -303,9 +317,12 @@ driver svbpowerbox {
 				}
 
 				// USB ports
+				PRIVATE_DATA->usb_ports[0] = res[5] != 0;
+				PRIVATE_DATA->usb_ports[1] = res[6] != 0;
 				if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
-					AUX_USB_PORT_1_ITEM->sw.value = (res[5] != 0);
-					AUX_USB_PORT_2_ITEM->sw.value = (res[6] != 0);
+					for (int i = 0; i < 2; i++) {
+						AUX_USB_PORT_PROPERTY->items[i].sw.value = PRIVATE_DATA->usb_ports[i];
+					}
 					indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 				}
 
@@ -424,18 +441,34 @@ driver svbpowerbox {
 			group = AUX_GROUP;
 			label = "Power outlets";
 			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change_request {
+				// The poll writes the outlet states the box reports into the values only and the handler sends the targets,
+				// so the outlets a request does not carry must keep the reported state in their targets as well. A BUSY
+				// property is left alone, the framework drops the request and its handler reads the targets.
+				if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+					for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+						AUX_POWER_OUTLET_PROPERTY->items[i].sw.target = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value;
+					}
+				}
+			}
 			on_change {
-				svbpb_set_port(device, SVB_PORT_DC1, AUX_POWER_OUTLET_1_ITEM->sw.value ? 0xFF : 0x00);
-				svbpb_set_port(device, SVB_PORT_DC2, AUX_POWER_OUTLET_2_ITEM->sw.value ? 0xFF : 0x00);
-				svbpb_set_port(device, SVB_PORT_DC3, AUX_POWER_OUTLET_3_ITEM->sw.value ? 0xFF : 0x00);
-				svbpb_set_port(device, SVB_PORT_DC4, AUX_POWER_OUTLET_4_ITEM->sw.value ? 0xFF : 0x00);
-				svbpb_set_port(device, SVB_PORT_DC5, AUX_POWER_OUTLET_5_ITEM->sw.value ? 0xFF : 0x00);
-				// Regulated output: if outlet 6 is OFF, set voltage to 0; otherwise keep target voltage
-				if (!AUX_POWER_OUTLET_6_ITEM->sw.value) {
-					svbpb_set_port(device, SVB_PORT_REGULATED, 0x00);
-				} else {
-					uint8_t pwm = (uint8_t)round((AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target / SVB_MAX_VOLTAGE) * 255.0);
-					svbpb_set_port(device, SVB_PORT_REGULATED, pwm);
+				// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+				// request. An outlet the box did not accept shows the state it last reported.
+				static const uint8_t ports[] = { SVB_PORT_DC1, SVB_PORT_DC2, SVB_PORT_DC3, SVB_PORT_DC4, SVB_PORT_DC5, SVB_PORT_REGULATED };
+				for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+					indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+					bool on = item->sw.target;
+					uint8_t value = on ? 0xFF : 0x00;
+					// Regulated output: if outlet 6 is OFF, set voltage to 0; otherwise keep target voltage
+					if (ports[i] == SVB_PORT_REGULATED && on) {
+						value = (uint8_t)round((AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target / SVB_MAX_VOLTAGE) * 255.0);
+					}
+					if (svbpb_set_port(device, ports[i], value)) {
+						item->sw.value = PRIVATE_DATA->power_outlets[i] = on;
+					} else {
+						item->sw.value = PRIVATE_DATA->power_outlets[i];
+						AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				}
 				indigo_usleep(ONE_SECOND_DELAY / 2);
 			}
@@ -515,9 +548,30 @@ driver svbpowerbox {
 			group = AUX_GROUP;
 			label = "USB Ports";
 			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change_request {
+				// The poll writes the port states the box reports into the values only and the handler sends the targets,
+				// so the ports a request does not carry must keep the reported state in their targets as well. A BUSY
+				// property is left alone, the framework drops the request and its handler reads the targets.
+				if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
+					for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+						AUX_USB_PORT_PROPERTY->items[i].sw.target = AUX_USB_PORT_PROPERTY->items[i].sw.value;
+					}
+				}
+			}
 			on_change {
-				svbpb_set_port(device, SVB_PORT_USB_A, AUX_USB_PORT_1_ITEM->sw.value ? 0xFF : 0x00);
-				svbpb_set_port(device, SVB_PORT_USB_B, AUX_USB_PORT_2_ITEM->sw.value ? 0xFF : 0x00);
+				// The poll may overwrite the values between the copy of the request and this handler, the targets keep the
+				// request. A port group the box did not accept shows the state it last reported.
+				static const uint8_t ports[] = { SVB_PORT_USB_A, SVB_PORT_USB_B };
+				for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+					indigo_item *item = AUX_USB_PORT_PROPERTY->items + i;
+					bool on = item->sw.target;
+					if (svbpb_set_port(device, ports[i], on ? 0xFF : 0x00)) {
+						item->sw.value = PRIVATE_DATA->usb_ports[i] = on;
+					} else {
+						item->sw.value = PRIVATE_DATA->usb_ports[i];
+						AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
 				indigo_usleep(ONE_SECOND_DELAY / 2);
 			}
 			item AUX_USB_PORT_1 {

@@ -42,8 +42,21 @@ Driver is developed and tested with:
 * Fujifilm X-T1
 * OM System OM-1
 
+### Fujifilm X-T1 limitations
+
+Tested with firmware 5.52. Normal exposures, JPEG and RAW downloads, camera settings and live view work, including stopping and restarting live view.
+
+* BULB exposures over USB are not supported by this camera's advertised controls, even after upgrading from firmware 3.00 to 5.52. Use a fixed shutter speed supported by the camera. Selecting B on the camera does not enable USB BULB control.
+* Stopping an exposure while the camera is still autofocusing can leave it unable to accept settings or take another picture. If this happens, disconnect and reconnect the camera in INDIGO before trying again. Where possible, let the exposure finish normally.
+
+The autofocus cancellation problem was also reproduced through libgphoto2; switching to it did not resolve the problem. These limitations are specific to the tested X-T1 and should not be assumed to apply to other Fujifilm models.
+
 ### NOTE: If you have trouble connecting to your camera with Linux please make sure the following programs are not running:
 * gvfs-gphoto2-volume-monitor
 * gvfsd-gphoto2
 
 ### NOTE: If you have trouble getting a frame, please make sure you have a memory card inserted into the camera. This driver will not work with cameras without a memory card.
+
+## Testing
+
+2026-09-27 21:46 3.0.0.52 mac arm64 fake SDK 128/128 OK

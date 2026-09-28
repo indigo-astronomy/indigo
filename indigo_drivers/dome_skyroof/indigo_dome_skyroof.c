@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_dome_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_dome_skyroof"
 #define DRIVER_LABEL         "Interactive Astronomy SkyRoof"
 #define DOME_DEVICE_NAME     "SkyRoof"
@@ -63,12 +62,14 @@ typedef struct {
 
 //+ code
 
+static void dome_shutter_handler(indigo_device *device);
+
 static bool skyroof_write(indigo_device *device, char *command)	{
 	return indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) > 0;
 }
 
 static bool	skyroof_read(indigo_device *device) {
-	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) > 0;
+	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
 }
 
 static bool skyroof_open(indigo_device *device) {
@@ -140,6 +141,24 @@ static void dome_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			DOME_SHUTTER_PROPERTY,
+			DOME_ABORT_MOTION_PROPERTY,
+			HEATER_CONTROL_PROPERTY,
+			DOME_SPEED_PROPERTY,
+			DOME_DIRECTION_PROPERTY,
+			DOME_HORIZONTAL_COORDINATES_PROPERTY,
+			DOME_STEPS_PROPERTY,
+			DOME_PARK_PROPERTY,
+			DOME_DIMENSION_PROPERTY,
+			DOME_SLAVING_PARAMETERS_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, HEATER_CONTROL_PROPERTY, NULL);
 		skyroof_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
@@ -159,18 +178,22 @@ static void dome_shutter_handler(indigo_device *device) {
 }
 
 static void dome_abort_motion_handler(indigo_device *device) {
-	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_ABORT_MOTION.on_change
+	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	DOME_ABORT_MOTION_ITEM->sw.value = false;
 	if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_pending_handler(device, dome_shutter_handler);
 		if (skyroof_write(device, "Stop#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
 			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_cancel_pending_handler(device, dome_shutter_finalizer);
+			indigo_execute_handler_in(device, 0, dome_shutter_finalizer);
 		} else {
 			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		}
 	}
-	//- dome.DOME_ABORT_MOTION.on_change
 	indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+	//- dome.DOME_ABORT_MOTION.on_change
 }
 
 static void dome_heater_control_handler(indigo_device *device) {
@@ -223,17 +246,13 @@ static indigo_result dome_enumerate_properties(indigo_device *device, indigo_cli
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, dome_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(dome_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SHUTTER_PROPERTY, dome_shutter_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(HEATER_CONTROL_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(HEATER_CONTROL_PROPERTY, dome_heater_control_handler);
@@ -270,28 +289,30 @@ indigo_result indigo_dome_skyroof(indigo_driver_action action, indigo_driver_inf
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(skyroof_private_data));
-			dome = indigo_safe_malloc_copy(sizeof(indigo_device), &dome_template);
+			private_data = (skyroof_private_data *)indigo_safe_malloc(sizeof(skyroof_private_data));
+			dome = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &dome_template);
 			dome->private_data = private_data;
 			indigo_attach_device(dome);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(dome);
 			last_action = action;
 			if (dome != NULL) {
 				indigo_detach_device(dome);
-				free(dome);
+				indigo_safe_free(dome);
 				dome = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

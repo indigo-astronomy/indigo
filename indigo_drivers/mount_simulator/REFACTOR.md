@@ -1,0 +1,273 @@
+# Mount Simulator queue refactoring
+
+Status: queue refactoring and code-generator migration complete on 2026-09-13. Baseline driver version: `0x0300000B`. Queue-refactored driver version: `0x0300000C`. Generated-driver version: `0x0300000D`.
+
+## Workflow correction
+
+This record was created after production edits had already started because `indigo_drivers/AGENTS.override.md` was initially missed. That violated the required ordering even though the implementation and tests were subsequently audited. The baseline below was therefore reconstructed from the unmodified `HEAD` sources, and the plan records completed work and its actual evidence instead of pretending that the ledger preceded it. The final verification is being repeated after this correction.
+
+## Instructions and sources reviewed
+
+- `AGENTS.md`, `indigo_drivers/AGENTS.override.md`, `indigo_test/AGENTS.md` and `indigo_test/DRIVER_TESTING_RULES.md`.
+- Top-level `README.md`, `indigo_docs/DEVELOPMENT.md`, the handler-queue guidance in `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md`, `indigo_docs/PROPERTIES.md` and `indigo_docs/SERIAL_DEVICE_SIMULATORS.md`.
+- `indigo_mount_simulator.c`, its public header and standalone main, the root driver makefiles, Xcode and Visual Studio project entries, the existing mount-simulator integration test, and the shared simulator test harness.
+
+## Current-state audit
+
+### Architecture and observable behavior
+
+The mount simulator is a hand-written, in-process software driver. It has no `.driver` generator input, protocol transport, vendor SDK, external simulator process, firmware, or physical-device resource. One private-data allocation is shared by two logical devices:
+
+- `Mount Simulator` exposes the mount interface, simulated equatorial position, GOTO and SYNC, park and home positions/actions, RA/DEC manual motion, four slew rates, five tracking-rate selections, custom tracking rate, guide rate, side of pier, epoch, alignment selection and mount state.
+- `Mount Simulator (guider)` exposes the guider interface, four pulse directions on independent RA/DEC axes, and RA/DEC guide rates.
+
+The complete visible connected mount-property inventory is `MOUNT_INFO`, `GEOGRAPHIC_COORDINATES`, `MOUNT_LST_TIME`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PARK_POSITION`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_HOME_POSITION`, `MOUNT_SLEW_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_TRACK_RATE`, `MOUNT_CUSTOM_TRACKING_RATE`, `MOUNT_TRACKING`, `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_HORIZONTAL_COORDINATES`, `MOUNT_ABORT_MOTION`, `MOUNT_ALIGNMENT_MODE`, `MOUNT_EPOCH`, `MOUNT_SIDE_OF_PIER` and `MOUNT_STATE`. The guider adds `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA` and `GUIDER_RATE`. Standard common connection/configuration properties remain framework-owned. No property or item is added or removed by this refactoring, so `indigo_docs/PROPERTIES.md` needs no change.
+
+### Baseline synchronization, lifecycle and risks
+
+Version `0x0300000B` used INDIGO timers for connection dispatch, periodic position updates, manual-motion progress and guider pulse completion. A private `pthread_mutex_t` protected position-related fields between timer callbacks. Timer cancellation and shared private state were distributed across disconnect and shutdown paths. The principal risks were timer/change-callback races, stale completion after disconnect, abort racing a queued operation start, and teardown of the master logical device while guider work could still reference shared state.
+
+The refactored ownership model serializes state mutation through the INDIGO handler queues. The guider is a logical child of the mount, so both use the mount's master queue while callbacks retain their originating logical-device context. Delayed queue handlers own recurring position/manual-motion work and pulse completion. Disconnect cancels the pending handlers for that logical device; shutdown detaches the child before the master. There are no mutexes or INDIGO timers left in the production source.
+
+The driver has no hardware/transport reply path, so malformed replies, open/write/read failures, physical hot-plug, SDK rollback and protocol-command assertions are not applicable. Driver-owned operational failures remain relevant: parked-motion rejection, overlapping requests, abort, disconnect with work pending, connected-shutdown rejection and subsequent recovery.
+
+### Build, packaging and platform scope
+
+The simulator is a stable driver in the root makefile, with dynamic/static/standalone targets through `Makefile.drv`, an Xcode group/targets, and existing Visual Studio project/filter files. The new `REFACTOR.md` is registered in the Xcode mount-simulator group. No generated output exists. The `MIGRATION_STATUS.md` row is updated to `Async Queues = ✅ Yes` and `Retested = ✅ Sim`; its API, Windows, generator, automated-test and Comment fields are preserved.
+
+The available host is macOS 26.6.2 on arm64 (`Darwin 25.6.0`). The repository driver/test build emits universal x86_64/arm64 Mach-O artifacts. Both arm64 native and x86_64 Rosetta executions were tested. Linux and Windows builds/runs, and Windows project loading, are unavailable in this environment and are not claimed.
+
+### Existing tests and concrete gaps
+
+The baseline suite contained 7 public-bus cases: metadata, mount and guider property enumeration/compliance, guider replacement/disconnect/reconnect, and mount manual-motion disconnect. It did not cover GOTO/SYNC completion, overlap, abort-before-start recovery, park/home and parked guards, both manual axes/directions, rate selections, simultaneous guider axes, connected shutdown for each logical device, or quantitative guider timing. Those gaps are addressed below except for non-applicable hardware/transport behavior and unavailable platform execution.
+
+## Baseline evidence
+
+Source baseline: unmodified mount-simulator production and test files from `HEAD` (`ad6240f71`, whose only change after `e94ece0fd` is repository instructions). Environment: macOS 26.6.2, arm64 execution.
+
+The initial command used the existing driver archive and exposed a stale-build mismatch rather than a driver defect:
+
+```text
+make -C indigo_test build/integration/test_mount_simulator && indigo_test/build/integration/test_mount_simulator
+```
+
+Result: failed in `indigo_set_switch` with `property->type == INDIGO_SWITCH_VECTOR`; the test executable had linked a stale archive. This is retained as a setup failure, not counted as baseline behavior.
+
+The baseline source and original test were then compiled separately from `git show HEAD:...` into `/tmp/indigo_mount_simulator_baseline.o`, `/tmp/indigo_mount_simulator_baseline.a` and `/tmp/test_mount_simulator_baseline`, using current repository headers and libraries, and run as:
+
+```text
+/tmp/test_mount_simulator_baseline
+```
+
+Result: all original 7/7 integration scenarios passed on arm64. This reconstruction happened after implementation began because of the workflow deviation noted above.
+
+## Hardware-test decision
+
+No hardware testing will be performed. This driver itself is the software simulator and has no supported hardware model, transport, relay, firmware or external manufacturer protocol. Hardware tests run/passed are therefore explicitly 0/0. Guider measurements below cover request-to-public-property software completion only and do not claim electrical ST4 pulse accuracy.
+
+## Atomic plan and actual results
+
+1. **Audit instructions, architecture, properties, baseline and test gaps — completed with workflow deviation.** The required driver override was discovered after production editing began. The audit was reconstructed from repository sources and the unmodified `HEAD` baseline. The first stale-archive attempt failed; the isolated baseline then passed 7/7.
+2. **Replace timer/mutex position processing with queue-owned state — completed.** `position_handler` now reschedules itself with `indigo_execute_handler_in`; `manual_motion_finalizer` provides delayed manual progress. All timer members/calls and the `pthread_mutex_t` lifecycle/lock calls were removed. Static source scan finds no `pthread`, `mutex`, `indigo_set_timer`, `indigo_cancel_timer` or `indigo_reschedule_timer` reference.
+3. **Queue mount connection and writable operations — completed.** Connection, park, home, GOTO/SYNC, tracking and manual motion have named handlers. Urgent abort cancels pending starts and finalizers, publishes terminal states and permits a fresh GOTO. A new test exposed abort-before-GOTO-start as a race; recognizing the already-published BUSY coordinate property as pending fixed it. A pre-final ASan repeat then exposed nondeterministic RA/DEC completion state from one shared start handler; separate RA and DEC handlers removed the cross-property completion and three normal plus three ASan arm64 repeats passed afterward.
+4. **Queue guider work and establish shared ownership — completed.** RA/DEC starts and finalizers use time-critical queue priority, same-axis replacement cancels stale completion, axes complete independently, and guide-rate changes are queued. Setting `guider->master_device = mount` serializes shared private state; guider-first detach prevents child work after master teardown.
+5. **Extend deterministic public-bus functional coverage — completed.** The suite grew from 7 to 16 named cases. It covers completion and readback, state transitions, overlap/replacement, stale-finalizer suppression, abort and fresh-operation recovery, disconnect/reconnect, both logical-device connection orders and sibling survival, queue cleanup, logical-device shutdown rejection, zero-pulse semantics and the supported property/rate branches. Final normal and ASan validation passed on both built architectures.
+6. **Add the required guider timing measurement — completed.** The separate opt-in `bench_mount_simulator_timing` target measures all four directions at 20, 100 and 500 ms, with one discarded warm-up and four retained samples per combination, under idle polling and simultaneous mount motion. It reports every required signed and absolute statistic without imposing a host-dependent precision assertion on the normal suite. Per benchmark rules it reports incomplete setup/sample acquisition but always exits zero; functional pass/fail remains in the integration suite. The recorded measurement completed; detailed results follow.
+7. **Update integration, migration status and versioning — completed.** `DRIVER_VERSION` increased from `0x0300000B` to `0x0300000C`; normal, ASan and timing make targets are present; `REFACTOR.md` is in the Xcode group. `MIGRATION_STATUS.md` now records async queues and simulator retesting while preserving its Comment. No README, public property documentation or generator output change is required.
+8. **Run strict, sanitizer and available-platform validation — completed.** The universal repository driver build and direct `-Wall -Wextra -Werror` compile passed. Three normal and three driver/test-instrumented ASan arm64 repeats passed, followed by normal and ASan x86_64 Rosetta runs. Shared `libindigo` was not sanitizer-instrumented. Linux and Windows remain unavailable.
+9. **Final diff audit, repeated validation and cleanup — completed.** Static scan confirmed that the production source contains no mutex, pthread or INDIGO timer calls. `plutil -lint indigo.xcodeproj/project.pbxproj` and `git diff --check` passed, no README diff exists, version/project registration were verified, and `make -C indigo_test test-clean` removed generated test and benchmark outputs. Explicit baseline/strict objects in `/tmp` were also removed.
+
+## Scenario-to-test coverage
+
+| Area | Named tests and result |
+| --- | --- |
+| Metadata and property contract | `driver_info_reports_simulator_metadata`, `mount_exposes_expected_properties`, `mount_guider_exposes_expected_properties`, `mount_passes_mount_compliance_checks`, `mount_guider_passes_guider_compliance_checks`: passed |
+| Connection, lifecycle and cleanup | `guider_pending_disconnect_and_replacement`, `mount_manual_motion_disconnect`, `mount_shutdown_is_rejected_while_connected`, `guider_shutdown_is_rejected_while_connected`, `logical_devices_survive_both_connection_orders`: passed; covers each logical device alone, both orders, sibling survival and public INIT/SHUTDOWN |
+| GOTO, overlap, abort and recovery | `mount_goto_runs_on_queue_and_rejects_overlap`, `mount_abort_allows_fresh_goto`: passed with BUSY/progress/terminal state and fresh revisions |
+| Park, home and guards | `mount_park_home_and_parked_guards`: passed for initial parked rejection, unpark, home, park, state lights and parked tracking rejection |
+| Manual motion and rates | `mount_manual_axes_reverse_and_abort`, `mount_supports_all_rate_modes`: passed for both axes/directions, reversal, urgent abort, four slew rates, five track rates, custom rate and guide rate |
+| Guider directions, axes and replacement | `mount_guider_passes_guider_compliance_checks`, `guider_axes_complete_independently`, `guider_pending_disconnect_and_replacement`: passed for all directions, simultaneous axes, independent completion, same-axis replacement, disconnect/reconnect and a fresh pulse |
+| Timing under shared work | `guider_software_timing_under_mount_workload`: passed as a separate measurement scenario under idle polling and active mount motion |
+
+Generic numeric clamping, alignment-model mathematics and generic configuration persistence are framework-owned and intentionally not duplicated. Protocol/SDK errors, physical transport loss, relay masks/edges and hardware timing are not applicable because no such boundary exists. The test observes real production queues and public property revisions; it does not replace queue behavior with synchronous stubs.
+
+## Guider software-completion timing
+
+Measurement endpoint: monotonic time immediately before public guide-property request dispatch through the INDIGO bus to observation of that same public property returning `OK`. This includes bus, queue scheduling and polling latency; it is not the duration of a physical relay output. Idle workload still includes the mount's recurring position polling. Active workload additionally holds simultaneous RA and DEC manual-movement switches while the guider shares the mount master queue.
+
+For each row, `n=4` retained samples after one discarded warm-up. Values are milliseconds. `error = actual - requested`; `%` is mean signed error/requested. With four samples, the nearest-rank p95 and p99 equal the maximum.
+
+| Workload | Direction | Request | Actual mean | Error min | Error mean | Error median | Error p95/p99/max | Stddev | Max abs | Error % |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| idle-polling | EAST | 20 | 23.261 | 1.700 | 3.261 | 3.044 | 5.256 | 1.276 | 5.256 | 16.305 |
+| idle-polling | EAST | 100 | 102.921 | 1.651 | 2.921 | 2.841 | 4.352 | 1.190 | 4.352 | 2.921 |
+| idle-polling | EAST | 500 | 503.495 | 1.595 | 3.495 | 3.590 | 5.206 | 1.595 | 5.206 | 0.699 |
+| idle-polling | WEST | 20 | 24.186 | 1.534 | 4.186 | 4.773 | 5.664 | 1.615 | 5.664 | 20.929 |
+| idle-polling | WEST | 100 | 103.539 | 1.946 | 3.539 | 3.528 | 5.152 | 1.424 | 5.152 | 3.539 |
+| idle-polling | WEST | 500 | 502.968 | 1.148 | 2.968 | 3.111 | 4.500 | 1.435 | 4.500 | 0.594 |
+| idle-polling | NORTH | 20 | 22.602 | 1.695 | 2.602 | 2.311 | 4.091 | 0.928 | 4.091 | 13.010 |
+| idle-polling | NORTH | 100 | 103.122 | 1.270 | 3.122 | 3.442 | 4.335 | 1.285 | 4.335 | 3.122 |
+| idle-polling | NORTH | 500 | 501.840 | 0.857 | 1.840 | 1.897 | 2.710 | 0.770 | 2.710 | 0.368 |
+| idle-polling | SOUTH | 20 | 23.302 | 1.259 | 3.302 | 3.379 | 5.191 | 1.495 | 5.191 | 16.510 |
+| idle-polling | SOUTH | 100 | 104.432 | 0.987 | 4.432 | 5.414 | 5.911 | 2.020 | 5.911 | 4.432 |
+| idle-polling | SOUTH | 500 | 502.076 | 0.663 | 2.076 | 2.013 | 3.617 | 1.057 | 3.617 | 0.415 |
+| mount-motion | EAST | 20 | 23.588 | 1.802 | 3.588 | 3.453 | 5.642 | 1.459 | 5.642 | 17.939 |
+| mount-motion | EAST | 100 | 103.738 | 1.598 | 3.738 | 3.871 | 5.612 | 1.856 | 5.612 | 3.738 |
+| mount-motion | EAST | 500 | 502.964 | 1.500 | 2.964 | 3.019 | 4.319 | 1.072 | 4.319 | 0.593 |
+| mount-motion | WEST | 20 | 22.819 | 0.348 | 2.819 | 2.756 | 5.415 | 2.037 | 5.415 | 14.093 |
+| mount-motion | WEST | 100 | 103.892 | 1.360 | 3.892 | 4.159 | 5.891 | 1.967 | 5.891 | 3.892 |
+| mount-motion | WEST | 500 | 503.155 | 0.806 | 3.155 | 2.940 | 5.935 | 2.354 | 5.935 | 0.631 |
+| mount-motion | NORTH | 20 | 21.982 | 0.366 | 1.982 | 1.782 | 3.999 | 1.300 | 3.999 | 9.910 |
+| mount-motion | NORTH | 100 | 102.385 | 0.769 | 2.385 | 1.716 | 5.338 | 1.752 | 5.338 | 2.385 |
+| mount-motion | NORTH | 500 | 502.603 | 1.094 | 2.603 | 2.431 | 4.457 | 1.397 | 4.457 | 0.521 |
+| mount-motion | SOUTH | 20 | 25.129 | 3.899 | 5.129 | 5.479 | 5.660 | 0.722 | 5.660 | 25.646 |
+| mount-motion | SOUTH | 100 | 101.762 | 0.962 | 1.762 | 1.796 | 2.496 | 0.544 | 2.496 | 1.762 |
+| mount-motion | SOUTH | 500 | 502.898 | 1.829 | 2.898 | 2.450 | 4.863 | 1.216 | 4.863 | 0.580 |
+
+The timing run issued 120 software pulses: 24 discarded warm-ups and 96 retained measurements. Functional direction/completion/cancellation assertions remain in the normal integration suite; timing values are observational and host-dependent.
+
+## Final validation evidence
+
+- Driver build: `make -C indigo_drivers/mount_simulator -f ../../Makefile.drv all` — passed; universal x86_64/arm64 archive, dynamic library and executable produced.
+- Normal arm64 integration: `indigo_test/build/integration/test_mount_simulator` — three consecutive final runs, 48/48 test-case executions passed.
+- AddressSanitizer arm64: `indigo_test/build/integration/test_mount_simulator_asan` — three consecutive final runs, 48/48 passed; test and production driver source instrumented, shared `libindigo` not instrumented.
+- Normal x86_64 under Rosetta: `arch -x86_64 indigo_test/build/integration/test_mount_simulator` — 16/16 passed.
+- AddressSanitizer x86_64 under Rosetta: `arch -x86_64 indigo_test/build/integration/test_mount_simulator_asan` — 16/16 passed with the same instrumentation limit.
+- Timing: `make -C indigo_test build/benchmark/bench_mount_simulator_timing && indigo_test/build/benchmark/bench_mount_simulator_timing` — all 120 requested software pulses completed and produced the table above; the benchmark is measurement-only and is not counted as a pass/fail test.
+- Strict compile: production source compiled for both x86_64 and arm64 with the repository include/define flags plus `-Wall -Wextra -Werror` — passed.
+- Static/integration audit: source scan found zero mutex/pthread/timer references; Xcode project lint and `git diff --check` passed; `MIGRATION_STATUS.md` agrees with the queue/simulator evidence; no README change exists.
+- Linux and Windows compilation/execution were unavailable.
+
+## Final test summary
+
+Final simulated test-case executions run: **128**. Final simulated test-case executions passed: **128**. These totals are 64 normal plus 64 ASan executions across arm64 and x86_64 Rosetta; they exclude the separate 120-pulse measurement benchmark. Hardware tests run: **0**. Hardware tests passed: **0**.
+
+## Code-generator migration continuation (2026-09-13)
+
+This continuation migrates the already queue-based implementation to an `indigo_generator` `.driver` source without changing its public capabilities or reintroducing mutexes or INDIGO timers. The existing `.c`, `.h` and `_main.c` files remain the pre-migration baseline; after migration the `.driver` file is the source of truth and all three generated outputs must reproduce deterministically.
+
+### Fresh baseline and audit
+
+Before any production file was changed for this continuation, the current worktree driver was rebuilt from source with `make -B -C indigo_drivers/mount_simulator -f ../../Makefile.drv all`. The integration executable was also rebuilt with `make -B -C indigo_test build/integration/test_mount_simulator` and executed natively on arm64. The universal x86_64/arm64 driver archive, dynamic library and executable built successfully, and all **16/16** current integration scenarios passed.
+
+The migration must preserve the two-device shared-private-data model, the mount-master/guider-child queue ownership, priority abort and guider operations, recurring position processing, cancellable delayed finalizers, same-axis guider replacement, both logical-device connection orders and child-before-master shutdown. It must preserve the complete property contract listed above. Generated public headers do not retain private device-name macros, so the test will use the stable public device-name strings instead. No property is being added or removed; `indigo_docs/PROPERTIES.md` therefore remains unchanged.
+
+This simulator has no hardware target or external manufacturer protocol. The continuation's hardware decision remains **0/0** tests run/passed. Windows project support is in scope, but Windows compilation and execution are explicitly omitted at the user's request; that limitation will remain visible in the final evidence and migration status.
+
+### Atomic migration plan and results
+
+1. **Read the repository, driver and test instructions; record a fresh baseline — completed.** Required references were reviewed and the fresh generated-migration baseline passed 16/16 integration scenarios before production edits.
+2. **Audit generator expressiveness and map hand-written lifecycle/property behavior to generator-owned semantics — completed.** Virtual multi-device generation supplies shared private data, a guider-to-mount `master_device` link, mount parked guards, coordinate final updates, priority guide dispatch and connection cleanup without a driver mutex. The audit found that virtual/serial shutdown detached the master before its children; with user approval the generator now emits reverse detach order, and the architecture suite has a virtual-plus-serial regression for it. Single-device output is unaffected.
+3. **Create the `.driver` source, raise the version from 12 to 13 and regenerate checked-in `.c`, `.h` and `_main.c` outputs — completed, final reproducibility check pending.** The new definition generated all three outputs and the universal driver built. The first compile exposed that device `code` blocks require a shared `code` section; adding that generator-supported section emitted the queue callbacks without changing the generator. No `MAX_DEVICES` override or mutex was introduced. Version is now `0x0300000D`.
+4. **Adapt and extend automated coverage where generated public/lifecycle semantics require it — completed.** The integration test now uses stable device-name strings instead of removed private header macros. Its first generated-driver run caught premature `OK` publication for park/home caused by the generator's normal handler prologue; explicit BUSY ownership at the start of both long-running handlers restored the contract. The rebuilt suite then passed all **16/16** scenarios. The separate generator architecture regression covers child-before-master shutdown emission.
+5. **Update project integration and migration accounting — completed.** The `.driver` source is registered in the existing Xcode mount-simulator group and as a non-compiled item in the Visual Studio project and filters. The existing Windows solution/server references remain valid. Xcode plist validation and Visual Studio XML validation passed. Only the mount row's Generator column changed from No to Yes in `MIGRATION_STATUS.md`; the Comment is byte-for-byte unchanged.
+6. **Validate the generated implementation — completed.** The universal macOS driver build, native arm64 integration, arm64 AddressSanitizer integration, x86_64 Rosetta integration and x86_64 Rosetta AddressSanitizer integration all passed 16/16. Both arm64 and x86_64 strict `-Wall -Wextra -Werror` syntax checks passed. The generator architecture suite passed 15/15, including the new virtual/serial detach-order case. The timing benchmark completed all 120 requested software pulses; mean completion error was 0.205–11.529 ms across the retained samples and all rows completed. Leak detection is unsupported by the macOS ASan runtime, so the successful sanitizer runs used standard address checking. Windows project support was checked statically but not built or executed as requested; Linux was unavailable.
+7. **Perform the final audit and close this ledger — completed.** A second regeneration produced identical SHA-1 hashes for `.c`, `.h` and `_main.c`. Static scans find no mutex declaration/use, INDIGO timer API or `MAX_DEVICES` override in the `.driver` or generated production source. Version 13, project registration, migration status, Xcode/Visual Studio syntax and `git diff --check` are verified. `test-clean`, the mount driver's clean target and removal of the transient implicit generator executable removed the generated test/build artifacts.
+
+### Generator-migration validation evidence
+
+- Fresh pre-migration baseline: universal build passed; native arm64 integration **16/16 passed**.
+- Initial generated integration: **15/16 passed**; `mount_park_home_and_parked_guards` exposed premature generated OK publication for asynchronous home/park and drove the explicit BUSY-state fix.
+- Corrected native arm64 integration: **16/16 passed**.
+- AddressSanitizer arm64 integration: **16/16 passed**; generated driver and test instrumented, shared `libindigo` not instrumented.
+- Normal x86_64 Rosetta integration: **16/16 passed**.
+- AddressSanitizer x86_64 Rosetta integration: **16/16 passed**, with the same shared-library instrumentation limitation.
+- Generator architecture suite: **15/15 passed**, including C11/C++11 transport generation and the new child-before-master detach test for both virtual and serial drivers.
+- Guider timing: **120/120 software pulses completed** under idle polling and concurrent mount motion; this is measurement-only, not a functional pass/fail suite.
+- Hardware: **0/0** run/passed; not applicable to this in-process simulator.
+
+### Generator-migration final totals
+
+The continuation ran **96** mount-simulator test-case executions and passed **95**. The single failure was the recorded pre-fix generated run; after the BUSY-state correction, final native/ASan arm64 and native/ASan x86_64 validation passed **64/64**. The separate generator architecture suite passed **15/15**. The measurement benchmark completed **120/120** software pulses and is excluded from pass/fail totals. Hardware tests run: **0**. Hardware tests passed: **0**.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Change requests refused by a busy guard in `indigo_mount_simulator.driver` are now declared with the generator's `reject_change` block for `MOUNT_ABORT_MOTION`. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values.
+
+The parked-mount guard set `INDIGO_ALERT_STATE` and published the message inline but never marked the items, so the refused switch stayed visible in the client.
+
+Covered by the extended `mount_park_home_and_parked_guards` case in `indigo_test/integration/test_mount_simulator.c`.
+
+```sh
+cd indigo_test && ./build/integration/test_mount_simulator
+```
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. The
+behaviour is unchanged; the driver now uses the same pattern as every other INDIGO driver that
+exposes a guider, instead of defeating the guard by lying about the property state.
+
+`guider_pending_disconnect_and_replacement` gained a duration-measuring case: a 2000 ms pulse
+replaced after 500 ms by a 600 ms pulse in the same direction has to finish after about 1100 ms,
+not 2000 ms. The existing reversing-replacement assertions were kept.
+
+## Regenerated for the shared refusal and connect macros (2026-09-21)
+
+No behaviour change and no version bump. `indigo_generator` stopped emitting the eight-line refusal
+block and the five-line CONNECTION admission block inline and now emits `INDIGO_REJECT_CHANGE_IF()`
+and `INDIGO_PROCESS_CONNECT()` / `INDIGO_PROCESS_QUEUED_CONNECT()` instead, so this driver was
+regenerated along with the other 114 generator inputs. The macros expand to exactly the statements
+that were written out before; for a sample of four drivers the preprocessed translation unit is
+byte-identical apart from the new `indigo_reject_change()` declaration and shifted `assert()` line
+numbers. Background and the defect that motivated the refusal macro are in `indigo_drivers/REVIEW.md`
+(DRV-213, DRV-214) and `indigo_libs/REVIEW.md` (LIB-015, LIB-016).
+
+Verification: the complete simulator suite was re-run after regeneration —
+`indigo_test/build/integration/test_mount_simulator`, macOS arm64, 16/16 passed on 2026-09-21 12:42.
+
+## Client-detach motion release (2026-09-26)
+
+Test-only change. `indigo_test/integration/test_detach_abort.c` exercises the generated
+`indigo_mount_record_motion_client()` / `indigo_mount_commit_motion_client()` calls of this driver
+with in-process owners that detach (`simulator_*`, 14 cases, and `agent_owner_detach_releases_motion`
+through the Mount Agent) and, in the opt-in `--network` mode (`make -C indigo_test
+test-detach-abort-network`), with TCP peers of the in-process server (`network_*`, 4 cases on this
+driver). Scenarios: release on orderly detach, TCP close, connection reset and a cut connection; no
+release after an own release, after `MOUNT_ABORT_MOTION` or a release by another client; takeover by
+another client; disconnect and driver shutdown leave no entry; a finite goto keeps running; the
+parked-mount guard refusing a request with and without a registered motion; both axes; direction
+change; detach before the commit; repeated detach/close races; a mount locked by an access token.
+Registrations are proven by the bus log markers and a device-queue fence, not by sleeps.
+
+## Camera simulator integration and moving guide pulses (2026-09-26)
+
+Versions 19 to 21. The mount publishes its physical (raw) pointing, epoch, site, side of pier and whether it follows guide pulses through `indigo_set_simulated_mount_state()` in `libindigo`. It does so after every position update, manual-motion step, SYNC and guide move, and withdraws the state on disconnect. `CCD Guider Simulator` renders its star field from this state; see `indigo_drivers/ccd_simulator/REFACTOR.md`.
+
+Guide pulses of `Mount Simulator (guider)` previously only completed the property and did not move the mount. They now move the raw position at `GUIDER_RATE`/`GUIDER_DEC_RATE` % of sidereal. East and north increase RA and Dec. A pulse replaced mid-flight contributes only the time it ran. A parked, parking or slewing mount ignores pulses. Pulses of a camera simulator's guider arrive through `indigo_simulated_mount_guide()`: the shared state shows them at once, and the mount takes them over on its next position update.
+
+Manual motion used the opposite RA direction: `MOUNT_MOTION_WEST` raised the RA, although the sky's RA grows towards the east. Version 21 lowers the RA on west and raises it on east, the same directions as the guide pulses. `mount_manual_axes_reverse_and_abort` now asserts that east/north raise RA/Dec and west/south lower them again; no other suite depends on the direction (`test_detach_abort` uses the items only for motion ownership and passed).
+
+Regression test in `integration/test_mount_simulator.c`: `mount_shares_pointing_and_follows_guide_pulses`. It covers the published pointing after SYNC, epoch and site; a camera-guider move being visible at once and then taken over by `MOUNT_EQUATORIAL_COORDINATES`; 2 s north and west pulses within 10 %; a 2 s north pulse replaced after 500 ms by a 500 ms south pulse cancelling out; a parking mount not being guidable; and withdrawal on disconnect. The new case adds two more of the harness's existing "CONNECTION was updated without being defined" notes, the same ones `logical_devices_survive_both_connection_orders` already prints when it switches between the two logical devices.
+
+Validation on macOS arm64: `test_mount_simulator` 17/17, `test_mount_simulator_asan` and `test_detach_abort` passed. In the repeated runs, `mount_goto_runs_on_queue_and_rejects_overlap` failed once (1 of about 50 runs, line 487: the GOTO did not end at RA 1.4). It was not reproduced in 33 further runs, including 18 under parallel load, nor in 30 runs of the unmodified test and driver. The GOTO path does not move through the new code (a slewing mount is not guidable, so the shared state equals the raw position). The case's own window, a second GOTO that must arrive during the first one's roughly 0.4 s slew, remains the suspected cause. The end-to-end camera case is in the CCD simulator suite. Linux and Windows were not run.
+
+Final test summary for this change: simulator suite 17 run / 17 passed (plus the ASan run); hardware 0 run / 0 passed.
+
+## Switch and number targets (2026-09-26)
+
+Version 22, findings TGT-001 and TGT-B04 (mount_simulator part) of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+
+- TGT-001: `position_handler` switches `MOUNT_TRACKING` on at the end of a slew when it reads OFF. A tracking request copied while the handler was queued was overwritten when that step ran first (it is an `INDIGO_TASK_PRIORITY_TIME` task, the tracking handler a normal one), so a client's OFF ended as ON, reported OK. The `MOUNT_TRACKING` handler now reads the request with `indigo_get_switch_target()` and applies it with `indigo_apply_switch_targets()`; the simulated mount always accepts it, so there is no ALERT path. The park/home writers in `position_handler` cannot meet a pending request (the parked guard refuses it once PARKED is copied) and were left unchanged.
+- TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. When the request was copied while the previous pulse's finalizer ran, the finalizer zeroed value and target and the new handler read 0 and dropped the pulse. The handler is queued with `INDIGO_TASK_PRIORITY_TIME` and no delay, so it already runs ahead of a finalizer that is only due; the window is a copy on the bus thread while the finalizer runs. The finalizers now clear only the values; the handlers first restore the values from the targets, which the `on_change_request` block and disconnect still clear. After a pulse the target keeps the last requested duration.
+
+Regression tests in `integration/test_mount_simulator.c`:
+
+- `mount_tracking_request_survives_slew_end`: a one-step GOTO with tracking off; when the step reaching the target publishes, a gate handler holds the device queue, tracking OFF is requested, the slew end comes due and runs first. Before the fix tracking ended ON (fails at the OFF assertion), now OFF with the tracking light idle.
+- `guider_pulse_survives_previous_finalizer`: the 300 ms pulse of the opposite direction is requested from the client update of the mount movement that the 100 ms pulse's finalizer publishes before it clears the pulse, on both axes. Before the fix no BUSY followed the finalizer's OK ("the pulse requested while the previous one ended was dropped"), now the pulse runs about 300 ms.
+
+Both cases failed against the version 21 driver and pass with version 22. `test_mount_simulator` 19/19 on Linux x64. `test_mount_simulator_asan` reports a LeakSanitizer leak from `indigo_init_light_property` (one light property per driver lifecycle) that the unchanged version 21 test and driver report as well; not addressed here.
+
+Final test summary for this change: simulator suite 19 run / 19 passed; hardware 0 run / 0 passed.
+
+## Controller sync keeps the pointing (2026-09-28)
+
+Version 24. A SYNC in the CONTROLLER alignment mode overwrote the raw coordinates, which are also the physical pointing the mount shares with camera simulators, so a sync moved the telescope. A real controller only changes the coordinates it reports. The driver now keeps the difference between the physical pointing and the controller's raw coordinates (`sync_ra_offset`, `sync_dec_offset`); a sync changes the raw coordinates and the offset, `publish_simulated_mount_state()` shares raw plus offset, and a guide pulse taken over from a camera guider moves the raw coordinates by the same amount.
+
+Found by `test_agent_astrometry_solver`: a sync to wrong coordinates, meant as a pointing error for the Astrometry agent to find, moved the rendered field instead.
+
+Tests: `mount_shares_pointing_and_follows_guide_pulses` now slews to 3 h/30°, syncs to 3.2 h/31° and checks the shared pointing stays at 3 h/30° while the reported coordinates follow the sync; `guider_pulse_survives_previous_finalizer` and `test_ccd_simulator` leave the park position by a GOTO instead of a sync.
+
+Validation on macOS arm64: `test_mount_simulator`, `test_ccd_simulator`, `test_agent_imager_guider_mount` 10/10, `test_agent_scripting_sequencer` 26/26 and `test_detach_abort` passed. Hardware 0 run / 0 passed.

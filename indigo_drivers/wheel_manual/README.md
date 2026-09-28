@@ -21,3 +21,7 @@ INDIGO Astronomy open-source license.
 indigo_server indigo_wheel_manual
 
 ## Status: Stable
+
+## Testing
+
+2026-09-27 22:41 3.0.0.7 mac arm64 simulator 2/2 OK

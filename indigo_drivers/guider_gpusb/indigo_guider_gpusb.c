@@ -18,15 +18,12 @@
 
 // This file generated from indigo_guider_gpusb.driver
 
-// TODO: Add libgpusb for windows
-
 #pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 
 //+ include
 
@@ -43,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_guider_gpusb"
 #define DRIVER_LABEL         "Shoestring GPUSB guider"
 #define GUIDER_DEVICE_NAME   "%s"
@@ -57,10 +54,14 @@ typedef struct {
 	//+ data
 	libgpusb_device_context *device_context;
 	unsigned short relay_mask;
+	bool status_reliable;
 	//- data
 } gpusb_private_data;
 
 #pragma mark - Low level code
+
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //+ code
 
@@ -68,31 +69,54 @@ static bool gpusb_match(libusb_device *dev, const char **name) {
 	return libgpusb_guider(dev, name);
 }
 
+// libgpusb_write() hands hid_write() a single byte and then compares the result with two,
+// so the shipped library reports failure for every successful write: against a real GPUSB
+// Guider the HID layer answers "Success" while libgpusb_set() returns false, on macOS
+// arm64 and x86_64 alike. Trusting that return value alone puts every guide pulse into
+// ALERT although the relay was closed, which is how the adapter behaved after the 3.0
+// refactoring; the pre-3.0 driver never looked at the value. gpusb_open() therefore asks
+// the library once whether it can report a success at all, and gpusb_set() reports a
+// failure only for a build that can. A fixed library re-enables the error reporting here
+// with no further change.
+static bool gpusb_set(indigo_device *device, int mask) {
+	bool result = libgpusb_set(PRIVATE_DATA->device_context, mask);
+	return result || !PRIVATE_DATA->status_reliable;
+}
+
 static bool gpusb_open(indigo_device *device) {
-	return libgpusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
+	if (!libgpusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context)) {
+		return false;
+	}
+	// libgpusb_open() has just released every relay, so this repeats a write the adapter
+	// has already taken and only records whether the library can report its result.
+	PRIVATE_DATA->status_reliable = libgpusb_set(PRIVATE_DATA->device_context, 0);
+	return true;
 }
 
 static void gpusb_close(indigo_device *device) {
 	libgpusb_set(PRIVATE_DATA->device_context, 0);
 	libgpusb_close(PRIVATE_DATA->device_context);
+	// The relays are open again, so the mask a pulse extends must not survive the session;
+	// otherwise the first pulse after a reconnect closes the relay of the interrupted one.
+	PRIVATE_DATA->relay_mask = 0;
 }
 
 static void gpusb_debug(const char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libgpusb: %s\n", message);
 }
 
-static void guider_guide_dec_finish_handler(indigo_device *device) {
+static void guider_guide_dec_finalizer(indigo_device *device) {
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+	bool ok = gpusb_set(device, PRIVATE_DATA->relay_mask);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
-static void guider_guide_ra_finish_handler(indigo_device *device) {
-	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+static void guider_guide_ra_finalizer(indigo_device *device) {
+	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	bool ok = gpusb_set(device, PRIVATE_DATA->relay_mask);
+	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
 
 //- code
@@ -113,6 +137,16 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_GUIDE_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		gpusb_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -121,47 +155,57 @@ static void guider_connection_handler(indigo_device *device) {
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
-	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
+	int requested_mask = PRIVATE_DATA->relay_mask & ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
-		PRIVATE_DATA->relay_mask |= GPUSB_DEC_NORTH;
+		requested_mask |= GPUSB_DEC_NORTH;
 	} else {
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
-			PRIVATE_DATA->relay_mask |= GPUSB_DEC_SOUTH;
+			requested_mask |= GPUSB_DEC_SOUTH;
 		}
 	}
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_dec_finish_handler);
+	if (!gpusb_set(device, requested_mask)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		PRIVATE_DATA->relay_mask = requested_mask;
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+		if (duration > 0) {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finalizer);
+		} else {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 	}
 	//- guider.GUIDER_GUIDE_DEC.on_change
-	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
-	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
+	int requested_mask = PRIVATE_DATA->relay_mask & ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
-		PRIVATE_DATA->relay_mask |= GPUSB_RA_EAST;
+		requested_mask |= GPUSB_RA_EAST;
 	} else {
 		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
-			PRIVATE_DATA->relay_mask |= GPUSB_RA_WEST;
+			requested_mask |= GPUSB_RA_WEST;
 		}
 	}
-	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-	if (duration > 0) {
-		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_ra_finish_handler);
+	if (!gpusb_set(device, requested_mask)) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else {
+		PRIVATE_DATA->relay_mask = requested_mask;
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+		if (duration > 0) {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finalizer);
+		} else {
+			INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 	}
 	//- guider.GUIDER_GUIDE_RA.on_change
-	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (guider)
@@ -184,17 +228,21 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, guider_connection_handler);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, guider_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		//+ guider.GUIDER_GUIDE_DEC.on_change_request
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_DEC.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		//+ guider.GUIDER_GUIDE_RA.on_change_request
+		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
+		//- guider.GUIDER_GUIDE_RA.on_change_request
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
@@ -215,60 +263,94 @@ static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(GUIDER_DEVICE_N
 
 #pragma mark - Hot-plug code
 
-static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *devices[MAX_DEVICES];
 
-static void process_plug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static indigo_result verify_devices_disconnected(void) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		VERIFY_NOT_CONNECTED(devices[i]);
+	}
+	return INDIGO_OK;
+}
+
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
+	bool dev_ref_transferred = false;
+	gpusb_private_data *private_data = NULL;
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		if (devices[i] && ((gpusb_private_data *)devices[i]->private_data)->usbdev == dev) {
+			libusb_unref_device(dev);
+			return;
+		}
+	}
 	const char *name;
 	if (gpusb_match(dev, &name)) {
-		gpusb_private_data *private_data = indigo_safe_malloc(sizeof(gpusb_private_data));
+		private_data = (gpusb_private_data *)indigo_safe_malloc(sizeof(gpusb_private_data));
 		private_data->usbdev = dev;
-		libusb_ref_device(dev);
-			indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			indigo_device *guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
 			snprintf(guider->name, INDIGO_NAME_SIZE, "%s", name);
+			bool guider_attached = false;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, devices[j] = guider);
+					devices[j] = guider;
+					if (indigo_attach_device(guider) == INDIGO_OK) {
+						dev_ref_transferred = true;
+						guider_attached = true;
+					} else {
+						devices[j] = NULL;
+					}
 					break;
 				}
 			}
+			if (!guider_attached) {
+				indigo_safe_free(guider);
+				indigo_safe_free(private_data);
+				libusb_unref_device(dev);
+				return;
+			}
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	if (!dev_ref_transferred) {
+		indigo_safe_free(private_data);
+		libusb_unref_device(dev);
+	}
 }
 
-static void process_unplug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
 	gpusb_private_data *private_data = NULL;
-	for (int j = 0; j < MAX_DEVICES; j++) {
+	for (int j = MAX_DEVICES - 1; j >= 0; j--) {
 		if (devices[j] != NULL) {
 			indigo_device *device = devices[j];
 			if (PRIVATE_DATA->usbdev == dev) {
 				private_data = PRIVATE_DATA;
 				indigo_detach_device(device);
-				free(device);
+				indigo_safe_free(device);
 				devices[j] = NULL;
 			}
 		}
 	}
 	if (private_data != NULL) {
 		libusb_unref_device(dev);
-		free(private_data);
+		indigo_safe_free(private_data);
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	libusb_unref_device(dev);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_ASYNC(process_plug_event, dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			process_unplug_event(dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
 }
@@ -280,14 +362,14 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_guider_gpusb(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			//+ on_init
 			libgpusb_debug = &gpusb_debug;
@@ -295,26 +377,45 @@ indigo_result indigo_guider_gpusb(indigo_driver_action action, indigo_driver_inf
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = NULL;
 			}
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, GPUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, GPUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				VERIFY_NOT_CONNECTED(devices[i]);
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			indigo_queue_drain(driver_queue);
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] != NULL) {
 					indigo_device *device = devices[i];
-					hotplug_callback(NULL, PRIVATE_DATA->usbdev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+					process_unplug_event_handler(NULL, libusb_ref_device(PRIVATE_DATA->usbdev));
 				}
 			}
+			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

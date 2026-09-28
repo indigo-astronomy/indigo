@@ -1,9 +1,9 @@
-// Copyright (C) 2025 Rumen G. Bogdanovski
+// Copyright (C) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,18 +16,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-
-/** INDIGO ASI rotator driver
- \file indigo_rotator_asi.h
- */
+// This file generated from indigo_rotator_asi.driver
 
 #ifndef rotator_asi_h
 #define rotator_asi_h
 
 #include <indigo/indigo_driver.h>
-#include <indigo/indigo_rotator_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -43,13 +37,10 @@
 extern "C" {
 #endif
 
-/** Register ASI rotator hot-plug callback
- */
-
 INDIGO_EXTERN indigo_result indigo_rotator_asi(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* rotator_asi_h */
+#endif

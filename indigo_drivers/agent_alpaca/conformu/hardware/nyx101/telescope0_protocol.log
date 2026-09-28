@@ -1,0 +1,410 @@
+00:48:07.718 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:48:07.719                                     
+00:48:07.719 Test Telescope device:  - localhost:7683 through URL: http://localhost:7683 
+00:48:07.719                                     
+00:48:07.723 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:48:07.723                                     
+00:48:07.723 Connecting to device...             
+00:48:09.002                                     
+00:48:09.002 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:48:09.273                                     
+00:48:09.273 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:48:09.273                                     
+00:48:10.557 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:48:10.557                                     
+00:48:10.564 Device exposes interface version 3  
+00:48:39.276 PUT Tracking                        INFO     True - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.277 PUT AbortSlew                       INFO     Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.278 PUT AbortSlew                       INFO     Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.278 PUT AbortSlew                       INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.279 PUT AbortSlew                       INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.279 PUT AbortSlew                       INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.279 PUT AbortSlew                       INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.280 PUT AbortSlew                       INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.280 PUT AbortSlew                       INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.281 PUT AbortSlew                       INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.281 PUT AbortSlew                       INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.281 PUT AbortSlew                       INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.281 PUT AbortSlew                       INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.300 PUT PulseGuide                      INFO     Parameters Direction and Duration (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.301 PUT PulseGuide                      INFO     Parameters Direction and Duration (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.303 PUT PulseGuide                      INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.303 PUT PulseGuide                      INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.303 PUT PulseGuide                      INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.304 PUT PulseGuide                      INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.304 PUT PulseGuide                      INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.304 PUT PulseGuide                      INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.304 PUT PulseGuide                      INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.305 PUT PulseGuide                      INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.305 PUT PulseGuide                      INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.305 PUT PulseGuide                      INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.306 PUT SlewToCoordinatesAsync          INFO     Parameters RightAscension and Declination (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.307 PUT SlewToCoordinatesAsync          INFO     Parameters RightAscension and Declination (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.309 PUT SlewToCoordinatesAsync          INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.310 PUT SlewToCoordinatesAsync          INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.311 PUT SlewToCoordinatesAsync          INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.311 PUT SlewToCoordinatesAsync          INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.311 PUT SlewToCoordinatesAsync          INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.311 PUT SlewToCoordinatesAsync          INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.312 PUT SlewToCoordinatesAsync          INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.312 PUT SlewToCoordinatesAsync          INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.312 PUT SlewToCoordinatesAsync          INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.312 PUT SlewToCoordinatesAsync          INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.313 PUT SlewToCoordinates               INFO     Parameters RightAscension and Declination (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.314 PUT SlewToCoordinates               INFO     Parameters RightAscension and Declination (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.316 PUT SlewToCoordinates               INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.316 PUT SlewToCoordinates               INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.317 PUT SlewToCoordinates               INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.317 PUT SlewToCoordinates               INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.317 PUT SlewToCoordinates               INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.317 PUT SlewToCoordinates               INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.318 PUT SlewToCoordinates               INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.318 PUT SlewToCoordinates               INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.318 PUT SlewToCoordinates               INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.318 PUT SlewToCoordinates               INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.320 PUT SlewToTargetAsync               INFO     Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.320 PUT SlewToTargetAsync               INFO     Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.321 PUT SlewToTargetAsync               INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.321 PUT SlewToTargetAsync               INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.322 PUT SlewToTargetAsync               INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.322 PUT SlewToTargetAsync               INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.322 PUT SlewToTargetAsync               INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.322 PUT SlewToTargetAsync               INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.323 PUT SlewToTargetAsync               INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.323 PUT SlewToTargetAsync               INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.323 PUT SlewToTargetAsync               INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.323 PUT SlewToTargetAsync               INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.324 PUT SlewToTarget                    INFO     Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.324 PUT SlewToTarget                    INFO     Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.325 PUT SlewToTarget                    INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.325 PUT SlewToTarget                    INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.326 PUT SlewToTarget                    INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.326 PUT SlewToTarget                    INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.326 PUT SlewToTarget                    INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.327 PUT SlewToTarget                    INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.327 PUT SlewToTarget                    INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.327 PUT SlewToTarget                    INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.327 PUT SlewToTarget                    INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.328 PUT SlewToTarget                    INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.329 PUT SyncToCoordinates               INFO     Parameters RightAscension and Declination (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.329 PUT SyncToCoordinates               INFO     Parameters RightAscension and Declination (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.330 PUT SyncToCoordinates               INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.330 PUT SyncToCoordinates               INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.330 PUT SyncToCoordinates               INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.331 PUT SyncToCoordinates               INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.331 PUT SyncToCoordinates               INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.331 PUT SyncToCoordinates               INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.331 PUT SyncToCoordinates               INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.332 PUT SyncToCoordinates               INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.332 PUT SyncToCoordinates               INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.332 PUT SyncToCoordinates               INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.332 PUT SyncToTarget                    INFO     Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.333 PUT SyncToTarget                    INFO     Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.333 PUT SyncToTarget                    INFO     Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.333 PUT SyncToTarget                    INFO     Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.333 PUT SyncToTarget                    INFO     ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.333 PUT SyncToTarget                    INFO     ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.334 PUT SyncToTarget                    INFO     ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.334 PUT SyncToTarget                    INFO     ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.334 PUT SyncToTarget                    INFO     ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.334 PUT SyncToTarget                    INFO     ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.335 PUT SyncToTarget                    INFO     ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.335 PUT SyncToTarget                    INFO     ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error:
+00:48:39.348                                     
+00:48:39.460                                     
+00:48:39.460 Successfully disconnected from device. 
+00:48:39.460                                     
+00:48:39.460 Found 0 errors, 0 issues and 97 information messages. 
+00:48:39.460                                     
+00:48:39.460 Information Message Summary         
+00:48:39.460 PUT Tracking ==> True - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a ValueNotSet error (0x00000402) for client transaction: 67890, server transaction: 856. Error message: Value not set
+ 
+00:48:39.460 PUT AbortSlew ==> Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 857. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 858. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 859. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 860. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 861. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 862. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 863. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 864. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 865. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 866. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 867. Error message: Invalid while parked
+ 
+00:48:39.460 PUT AbortSlew ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 868. Error message: Invalid while parked
+ 
+00:48:39.460 PUT PulseGuide ==> Parameters Direction and Duration (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 923. Error message: Invalid while parked
+ 
+00:48:39.460 PUT PulseGuide ==> Parameters Direction and Duration (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 925. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 929. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 931. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 933. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 934. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 935. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 936. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 937. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 938. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 939. Error message: Invalid while parked
+ 
+00:48:39.461 PUT PulseGuide ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 940. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> Parameters RightAscension and Declination (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 944. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> Parameters RightAscension and Declination (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 946. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 950. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 952. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 954. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 955. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 956. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 957. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 958. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 959. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 960. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinatesAsync ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 961. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> Parameters RightAscension and Declination (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 965. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> Parameters RightAscension and Declination (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 967. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 971. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 973. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 975. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 976. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 977. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 978. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 979. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 980. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 981. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToCoordinates ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 982. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToTargetAsync ==> Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 988. Error message: Invalid while parked
+ 
+00:48:39.461 PUT SlewToTargetAsync ==> Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 990. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 992. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 994. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 996. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 997. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 998. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 999. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1000. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1001. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1002. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTargetAsync ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1003. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1005. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1007. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1009. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1011. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1013. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1014. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1015. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1016. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1017. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1018. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1019. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SlewToTarget ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1020. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> Parameters RightAscension and Declination (Good casing) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1024. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> Parameters RightAscension and Declination (Good casing with extra parameter) - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1025. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1026. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1027. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1028. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1029. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1030. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1031. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1032. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1033. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1034. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToCoordinates ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1035. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToTarget ==> Good ID name casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1036. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToTarget ==> Good ID casing + extra parameter - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1037. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToTarget ==> Bad ClientID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1038. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToTarget ==> Bad ClientTransactionID casing - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1039. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToTarget ==> ClientID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1040. Error message: Invalid while parked
+ 
+00:48:39.462 PUT SyncToTarget ==> ClientID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1041. Error message: Invalid while parked
+ 
+00:48:39.463 PUT SyncToTarget ==> ClientID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1042. Error message: Invalid while parked
+ 
+00:48:39.463 PUT SyncToTarget ==> ClientID is not numeric - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 67890, server transaction: 1043. Error message: Invalid while parked
+ 
+00:48:39.463 PUT SyncToTarget ==> ClientTransactionID is empty - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1044. Error message: Invalid while parked
+ 
+00:48:39.463 PUT SyncToTarget ==> ClientTransactionID is white space - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1045. Error message: Invalid while parked
+ 
+00:48:39.463 PUT SyncToTarget ==> ClientTransactionID is negative - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1046. Error message: Invalid while parked
+ 
+00:48:39.463 PUT SyncToTarget ==> ClientTransactionID is a string - Received HTTP status 200 (OK) as expected but the device reported an ASCOM error: 
+  Response: Device returned a InvalidWhileParked error (0x00000408) for client transaction: 0, server transaction: 1047. Error message: Invalid while parked
+ 

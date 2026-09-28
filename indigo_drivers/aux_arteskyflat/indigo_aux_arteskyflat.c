@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_aux_arteskyflat"
 #define DRIVER_LABEL         "Artesky Flat Box USB"
 #define AUX_DEVICE_NAME      "Artesky Flat Box"
@@ -56,6 +55,7 @@ typedef struct {
 	indigo_property *aux_light_intensity_property;
 	//+ data
 	char response[16];
+	bool light_on;
 	//- data
 } arteskyflat_private_data;
 
@@ -63,7 +63,7 @@ typedef struct {
 
 //+ code
 
-static bool arteskyflat_command(indigo_device *device, char *command, ...) {
+static bool arteskyflat_command(indigo_device *device, char operation, int expected_value, const char *command, ...) {
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
 		va_list args;
@@ -71,10 +71,18 @@ static bool arteskyflat_command(indigo_device *device, char *command, ...) {
 		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 		va_end(args);
 		if (result > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
 		}
 	}
-	return result > 0;
+	if (result != 8 || PRIVATE_DATA->response[7] != '\n' || (long)strlen(PRIVATE_DATA->response) != result) {
+		return false;
+	}
+	PRIVATE_DATA->response[7] = '\0';
+	if (PRIVATE_DATA->response[0] != '*' || PRIVATE_DATA->response[1] != operation || PRIVATE_DATA->response[2] < '0' || PRIVATE_DATA->response[2] > '9' || PRIVATE_DATA->response[3] < '0' || PRIVATE_DATA->response[3] > '9' || PRIVATE_DATA->response[4] < '0' || PRIVATE_DATA->response[4] > '9' || PRIVATE_DATA->response[5] < '0' || PRIVATE_DATA->response[5] > '9' || PRIVATE_DATA->response[6] < '0' || PRIVATE_DATA->response[6] > '9') {
+		return false;
+	}
+	int response_value = (PRIVATE_DATA->response[4] - '0') * 100 + (PRIVATE_DATA->response[5] - '0') * 10 + PRIVATE_DATA->response[6] - '0';
+	return response_value == expected_value;
 }
 
 static bool arteskyflat_open(indigo_device *device) {
@@ -106,6 +114,16 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_LIGHT_SWITCH_PROPERTY,
+			AUX_LIGHT_INTENSITY_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		arteskyflat_close(device);
@@ -118,8 +136,13 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_light_switch_handler(indigo_device *device) {
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_SWITCH.on_change
-	if (!arteskyflat_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000\n" : ">D000\n") || PRIVATE_DATA->response[0] != '*') {
+	bool requested_on = AUX_LIGHT_SWITCH_ON_ITEM->sw.value;
+	char operation = requested_on ? 'L' : 'D';
+	if (!arteskyflat_command(device, operation, 0, requested_on ? ">L000\n" : ">D000\n")) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, PRIVATE_DATA->light_on ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
+	} else {
+		PRIVATE_DATA->light_on = requested_on;
 	}
 	//- aux.AUX_LIGHT_SWITCH.on_change
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
@@ -128,8 +151,11 @@ static void aux_light_switch_handler(indigo_device *device) {
 static void aux_light_intensity_handler(indigo_device *device) {
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_INTENSITY.on_change
-	if (!arteskyflat_command(device, ">B%03d\n", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100)) || PRIVATE_DATA->response[0] != '*') {
+	int brightness = (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.target / 100);
+	if (!arteskyflat_command(device, 'B', brightness, ">B%03d\n", brightness)) {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target;
 	}
 	//- aux.AUX_LIGHT_INTENSITY.on_change
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
@@ -173,17 +199,13 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, aux_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(aux_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_SWITCH_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_SWITCH_PROPERTY, aux_light_switch_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_INTENSITY_PROPERTY, aux_light_intensity_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(AUX_LIGHT_INTENSITY_PROPERTY, aux_light_intensity_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -222,28 +244,30 @@ indigo_result indigo_aux_arteskyflat(indigo_driver_action action, indigo_driver_
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(arteskyflat_private_data));
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			private_data = (arteskyflat_private_data *)indigo_safe_malloc(sizeof(arteskyflat_private_data));
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);
-				free(aux);
+				indigo_safe_free(aux);
 				aux = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

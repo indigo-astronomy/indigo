@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -134,6 +134,7 @@ typedef struct {
 	char call_back_url[INDIGO_NAME_SIZE];
 	indigo_device *device;
 	indigo_client *client;
+	indigo_result (*change_property)(indigo_client *, indigo_property *);
 	int count;
 	indigo_property **properties;
 	pthread_mutex_t mutex;
@@ -293,7 +294,7 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG_STATE) {
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -334,7 +335,7 @@ static void *new_number_vector_handler(parser_state state, parser_context *conte
 			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG_STATE) {
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -376,7 +377,7 @@ static void *new_switch_vector_handler(parser_state state, parser_context *conte
 		}
 		return new_switch_vector_handler;
 	} else if (state == END_TAG_STATE) {
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -425,7 +426,7 @@ static void *new_blob_vector_handler(parser_state state, parser_context *context
 			}
 		}
 		property->perm = INDIGO_WO_PERM;
-		indigo_change_property(client, property);
+		context->change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -464,6 +465,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 				for (int j = 0; j < property->count; j++) {
 					indigo_item *property_item = &property->items[j];
 					if (!strcmp(property_item->name, other_item->name)) {
+						property_item->do_update = true;
 						switch (property->type) {
 							case INDIGO_TEXT_VECTOR:
 								indigo_set_text_item_value(property_item, indigo_get_text_item_value(other_item));
@@ -1340,6 +1342,10 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 }
 
 void indigo_xml_parse(indigo_device *device, indigo_client *client) {
+	indigo_xml_parse_with_callback(device, client, NULL);
+}
+
+void indigo_xml_parse_with_callback(indigo_device *device, indigo_client *client, indigo_result (*change_property)(indigo_client *, indigo_property *)) {
 	char *buffer = indigo_safe_malloc(BUFFER_SIZE + 3); /* BUFFER_SIZE % 4 == 0 and keep always +3 for base64 alignmet */
 	char *value_buffer = indigo_safe_malloc(BUFFER_SIZE + 1); /* +1 to accomodate \0" */
 	char *name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
@@ -1366,6 +1372,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	parser_context *context = indigo_safe_malloc(sizeof(parser_context));
 	context->client = client;
 	context->device = device;
+	context->change_property = change_property ? change_property : indigo_change_property;
 	pthread_mutex_init(&context->mutex, NULL);
 	if (device != NULL) {
 		context->count = 32;
@@ -1768,14 +1775,20 @@ exit_loop:
 const char *indigo_xml_escape_b(int index, const char *string) {
 	if (strpbrk(string, "&<>\"'")) {
 		static INDIGO_THREAD_LOCAL char escape_buffer[ESCAPE_BUFFER_COUNT][ESCAPE_BUFFER_SIZE];
-		static INDIGO_THREAD_LOCAL char long_escape_buffer[INDIGO_BUFFER_SIZE];
+		static INDIGO_THREAD_LOCAL char *long_escape_buffer = NULL;
+		static INDIGO_THREAD_LOCAL size_t long_escape_buffer_size = 0;
 		char *buffer, *buffer_end;
 		if (index < ESCAPE_BUFFER_COUNT) {
 			buffer = escape_buffer[index];
 			buffer_end = buffer + ESCAPE_BUFFER_SIZE - 6;
 		} else {
+			size_t required_size = 6 * strlen(string) + 1;
+			if (required_size > long_escape_buffer_size) {
+				long_escape_buffer = indigo_safe_realloc(long_escape_buffer, required_size);
+				long_escape_buffer_size = required_size;
+			}
 			buffer = long_escape_buffer;
-			buffer_end = buffer + INDIGO_BUFFER_SIZE - 6;
+			buffer_end = buffer + long_escape_buffer_size - 6;
 		}
 		const char *in = string;
 		char *out = buffer;

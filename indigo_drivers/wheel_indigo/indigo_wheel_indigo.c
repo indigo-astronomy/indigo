@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_wheel_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_wheel_indigo"
 #define DRIVER_LABEL         "PegasusAstro Indigo Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Pegasus Indigo Filter Wheel"
@@ -45,6 +44,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
 	char response[128];
+	double move_started;
 	//- data
 } indigo_private_data;
 
@@ -67,7 +67,7 @@ static bool indigo_command(indigo_device *device, char *command, ...) {
 		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", COMMAND_TIMEOUT);
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", COMMAND_TIMEOUT);
 		}
 	}
 	return result > 0;
@@ -77,12 +77,14 @@ static bool indigo_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (indigo_command(device, "W#") && !strncmp(PRIVATE_DATA->response, "FW_OK", 5)) {
-			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"Indigo Wheel");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Indigo Wheel");
 			if (indigo_command(device, "WV") && !strncmp(PRIVATE_DATA->response, "WV:", 3)) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 			}
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			return true;
+			if (indigo_command(device, "WI") && !strcmp(PRIVATE_DATA->response, "WI:1")) {
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				return true;
+			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
@@ -98,6 +100,30 @@ static void indigo_close(indigo_device *device) {
 
 //- code
 
+//+ wheel.code
+
+static void wheel_move_finalizer(indigo_device *device) {
+	int position = 0;
+	char extra;
+	bool readback = indigo_command(device, "WF") && sscanf(PRIVATE_DATA->response, "WF:%d%c", &position, &extra) == 1 && position >= 1 && position <= WHEEL_SLOT_ITEM->number.max;
+	if (readback) {
+		WHEEL_SLOT_ITEM->number.value = position;
+	}
+	if (readback && position == WHEEL_SLOT_ITEM->number.target) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		double elapsed = indigo_monotonic_time() - PRIVATE_DATA->move_started;
+		if (elapsed >= MOVE_TIMEOUT) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			indigo_execute_handler_in(device, POLL_DELAY, wheel_move_finalizer);
+		}
+	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+
+//- wheel.code
+
 #pragma mark - High level code (wheel)
 
 static void wheel_connection_handler(indigo_device *device) {
@@ -106,9 +132,8 @@ static void wheel_connection_handler(indigo_device *device) {
 		connection_result = indigo_open(device);
 		if (connection_result) {
 			//+ wheel.on_connect
-			if (indigo_command(device, "WI") && !strcmp(PRIVATE_DATA->response, "WI:1")) {
-				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
-			}
+			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 			//- wheel.on_connect
 		}
 		if (connection_result) {
@@ -121,6 +146,15 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -129,33 +163,19 @@ static void wheel_connection_handler(indigo_device *device) {
 }
 
 static void wheel_slot_handler(indigo_device *device) {
-	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ wheel.WHEEL_SLOT.on_change
-	int target = (int)WHEEL_SLOT_ITEM->number.target;
-	// A lost or malformed reply is not reported as a failure - the move is
-	// confirmed by polling WF until it reports the target slot, so a dropped
-	// WM echo or a single failed WF query is simply retried until MOVE_TIMEOUT.
-	if (!(indigo_command(device, "WM:%d", target) && !strncmp(PRIVATE_DATA->response, "WM:", 3))) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No valid response to WM:%d, waiting for WF to confirm the move", target);
+	double target = WHEEL_SLOT_ITEM->number.target;
+	if (target == WHEEL_SLOT_ITEM->number.value) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		// Firmware can lose the WM echo. Confirm actual arrival through WF.
+		indigo_command(device, "WM:%d", (int)target);
+		PRIVATE_DATA->move_started = indigo_monotonic_time();
+		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_handler_in(device, SETTLE_DELAY, wheel_move_finalizer);
 	}
-	indigo_sleep(SETTLE_DELAY);
-	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	time_t deadline = time(NULL) + MOVE_TIMEOUT;
-	while (true) {
-		int position = 0;
-		if (indigo_command(device, "WF") && sscanf(PRIVATE_DATA->response, "WF:%d", &position) == 1 && position == target) {
-			WHEEL_SLOT_ITEM->number.value = position;
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-			break;
-		}
-		if (time(NULL) >= deadline) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Filter wheel failed to reach slot %d in %d seconds", target, MOVE_TIMEOUT);
-			break;
-		}
-		indigo_sleep(POLL_DELAY);
-	}
-	//- wheel.WHEEL_SLOT.on_change
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+	//- wheel.WHEEL_SLOT.on_change
 }
 
 #pragma mark - Device API (wheel)
@@ -191,14 +211,10 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, wheel_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);
@@ -231,32 +247,34 @@ indigo_result indigo_wheel_indigo(indigo_driver_action action, indigo_driver_inf
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "Indigo");
 			strcpy(patterns[0].vendor_string, "Pegasus Astro");
 			INDIGO_REGISER_MATCH_PATTERNS(wheel_template, patterns, 1);
-			private_data = indigo_safe_malloc(sizeof(indigo_private_data));
-			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+			private_data = (indigo_private_data *)indigo_safe_malloc(sizeof(indigo_private_data));
+			wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(wheel);
 			last_action = action;
 			if (wheel != NULL) {
 				indigo_detach_device(wheel);
-				free(wheel);
+				indigo_safe_free(wheel);
 				wheel = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

@@ -23,3 +23,7 @@ or
 indigo_server -s
 
 ## Status: Stable
+
+## Testing
+
+2026-09-27 22:32 3.0.0.9 mac arm64 simulator 7/7 OK

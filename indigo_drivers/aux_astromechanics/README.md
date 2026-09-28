@@ -22,3 +22,7 @@ indigo_server indigo_aux_astromechanics
 ## Status: Untested
 
 Tested with simulator only
+
+## Testing
+
+2026-09-27 20:47 3.0.0.7 mac arm64 simulator 6/6 OK

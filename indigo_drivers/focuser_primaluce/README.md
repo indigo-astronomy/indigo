@@ -32,9 +32,13 @@ To calibrate Sesto Senso 2 focuser:
 * once the outhermost position is reached, click "End",
 * disconnect and connect again.
 
-## Status: Work in progress
+## Status: Stable
 
 Tested with Sesto Senso 2.
 
 As PrimaluceLab never answered any email both simulator and driver are based only on publicly available information :(
 
+## Testing
+
+2026-09-20 19:54 3.0.0.13 mac arm64 SESTO SENSO 2 18/18 OK
+2026-09-27 23:12 3.0.0.15 mac arm64 simulator 36/36 OK

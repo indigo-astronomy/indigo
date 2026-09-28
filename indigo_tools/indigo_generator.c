@@ -1,4 +1,4 @@
-// Copyright (c) 2025 CloudMakers, s. r. o.
+// Copyright (c) 2025-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -37,6 +37,10 @@ typedef enum {
 	TOKEN_NONE = 0, TOKEN_LBRACE = '{', TOKEN_RBRACE = '}', TOKEN_EQUAL = '=', TOKEN_SEMICOLON = ';', TOKEN_IDENTIFIER = 'I', TOKEN_STRING = 'S', TOKEN_NUMBER = 'N', TOKEN_TRUE = 'T', TOKEN_FALSE = 'F', TOKEN_CODE = 'C', TOKEN_EXPRESSION = 'E'
 } token_type;
 
+typedef enum {
+	INDIGO_LICENSE, GNU_LGPL_LICENSE
+} license_type;
+
 typedef struct code_type {
 	struct code_type *next;
 	char *text;
@@ -49,18 +53,25 @@ typedef struct item_type {
 	code_type *attach;
 } item_type;
 
+typedef struct reject_type {
+	struct reject_type *next;
+	char condition[512], message[256];
+} reject_type;
+
 typedef struct property_type {
 	struct property_type *next;
 	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32], hidden[64];
-	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values;
+	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values, pass_through_change, accept_while_busy;
 	int max_name_length;
-	code_type *code, *on_attach, *on_change, *on_detach;
+	code_type *code, *on_attach, *on_change_request, *on_change, *on_detach;
+	reject_type *rejects;
 	item_type *items;
 } property_type;
 
 typedef struct device_type {
 	struct device_type *next;
-	char type[16], handle[64], name[64], interface[128];
+	char type[16], id[64], handle[64], name[64], interface[128];
+	char attach_if[256], name_value[256];
 	bool additional_instances;
 	code_type *code, *on_timer, *on_attach, *on_connect, *on_disconnect, *on_detach;
 	property_type *properties;
@@ -75,6 +86,12 @@ typedef struct hid_type {
 	bool hotplug;
 	char pid[128],vid[128];
 } hid_type;
+
+typedef struct sdk_type {
+	bool hotplug;
+	char pid[128],vid[128], discovery_retries[128];
+	code_type *plug, *unplug, *unplug_match;
+} sdk_type;
 
 typedef struct pattern_type {
 	struct pattern_type *next;
@@ -93,14 +110,16 @@ typedef struct definition_type {
 } definition_type;
 
 typedef struct driver_type {
-	char name[64], label[256], author[256], copyright[256];
-	int version;
-	bool virtual;
+	char name[64], label[256], author[256], copyright[256], supported_architecture[256];
+	int version, max_devices;
+	bool virtual, cpp, multi_device_support;
+	license_type license;
 	definition_type *definions;
 	device_type *devices;
 	serial_type *serial;
 	libusb_type *libusb;
 	hid_type *hid;
+	sdk_type *sdk;
 	code_type *include, *define, *code, *data, *on_init, *on_shutdown;
 } driver_type;
 
@@ -528,6 +547,39 @@ bool parse_code_block(char *name, code_type **codes) {
 	return true;
 }
 
+bool parse_reject_block(reject_type **rejects) {
+	if (!match(TOKEN_IDENTIFIER, "reject_change")) {
+		return false;
+	}
+	if (!match(TOKEN_LBRACE, NULL)) {
+		report_error("Missing '{'");
+		return false;
+	}
+	debug(-1, "reject_change {");
+	reject_type *reject = allocate(sizeof(reject_type));
+	while (!match(TOKEN_RBRACE, NULL)) {
+		if (parse_expression_attribute("condition", reject->condition, sizeof(reject->condition))) {
+			continue;
+		}
+		if (parse_string_attribute("message", reject->message, sizeof(reject->message))) {
+			continue;
+		}
+		report_unexpected_token_error();
+		return false;
+	}
+	if (reject->condition[0] == 0) {
+		report_error("Missing 'condition' in reject_change block");
+		return false;
+	}
+	if (reject->message[0] == 0) {
+		report_error("Missing 'message' in reject_change block");
+		return false;
+	}
+	append((void **)rejects, reject);
+	debug(0, "}");
+	return true;
+}
+
 bool parse_item_block(char *type, item_type **items) {
 	if (!match(TOKEN_IDENTIFIER, "item")) {
 		return false;
@@ -623,8 +675,8 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	snprintf(property->name, sizeof(property->name), "%s_PROPERTY_NAME", id);
 	make_lower_case(id);
 	snprintf(property->pointer, sizeof(property->pointer), "%s_property", id);
-	if (strncmp(id, device->type, strlen(device->type)) != 0) {
-		snprintf(property->handler, sizeof(property->handler), "%s_%s_handler", device->type, id);
+	if (strcmp(device->id, device->type) || strncmp(id, device->type, strlen(device->type)) != 0) {
+		snprintf(property->handler, sizeof(property->handler), "%s_%s_handler", device->id, id);
 	} else {
 		snprintf(property->handler, sizeof(property->handler), "%s_handler", id);
 	}
@@ -639,6 +691,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_expression_attribute("label", property->label, sizeof(property->label))) {
 				continue;
 			}
+			if (parse_expression_attribute("handler", property->handler, sizeof(property->handler))) {
+				continue;
+			}
 			if (parse_expression_attribute("handle", property->handle, sizeof(property->handle))) {
 				continue;
 			}
@@ -650,12 +705,6 @@ bool parse_property_block(device_type *device, property_type **properties) {
 				}
 				continue;
 			}
-			if (parse_expression_attribute("handler", property->handler, sizeof(property->handler))) {
-				continue;
-			}
-			if (parse_bool_attribute("handle_change", &property->handle_change)) {
-				continue;
-			}
 			if (parse_bool_attribute("asynchronous_change", &property->asynchronous_change)) {
 				continue;
 			}
@@ -665,10 +714,22 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_bool_attribute("preserve_values", &property->preserve_values)) {
 				continue;
 			}
+			if (parse_bool_attribute("pass_through_change", &property->pass_through_change)) {
+				continue;
+			}
+			if (parse_bool_attribute("accept_while_busy", &property->accept_while_busy)) {
+				continue;
+			}
 			if (parse_code_block("code", &property->code)) {
 				continue;
 			}
 			if (parse_code_block("on_attach", &property->on_attach)) {
+				continue;
+			}
+			if (parse_reject_block(&property->rejects)) {
+				continue;
+			}
+			if (parse_code_block("on_change_request", &property->on_change_request)) {
 				continue;
 			}
 			if (parse_code_block("on_change", &property->on_change)) {
@@ -743,14 +804,15 @@ bool parse_property_block(device_type *device, property_type **properties) {
 }
 
 bool parse_device_block(driver_type *driver) {
-	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "dome") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
+	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "dome") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux") || match(TOKEN_IDENTIFIER, "polaralign"))) {
 		return false;
 	}
 	device_type *device = allocate(sizeof(device_type));
-	char type[8];
+	char type[16];
 	copy(type, sizeof(type));
 	make_lower_case(type);
 	snprintf(device->type, sizeof(device->type), "%s", type);
+	snprintf(device->id, sizeof(device->id), "%s", type);
 	make_upper_case(type);
 	snprintf(device->handle, sizeof(device->handle), "%s_DEVICE_NAME", type);
 	snprintf(device->interface, sizeof(device->interface), "0");
@@ -763,6 +825,29 @@ bool parse_device_block(driver_type *driver) {
 	if (match(TOKEN_LBRACE, NULL)) {
 		debug(-1, "%s {", device->type);
 		while (!match(TOKEN_RBRACE, NULL)) {
+			char id[64];
+			if (parse_identifier_attribute("id", id, sizeof(id))) {
+				if (device->properties || device->code || device->on_timer || device->on_attach || device->on_connect || device->on_disconnect || device->on_detach) {
+					report_error("Device id must precede properties and code blocks");
+					return false;
+				}
+				for (device_type *other = driver->devices; other; other = other->next) {
+					if (!strcmp(other->id, id)) {
+						report_error("Duplicate device id");
+						return false;
+					}
+				}
+				snprintf(device->id, sizeof(device->id), "%s", id);
+				make_upper_case(id);
+				snprintf(device->handle, sizeof(device->handle), "%s_DEVICE_NAME", id);
+				continue;
+			}
+			if (parse_expression_attribute("attach_if", device->attach_if, sizeof(device->attach_if))) {
+				continue;
+			}
+			if (parse_expression_attribute("name_value", device->name_value, sizeof(device->name_value))) {
+				continue;
+			}
 			if (parse_expression_attribute("name", device->name, sizeof(device->name))) {
 				continue;
 			}
@@ -802,6 +887,12 @@ bool parse_device_block(driver_type *driver) {
 	} else {
 		report_error("Missing '{'");
 		return false;
+	}
+	for (device_type *other = driver->devices; other; other = other->next) {
+		if (!strcmp(other->id, device->id)) {
+			report_error("Duplicate device id");
+			return false;
+		}
 	}
 	append((void **)&driver->devices, device);
 	return true;
@@ -868,6 +959,50 @@ bool parse_hid_block(driver_type *driver) {
 		return false;
 	}
 	driver->hid = hid;
+	return true;
+}
+
+bool parse_sdk_block(driver_type *driver) {
+	if (!match(TOKEN_IDENTIFIER, "sdk")) {
+		return false;
+	}
+	sdk_type *sdk = allocate(sizeof(sdk_type));
+	sdk->hotplug = true;
+	if (match(TOKEN_LBRACE, NULL)) {
+		debug(0, "{");
+		while (!match(TOKEN_RBRACE, NULL)) {
+			if (parse_expression_attribute("discovery_retries", sdk->discovery_retries, sizeof(sdk->discovery_retries))) {
+				continue;
+			}
+			if (parse_bool_attribute("hotplug", &sdk->hotplug)) {
+				continue;
+			}
+			if (parse_expression_attribute("pid", sdk->pid, sizeof(sdk->pid))) {
+				continue;
+			}
+			if (parse_expression_attribute("vid", sdk->vid, sizeof(sdk->vid))) {
+				continue;
+			}
+			if (parse_code_block("plug", &sdk->plug)) {
+				continue;
+			}
+			if (parse_code_block("unplug_match", &sdk->unplug_match)) {
+				continue;
+			}
+			if (parse_code_block("unplug", &sdk->unplug)) {
+				continue;
+			}
+			report_unexpected_token_error();
+			return false;
+		}
+		debug(0, "}");
+	} else if (match(TOKEN_SEMICOLON, NULL)) {
+		debug(0, "sdk;");
+	} else {
+		report_error("Missing '{'");
+		return false;
+	}
+	driver->sdk = sdk;
 	return true;
 }
 
@@ -967,7 +1102,22 @@ bool parse_driver_block(void) {
 		if (parse_string_attribute("label", driver.label, sizeof(driver.label))) {
 			continue;
 		}
+		if (parse_string_attribute("supported_architecture", driver.supported_architecture, sizeof(driver.supported_architecture))) {
+			continue;
+		}
+		if (parse_bool_attribute("cpp", &driver.cpp)) {
+			continue;
+		}
+		if (parse_bool_attribute("multi_device_support", &driver.multi_device_support)) {
+			continue;
+		}
 		if (parse_int_attribute("version", &driver.version)) {
+			continue;
+		}
+		if (parse_int_attribute("max_devices", &driver.max_devices)) {
+			if (driver.max_devices < 1) {
+				report_error("max_devices must be at least 1");
+			}
 			continue;
 		}
 		if (parse_serial_block(&driver)) {
@@ -977,6 +1127,9 @@ bool parse_driver_block(void) {
 			continue;
 		}
 		if (parse_hid_block(&driver)) {
+			continue;
+		}
+		if (parse_sdk_block(&driver)) {
 			continue;
 		}
 		if (parse_device_block(&driver)) {
@@ -1016,7 +1169,7 @@ bool parse_driver_block(void) {
 		report_error("No device defined");
 		return false;
 	}
-	if (driver.serial == NULL && driver.libusb == NULL && driver.hid == NULL) {
+	if (driver.serial == NULL && driver.libusb == NULL && driver.hid == NULL && driver.sdk == NULL) {
 		driver.virtual = true;
 	}
 	return true;
@@ -1038,6 +1191,9 @@ void read_definition_source(void) {
 	}
 	*current = 0;
 	current = definition_source;
+	if (strstr(definition_source, "GNU Lesser General Public")) {
+		driver.license = GNU_LGPL_LICENSE;
+	}
 }
 
 void write_line(const char *format, ...) {
@@ -1069,6 +1225,20 @@ bool c_code_starts_with(code_type *code, const char *format, ...) {
 		return strncmp(buffer, c, s) == 0;
 	}
 	return false;
+}
+
+bool c_code_is_empty(code_type *code) {
+	if (code == NULL) {
+		return false;
+	}
+	for (; code; code = code->next) {
+		for (char *pnt = code->text; pnt < code->text + code->size; pnt++) {
+			if (!isspace(*pnt)) {
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 void write_code_block(code_type *code, int indentation) {
@@ -1169,20 +1339,36 @@ void write_license(void) {
 	write_line("// %s", driver.copyright);
 	write_line("// All rights reserved.");
 	write_line("");
-	write_line("// You may use this software under the terms of 'INDIGO Astronomy");
-	write_line("// open-source license' (see LICENSE.md).");
-	write_line("");
-	write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
-	write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
-	write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
-	write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
-	write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
-	write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
-	write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
-	write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
-	write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
-	write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
-	write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	if (driver.license == GNU_LGPL_LICENSE) {
+		write_line("// This library is free software; you can redistribute it and/or");
+		write_line("// modify it under the terms of the GNU Lesser General Public");
+		write_line("// License as published by the Free Software Foundation; either");
+		write_line("// version 2.1 of the License, or (at your option) any later version.");
+		write_line("");
+		write_line("// This library is distributed in the hope that it will be useful,");
+		write_line("// but WITHOUT ANY WARRANTY; without even the implied warranty of");
+		write_line("// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU");
+		write_line("// Lesser General Public License for more details.");
+		write_line("");
+		write_line("// You should have received a copy of the GNU Lesser General Public");
+		write_line("// License along with this library; if not, write to the Free Software");
+		write_line("// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA");
+	} else {
+		write_line("// You may use this software under the terms of 'INDIGO Astronomy");
+		write_line("// open-source license' (see LICENSE.md).");
+		write_line("");
+		write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
+		write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
+		write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
+		write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
+		write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
+		write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
+		write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
+		write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
+		write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
+		write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
+		write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	}
 	write_line("");
 	write_line("// This file generated from %s", definition_source_basename);
 	write_line("");
@@ -1248,7 +1434,6 @@ void write_c_include_section(void) {
 	write_line("#include <string.h>");
 	write_line("#include <math.h>");
 	write_line("#include <assert.h>");
-	write_line("#include <pthread.h>");
 	write_c_code_blocks(driver.include, 0, "include");
 	write_line("#include <indigo/indigo_driver_xml.h>");
 	for (device_type *device = driver.devices; device; device = device->next) {
@@ -1258,7 +1443,7 @@ void write_c_include_section(void) {
 		}
 	}
 	write_line("#include <indigo/indigo_uni_io.h>");
-	if (driver.libusb || driver.hid) {
+	if (driver.libusb || driver.hid || driver.sdk) {
 		write_line("#include <indigo/indigo_usb_utils.h>");
 	}
 	write_line("");
@@ -1276,8 +1461,11 @@ void write_c_define_section(void) {
 	for (device_type *device = driver.devices; device; device = device->next) {
 		write_line("#define %-20s %s", device->handle, device->name);
 	}
-	if (driver.libusb) {
-		write_line("#define %-20s 5", "MAX_DEVICES");
+	if (driver.libusb || driver.sdk) {
+		// One slave logical device of a camera - a guider or a filter wheel - takes a slot of its
+		// own, so a driver whose devices expose more than themselves runs out well before it has
+		// seen MAX_DEVICES cameras. Raise it per driver rather than for every generated driver.
+		write_line("#define %-20s %d", "MAX_DEVICES", driver.max_devices > 0 ? driver.max_devices : 5);
 	}
 	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver.name);
 	if (driver.definions) {
@@ -1336,7 +1524,7 @@ void write_c_private_data_section(void) {
 	if (driver.serial || driver.hid) {
 		write_line("\tindigo_uni_handle *handle;");
 		some_content = true;
-	} else if (driver.libusb) {
+	} else if (driver.libusb || driver.sdk) {
 		write_line("\tlibusb_device *usbdev;");
 		some_content = true;
 	}
@@ -1356,16 +1544,28 @@ void write_c_private_data_section(void) {
 	write_line("");
 }
 
+bool driver_uses_device_queue(void) {
+	return (driver.libusb && driver.libusb->hotplug) || (driver.hid && driver.hid->hotplug) || driver.sdk;
+}
+
 void write_c_low_level_code_section(void) {
-	if (driver.code) {
+	if (driver.code || driver_uses_device_queue()) {
 		write_line("");
 		write_line("#pragma mark - Low level code");
 		write_line("");
+		if (driver_uses_device_queue()) {
+			write_line("static indigo_queue *driver_queue = NULL;");
+			write_line("static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;");
+			if (driver.sdk && driver.sdk->unplug_match) {
+				write_line("static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
+			}
+			write_line("");
+		}
 		write_c_code_blocks(driver.code, 0, "code");
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_c_code_blocks(device->code, 0, "%s.code", device->type);
+			write_c_code_blocks(device->code, 0, "%s.code", device->id);
 			for (property_type *property = device->properties; property; property = property->next) {
-				write_c_code_blocks(property->code, 0, "%s.%s.code", device->type, property->id);
+				write_c_code_blocks(property->code, 0, "%s.%s.code", device->id, property->id);
 			}
 		}
 	}
@@ -1375,39 +1575,88 @@ void write_c_timer_callback(device_type *device) {
 //	write_line("");
 //	write_line("// %s state checking timer callback", device->type);
 	write_line("");
-	write_line("static void %s_timer_callback(indigo_device *device) {", device->type);
+	write_line("static void %s_timer_callback(indigo_device *device) {", device->id);
 	write_line("\tif (!IS_CONNECTED) {");
 	write_line("\t\treturn;");
 	write_line("\t}");
-	write_c_code_blocks(device->on_timer, 1, "%s.on_timer", device->type);
+	write_c_code_blocks(device->on_timer, 1, "%s.on_timer", device->id);
 	write_line("}");
 	write_line("");
+}
+
+// Disconnect cancels the pending change handlers, and a property whose handler was cancelled would stay
+// BUSY: the BUSY guard of INDIGO_COPY_*_PROCESS_CHANGE would then silently refuse every later change to
+// it, in this session and after reconnect. A new session starts in a clean state, so every property still
+// BUSY once on_disconnect has run returns to OK. A property that stays defined while disconnected is
+// republished now; the others carry the clean state into their definition on the next connect.
+static void write_c_disconnect_state_reset(device_type *device) {
+	bool first_one = true;
+	for (property_type *property = device->properties; property; property = property->next) {
+		if (property->always_defined || !strcmp(property->id, "CONNECTION") || !strcmp(property->id, "CONFIG")) {
+			continue;
+		}
+		if (first_one) {
+			write_line("\t\t// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.");
+			write_line("\t\tindigo_property *cancelled_properties[] = {");
+			first_one = false;
+		}
+		write_line("\t\t\t%s,", property->handle);
+	}
+	if (!first_one) {
+		write_line("\t\t};");
+		write_line("\t\tfor (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {");
+		write_line("\t\t\tif (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {");
+		write_line("\t\t\t\tcancelled_properties[i]->state = INDIGO_OK_STATE;");
+		write_line("\t\t\t}");
+		write_line("\t\t}");
+	}
+	for (property_type *property = device->properties; property; property = property->next) {
+		if (property->always_defined && strcmp(property->id, "CONNECTION") && strcmp(property->id, "CONFIG")) {
+			write_line("\t\tif (%s != NULL && %s->state == INDIGO_BUSY_STATE) {", property->handle, property->handle);
+			write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(%s, INDIGO_OK_STATE, NULL);", property->handle);
+			write_line("\t\t}");
+		}
+	}
 }
 
 void write_c_connection_change_handler(device_type *device) {
 	bool is_multi_device = driver.devices != NULL && driver.devices->next != NULL;
 	bool is_master_device = device == driver.devices;
+	bool has_virtual_connection_result = driver.virtual && device->on_connect != NULL && memmem(device->on_connect->text, device->on_connect->size, "connection_result", sizeof "connection_result" - 1);
 //	write_line("");
 //	write_line("// CONNECTION change handler");
 	write_line("");
-	write_line("static void %s_connection_handler(indigo_device *device) {", device->type);
+	write_line("static void %s_connection_handler(indigo_device *device) {", device->id);
 	write_line("\tif (CONNECTION_CONNECTED_ITEM->sw.value) {");
 	if (driver.virtual) {
-		write_c_code_blocks(device->on_connect, 2, "%s.on_connect", device->type);
+		if (has_virtual_connection_result) {
+			write_line("\t\tbool connection_result = true;");
+		}
+		write_c_code_blocks(device->on_connect, 2, "%s.on_connect", device->id);
+		if (has_virtual_connection_result) {
+			write_line("\t\tif (connection_result) {");
+		}
 		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
 			}
 		}
-		if (device->on_timer != NULL) {
-			write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->type);
+		if (has_virtual_connection_result) {
+			write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
+			write_line("\t\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s\", device->name);");
+			write_line("\t\t} else {");
+			write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;");
+			write_line("\t\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
+			write_line("\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s\", device->name);");
+			write_line("\t\t}");
+		} else {
+			write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
+			write_line("\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s\", device->name);");
 		}
-		write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
-		write_line("\t\tindigo_send_message(device, OK_PROPERTY, \"Connected to %%s\", device->name);");
 	} else {
 		write_line("\t\tbool connection_result = true;");
 		if (is_multi_device) {
-			write_line("\t\tif (PRIVATE_DATA->count++ == 0) {");
+			write_line("\t\tif (PRIVATE_DATA->count == 0) {");
 			if (is_master_device) {
 				write_line("\t\t\tconnection_result = %s_open(device);", driver.name);
 			} else {
@@ -1421,9 +1670,14 @@ void write_c_connection_change_handler(device_type *device) {
 				write_line("\t\tconnection_result = %s_open(device->master_device);", driver.name);
 			}
 		}
+		if (is_multi_device) {
+			write_line("\t\tif (connection_result) {");
+			write_line("\t\t\tPRIVATE_DATA->count++;");
+			write_line("\t\t}");
+		}
 		if (device->on_connect != NULL) {
 			write_line("\t\tif (connection_result) {");
-			write_c_code_blocks(device->on_connect, 3, "%s.on_connect", device->type);
+			write_c_code_blocks(device->on_connect, 3, "%s.on_connect", device->id);
 			write_line("\t\t}");
 		}
 		write_line("\t\tif (connection_result) {");
@@ -1431,9 +1685,6 @@ void write_c_connection_change_handler(device_type *device) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
 			}
-		}
-		if (device->on_timer != NULL) {
-			write_line("\t\t\tindigo_execute_handler(device, %s_timer_callback);", device->type);
 		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 		if (driver.serial) {
@@ -1448,7 +1699,7 @@ void write_c_connection_change_handler(device_type *device) {
 			write_line("\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s\", device->name);");
 		}
 		if (is_multi_device) {
-			write_line("\t\t\tif (--PRIVATE_DATA->count == 0) {");
+			write_line("\t\t\tif (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {");
 			write_line("\t\t\t\t%s_close(device);", driver.name);
 			write_line("\t\t\t}");
 		}
@@ -1458,7 +1709,8 @@ void write_c_connection_change_handler(device_type *device) {
 	}
 	write_line("\t} else {");
 	write_line("\t\tindigo_cancel_pending_handlers(device);");
-	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->type);
+	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->id);
+	write_c_disconnect_state_reset(device);
 	for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 		if (property2->type[0] != 'i' && !property2->always_defined) {
 			write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
@@ -1477,6 +1729,18 @@ void write_c_connection_change_handler(device_type *device) {
 	write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 	write_line("\t}");
 	write_line("\tindigo_%s_change_property(device, NULL, CONNECTION_PROPERTY);", device->type);
+	// The timer callback runs on the device queue, which in a hot-plug driver is not the queue this
+	// connection handler runs on. Starting it earlier let it observe CONNECTION still BUSY, and its
+	// IS_CONNECTED prologue then dropped the one call that starts a self-rescheduling poll, so the
+	// poll was gone for the whole session. Start it after the final change_property() call, which
+	// publishes the connection and defines the class properties, so the callback always sees a
+	// connected device it may publish to. On a failed connect or on disconnect IS_CONNECTED is
+	// false and no callback is queued.
+	if (device->on_timer != NULL) {
+		write_line("\tif (IS_CONNECTED) {");
+		write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->id);
+		write_line("\t}");
+	}
 	write_line("}");
 	write_line("");
 }
@@ -1484,12 +1748,24 @@ void write_c_connection_change_handler(device_type *device) {
 void write_c_property_change_handler(device_type *device, property_type *property) {
 //	write_line("");
 //	write_line("// %s change handler", property->id);
+	// Manual motion runs until the client releases it. After the driver started or stopped it, running
+	// motion is registered with the bus to be released if the client recorded by the change branch
+	// detaches; stopped or refused (ALERT) motion and an abort unregister. The commit ends the handler
+	// and the parked-mount guard below; an early return in on_change code skips it.
+	bool commits_motion = !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_ABORT_MOTION");
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
+	// The matching admission check in the change branch refuses a request that arrives while the
+	// mount is already parked. This one is the safety net for the request that was admitted just
+	// before a park request was accepted and is only now reaching the hardware: the park switch
+	// flips when the park request is copied, so re-reading it here keeps the axes still.
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
 		write_line("\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
 		write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
 		write_line("\t\tINDIGO_UPDATE_PROPERTY_STATE(%s, INDIGO_ALERT_STATE, NULL);", property->handle);
+		if (commits_motion) {
+			write_line("\t\tindigo_mount_commit_motion_client(device, %s);", property->handle);
+		}
 		write_line("\t\treturn;");
 		write_line("\t}");
 	}
@@ -1497,11 +1773,14 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 	if (!has_finalizer && !c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
 	}
-	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->type, property->id);
+	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->id, property->id);
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES")) {
 		write_line("\tindigo_update_coordinates(device, NULL);");
 	} else if (!has_finalizer) {
 		write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
+	}
+	if (commits_motion) {
+		write_line("\tindigo_mount_commit_motion_client(device, %s);", property->handle);
 	}
 	write_line("}");
 	write_line("");
@@ -1509,14 +1788,17 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 
 void write_c_high_level_code_section(device_type *device) {
 	write_line("");
-	write_line("#pragma mark - High level code (%s)", device->type);
+	write_line("#pragma mark - High level code (%s)", device->id);
+	if (strcmp(device->id, device->type)) {
+		write_line("// device_id: %s type: %s", device->id, device->type);
+	}
 	write_line("");
 	if (device->on_timer != NULL) {
 		write_c_timer_callback(device);
 	}
 	write_c_connection_change_handler(device);
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && (property->type[0] != 'i' || property->on_change)) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM") && !c_code_is_empty(property->on_change) && (property->type[0] != 'i' || property->on_change)) {
 			write_c_property_change_handler(device, property);
 		}
 	}
@@ -1527,7 +1809,7 @@ void write_c_attach(device_type *device) {
 //	write_line("");
 //	write_line("// %s attach API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
+	write_line("static indigo_result %s_attach(indigo_device *device) {", device->id);
 	if (strcmp(device->type, "aux") == 0) {
 		write_line("\tif (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %s) == INDIGO_OK) {", device->interface);
 	} else {
@@ -1546,7 +1828,7 @@ void write_c_attach(device_type *device) {
 			write_line("\t\tDEVICE_BAUDRATE_PROPERTY->hidden = false;");
 		}
 	}
-	write_c_code_blocks(device->on_attach, 2, "%s.on_attach", device->type);
+	write_c_code_blocks(device->on_attach, 2, "%s.on_attach", device->id);
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
 			int count = 0;
@@ -1606,10 +1888,10 @@ void write_c_attach(device_type *device) {
 				write_line("\t\t%s->hidden = true;", property->handle);
 			}
 		}
-		write_c_code_blocks(property->on_attach, 2, "%s.%s.on_attach", device->type, property->id);
+		write_c_code_blocks(property->on_attach, 2, "%s.%s.on_attach", device->id, property->id);
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
-	write_line("\t\treturn %s_enumerate_properties(device, NULL, NULL);", device->type);
+	write_line("\t\treturn %s_enumerate_properties(device, NULL, NULL);", device->id);
 	write_line("\t}");
 	write_line("\treturn INDIGO_FAILED;");
 	write_line("}");
@@ -1619,7 +1901,7 @@ void write_c_enumerate(device_type *device) {
 //	write_line("");
 //	write_line("// %s enumerate API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
+	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {", device->id);
 	bool first_one = true;
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
@@ -1651,28 +1933,78 @@ void write_c_change_property(device_type *device) {
 //	write_line("");
 //	write_line("// %s change property API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
+	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->id);
 	bool persistent = false;
 	write_line("\tif (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {");
-	write_line("\t\tif (!indigo_ignore_connection_change(device, property)) {");
-	write_line("\t\t\tindigo_property_copy_values(CONNECTION_PROPERTY, property, false);");
-	write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);");
-	write_line("\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->type);
-	write_line("\t\t}");
+	// The first two shapes are the whole admission block, so they collapse into one macro. The third
+	// picks its queue per request and keeps the guard open around that choice.
+	if (driver_uses_device_queue() && driver.devices->next && !driver.sdk) {
+		write_line("\t\tif (!indigo_ignore_connection_change(device, property)) {");
+		write_line("\t\t\tindigo_property_copy_values(CONNECTION_PROPERTY, property, false);");
+		write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);");
+		write_line("\t\t\tif (CONNECTION_CONNECTED_ITEM->sw.value && PRIVATE_DATA->count == 0) {");
+		write_line("\t\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->id);
+		write_line("\t\t\t} else {");
+		write_line("\t\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->id);
+		write_line("\t\t\t}");
+		write_line("\t\t}");
+	} else if (driver_uses_device_queue()) {
+		write_line("\t\tINDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, %s_connection_handler);", device->id);
+	} else {
+		write_line("\t\tINDIGO_PROCESS_CONNECT(%s_connection_handler);", device->id);
+	}
 	write_line("\t\treturn INDIGO_OK;");
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
+		bool change_branch = property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM") && (property->type[0] != 'i' || property->on_change);
+		if (property->rejects && !change_branch) {
+			report_error("'%s' has no change branch, its reject_change block(s) would be ignored", property->handle);
+		}
+		if (property->handle_change && strcmp(property->perm, "INDIGO_RO_PERM")) {
 			persistent |= property->persistent;
 			if (property->type[0] != 'i' || property->on_change) {
 				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
-				if (property->asynchronous_change) {
+				// A parked mount refuses motion, tracking and goto requests. This is an admission
+				// check on the request, so it runs before the requested values are copied into the
+				// property; a refused request must leave the driver's own state untouched. The
+				// handler keeps its own copy of the check for a request admitted just before a
+				// park request was accepted.
+				if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
+					write_line("\t\tINDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, %s, \"Mount is parked!\");", property->handle);
+				}
+				for (reject_type *reject = property->rejects; reject; reject = reject->next) {
+					write_line("\t\tINDIGO_REJECT_CHANGE_IF(%s, %s, \"%s\");", reject->condition, property->handle, reject->message);
+				}
+				write_c_code_blocks(property->on_change_request, 2, "%s.%s.on_change_request", device->id, property->id);
+				// Manual motion runs until the client releases it. The client of an admitted request is
+				// recorded here, the change handler registers the started motion with the bus for it.
+				if (!strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA")) {
+					write_line("\t\tindigo_mount_record_motion_client(device, client, property);");
+				}
+				if (c_code_is_empty(property->on_change)) {
 					if (property->preserve_values) {
-						write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
-					} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
-						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
+						write_line("\t\tindigo_property_copy_targets(%s, property, false);", property->handle);
 					} else {
-						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+						write_line("\t\tindigo_property_copy_values(%s, property, false);", property->handle);
 					}
+					write_line("\t\t%s->state = INDIGO_OK_STATE;", property->handle);
+					write_line("\t\tindigo_update_property(device, %s, NULL);", property->handle);
+				} else if (property->asynchronous_change) {
+						if (!strcmp(property->id, "CCD_ABORT_EXPOSURE") || !strcmp(property->id, "FOCUSER_ABORT_MOTION") || !strcmp(property->id, "ROTATOR_ABORT_MOTION") || !strcmp(property->id, "MOUNT_ABORT_MOTION") || !strcmp(property->id, "DOME_ABORT_MOTION") || !strcmp(property->id, "POLARALIGN_ABORT_MOTION")) {
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(%s, %s);", property->handle, property->handler);
+						} else if (property->preserve_values) {
+							write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+						} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
+						} else if (!strcmp(property->id, "GUIDER_GUIDE_RA") || !strcmp(property->id, "GUIDER_GUIDE_DEC")) {
+							// With accept_while_busy a guide pulse is taken even while another pulse
+							// on the same axis is still running, so the driver can replace it; the
+							// BUSY-guarded variant would discard the request without telling the
+							// client. A driver that opts in owns the replacement, including
+							// cancelling the finalizer of the pulse it supersedes.
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE%s(%s, %s);", property->accept_while_busy ? "_ANYTIME" : "", property->handle, property->handler);
+						} else {
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+						}
 				} else {
 					if (property->preserve_values) {
 						write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
@@ -1680,7 +2012,9 @@ void write_c_change_property(device_type *device) {
 						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
 					}
 				}
-				write_line("\t\treturn INDIGO_OK;");
+				if (!property->pass_through_change) {
+					write_line("\t\treturn INDIGO_OK;");
+				}
 			}
 		}
 	}
@@ -1705,14 +2039,14 @@ void write_c_detach(device_type *device) {
 //	write_line("");
 //	write_line("// %s detach API callback", device->type);
 	write_line("");
-	write_line("static indigo_result %s_detach(indigo_device *device) {", device->type);
+	write_line("static indigo_result %s_detach(indigo_device *device) {", device->id);
 	write_line("\tif (IS_CONNECTED) {");
 	write_line("\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
-	write_line("\t\t%s_connection_handler(device);", device->type);
+	write_line("\t\t%s_connection_handler(device);", device->id);
 	write_line("\t}");
-	write_c_code_blocks(device->on_detach, 1, "%s.on_detach", device->type);
+	write_c_code_blocks(device->on_detach, 1, "%s.on_detach", device->id);
 	for (property_type *property = device->properties; property; property = property->next) {
-		write_c_code_blocks(property->on_detach, 1, "%s.%s.on_attach", device->type, property->id);
+		write_c_code_blocks(property->on_detach, 1, "%s.%s.on_attach", device->id, property->id);
 		if (property->type[0] != 'i') {
 			write_line("\tindigo_release_property(%s);", property->handle);
 		}
@@ -1725,9 +2059,9 @@ void write_c_detach(device_type *device) {
 
 void write_c_device_api_section(device_type *device) {
 	write_line("");
-	write_line("#pragma mark - Device API (%s)", device->type);
+	write_line("#pragma mark - Device API (%s)", device->id);
 	write_line("");
-	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);", device->type);
+	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);", device->id);
 	write_line("");
 	write_c_attach(device);
 	write_c_enumerate(device);
@@ -1740,7 +2074,7 @@ void write_c_device_templates_section(void) {
 	write_line("#pragma mark - Device templates");
 	write_line("");
 	for (device_type *device = driver.devices; device; device = device->next) {
-		write_line("static indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(%s, %s_attach, %s_enumerate_properties, %s_change_property, NULL, %s_detach);", device->type, device->handle, device->type, device->type, device->type, device->type);
+		write_line("static indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(%s, %s_attach, %s_enumerate_properties, %s_change_property, NULL, %s_detach);", device->id, device->handle, device->id, device->id, device->id, device->id);
 		write_line("");
 	}
 	write_line("");
@@ -1750,110 +2084,385 @@ void write_c_hotplug_section(void) {
 	write_line("");
 	write_line("#pragma mark - Hot-plug code");
 	write_line("");
-	write_line("static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;");
-	if (driver.libusb) {
+	if (driver.libusb || driver.sdk) {
 		write_line("static indigo_device *devices[MAX_DEVICES];");
 	} else if (driver.hid) {
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("static indigo_device *%s = NULL;", device->type);
+			write_line("static indigo_device *%s = NULL;", device->id);
 		}
 	}
 	write_line("");
-	write_line("static void process_plug_event(libusb_device *dev) {");
-	write_line("\tpthread_mutex_lock(&hotplug_mutex);");
+	write_line("static indigo_result verify_devices_disconnected(void) {");
+	if (driver.libusb || driver.sdk) {
+		write_line("\tfor (int i = 0; i < MAX_DEVICES; i++) {");
+		write_line("\t\tVERIFY_NOT_CONNECTED(devices[i]);");
+		write_line("\t}");
+	} else {
+		for (device_type *device = driver.devices; device; device = device->next) {
+			write_line("\tVERIFY_NOT_CONNECTED(%s);", device->id);
+		}
+	}
+	write_line("\treturn INDIGO_OK;");
+	write_line("}");
+	write_line("");
+	if (driver.sdk && driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+		write_line("#define SDK_DISCOVERY_RETRIES (%s)", driver.sdk->discovery_retries);
+		write_line("typedef struct sdk_discovery_retry {");
+		write_line("\tlibusb_device *dev;");
+		write_line("\tint remaining;");
+		write_line("\tbool active, queued;");
+		write_line("\tstruct sdk_discovery_retry *next;");
+		write_line("} sdk_discovery_retry;");
+		write_line("");
+		write_line("static sdk_discovery_retry *sdk_discovery_retries;");
+		write_line("static bool sdk_discovery_stopping;");
+		write_line("static void process_plug_event_handler(indigo_device *device, void *data);");
+		write_line("static void process_sdk_retry_handler(indigo_device *device, void *data);");
+		write_line("");
+		write_line("static void update_sdk_discovery_retry(libusb_device *dev, bool retry) {");
+		write_line("\tsdk_discovery_retry *entry = sdk_discovery_retries;");
+		write_line("\twhile (entry && entry->dev != dev) {");
+		write_line("\t\tentry = entry->next;");
+		write_line("\t}");
+		write_line("\tif (!retry || sdk_discovery_stopping) {");
+		write_line("\t\tif (entry) {");
+		write_line("\t\t\tentry->active = false;");
+		write_line("\t\t}");
+		write_line("\t\treturn;");
+		write_line("\t}");
+		write_line("\tif (!entry && SDK_DISCOVERY_RETRIES <= 0) {");
+		write_line("\t\treturn;");
+		write_line("\t}");
+		write_line("\tif (!entry) {");
+		write_line("\t\tentry = (sdk_discovery_retry *)indigo_safe_malloc(sizeof(*entry));");
+		write_line("\t\tentry->dev = libusb_ref_device(dev);");
+		write_line("\t\tentry->remaining = SDK_DISCOVERY_RETRIES;");
+		write_line("\t\tentry->active = true;");
+		write_line("\t\tentry->next = sdk_discovery_retries;");
+		write_line("\t\tsdk_discovery_retries = entry;");
+		write_line("\t}");
+		write_line("\tif (entry->active && !entry->queued && entry->remaining > 0) {");
+		write_line("\t\tentry->remaining--;");
+		write_line("\t\tentry->queued = true;");
+		write_line("\t\tindigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0.5, process_sdk_retry_handler, entry, &driver_queue_mutex);");
+		write_line("\t}");
+		write_line("}");
+		write_line("");
+		write_line("static void process_sdk_retry_handler(indigo_device *device, void *data) {");
+		write_line("\tsdk_discovery_retry *entry = (sdk_discovery_retry *)data;");
+		write_line("\tentry->queued = false;");
+		write_line("\tif (entry->active && !sdk_discovery_stopping) {");
+		write_line("\t\tprocess_plug_event_handler(NULL, libusb_ref_device(entry->dev));");
+		write_line("\t}");
+		write_line("\tif (!entry->queued) {");
+		write_line("\t\tsdk_discovery_retry **link = &sdk_discovery_retries;");
+		write_line("\t\twhile (*link != entry) {");
+		write_line("\t\t\tlink = &(*link)->next;");
+		write_line("\t\t}");
+		write_line("\t\t*link = entry->next;");
+		write_line("\t\tlibusb_unref_device(entry->dev);");
+		write_line("\t\tindigo_safe_free(entry);");
+		write_line("\t}");
+		write_line("}");
+		write_line("");
+		write_line("static void clear_sdk_discovery_retries(void) {");
+		write_line("\twhile (sdk_discovery_retries) {");
+		write_line("\t\tsdk_discovery_retry *entry = sdk_discovery_retries;");
+		write_line("\t\tsdk_discovery_retries = entry->next;");
+		write_line("\t\tlibusb_unref_device(entry->dev);");
+		write_line("\t\tindigo_safe_free(entry);");
+		write_line("\t}");
+		write_line("}");
+	}
+	write_line("static void process_plug_event_handler(indigo_device *device, void *data) {");
+	write_line("\tindigo_set_handler_max_run_time(1);");
+	write_line("\tlibusb_device *dev = (libusb_device *)data;");
+	if (driver.sdk && driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+		write_line("\tif (sdk_discovery_stopping) {");
+		write_line("\t\tlibusb_unref_device(dev);");
+		write_line("\t\treturn;");
+		write_line("\t}");
+	}
+	if (driver.libusb || driver.sdk) {
+		write_line("\tbool dev_ref_transferred = false;");
+		write_line("\t%s_private_data *private_data = NULL;", driver.name);
+	}
 	if (driver.libusb) {
+		write_line("\tfor (int i = 0; i < MAX_DEVICES; i++) {");
+		write_line("\t\tif (devices[i] && ((%s_private_data *)devices[i]->private_data)->usbdev == dev) {", driver.name);
+		write_line("\t\t\tlibusb_unref_device(dev);");
+		write_line("\t\t\treturn;");
+		write_line("\t\t}");
+		write_line("\t}");
 		write_line("\tconst char *name;");
 		write_line("\tif (%s_match(dev, &name)) {", driver.name);
-		write_line("\t\t%s_private_data *private_data = indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
+		write_line("\t\tprivate_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
 		write_line("\t\tprivate_data->usbdev = dev;");
-		write_line("\t\tlibusb_ref_device(dev);");
-		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\t\t\tindigo_device *%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-			write_line("\t\t\t%s->private_data = private_data;", device->type);
-			if (device != driver.devices) {
-				write_line("\t\t\t%s->master_device = %s;", device->type, driver.devices->type);
+			// In a driver with several devices the first one is the master of all of them, itself
+			// included, as hand-written drivers always did: driver code passes device->master_device on
+			// from the master's own context too, and a NULL there crashed mount_lx200 on a lost link.
+			for (device_type *device = driver.devices; device; device = device->next) {
+				write_line("\t\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+				write_line("\t\t\t%s->private_data = private_data;", device->id);
+			if (device != driver.devices || driver.devices->next) {
+				write_line("\t\t\t%s->master_device = %s;", device->id, driver.devices->id);
+				}
+				write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->id, device->name);
+				write_line("\t\t\tbool %s_attached = false;", device->id);
+				write_line("\t\t\tfor (int j = 0; j < MAX_DEVICES; j++) {");
+				write_line("\t\t\t\tif (devices[j] == NULL) {");
+				write_line("\t\t\t\t\tdevices[j] = %s;", device->id);
+				write_line("\t\t\t\t\tif (indigo_attach_device(%s) == INDIGO_OK) {", device->id);
+				write_line("\t\t\t\t\t\tdev_ref_transferred = true;");
+				write_line("\t\t\t\t\t\t%s_attached = true;", device->id);
+				write_line("\t\t\t\t\t} else {");
+				write_line("\t\t\t\t\t\tdevices[j] = NULL;");
+				write_line("\t\t\t\t\t}");
+				write_line("\t\t\t\t\tbreak;");
+				write_line("\t\t\t\t}");
+				write_line("\t\t\t}");
+				write_line("\t\t\tif (!%s_attached) {", device->id);
+				write_line("\t\t\t\tindigo_safe_free(%s);", device->id);
+				if (device == driver.devices) {
+					write_line("\t\t\t\tindigo_safe_free(private_data);");
+					write_line("\t\t\t\tlibusb_unref_device(dev);");
+					write_line("\t\t\t\treturn;");
+				}
+				write_line("\t\t\t}");
 			}
-			write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->type, device->name);
-			write_line("\t\t\tfor (int j = 0; j < MAX_DEVICES; j++) {");
-			write_line("\t\t\t\tif (devices[j] == NULL) {");
-			write_line("\t\t\t\t\tindigo_async((void *)(void *)indigo_attach_device, devices[j] = %s);", device->type);
-			write_line("\t\t\t\t\tbreak;");
-			write_line("\t\t\t\t}");
-			write_line("\t\t\t}");
-		}
 		write_line("\t}");
-	} else if (driver.hid) {
-		write_line("\tif (%s == NULL) {", driver.devices->type);
+		} else if (driver.sdk) {
+			write_line("\tbool plug_result = true;");
+			write_line("\tchar name[INDIGO_NAME_SIZE] = DRIVER_LABEL;");
+			write_line("\tprivate_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
+			write_line("\tprivate_data->usbdev = dev;");
+			write_line("\tstruct libusb_device_descriptor descriptor;");
+			if (*driver.sdk->vid && *driver.sdk->pid) {
+				write_line("\tif (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == %s && descriptor.idProduct == %s)) {", driver.sdk->vid, driver.sdk->pid);
+			} else if (*driver.sdk->vid) {
+				write_line("\tif (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == %s)) {", driver.sdk->vid);
+			} else if (*driver.sdk->pid) {
+				write_line("\tif (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idProduct == %s)) {", driver.sdk->pid);
+			} else {
+				write_line("\tif (libusb_get_device_descriptor(dev, &descriptor) != LIBUSB_SUCCESS) {");
+			}
+			write_line("\t\tplug_result = false;");
+			write_line("\t}");
+			if (*driver.sdk->discovery_retries) {
+				write_line("\tbool discovery_eligible = plug_result;");
+			}
+			write_line("\tif (plug_result) {");
+			write_c_code_blocks(driver.sdk->plug, 2, "sdk.plug");
+			write_line("\t}");
+			write_line("\tif (plug_result) {");
+			for (device_type *device = driver.devices; device; device = device->next) {
+				if (*device->attach_if) {
+					write_line("\t\tif (%s) {", device->attach_if);
+				}
+				write_line("\t\tindigo_device *%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+				write_line("\t\t%s->private_data = private_data;", device->id);
+			if (device != driver.devices || driver.devices->next) {
+				write_line("\t\t%s->master_device = %s;", device->id, driver.devices->id);
+				}
+				if (*device->name_value) {
+					write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s\", %s);", device->id, device->name_value);
+				} else {
+				write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->id, device->name);
+				}
+				write_line("\t\tbool %s_attached = false;", device->id);
+				write_line("\t\tfor (int j = 0; j < MAX_DEVICES; j++) {");
+				write_line("\t\t\tif (devices[j] == NULL) {");
+				write_line("\t\t\t\tdevices[j] = %s;", device->id);
+				write_line("\t\t\t\tif (indigo_attach_device(%s) == INDIGO_OK) {", device->id);
+				write_line("\t\t\t\t\tdev_ref_transferred = true;");
+				write_line("\t\t\t\t\t%s_attached = true;", device->id);
+				write_line("\t\t\t\t} else {");
+				write_line("\t\t\t\t\tdevices[j] = NULL;");
+				write_line("\t\t\t\t}");
+				write_line("\t\t\t\tbreak;");
+				write_line("\t\t\t}");
+				write_line("\t\t}");
+				write_line("\t\tif (!%s_attached) {", device->id);
+				write_line("\t\t\tindigo_safe_free(%s);", device->id);
+				write_line("\t\t}");
+				if (*device->attach_if) {
+					write_line("\t\t}");
+				}
+			}
+			write_line("\t}");
+		} else if (driver.hid) {
+		write_line("\tif (%s == NULL) {", driver.devices->id);
 		for (device_type *device = driver.devices; device; device = device->next) {
 			write_line("\t\tchar usb_path[INDIGO_NAME_SIZE];");
 			write_line("\t\tindigo_get_usb_path(dev, usb_path);");
-			write_line("\t\t%s_private_data *private_data = indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
-			write_line("\t\t%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-			write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s #%%s\", %s, usb_path);", device->type, device->name);
-			write_line("\t\t%s->private_data = private_data;", device->type);
-			if (device != driver.devices) {
-				write_line("\t\t%s->master_device = %s;", device->type, driver.devices->type);
+			write_line("\t\t%s_private_data *private_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name, driver.name);
+			write_line("\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+			write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s #%%s\", %s, usb_path);", device->id, device->name);
+			write_line("\t\t%s->private_data = private_data;", device->id);
+			if (device != driver.devices || driver.devices->next) {
+				write_line("\t\t%s->master_device = %s;", device->id, driver.devices->id);
 			}
-			write_line("\t\tindigo_attach_device(%s);", device->type);
+			write_line("\t\tif (indigo_attach_device(%s) != INDIGO_OK) {", device->id);
+			write_line("\t\t\tindigo_safe_free(%s->private_data);", device->id);
+			write_line("\t\t\tindigo_safe_free(%s);", device->id);
+			write_line("\t\t\t%s = NULL;", device->id);
+			if (device == driver.devices) {
+				write_line("\t\t\tlibusb_unref_device(dev);");
+				write_line("\t\t\treturn;");
+			}
+			write_line("\t\t}");
 		}
 		write_line("\t}");
 	}
-	write_line("\tpthread_mutex_unlock(&hotplug_mutex);");
+	if (driver.libusb || driver.sdk) {
+		if (driver.sdk && driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+			write_line("\tupdate_sdk_discovery_retry(dev, discovery_eligible && !dev_ref_transferred);");
+		}
+		write_line("\tif (!dev_ref_transferred) {");
+		write_line("\t\tindigo_safe_free(private_data);");
+		write_line("\t\tlibusb_unref_device(dev);");
+		write_line("\t}");
+	} else {
+		write_line("\tlibusb_unref_device(dev);");
+	}
 	write_line("}");
 	write_line("");
-	write_line("static void process_unplug_event(libusb_device *dev) {");
-	write_line("\tpthread_mutex_lock(&hotplug_mutex);");
-	if (driver.libusb) {
+	write_line("static void process_unplug_event_handler(indigo_device *device, void *data) {");
+	write_line("\tlibusb_device *dev = (libusb_device *)data;");
+	if (driver.sdk && driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+		write_line("\tupdate_sdk_discovery_retry(dev, false);");
+	}
+	if (driver.libusb || driver.sdk) {
 		write_line("\t%s_private_data *private_data = NULL;", driver.name);
-		write_line("\tfor (int j = 0; j < MAX_DEVICES; j++) {");
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\t%s_private_data *removed[MAX_DEVICES];", driver.name);
+			write_line("\tint removed_count = 0;");
+		}
+		write_line("\tfor (int j = MAX_DEVICES - 1; j >= 0; j--) {");
 		write_line("\t\tif (devices[j] != NULL) {");
 		write_line("\t\t\tindigo_device *device = devices[j];");
-		write_line("\t\t\tif (PRIVATE_DATA->usbdev == dev) {");
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\t\t\tprivate_data = PRIVATE_DATA;");
+			write_line("\t\t\tbool unplug_result = private_data->usbdev == dev;");
+			// The match block always decides, with unplug_result preset from the libusb identity.
+			// That identity is only as good as the plug block that recorded it: most vendor SDKs
+			// cannot say which USB device a camera or wheel enumerates from, so when several
+			// arrive together the plug block binds each USB device to whichever SDK device is not
+			// attached yet, and a removal trusted on the pointer alone detaches a device that is
+			// still plugged in. A driver that has to trust the libusb identity anyway guards its
+			// own match block with 'if (!unplug_result)', as ccd_qhy2 does for QHY2-001.
+			write_line("\t\t\tif (last_action != INDIGO_DRIVER_SHUTDOWN) {");
+			write_c_code_blocks(driver.sdk->unplug_match, 4, "sdk.unplug_match");
+			write_line("\t\t\t}");
+			write_line("\t\t\tif (unplug_result) {");
+		} else {
+			write_line("\t\t\tif (PRIVATE_DATA->usbdev == dev) {");
+		}
 		write_line("\t\t\t\tprivate_data = PRIVATE_DATA;");
+		if (driver.sdk) {
+			write_c_code_blocks(driver.sdk->unplug, 4, "sdk.unplug");
+		}
 		write_line("\t\t\t\tindigo_detach_device(device);");
-		write_line("\t\t\t\tfree(device);");
+		write_line("\t\t\t\tindigo_safe_free(device);");
 		write_line("\t\t\t\tdevices[j] = NULL;");
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\t\t\t\tbool recorded = false;");
+			write_line("\t\t\t\tfor (int k = 0; k < removed_count; k++) {");
+			write_line("\t\t\t\t\tif (removed[k] == private_data) {");
+			write_line("\t\t\t\t\t\trecorded = true;");
+			write_line("\t\t\t\t\t\tbreak;");
+			write_line("\t\t\t\t\t}");
+			write_line("\t\t\t\t}");
+			write_line("\t\t\t\tif (!recorded) {");
+			write_line("\t\t\t\t\tremoved[removed_count++] = private_data;");
+			write_line("\t\t\t\t}");
+		}
 		write_line("\t\t\t}");
 		write_line("\t\t}");
 		write_line("\t}");
-		write_line("\tif (private_data != NULL) {");
-		write_line("\t\tlibusb_unref_device(dev);");
-		write_line("\t\tfree(private_data);");
-		write_line("\t}");
+		if (driver.sdk && driver.sdk->unplug_match) {
+			write_line("\tfor (int k = 0; k < removed_count; k++) {");
+			write_line("\t\tlibusb_unref_device(removed[k]->usbdev);");
+			write_line("\t\tindigo_safe_free(removed[k]);");
+			write_line("\t}");
+		} else {
+			write_line("\tif (private_data != NULL) {");
+			write_line("\t\tlibusb_unref_device(dev);");
+			write_line("\t\tindigo_safe_free(private_data);");
+			write_line("\t}");
+		}
 	} else if (driver.hid) {
 		for (device_type *device = driver.devices->next; device; device = device->next) {
-			write_line("\tif (%s == NULL) {", device->type);
-			write_line("\t\tindigo_detach_device(%s);", device->type);
-			write_line("\t\tfree(%s);", device->type);
+			write_line("\tif (%s == NULL) {", device->id);
+			write_line("\t\tindigo_detach_device(%s);", device->id);
+			write_line("\t\tindigo_safe_free(%s);", device->id);
 			write_line("\t}");
 		}
 		device_type *device = driver.devices;
-		write_line("\tif (%s != NULL) {", device->type);
-		write_line("\t\tindigo_detach_device(%s);", device->type);
-		write_line("\t\tfree(%s->private_data);", device->type);
-		write_line("\t\tfree(%s);", device->type);
-		write_line("\t\t%s = NULL;", device->type);
+		write_line("\tif (%s != NULL) {", device->id);
+		write_line("\t\tindigo_detach_device(%s);", device->id);
+		write_line("\t\tindigo_safe_free(%s->private_data);", device->id);
+		write_line("\t\tindigo_safe_free(%s);", device->id);
+		write_line("\t\t%s = NULL;", device->id);
 		write_line("\t}");
 	}
-	write_line("\tpthread_mutex_unlock(&hotplug_mutex);");
+	if (driver.hid) {
+		write_line("\tif (dev != NULL) {");
+		write_line("\t\tlibusb_unref_device(dev);");
+		write_line("\t}");
+	} else {
+		write_line("\tlibusb_unref_device(dev);");
+	}
 	write_line("}");
 	write_line("");
-	write_line("static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {");
-	write_line("\tswitch (event) {");
-	write_line("\t\tcase LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {");
-	write_line("\t\t\tINDIGO_ASYNC(process_plug_event, dev);");
-	write_line("\t\t\tbreak;");
-	write_line("\t\t}");
-	write_line("\t\tcase LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {");
-	write_line("\t\t\tprocess_unplug_event(dev);");
-	write_line("\t\t\tbreak;");
-	write_line("\t\t}");
-	write_line("\t}");
-	write_line("\treturn 0;");
-	write_line("}");
-	write_line("");
-	write_line("static libusb_hotplug_callback_handle callback_handle;");
-	write_line("");
+	if (driver.sdk && !driver.sdk->hotplug) {
+		write_line("static void discover_devices_handler(indigo_device *device) {");
+		write_line("\tlibusb_device **list = NULL;");
+		write_line("\tssize_t count = libusb_get_device_list(NULL, &list);");
+		write_line("\tif (count < 0) {");
+		write_line("\t\tINDIGO_DRIVER_ERROR(DRIVER_NAME, \"Initial USB enumeration failed: %%s\", libusb_error_name((int)count));");
+		write_line("\t\treturn;");
+		write_line("\t}");
+		write_line("\tfor (ssize_t i = 0; i < count; i++) {");
+		write_line("\t\tprocess_plug_event_handler(NULL, libusb_ref_device(list[i]));");
+		write_line("\t}");
+		write_line("\tlibusb_free_device_list(list, 1);");
+		write_line("}");
+		write_line("");
+	} else {
+		write_line("static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {");
+		write_line("\tswitch (event) {");
+		write_line("\t\tcase LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {");
+		write_line("\t\t\tdev = libusb_ref_device(dev);");
+		write_line("\t\t\tindigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);");
+		write_line("\t\t\tbreak;");
+		write_line("\t\t}");
+		write_line("\t\tcase LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {");
+		write_line("\t\t\tdev = libusb_ref_device(dev);");
+		write_line("\t\t\tindigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);");
+		write_line("\t\t\tbreak;");
+		write_line("\t\t}");
+		write_line("\t\tdefault:");
+		write_line("\t\t\tbreak;");
+		write_line("\t}");
+		write_line("\treturn 0;");
+		write_line("}");
+		write_line("");
+		write_line("static libusb_hotplug_callback_handle callback_handle;");
+		write_line("");
+	}
+}
+
+static void write_c_virtual_device_detach(device_type *device) {
+	if (device == NULL) {
+		return;
+	}
+	write_c_virtual_device_detach(device->next);
+	write_line("\t\t\tif (%s != NULL) {", device->id);
+	write_line("\t\t\t\tindigo_detach_device(%s);", device->id);
+	write_line("\t\t\t\tindigo_safe_free(%s);", device->id);
+	write_line("\t\t\t\t%s = NULL;", device->id);
+	write_line("\t\t\t}", device->id);
 }
 
 void write_c_main_section(void) {
@@ -1863,23 +2472,25 @@ void write_c_main_section(void) {
 //	write_line("// %s driver entry point", driver.label);
 	write_line("");
 	write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver.devices->type, driver.name);
-	write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
+	if (!(driver.sdk && driver.sdk->unplug_match)) {
+		write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
+	}
 	if (driver.virtual || driver.serial) {
 		write_line("\tstatic %s_private_data *private_data = NULL;", driver.name);
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\tstatic indigo_device *%s = NULL;", device->type);
+			write_line("\tstatic indigo_device *%s = NULL;", device->id);
 		}
 	}
 	write_line("");
 	device_type *master_device = driver.devices;
-	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
+	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, %s, last_action);", driver.multi_device_support ? "true" : "false");
 	write_line("");
 	write_line("\tif (action == last_action) {");
 	write_line("\t\treturn INDIGO_OK;");
 	write_line("\t}");
 	write_line("");
 	write_line("\tswitch (action) {");
-	write_line("\t\tcase INDIGO_DRIVER_INIT:");
+	write_line("\t\tcase INDIGO_DRIVER_INIT: {");
 	write_line("\t\t\tlast_action = action;");
 	write_c_code_blocks(driver.on_init, 3, "on_init");
 	if (driver.virtual || driver.serial) {
@@ -1911,92 +2522,144 @@ void write_c_main_section(void) {
 				}
 				index++;
 			}
-			write_line("\t\t\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, patterns, %d);", master_device->type, index);
+			write_line("\t\t\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, patterns, %d);", master_device->id, index);
 		}
-		write_line("\t\t\tprivate_data = indigo_safe_malloc(sizeof(%s_private_data));", driver.name);
+		write_line("\t\t\tprivate_data = (%s_private_data *)indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\t\t\t%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-			write_line("\t\t\t%s->private_data = private_data;", device->type);
-			if (device != driver.devices) {
-				write_line("\t\t\t%s->master_device = %s;", device->type, driver.devices->type);
+			write_line("\t\t\t%s = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->id, device->id);
+			write_line("\t\t\t%s->private_data = private_data;", device->id);
+			if (device != driver.devices || driver.devices->next) {
+				write_line("\t\t\t%s->master_device = %s;", device->id, driver.devices->id);
 			}
-			write_line("\t\t\tindigo_attach_device(%s);", device->type);
+			write_line("\t\t\tindigo_attach_device(%s);", device->id);
 		}
 	} else if (driver.libusb) {
 		if (driver.libusb->hotplug) {
-			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
-			write_line("\t\t\t\tdevices[i] = NULL;");
-			write_line("\t\t\t}");
-			write_line("\t\t\tindigo_start_usb_event_handler();");
-			write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver.libusb->vid ? driver.libusb->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver.libusb->pid ? driver.libusb->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
+				write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
+				write_line("\t\t\t\tdevices[i] = NULL;");
+				write_line("\t\t\t}");
+				write_line("\t\t\tdriver_queue = indigo_queue_create(NULL);");
+				write_line("\t\t\tif (driver_queue == NULL) {");
+				write_line("\t\t\t\tINDIGO_DRIVER_ERROR(DRIVER_NAME, \"Failed to create driver queue\");");
+				write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
+				write_line("\t\t\t\treturn INDIGO_FAILED;");
+				write_line("\t\t\t}");
+				write_line("\t\t\tindigo_queue_set_name(driver_queue, \"Queue \" DRIVER_LABEL);");
+				write_line("\t\t\tindigo_start_usb_event_handler();");
+				write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver.libusb->vid ? driver.libusb->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver.libusb->pid ? driver.libusb->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
 			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_register_callback ->  %%s\", rc < 0 ? libusb_error_name(rc) : \"OK\");");
+			write_line("\t\t\tif (rc < 0) {");
+			write_line("\t\t\t\tindigo_queue_delete(&driver_queue);");
+			write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
+			write_line("\t\t\t\treturn INDIGO_FAILED;");
+			write_line("\t\t\t}");
 		} else {
 			// TBD
 		}
+	} else if (driver.sdk) {
+		write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
+		write_line("\t\t\t\tdevices[i] = NULL;");
+		write_line("\t\t\t}");
+		if (driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+			write_line("\t\t\tsdk_discovery_stopping = false;");
+		}
+		write_line("\t\t\tdriver_queue = indigo_queue_create(NULL);");
+		write_line("\t\t\tif (driver_queue == NULL) {");
+		write_line("\t\t\t\tINDIGO_DRIVER_ERROR(DRIVER_NAME, \"Failed to create driver queue\");");
+		write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
+		write_line("\t\t\t\treturn INDIGO_FAILED;");
+		write_line("\t\t\t}");
+		write_line("\t\t\tindigo_queue_set_name(driver_queue, \"Queue \" DRIVER_LABEL);");
+		write_line("\t\t\tindigo_start_usb_event_handler();");
+		if (driver.sdk->hotplug) {
+				write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver.sdk->vid ? driver.sdk->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver.sdk->pid ? driver.sdk->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
+			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_register_callback ->  %%s\", rc < 0 ? libusb_error_name(rc) : \"OK\");");
+			write_line("\t\t\tif (rc < 0) {");
+			write_line("\t\t\t\tindigo_queue_delete(&driver_queue);");
+			write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
+			write_line("\t\t\t\treturn INDIGO_FAILED;");
+			write_line("\t\t\t}");
+		} else {
+			write_line("\t\t\tindigo_queue_add(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, discover_devices_handler, &driver_queue_mutex);");
+		}
 	} else if (driver.hid) {
 		if (driver.hid->hotplug) {
-			for (device_type *device = driver.devices; device; device = device->next) {
-				write_line("\t\t\t%s = NULL;", device->type);
-			}
-			write_line("\t\t\tindigo_start_usb_event_handler();");
-			write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver.hid->vid ? driver.hid->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver.hid->pid ? driver.hid->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
+				for (device_type *device = driver.devices; device; device = device->next) {
+					write_line("\t\t\t%s = NULL;", device->id);
+				}
+				write_line("\t\t\tdriver_queue = indigo_queue_create(NULL);");
+				write_line("\t\t\tif (driver_queue == NULL) {");
+				write_line("\t\t\t\tINDIGO_DRIVER_ERROR(DRIVER_NAME, \"Failed to create driver queue\");");
+				write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
+				write_line("\t\t\t\treturn INDIGO_FAILED;");
+				write_line("\t\t\t}");
+				write_line("\t\t\tindigo_queue_set_name(driver_queue, \"Queue \" DRIVER_LABEL);");
+				write_line("\t\t\tindigo_start_usb_event_handler();");
+				write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver.hid->vid ? driver.hid->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver.hid->pid ? driver.hid->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
 			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_register_callback ->  %%s\", rc < 0 ? libusb_error_name(rc) : \"OK\");");
+			write_line("\t\t\tif (rc < 0) {");
+			write_line("\t\t\t\tindigo_queue_delete(&driver_queue);");
+			write_line("\t\t\t\tlast_action = INDIGO_DRIVER_SHUTDOWN;");
+			write_line("\t\t\t\treturn INDIGO_FAILED;");
+			write_line("\t\t\t}");
 		} else {
 			// TBD
 		}
 	}
 	write_line("\t\t\tbreak;");
 	write_line("");
-	write_line("\t\tcase INDIGO_DRIVER_SHUTDOWN:");
+	write_line("\t\t}");
+	write_line("\t\tcase INDIGO_DRIVER_SHUTDOWN: {");
 	if (driver.virtual || driver.serial) {
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->type);
+			write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->id);
 		}
 		write_line("\t\t\tlast_action = action;");
-		for (device_type *device = driver.devices; device; device = device->next) {
-			write_line("\t\t\tif (%s != NULL) {", device->type);
-			write_line("\t\t\t\tindigo_detach_device(%s);", device->type);
-			write_line("\t\t\t\tfree(%s);", device->type);
-			write_line("\t\t\t\t%s = NULL;", device->type);
-			write_line("\t\t\t}", device->type);
-		}
+		write_c_virtual_device_detach(driver.devices);
 		write_line("\t\t\tif (private_data != NULL) {");
-		write_line("\t\t\t\tfree(private_data);");
+		write_line("\t\t\t\tindigo_safe_free(private_data);");
 		write_line("\t\t\t\tprivate_data = NULL;");
 		write_line("\t\t\t}");
-	} else if (driver.libusb) {
-		if (driver.libusb->hotplug) {
-			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
-			write_line("\t\t\t\tVERIFY_NOT_CONNECTED(devices[i]);");
+	} else if (driver_uses_device_queue()) {
+		write_line("\t\t\tpthread_mutex_lock(&driver_queue_mutex);");
+		write_line("\t\t\tindigo_result shutdown_result = verify_devices_disconnected();");
+		if (driver.sdk && driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+			write_line("\t\t\tif (shutdown_result == INDIGO_OK) {");
+			write_line("\t\t\t\tsdk_discovery_stopping = true;");
 			write_line("\t\t\t}");
-			write_line("\t\t\tlast_action = action;");
+		}
+		write_line("\t\t\tpthread_mutex_unlock(&driver_queue_mutex);");
+		write_line("\t\t\tif (shutdown_result != INDIGO_OK) {");
+		write_line("\t\t\t\treturn shutdown_result;");
+		write_line("\t\t\t}");
+		write_line("\t\t\tlast_action = action;");
+		if (!driver.sdk || driver.sdk->hotplug) {
 			write_line("\t\t\tlibusb_hotplug_deregister_callback(NULL, callback_handle);");
 			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_deregister_callback\");");
+		}
+		if (driver.sdk && driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+			write_line("\t\t\tindigo_queue_remove(driver_queue, NULL, (indigo_timer_callback)process_sdk_retry_handler);");
+		}
+		write_line("\t\t\tindigo_queue_drain(driver_queue);");
+		if (driver.libusb || driver.sdk) {
 			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
 			write_line("\t\t\t\tif (devices[i] != NULL) {");
 			write_line("\t\t\t\t\tindigo_device *device = devices[i];");
-			write_line("\t\t\t\t\thotplug_callback(NULL, PRIVATE_DATA->usbdev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);");
+			write_line("\t\t\t\t\tprocess_unplug_event_handler(NULL, libusb_ref_device(PRIVATE_DATA->usbdev));");
 			write_line("\t\t\t\t}");
 			write_line("\t\t\t}");
 		} else {
-			// TBD
+			write_line("\t\t\tprocess_unplug_event_handler(NULL, NULL);");
 		}
-	} else if (driver.hid) {
-		if (driver.hid->hotplug) {
-			for (device_type *device = driver.devices; device; device = device->next) {
-				write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->type);
-			}
-			write_line("\t\t\tlast_action = action;");
-			write_line("\t\t\tlibusb_hotplug_deregister_callback(NULL, callback_handle);");
-			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_deregister_callback\");");
-			write_line("\t\t\tprocess_unplug_event(NULL);");
-		} else {
-			// TBD
+		write_line("\t\t\tindigo_queue_delete(&driver_queue);");
+		if (driver.sdk && driver.sdk->hotplug && *driver.sdk->discovery_retries) {
+			write_line("\t\t\tclear_sdk_discovery_retries();");
 		}
 	}
 	write_c_code_blocks(driver.on_shutdown, 2, "on_shutdown");
 	write_line("\t\t\tbreak;");
 	write_line("");
+	write_line("\t\t}");
 	write_line("\t\tcase INDIGO_DRIVER_INFO:");
 	write_line("\t\t\tbreak;");
 	write_line("\t}");
@@ -2013,6 +2676,10 @@ void write_c_source(void) {
 		}
 		write_line("");
 	}
+	if (*driver.supported_architecture) {
+		write_line("// supported_architecture: %s", driver.supported_architecture);
+		write_line("#if %s", driver.supported_architecture);
+	}
 	write_c_include_section();
 	write_c_define_section();
 	write_c_property_definition_section();
@@ -2023,23 +2690,34 @@ void write_c_source(void) {
 		write_c_device_api_section(device);
 	}
 	write_c_device_templates_section();
-	if ((driver.libusb && driver.libusb->hotplug) || (driver.hid && driver.hid->hotplug)) {
+	if (driver_uses_device_queue()) {
 		write_c_hotplug_section();
 	}
 	write_c_main_section();
+	if (*driver.supported_architecture) {
+		write_line("#else");
+		write_line("#include \"indigo_%s_%s.h\"", driver.devices->type, driver.name);
+		write_line("");
+		write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver.devices->type, driver.name);
+		write_line("\tSET_DRIVER_INFO(info, \"%s\", __FUNCTION__, 0x%08X, %s, INDIGO_DRIVER_SHUTDOWN);", driver.label, 0x03000000 + driver.version, driver.multi_device_support ? "true" : "false");
+		write_line("\treturn action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;");
+		write_line("}");
+		write_line("#endif");
+	}
 }
 
 #pragma mark - parse c code
 
-device_type *get_device(char *type) {
+device_type *get_device(char *id) {
 	for (device_type *device = driver.devices; device; device = device->next) {
-		if (strcmp(device->type, type) == 0) {
+		if (strcmp(device->id, id) == 0) {
 			return device;
 		}
 	}
-	debug(1, "ADDING: '%s'", type);
+	debug(1, "ADDING: '%s'", id);
 	device_type *device = allocate(sizeof(device_type));
-	strncpy(device->type, type, sizeof(device->type));
+	strncpy(device->type, id, sizeof(device->type));
+	strncpy(device->id, id, sizeof(device->id));
 	append((void **)&driver.devices, device);
 	return device;
 }
@@ -2124,6 +2802,12 @@ void read_c_source(void) {
 	double d1;
 	while (fgets(line, sizeof(line), stdin)) {
 		line[strcspn(line, "\n")] = 0;
+		if (strstr(line, "GNU Lesser General Public")) {
+			driver.license = GNU_LGPL_LICENSE;
+		}
+		if (sscanf(line, "// supported_architecture: %255[^\n]", driver.supported_architecture) == 1) {
+			continue;
+		}
 		if ((s0 = strstr(line, "//* "))) {
 			memmove(s0, s0 + 4, strlen(s0 + 4) + 1);
 		}
@@ -2133,7 +2817,10 @@ void read_c_source(void) {
 				todo->text = strdup(line);
 				append((void **)&todos, todo);
 			}
-			if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
+			if (sscanf(line, "// device_id: %127s type: %127s", s1, s2) == 2) {
+				device = get_device(s1);
+				strncpy(device->type, s2, sizeof(device->type));
+			} else if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
 				snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2026 %s", i1, s1);
 			} else if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
 				if (i1 < 2025) {
@@ -2220,6 +2907,9 @@ void read_c_source(void) {
 			strncpy(driver.name, s1, sizeof(driver.name));
 		} else if (sscanf(line, "#define DRIVER_LABEL \"%127[^\"]\"", s1) == 1) {
 			strncpy(driver.label, s1, sizeof(driver.label));
+		} else if (sscanf(line, "#define MAX_DEVICES %d", &i1) == 1) {
+			// The generated default carries no attribute back into the extracted source.
+			driver.max_devices = i1 == 5 ? 0 : i1;
 		} else if (sscanf(line, "#define %127[^_]_DEVICE_NAME \"%127[^\"]\"", s1, s2) == 2) {
 			make_lower_case(s1);
 			device = get_device(s1);
@@ -2237,8 +2927,11 @@ void read_c_source(void) {
 				strncpy(def->value, s2, sizeof(def->value));
 				append((void **)&defs, def);
 			}
-		} else if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
-			strncpy(driver.label, s1, sizeof(driver.label));
+		} else if (sscanf(line, " SET_DRIVER_INFO(%*[^,], %*[^,], %*[^,], %*[^,], %127[^,],", s1) == 1) {
+			driver.multi_device_support = strcmp(s1, "true") == 0;
+			if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
+				strncpy(driver.label, s1, sizeof(driver.label));
+			}
 		} else if (strstr(line, "ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;")) {
 			if (device) {
 				device->additional_instances = true;
@@ -2314,7 +3007,7 @@ void read_c_source(void) {
 			} else if (strcmp(s1, "vendor_id") == 0) {
 				strncpy(pattern->exact_match, s2, sizeof(pattern->exact_match));
 			}
-		} else if (sscanf(line, " int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %127[^,], %127[^,])", s1, s2) == 2) {
+		} else if (sscanf(line, " int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, %127[^,], %127[^,])", s1, s2) == 2 || sscanf(line, " int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %127[^,], %127[^,])", s1, s2) == 2) {
 			driver.libusb = allocate(sizeof(libusb_type));
 			if (strcmp(s1, "LIBUSB_HOTPLUG_MATCH_ANY")) {
 				strncpy(driver.libusb->vid, s1, sizeof(driver.libusb->vid));
@@ -2330,10 +3023,14 @@ void read_c_source(void) {
 				}
 			}
 		} else if (sscanf(line, " if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %127[^)])", s1) == 1) {
-			device = get_device("aux");
+			if (device == NULL || strcmp(device->type, "aux")) {
+				device = get_device("aux");
+			}
 			strncpy(device->interface, s1, sizeof(device->interface));
 		} else if (sscanf(line, " if (indigo_%127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "attach") == 0) {
-			device = get_device(s1);
+			if (device == NULL || strcmp(device->type, s1)) {
+				device = get_device(s1);
+			}
 		} else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]() {", s1, s2) == 2 && strcmp(s2, "change_property") == 0) {
 			device = get_device(s1);
 		} else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "enumerate_properties") == 0 && line[strlen(line) - 1] == '{') {
@@ -2433,20 +3130,36 @@ void write_definition_source(void) {
 	write_line("// %s", driver.copyright);
 	write_line("// All rights reserved.");
 	write_line("//");
-	write_line("// You can use this software under the terms of 'INDIGO Astronomy");
-	write_line("// open-source license' (see LICENSE.md).");
-	write_line("//");
-	write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
-	write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
-	write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
-	write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
-	write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
-	write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
-	write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
-	write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
-	write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
-	write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
-	write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	if (driver.license == GNU_LGPL_LICENSE) {
+		write_line("// This library is free software; you can redistribute it and/or");
+		write_line("// modify it under the terms of the GNU Lesser General Public");
+		write_line("// License as published by the Free Software Foundation; either");
+		write_line("// version 2.1 of the License, or (at your option) any later version.");
+		write_line("//");
+		write_line("// This library is distributed in the hope that it will be useful,");
+		write_line("// but WITHOUT ANY WARRANTY; without even the implied warranty of");
+		write_line("// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU");
+		write_line("// Lesser General Public License for more details.");
+		write_line("//");
+		write_line("// You should have received a copy of the GNU Lesser General Public");
+		write_line("// License along with this library; if not, write to the Free Software");
+		write_line("// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA");
+	} else {
+		write_line("// You can use this software under the terms of 'INDIGO Astronomy");
+		write_line("// open-source license' (see LICENSE.md).");
+		write_line("//");
+		write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
+		write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
+		write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
+		write_line("// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY");
+		write_line("// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL");
+		write_line("// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE");
+		write_line("// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS");
+		write_line("// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,");
+		write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
+		write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
+		write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	}
 	write_line("");
 	write_line("// %s driver definition", driver.label);
 	write_line("");
@@ -2461,6 +3174,18 @@ void write_definition_source(void) {
 	write_line("\tauthor = \"%s\";", driver.author);
 	write_line("\tcopyright = \"%s\";", driver.copyright);
 	write_line("\tversion = %d;", driver.version);
+	if (driver.cpp) {
+		write_line("\tcpp = true;");
+	}
+	if (driver.multi_device_support) {
+		write_line("\tmulti_device_support = true;");
+	}
+	if (driver.max_devices > 0) {
+		write_line("\tmax_devices = %d;", driver.max_devices);
+	}
+	if (*driver.supported_architecture) {
+		write_line("\tsupported_architecture = \"%s\";", driver.supported_architecture);
+	}
 	if (driver.serial) {
 		write_line("\tserial {");
 		if (driver.serial->configurable_speed || driver.serial->patterns) {
@@ -2499,6 +3224,40 @@ void write_definition_source(void) {
 		}
 		if (*driver.libusb->pid) {
 			write_line("\t\tpid = %s;", driver.libusb->pid);
+		}
+		write_line("\t}");
+	} else if (driver.sdk) {
+		write_line("\tsdk {");
+		if (*driver.sdk->discovery_retries) {
+			write_line("\t\tdiscovery_retries = %s;", driver.sdk->discovery_retries);
+		}
+		write_line("\t\thotplug = true;");
+		if (*driver.sdk->vid) {
+			write_line("\t\tvid = %s;", driver.sdk->vid);
+		}
+		if (*driver.sdk->pid) {
+			write_line("\t\tpid = %s;", driver.sdk->pid);
+		}
+		if (driver.sdk->plug) {
+			write_line("\t\tplug {");
+			for (code_type *code = driver.sdk->plug; code; code = code->next) {
+				write_code_block(code, 3);
+			}
+			write_line("\t\t}");
+		}
+		if (driver.sdk->unplug_match) {
+			write_line("\t\tunplug_match {");
+			for (code_type *code = driver.sdk->unplug_match; code; code = code->next) {
+				write_code_block(code, 3);
+			}
+			write_line("\t\t}");
+		}
+		if (driver.sdk->unplug) {
+			write_line("\t\tunplug {");
+			for (code_type *code = driver.sdk->unplug; code; code = code->next) {
+				write_code_block(code, 3);
+			}
+			write_line("\t\t}");
 		}
 		write_line("\t}");
 	}
@@ -2558,6 +3317,9 @@ void write_definition_source(void) {
 	}
 	for (device_type *device = driver.devices; device; device = device->next) {
 		write_line("\t%s {", device->type);
+		if (strcmp(device->id, device->type)) {
+			write_line("\t\tid = %s;", device->id);
+		}
 		write_line("\t\tname = \"%s\";", device->name);
 		if (*device->interface) {
 			write_line("\t\tinterface = %s;", device->interface);
@@ -2630,6 +3392,12 @@ void write_definition_source(void) {
 			if (property->preserve_values) {
 				write_line("\t\t\tpreserve_values = true;");
 			}
+			if (property->pass_through_change) {
+				write_line("\t\t\tpass_through_change = true;");
+			}
+			if (property->accept_while_busy) {
+				write_line("\t\t\taccept_while_busy = true;");
+			}
 			if (property->on_change) {
 				write_line("\t\t\ton_change {");
 				for (code_type *code = property->on_change; code; code = code->next) {
@@ -2674,7 +3442,6 @@ void write_definition_source(void) {
 				if (property->always_defined) {
 					write_line("\t\t\talways_defined = true;");
 				}
-				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// asynchronous_change = false;");
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\titem %s {", item->id);
@@ -2742,7 +3509,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "Writing %s ...\n", file_name);
 			freopen(file_name, "w", stdout);
 			write_c_main_source();
-			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.c", definition_source_dirname, driver.devices->type, driver.name);
+			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.%s", definition_source_dirname, driver.devices->type, driver.name, driver.cpp ? "cpp" : "c");
 			fprintf(stderr, "Writing %s ...\n", file_name);
 			freopen(file_name, "w", stdout);
 			write_c_source();
@@ -2764,6 +3531,7 @@ int main(int argc, char **argv) {
 				return 1;
 			}
 		}
+		driver.cpp = strcmp(ext, ".cpp") == 0;
 		freopen(source_file, "r", stdin);
 		freopen(definition_file, "w", stdout);
 		read_c_source();

@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -244,6 +244,7 @@ extern "C" {
 
 typedef struct {
 	indigo_uni_handle *property_save_file_handle;            ///< handle for property save
+	void *config_restore;                      ///< configuration restore observer and pending requests
 	pthread_mutex_t config_mutex;							///< mutex for configuration load/save synchronisation
 	pthread_mutex_t device_mutex;							///< mutex for synchronising multi-device access over single low level connection
 	indigo_timer *timers;											///< active timer list
@@ -303,11 +304,11 @@ typedef struct {
 	}\
 }
 
-/** Try to aquire global lock
+/** Deprecated no-op, always returns INDIGO_OK. The file based global lock was keyed by device name, which is assigned per process and therefore neither stable for the same hardware nor unique across different hardware. Kept only for source compatibility with out-of-tree drivers; do not use in new code.
 */
 INDIGO_EXTERN indigo_result indigo_try_global_lock(indigo_device *device);
 
-/** Globally unlock
+/** Deprecated no-op, always returns INDIGO_OK. See indigo_try_global_lock().
 */
 INDIGO_EXTERN indigo_result indigo_global_unlock(indigo_device *device);
 
@@ -401,6 +402,22 @@ INDIGO_EXTERN void indigo_enumerate_serial_ports(indigo_device *device, indigo_p
  */
 INDIGO_EXTERN bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request);
 
+/** Accept a CONNECTION change and run the handler on the device queue.
+
+    A repeated request for the state the device is already in is ignored. Otherwise the requested
+    values are taken, CONNECTION is published BUSY and only then is the handler queued: the handler
+    runs on another thread and a connect that publishes BUSY after queuing lets it observe a state
+    that is not there yet. Expects `device` and `property` in scope, like INDIGO_COPY_*_PROCESS_CHANGE.
+ */
+#define INDIGO_PROCESS_CONNECT(h) if (!indigo_ignore_connection_change(device, property)) { indigo_property_copy_values(CONNECTION_PROPERTY, property, false); INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL); indigo_execute_handler(device, h); }
+
+/** Accept a CONNECTION change and run the handler on a per-driver queue.
+
+    As INDIGO_PROCESS_CONNECT, for a driver that serialises SDK enumeration, attach, open and close
+    across all its instances on its own queue `q` guarded by `m`.
+ */
+#define INDIGO_PROCESS_QUEUED_CONNECT(q, m, h) if (!indigo_ignore_connection_change(device, property)) { indigo_property_copy_values(CONNECTION_PROPERTY, property, false); INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL); indigo_queue_add(q, device, INDIGO_TASK_PRIORITY_NORMAL, 0, h, m); }
+
 /** Calculate position corrected with a backlash
 */
 INDIGO_EXTERN int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive);
@@ -464,6 +481,14 @@ INDIGO_EXTERN void indigo_cancel_pending_handlers(indigo_device *device);
 /** Remove scheduled handler from queue
  */
 INDIGO_EXTERN void indigo_cancel_pending_handler(indigo_device *device, indigo_timer_callback callback);
+
+/** Keep the shared library containing the given address loaded for the lifetime of the process.
+    A vendor SDK that leaves a thread of its own running after its documented shutdown call makes
+    that thread execute unmapped code once the driver is unloaded, which no driver can prevent by
+    sequencing. Pinning the SDK library from the driver's initialization keeps its code mapped.
+    Pass the address of an SDK function, for example indigo_pin_library((void *)SDKShutdown).
+ */
+INDIGO_EXTERN bool indigo_pin_library(const void *address);
 
 #ifdef __cplusplus
 }

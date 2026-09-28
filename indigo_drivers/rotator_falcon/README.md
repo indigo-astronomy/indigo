@@ -29,3 +29,7 @@ indigo_server -s
 ## Status: Stable
 
 Tested with a real device.
+
+## Testing
+
+2026-09-27 22:41 3.0.0.10 mac arm64 simulator 13/13 OK

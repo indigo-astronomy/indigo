@@ -22,3 +22,8 @@ indigo_server indigo_focuser_usbv3
 ## Status: Stable
 
 Driver is developed and tested with the physical hardware.
+
+## Testing
+
+2026-09-22 01:09 3.0.0.10 mac arm64 USB_Focus v3 16/16 OK
+2026-09-27 23:26 3.0.0.11 mac arm64 simulator 28/28 OK

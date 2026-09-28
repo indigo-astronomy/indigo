@@ -6,7 +6,7 @@ https://astronomy-imaging-camera.com
 
 All ZWO EAF focusers.
 
-This driver supports hot-plug (multiple devices).
+This driver supports hot-plug (up to 5 USB devices).
 
 ## Supported platforms
 
@@ -40,3 +40,7 @@ Please follow these steps:
 
 This seems to be a MacOS issue. Looks like this procedure fixes some device permissions.
 This procedure should be followed only once, then your EAF should be auto discovered.
+
+## Testing
+
+2026-09-27 22:37 3.0.0.35 mac arm64 fake SDK 11/11 OK

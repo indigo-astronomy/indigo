@@ -22,7 +22,7 @@ driver qhy {
 	label = "QHY CFW Filter Wheel";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 10;
+	version = 12;
 	serial;
 	include {
 		#include <ctype.h>
@@ -80,6 +80,9 @@ driver qhy {
 					if (qhy_command(device, "NOW", reply, 1, 1)) {
 						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
 					}
+				} else if (X_MODEL_PROPERTY->state == INDIGO_BUSY_STATE) {
+					// A model request copied while the handshake ran is left to its handler.
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, model request pending");
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, fallback to CFW1");
 					indigo_set_switch(X_MODEL_PROPERTY, X_MODEL_1_ITEM, true);
@@ -133,14 +136,15 @@ driver qhy {
 		}
 		switch X_MODEL {
 			persistent = true;
-			// on_change { }
+			on_change {
+				indigo_apply_switch_targets(X_MODEL_PROPERTY);
+			}
 			// on_attach { }
 			// on_detach { }
 			name = "X_MODEL";
 			group = MAIN_GROUP;
 			label = "Device type";
 			always_defined = true;
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_MODEL_1 {
 				name = "1";

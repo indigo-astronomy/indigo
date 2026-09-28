@@ -23,6 +23,11 @@
 OS_DETECTED = $(shell uname -s)
 ARCH_DETECTED = $(shell uname -m)
 ifeq ($(OS_DETECTED),Linux)
+	ifeq ($(ARCH_DETECTED),aarch64)
+		ifeq ($(shell getconf LONG_BIT 2>/dev/null),32)
+			ARCH_DETECTED = armv7l
+		endif
+	endif
 	ifeq ($(ARCH_DETECTED),armv6l)
 		ARCH_DETECTED = arm
 		DEBIAN_ARCH = armhf

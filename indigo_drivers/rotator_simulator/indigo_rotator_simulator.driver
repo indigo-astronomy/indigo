@@ -26,7 +26,8 @@ driver simulator {
 	label = "Field Rotator Simulator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 8;
+	multi_device_support = true;
 	define {
 		#define ROTATOR_SPEED 1
 		#define ROTATOR_POSITION_EPSILON 0.000001
@@ -35,6 +36,8 @@ driver simulator {
 		double target_position, current_position;
 	}
 	code {
+		static void rotator_position_handler(indigo_device *device);
+
 		static double simulator_normalize_position(double position) {
 			position = fmod(position, 360);
 			if (position < 0) {
@@ -76,6 +79,11 @@ driver simulator {
 	rotator {
 		name = "Field Rotator Simulator";
 		additional_instances = true;
+		on_disconnect {
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+			simulator_update_rotator_position(device);
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		on_timer {
 			if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
@@ -95,7 +103,7 @@ driver simulator {
 					if (delta > 0) {
 						indigo_execute_handler_in(device, 0.1, rotator_timer_callback);
 					} else {
-						indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
+						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0.1, rotator_timer_callback);
 					}
 				} else {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -114,7 +122,7 @@ driver simulator {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 					PRIVATE_DATA->target_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.target);
 					simulator_update_rotator_position(device);
-					indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0.1, rotator_timer_callback);
 				}
 			}
 		}
@@ -128,6 +136,7 @@ driver simulator {
 		inherited ROTATOR_ABORT_MOTION {
 			on_change {
 				if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, rotator_position_handler);
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 					simulator_update_rotator_position(device);

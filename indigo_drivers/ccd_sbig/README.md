@@ -28,7 +28,7 @@ Driver is developed and tested with:
 * SBIG ST-7XE
 * SBIG CFW-8A
 * SBIG AO-7
-* SBIG Camera Simulator
+* SBIG Camera Simulator (`EthSim2.exe` from https://diffractionlimited.com/downloads/sbig/WinDevKit.zip)
 
 ## NOTES
 ### Problem on ARM 64 bit architecture

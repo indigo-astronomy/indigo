@@ -173,4 +173,8 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="indigo_focuser_ioptron.driver" />
+    <None Include="REFACTOR.md" />
+  </ItemGroup>
 </Project>

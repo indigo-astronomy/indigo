@@ -26,7 +26,7 @@ driver fc3 {
 	label = "PegasusAstro FocusCube v3 Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 3;
+	version = 8;
 	serial {
 		pattern {
 			pid = 0x9000;
@@ -37,6 +37,9 @@ driver fc3 {
 		char response[128];
 	}
 	code {
+		static void focuser_position_handler(indigo_device *device);
+		static void focuser_steps_handler(indigo_device *device);
+
 		static bool fc3_command(indigo_device *device, char *command, ...) {
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
@@ -45,7 +48,7 @@ driver fc3 {
 				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
 				}
 			}
 			return result > 0;
@@ -195,15 +198,19 @@ driver fc3 {
 			}
 		}
 		inherited FOCUSER_STEPS {
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.value;
 				if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-					if (position + FOCUSER_STEPS_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
-						FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value - position;
-					}
-				} else {
 					if (position - FOCUSER_STEPS_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 						FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = position - FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+					}
+				} else {
+					if (position + FOCUSER_STEPS_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
+						FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value - position;
 					}
 				}
 				if (fc3_command(device, "FG:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1))) {
@@ -225,6 +232,10 @@ driver fc3 {
 		}
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
+			reject_change {
+				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.target;
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
@@ -236,6 +247,7 @@ driver fc3 {
 					}
 					FOCUSER_POSITION_ITEM->number.target = position;
 					if (fc3_command(device, "FM:%d", position)) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					} else {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -252,6 +264,8 @@ driver fc3 {
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					indigo_cancel_pending_handler(device, focuser_position_handler);
+					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 					if (fc3_command(device, "FH")) {
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;

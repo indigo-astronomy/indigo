@@ -24,3 +24,7 @@ indigo_server indigo_focuser_mypro2
 
 Driver is developed and tested with:
 * myFocuserPro2 on Arduino Micro
+
+## Testing
+
+2026-09-27 23:07 3.0.0.13 mac arm64 simulator 16/16 OK

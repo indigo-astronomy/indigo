@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -45,12 +45,18 @@ extern "C" {
 
 /** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
  */
-
+#ifndef INDIGO_USE_BLOB_URLS_DECLARED
+#define INDIGO_USE_BLOB_URLS_DECLARED
 INDIGO_EXTERN bool indigo_use_blob_urls;
+#endif
 
 /** XML wire protocol parser.
  */
 INDIGO_EXTERN void indigo_xml_parse(indigo_device *device, indigo_client *client);
+
+/** Parse XML with a request dispatcher (NULL uses the bus dispatcher).
+ */
+INDIGO_EXTERN void indigo_xml_parse_with_callback(indigo_device *device, indigo_client *client, indigo_result (*change_property)(indigo_client *, indigo_property *));
 
 /** Escape XML string into buffer identified by index (0-4).
  */

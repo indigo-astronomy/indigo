@@ -59,6 +59,17 @@ static void usage(const char *name) {
 	printf("  --model <upb3>          Select simulated model, default is upb3\n");
 	printf("  --device-id <id>        Override UPB v3 device id\n");
 	printf("  --firmware <version>    Override firmware version\n");
+	printf("  --outlets-on            Start with every power outlet and the relay on\n");
+	printf("  --usb-on                Start with every USB port on\n");
+	printf("  --autodew               Start with automatic dew control on\n");
+	printf("  --fault <cmd> <mode>    Answer <cmd> with invalid|short|silent|close\n");
+	printf("  --fault-once <cmd> <mode>       The same, but only the first time\n");
+	printf("  --fault-after <n> <cmd> <mode>  The same, skipping the first <n> matches\n");
+	printf("  --external-after <n>    From the <n>+1st PA on, as if changed outside the driver:\n");
+	printf("                          outlet 2 off, relay off, heater 1 at 40, buck at 5 V,\n");
+	printf("                          USB port 2 off and automatic dew control on\n");
+	printf("  --slow-file <path>      When <path> exists, the next command named in it removes\n");
+	printf("                          it and gets its reply, composed at once, 0.5 s late\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -84,6 +95,21 @@ static int direction = 0;
 static int speed = 400;
 static char id[32] = "AA000000";
 static char fw[32] = "1.4.1";
+// Fault injection: the named command answers with MODE instead of its reply.
+// invalid - an unparsable line, short - a truncated status frame, silent - no
+// answer at all, close - the port is closed, which is how a transport loss looks.
+static const char *fault_command, *fault_mode;
+static bool fault_once;
+// Matches answered normally before the fault applies, so a fault can be aimed at
+// a poll rather than at the connect.
+static int fault_skip;
+// A change of the box outside the driver: the listed state changes when the status is
+// queried the given number of times after the start, without a command from the driver.
+static int external_after = -1;
+// A reply held back after it was composed, so a request can arrive while the driver waits
+// for a reply that still shows the state before it.
+static const char *slow_file;
+static char slow_command[32];
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -138,6 +164,44 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "Unknown model '%s'\n", argv[i]);
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--outlets-on")) {
+			for (int k = 0; k < 6; k++) {
+				power[k] = 100;
+			}
+			relay = buck = boost = 1;
+		} else if (!strcmp(argv[i], "--usb-on")) {
+			for (int k = 0; k < 8; k++) {
+				usb[k] = 1;
+			}
+		} else if (!strcmp(argv[i], "--autodew")) {
+			autodew[0] = autodew[1] = autodew[2] = 1;
+		} else if (!strcmp(argv[i], "--fault") || !strcmp(argv[i], "--fault-once") || !strcmp(argv[i], "--fault-after")) {
+			bool after = !strcmp(argv[i], "--fault-after");
+			fault_once = after || !strcmp(argv[i], "--fault-once");
+			if (i + (after ? 3 : 2) >= argc) {
+				fprintf(stderr, "%s requires %s a command and a mode\n", argv[i], after ? "a count," : "");
+				return false;
+			}
+			if (after) {
+				fault_skip = atoi(argv[++i]);
+			}
+			fault_command = argv[++i];
+			fault_mode = argv[++i];
+			if (strcmp(fault_mode, "invalid") && strcmp(fault_mode, "short") && strcmp(fault_mode, "silent") && strcmp(fault_mode, "close")) {
+				fprintf(stderr, "Unknown fault mode '%s'\n", fault_mode);
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--external-after")) {
+			if (++i == argc || (external_after = atoi(argv[i])) < 0) {
+				fprintf(stderr, "--external-after requires a count\n");
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--slow-file")) {
+			if (++i == argc) {
+				fprintf(stderr, "--slow-file requires a path\n");
+				return false;
+			}
+			slow_file = argv[i];
 		} else if (!strcmp(argv[i], "--device-id")) {
 			if (++i == argc) {
 				fprintf(stderr, "--device-id requires a value\n");
@@ -218,16 +282,78 @@ static bool sim_printf(int handle, const char *format, ...) {
 	if (options.trace) {
 		fprintf(stderr, "<- %s", buffer);
 	}
+	if (*slow_command) {
+		*slow_command = '\0';
+		usleep(500000);
+	}
 	return serial_simulator_write_all(handle, buffer, (size_t)length);
 }
 
+// Returns true when the command was answered by an injected fault instead of by
+// the protocol implementation below.
+static bool inject_fault(int handle, const char *buffer) {
+	if (fault_command == NULL || strcmp(buffer, fault_command)) {
+		return false;
+	}
+	if (fault_skip > 0) {
+		fault_skip--;
+		return false;
+	}
+	if (fault_once) {
+		fault_command = NULL;
+	}
+	if (!strcmp(fault_mode, "invalid")) {
+		sim_printf(handle, "invalid\n");
+	} else if (!strcmp(fault_mode, "short")) {
+		sim_printf(handle, "PA:1\n");
+	} else if (!strcmp(fault_mode, "close")) {
+		close(handle);
+		serial_fd = -1;
+		running = 0;
+	}
+	// "silent" answers nothing at all.
+	return true;
+}
+
+// The command named in the slow file, if any, answers late; the file is removed when it is taken.
+static void take_slow_command(const char *buffer) {
+	if (slow_file == NULL) {
+		return;
+	}
+	FILE *file = fopen(slow_file, "r");
+	if (file == NULL) {
+		return;
+	}
+	char command[sizeof(slow_command)] = { 0 };
+	if (fgets(command, sizeof(command), file) != NULL) {
+		command[strcspn(command, "\r\n")] = '\0';
+	}
+	fclose(file);
+	if (!strcmp(command, buffer)) {
+		snprintf(slow_command, sizeof(slow_command), "%s", command);
+		unlink(slow_file);
+	}
+}
+
 static void dispatch_command(int handle, const char *buffer) {
+	if (inject_fault(handle, buffer)) {
+		return;
+	}
+	take_slow_command(buffer);
 	pthread_mutex_lock(&state_mutex);
 	if (!strcmp(buffer, "P#") || !strcmp(buffer, "##")) {
 		sim_printf(handle, "UPBv3_%s_A\n", id);
 	} else if (!strcmp(buffer, "PV")) {
 		sim_printf(handle, "PV:%s\n", fw);
 	} else if (!strcmp(buffer, "PA")) {
+		if (external_after >= 0 && external_after-- == 0) {
+			power[1] = 0;
+			relay = 0;
+			heat[0] = 40;
+			buck_voltage = 5;
+			usb[1] = 0;
+			autodew[0] = autodew[1] = autodew[2] = 1;
+		}
 		sim_printf(handle, "PA:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d\n", power[0], power[1], power[2], power[3], power[4], power[5], heat[0], heat[1], heat[2], buck, boost, relay);
 	} else if (!strcmp(buffer, "UA")) {
 		sim_printf(handle, "UA:%d:%d:%d:%d:%d:%d:%d:%d\n", usb[0], usb[1], usb[2], usb[3], usb[4], usb[5], usb[6], usb[7]);

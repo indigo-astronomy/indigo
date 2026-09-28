@@ -23,3 +23,7 @@ indigo_server indigo_wheel_playerone
 ## Status: Stable
 
 * Phoenix Filter Wheel
+
+## Testing
+
+2026-09-27 22:42 3.0.0.15 mac arm64 fake SDK 12/12 OK

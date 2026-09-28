@@ -28,3 +28,8 @@ Driver is developed and tested with:
 
 Driver is tesed with:
 * NexDome Dome
+
+## Testing
+
+2026-09-27 01:43 3.0.0.16 linux x64 simulator 51/51 OK
+2026-09-27 22:30 3.0.0.16 mac arm64 simulator 51/51 OK

@@ -29,3 +29,7 @@ Driver is developed and tested with:
 * AF1 and AF2 use baud rate 9600 bps (default)
 * AF3 uses 115200 bps (should be specified)
 * DSD_MODEL_HINT property can be used instead, it sets the baud rate according to the selected model.
+
+## Testing
+
+2026-09-27 22:41 3.0.0.20 mac arm64 simulator 42/42 OK

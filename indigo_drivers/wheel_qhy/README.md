@@ -24,3 +24,8 @@ indigo_server indigo_wheel_qhy
 ## Status: Stable
 
 Tested with CFW3
+
+## Testing
+
+2026-09-27 13:05 3.0.0.12 linux x64 simulator 4/4 OK
+2026-09-27 22:42 3.0.0.12 mac arm64 simulator 4/4 OK

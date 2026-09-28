@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 
 //+ include
 
@@ -41,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_wheel_atik"
 #define DRIVER_LABEL         "Atik Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Atik Filter Wheel"
@@ -59,17 +58,43 @@
 typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
-	int slot_count, current_slot, target_slot;
+	int slot_count, current_slot, target_slot, motion_polls;
 	//- data
 } atik_private_data;
 
 #pragma mark - Low level code
 
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 //+ code
+
+static bool atik_query(indigo_device *device) {
+	int count, slot;
+	if (!libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &count, &slot) || count < 1 || count > 9 || slot < 0 || slot > count) {
+		return false;
+	}
+	PRIVATE_DATA->slot_count = count;
+	PRIVATE_DATA->current_slot = slot;
+	return true;
+}
 
 static bool atik_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_hid(ATIK_VENDOR_ID, ATIK_PRODUC_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
-	return PRIVATE_DATA->handle != NULL;
+	if (PRIVATE_DATA->handle != NULL) {
+		// The wheel needs a moment after power up before it reports a slot.
+		for (int i = 0; i < 10; i++) {
+			if (!atik_query(device)) {
+				break;
+			}
+			if (PRIVATE_DATA->current_slot > 0) {
+				return true;
+			}
+			indigo_sleep(1);
+		}
+		indigo_uni_close(&PRIVATE_DATA->handle);
+	}
+	return false;
 }
 
 static void atik_close(indigo_device *device) {
@@ -81,13 +106,22 @@ static void atik_close(indigo_device *device) {
 //+ wheel.code
 
 static void wheel_move_finalizer(indigo_device *device) {
-	libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
-		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	if (!atik_query(device)) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		if (PRIVATE_DATA->current_slot > 0) {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+		}
+		if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (--PRIVATE_DATA->motion_polls <= 0) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		}
 	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 //- wheel.code
@@ -100,19 +134,9 @@ static void wheel_connection_handler(indigo_device *device) {
 		connection_result = atik_open(device);
 		if (connection_result) {
 			//+ wheel.on_connect
-			connection_result = false;
-			for (int i = 0; i < 10; i++) {
-				libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
-					connection_result = true;
-					break;
-				}
-				indigo_sleep(1);
-			}
-			if (connection_result) {
-				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
-				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
-			}
+			WHEEL_SLOT_ITEM->number.min = 1;
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
+			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
 			//- wheel.on_connect
 		}
 		if (connection_result) {
@@ -125,6 +149,15 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		atik_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -134,15 +167,20 @@ static void wheel_connection_handler(indigo_device *device) {
 
 static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
-	if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
-		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	double requested = WHEEL_SLOT_ITEM->number.target;
+	if (requested == PRIVATE_DATA->current_slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-		libatik_wheel_set((hid_device *)PRIVATE_DATA->handle->hid_device, PRIVATE_DATA->target_slot);
-		libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		PRIVATE_DATA->target_slot = requested;
+		if (libatik_wheel_set((hid_device *)PRIVATE_DATA->handle->hid_device, PRIVATE_DATA->target_slot)) {
+			PRIVATE_DATA->motion_polls = 120;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	//- wheel.WHEEL_SLOT.on_change
 }
 
@@ -165,14 +203,10 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, wheel_connection_handler);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);
@@ -193,44 +227,61 @@ static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(WHEEL_DEVICE_NAM
 
 #pragma mark - Hot-plug code
 
-static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *wheel = NULL;
 
-static void process_plug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static indigo_result verify_devices_disconnected(void) {
+	VERIFY_NOT_CONNECTED(wheel);
+	return INDIGO_OK;
+}
+
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
 	if (wheel == NULL) {
 		char usb_path[INDIGO_NAME_SIZE];
 		indigo_get_usb_path(dev, usb_path);
-		atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
-		wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+		atik_private_data *private_data = (atik_private_data *)indigo_safe_malloc(sizeof(atik_private_data));
+		wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 		snprintf(wheel->name, INDIGO_NAME_SIZE, "%s #%s", "Atik Filter Wheel", usb_path);
 		wheel->private_data = private_data;
-		indigo_attach_device(wheel);
+		if (indigo_attach_device(wheel) != INDIGO_OK) {
+			indigo_safe_free(wheel->private_data);
+			indigo_safe_free(wheel);
+			wheel = NULL;
+			libusb_unref_device(dev);
+			return;
+		}
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	libusb_unref_device(dev);
 }
 
-static void process_unplug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
 	if (wheel != NULL) {
 		indigo_detach_device(wheel);
-		free(wheel->private_data);
-		free(wheel);
+		indigo_safe_free(wheel->private_data);
+		indigo_safe_free(wheel);
 		wheel = NULL;
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	if (dev != NULL) {
+		libusb_unref_device(dev);
+	}
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_ASYNC(process_plug_event, dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			process_unplug_event(dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
 }
@@ -249,22 +300,43 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			wheel = NULL;
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VENDOR_ID, ATIK_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, ATIK_VENDOR_ID, ATIK_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
-			VERIFY_NOT_CONNECTED(wheel);
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			process_unplug_event(NULL);
+			indigo_queue_drain(driver_queue);
+			process_unplug_event_handler(NULL, NULL);
+			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

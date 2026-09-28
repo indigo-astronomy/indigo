@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2025 Rumen G. Bogdanovski
+// Copyright (c) 2022-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
@@ -24,7 +25,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0300001C
+#define DRIVER_VERSION 0x0300001E
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -114,7 +115,7 @@ static char *asi_error_string(unsigned int code) {
 		"Mount not initialized",
 		"Mount is moving",
 		"Target is below horizon",
-		"Target is beow the altitude limit",
+		"Target is below the altitude limit",
 		"Time and location are not set",
 		"Warning: Meridian reached, tracking stopeed",
 		"Target is on the other side of the meridian"
@@ -216,11 +217,11 @@ static bool asi_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 	char response[128];
 	memset(&tm, 0, sizeof(tm));
 	char separator[2];
-	if (asi_command(device, ":GC#", response, sizeof(response), 0) && sscanf(response, "%d%c%d%c%d", &tm.tm_mon, separator, &tm.tm_mday, separator, &tm.tm_year) == 5) {
-		if (asi_command(device, ":GL#", response, sizeof(response), 0) && sscanf(response, "%d%c%d%c%d", &tm.tm_hour, separator, &tm.tm_min, separator, &tm.tm_sec) == 5) {
+	if (asi_command(device, ":GC#", response, sizeof(response) - 1, 0) && sscanf(response, "%d%c%d%c%d", &tm.tm_mon, separator, &tm.tm_mday, separator, &tm.tm_year) == 5) {
+		if (asi_command(device, ":GL#", response, sizeof(response) - 1, 0) && sscanf(response, "%d%c%d%c%d", &tm.tm_hour, separator, &tm.tm_min, separator, &tm.tm_sec) == 5) {
 			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 			tm.tm_mon -= 1;
-			if (asi_command(device, ":GG#", response, sizeof(response), 0)) {
+			if (asi_command(device, ":GG#", response, sizeof(response) - 1, 0)) {
 				*utc_offset = -atoi(response);
 				*secs = indigo_timegm(&tm) - *utc_offset * 3600;
 				return true;
@@ -234,7 +235,7 @@ static bool asi_get_sidereal_time(indigo_device *device, double *siderial_time) 
 	int h, m, s;
 	char response[128];
 
-	if (asi_command(device, ":GS#", response, sizeof(response), 0) && (sscanf(response, "%d:%d:%d", &h, &m, &s) == 3)) {
+	if (asi_command(device, ":GS#", response, sizeof(response) - 1, 0) && (sscanf(response, "%d:%d:%d", &h, &m, &s) == 3)) {
 		*siderial_time = (double)h + m/60.0 + s/3600.0;
 		return true;
 	} else {
@@ -244,11 +245,11 @@ static bool asi_get_sidereal_time(indigo_device *device, double *siderial_time) 
 
 static void asi_get_site(indigo_device *device, double *latitude, double *longitude) {
 	char response[128];
-	if (asi_command(device, ":Gt#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":Gt#", response, sizeof(response) - 1, 0)) {
 		*latitude = indigo_stod(response);
 	}
 	// LX200 protocol returns negative longitude for the east
-	if (asi_command(device, ":Gg#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":Gg#", response, sizeof(response) - 1, 0)) {
 		*longitude = indigo_stod(response);
 		if (*longitude < 0) {
 			*longitude += 360;
@@ -258,15 +259,16 @@ static void asi_get_site(indigo_device *device, double *latitude, double *longit
 }
 
 static bool asi_set_site(indigo_device *device, double latitude, double longitude) {
+	char sexagesimal[128];
 	char command[128], response[128];
-	sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d"));
+	sprintf(command, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d", sexagesimal, sizeof(sexagesimal)));
 	if (!asi_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 		return false;
 	} else {
 		// LX200 protocol expects negative longitude for the east
 		longitude = fmod((360 - longitude), 360);
-		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
+		sprintf(command, ":Sg%s#", indigo_dtos_r(longitude, "%03d*%02d", sexagesimal, sizeof(sexagesimal)));
 		if (!asi_command(device, command, response, 1, 0) || *response != '1') {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 			return false;
@@ -277,7 +279,7 @@ static bool asi_set_site(indigo_device *device, double latitude, double longitud
 
 static bool asi_get_meridian_settings(indigo_device *device, bool *flip_enabled, bool *track_passed, int *track_passed_limit) {
 	char response[128];
-	if (asi_command(device, ":GTa#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":GTa#", response, sizeof(response) - 1, 0)) {
 		if (strlen(response) != 5) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME,"unexpected response '%s'", response);
 			return false;
@@ -308,7 +310,7 @@ static bool asi_get_meridian_settings(indigo_device *device, bool *flip_enabled,
 static bool asi_set_meridian_action(indigo_device *device, bool flip, bool track) {
 	char current[128];
 	char request[128];
-	if (asi_command(device, ":GTa#", current, sizeof(current), 0)) {
+	if (asi_command(device, ":GTa#", current, sizeof(current) - 1, 0)) {
 		if (flip) {
 			current[0] = '1';
 		} else {
@@ -320,7 +322,7 @@ static bool asi_set_meridian_action(indigo_device *device, bool flip, bool track
 			current[1] = '0';
 		}
 		sprintf(request, ":STa%s#", current);
-		return asi_command(device, request, current, sizeof(current), 0);
+		return asi_command(device, request, current, sizeof(current) - 1, 0);
 	}
 	return false;
 }
@@ -331,19 +333,19 @@ static bool asi_set_meridian_limit(indigo_device *device, int16_t limit) {
 	if (limit < -15 || limit > 15) {
 		return false;
 	}
-	if (asi_command(device, ":GTa#", current, sizeof(current), 0)) {
+	if (asi_command(device, ":GTa#", current, sizeof(current) - 1, 0)) {
 		sprintf(current+2, "%+03d", limit);
 		sprintf(request, ":STa%s#", current);
-		return asi_command(device, request, current, sizeof(current), 0);
+		return asi_command(device, request, current, sizeof(current) - 1, 0);
 	}
 	return false;
 }
 
 static bool asi_get_coordinates(indigo_device *device, double *ra, double *dec) {
 	char response[128];
-	if (asi_command(device, ":GR#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":GR#", response, sizeof(response) - 1, 0)) {
 		*ra = indigo_stod(response);
-		if (asi_command(device, ":GD#", response, sizeof(response), 0)) {
+		if (asi_command(device, ":GD#", response, sizeof(response) - 1, 0)) {
 			*dec = indigo_stod(response);
 			return true;
 		}
@@ -352,20 +354,21 @@ static bool asi_get_coordinates(indigo_device *device, double *ra, double *dec) 
 }
 
 static bool asi_slew(indigo_device *device, double ra, double dec, int *error_code) {
+	char sexagesimal[128];
 	char command[128], response[128];
-	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
-	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
+	sprintf(command, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
+	if (!asi_command(device, command, response, sizeof(response) - 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
-	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
+	sprintf(command, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
+	if (!asi_command(device, command, response, sizeof(response) - 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	if (!asi_command(device, ":MS#", response, sizeof(response), 0) || *response != '0') {
+	if (!asi_command(device, ":MS#", response, sizeof(response) - 1, 0) || *response != '0') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed with response: %s", response);
 		*error_code = asi_error_code(response);
 		return false;
@@ -375,20 +378,21 @@ static bool asi_slew(indigo_device *device, double ra, double dec, int *error_co
 }
 
 static bool asi_sync(indigo_device *device, double ra, double dec, int *error_code) {
+	char sexagesimal[128];
 	char command[128], response[128];
-	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
-	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
+	sprintf(command, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
+	if (!asi_command(device, command, response, sizeof(response) - 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
-	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
+	sprintf(command, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal)));
+	if (!asi_command(device, command, response, sizeof(response) - 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	if (!asi_command(device, ":CM#", response, sizeof(response), 0) || *response == 'e') {
+	if (!asi_command(device, ":CM#", response, sizeof(response) - 1, 0) || *response == 'e') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		*error_code = asi_error_code(response);
 		return false;
@@ -413,7 +417,7 @@ static bool asi_set_guide_rate(indigo_device *device, int ra, int dec) {
 
 static bool asi_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	char response[128] = {0};
-	bool res = asi_command(device, ":Ggr#", response, sizeof(response), 0);
+	bool res = asi_command(device, ":Ggr#", response, sizeof(response) - 1, 0);
 	if (!res) {
 		return false;
 	}
@@ -435,13 +439,13 @@ static bool asi_set_max_slew_speed(indigo_device *device, int speed) {
 	} else {
 		return false;
 	}
-	if (!asi_command(device, command, response, sizeof(response), 0)) return false;
+	if (!asi_command(device, command, response, sizeof(response) - 1, 0)) return false;
 	return *response == '1';
 }
 
 static bool asi_get_max_slew_speed(indigo_device *device, int *speed) {
 	char response[128] = {0};
-	if (!asi_command(device, ":GRl#", response, sizeof(response), 0)) return false;
+	if (!asi_command(device, ":GRl#", response, sizeof(response) - 1, 0)) return false;
 	int v = atoi(response);
 	if (v <= 0) return false;
 	*speed = v;
@@ -451,7 +455,7 @@ static bool asi_get_max_slew_speed(indigo_device *device, int *speed) {
 // NOTE! requires firmware 1.1.1
 static bool asi_get_tracking_status(indigo_device *device, bool *is_tracking, int *error_code) {
 	char response[128] = {0};
-	bool res = asi_command(device, ":GAT#", response, sizeof(response), 0);
+	bool res = asi_command(device, ":GAT#", response, sizeof(response) - 1, 0);
 	if (!res) return false;
 	if (response[0] == '0' && response[1] == '\0') {
 		*is_tracking = 0;
@@ -471,9 +475,9 @@ static bool asi_get_tracking_status(indigo_device *device, bool *is_tracking, in
 static bool asi_set_tracking(indigo_device *device, bool on) {
 	char response[64] = {0};
 	if (on) {
-		return asi_command(device, ":Te#", response, sizeof(response), 0) && *response == '1';
+		return asi_command(device, ":Te#", response, sizeof(response) - 1, 0) && *response == '1';
 	} else {
-		return asi_command(device, ":Td#", response, sizeof(response), 0) && *response == '1';
+		return asi_command(device, ":Td#", response, sizeof(response) - 1, 0) && *response == '1';
 	}
 }
 
@@ -566,7 +570,7 @@ static bool asi_stop(indigo_device *device) {
 
 static bool asi_clear_alignment_data(indigo_device *device) {
 	char response[64] = {0};
-	return asi_command(device, ":NSC#", response, sizeof(response), 0) && *response == '1';
+	return asi_command(device, ":NSC#", response, sizeof(response) - 1, 0) && *response == '1';
 }
 
 static bool asi_guide_dec(indigo_device *device, int north, int south) {
@@ -603,7 +607,7 @@ static void asi_update_site_items(indigo_device *device) {
 static bool asi_detect_mount(indigo_device *device) {
 	char response[128];
 	bool result = true;
-	if (asi_command(device, ":GVP#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":GVP#", response, sizeof(response) - 1, 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Product: '%s'", response);
 		strncpy(PRIVATE_DATA->product, response, 64);
 		if (!strncmp(PRIVATE_DATA->product, "AM", 2) && isdigit(PRIVATE_DATA->product[2])) {
@@ -629,7 +633,7 @@ static void position_timer_callback(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		}
-		if (success && (success = asi_command(device, ":GU#", response, sizeof(response), 0))) {
+		if (success && (success = asi_command(device, ":GU#", response, sizeof(response) - 1, 0))) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strchr(response, 'N') ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 			if (strchr(response, 'n')) {
 				if (MOUNT_TRACKING_ON_ITEM->sw.value) {
@@ -697,7 +701,7 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 
-		if (success && (success = asi_command(device, ":Gm#", response, sizeof(response), 0))) {
+		if (success && (success = asi_command(device, ":Gm#", response, sizeof(response) - 1, 0))) {
 			if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
@@ -766,7 +770,7 @@ static void asi_init_mount(indigo_device *device) {
 	ZWO_BUZZER_PROPERTY->hidden = false;
 	ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = false;
 	PRIVATE_DATA->firmware = 0;
-	if (asi_command(device, ":GV#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":GV#", response, sizeof(response) - 1, 0)) {
 		char fv[3] = {0};
 		if (3 == sscanf(response, "%hhd.%hhd.%hhd", &fv[0], &fv[1], &fv[2])) {
 			PRIVATE_DATA->firmware = (fv[0] << 16) | (fv[1] << 8) | fv[2];
@@ -817,7 +821,7 @@ static void asi_init_mount(indigo_device *device) {
 		asi_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target);
 	}
 
-	if (asi_command(device, ":GU#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":GU#", response, sizeof(response) - 1, 0)) {
 		if (strchr(response, 'G'))
 			indigo_set_switch(MOUNT_MODE_PROPERTY, EQUATORIAL_ITEM, true);
 		if (strchr(response, 'Z'))
@@ -837,7 +841,7 @@ static void asi_init_mount(indigo_device *device) {
 		asi_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	}
 	/* Tracking rate */
-	if (asi_command(device, ":GT#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":GT#", response, sizeof(response) - 1, 0)) {
 		if (strchr(response, '0')) {
 			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
 		} else if (strchr(response, '1')) {
@@ -847,7 +851,7 @@ static void asi_init_mount(indigo_device *device) {
 		}
 	}
 	/* Buzzer volume */
-	if (asi_command(device, ":GBu#", response, sizeof(response), 0)) {
+	if (asi_command(device, ":GBu#", response, sizeof(response) - 1, 0)) {
 		if (strchr(response, '0')) {
 			indigo_set_switch(ZWO_BUZZER_PROPERTY, ZWO_BUZZER_OFF_ITEM, true);
 		} else if (strchr(response, '1')) {
@@ -1412,7 +1416,7 @@ static void guider_connect_callback(indigo_device *device) {
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			char response[128];
-			if (asi_command(device, ":GVP#", response, sizeof(response), 0)) {
+			if (asi_command(device, ":GVP#", response, sizeof(response) - 1, 0)) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Product: '%s'", response);
 				strncpy(PRIVATE_DATA->product, response, 64);
 				if (!strncmp(PRIVATE_DATA->product, "AM", 2) && isdigit(PRIVATE_DATA->product[2])) {

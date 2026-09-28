@@ -22,7 +22,7 @@ driver skyroof {
 	label = "Interactive Astronomy SkyRoof";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 10;
 	serial;
 	// include { }
 	// define { }
@@ -30,12 +30,14 @@ driver skyroof {
 		char response[128];
 	}
 	code {
+		static void dome_shutter_handler(indigo_device *device);
+
 		static bool skyroof_write(indigo_device *device, char *command)	{
 			return indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) > 0;
 		}
 
 		static bool	skyroof_read(indigo_device *device) {
-			return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) > 0;
+			return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
 		}
 
 		static bool skyroof_open(indigo_device *device) {
@@ -108,14 +110,20 @@ driver skyroof {
 		}
 		inherited DOME_ABORT_MOTION {
 			on_change {
+				DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				DOME_ABORT_MOTION_ITEM->sw.value = false;
 				if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, dome_shutter_handler);
 					if (skyroof_write(device, "Stop#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
 						DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_cancel_pending_handler(device, dome_shutter_finalizer);
+						indigo_execute_handler_in(device, 0, dome_shutter_finalizer);
 					} else {
 						DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
 					}
 				}
+				indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			}
 			// on_attach { }
 			// on_detach { }
@@ -131,7 +139,6 @@ driver skyroof {
 			name = "HEATER_CONTROL";
 			group = DOME_MAIN_GROUP;
 			label = "Heater control";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item HEATER_CONTROL_OFF {
 				name = "OFF";

@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_ao_driver.h>
 #include <indigo/indigo_guider_driver.h>
@@ -34,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_ao_sx"
 #define DRIVER_LABEL         "StarlightXpress AO"
 #define AO_DEVICE_NAME       "SX AO"
@@ -56,6 +55,7 @@ typedef struct {
 //+ code
 
 static bool sx_command(indigo_device *device, char *command, int response, ...) {
+	memset(PRIVATE_DATA->response, 0, sizeof(PRIVATE_DATA->response));
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
 		va_list args;
@@ -66,10 +66,14 @@ static bool sx_command(indigo_device *device, char *command, int response, ...) 
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, response, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1));
 		}
 	}
-	return result > 0;
+	return response > 0 ? result == response : result > 0;
 }
 
+// The port and the identity belong to the master device, but the generated reference counting
+// calls the close helper with whichever logical device released the last reference, so both
+// helpers step up to the master before touching DEVICE_PORT or INFO.
 static bool sx_open(indigo_device *device) {
+	device = device->master_device;
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
@@ -86,6 +90,7 @@ static bool sx_open(indigo_device *device) {
 }
 
 static void sx_close(indigo_device *device) {
+	device = device->master_device;
 	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -99,17 +104,24 @@ static void sx_close(indigo_device *device) {
 static void ao_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = sx_open(device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			//+ ao.on_connect
 			if (sx_command(device, "L", 1)) {
 				AO_GUIDE_DEC_PROPERTY->state = AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-				if (PRIVATE_DATA->response[0] & 0x05)
+				if (PRIVATE_DATA->response[0] & 0x05) {
 					AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (PRIVATE_DATA->response[0] & 0x0A)
+				}
+				if (PRIVATE_DATA->response[0] & 0x0A) {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else {
+				connection_result = false;
 			}
 			//- ao.on_connect
 		}
@@ -118,7 +130,7 @@ static void ao_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				sx_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -126,6 +138,17 @@ static void ao_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AO_GUIDE_DEC_PROPERTY,
+			AO_GUIDE_RA_PROPERTY,
+			AO_RESET_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}
@@ -138,15 +161,16 @@ static void ao_connection_handler(indigo_device *device) {
 static void ao_guide_dec_handler(indigo_device *device) {
 	AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_GUIDE_DEC.on_change
+	bool command_result = true;
 	if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
-		sx_command(device, "GN%05d", 1, (int)AO_GUIDE_NORTH_ITEM->number.value);
+		command_result = sx_command(device, "GN%05d", 1, (int)AO_GUIDE_NORTH_ITEM->number.value);
 	} else if (AO_GUIDE_SOUTH_ITEM->number.value > 0) {
-		sx_command(device, "GS%05d", 1, (int)AO_GUIDE_SOUTH_ITEM->number.value);
+		command_result = sx_command(device, "GS%05d", 1, (int)AO_GUIDE_SOUTH_ITEM->number.value);
 	}
-	AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'G') {
+	if (!command_result || ((AO_GUIDE_NORTH_ITEM->number.value > 0 || AO_GUIDE_SOUTH_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'G')) {
 		AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
 	//- ao.AO_GUIDE_DEC.on_change
 	indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
 }
@@ -154,15 +178,16 @@ static void ao_guide_dec_handler(indigo_device *device) {
 static void ao_guide_ra_handler(indigo_device *device) {
 	AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_GUIDE_RA.on_change
+	bool command_result = true;
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
-		sx_command(device, "GW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
+		command_result = sx_command(device, "GW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
 	} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
-		sx_command(device, "GT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
+		command_result = sx_command(device, "GT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
 	}
-	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'G') {
+	if (!command_result || ((AO_GUIDE_WEST_ITEM->number.value > 0 || AO_GUIDE_EAST_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'G')) {
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
 	//- ao.AO_GUIDE_RA.on_change
 	indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 }
@@ -170,19 +195,23 @@ static void ao_guide_ra_handler(indigo_device *device) {
 static void ao_reset_handler(indigo_device *device) {
 	AO_RESET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_RESET.on_change
-	if (AO_CENTER_ITEM->sw.value) {
-		sx_command(device, "K", 1);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
-	} else if (AO_UNJAM_ITEM->sw.value) {
-		sx_command(device, "R", 1);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	bool requested = AO_CENTER_ITEM->sw.value || AO_UNJAM_ITEM->sw.value;
+	if (requested) {
+		if (sx_command(device, AO_CENTER_ITEM->sw.value ? "K" : "R", 1) && PRIVATE_DATA->response[0] == 'K') {
+			// A centred mechanism clears a limit reported on either axis, but a correction
+			// requested while the reset held the queue is still waiting to be sent and has to
+			// publish its own outcome.
+			if (AO_GUIDE_DEC_PROPERTY->state != INDIGO_BUSY_STATE) {
+				INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			if (AO_GUIDE_RA_PROPERTY->state != INDIGO_BUSY_STATE) {
+				INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+		} else {
+			AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	AO_CENTER_ITEM->sw.value = AO_UNJAM_ITEM->sw.value = false;
-	if (PRIVATE_DATA->response[0] != 'K') {
-		AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
 	//- ao.AO_RESET.on_change
 	indigo_update_property(device, AO_RESET_PROPERTY, NULL);
 }
@@ -218,11 +247,7 @@ static indigo_result ao_enumerate_properties(indigo_device *device, indigo_clien
 
 static indigo_result ao_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, ao_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(ao_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_GUIDE_DEC_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_DEC_PROPERTY, ao_guide_dec_handler);
@@ -251,15 +276,18 @@ static indigo_result ao_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		if (PRIVATE_DATA->count++ == 0) {
+		if (PRIVATE_DATA->count == 0) {
 			connection_result = sx_open(device->master_device);
+		}
+		if (connection_result) {
+			PRIVATE_DATA->count++;
 		}
 		if (connection_result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			if (--PRIVATE_DATA->count == 0) {
+			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				sx_close(device);
 			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -267,6 +295,16 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			GUIDER_GUIDE_DEC_PROPERTY,
+			GUIDER_GUIDE_RA_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}
@@ -279,15 +317,16 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
+	bool command_result = true;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-		sx_command(device, "MN%05d", 1, (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
+		command_result = sx_command(device, "MN%05d", 1, (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-		sx_command(device, "MS%05d", 1, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
+		command_result = sx_command(device, "MS%05d", 1, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
 	}
-	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'M') {
+	if (!command_result || ((GUIDER_GUIDE_NORTH_ITEM->number.value > 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'M')) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	//- guider.GUIDER_GUIDE_DEC.on_change
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
@@ -295,15 +334,16 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
-	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
-		sx_command(device, "MW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
-	} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
-		sx_command(device, "MT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
+	bool command_result = true;
+	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+		command_result = sx_command(device, "MW%05d", 1, (int)GUIDER_GUIDE_WEST_ITEM->number.value / 10);
+	} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+		command_result = sx_command(device, "MT%05d", 1, (int)GUIDER_GUIDE_EAST_ITEM->number.value / 10);
 	}
-	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
-	if (PRIVATE_DATA->response[0] != 'M') {
-		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (!command_result || ((GUIDER_GUIDE_WEST_ITEM->number.value > 0 || GUIDER_GUIDE_EAST_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'M')) {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	//- guider.GUIDER_GUIDE_RA.on_change
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
@@ -328,17 +368,13 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, guider_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(guider_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
@@ -374,38 +410,41 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(sx_private_data));
-			ao = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
+			private_data = (sx_private_data *)indigo_safe_malloc(sizeof(sx_private_data));
+			ao = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
 			ao->private_data = private_data;
+			ao->master_device = ao;
 			indigo_attach_device(ao);
-			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			guider = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
 			guider->master_device = ao;
 			indigo_attach_device(guider);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(ao);
 			VERIFY_NOT_CONNECTED(guider);
 			last_action = action;
-			if (ao != NULL) {
-				indigo_detach_device(ao);
-				free(ao);
-				ao = NULL;
-			}
 			if (guider != NULL) {
 				indigo_detach_device(guider);
-				free(guider);
+				indigo_safe_free(guider);
 				guider = NULL;
 			}
+			if (ao != NULL) {
+				indigo_detach_device(ao);
+				indigo_safe_free(ao);
+				ao = NULL;
+			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

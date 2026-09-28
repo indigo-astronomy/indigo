@@ -21,3 +21,7 @@ indigo_server indigo_focuser_moonlite
 
 ## Status: Stable
 
+
+## Testing
+
+2026-09-27 23:06 3.0.0.13 mac arm64 simulator 39/39 OK

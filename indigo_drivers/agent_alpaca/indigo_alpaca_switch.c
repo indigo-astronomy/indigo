@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 Rumen G. Bogdanovski
+// Copyright (c) 2021-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -292,13 +292,12 @@ static indigo_alpaca_error alpaca_get_switchname(indigo_alpaca_device *device, i
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
-	if (id < device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet) {
-		*value = device->sw.switchname[0 * ALPACA_MAX_SWITCHES + id];
-		pthread_mutex_unlock(&device->mutex);
-		return indigo_alpaca_error_OK;
+	int counts[] = { device->sw.maxswitch_power_outlet, device->sw.maxswitch_heater_outlet, device->sw.maxswitch_usb_port, device->sw.maxswitch_gpio_outlet };
+	int section = 0;
+	while (section < 4 && id >= counts[section]) {
+		id -= counts[section++];
 	}
-	id -= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet;
-	*value = device->sw.switchname[4 * ALPACA_MAX_SWITCHES + id];
+	*value = device->sw.switchname[section * ALPACA_MAX_SWITCHES + id];
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -453,7 +452,7 @@ static indigo_alpaca_error alpaca_set_setswitchname(indigo_alpaca_device *device
 	}
 	id -= device->sw.maxswitch_usb_port;
 	if (id < device->sw.maxswitch_gpio_outlet) {
-		sprintf(name, "GPIO_OUTLET_%d", id + 1);
+		sprintf(name, "GPIO_OUTLET_NAME_%d", id + 1);
 		device->sw.nameset[0] = false;
 		indigo_change_text_property_1(indigo_agent_alpaca_client, device->indigo_device, AUX_OUTLET_NAMES_PROPERTY_NAME, name, value);
 		pthread_mutex_unlock(&device->mutex);
@@ -559,12 +558,21 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 			}
 		}
 	} else if (!strcmp(property->name, AUX_OUTLET_NAMES_PROPERTY_NAME)) {
-		int offset = 0 * ALPACA_MAX_SWITCHES;
+		// one property names the outlets of all sections, the item name tells the section and the index
+		static const char *prefixes[] = { "POWER_OUTLET_NAME_", "HEATER_OUTLET_NAME_", "USB_PORT_NAME_", "GPIO_OUTLET_NAME_" };
 		alpaca_device->sw.nameset[0] = property->state == INDIGO_OK_STATE;
-		int count = property->count < ALPACA_MAX_SWITCHES ? property->count : ALPACA_MAX_SWITCHES;
-		for (int i = 0; i < count; i++) {
+		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			strcpy(alpaca_device->sw.switchname[offset + i], item->text.value);
+			for (int section = 0; section < 4; section++) {
+				size_t length = strlen(prefixes[section]);
+				if (!strncmp(item->name, prefixes[section], length)) {
+					int index = atoi(item->name + length) - 1;
+					if (index >= 0 && index < ALPACA_MAX_SWITCHES) {
+						INDIGO_COPY_VALUE(alpaca_device->sw.switchname[section * ALPACA_MAX_SWITCHES + index], item->text.value);
+					}
+					break;
+				}
+			}
 		}
 	} else if (!strcmp(property->name, AUX_SENSOR_NAMES_PROPERTY_NAME)) {
 		int offset = 4 * ALPACA_MAX_SWITCHES;

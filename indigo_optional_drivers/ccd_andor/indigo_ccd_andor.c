@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x0200000E
+#define DRIVER_VERSION 0x0200000F
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -782,19 +782,12 @@ static void ccd_connect_callback(indigo_device *device) {
 	int res;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) { /* Do not double open device */
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
-				indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
-				return;
-			}
 
 			pthread_mutex_lock(&driver_mutex);
 			if (use_camera(device) == false) {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_CONNECTED_ITEM, false);
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				indigo_global_unlock(device);
 				pthread_mutex_unlock(&driver_mutex);
 				return;
 			}
@@ -956,7 +949,6 @@ static void ccd_connect_callback(indigo_device *device) {
 	} else {
 		if (device->is_connected) {  /* Do not double close device */
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-			indigo_global_unlock(device);
 			if (CAP_SET_VREADOUT) {
 				indigo_delete_property(device, VSSPEED_PROPERTY, NULL);
 			}
@@ -1432,8 +1424,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 			indigo_release_property(COOLERMODE_PROPERTY);
 		}
 	}
-
-	indigo_global_unlock(device);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);

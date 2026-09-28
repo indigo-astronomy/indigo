@@ -27,3 +27,7 @@ Looking for device owners!!! :)
 Based on protocol description found here:
 
 https://www.optecinc.com/astronomy/catalog/ifw/images/17350_manual.pdf
+
+## Testing
+
+2026-09-27 22:41 3.0.0.8 mac arm64 simulator 8/8 OK

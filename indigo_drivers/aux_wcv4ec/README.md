@@ -24,3 +24,8 @@ indigo_server indigo_aux_wcv4ec
 ## Status: Stable
 
 Tested with physical WandererCover V4-EC device
+
+## Testing
+
+2026-09-27 13:37 3.0.0.11 linux x64 simulator 20/20 OK
+2026-09-27 21:08 3.0.0.11 mac arm64 simulator 20/20 OK

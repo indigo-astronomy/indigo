@@ -24,3 +24,8 @@ indigo_server indigo_dome_baader
 
 Driver is developed and tested with:
 * Arduino Baader Classic Dome simulator.
+
+## Testing
+
+2026-09-27 16:38 3.0.0.16 linux x64 simulator 53/53 OK
+2026-09-27 22:03 3.0.0.16 mac arm64 simulator 53/53 OK

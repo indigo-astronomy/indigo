@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -19,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
-#include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
@@ -28,29 +29,67 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *trace_file;
+	const char *fault_command;
+	const char *fault_reply;
+	int fault_occurrence;
+	const char *stall_command;
 } simulator_options;
+
+typedef struct {
+	bool sleeping;
+	bool moving;
+	int position;
+	int target;
+	int direction;
+	int rate;
+	double next_step;
+} simulator_state;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.fault_occurrence = 1
+};
+
+static simulator_state state = {
+	.rate = 8
 };
 
 static const char *simulator_name = "rotator_optec";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
-static bool sleeping = false;
-static int current_position = 0;
-static int direction = 0;
-static int rate = 8;
+static int serial_keepalive_fd = -1;
+static FILE *command_trace = NULL;
+static int fault_match_count = 0;
+
+static double monotonic_time(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1000000000.0;
+}
 
 static void usage(const char *name) {
 	printf("Optec Pyxis rotator serial simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
-	printf("  --headless              Disable terminal-oriented output\n");
-	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
-	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  -h, --help              Show this help and exit\n");
+	printf("  --headless                         Disable terminal-oriented output\n");
+	printf("  --ready-file <path>                Write INDIGO_SIMULATOR_PORT after PTY setup\n");
+	printf("  --trace                            Log protocol requests and replies\n");
+	printf("  --trace-file <path>                Record timestamped commands\n");
+	printf("  --fault-reply <cmd> <n> <reply>    Override the nth matching command reply\n");
+	printf("  --drop-reply <cmd> <n>             Drop the nth matching command reply\n");
+	printf("  --stall-motion <cmd>               Start no progress for matching motion\n");
+	printf("  -h, --help                         Show this help and exit\n");
+}
+
+static bool parse_positive(const char *text, int *value) {
+	char *end = NULL;
+	long parsed = strtol(text, &end, 10);
+	if (end == text || *end != 0 || parsed < 1 || parsed > INT_MAX) {
+		return false;
+	}
+	*value = (int)parsed;
+	return true;
 }
 
 static bool parse_args(int argc, char *argv[]) {
@@ -65,12 +104,38 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
-				fprintf(stderr, "--ready-file requires a path\n");
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--trace-file")) {
+			if (++i == argc) {
+				return false;
+			}
+			options.trace_file = argv[i];
+		} else if (!strcmp(argv[i], "--fault-reply")) {
+			if (i + 3 >= argc) {
+				return false;
+			}
+			options.fault_command = argv[++i];
+			if (!parse_positive(argv[++i], &options.fault_occurrence)) {
+				return false;
+			}
+			options.fault_reply = argv[++i];
+		} else if (!strcmp(argv[i], "--drop-reply")) {
+			if (i + 2 >= argc) {
+				return false;
+			}
+			options.fault_command = argv[++i];
+			if (!parse_positive(argv[++i], &options.fault_occurrence)) {
+				return false;
+			}
+			options.fault_reply = NULL;
+		} else if (!strcmp(argv[i], "--stall-motion")) {
+			if (++i == argc) {
+				return false;
+			}
+			options.stall_command = argv[i];
 		} else {
-			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
 	}
@@ -84,108 +149,153 @@ static void signal_handler(int sig) {
 		close(serial_fd);
 		serial_fd = -1;
 	}
-}
-
-static void write_response(const char *response) {
-	serial_simulator_trace_line(options.trace, "<-", response);
-	const char *cursor = response;
-	size_t remaining = strlen(response);
-	while (running && remaining > 0) {
-		ssize_t written = write(serial_fd, cursor, remaining);
-		if (written > 0) {
-			cursor += written;
-			remaining -= (size_t)written;
-		} else if (written < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO)) {
-			usleep(1000);
-		} else {
-			running = 0;
-		}
+	if (serial_keepalive_fd >= 0) {
+		close(serial_keepalive_fd);
+		serial_keepalive_fd = -1;
 	}
 }
 
-static void write_line(const char *line) {
+static bool command_matches(const char *pattern, const char *command) {
+	size_t length = strlen(pattern);
+	return length > 0 && pattern[length - 1] == '*' ? !strncmp(pattern, command, length - 1) : !strcmp(pattern, command);
+}
+
+static void record_command(const char *command) {
+	if (command_trace != NULL) {
+		fprintf(command_trace, "%.9f %s\n", monotonic_time(), command);
+		fflush(command_trace);
+	}
+}
+
+static bool write_response(const char *response) {
+	serial_simulator_trace_line(options.trace, "<-", response);
+	return serial_simulator_write_all(serial_fd, response, strlen(response));
+}
+
+static bool write_line(const char *line) {
 	char response[64];
 	snprintf(response, sizeof(response), "%s\r\n", line);
-	write_response(response);
+	return write_response(response);
 }
 
-static void move_to(int target) {
-	while (running && current_position != target) {
-		current_position += current_position > target ? -1 : 1;
-		write_response("!");
-		usleep(rate * 1000);
+static bool inject_fault(const char *command) {
+	if (options.fault_command == NULL || !command_matches(options.fault_command, command)) {
+		return false;
 	}
-	write_response("F");
+	fault_match_count++;
+	if (fault_match_count != options.fault_occurrence) {
+		return false;
+	}
+	if (options.fault_reply != NULL) {
+		write_response(options.fault_reply);
+	}
+	return true;
+}
+
+static void start_motion(const char *command, int target) {
+	if (options.stall_command != NULL && command_matches(options.stall_command, command)) {
+		options.stall_command = NULL;
+		return;
+	}
+	state.target = target;
+	state.moving = true;
+	state.next_step = monotonic_time();
+}
+
+static void update_motion(void) {
+	if (!state.moving || monotonic_time() < state.next_step) {
+		return;
+	}
+	if (state.position == state.target) {
+		state.moving = false;
+		write_response("F");
+		return;
+	}
+	state.position += state.position > state.target ? -1 : 1;
+	write_response("!");
+	double interval = state.rate > 1 ? state.rate / 1000.0 : 0.001;
+	state.next_step = monotonic_time() + interval;
+}
+
+static bool valid_fixed_command(const char *command, const char *prefix, size_t length) {
+	return strlen(command) == length && !strncmp(command, prefix, strlen(prefix));
 }
 
 static void handle_command(const char *command) {
-	char response[64];
+	record_command(command);
 	serial_simulator_trace_line(options.trace, "->", command);
-	if (sleeping) {
+	if (inject_fault(command)) {
+		return;
+	}
+	if (state.sleeping) {
 		if (!strcmp(command, "CWAKUP")) {
-			sleeping = false;
+			state.sleeping = false;
 			write_line("!");
 		}
 		return;
 	}
-
 	if (!strcmp(command, "CSLEEP")) {
-		sleeping = true;
+		state.sleeping = true;
 	} else if (!strcmp(command, "CWAKUP")) {
 		write_line("!");
 	} else if (!strcmp(command, "CCLINK")) {
 		write_line("!");
 	} else if (!strcmp(command, "CHOMES")) {
-		move_to(0);
+		start_motion(command, 0);
 	} else if (!strcmp(command, "CMREAD")) {
-		snprintf(response, sizeof(response), "%d\r\n", direction);
-		write_response(response);
+		char response[8];
+		snprintf(response, sizeof(response), "%d", state.direction);
+		write_line(response);
 	} else if (!strcmp(command, "CGETPA")) {
-		snprintf(response, sizeof(response), "%03d\r\n", current_position);
-		write_response(response);
-	} else if (!strncmp(command, "CD0", 3)) {
-		direction = 0;
-	} else if (!strncmp(command, "CD1", 3)) {
-		direction = 1;
-	} else if (!strncmp(command, "CPA", 3)) {
-		int target = atoi(command + 3);
-		if (target >= 360) {
+		char response[8];
+		snprintf(response, sizeof(response), "%03d", state.position);
+		write_line(response);
+	} else if (valid_fixed_command(command, "CD", 6) && (command[2] == '0' || command[2] == '1') && !strcmp(command + 3, "xxx")) {
+		state.direction = command[2] - '0';
+	} else if (valid_fixed_command(command, "CPA", 6)) {
+		char *end = NULL;
+		long target = strtol(command + 3, &end, 10);
+		if (end != command + 6 || target < 0 || target > 359) {
 			write_line("ER=3");
-		} else if (current_position == target) {
+		} else if (state.position == target) {
 			write_line("ER=2");
 		} else {
-			move_to(target);
+			start_motion(command, (int)target);
 		}
-	} else if (!strncmp(command, "CT", 2)) {
-		rate = atoi(command + 4);
+	} else if (valid_fixed_command(command, "CTxx", 6) && command[4] >= '0' && command[4] <= '9' && command[5] >= '0' && command[5] <= '9') {
+		state.rate = (command[4] - '0') * 10 + command[5] - '0';
 		write_response("!");
-	} else if (!strncmp(command, "CX", 2)) {
+	} else if (valid_fixed_command(command, "CXxx", 6) && (command[4] == '0' || command[4] == '1') && command[5] >= '1' && command[5] <= '9') {
 		write_response("!");
+	} else {
+		write_line("ER=3");
 	}
+}
+
+static size_t expected_command_length(const char *command, size_t used) {
+	static const char *fixed[] = { "CSLEEP", "CWAKUP", "CCLINK", "CHOMES", "CMREAD", "CGETPA", "CD", "CPA", "CT", "CX" };
+	static const size_t lengths[] = { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6 };
+	for (size_t i = 0; i < sizeof(fixed) / sizeof(fixed[0]); i++) {
+		size_t prefix = strlen(fixed[i]);
+		if (used <= prefix && !strncmp(command, fixed[i], used)) {
+			return lengths[i];
+		}
+		if (used > prefix && !strncmp(command, fixed[i], prefix)) {
+			return lengths[i];
+		}
+	}
+	return 0;
 }
 
 static void run_loop(void) {
 	char command[32] = { 0 };
 	size_t used = 0;
-	static const char *commands[] = {
-		"CSLEEP",
-		"CWAKUP",
-		"CCLINK",
-		"CHOMES",
-		"CMREAD",
-		"CGETPA",
-		"CD0xxx",
-		"CD1xxx",
-		"CPA",
-		"CT",
-		"CX"
-	};
-
 	while (running) {
+		update_motion();
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serial_fd, &readfds);
-		struct timeval timeout = { .tv_sec = 0, .tv_usec = 100000 };
+		struct timeval timeout = { .tv_sec = 0, .tv_usec = 1000 };
 		int selected = select(serial_fd + 1, &readfds, NULL, NULL, &timeout);
 		if (selected < 0) {
 			if (errno == EINTR) {
@@ -196,45 +306,37 @@ static void run_loop(void) {
 		if (selected == 0) {
 			continue;
 		}
-		char buffer[32];
-		ssize_t count = read(serial_fd, buffer, sizeof(buffer));
+		char ch;
+		ssize_t count = read(serial_fd, &ch, 1);
 		if (count <= 0) {
 			if (count < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO)) {
 				continue;
 			}
 			break;
 		}
-		for (ssize_t i = 0; i < count; i++) {
-			if (buffer[i] == '\r' || buffer[i] == '\n') {
-				continue;
-			}
-			if (used < sizeof(command) - 1) {
-				command[used++] = buffer[i];
-			}
-			command[used] = '\0';
-			for (size_t j = 0; j < sizeof(commands) / sizeof(commands[0]); j++) {
-				size_t length = strlen(commands[j]);
-				if (strncmp(command, commands[j], length)) {
-					continue;
-				}
-				if ((!strcmp(commands[j], "CPA") || !strcmp(commands[j], "CT") || !strcmp(commands[j], "CX")) && used < 6) {
-					continue;
-				}
-				handle_command(command);
-				used = 0;
-				command[0] = '\0';
-				break;
-			}
-			if (used == sizeof(command) - 1) {
-				used = 0;
-				command[0] = '\0';
-			}
+		if (ch == '\r' || ch == '\n') {
+			continue;
+		}
+		if (used == sizeof(command) - 1) {
+			used = 0;
+		}
+		command[used++] = ch;
+		command[used] = 0;
+		size_t expected = expected_command_length(command, used);
+		if (expected > 0 && used == expected) {
+			handle_command(command);
+			used = 0;
+			command[0] = 0;
+		} else if (expected == 0) {
+			used = 0;
+			command[0] = 0;
 		}
 	}
 }
 
 int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
+		usage(argv[0]);
 		return 2;
 	}
 	char port[PATH_MAX];
@@ -242,7 +344,21 @@ int main(int argc, char *argv[]) {
 	if (serial_fd < 0) {
 		return 1;
 	}
+	serial_keepalive_fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	if (serial_keepalive_fd < 0) {
+		close(serial_fd);
+		return 1;
+	}
+	if (options.trace_file != NULL) {
+		command_trace = fopen(options.trace_file, "w");
+		if (command_trace == NULL) {
+			close(serial_keepalive_fd);
+			close(serial_fd);
+			return 1;
+		}
+	}
 	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, simulator_name, port)) {
+		close(serial_keepalive_fd);
 		close(serial_fd);
 		return 1;
 	}
@@ -250,12 +366,17 @@ int main(int argc, char *argv[]) {
 		printf("Optec Pyxis simulator listening on %s\n", port);
 		fflush(stdout);
 	}
-
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	run_loop();
 	if (serial_fd >= 0) {
 		close(serial_fd);
+	}
+	if (serial_keepalive_fd >= 0) {
+		close(serial_keepalive_fd);
+	}
+	if (command_trace != NULL) {
+		fclose(command_trace);
 	}
 	return 0;
 }

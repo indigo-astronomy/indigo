@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -748,7 +748,7 @@ static void ptp_check_event(indigo_device *device) {
 		}
 	}
 	if (IS_CONNECTED) {
-		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+		indigo_execute_handler_in(device, 1, ptp_check_event);
 	}
 }
 
@@ -820,7 +820,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 		indigo_log("vendor:");
 		PTP_DUMP_DEVICE_INFO();
 	}
-	indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
+	indigo_execute_handler_in(device, 0.5, ptp_check_event);
 	return true;
 }
 
@@ -1147,172 +1147,103 @@ bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
 	return result;
 }
 
+static bool nikon_capture_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->shutter_open) {
+		return true;
+	}
+	bool result = ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
+	PRIVATE_DATA->shutter_open = !result;
+	return result;
+}
+
 bool ptp_nikon_exposure(indigo_device *device) {
-	if (ptp_property_supported(device, ptp_property_nikon_SaveMedia)) {
-		uint8_t value = 0;
-		if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_SaveMedia, &value, sizeof(uint8_t))) {
-			indigo_error("Can't set ptp_property_nikon_SaveMedia to CARD");
+	if (PRIVATE_DATA->capture_phase == 0) {
+		PRIVATE_DATA->capture_stop = nikon_capture_stop;
+		if (PRIVATE_DATA->abort_capture) {
 			return false;
 		}
-	}
-	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
-	bool result = true;
-	if (property) {
-		uint8_t value;
-		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
-			if (property->form == ptp_enum_form && property->count == 6) {
-				value = 10;
+		uint8_t value = 0;
+		if (ptp_property_supported(device, ptp_property_nikon_SaveMedia) && !ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_SaveMedia, &value, sizeof(value))) {
+			return false;
+		}
+		ptp_property *property = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
+		if (property) {
+			if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
+				value = property->form == ptp_enum_form && property->count == 6 ? 10 : 1;
 			} else {
-				value = 1;
+				value = property->form == ptp_range_form && property->value.number.max == 3 ? 3 : 0;
 			}
-		} else {
-			if (property->form == ptp_range_form && property->value.number.max == 3) {
-				value = 3;
-			} else {
-				value = 0;
+			if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_ExposureDelayMode, &value, sizeof(value))) {
+				return false;
 			}
 		}
-		result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_ExposureDelayMode, &value, sizeof(uint8_t));
-	}
-	PRIVATE_DATA->image_added = false;
-	if (IS_NIKON_EXPEED7_SERIES()) {
-		property = ptp_property_supported(device, ptp_property_nikon_ExposureTime);
-	} else {
-		property = ptp_property_supported(device, ptp_property_ExposureTime);
-	}
-	if (property && (property->value.sw.value != 0xffffffff || CCD_EXPOSURE_ITEM->number.value > 0)) { // if shutter time is BULB and exposure time is 0, just wait for external shutter exposure
-		if (ptp_operation_supported(device, ptp_operation_nikon_InitiateCaptureRecInMedia)) {
-			result = result && ptp_transaction_2_0(device, ptp_operation_nikon_InitiateCaptureRecInMedia, -1, 0);
-		} else {
-			result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
+		property = ptp_property_supported(device, IS_NIKON_EXPEED7_SERIES() ? ptp_property_nikon_ExposureTime : ptp_property_ExposureTime);
+		if (!property) {
+			return false;
 		}
-		if (property->value.sw.value == 0xffffffff) {
-			CCD_EXPOSURE_ITEM->number.value += DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0;
-			ptp_blob_exposure_timer(device);
-			result = result && ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
-		}
-	}
-	if (result) {
-		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_nikon_check_dual_compression(device)) {
-			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-		}
-		while (true) {
-			if (PRIVATE_DATA->abort_capture || PRIVATE_DATA->image_added) {
-				break;
+		bool bulb = property->value.sw.value == 0xffffffff;
+		bool external = bulb && CCD_EXPOSURE_ITEM->number.target == 0;
+		if (!external) {
+			bool result = ptp_operation_supported(device, ptp_operation_nikon_InitiateCaptureRecInMedia) ? ptp_transaction_2_0(device, ptp_operation_nikon_InitiateCaptureRecInMedia, -1, 0) : ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
+			if (!result) {
+				return false;
 			}
-			indigo_usleep(100000);
 		}
+		ptp_capture_start(device, bulb && !external, DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0);
+		return true;
 	}
-	if (!result || PRIVATE_DATA->abort_capture) {
-		if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	if (PRIVATE_DATA->capture_phase == 1) {
+		if (!PRIVATE_DATA->abort_capture && indigo_monotonic_time() < PRIVATE_DATA->shutter_deadline) {
+			return true;
 		}
-		if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		if (!nikon_capture_stop(device)) {
+			if ((PRIVATE_DATA->last_error == ptp_response_AccessDenied || PRIVATE_DATA->last_error == ptp_response_DeviceBusy) && ++PRIVATE_DATA->capture_stop_retries <= PTP_STOP_RETRY_LIMIT && !PRIVATE_DATA->detaching && !CONNECTION_DISCONNECTED_ITEM->sw.value) {
+				return true;
+			}
+			return false;
 		}
-		if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_OK_STATE) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		}
+		PRIVATE_DATA->capture_phase = 2;
 	}
-	return result && !PRIVATE_DATA->abort_capture;
+	return ptp_capture_wait(device);
+}
+
+static bool nikon_liveview_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->stream_started) {
+		return true;
+	}
+	bool result = ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
+	PRIVATE_DATA->stream_started = !result;
+	return result;
 }
 
 bool ptp_nikon_liveview(indigo_device *device) {
-	if (ptp_property_supported(device, ptp_property_nikon_SaveMedia)) {
+	PRIVATE_DATA->liveview_stop = nikon_liveview_stop;
+	if (!PRIVATE_DATA->stream_started) {
 		uint8_t value = 1;
-		if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_SaveMedia, &value, sizeof(uint8_t))) {
-			indigo_error("Can't set ptp_property_nikon_SaveMedia to SDRAM");
+		if (ptp_property_supported(device, ptp_property_nikon_SaveMedia) && !ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_SaveMedia, &value, sizeof(value))) {
 			return false;
 		}
-	}
-	if (ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
-		uint8_t *buffer = NULL;
-		uint32_t size;
-		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-			if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetLiveViewImg, (void **)&buffer, &size)) {
-				if (size > 65 && (buffer[64] & 0xFF) == 0xFF && (buffer[65] & 0xFF) == 0xD8) {
-					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-					}
-					if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-						CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-					}
-					if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
-						indigo_process_dslr_image(device, (void *)buffer + 64, size - 64, ".jpeg", true);
-						if (PRIVATE_DATA->image_buffer) {
-							free(PRIVATE_DATA->image_buffer);
-						}
-						PRIVATE_DATA->image_buffer = buffer;
-						buffer = NULL;
-					}
-					CCD_STREAMING_COUNT_ITEM->number.value--;
-					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
-						CCD_STREAMING_COUNT_ITEM->number.value = -1;
-					}
-					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-				} else if (size > 129 && (buffer[128] & 0xFF) == 0xFF && (buffer[129] & 0xFF) == 0xD8) {
-					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-					}
-					if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-						CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-					}
-					if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
-						indigo_process_dslr_image(device, (void *)buffer + 128, size - 128, ".jpeg", true);
-						if (PRIVATE_DATA->image_buffer) {
-							free(PRIVATE_DATA->image_buffer);
-						}
-						PRIVATE_DATA->image_buffer = buffer;
-						buffer = NULL;
-					}
-					CCD_STREAMING_COUNT_ITEM->number.value--;
-					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
-						CCD_STREAMING_COUNT_ITEM->number.value = -1;
-					}
-					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-				} else if (size > 385 && (buffer[384] & 0xFF) == 0xFF && (buffer[385] & 0xFF) == 0xD8) {
-					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-					}
-					if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-						CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-					}
-					if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
-						indigo_process_dslr_image(device, (void *)buffer + 384, size - 384, ".jpeg", true);
-						if (PRIVATE_DATA->image_buffer) {
-							free(PRIVATE_DATA->image_buffer);
-						}
-						PRIVATE_DATA->image_buffer = buffer;
-						buffer = NULL;
-					}
-					CCD_STREAMING_COUNT_ITEM->number.value--;
-					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
-						CCD_STREAMING_COUNT_ITEM->number.value = -1;
-					}
-					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-				}
-			}
-			if (buffer) {
-				free(buffer);
-			}
-			buffer = NULL;
-			indigo_usleep(100000);
+		if (!ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
+			return false;
 		}
-		indigo_finalize_dslr_video_stream(device);
-		ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
-		return !PRIVATE_DATA->abort_capture;
+		PRIVATE_DATA->stream_started = true;
+		return true;
 	}
-	return false;
+	uint8_t *buffer = NULL;
+	uint32_t size = 0;
+	bool result = ptp_transaction_0_0_i(device, ptp_operation_nikon_GetLiveViewImg, (void **)&buffer, &size);
+	if (result && buffer) {
+		const unsigned offsets[] = { 64, 128, 384 };
+		for (unsigned i = 0; i < sizeof(offsets) / sizeof(offsets[0]); i++) {
+			unsigned offset = offsets[i];
+			if (size > offset + 1 && buffer[offset] == 0xff && buffer[offset + 1] == 0xd8) {
+				ptp_stream_frame(device, buffer, buffer + offset, size - offset);
+				return true;
+			}
+		}
+	}
+	free(buffer);
+	return (result || PRIVATE_DATA->last_error == ptp_response_DeviceBusy) && ++PRIVATE_DATA->stream_retries <= 100;
 }
 
 bool ptp_nikon_lock(indigo_device *device) {
@@ -1338,42 +1269,30 @@ bool ptp_nikon_zoom(indigo_device *device) {
 	return false;
 }
 
-bool ptp_nikon_focus(indigo_device *device, int steps) {
-	if (steps == 0) {
+static bool nikon_focus_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->focus_temporary_lv) {
 		return true;
 	}
-	bool result = true;
-	if (ptp_operation_supported(device, ptp_operation_nikon_MfDrive)) {
-		bool temporary_lv = false;
-		if (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE && ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
-			temporary_lv = true;
-		}
-		if (result) {
-			for (int i = 0; i < 100; i++) {
-				if (steps > 0) {
-					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 1, steps);
-				} else {
-					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 2, -steps);
-				}
-				if (result) {
-					break;
-				}
-				indigo_usleep(10000);
-			}
-		}
-		if (temporary_lv) {
-			for (int i = 0; i < 100; i++) {
-				result = ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
-				if (result) {
-					break;
-				}
-				indigo_usleep(10000);
-			}
-		}
-	} else {
-		result = false;
-	}
+	bool result = ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
+	PRIVATE_DATA->focus_temporary_lv = !result;
 	return result;
+}
+
+bool ptp_nikon_focus(indigo_device *device, int steps) {
+	PRIVATE_DATA->focus_stop = nikon_focus_stop;
+	if (!steps) {
+		return nikon_focus_stop(device);
+	}
+	if (!ptp_operation_supported(device, ptp_operation_nikon_MfDrive)) {
+		return false;
+	}
+	if (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE && !PRIVATE_DATA->focus_temporary_lv) {
+		if (!ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
+			return false;
+		}
+		PRIVATE_DATA->focus_temporary_lv = true;
+	}
+	return ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, steps > 0 ? 1 : 2, steps > 0 ? steps : -steps);
 }
 
 bool ptp_nikon_check_dual_compression(indigo_device *device) {

@@ -10,11 +10,11 @@
 #define	IMAGEQUEUE_ORIG_MODE		1
 
 
-#define version_year                25
-#define version_month               3
-#define version_day                 24
-#define version_subday              9
-#define SDK_SVN_REVISION            14950
+#define version_year                26
+#define version_month               6
+#define version_day                 4
+#define version_subday              16
+#define SDK_SVN_REVISION            17228
 
 #if defined (_WIN32)
 //#define ALLINSDK_SUPPORT            0

@@ -26,7 +26,9 @@
 #ifndef indigo_timer_h
 #define indigo_timer_h
 #include <stdio.h>
+#include <stdint.h>
 #include <pthread.h>
+#include <time.h>
 #include <indigo/indigo_bus.h>
 
 #if defined(INDIGO_WINDOWS)
@@ -43,35 +45,47 @@
 extern "C" {
 #endif
 
-/** Timer callback function prototype.
+/** Timer callback with user data.
  */
-typedef void (*indigo_timer_callback)(indigo_device *device);
 typedef void (*indigo_timer_with_data_callback)(indigo_device *device, void *timer_data);
 
 /** Timer structure.
+ *
+ * The fields of this structure are private implementation details. They are
+ * exposed only because existing source code uses `indigo_timer *` handles.
+ * Callers must not read, write, allocate, copy, or embed timer objects.
  */
 typedef struct indigo_timer {
 	indigo_device *device;                    ///< device associated with timer
 	void *callback;           								///< callback function pointer
 	bool canceled;                            ///< timer is canceled (darwin only)
-	bool scheduled;
-	bool callback_running;
-	double delay;
-	bool wake;
-	int timer_id;
-	pthread_cond_t cond;
-	pthread_mutex_t cond_mutex;
-	pthread_t thread;
+	uint64_t timer_id;
 	struct indigo_timer **reference;
 	struct indigo_timer *next;
 	void *timer_data;
-	pthread_mutex_t thread_mutex;
+	bool has_data;
 	pthread_mutex_t *timer_mutex;
+	int state;
+	struct timespec at;
+	bool cancel_requested;
+	bool reschedule_requested;
+	bool completed;
+	bool worker_started;
+	int waiters;
+	pthread_t callback_thread;
+	pthread_cond_t completed_cond;
+	struct indigo_timer *scheduler_next;
+	struct indigo_timer *registry_next;
 } indigo_timer;
 
-/** Queue structure.
+/** Queue structures.
+ *
+ * The fields of these structures are private implementation details. Public
+ * callers should use only `indigo_queue *` handles and the queue functions
+ * declared below.
  */
 
+#define INDIGO_TASK_PRIORITY_LOW     -5 // low priority background tasks
 #define INDIGO_TASK_PRIORITY_NORMAL   0
 #define INDIGO_TASK_PRIORITY_HIGH     5
 #define INDIGO_TASK_PRIORITY_TIME    10 // time critical tasks (e.g. guiding)
@@ -81,23 +95,35 @@ typedef struct indigo_queue_task {
 	indigo_device *device;
 	int priority;
 	struct timespec at;
+	double max_run_time;
 	indigo_timer_callback callback;
 	void *data;
+	bool has_data;
 	pthread_mutex_t *task_mutex;
 	struct indigo_queue_task *next;
 } indigo_queue_task;
 
 typedef struct indigo_queue {
 	indigo_device *device;
+	char name[256];
 	pthread_cond_t cond;
-	pthread_mutex_t cond_mutex;
 	pthread_t thread;
 	indigo_queue_task *task;
-	int queue_id;
+	size_t pending_task_count;
+	size_t max_pending_tasks;
+	bool pending_task_limit_reported;
 	bool abort;
 	bool ready; // guard against a lost wakeup race condition
-	pthread_mutex_t thread_mutex;
+	bool rename_pending;
+	pthread_mutex_t mutex;
+	indigo_queue_task *running_task;
+	bool running;
+	bool self_delete_requested;
 } indigo_queue;
+
+/** Elapsed-time clock in seconds, unaffected by wall-clock adjustments.
+ */
+INDIGO_EXTERN double indigo_monotonic_time(void);
 
 /** Translate delay into absolute time.
  */
@@ -119,7 +145,8 @@ INDIGO_EXTERN bool indigo_set_timer_with_mutex(indigo_device *device, double del
  */
 INDIGO_EXTERN bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer);
 
-/** Rescheduled timer (if not null) with different handler.
+/** Reschedule timer (if not null) with a different plain callback.
+ * Any data callback payload is discarded.
  */
 INDIGO_EXTERN bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
 
@@ -135,21 +162,43 @@ INDIGO_EXTERN bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer 
  */
 INDIGO_EXTERN void indigo_cancel_all_timers(indigo_device *device);
 
-/** Create queue
+/** Create queue. The device argument is used for thread naming and may be NULL.
  */
 INDIGO_EXTERN indigo_queue *indigo_queue_create(indigo_device *device);
 
-/** Add task to queue
+/** Change queue thread name.
+ */
+INDIGO_EXTERN void indigo_queue_set_name(indigo_queue *queue, const char *name);
+
+/** Add task to queue. Higher signed priority values run first among due tasks.
  */
 INDIGO_EXTERN void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_callback callback, pthread_mutex_t *task_mutex);
 
-/** Add task with data to queue
+/** Add task with data. Higher signed priority values run first among due tasks.
  */
 INDIGO_EXTERN void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_with_data_callback callback, void *data, pthread_mutex_t *task_mutex);
+
+/** Set maximum run time for the currently running handler queue task. Use 0 for unlimited.
+ */
+INDIGO_EXTERN bool indigo_set_handler_max_run_time(double max_run_time);
+
+/** Set maximum pending tasks for the queue. Use 0 for unlimited.
+ */
+INDIGO_EXTERN bool indigo_queue_set_max_pending_tasks(indigo_queue *queue, size_t max_pending_tasks);
 
 /** Remove tasks from queue for given device and handler
  */
 INDIGO_EXTERN void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_timer_callback callback);
+
+/** Wait synchronously until no pending or running tasks remain. Tasks run at their
+ * scheduled times, including delayed tasks and follow-ups enqueued by callbacks.
+ * Stop producers and recurring tasks first; otherwise this may wait indefinitely.
+ * Do not hold a task mutex while waiting. The caller must keep the queue alive:
+ * do not delete it concurrently, including self-deletion from a callback.
+ * Returns false for NULL, a stopped queue, or a call from the queue's own worker.
+ * This does not cancel tasks or prevent subsequent additions.
+ */
+INDIGO_EXTERN bool indigo_queue_drain(indigo_queue *queue);
 
 /** Remove all tasks, abort queue and free associated structure
  */

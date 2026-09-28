@@ -1,0 +1,19 @@
+01:18:39.421 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+01:18:39.421                                     
+01:18:39.422 Test Focuser device:  - localhost:7684 through URL: http://localhost:7684 
+01:18:39.422                                     
+01:18:39.425 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+01:18:39.425                                     
+01:18:39.425 Connecting to device...             
+01:18:39.953                                     
+01:18:39.953 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+01:18:40.342                                     
+01:18:40.342 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+01:18:40.342                                     
+01:18:40.840 Successfully connected to device using re-ordered PUT parameters, testing device... 
+01:18:40.840                                     
+01:18:40.847 Device exposes interface version 3  
+01:18:41.356                                     
+01:18:41.356 Successfully disconnected from device. 
+01:18:41.356                                     
+01:18:41.356 Congratulations there were no errors, issues or information alerts - Your device passes ASCOM Alpaca protocol validation!! 

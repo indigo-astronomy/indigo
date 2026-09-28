@@ -1,0 +1,480 @@
+# Atik CCD generator migration
+
+Date: 2026-09-12. Baseline: `0b3484dd225ee01f52ac16b93b7a01e48d076d29`, clean workspace, driver `0x0300001F` (1055 lines).
+
+Status: software migration and fake SDK acceptance completed. Atik Titan passed the six hardware scenarios below with version 33; active-exposure USB removal/replug also passed, but idle replug crashed once inside the SDK. Atik One passed exposure, geometry, settings, frame types, abort/restart, cooling and all wheel positions after the fixes below (final driver version 36); its idle and active-exposure physical hot-plug also passed in the follow-up below. Atik 11000A and Atik Horizon remain pending. No hardware results are implied by historical README entries.
+
+## Scope and references
+
+Migrate only ccd_atik and its tests/documentation/project entries. Follow ccd_playerone, ccd_asi and ccd_sx REFACTOR patterns and current generator source, DRIVER_GENERATOR_MIGRATION.md, DRIVER_DEVELOPMENT_BASICS.md, DEVELOPMENT.md, MAKEFILES.md, README.md, TESTING.md, indigo_test/AGENTS.md and DRIVER_TESTING_RULES.md (CCD, guider and wheel). Bundled AtikCameras.h and AtikDefs.h are the executable SDK contract; vendor PDF/CHM documentation needs comparison for model-specific option payloads and historical SDK workarounds. Do not alter the SDK or generator without separately approved generator changes. Keep this migration inventory separate from incremental REVIEW baselines.
+
+## Existing implementation inventory
+
+Line references are to baseline C, not regenerated output.
+
+| Lines | Responsibility and findings |
+| --- | --- |
+| 28–90 | Version 31; two USB VIDs 0x20e7/0x04b4, four ST4 bit masks, shared handle/index/64-byte serial/device_count/buffer, exposure/temperature/single guide timers; two custom properties lack X_ prefix. |
+| 94–105 | Global debug suppression changes across cameras/threads. Remove shared mutable suppression while preserving SDK logging. |
+| 108–137 | Exposure callback sleeps remaining SDK time then polls ImageReady forever. No CameraState error/watchdog, ImageFailed check, image-pointer check or dimension/capacity validation before memcpy. Pixels are 16-bit SDK processed mono/raw; no driver Bayer metadata or streaming implementation. |
+| 139–165 | Five-second temperature polling; separate measured/target, one-degree settling tolerance, 0.1-degree rounding; unchecked cooling range divisor and ignored poll failures. Historic temperature gating cannot prevent all concurrent SDK access. |
+| 167–318 | CCD connect manually increments shared refs before successful open; Properties failure closes a sibling's shared handle. Uses unvalidated max bins/log2/count and uninitialized outputs. Sensor dimensions 3354x2529 are cropped to 3326x2504 (383 family workaround). Allocates full RAW16+FITS buffer. SDK_2020_06_23 workarounds ignore temperature/cooling status; need explicit documented compatibility treatment. Heater, presets, gain and offset readbacks ignore payload lengths and sometimes overwrite ALERT with OK. |
+| 319–390 | Attach defaults: exposure min .001 s, 16 bits, RW bins up to four, visible read mode, optional custom heater/presets. Enumerates custom properties while connected. Disconnect deletes custom properties only on final shared close, stops exposure with racing timer, warms on CCD-last-close. |
+| 392–559 | Bus callback performs SDK controls directly; acquisition flush polling blocks callback indefinitely; ignored setup/cooling failures. Gain/offset int writes, preset short writes, six-byte min/max/value readback. Preset visibility changes before successful write, no rollback. Binning updates mode selection, otherwise base CCD frame/mode behavior. Custom heater readback on write failure is unchecked. No custom CONFIG persistence. |
+| 563–708 | Optional guider uses shared count/handle. Guider disconnect incorrectly frees CCD buffer, may leave physical relays active. Single timer clears both axes: overlapping pulses truncate or extend the other axis. SDK guide failures ignored. Preserve four direction masks and replacement/zero semantics with independent finalizers. |
+| 711–838 | Optional integrated wheel uses zero-based SDK slots and one-based public slots/names/offsets. Motion polls .5 s, ignores move errors, clamps bad SDK positions to zero, has no watchdog or owned timer cancellation. Failed initial info leaves ambiguous connection state. |
+| 843–1055 | Manual ten-logical-slot array/mutex, .5 s unowned discovery timers, serial matching and USB callbacks; attach and overflow failures leak/orphan resources. Arrival clears indices but only updates first matching logical device. Removal marks only first serial match, potentially detaching surviving siblings. No camera-only SDK filter. Partial callback registration and last_action rollback incomplete. Shutdown calls ArtemisShutdown. |
+
+SDK details: name/serial functions require buffers of 100 bytes (baseline has smaller buffers). Index is enumeration position, not identity; resolve serial again at open after reordering. ArtemisDeviceIsCamera separates stand-alone wheels. ImageReady must precede ImageFailed and image access. SDK owns returned pixel storage; copy while serialized before another exposure. Header temperature prose contradicts itself (hundredths/tenths/degrees); preserve legacy hundredths conversion until checked with hardware/vendor guide. Preserve preview/dark and unbinned subframe ordering, fractional seconds and 383 crop. Do not add new SDK capabilities (fast streaming, raw 8-bit, external trigger, GPIO, reset, name writes) merely because the header offers them.
+
+## Public property mapping
+
+| Baseline | Target | Contract |
+| --- | --- | --- |
+| ATIK_PRESETS | X_PRESETS | CCD main, RW one-of-many CUSTOM/LOW/MED/HIGH; model capability; preset 0 exposes standard CCD_GAIN/CCD_OFFSET with SDK ranges/current value. |
+| ATIK_WINDOW_HEATER | X_WINDOW_HEATER | CCD main, RW number POWER 0..255 step 1; heater camera flag; checked readback. |
+
+Standard properties keep names. CCD_READ_MODE visible; CCD_STREAMING hidden. Optional temperature RO or RW, cooler and power according to discovered support; all visibility/count/range/permission changes must reset on reconnect. Wheel slot count updates names/offsets. Guider and wheel attach only if advertised. Custom names intentionally break old client scripts; document names in README and PROPERTIES with .driver source mapping. No undocumented aliases or added persistence.
+
+## Target ownership
+
+Use `driver atik`, generated SDK discovery/registration/arrays/reference counting and default MAX_DEVICES. Register any VID and filter both existing VIDs in sdk.plug (single VID syntax cannot express a list); no generator extension required. Deduplicate by complete checked serial, reject incomplete discovery, match removal by SDK presence, and use bounded generated retries. Model/serial formatting uses full SDK buffers and bounded public names. Capability-gated guider/wheel share the CCD master and SDK session.
+
+`atik_open()` acquires global lock and handle transactionally; `atik_close()` closes exactly one successful session. Generated count owns references. CCD buffer belongs to CCD connection, never to guider. Lock master around driver-queue connect/disconnect initialization because property workers use another queue; prove serialization with instrumented SDK gates. Device workers use shared queue; queued start/finalizers/polling cancel before disconnect/close. Exposures use indigo_ccd_exposure_setup, exact requested duration, bounded flush/readiness finalizers and failure cleanup. Independent RA/DEC finalizers change only their mask. Wheel uses bounded progress polling and checked slots. No blocking wait loops or OS-specific production code.
+
+## Atomic steps and progress
+
+Each step is a reviewable workspace checkpoint; no automatic commits requested. Update evidence here after each checkpoint.
+
+1. **Inventory and baseline** — COMPLETE for source/build, SDK PDF audit completed: sensor/target units are 1/100 degree; warm-up is explicitly required at end of operation. The PDF does not specify Horizon option payload layouts; preserve existing payload sizes with checked actual lengths and verify on Horizon.
+   - Read full baseline, public properties, SDK declarations and reference migrations.
+   - `make -B -C indigo_drivers/ccd_atik -f ../../Makefile.drv` passed on macOS arm64, Apple clang 21.0.0. Log `/tmp/atik-baseline-build.log`.
+2. **Seed fake SDK baseline** — COMPLETE. Three separately named CCD/guider/wheel cases passed against the unchanged driver, then against generated output; logs `/tmp/atik-baseline-test.log` and `/tmp/atik-generated-test.log`.
+   - Separate production translation unit, fake Artemis/libusb boundary and public bus client with real framework queues. Capture camera-only/guider/wheel profiles, commands, RAW16 noise and normal lifecycle; record baseline defects rather than asserting them as desired behavior.
+3. **Implement queue workers and complete .driver cutover** — COMPLETE. Version 32, generated lifecycle and bounded workers passed normal and sanitizer acceptance. No generator implementation changes.
+   - Complete source of truth atomically; checked initialization/control/image replies, nonblocking exposure/guide/wheel finalizers, buffer ownership, generated hotplug and reference count. Version at least 32; preserve license and extend year to 2026. No partial generated production cutover.
+4. **Synchronize properties and build projects** — COMPLETE. X_ names, source mapping, README, Xcode and Visual Studio entries updated; XML parses and repeated generation produces byte-identical C/header/main.
+   - Generator output .c/.h/_main.c, X_ mapping, README, Xcode and Visual Studio source listing; compare second generation byte-for-byte, forced production build and targeted tests.
+5. **Complete fake acceptance matrix** — COMPLETE for the original 36 scenario groups plus four hardware-driven regressions below (40 total).
+   - Named tests mapped below; normal and ASan/UBSan builds, bounded failure/race recovery and no after-close SDK calls. Check generated code and whitespace, then test-clean.
+6. **Software completion records** — COMPLETE. CHANGES and migration status updated; hardware/platform limits below.
+   - CHANGES scenario mapping; update only MIGRATION_STATUS status columns, preserve Comment exactly; list unverified Linux/Windows and hardware gaps here.
+7. **Physical acceptance with user** — IN PROGRESS. Titan passed exposure, geometry, settings, abort, guide and frame_types scenarios on 2026-09-12; active USB removal/replug passed; idle replug has an unresolved SDK-thread crash, One passed exposure, geometry, settings, frame types, abort/restart, cooling and all five wheel positions including wraparound; One idle and active-exposure physical hot-plug passed; 11000A/Horizon remain pending.
+   - Opt-in public-client tests for each Titan, One, 11000A, Horizon: discover real capabilities, full/ROI/binned RAW16, .001/.1/1.5/2.5/16.5 s, bias/dark/light/darkflat/flat, read modes, abort/restart, cooldown/power/warm-up, heater, Horizon presets/custom gain/offset, each supported ST4 direction/overlap and integrated wheel positions.
+   - All shared connection orders, repeated disconnect/reconnect, real library unload/reload and multiple-camera identity; actual removal idle/active followed by replug/reacquire. Restore controls/temperature/wheel selection where possible. Record actual SDK/model/serial and outcomes in TESTING.md; do not infer optical shutter or electrical ST4 accuracy from software completion.
+
+## Acceptance design (implemented mapping and evidence follow)
+
+| Named area | Assertions / failure boundaries |
+| --- | --- |
+| metadata_profiles | Before/after/disconnect enumeration; names, interfaces, X_ properties/items, modes/ranges, optional CCD/guider/wheel; unsupported controls hidden; reconnect rebuild. |
+| lifecycle | INIT/SHUTDOWN/repeat, connected shutdown rejection, all three interfaces alone and connection permutations, sibling survival, last close and lock balance. |
+| discovery | Two VIDs/unrelated devices, camera-only filter, duplicate/reordered/burst events, serial/name limits/failures, incomplete scan, delayed discovery, master/slave attach and queue/registration failures, capacity/refill, balanced USB references. |
+| initialization | Global lock/open/Properties/max bins/temp/cooling/heater/preset read failures; malformed SDK outputs and lengths; rollback then fresh connect. |
+| acquisition | Full/ROI/asymmetric bin/383 crop; deterministic coordinate-addressable noise; read mode/dark mapping; min/subsecond/fractional exposures/countdown, BUSY conflicts, flushing/readiness, ImageFailed/state errors/null buffer/malformed geometry, setup/start/stop failures and fresh exposure. |
+| cooling_controls | Unit conversion, measured versus target, settle/power/zero span, ON/OFF failures and poll recovery, cancellation; heater limits/readback failures; each preset/custom gain/offset, short/invalid replies, atomic visibility and recovery. |
+| guide | Four masks, zero/stop, replacement/reversal, independent axes, CCD acquisition coexistence, start/stop failures and cancellation, guide-only and sibling survival. Record timing statistics at fake SDK ON/OFF for short/long pulses idle/under acquisition. |
+| wheel | Slot count and one-based mapping, initial moving/unknown/malformed positions, first/intermediate/last/same-slot moves, BUSY overlap, start/poll/timeout failures, disconnect motion and reconnect recovery. |
+| races | Deterministic gates around start/readout/config/connect; urgent abort overtakes queued start; disconnect/removal pending exposure/pulse/wheel/poll; no updates after detach or SDK calls after close; accepted shutdown drains discovery. |
+
+Non-applicable: no driver streaming, Bayer conversion, suffix writes, SDK callback image delivery, calibration, wheel direction/speed, focuser/rotator, custom persistence or direct serial protocol. Framework image encoders/upload formats, numeric validation and generic slot-name/config storage are outside driver-specific tests. Applicable SDK command/return failures are tested at the actual boundary.
+
+## Completed software acceptance
+
+The source of truth is `indigo_ccd_atik.driver`, version 32 (`0x03000020`), higher than baseline 31. The generator owns lifecycle, property ownership, shared count and USB queue/ref cleanup. SDK/property calls serialize on the physical camera queue; connection initialization and disconnect take the master lock across their SDK/buffer work. There are no old exposure/temperature/guider timer pointers, manual device_count, platform-specific driver code or MAX_DEVICES override.
+
+Important differences from baseline:
+
+- Generator default is **five logical slots**, not the old ten. CCD + guider + wheel consumes three; connect the four acceptance cameras in appropriate batches. Full capacity/refill is covered. Increasing the default/overriding it was not requested.
+- Discovery uses SDK serial identity and 100-byte SDK output buffers, re-resolves the current SDK index on each open, filters non-cameras and both original VIDs, and treats incomplete serial enumeration as inconclusive on removal. Generated retries handle delayed SDK visibility.
+- Exposure setup/flush/readiness now yields, with 30-second flush and 120-second post-exposure readout allowances. Exact fractional duration remains independent of the shared displayed countdown. SDK ImageFailed, NULL buffer, geometry/binning and capacity are checked before copying; failed stop remains retryable. No unbounded polling or sleeping acquisition callback remains. Temperature polling remains allowed during integration and is deferred during SDK download, preserving the original exclusion.
+- Guide axes finish independently; same-axis requests replace the pending pulse, including zero/stop. A failed relay-off publishes ALERT and can recover on a subsequent request or disconnect; software cannot guarantee an electrical OFF when the SDK itself fails.
+- CCD disconnect owns its buffer, stops acquisition and warms a supported cooler without closing connected siblings. Guider disconnect no longer frees CCD memory. Wheel operations check SDK positions and command errors and have a 60-second progress deadline.
+- The historical 3354x2529 -> 3326x2504 crop, SDK preview/dark setup, RAW16 handoff and option write sizes (16-bit preset, int gain/offset) are preserved. The old unconditional acceptance of failed temperature/cooling calls is replaced by checked current-SDK status/outputs; NOT_IMPLEMENTED remains an optional-capability fallback. This compatibility difference particularly needs real-camera verification.
+- `X_PRESETS` and `X_WINDOW_HEATER` replace the old custom names. Failed control writes/readbacks retain valid known values; custom mode only exposes gain/offset after checked six-byte range/current replies. Standard CONFIG gain/offset restore reaches SDK setters; custom preset/heater persistence was not added.
+
+### Scenario-to-test map
+
+All tests are in `indigo_test/integration/test_ccd_atik_sdk.c`, compiled separately from production C and linked with real bus, CCD/wheel/guider bases, queues, countdown and image handling. Only SDK/USB/discovery/global lock boundaries and test-only clock/delay/queue instrumentation are substituted. A separately compiled framework driver object isolates CONFIG files in a test-owned mkdtemp directory. No real SDK, USB inventory, server or network socket is used.
+
+| Area | Passing named cases |
+| --- | --- |
+| Baseline/public contract | baseline_camera, baseline_guider, baseline_wheel, metadata_profiles |
+| Three-interface lifecycle/rollback | shared_lifecycle (six connect permutations and sibling survival), initialization_failures, malformed_initialization |
+| Discovery | discovery_filters_and_strings, delayed_discovery_and_shutdown, capacity_and_survivors, optional_slave_attach_failure, discovery_identity, discovery_rollback |
+| Acquisition/RAW16 geometry | acquisition_errors, geometry_and_payload, durations_and_frame_types, crop_383_image, final_mode_bin_synchronization |
+| Controls/configuration/cooling | cooling_and_controls, poll_errors_and_cancellation, preset_readback_failures, final_configuration_gain_offset |
+| Guide | guide_axes_and_replacement, guide_duration_measurements, final_guide_off_failure_recovers |
+| Wheel | wheel_errors, initial_wheel_moving, final_wheel_busy_preserves_target |
+| Timeout/abort/concurrency | abort_and_busy, deadlines_and_recovery, pending_start_abort, readout_disconnect, active_removal, countdown_with_occupied_queue, stop_failure_recovery, final_readout_state_failure |
+
+Fake pixel data is coordinate-addressable deterministic noise from `ccd_test_noise.h`, never a simulator photograph. SDK instrumentation counts entry/exit to reject overlapping per-handle calls, calls from the bus thread and calls after close. Final teardown asserts balanced locks, logical attachments and USB references, and no property updates after detach. Delay gates exercise queued-start abort and disconnect during image access; test-only shifted monotonic deadlines cover bounded failures without waiting minutes. Configuration SAVE/LOAD initially failed because the inherited default image directory did not exist; setting CCD_LOCAL_MODE.DIR to the test-owned directory fixed the test without a production change.
+
+Guide timing uses fake ArtemisGuidePort ON/OFF entry timestamps, four directions, 20/50/100/250/500 ms, two repetitions, discarded warm-ups, idle and during acquisition. Reports contain all 80 requested/actual samples, signed ms/percentage errors and min/mean/median/p95/p99/max/stddev/max-absolute statistics. No host-dependent tight timing threshold is asserted. These are host/SDK-boundary measurements, not electrical ST4 measurements.
+
+### Validation evidence
+
+- Forced normal production build: `make -B -C indigo_drivers/ccd_atik -f ../../Makefile.drv`, macOS arm64 host, universal arm64/x86_64 archive/dylib/executable; `/tmp/atik-final-production-build.log`. Linker retains the baseline deployment warning: SDK dylib targets macOS 10.15, project requests 10.10. No new compiler warning.
+- Final `make -C indigo_test test-ccd-atik-sdk`: all 36 groups passed together after the download-phase temperature exclusion was retained; `/tmp/atik-36-tests.log`. Additional metadata/interface/item-contract assertions passed a targeted rerun (`/tmp/atik-metadata-test.log`).
+- Final ASan/UBSan arm64: all 36 groups passed together; `/tmp/atik-asan-36-tests.log`. Additional metadata assertions passed a targeted sanitizer rerun (`/tmp/atik-asan-metadata-test.log`). Production driver, test and isolated framework driver object instrumented; prebuilt framework/dependency archives excluded. LeakSanitizer was disabled on this macOS run; resource-balance assertions are not a measured whole-process leak audit.
+- Two generator runs produced identical SHA-256 digests for C/header/main; Visual Studio XML parses. `git diff --check` passed. Project entries include every new persistent file. No SDK or generator source was modified.
+- Hardware client `indigo_test/hardware/test_ccd_atik_hw.c` compiled only. It requires `--run`, library/entry arguments and an explicit `INDIGO_TEST_DEVICE` substring; target `test-ccd-atik-hw` is excluded from ordinary integration tests. `ATIK_HW_CASE` selects exposure/geometry/settings/presets/wheel/abort/guide. This was the pre-hardware baseline; see the Titan acceptance below.
+
+This is scenario acceptance, not measured 100% line/branch coverage. No Linux/Windows build/runtime or vendor-SDK runtime acceptance is claimed. SDK-internal stalls cannot be preempted by INDIGO queue priorities. Model-specific image offsets, historical temperature/cooling return codes, Horizon option layouts, actual cooling/heater response and removal during SDK-internal download remain physical acceptance obligations. Hardware client covers reusable software workflows; cooling, physical removal/replug and any model-specific recovery are to be completed with the user during step 7. The subsequent Titan evidence is recorded below and in TESTING.md.
+
+## 2026-09-12 — Titan hardware acceptance and shutter capability fix
+
+- **Diagnose initial failure — COMPLETE.** macOS arm64, SDK/API 20250630, USB 20e7:df2e, SDK name `Atik Titan` plus guider. The sandbox could not discover USB; the explicitly authorized unsandboxed run connected successfully. Version 32 then failed its first light exposure: `ArtemisSetDarkMode(false)` returned 5 (`ARTEMIS_INVALID_FUNCTION`). Both failed attempts and diagnostic runs disconnected cleanly. A serial was not captured in the client log.
+- **Fix capability handling — COMPLETE.** Version 33 (`0x03000021`) caches `ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_SHUTTER` from `ArtemisProperties` on each CCD connection and calls `ArtemisSetDarkMode` only when that flag is set. All other setup errors, and dark-mode errors on shutter-equipped cameras, remain failures. No SDK or generator implementation change.
+- **Fake regression — COMPLETE.** `shutterless_acquisition` models a missing shutter and an SDK dark-mode setter that returns INVALID_FUNCTION. All five frame types deliver an image without calling that setter; reconnect with a shutter refreshes the capability and calls it. Existing `acquisition_errors` and `durations_and_frame_types` retain shutter error and light/dark mapping coverage. The 37-group normal run passed all behavior groups; its old version assertion was updated to 33 and `metadata_profiles` then passed separately. Logs: `/tmp/atik-titan-fake-full.log`, `/tmp/atik-titan-fake-metadata.log`. Targeted arm64 ASan/UBSan shutterless_acquisition, acquisition_errors and durations_and_frame_types passed (`/tmp/atik-titan-asan-{shutter,errors,types}.log`), with the same instrumentation limits as the prior sanitizer run.
+- **Titan workflows — COMPLETE for available software scenarios.** Six separate real-SDK processes passed: `exposure`, `geometry`, `settings`, `abort`, `guide`, `frame_types`. Full RAW16 is 658 x 492 (647484 bytes). Requested .001/.1/1.5/2.5/16.5 s exposures completed in .225/.486/1.726/2.724/16.717 s including setup/readout. Reconnect and driver dlclose/dlopen each delivered another frame. ROI 128 x 128 at (16,16), bins 1/2/4/8, HIGH_SPEED/LOW_NOISE, five frame types, abort/restart, four 100 ms guide directions, guiding during exposure and guider survival after CCD disconnect passed. Cleanup restored frame type/read mode/binning/frame/image format and disconnected all interfaces. Detailed logs: `/tmp/atik-titan-hw-v33-{exposure,geometry,settings,abort,guide}.log` and `/tmp/atik-titan-hw-v33-frame-types.log`.
+- **Remaining physical acceptance — PENDING.** No adjustable temperature/cooler, gain/offset, heater, presets or integrated wheel was exposed on this Titan. Electrical ST4 timing, optical dark/flat quality, reliable idle USB replug, and One/11000A/Horizon remain unverified; active USB removal/replug passed in the subsequent run below. A shutterless dark/bias selection cannot physically block light. Driver reload passed; it does not prove that the SDK unloaded its own runtime.
+
+The hardware client now fails immediately on a fresh ALERT, can log property states with `ATIK_HW_DEBUG`, validates received RAW buffers in every feature scenario, and has a `frame_types` scenario that restores the original selection. No physical hardware is used by ordinary test targets.
+
+### Physical USB removal follow-up
+
+- **Idle removal: passed; idle replug: FAILED.** In `ATIK_HW_CASE=hotplug`, both connected interfaces detached after USB removal and released the shared lock. On replug, the process exited with SIGSEGV before a new CCD attach. Crash report `test_ccd_atik_hw-2026-09-12-205614.ips` shows the fault at `AtikCore::ExposureThreadStandard::ET_ThreadMain()+300` in `libatikcameras.dylib`; the driver queue was inside `ArtemisDeviceSerial` -> camera construction -> `AssertColourData` -> SDK USB read. Log `/tmp/atik-titan-hw-v33-hotplug.log`. The active phase of this combined test did not execute. Location inside the SDK does not establish root cause or exclude a lifecycle race in its interaction with the driver. This failure remains unresolved; do not mark hot-plug fully accepted.
+- **SDK-only comparison: passed once, did not reproduce the crash.** A temporary C probe linked only libatikcameras (no INDIGO library/driver/bus/queues) queried name/serial, connected, read ArtemisProperties, cleared guide outputs, waited for physical removal, called ArtemisDisconnect on the removed handle, waited for replug, queried serial and connected/disconnected again. It returned 0. SDK reported `cameraflags=100`, HAS_SHUTTER=false. Log `/tmp/atik-titan-sdk-only-hotplug.log`, probe `/tmp/atik_titan_sdk_hotplug.c`. This is a narrower sequence and does not prove that SDK hot-plug is race-free or identify the failed run's cause.
+- **Active removal/replug: passed separately.** `ATIK_HW_CASE=hotplug_active` started 120 s integration at 21:01:16; physical removal around 21:01:30 detached CCD and guider and terminated the SDK exposure thread. Replug restored both interfaces, connected guider before CCD, delivered a new 658 x 492 RAW16 image at .1 s, completed a 100 ms EAST pulse and shut down cleanly. Log `/tmp/atik-titan-hw-v33-hotplug-active.log`. This one successful active cycle does not invalidate the idle-replug crash.
+
+The reusable opt-in client now offers `hotplug` (idle followed by active) and `hotplug_active` (active only), with explicit console unplug/replug prompts, bounded presence waits, fresh-image checks and guider verification after restoration. No active exposure remains after the final successful process. Other three cameras and reliable repeated idle replug remain open acceptance items.
+
+### Idle replug repeat — 2026-09-12, 21:07–21:08
+
+User-requested repetition with unchanged production driver 33 and SDK 20250630 **passed**. The new opt-in `hotplug_idle` selector runs only the idle phase of the existing hot-plug workflow. Connected CCD and guider detached after physical USB removal, SDK logged `ET:Shutdown`, and replug restored both interfaces. Guider-first/CCD connection, a fresh .1 s 658 x 492 RAW16 frame, 100 ms EAST guide pulse and clean teardown succeeded (process exit 0). Log: `/tmp/atik-titan-hw-v33-hotplug-idle-repeat.log`.
+
+The original idle-replug SIGSEGV remains unresolved; this successful repeat does not establish reliable repeated hot-plug or explain the earlier failure. No production behavior was changed for this repeat. README.md was not edited.
+
+## 2026-09-12 — Atik One hardware discovery stack limit
+
+Initial real run with driver 33 and SDK/API 20250630 found USB 20e7:df3c (`Atik One`) but crashed before CCD attachment, so no exposure ran. Report `test_ccd_atik_hw-2026-09-12-211406.ips` identifies SIGBUS / `Thread stack size exceeded` in `___chkstk_darwin` -> `AtikCore::AtikCameraIC24` constructor -> `ArtemisDeviceSerial` on `Queue Atik Camera`. Log `/tmp/atik-one-hw-exposure.log`.
+
+The bundled arm64 SDK constructor reserves 0xf4270 (1,000,048) bytes on entry, exceeding the 524,288-byte default pthread stack on this host. `indigo_queue_create` uses default pthread attributes and has no stack-size argument. An isolated SDK-only worker with an explicitly requested 2 MiB stack succeeded: serial query, connect, ArtemisProperties and disconnect; dimensions 3379 x 2703, flags 1612, HAS_SHUTTER=false. Log `/tmp/atik-one-sdk-stack-probe.log`, temporary diagnostic source `/tmp/atik_one_stack_probe.c`.
+
+Proposed prerequisite for further hardware acceptance: preserve larger system defaults but give handler queues a minimum 2 MiB stack through portable pthread attributes in indigo_timer.c, with a real queued large-stack regression test. The user explicitly approved this shared-framework extension. Implemented in indigo_timer.c with portable pthread attributes and checked failure cleanup; larger platform defaults are retained. No generator or vendor SDK change.
+
+The rebuilt universal arm64/x86_64 libindigo passed all 90 timer/queue unit cases, including new `queue_supports_large_sdk_stack_frame`: a queued callback writes and checks every byte of a volatile 1 MiB local buffer. Logs `/tmp/atik-one-framework-build.log`, `/tmp/atik-one-stack-regression.log`. Linux and Windows runtime behavior has not been tested; their pthread stack-attribute APIs are used without driver-specific platform code. This minimum affects handler queues, not the separate timer callback threads or SDK-owned threads.
+
+With the corrected queue stack, One exposure acceptance passed including .001/.1/1.5/2.5/16.5 s, fresh frames after reconnect and dlclose/dlopen; full RAW16 is 3379 x 2703 (18,266,886 bytes). Elapsed times were 10.759/11.052/12.458/13.809/27.891 s including readout. Geometry passed ROI (16,16) 128 x 128 and all advertised power-of-two bin modes 1 through 128. Logs `/tmp/atik-one-hw-stack2m-exposure.log` and `/tmp/atik-one-hw-stack2m-geometry.log`. Other completed One feature scenarios and remaining limits are recorded below.
+
+### One fixes and feature acceptance — completed 2026-09-12
+
+1. **Queue stack prerequisite — COMPLETE.** User-approved minimum 2 MiB handler stack and the 90-case queue/timer validation are described above. The framework change is now in commit `9455475e1`; the large-stack regression remains part of this test change.
+2. **Abort/readout recovery — COMPLETE, version 34.** `ArtemisStopExposure` returns success before One finishes downloading the stopped frame (about 11 s). The prior immediate restart failed on CAMERA_READING/DOWNLOADING. `atik_stop_exposure` records pending readout; the next exposure waits through a bounded, queued finalizer (120 s), preserving the exact requested duration. Temperature polling skips this readout tail. `abort_readout_restart` verifies delayed restart with a fresh image, timeout without a premature SDK start, temperature exclusion and reconnect recovery. Real abort/restart passed in `/tmp/atik-one-hw-v34-abort.log`; initial failure is `/tmp/atik-one-hw-stack2m-abort.log`.
+3. **Unknown initial wheel target — COMPLETE, version 35.** SDK reported count=5, moving=1, current=0, target=209 although the user confirmed the functional wheel was stationary. An SDK-only probe reproduced the values; an explicit move to current slot zero restored valid target/status (`/tmp/atik-one-sdk-wheel-probe.log`). Connection now accepts valid capacity/current with an unknown target, publishes WHEEL_SLOT ALERT and allows an explicit slot request to recover; it does not automatically move the wheel. Invalid targets during commanded motion still fail. `initial_wheel_unknown_target` covers connection, absence of automatic movement, explicit recovery, in-flight invalid target and subsequent recovery.
+4. **Wheel wraparound — COMPLETE, version 36 (`0x03000024`).** During the physical move from slot 5 to 1, SDK transiently reports current=5 (one beyond the normal zero-based indices), moving=4, target=0. Accept this exact transient only while moving and retain the last valid public position; a stopped out-of-range position still fails. `wheel_wraparound_position` verifies BUSY with the last valid slot, completion, stationary invalid-position rejection and recovery. `/tmp/atik-one-hw-v35-wheel.log` captured the original failure; `/tmp/atik-one-hw-v36-wheel.log` passed every slot 1–5 and restoration to slot 1, including two samples of the transient index. CCD/wheel shutdown completed cleanly.
+5. **Other One scenarios — COMPLETE for exposed capabilities.** HIGH_SPEED and LOW_NOISE delivered images; LIGHT/BIAS/DARK/FLAT/DARKFLAT each delivered valid RAW16. Logs `/tmp/atik-one-hw-stack2m-settings.log` and `/tmp/atik-one-hw-stack2m-frame_types.log`. Cooling reached 18.8 °C from 21.8 °C with nonzero cooler power (8% at settling), delivered a cooled image, accepted cooler OFF and restored the original temperature target and cooler selection (`/tmp/atik-one-hw-diagnostic-cooling.log`). Full warming back to ambient was not measured. The opt-in client now covers cooling and every wheel slot with original-setting restoration.
+6. **Final software checks — COMPLETE.** All 40 fake SDK groups passed together against version 36 (`/tmp/atik-one-fake-v36-full.log`, exit 0). Production universal build passed (`/tmp/atik-one-v36-build.log`). A fresh generator run in a temporary directory produced byte-identical C/header/main; scoped `git diff --check` passed. Targeted ASan/UBSan `abort_readout_restart`, `stop_failure_recovery`, `initial_wheel_unknown_target` and `wheel_wraparound_position` passed; logs `/tmp/atik-one-asan-abort-readout.log`, `/tmp/atik-one-asan-stop-recovery.log`, `/tmp/atik-one-asan-wheel-unknown.log`, `/tmp/atik-one-asan-wheel-wrap.log`. Sanitizer scope remains production driver/test/isolated framework object, with prebuilt libraries excluded and LeakSanitizer disabled.
+
+One exposes a five-position integrated wheel and adjustable cooling, but no guider, heater, Horizon presets or gain/offset controls in this run. ArtemisProperties flags=1612 reports HAS_SHUTTER=false; software frame-type completion does not prove optical darkness. Physical One USB removal/replug subsequently passed in both idle and active-exposure phases, as recorded below. Electrical/optical measurements, multiple-camera identity, reliable Titan idle replug and 11000A/Horizon acceptance remain open. README.md, generator implementation and vendor SDK are unchanged by these hardware fixes. Both normal and isolated sanitizer test build directories were cleaned with `test-clean` after validation; no hardware acceptance process remains running.
+
+
+### One physical hot-plug — COMPLETE, 2026-09-12 21:47–21:50
+
+User-requested combined `ATIK_HW_CASE=hotplug` acceptance passed with unchanged production version 36 and SDK/API 20250630 on macOS arm64 (exit 0). USB alone was removed; camera power remained on. The opt-in client now includes the integrated wheel in presence/connection checks, connects it before removal, and verifies its original slot after each replug; cameras without a wheel retain their existing workflow.
+
+- **Idle cycle passed.** Both connected CCD and wheel detached at 21:47:38. Replug attached both at 21:48:01; CCD reconnect delivered a fresh .1 s RAW16 frame and wheel reconnect/selection of the original slot completed successfully.
+- **Active cycle passed.** A 120 s exposure was started before the second removal. Both interfaces detached at 21:49:32 while integration was active; SDK exposure-thread shutdown was logged. Replug attached both at 21:49:52, followed by a fresh .1 s RAW16 frame and successful wheel reconnect/original-slot verification.
+- **Cleanup passed.** Original camera settings were restored and both interfaces disconnected; driver shutdown detached both at 21:50:08. Final RAW buffer validation passed. Log `/tmp/atik-one-hw-v36-hotplug.log`; harness build `/tmp/atik-one-hotplug-build.log`.
+
+This validates one idle and one active-integration USB cycle, not repeated stress, power interruption or removal during SDK readout. One has no exposed guider. The earlier Titan idle-replug crash remains unresolved. No production driver, generator, SDK or README change was needed. Scoped whitespace checks passed and the test build was cleaned afterward.
+
+## Rejected-change regression coverage (2026-09-18)
+
+`ArtemisCameraSpecificOptionSetData()` failure in `ccd_gain_handler` / `ccd_offset_handler` set `INDIGO_ALERT_STATE` but left the refused value in `number.target`; the handlers now restore `target` from the last confirmed `value`. The exposure busy guards moved from hand-written `on_change_request` blocks to the generator's `reject_change` block, so a refusal marks every item for update and the client receives the actual driver-side values instead of an update carrying no items.
+
+Covered by `rejected_change` in `indigo_test/integration/test_ccd_atik_sdk.c`: a failed SDK write and then an exposure in progress both leave `CCD_GAIN` and `CCD_OFFSET` in ALERT with unchanged value and target, and gain is accepted again after the abort.
+
+```sh
+cd indigo_test && ./build/integration/test_ccd_atik_sdk rejected_change
+```
+
+## Hardware coverage of the rejected and accepted change (2026-09-18)
+
+`indigo_test/hardware/test_ccd_atik_hw.c` gained an `ATIK_HW_CASE=reject` scenario. It starts a five second exposure and requires every property carrying the `reject_change` guard and exposed by the connected model — `CCD_BIN`, `CCD_GAIN`, `CCD_OFFSET`, `X_PRESETS` — to answer with ALERT and with every value and target unchanged, then aborts and requires the same change to be accepted. Where `CCD_GAIN` or `CCD_OFFSET` exist, the accepted change is also checked to commit `value` and `target` together before and after the guard, which is the state the refusal path falls back to. The refused SDK write itself still needs an injected `ArtemisCameraSpecificOptionSetData()` failure and stays in `test_ccd_atik_sdk.c`. The in-process client reads the driver-side property directly, so the `do_update` item marking that `reject_change` adds is not observable here and remains covered at protocol level.
+
+The `cooling` scenario now skips itself when the model defines neither `CCD_COOLER` nor `CCD_TEMPERATURE`; a model that exposes one of them still has to expose both with a writable temperature. Without this an uncooled camera could not complete a full run.
+
+Result on 2026-09-18 with Atik Titan (USB 20e7:df2e, driver version 0x03000025): a full run without the hot-plug section passed.
+
+```sh
+INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik-hw
+```
+
+It covered exposures from 0.001 to 16.5 seconds, all five frame types, ROI and all four binning modes, both read modes, the refused and then accepted `CCD_BIN` change, abort and reacquire, guider pulses on all four directions including one during an exposure and one after the camera disconnected, disconnect/reconnect, `dlclose`/`dlopen` of the driver with a fresh exposure, and no invalid RAW frame. Titan exposes no cooler, gain, offset or presets, so `CCD_BIN` is the only guard reachable on this model; the gain/offset branches need a model that exposes them.
+
+Regression evidence: removing the busy guard from the generated `CCD_BIN` branch makes the scenario fail, and the binning change accepted mid-exposure corrupted the frame that followed (82x492 instead of 658x492), which is what the guard prevents.
+
+## Overlapping guide pulses (2026-09-20)
+
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` now declare `accept_while_busy = true` and zero both axis
+items in `on_change_request`, replacing the earlier workaround that forced the property state back
+to `INDIGO_OK_STATE` so the BUSY-guarded dispatch macro would let the request through. Behaviour is
+unchanged; the driver now uses the same pattern as every other INDIGO driver that exposes a guider.
+`guide_axes_and_replacement` already covered the replacement and passes unmodified.
+
+## Three-camera hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64 with three cameras on a Pegasus Ultimate Powerbox v1.7 hub: Atik One (USB `20e7:dfbb`), ArtemisCCD VS (`20e7:df3c`, behind a hub of its own) and Atik Titan (`20e7:df2e`). Two defects, both present since before the generator migration.
+
+### Defect 1: the third camera was never published (version 42 to 43)
+
+`ArtemisDeviceCount()` reported all three cameras, but the driver published only Atik One and ArtemisCCD VS. Every logical device takes one entry of the generated `devices[MAX_DEVICES]` array and the generator emitted a constant 5: Atik One is a camera plus a filter wheel, ArtemisCCD VS a camera plus a guider, which is four, and the Titan needs two more. The plug block's own `slots < 1 + has_guider + has_wheel` guard then refused it silently - correctly, because publishing half a camera is worse, but with nothing said about why.
+
+Fixed by the generator's new `max_devices` attribute; the driver declares `max_devices = 16`. All three cameras are published afterwards:
+
+```
+Discovered Atik One
+Discovered ArtemisCCD VS
+Discovered Atik Titan
+```
+
+Regression: `capacity_and_survivors` in `indigo_test/integration/test_ccd_atik_sdk.c` now offers 20 fake cameras, more logical devices than the driver has slots, and requires the driver to stop at exactly 16 and to keep the survivors working after one of them is removed. With the old capacity it stopped at 5 and never reached the limit with the twelve cameras it used to offer.
+
+### Defect 2: unloading the driver crashed the process (version 43 to 44)
+
+`ATIK_HW_CASE` unset runs the driver reload scenario: disconnect, `INDIGO_DRIVER_SHUTDOWN`, `dlclose`, `dlopen`, `INDIGO_DRIVER_INIT`, fresh exposure. With the Titan it ended in `SIGSEGV`, reproducibly, at the same point of every run. `indigo_remove_driver()` does exactly this `dlclose`, so an INDIGO server that unloads the Atik driver after a session took the same fault.
+
+Two independent causes, both in `ArtemisShutdown()`, which `on_shutdown` called:
+
+- It does not join the SDK's own threads. At the moment of `dlclose` the process still ran `AtikCore::ExposureThreadStandard::ET_ThreadMain()` in `ThreadTrigger::WaitForever()` and `AtikCore::USBDetectorConsole::Thread_ThreadMainLibUSB()` parked in a 60 second `libusb_handle_events_completed()`, both with return addresses inside `libatikcameras.dylib`. Unloading the driver unmapped that code under them. A standalone probe outside INDIGO confirms the detector thread is still there five seconds after `ArtemisShutdown()` returns and never exits, so no delay in the driver can close the window.
+- It is terminal. Its own header says "The SDK functions may not be called after calling this function", and it frees the SDK's libusb context while leaving the device table in place. With the SDK library kept mapped, the next `INDIGO_DRIVER_INIT` therefore crashed instead, in `libusb_open()` called from `ArtemisDeviceSerial()` with `ctx = 0x3208`. The `dlclose`/`dlopen` cycle used to hide this by resetting the library's static state, which is also why it only ever failed the other way.
+
+A driver is unloaded and loaded again within one process, so a terminal SDK shutdown cannot be part of its lifecycle. The driver no longer calls `ArtemisShutdown()` at all and pins the SDK library from `on_init` with the new `indigo_pin_library((void *)ArtemisShutdown)`, so the threads the SDK never joins keep executing mapped code after the driver is gone. The cost is that the SDK stays initialized, with one thread and its USB handles, for the life of the process.
+
+Regression: `sdk_survives_a_driver_reload` in `test_ccd_atik_sdk.c` requires the shutdown/init cycle to leave `ArtemisShutdown()` uncalled and the camera usable afterwards. Verified to fail (`expected 0, got 1`) with the call put back and to pass with it removed. The fake SDK could not have found this on its own: its `ArtemisShutdown()` was an empty function, so it counted the call rather than modelling its effect.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `make -C indigo_test test-ccd-atik-sdk` | 42/42 |
+| `INDIGO_TEST_DEVICE="Atik One" make -C indigo_test test-ccd-atik-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="ArtemisCCD VS" make -C indigo_test test-ccd-atik-hw` | 1/1 |
+| `INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik-hw` | 1/1 |
+
+Each camera ran the full scenario: exposures from 0.001 to 16.5 seconds, every frame type, ROI and binning, both read modes, cooling where the model has a cooler, the wheel on Atik One, the guider on ArtemisCCD VS and Atik Titan, the refused-then-accepted guarded change, abort and reacquire, disconnect/reconnect, driver reload and a fresh exposure, with no invalid RAW frame.
+
+The recorded runs are the final sweep with the shared test's square-bin fix, which `ccd_atik2` needed (see `indigo_mac_drivers/ccd_atik2/REFACTOR.md`). One ArtemisCCD VS run failed once during that rework and could not be reproduced: four further runs of that camera alone, and two of the Atik One then ArtemisCCD VS sequence it happened in, all passed, and the log of the failing run was overwritten before it could be read. It is recorded here rather than dismissed, because an intermittent failure of one camera is worth watching for.
+
+### Hot-plug not established
+
+Physical hot-plug was not covered. The cameras hang on the Powerbox's SMSC `0424:2517` hub, whose six external ports switch `PORT_POWER` through libusb, and the plan was to drive the unattended suite of `test_ccd_hotplug_hw.c` from it. Measured on this host, the mechanism does not work: with the port cleared, the hub reports it powered off and disconnected (`GET_STATUS` 0x00000000) for as long as it is left off, while the device stays in the IOKit registry and in `libusb_get_device_list()`, so no disconnect reaches the driver. Clearing `PORT_ENABLE` instead leaves the port disabled but still connected and is equally invisible. The reason is the same one that makes `uhubctl` useless for this on Linux: the host's own hub driver owns the port and is never told about a change made behind its back, and only the kernel's per-port `disable` attribute both cuts the port and tears the device down. macOS has no equivalent, so the unattended suite stays a Linux-only facility and this host cannot run it. A backend that switched the Powerbox port was written and discarded rather than shipped, because it would report a passing hot-plug run while testing nothing.
+
+## Atik 11000 and Atik Horizon hardware run (2026-09-22)
+
+Non-interactive hardware run on macOS arm64, closing the two models `REFACTOR.md` had listed as
+pending. Both cameras were attached at the same time for the Horizon run, which also covered
+two-camera discovery and selection by name; the Horizon was unplugged before the 11000 run.
+
+### Defect 3: an idle cooler prevented the connection (version 44 to 45)
+
+`Atik Large Format Camera` (Atik 11000, USB `04b4:df28`) refused every connection attempt with
+`CONNECTION` in `INDIGO_ALERT_STATE`. `atik_open()` succeeded - the trace shows
+`ArtemisConnect(0) -> 0x65` - and `atik_initialize_ccd()` then failed. A standalone SDK probe over
+the same camera shows why:
+
+```
+ArtemisProperties = 0, 4007 x 2671, 9.000 x 9.000, flags 0xcd
+ArtemisGetMaxBin = 0, 6 x 255
+ArtemisTemperatureSensorInfo(0) = 0, sensors = 1
+ArtemisCoolingInfo = 0, flags 0x1f level 0 min 1 max 79 setpoint -5999
+```
+
+The driver validated the reported cooler power level against the advertised operating range with
+`level < min || level > max` and returned `false`. This camera reports `level` 0 against a `min` of
+1 whenever the cooler is idle, so the check made the camera permanently unusable. The SDK header
+documents `level` as "the power level of the cooler, usually from 0 to 255" and `minlvl`/`maxlvl`
+as the minimum and maximum cooling power level; nothing promises that the current level sits inside
+that range, and an idle cooler legitimately sits below it. The level is now clamped into the
+advertised range by the new `atik_cooler_power()` helper and only the range itself (`max > min`) is
+validated. The same over-strict test in the five-second poll drove `CCD_COOLER_POWER` to
+`INDIGO_ALERT_STATE` for as long as the cooler was idle and was replaced by the same helper.
+
+### Defect 4: an unset cooling setpoint was published outside the property range (version 44 to 45)
+
+The same `ArtemisCoolingInfo` reply carries `setpoint -5999`, that is -59.99 C, on a camera that has
+never been given a setpoint. The driver adopted it as `CCD_TEMPERATURE`'s target through
+`target > 10000 ? value : round(target / 10.0) / 10`, a guard written for a high sentinel only, so
+the target was published as -60 C while the item advertises `[-50, 50]`. The special case is
+replaced by a range check against the item's own minimum and maximum: an unusable setpoint leaves
+the measured temperature as the target. This was found by SDK probe and source audit before it
+could be reproduced through the property interface - writing a setpoint from the probe replaced the
+sentinel with a usable value - so the regression test below is what proves it.
+
+Regression for both: `idle_cooler_outside_advertised_range` in
+`indigo_test/integration/test_ccd_atik_sdk.c`. The fake SDK's `ArtemisCoolingInfo` now reports a
+per-camera level, minimum and maximum instead of the fixed `100 / 0 / 200`, and the case drives the
+11000's numbers - level 0, min 1, max 79, setpoint -5999, sensor 23.87 C - through connect, then
+moves the level above the minimum, back to 0 and past the maximum while the poll runs. It requires
+the connection to succeed, `CCD_COOLER_POWER` to stay `INDIGO_OK_STATE` and report 0, 50, 0 and 100
+percent, and `CCD_TEMPERATURE` to publish a target inside the item's advertised range. Verified to
+fail against the unfixed driver (`device 0 property CONNECTION: expected state 1, got 3`) and to
+pass with the fix.
+
+### Test-side change: the fixed 30-second property wait
+
+`indigo_test/hardware/test_ccd_atik_hw.c` waited 3000 ticks of 10 ms for any property state. The
+11000 needs about 22 seconds of flush and readout per frame, so the suite's longest exposure,
+16.5 seconds, timed out at 30 seconds with the camera working correctly and the driver still inside
+its own 120-second readout deadline. The waits are now named constants: `WAIT_STATE_TICKS` 30000
+(300 seconds, above the driver's own deadline) and `DISCONNECT_TICKS` 18000 (180 seconds, enough to
+outlast a readout in flight). No other driver's recorded timing is affected; the constants only
+raise a ceiling that was never reached before.
+
+### Results
+
+| run | driver version | result |
+| --- | --- | --- |
+| `make -C indigo_test test-ccd-atik-sdk` | 3.0.0.45 | 43/43 |
+| `INDIGO_TEST_DEVICE="Atik Horizon" make -C indigo_test test-ccd-atik-hw` | 3.0.0.44 | 1/1 |
+| `INDIGO_TEST_DEVICE="Atik Large Format Camera" make -C indigo_test test-ccd-atik-hw` | 3.0.0.45 | 1/1 |
+
+The Horizon ran the full scenario at version 44, before defects 3 and 4 were found on the 11000:
+exposures from 0.001 to 16.5 seconds at 4644x3506, every frame type, ROI and all four binning
+modes, both read modes, cooling from 25.6 C to 22.6 C with cooler power up to 11 percent, all four
+`X_PRESETS`, the refused-then-accepted `CCD_BIN`, `CCD_GAIN`, `CCD_OFFSET` and `X_PRESETS` changes
+during an exposure, abort and reacquire, disconnect/reconnect, driver reload and a fresh exposure,
+with no invalid RAW frame. It is the first model in this suite to exercise all four guarded
+properties, because it is the first with gain, offset and presets. The camera was unplugged by the
+user before the fix existed, so the Horizon was not re-run at version 45; both fixes are on the
+cooling path it exercised and the fake-SDK regression covers them.
+
+The 11000 ran the full scenario at version 45 after the fixes: exposures from 0.001 to 16.5 seconds
+at 4007x2671, every frame type, ROI and the three binning modes it offers, both read modes, cooling
+from 24.2 C to 21.6 C with cooler power up to 15 percent, the refused-then-accepted `CCD_BIN`
+change, abort and reacquire, disconnect/reconnect, driver reload and a fresh exposure, with no
+invalid RAW frame. It exposes no guider, wheel, gain, offset or presets, so `CCD_BIN` is the only
+reachable guard on this model.
+
+Physical hot-plug was not part of this run and no hot-plug coverage is established by it.
+
+### Test totals for this run
+
+Simulated (fake SDK) tests run 43, passed 43. Hardware tests run 2, passed 2.
+
+## Linux arm64 hardware run — Atik Titan (2026-09-24)
+
+First run of this driver on Linux and on a non-x86/non-macOS architecture: Raspberry Pi 5,
+Debian 12 bookworm, aarch64, repository at `b230d86e8`, driver version 45 (`0x0300002d`, reported by
+the client as `version 0x0300002d`), bundled arm64 `libatikcameras.so`. One camera attached, USB
+`20e7:df2e` on controller `xhci-hcd.0`; the driver resolved it through the SDK as `Atik Titan` with
+`Atik Titan (guider)` as its second logical device. The camera publishes no `product` string over
+USB, so the model comes from `ArtemisDeviceName`, not from sysfs.
+
+**No defect was found.** Two consecutive full runs of the single `ATIK physical acceptance` case
+passed with byte-identical output, the second one holding `/tmp/indigo-hwrun.lock` so no other
+camera suite was running on the host's four cores. Nothing needed an exclusive run to be diagnosed
+and no production, generator, `.driver` or fake-SDK change was required, so the driver version stays
+at 45.
+
+```sh
+INDIGO_TEST_DEVICE="Atik Titan" make -C indigo_test test-ccd-atik-hw
+# build/hardware/test_ccd_atik_hw --run build/drivers/indigo_ccd_atik.so indigo_ccd_atik
+# ATIK hardware: all tests passed
+```
+
+Workflows that actually executed inside the single case, read off the complete log rather than its
+tail: discovery and selection of one camera with its guider sibling; `CCD_UPLOAD_MODE.CLIENT` and
+`CCD_IMAGE_FORMAT.RAW`; exposures of .001/.1/1.5/2.5/16.5 s, elapsed .211/.453/1.709/2.705/16.702 s
+including setup and readout, each delivering one fresh 658 x 492 RAW16 frame of 647484 bytes; all
+five frame types; ROI (16,16) 128 x 128 delivering 32780 bytes; every advertised `CCD_MODE` bin,
+1x1/2x2/4x4/8x8; both read modes, HIGH_SPEED and LOW_NOISE; the refused-then-accepted guarded
+change on `CCD_BIN` during a five-second exposure; abort of a five-second exposure and an immediate
+fresh .1 s exposure; 100 ms guide pulses EAST/WEST/NORTH/SOUTH, one EAST pulse during a 1.5 s
+exposure, one WEST pulse after the CCD was disconnected while the guider stayed connected, and the
+camera reconnected afterwards; disconnect/reconnect with a fresh exposure; and
+`INDIGO_DRIVER_SHUTDOWN` + `dlclose` + `dlopen` + `INDIGO_DRIVER_INIT` followed by another fresh
+exposure. No invalid RAW frame was observed at either of the two checkpoints that assert it. The
+suite only prints the first twelve frames, so the absence of `frame` lines after the 1x1 bin
+exposure is the print cap, not a missing image; the frame-count assertions and the invalid-frame
+counter cover the rest.
+
+Confirmation of the two defects a previous session fixed on this target:
+
+- The driver-reload path is clean here. `dlclose()` is checked for success, the reopened driver
+  initialized, and the process exited 0 after a final `INDIGO_DRIVER_SHUTDOWN` and a second
+  `dlclose()` in `main()`. The removal of `ArtemisShutdown()` together with
+  `indigo_pin_library()` therefore holds on Linux arm64 as well, where the SDK's unjoined threads
+  are pthreads in `libatikcameras.so` rather than in a Mach-O dylib.
+- `max_devices = 16` was not exercised for capacity here: one physical camera contributes two
+  logical devices, so the old constant 5 would have been enough. `capacity_and_survivors` remains
+  the coverage for that.
+
+Scenarios the model cannot reach, recorded as not applicable rather than passed: the Titan exposes
+no cooler or temperature, so the `cooling` scenario skipped itself by its own uncooled branch; no
+integrated wheel, so `wheel` did not run; no `X_PRESETS`, `CCD_GAIN`, `CCD_OFFSET` or
+`X_WINDOW_HEATER`, so `CCD_BIN` was again the only reachable `reject_change` guard and the
+`presets` and gain/offset branches did nothing. Those branches are covered on hardware by the
+Horizon run of 2026-09-22 and hardware-free by `cooling_and_controls`, `rejected_change`,
+`preset_readback_failures`, `wheel_errors` and
+`idle_cooler_outside_advertised_range`.
+
+**Hot-plug coverage was not established by this run.** It was excluded from the scope on purpose and
+no `/sys/bus/usb/.../disable` attribute was written, because the host carries its own boot SSD and a
+second agent's camera on neighbouring ports. The Titan's unresolved macOS idle-replug SIGSEGV is
+therefore neither reproduced nor cleared on Linux.
+
+Hardware-free confirmation on the same host and architecture, run under the shared build lock:
+
+```sh
+make -C indigo_test test-ccd-atik-sdk
+# Atik fake SDK: all tests passed  (43 cases)
+```
+
+This is the first Linux run of that suite; every one of the 43 cases passed unchanged, so the
+fake-SDK contract is not macOS-specific. `indigo_pin_library()` logs
+`Can't pin build/integration/test_ccd_atik_sdk` in that suite because the fake build has no separate
+SDK object to pin, which is the expected test-build behaviour and not a driver failure.
+
+### Test totals for this run
+
+Simulated (fake SDK) tests run 43, passed 43 (Linux arm64). Hardware tests run 1, passed 1
+(Atik Titan, Linux arm64; the run was repeated once under an exclusive host lock with the same
+result).
+
+## Queued cooler request (TGT-060, 2026-09-27)
+
+Version 49, finding TGT-060 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+### Defect (reproduced)
+
+The CCD_TEMPERATURE handler turns CCD_COOLER ON with `indigo_set_switch()` after a successful
+`ArtemisSetCooling()`, whatever the state of CCD_COOLER. A cooler OFF sent after a temperature
+change is copied into CCD_COOLER on the bus thread and queued behind the temperature handler, which
+then overwrote it with ON; the CCD_COOLER handler read `sw.value`, sent `ArtemisSetCooling()` instead
+of `ArtemisCoolerWarmUp()` and reported ON/OK, so the camera kept cooling although the client asked
+it to stop. A rejected cooler request was also shown with the requested state and ALERT instead of
+the state the camera kept. The 5 s poll reads CCD_COOLER only to decide the CCD_TEMPERATURE state and
+never writes it, so it is unchanged.
+
+### Fix
+
+- The CCD_COOLER handler sends the request read with `indigo_get_switch_target()` (warm-up for OFF,
+  `ArtemisSetCooling()` with the temperature target for ON) and applies it with
+  `indigo_apply_switch_targets()` when the SDK accepts it. On failure it shows the cooler state the
+  camera reports (`ARTEMIS_COOLING_INFO_COOLINGON` from `ArtemisCoolingInfo()`) with ALERT.
+- The CCD_TEMPERATURE handler still starts cooling to the new setpoint and, with no cooler request
+  pending, still turns CCD_COOLER ON; it leaves a BUSY CCD_COOLER to its own handler, so the last
+  client request wins. A request copied between its check and its write is still sent from the
+  target.
+
+### Fake SDK and tests
+
+- The fake camera now reports whether it is cooling like the real SDK: `ArtemisSetCooling()` sets
+  and a successful `ArtemisCoolerWarmUp()` clears the `ARTEMIS_COOLING_INFO_COOLINGON` flag of
+  `ArtemisCoolingInfo()`.
+- New case `cooler_off_queued_behind_a_temperature_change_survives`: the device queue is held by a
+  gate handler, a CCD_TEMPERATURE change and then a CCD_COOLER OFF are sent, the gate is released
+  and a marker handler waits for both handlers. Version 48 failed 3/3 (no warm-up sent, the camera
+  still cooling); version 49 passes 3/3 (the setpoint is sent, then exactly one warm-up, CCD_COOLER
+  OFF and OK). It also checks that a temperature change without a pending cooler request turns the
+  cooler ON.
+- `cooling_and_controls` now checks that a rejected OFF shows ON (the camera keeps cooling); it fails
+  on version 48, which showed OFF with ALERT.
+
+### Test totals for this change
+
+Simulated (fake SDK) tests run 44, passed 44 (Linux x64, `tools/run_driver_test.py ccd_atik`).
+Hardware tests run 0.

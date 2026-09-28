@@ -1,6 +1,6 @@
 CC     ?= gcc
 CFLAGS  = -Wall -Wextra -O2 -std=c11
-LDFLAGS = -lpthread
+LDFLAGS = -lm
 
 TARGET  = focuser_lacerta_simulator
 SRC     = focuser_lacerta_simulator.c
@@ -9,7 +9,7 @@ SRC     = focuser_lacerta_simulator.c
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
+$(TARGET): $(SRC) ../../../indigo_test/simulator_common/serial_simulator_common.h ../../../indigo_test/simulator_common/serial_motion.h
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:

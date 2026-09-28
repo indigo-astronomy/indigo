@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{96D12488-1B9B-4CAD-B128-86ED0CDE5DBE}</ProjectGuid>
+    <ProjectGuid>{F78FA65D-6AD7-4515-A053-DA574ACC3861}</ProjectGuid>
     <RootNamespace>indigomountsimulator</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -16,12 +16,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Configuration serialization refactored by OpenAI Codex (2026).
+
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO Driver base
  \file indigo_driver.c
  */
+
+#if defined(INDIGO_LINUX) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,9 +42,11 @@
 #include <sys/types.h>
 
 #if defined(INDIGO_MACOS)
+#include <dlfcn.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/serial/IOSerialKeys.h>
 #elif defined(INDIGO_LINUX)
+#include <dlfcn.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -70,49 +78,12 @@
 pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (indigo_is_sandboxed) {
-		return INDIGO_OK;
-	}
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
-	if (device->lock != NULL) {
-		return INDIGO_FAILED;
-	}
-	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	strncat(tmp_lock_file, device->name, 250);
-	indigo_uni_handle *handle = indigo_uni_create_file(tmp_lock_file, INDIGO_LOG_DEBUG);
-	if (handle == NULL) {
-		return INDIGO_LOCK_ERROR;
-	}
-	if (!indigo_uni_lock_file(handle)) {
-		indigo_uni_close(&handle);
-		return INDIGO_LOCK_ERROR;
-	}
-	device->lock = handle;
+	// Deprecated no-op kept for source compatibility with out-of-tree drivers.
 	return INDIGO_OK;
-#else
-	return INDIGO_OK;
-#endif
 }
 
 indigo_result indigo_global_unlock(indigo_device *device) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (indigo_is_sandboxed) {
-		return INDIGO_OK;
-	}
-	if (device->master_device != NULL) {
-		device = device->master_device;
-	}
-	if (device->lock == NULL) {
-		return INDIGO_FAILED;
-	}
-	indigo_uni_close(&device->lock);
-	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	strncat(tmp_lock_file, device->name, 250);
-	indigo_uni_remove(tmp_lock_file);
-#endif
+	// Deprecated no-op kept for source compatibility with out-of-tree drivers.
 	return INDIGO_OK;
 }
 
@@ -281,7 +252,7 @@ indigo_uni_handle *indigo_open_config_file(char *device_name, int profile, bool 
 	return NULL;
 }
 
-indigo_result indigo_load_properties(indigo_device *device, bool default_properties) {
+static indigo_result load_properties(indigo_device *device, bool default_properties, indigo_client *reader, indigo_result (*dispatch)(indigo_client *, indigo_property *)) {
 	assert(device != NULL);
 	int profile = 0;
 	if (DEVICE_CONTEXT) {
@@ -297,37 +268,260 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	indigo_uni_handle *handle = indigo_open_config_file(device->name, profile, false, ".common");
 	if (handle != NULL) {
 		INDIGO_TRACE(indigo_trace("%d -> // Common config file for '%s'", handle->index, device->name));
-		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
+		indigo_client *client = reader ? reader : indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
-		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
+		indigo_adapter_context *context = reader ? reader->client_context : indigo_safe_malloc(sizeof(indigo_adapter_context));
 		context->input = handle;
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
-		indigo_xml_parse(NULL, client);
+		indigo_xml_parse_with_callback(NULL, client, dispatch);
 		indigo_uni_close(&handle);
-		indigo_safe_free(context);
-		indigo_safe_free(client);
+		context->input = NULL;
+		if (reader == NULL) {
+			indigo_safe_free(context);
+			indigo_safe_free(client);
+		}
 		result = INDIGO_OK;
 	}
 	handle = indigo_open_config_file(device->name, profile, false, default_properties ? ".default" : ".config");
 	if (handle != NULL) {
 		INDIGO_TRACE(indigo_trace("%d -> // Config file for '%s'", handle->index, device->name));
-		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
+		indigo_client *client = reader ? reader : indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
-		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
+		indigo_adapter_context *context = reader ? reader->client_context : indigo_safe_malloc(sizeof(indigo_adapter_context));
 		context->input = handle;
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
-		indigo_xml_parse(NULL, client);
+		indigo_xml_parse_with_callback(NULL, client, dispatch);
 		indigo_uni_close(&handle);
-		indigo_safe_free(context);
-		indigo_safe_free(client);
+		context->input = NULL;
+		if (reader == NULL) {
+			indigo_safe_free(context);
+			indigo_safe_free(client);
+		}
 		result = INDIGO_OK;
 	}
 	if (DEVICE_CONTEXT) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	}
 	return result;
+}
+
+indigo_result indigo_load_properties(indigo_device *device, bool default_properties) {
+	return load_properties(device, default_properties, NULL, NULL);
+}
+
+typedef struct config_request {
+	indigo_property *property;
+	struct config_request *next;
+} config_request;
+
+// INDIGO_COPY_*_PROCESS_CHANGE and an explicit rejection both publish before the request returns, so
+// a property that produced no update at all within this window was dropped rather than accepted. The
+// window is generous because a driver may publish its first update from a queued handler instead.
+#define CONFIG_RESTORE_ACK_TIMEOUT 5.0
+
+typedef struct {
+	indigo_adapter_context adapter; // XML reader context must be first.
+	indigo_client client;
+	pthread_mutex_t mutex;
+	config_request *first, *last;
+	bool active, connected, failed, probed, available, dispatched, updated, rejected;
+	indigo_property_state state;
+	double deadline, ack_deadline;
+	char unrestored[INDIGO_VALUE_SIZE];
+} config_restore;
+
+static indigo_result config_restore_observe_property(indigo_client *client, indigo_property *property, bool update) {
+	config_restore *restore = client->client_context;
+	pthread_mutex_lock(&restore->mutex);
+	if (restore->active && restore->first && !strcmp(property->device, restore->first->property->device)) {
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && restore->connected) {
+			indigo_item *connected = indigo_get_item(property, CONNECTION_CONNECTED_ITEM_NAME);
+			if (connected && !connected->sw.value) {
+				restore->failed = true;
+			}
+		}
+		if (!strcmp(property->name, restore->first->property->name)) {
+			restore->available = !property->hidden && property->perm != INDIGO_RO_PERM;
+			if (!restore->dispatched || update) {
+				restore->state = property->state;
+			}
+			if (restore->dispatched && update) {
+				restore->updated = true;
+				if (property->state == INDIGO_ALERT_STATE) {
+					// One refused property must not discard the settings that follow it in the file.
+					restore->rejected = true;
+				}
+			}
+		}
+	}
+	pthread_mutex_unlock(&restore->mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result config_restore_observe(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	return config_restore_observe_property(client, property, false);
+}
+
+static indigo_result config_restore_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	return config_restore_observe_property(client, property, true);
+}
+
+static indigo_result config_restore_delete(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	config_restore *restore = client->client_context;
+	pthread_mutex_lock(&restore->mutex);
+	if (restore->active && restore->first && !strcmp(property->device, restore->first->property->device) && (!*property->name || (restore->dispatched && !strcmp(property->name, restore->first->property->name)))) {
+		restore->failed = true;
+	}
+	pthread_mutex_unlock(&restore->mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result config_restore_collect(indigo_client *client, indigo_property *property) {
+	config_restore *restore = client->client_context;
+	if (property->type != INDIGO_TEXT_VECTOR && property->type != INDIGO_NUMBER_VECTOR && property->type != INDIGO_SWITCH_VECTOR) {
+		return INDIGO_FAILED;
+	}
+	config_request *request = indigo_safe_malloc(sizeof(config_request));
+	request->property = indigo_copy_property(NULL, property);
+	if (restore->last) {
+		restore->last->next = request;
+	} else {
+		restore->first = request;
+	}
+	restore->last = request;
+	return INDIGO_OK;
+}
+
+static void config_restore_pop(config_restore *restore) {
+	config_request *request = restore->first;
+	restore->first = request->next;
+	if (restore->first == NULL) {
+		restore->last = NULL;
+	}
+	indigo_release_property(request->property);
+	indigo_safe_free(request);
+	restore->probed = restore->available = restore->dispatched = restore->updated = restore->rejected = false;
+	restore->state = INDIGO_IDLE_STATE;
+}
+
+// Record a property the driver refused or never answered and continue with the rest of the file.
+static void config_restore_skip(config_restore *restore) {
+	const char *name = restore->first->property->name;
+	size_t used = strlen(restore->unrestored);
+	if (used + strlen(name) + 3 < INDIGO_VALUE_SIZE) {
+		snprintf(restore->unrestored + used, INDIGO_VALUE_SIZE - used, "%s%s", used ? ", " : "", name);
+	}
+	config_restore_pop(restore);
+}
+
+static void config_restore_handler(indigo_device *device) {
+	config_restore *restore = DEVICE_CONTEXT->config_restore;
+	pthread_mutex_lock(&restore->mutex);
+	while (restore->first && !restore->failed && indigo_monotonic_time() < restore->deadline) {
+		indigo_property *request = restore->first->property;
+		if (!restore->probed) {
+			restore->probed = true;
+			pthread_mutex_unlock(&restore->mutex);
+			indigo_enumerate_properties(&restore->client, request);
+			pthread_mutex_lock(&restore->mutex);
+			// A saved property may no longer exist in the current device mode.
+			if (!restore->available || !strcmp(request->name, CONFIG_PROPERTY_NAME)) {
+				config_restore_pop(restore);
+				continue;
+			}
+		}
+		if (!restore->dispatched && restore->state != INDIGO_BUSY_STATE) {
+			restore->dispatched = true;
+			restore->ack_deadline = indigo_monotonic_time() + CONFIG_RESTORE_ACK_TIMEOUT;
+			request->access_token = indigo_get_device_or_master_token(request->device);
+			pthread_mutex_unlock(&restore->mutex);
+			indigo_change_property(&restore->client, request);
+			pthread_mutex_lock(&restore->mutex);
+		}
+		if (restore->dispatched && restore->updated && restore->state != INDIGO_BUSY_STATE) {
+			if (restore->rejected) {
+				config_restore_skip(restore);
+			} else {
+				config_restore_pop(restore);
+			}
+		} else if (restore->dispatched && !restore->updated && indigo_monotonic_time() >= restore->ack_deadline) {
+			// The driver accepted the request without publishing anything, so waiting for it would
+			// burn the whole deadline and lose every setting after it in file order.
+			config_restore_skip(restore);
+		} else if (!restore->failed) {
+			pthread_mutex_unlock(&restore->mutex);
+			indigo_execute_background_handler_in(device, 0.01, config_restore_handler);
+			return;
+		}
+	}
+	bool aborted = restore->failed || restore->first != NULL;
+	char unrestored[INDIGO_VALUE_SIZE];
+	strcpy(unrestored, restore->unrestored);
+	while (restore->first) {
+		config_restore_pop(restore);
+	}
+	restore->active = false;
+	CONFIG_LOAD_ITEM->sw.value = false;
+	CONFIG_PROPERTY->state = (aborted || *unrestored) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+	pthread_mutex_unlock(&restore->mutex);
+	if (aborted) {
+		indigo_update_property(device, CONFIG_PROPERTY, "Configuration restore failed or timed out");
+	} else if (*unrestored) {
+		indigo_update_property(device, CONFIG_PROPERTY, "Configuration restored, except '%s' which the driver did not accept", unrestored);
+	} else {
+		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+	}
+}
+
+static void start_config_restore(indigo_device *device) {
+	config_restore *restore = DEVICE_CONTEXT->config_restore;
+	if (restore == NULL) {
+		restore = indigo_safe_malloc(sizeof(config_restore));
+		pthread_mutex_init(&restore->mutex, NULL);
+		strcpy(restore->client.name, CONFIG_READER);
+		restore->client.client_context = restore;
+		restore->client.version = INDIGO_VERSION_CURRENT;
+		restore->client.define_property = config_restore_observe;
+		restore->client.update_property = config_restore_update;
+		restore->client.delete_property = config_restore_delete;
+		DEVICE_CONTEXT->config_restore = restore;
+		if (indigo_attach_client(&restore->client) != INDIGO_OK) {
+			pthread_mutex_destroy(&restore->mutex);
+			indigo_safe_free(restore);
+			DEVICE_CONTEXT->config_restore = NULL;
+			CONFIG_LOAD_ITEM->sw.value = false;
+			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CONFIG_PROPERTY, "Can't observe configuration restore");
+			return;
+		}
+	}
+	CONFIG_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CONFIG_PROPERTY, NULL);
+	// Parse first, then dispatch in file order and wait for each request's completion.
+	bool failed = CONFIG_PROPERTY->count != 1 && load_properties(device, false, &restore->client, config_restore_collect) != INDIGO_OK;
+	pthread_mutex_lock(&restore->mutex);
+	restore->failed = failed;
+	restore->connected = IS_CONNECTED;
+	restore->deadline = indigo_monotonic_time() + 120;
+	restore->unrestored[0] = 0;
+	restore->active = true;
+	pthread_mutex_unlock(&restore->mutex);
+	config_restore_handler(device);
+}
+
+static void release_config_restore(indigo_device *device) {
+	config_restore *restore = DEVICE_CONTEXT->config_restore;
+	if (restore) {
+		indigo_detach_client(&restore->client);
+		while (restore->first) {
+			config_restore_pop(restore);
+		}
+		pthread_mutex_destroy(&restore->mutex);
+		indigo_safe_free(restore);
+		DEVICE_CONTEXT->config_restore = NULL;
+	}
 }
 
 indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **file_handle, indigo_property *property) {
@@ -338,6 +532,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 		INDIGO_DEBUG(indigo_debug("Config file is locked, property '%s.%s' not saved", device->name, property->name));
 		return INDIGO_FAILED;
 	}
+	indigo_result result = INDIGO_OK;
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
 		if (file_handle == NULL) {
@@ -367,28 +562,46 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 		}
 		switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
-				indigo_uni_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				if (indigo_uni_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]) <= 0) {
+					result = INDIGO_FAILED;
+				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape_b(5, indigo_get_text_item_value(item)));
+					if (indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape_b(5, indigo_get_text_item_value(item))) <= 0) {
+						result = INDIGO_FAILED;
+					}
 				}
-				indigo_uni_printf(handle, "</newTextVector>\n");
+				if (indigo_uni_printf(handle, "</newTextVector>\n") <= 0) {
+					result = INDIGO_FAILED;
+				}
 				break;
 			case INDIGO_NUMBER_VECTOR:
-				indigo_uni_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				if (indigo_uni_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]) <= 0) {
+					result = INDIGO_FAILED;
+				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
+					if (indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1)) <= 0) {
+						result = INDIGO_FAILED;
+					}
 				}
-				indigo_uni_printf(handle, "</newNumberVector>\n");
+				if (indigo_uni_printf(handle, "</newNumberVector>\n") <= 0) {
+					result = INDIGO_FAILED;
+				}
 				break;
 			case INDIGO_SWITCH_VECTOR:
-				indigo_uni_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				if (indigo_uni_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]) <= 0) {
+					result = INDIGO_FAILED;
+				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
+					if (indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off") <= 0) {
+						result = INDIGO_FAILED;
+					}
 				}
-				indigo_uni_printf(handle, "</newSwitchVector>\n");
+				if (indigo_uni_printf(handle, "</newSwitchVector>\n") <= 0) {
+					result = INDIGO_FAILED;
+				}
 				break;
 			default:
 				break;
@@ -397,7 +610,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 	if (DEVICE_CONTEXT) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	}
-	return INDIGO_OK;
+	return result;
 }
 
 indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle *file_handle, indigo_property *property, const int count, const char **items) {
@@ -652,7 +865,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		if (INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_text_item(INFO_DEVICE_NAME_ITEM, INFO_DEVICE_NAME_ITEM_NAME, "Device name", device->name);
+		indigo_init_text_item(INFO_DEVICE_NAME_ITEM, INFO_DEVICE_NAME_ITEM_NAME, "Device name", "%s", device->name);
 		indigo_init_text_item(INFO_DEVICE_DRIVER_ITEM, INFO_DEVICE_DRIVER_ITEM_NAME, "Driver name", "%s", driver_name);
 		unsigned indigo_version = (version >> 16) & 0xFFFF;
 		if (indigo_version == 0) {
@@ -660,7 +873,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		}
 		indigo_init_text_item(INFO_DEVICE_VERSION_ITEM, INFO_DEVICE_VERSION_ITEM_NAME, "Driver version", "%d.%d.%d.%d", INDIGO_VERSION_MAJOR(indigo_version), INDIGO_VERSION_MINOR(indigo_version), INDIGO_VERSION_MAJOR(version), INDIGO_VERSION_MINOR(version));
 		indigo_init_text_item(INFO_DEVICE_INTERFACE_ITEM, INFO_DEVICE_INTERFACE_ITEM_NAME, "Interface", "%u", interface_mask);
-		indigo_init_text_item(INFO_DEVICE_MODEL_ITEM, INFO_DEVICE_MODEL_ITEM_NAME, "Model", device->name);
+		indigo_init_text_item(INFO_DEVICE_MODEL_ITEM, INFO_DEVICE_MODEL_ITEM_NAME, "Model", "%s", device->name);
 		indigo_init_text_item(INFO_DEVICE_FW_REVISION_ITEM, INFO_DEVICE_FW_REVISION_ITEM_NAME, "Firmware Rev.", "N/A");
 		indigo_init_text_item(INFO_DEVICE_HW_REVISION_ITEM, INFO_DEVICE_HW_REVISION_ITEM_NAME, "Hardware Rev.", "N/A");
 		indigo_init_text_item(INFO_DEVICE_SERIAL_NUM_ITEM, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "Serial No.", "N/A");
@@ -798,15 +1011,13 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, SIMULATION_PROPERTY, NULL);
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
+		if (CONFIG_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, CONFIG_PROPERTY, "Configuration restore is in progress");
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CONFIG_PROPERTY, property, false);
 		if (CONFIG_LOAD_ITEM->sw.value) {
-			if (CONFIG_PROPERTY->count == 1 || indigo_load_properties(device, false) == INDIGO_OK) {
-				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			CONFIG_LOAD_ITEM->sw.value = false;
-			indigo_update_property(device, CONFIG_PROPERTY, NULL);
+			start_config_restore(device);
 		} else if (CONFIG_SAVE_ITEM->sw.value) {
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
@@ -1060,6 +1271,8 @@ indigo_result indigo_device_detach(indigo_device *device) {
 			}
 		}
 	}
+	indigo_cancel_background_handler(device, NULL);
+	release_config_restore(device);
 	indigo_queue_delete(&DEVICE_CONTEXT->queue);
 	indigo_cancel_all_timers(device);
 	indigo_release_property(CONNECTION_PROPERTY);
@@ -1087,6 +1300,34 @@ void indigo_start_usb_event_handler() {
 		indigo_async(indigo_usb_hotplug_thread, NULL);
 		thread_started = true;
 	}
+}
+
+bool indigo_pin_library(const void *address) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	Dl_info info;
+	if (!dladdr(address, &info) || !info.dli_fname) {
+		INDIGO_ERROR(indigo_error("Can't locate the shared library to pin"));
+		return false;
+	}
+	// RTLD_NODELETE marks the library as never unloaded; the extra reference is intentionally
+	// leaked, because releasing it would restore exactly the unload this call exists to prevent.
+	if (dlopen(info.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_NODELETE) == NULL) {
+		INDIGO_ERROR(indigo_error("Can't pin %s (%s)", info.dli_fname, dlerror()));
+		return false;
+	}
+	INDIGO_DEBUG(indigo_debug("Pinned %s", info.dli_fname));
+	return true;
+#elif defined(INDIGO_WINDOWS)
+	HMODULE module = NULL;
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, (LPCSTR)address, &module)) {
+		INDIGO_ERROR(indigo_error("Can't pin the shared library (%s)", indigo_last_windows_error()));
+		return false;
+	}
+	return true;
+#else
+#pragma message ("TODO: indigo_pin_library()")
+	return false;
+#endif
 }
 
 void indigo_timetoisogm(time_t tstamp, char* isotime, int isotime_len) {

@@ -1,0 +1,824 @@
+# Refactoring plan for INDIGO 3.0 QHY CCD drivers
+
+Date: 2026-09-12.
+
+Status: independent generated C++ drivers, version 30. Modern QHY2 hot-plug is enabled following successful physical tests with QHY5III178 and QHY5LII-M; legacy QHY remains startup-only. This file retains the shared migration history and the current split plan below.
+
+## Goal and scope
+
+Migrate the shared QHY implementation to a single authoritative `.driver` source, retain the legacy/new SDK branches, and compile shared generated C++ directly (`cpp = true`, authorized later in this session). Preserve CCD, optional ST4 guider and camera-connected CFW capabilities. Replace handwritten property/lifecycle scaffolding with generator output and move acquisition and motion completion to bounded handler/finalizer operations.
+
+Use the current generator defaults, without overriding `MAX_DEVICES`. Do not upgrade or edit vendor SDKs. Do not assume that the two SDKs have identical behavior because the driver source is shared. User-approved physical acceptance targets are QHY 5L-II with `ccd_qhy`, and QHY 5III 178 with `ccd_qhy2`; execute each SDK in a separate process. The drivers remain mutually exclusive.
+
+The user approved the concrete C++ prerequisite on 2026-09-12: generated allocation casts, a `libusb_hotplug_event` cast and scoped INIT/SHUTDOWN case bodies. Preserve extraction of both old and new registration syntax. This approval does not cover unrelated generator lifecycle or DSL extensions; report another concrete limitation before changing those.
+
+## References and baseline
+
+Baseline commit: `fdacefa743d24669d7f33f9b6225115cbf7db730`. The workspace was clean before this work. Source line references below refer to that commit.
+
+- Read root `AGENTS.md`, `README.md`, `TESTING.md`, `indigo_docs/DEVELOPMENT.md`, `DRIVER_DEVELOPMENT_BASICS.md`, `DRIVER_GENERATOR_MIGRATION.md`, `MAKEFILES.md`, and both driver READMEs.
+- Follow `indigo_test/AGENTS.md` and the common, CCD, guider and wheel matrices in `indigo_test/DRIVER_TESTING_RULES.md`.
+- Use `ccd_asi/REFACTOR.md`, generated ASI/Player One drivers and their fake SDK/hardware harnesses as structural references, not as QHY protocol specifications.
+- Audit both bundled `qhyccd.h`, `qhyccdcamdef.h`, `qhyccderr.h`, SDK configuration and binary architectures. No PDF/XLSX/DOC protocol document was found in the two SDK directories during the initial inventory. Header comments and measured behavior must distinguish documented contracts from workarounds.
+- `ccd_qhy/indigo_ccd_qhy.cpp` has 1,876 lines, version `0x0300001A`; `ccd_qhy2/indigo_ccd_qhy2.cpp` is a symlink to it. QHY2's `_main.c` also links to the legacy wrapper. The driver folders have different headers and `Makefile.inc` files; QHY2 supplies `-DQHY2` and its own SDK.
+- Legacy code is excluded on macOS ARM; QHY2 is allowed there. Preserve that restriction until SDK architecture/runtime evidence supports a change. Build/test legacy hardware with the supported x86_64 process and dependencies, or record the platform blocker explicitly.
+- Both READMEs say that devices must be present at INIT and hot-plug is unsupported. The source's `HOTPLUG` define is commented out. Historical failures in `TESTING.md` are context, not current acceptance results.
+- No dedicated CCD QHY fake SDK or hardware suite was found. Existing QHY focuser/wheel simulator tests cover different drivers and do not count toward this migration.
+
+## Source inventory and SDK split
+
+| Baseline lines | Responsibility / constraint |
+| --- | --- |
+| 28–149 | Version, SDK/header/architecture branches, custom properties, shared private data and old timers/refcount. |
+| 151–425 | Bayer mapping, SDK open/setup/start/read/abort/cooling/close; SDK handle differs between header generations. |
+| 427–541 | Exposure and streaming readout, temperature suppression before readout, periodic cooling. |
+| 543–601, 1206–1298 | Optional ST4 guider, blocking duration API, independent RA/DEC requests and shared camera ownership. |
+| 602–861 | Custom property allocation, camera capability discovery, dynamic controls/read modes and connection teardown. |
+| 863–1204 | Bus-side SDK operations, frame/bin/mode coupling, acquisition/abort, CONFIG and detach. |
+| 1300–1434 | CFW position/status encoding, initialization, slot changes and polling. |
+| 1437–1806 | Manual device arrays, discovery/probe opens, optional hot-plug threads and removal. |
+| 1808–1876 | Driver conflict checks, resource initialization/release and unsupported-architecture entry point. |
+
+Audit every `QHY2` branch through both preprocessing configurations:
+
+1. Public entry point, label, conflicting-driver name and selected header/SDK.
+2. Legacy macOS ARM exclusion versus QHY2 availability.
+3. QHY2-only read-mode storage, property allocation/definition/deletion/save and SDK calls.
+4. `SetQHYCCDAutoDetectCamera(false)` before new SDK resource initialization.
+5. Platform logging/firmware initialization supplied by current headers/entry code.
+
+Legacy compilation must not acquire references to QHY2-only symbols. QHY2 must retain read-mode functionality. Use generated property attributes and runtime capability visibility; do not introduce a DSL preprocessor merely to remove an unused hidden read-mode allocation from the legacy branch.
+
+## Build and source layout
+
+- Keep the authoritative definition in `ccd_qhy/indigo_ccd_qhy.driver` and its generated `.cpp`, `.h`, `_main.c` synchronized. Preserve licensing and update the copyright range to 2026.
+- Generate `.cpp` directly with `cpp = true`. Keep QHY2 entry/header/label adaptation in the shared definition and retain the source symlink, without maintaining a second hand-edited driver implementation.
+- Audit `Makefile.drv` discovery: `.c` and `.cpp` with the same basename currently both contribute object names. Add driver-local build rules/dependencies so the generated implementation is compiled once as C++, including incremental and parallel builds. Avoid a broad makefile redesign.
+- Preserve standalone executables, shared libraries, SDK linking/fixups and the conflicting-driver check. Verify symbols with the linker/object tools, including C linkage for public entry points.
+- Add every persistent new source, definition, test and document to the appropriate Xcode groups. Keep the existing `.cpp` source build entries; do not retain the intermediate generated `.c`. Audit the QHY2 Windows project/filter entries and shared-header references.
+- Increment both driver versions above `0x0300001A` when migrating behavior. Do not regenerate unrelated checked-in drivers solely for the C++ generator change.
+
+## Discovery and lifecycle design
+
+Use generated `sdk { hotplug = false; ... }` startup-only attachment with SDK
+identity, optional logical interfaces and a generated driver queue, as explicitly
+requested after physical SDK failures. The `.driver` transport block determines
+this policy; physical hot-plug is excluded from acceptance.
+
+Match checked SID/model enumeration against already attached devices, reject
+duplicates and reserve enough logical slots for the whole camera/guider/wheel
+group. Filter the existing vendor IDs (0x16c0, 0x1618, 0x1856, 0x04b4, 0x0547).
+Never reinterpret the SDK's opaque handle as `libusb_device_handle` to derive a
+USB path. Startup performs one USB inventory pass; newly plugged devices require
+a driver restart. No runtime SDK identity-removal scan or retry is retained.
+
+Keep firmware initialization before discovery and release resources only after
+queued work and logical devices are torn down. Failed resource/queue creation
+must reset initialization state and release acquired SDK resources.
+
+`qhy_open(device)` must either acquire all resources or roll back SDK handle, image buffer and global lock. The generator owns shared `count`; remove `count_open` and `gp_bits` ownership. Only the last successfully opened session closes. Test CCD/guider/wheel alone, both sibling connection orders, surviving siblings, failed later logical initialization, and master/slave detach order.
+
+## Properties and acquisition design
+
+Rename custom names at cutover and update `indigo_docs/PROPERTIES.md` in the same change:
+
+| Existing | Planned | Semantics |
+| --- | --- | --- |
+| `PIXEL_FORMAT` | `X_PIXEL_FORMAT` | RAW 8 / RAW 16, capability-dependent, coupled with frame BPP and CCD modes; persistent. |
+| `QHY_ADVANCED` | `X_ADVANCED` | Dynamic USBTRAFFIC, USBSPEED, SHUTTERMOTORHEATING controls with checked ranges/readback; persistent. |
+| `READ_MODE` | `X_READ_MODE` | QHY2-only SDK operations, dynamic mode names/count, geometry refresh; persistent. |
+
+Preserve standard names. Inventory every property/item initialization, count, hidden flag, permission, range and default. Check seven image formats, streaming settings/max exposure 4 seconds, square supported bins 1–4 (including holes), minimum 64 binned pixels, effective-area origin/size, gain/offset/gamma, temperature-only versus cooled cameras, and optional wheel/guider properties. Verify the old 900-second minimum exposure maximum and USB traffic floor 50 against SDK/device evidence; document any retained workaround precisely.
+
+Use `indigo_ccd_exposure_setup()` for the shared single-exposure countdown. Preserve requested fractional/subsecond duration in operation state independently of the published countdown. Streaming uses monotonic deadlines and `ceil()` only for remaining-time display. Finalizers do one bounded status/read step, reschedule if pending, and stop on a checked deadline. Remove driver polling/sleep loops that wait for exposure, stream or wheel completion.
+
+Abort is urgent: cancel pending acquisition starts and finalizers, stop the actual SDK acquisition mode, settle exposure/stream/image properties exactly once, then allow reacquisition. Apply cross-property operational conflicts before copying accepted geometry/mode/control settings; rely on framework guards for repeated requests to the same BUSY property.
+
+SDK calls can themselves block. Establish real behavior of `GetQHYCCDSingleFrame`, `GetQHYCCDLiveFrame` and `ControlQHYCCDGuide`; the legacy code explicitly calls guiding blocking. A delayed finalizer cannot make an already blocking SDK call interruptible. Audit available timeout/guide APIs, preserve pulse units and direction mapping, and document measured queue latency and any SDK-imposed bound. Do not introduce unowned threads or falsely claim independent axes without evidence.
+
+## Risk-to-test matrix
+
+The source observations below are regression targets, not claims of reproduced hardware failures. Planned test families will run the production driver through public bus APIs with a fake SDK/USB boundary and real handler queues.
+
+| Family | Baseline risk | Required assertions |
+| --- | --- | --- |
+| Q01 | 185–255: partial open failures leak handles; ignored Init result; rescan workaround. | Every open/init/geometry failure balances resources; retry succeeds; SDK workaround call order is explicit. |
+| Q02 | 1472–1806: unchecked IDs/models, duplicate/partial attach, SDK handle cast, manual shared cleanup. | Checked bounded identities, optional interfaces, duplicates/capacity, attach rollback, enumeration failure, removal/retry and INIT/SHUTDOWN. |
+| Q03 | 694–750, 1002–1170: advertised formats/bins and coupled geometry may disagree. | SDK calls use accepted format/bin/ROI, supported bin holes and effective offsets; failed changes preserve coherent properties. |
+| Q04 | 340–363: unbounded remaining-time loop, unchecked frame dimensions/depth/channels. | Single-frame readiness, deadline, malformed SDK output, buffer-size safety and no invalid BLOB. |
+| Q05 | 427–512, 879–912: fractional timing, blocking stream loop and start-failure cleanup. | 0.1/1.5/2.5-second exposures, shared countdown progress, finite/indefinite streams, start/read/stop failures and exact completion. |
+| Q06 | 915–925, 841–860: abort/disconnect omit active stream ownership. | Queued start overtaken by abort, active abort/disconnect, no post-close SDK calls or late image, immediate restart. |
+| Q07 | 635–651, 753–835: ignored control/range/readback failures and false OK. | Each advanced control, gain/offset/gamma, partial failure and recovery; temporary CONFIG restore sends expected commands. |
+| Q08 | 784–800, 1040–1099: unchecked mode count/labels/geometry and missing conflict guard. | QHY2-only API coverage, zero/large/invalid count, malformed label/index, changed geometry, failed mode/metadata read and active-acquisition rejection. |
+| Q09 | 375–401, 514–541: cooler calls ignore errors, sensor-only path and readout suppression. | Cooler ON/OFF, target/readback, power scaling, invalid measurement, error recovery and timer cancellation; temperature-only profile. |
+| Q10 | 543–601: pulse errors become OK; blocking duration API and shared lifetime. | Direction and millisecond arguments, zero pulse, independent axes as SDK permits, errors, disconnect and sibling survival; bounded measured latency. |
+| Q11 | 1300–1423: tight CFW loop, target/status offset, stale value and false OK on timeout. | Documented ASCII slot encoding, delayed progress, current versus target, invalid status, send/poll failure, timeout/reconnect and slot-name/offset counts. |
+| Q12 | 1808–1857: resource init/conflict state and pending discovery cleanup. | Both SDK variants, mutually exclusive entry points, failed INIT retry, unload/reload, no work after shutdown and balanced USB references. |
+
+Fake profiles: uncooled mono CCD, color CCD with ST4, cooled shutter camera with CFW, sparse formats/bins, temperature-only camera, and QHY2 multiple read modes. Exercise all exposed interfaces, not only camera smoke tests. Do not test generic numeric validation or image encoders through this suite.
+
+## Physical acceptance and SDK failure reporting
+
+Run opt-in hardware tests outside default integration, separately for each SDK/model. Record exact executable architecture, SDK/firmware identity where exposed, camera SID, driver version and logs. Begin with discovery/connect/disconnect/reconnect; then RAW8/RAW16, ROI/binning, short and fractional exposures, >15-second QHY 5L-II acquisition with the USB-traffic workaround, finite/indefinite streams, abort/restart, simultaneous guiding, settings restoration, shutdown/reinitialization and actual driver unload/reload. Test read modes only if QHY2 reports them. Physical unplug/replug phases require user cable actions when reached.
+
+Cooling, mechanical shutter, camera-connected CFW and multiple-camera survival are fake-covered but hardware-unavailable unless additional equipment is supplied. Lack of those capabilities on the two named cameras is not a failed test. Linux/Windows runtime remains unverified until exercised there.
+
+For every failure retain the scenario, last SDK call/return, timing, property transitions, process exit and reconnect outcome. Classify as reproduced driver regression, baseline SDK/device limitation, hardware unavailable, or unresolved. A failed fake test is not excused by poor vendor SDK quality. Compare a minimal SDK call sequence or the baseline driver when needed before attributing a hardware failure to the SDK. After a crash/hang, recover in a fresh bounded process; do not leave test processes or modified camera settings behind.
+
+## Execution checkpoints
+
+- [x] Inventory shared source, symlinks, QHY2 branches and initial risk matrix.
+- [x] Obtain explicit approval for the concrete generator C++ prerequisite.
+- [x] Finish C/C++ generator regression validation and document results.
+- [x] Add dual-SDK fake boundary and executable Q01–Q12 scenario mapping in `indigo_test/CHANGES.md`.
+- [x] At the final hardware checkpoint, compare SDK/baseline behavior where a physical failure requires diagnosis (hardware tests deferred to the end by user instruction).
+- [x] Implement shared `.driver`, direct C++ output and local build/project integration.
+- [x] Replace lifecycle/discovery, acquisition, guiding and CFW work with checked queue-owned operations.
+- [x] Rename/document custom properties and synchronize generated outputs; verify both versions increased.
+- [x] Pass applicable fake suites, sanitizer checks and builds against both real SDK headers/libraries.
+- [x] Run hardware acceptance and record failures/limits here and in `TESTING.md`.
+- [x] Update only status columns of both `MIGRATION_STATUS.md` rows; preserve Comment cells exactly.
+- [x] Inspect the final diff, confirm reproducible generation and remove test artifacts/processes.
+
+Do not advance incremental `REVIEW.md` baselines for this migration. This file tracks implementation and acceptance; `indigo_test/CHANGES.md` tracks executable coverage. Migration remains incomplete until outstanding checkpoints and explicit hardware/platform gaps have been accounted for.
+
+## Validation log — generator prerequisite
+
+2026-09-12, macOS host: rebuilt `build/bin/indigo_generator` and ran
+`make -C indigo_test test-generator-architecture`. All ten test cases passed,
+including 86 existing DSL attribute/block checks, 12 generated-code syntax
+compilations (C11/C++11 across serial, virtual, libusb, SDK, SDK retries with
+identity removal, and single-device HID), and reverse extraction of old and
+casted USB registration preserving VID/PID. The new SDK-retry fixture also
+exposed the callback's `void *` conversion, now explicitly cast without changing
+ownership. These checks do not constitute camera driver or hardware validation.
+
+The new plan is registered in the existing `ccd_qhy` Xcode group. Project plist
+validation and `git diff --check` passed. The existing handwritten QHY drivers
+have not been replaced and their versions remain unchanged at this checkpoint.
+
+## Implementation and hardware-free validation — 2026-09-12
+
+The shared `.driver` now owns CCD, optional guider and optional CFW lifecycle, startup-only SDK discovery and property handlers. Generated C++ includes a small `.driver`-owned adapter selecting the public entry point for each SDK and rolling back SDK resources if generated queue initialization fails. Versions are `0x0300001C` for both variants (previously `0x0300001A`). No generator capacity override is used; the default five logical-device slots apply, and discovery reserves the whole camera/guider/wheel group before attachment.
+
+Single exposures use the shared countdown and exact stored durations; streaming and wheel completion use monotonic deadlines and queued finalizers. Streaming count zero completes without starting the SDK. Checked control writes retain the accepted value after failure, including a subsequent SDK reopen. RAW 8/16, sparse bins, effective-area geometry, QHY2 read modes, sensor-only and cooled profiles remain capability-driven. All custom properties now use `X_`; the property reference and both READMEs were updated.
+
+The legacy and modern SDK headers compile separately against one fake SDK implementation. The fake supplies coordinate-independent deterministic byte noise and verifies RAW headers, complete payload and Bayer metadata; it does not use simulator photographs. Real INDIGO bus, handler queues, configuration restore and image processing remain in the test process. No vendor library or physical USB discovery is linked into these tests. Configuration files and the image directory are isolated under a temporary folder.
+
+| Family | Named executable cases / evidence |
+| --- | --- |
+| Q01 | `open rollback`, `initialization failures`, `setup reopen`: failed Open/Init/geometry, balanced locks/handles, retry and failed mode-reopen recovery. Baseline fake reproduced a leaked handle; migrated code passes. |
+| Q02/Q12 | `lifecycle`, `startup only discovery`, `init enumeration attachment`, `discovery failure reload`, `discovery capacity identity`, `sibling orders guide overlap`: one initial inventory, no callback/runtime discovery, list/SDK-id failures, failed resource/master attachment, distinct names and logical capacity, restart recovery, independent interfaces/shared last-close and balanced references. |
+| Q03 | `ROI formats bins`, `optional sparse profiles`, `property contract frame types`: custom/inherited inventory, RAW formats, sparse bin support, accepted frame parameters, frame/BPP/mode coupling and all five frame types with shutter commands. |
+| Q04 | `start and read failures`, `readout buffer contract`, `RAW color payload`: SDK remaining/read failure, invalid frame width, oversized memory requirement, no bad image, RAW8/16 dimensions/bytes/Bayer content and recovery. |
+| Q05 | `acquisition`, `fractional exposures`, `streams abort`, `stream errors`, `zero stream failed setting`: 0.1/1.5/2.5-second exact SDK exposure, finite/indefinite/zero streams, timeout and start/read/stop errors. |
+| Q06 | `abort restart`, `queued abort`, `disconnect sibling`, `acquisition conflicts`: urgent abort overtakes a gated queued start, restart, active disconnect, cross-property conflicts and no SDK use after close. |
+| Q07 | `advanced failure`, `controls no bus IO`, `metadata readback`, `configuration restore`, `zero stream failed setting`: ranges/readback/write failures, custom CONFIG restoration and accepted controls restored after SDK reset. Baseline fake reproduced false OK for failed advanced writes. |
+| Q08 | `read modes`, `optional sparse profiles`: QHY2-only read modes, changed geometry, invalid mode count, failed change and restored selection; legacy hidden/no new-SDK symbol requirement. |
+| Q09 | `cooling sensor`, `cooler failure recovery`: cooler/temperature-only visibility, target and power scaling, invalid temperature/power, cooler ON/OFF write failure/recovery, cancellation on disconnect. |
+| Q10 | `guide directions errors`, `guide blocking zero`, `sibling orders guide overlap`: all four directions and milliseconds, zero pulse, SDK failure, immediate-return and blocking SDK behavior, two axes with exposure and sibling survival. |
+| Q11 | `wheel position errors`, `wheel timeout status`, `property contract frame types`: slot/name/offset inventory, ASCII zero-based commands/readback, send/poll failure, timeout, malformed status and recovery. |
+
+Hardware-free limitations: no allocator/queue-creation fault injection, no exhaustive interleaving or all malformed SDK buffer permutations. A failed optional slave attachment leaves the successfully attached camera operational according to the unchanged generator; retry of that individual missing interface requires driver restart. Fake SDK completion cannot prove actual SDK interruptibility, physical shutter/guide timing, firmware startup reliability or optical image quality. The SDK CFW interface and historical driver use eight ASCII positions; a physical CFW is needed to verify actual wheel capacity/status conventions. No serial protocol simulator or manufacturer motion document is applicable; bundled SDK headers were audited, and no camera PDF/XLSX protocol source was supplied.
+
+The opt-in `indigo_test/hardware/test_ccd_qhy_hw.c` uses `dlopen`/`dlclose`, a required camera-name selector and explicit `--run`; it is excluded from default tests. It covers fractional/16.5-second exposures, formats/modes/ROI/binning, settings restoration, finite/indefinite streaming, abort/reacquire, guiding, reconnect and actual driver-library reload. `QHY_HW_CASE` selects a bounded scenario for SDK failure diagnosis. `--hotplug` waits for explicit cable actions. Actual vendor libraries may stay mapped after driver unload; a successful driver reload is not proof of vendor-runtime unload.
+
+Per the user's latest instruction, all physical tests run only after software/build checks. Targets now include QHY5 and QHY5L-II with the legacy SDK, plus QHY5III178 with QHY2. The user confirmed all three are connected. Linux/Windows runtime and macOS legacy ARM remain unverified/unsupported respectively. Mac builds succeeded for both SDK variants, standalone executables and libraries; the legacy SDK supplies x86_64 code only, and the modern SDK emits deployment-version linker warnings. These SDK warnings are not camera-test results.
+
+
+Software verification result: 35/35 fake cases pass for each SDK (70 total).
+AddressSanitizer + UndefinedBehaviorSanitizer passed the complete 34-case suite
+before the final capacity case, then both capacity and overlapping-guide cases
+for each SDK; corrected RAW8/RAW16/Bayer selection was rerun under both sanitizers.
+No sanitizer diagnostics were emitted. Generator reproduction matches all three
+checked-in outputs byte-for-byte; both real-SDK builds and public C-linkage symbols
+were checked, Xcode plist and Windows project XML parse, and diff whitespace checks
+pass (retaining existing Windows CRLF). No hardware result is included in these counts.
+
+Physical checkpoint has begun. Initial sandbox discovery returned no cameras;
+I/O Registry outside the sandbox confirmed three QHY devices. All three require
+firmware (user confirmation). The modern SDK requires the directory containing
+firmware files, contrary to the old legacy README's parent-directory wording.
+Using the bundled firmware directory, QHY5III178M delivered full 3056 x 2048 RAW16
+frames for 0.1, 1.5, 2.5 and 16.5 seconds. Elapsed times were 2.969 (first setup),
+1.754, 2.750 and 16.745 seconds. Disconnect then aborted in SDK CloseQHYCCD ->
+StopQHYCCDLive -> libusb_cancel_transfer (invalid mutex assertion). The unchanged
+baseline driver built from the recorded commit reproduced the same assertion
+at disconnect after the same four exposures (exit SIGABRT). This failure predates
+migration; reconnect/unload cannot be claimed passed. Further scenarios run in
+separate bounded processes. Physical hot-plug remains unverified.
+
+
+## Direct C++ output follow-up
+
+The user additionally authorized `cpp = true;` (default false) in the generator.
+The option and reverse-extraction support are implemented and all 11 generator
+architecture cases pass. QHY opts in: `indigo_ccd_qhy.cpp` is now generated directly,
+QHY2 retains its symlink to that source, and the short SDK-dependent public entry
+adapter lives in the shared `code` block. The intermediate generated `.c` was
+removed, as was its Xcode reference. Existing CPP source build entries remain;
+Windows navigation entries point at the CPP source. The public adapter preserves
+C linkage and SDK rollback on failed generated queue/callback initialization.
+The initial wrapper plan above is superseded by this layout.
+
+Native SDK depth is selected at connection rather than always choosing the
+largest advertised format. A single-format camera does not call the unsupported
+bits-mode setter; a fake fixed-RAW8 profile verifies acquisition in this case.
+QHY5 initially rejected SetQHYCCDBitsMode; after this correction it delivers
+1280 x 1024 RAW8. The historical setup also checked that unsupported setter,
+so this is an additional compatibility fix, not an established new regression.
+
+Legacy firmware-path diagnosis: unlike the modern SDK, svn r6536 appends
+`/firmware/...` internally (confirmed in bundled binary strings). Legacy tests
+therefore use the parent `bin_externals/qhyccd` directory. Incorrect-path runs
+and their detection timeouts are setup failures. Starting framework USB first
+removed a context warning but was not necessary once the firmware path was
+correct; no such production workaround was added. The hardware harness now
+waits up to 60 seconds for discovery because a legacy SDK scan can take six seconds.
+
+With correct firmware, QHY5LII-M delivered 1280 x 960 RAW16 for 0.1/1.5/2.5/16.5 s
+(elapsed 2.568/3.203/4.187/18.180 s). A snapshot after disconnect/reconnect hung
+inside QHY5LIIBASE::GetSingleFrame; sampled stack confirms the blocking vendor
+call prevents queued abort. The unchanged baseline reproduced the reconnect
+hang after the same exposures at its native RAW8 depth; both processes required
+the external time limit. The driver's finalizer watchdog cannot interrupt a
+blocked SDK call, and legacy SDK has no single-frame readout timeout API.
+This remains a documented SDK limitation rather than a passing lifecycle test.
+
+
+## Final acceptance state and remaining work
+
+Both direct-C++ driver builds pass. All 35 fake cases per SDK pass, and the
+complete direct-C++ suite passes ASan/UBSan (70 cases). A final guider follow-up
+clears stale direction values after failed/opposed pulses; opposite-direction
+recovery passes under both sanitizers. All 11 generator tests pass, including
+`cpp` true/false/default, C ABI and reverse extraction. Physical tests were not
+repeated for this small fake-verified guider change because cameras had become
+unavailable after SDK crashes.
+
+QHY5 delivered four 1280 x 1024 RAW8 images after the fixed-depth correction
+(0.1/1.5/2.5/16.5-second requests; elapsed 0.767/3.436/5.506/21.915 seconds).
+It then crashed in SDK CloseQHYCCD -> QHYCAM::closeCamera during acquisition
+setup for reuse. Another process crashed in the SDK discovery probe close for
+QHY5L-II; subsequent settings and abort attempts found no selectable camera.
+These distinct crashes were not reproduced against a patched baseline and remain
+unresolved, not automatically classified as vendor-only. The remaining batch
+was stopped after repeated pre-selection failure; all owned HW processes ended.
+
+No complete physical camera suite passed. QHY5III178's stop/close assertion and
+QHY5L-II's reconnect readout hang were independently reproduced with unchanged
+baseline drivers. RAW/ROI/bin transitions, complete settings/guide/stream phases,
+driver reload, physical removal/replug and multiple-camera survival remain
+partially tested or blocked as detailed in TESTING.md. A camera image alone is
+not full hardware acceptance. Full persistent CONFIG restore, cooling, CFW and
+mechanical shutter hardware are also unverified. Physical settings restoration
+could not finish after SDK crashes/hangs; no persistent configuration was saved.
+
+The user disconnected QHY5III178 and replugged QHY5/QHY5L-II for legacy tests,
+then became unavailable. These cable actions were preparation, not hot-plug
+acceptance. Before resuming, reset the attached legacy cameras over USB and
+reconnect QHY5III178 only for its separate modern-SDK process. The generator's
+five logical slots allow two CCD+guider cameras together; never infer that a
+third unlisted camera is unsupported by an SDK without considering capacity.
+
+Firmware paths differ by SDK and are documented in the READMEs. Legacy uses
+`.../bin_externals/qhyccd`; modern uses `.../bin_externals/qhyccd/firmware`.
+The initial wrong-path/no-camera runs have been classified as setup failures.
+
+- [x] Validate final static startup on both SDK variants and record partial HW acceptance plus SDK-blocked phases; hot-plug is excluded by user request.
+
+Logs retained outside the repository: `/tmp/qhy2-hw-exposure-firmware.log`,
+`/tmp/qhy2-hw-baseline.log`, `/tmp/qhy2-hw-{geometry,settings,abort,stream,guide}.log`,
+`/tmp/qhy-hw-5lii-correct-firmware.log`, `/tmp/qhy-hw-5lii-baseline-correct.log`,
+`/tmp/qhy-legacy-hang.sample`, `/tmp/qhy-hw-qhy5-final-*.log`,
+`/tmp/qhy-direct-cpp-tests.log`, `/tmp/qhy-direct-cpp-sanitize.log` and
+`/tmp/qhy-generator-cpp-test.log`. macOS crash reports provide the cited stacks.
+
+
+Final cleanup: `make -C indigo_test test-clean` removed test binaries and dSYMs;
+temporary baseline build files were removed while diagnostic logs were retained.
+Process inspection found no remaining QHY hardware test process. Final builds,
+CPP/header/main byte-for-byte regeneration, Xcode plist, Windows XML and diff
+whitespace checks pass. Both migration-table Comment cells were preserved exactly.
+
+
+## Resumed physical validation
+
+After the user reset USB with only QHY5L-II attached, the isolated guide run
+connected the CCD but skipped pulses because the harness selected logical
+siblings before hot-plug attachment had completed. The process then crashed
+on disconnect in CloseQHYCCD -> QHY5IIBASE::DisConnectCamera ->
+QHYCAM::closeCamera (report `test_ccd_qhy_hw-2026-09-12-104206.000.ips`,
+log `/tmp/qhy-hw-5lii-resume-guide.log`). This is not a passing guider test.
+The harness now resolves siblings after the serialized CCD connection and
+fails an explicitly selected guide scenario if no guider is exposed. Both
+architecture builds of the harness pass; the physical guide run awaits a
+fresh USB reset. No production driver behavior changed in this follow-up.
+
+The next reset exposed only QHY5-M (16c0:296d), while the selected scenario
+required QHY5L-II. That run timed out in selection, then detached both logical
+QHY5 devices and shut down cleanly (exit 1); no guide pulses ran. Log:
+`/tmp/qhy-hw-5lii-resume-guide-fixed.log`. Confirm the physical model before
+the next test; this selection mismatch is not a QHY5L-II driver failure.
+
+With QHY5L-II isolated after USB reset, the corrected guide scenario passed:
+all four 100 ms directions, a pulse during a 1.5 s exposure, guider operation
+after CCD disconnect, reconnection and clean shutdown. This verifies SDK/property
+completion, not electrical ST4 timing. The separate settings scenario also
+passed gain change/restoration and advanced-settings restoration. Logs:
+`/tmp/qhy-hw-5lii-guide-isolated.log` and
+`/tmp/qhy-hw-5lii-isolated-settings.log`.
+The next abort process crashed before selection while closing the discovery
+probe (CloseQHYCCD -> QHY5IIBASE::DisConnectCamera -> QHYCAM::closeCamera,
+`test_ccd_qhy_hw-2026-09-12-104725.000.ips`). Abort did not execute;
+streaming/geometry were not started. Physical hot-plug remains unverified.
+
+A minimal x86_64 program linked only the bundled legacy libqhy.a and project
+libusb (with a no-op indigo_debug symbol, no INDIGO bus/driver/queues) reproduced
+the QHY5L-II discovery-close crash. Sequence: InitQHYCCDResource, firmware init,
+3 s wait, ScanQHYCCD, GetQHYCCDId/Model, OpenQHYCCD, query ST4/CFW, CloseQHYCCD,
+ReleaseQHYCCDResource. The first process after a five-second USB reset passed;
+the second identical process without USB reset crashed at CloseQHYCCD ->
+QHY5IIBASE::DisConnectCamera -> QHYCAM::closeCamera (report
+`qhy_probe-2026-09-12-105120.000.ips`). Logs are
+`/tmp/qhy-sdk-only-probe-reset.log` and `/tmp/qhy-sdk-only-probe-repeat.log`.
+This reproduces the specific discovery-close failure independently of migration;
+it does not classify every QHY crash or prove physical hot-plug behavior.
+A prior driver abort attempt after a short reset also crashed at discovery
+(`/tmp/qhy-hw-5lii-abort-reset.log`, report 104824.000); no abort ran.
+
+The abort scenario run first after a five-second USB reset passed: start a 5 s
+exposure, request abort, then receive a fresh 1280 x 960 RAW8 image at 0.1 s,
+restore settings and shut down cleanly (`/tmp/qhy-hw-5lii-abort-cold.log`).
+Historical commit 074bd49a8c612d97ad5e2bdcad4bedc929e22fc6 (2020-10-03,
+"ccd_qhy/ccd_qhy2: hot-plug support disabled") confirms hot-plug was deliberately
+disabled. Its message does not identify the exact crash as the reason. The old
+source separately documents repeated QHY5L-II open/close crashes and rescans as
+a leaking workaround. Do not infer that serialized generated hot-plug fixes them.
+
+
+## Approved removal of hot-plug (current target)
+
+The user requested disabling hot-plug for both SDK variants and explicitly
+approved implementing the generator's previously empty `sdk { hotplug = false; }`
+branch. Both drivers advance to version 28 (0x0300001C). The shared definition
+uses static startup discovery instead of registration and periodic discovery
+retries. INIT queues one USB inventory pass, invoking the existing filtered
+SDK plug block for each initial USB device. The generated per-driver queue
+continues to serialize attachment and logical connection handlers. SHUTDOWN
+verifies disconnected devices, drains startup work, detaches and frees resources;
+there are no arrival/removal callbacks. Existing hot-plug transports retain their
+behavior. No fallback promises to recover the vendor close failures.
+
+Acceptance plan: compile static SDK output as C/C++, assert no callback/retry
+emission, test one-time enumeration/capacity/identity, list and SDK discovery
+failure, attachment rollback and release balance for both QHY SDK profiles;
+run full driver fake tests, sanitizers and real SDK builds. Update README and
+remove the physical hot-plug harness option. Physical results above remain
+historical evidence from version 27; validate version 28 only after software
+checks, with USB resets as needed. No new persistent files are required.
+
+The final version-27 QHY5L-II streaming attempt crashed during the mode-change
+close in acquisition_start, before delivering a stream frame (report
+`test_ccd_qhy_hw-2026-09-12-105321.000.ips`, log
+`/tmp/qhy-hw-5lii-stream-cold.log`). This exact path was not separately reproduced
+in the SDK-only discovery test. Hot-plug is now deliberately out of scope,
+rather than a pending claimed capability.
+
+The entry adapter was simplified after user feedback: one internal static
+`qhy_generated_entry`, one conditional public `QHY_ENTRY`, and `DRIVER_NAME`
+for metadata. The premature entry-name define/undef pair and duplicate name
+macros were removed. QHY2 still overrides the generator's literal DRIVER_NAME
+and DRIVER_LABEL defaults; eliminating those two overrides would require a
+separate generator metadata customization, not another local macro layer.
+
+Software validation of final version 28: 35/35 cases per SDK (70 total), and
+70/70 again with ASan/UBSan. The generator suite passes all 12 cases, including
+14 C11/C++11 transport compilations and startup-only discovery assertions.
+Both vendor-SDK universal builds pass, public entry symbols retain C linkage,
+and the generated implementation has no USB callback or discovery-retry code.
+Final logs: `/tmp/qhy-final-tests.log`, `/tmp/qhy-final-sanitize.log`,
+`/tmp/qhy-static-generator-final.log`, `/tmp/qhy-final-build.log`,
+`/tmp/qhy2-final-build.log`. Hardware startup verification and the concurrently
+changed Xcode source references are the remaining final checks.
+
+Xcode follow-up: the user added QHY2 source copies while tests ran and approved
+redirecting those references to the existing `indigo_ccd_qhy2.cpp` and
+`indigo_ccd_qhy2_main.c` symlinks. The standalone main remains a group reference
+but was removed from the indigo/indigo_m1 server Sources phases to avoid duplicate
+main symbols. Other concurrent Xcode/SDK edits were preserved. Plist validation,
+source-link checks, new-file group references and byte-for-byte regeneration
+pass. Migration-table Comment cells remain unchanged. The user's unreferenced
+source copies were not modified or removed.
+
+First version-28 physical startup had both legacy cameras attached (confirmed by
+the user and IOUSBHostDevice inventory). QHY5-M was attached once, without a
+hot-plug callback, then detached cleanly at shutdown. QHY5L-II remained at its
+cold 1618:0920 USB identity while QHY5 was 16c0:296d. SDK enumeration exposed
+only QHY5-M, so the QHY5L-II guide selection timed out without connecting or
+sending pulses. This is not a guide pass or a logical-capacity failure.
+Log: `/tmp/qhy-v28-hw-5lii-guide.log`. Isolated QHY5L-II firmware/startup
+validation follows a fresh user USB reset.
+
+Version 28 with only QHY5L-II attached passed the isolated guide scenario:
+startup enumeration, CCD/guider connection, four 100 ms guide directions,
+guide during a 1.5 s exposure, one valid 1280 x 960 RAW8 image, guider survival
+after logical CCD disconnect, CCD reconnect, settings restoration and clean
+shutdown. Exit 0, log `/tmp/qhy-v28-hw-5lii-guide-isolated.log`.
+This confirms the static-discovery path on this camera; it is not a full camera
+suite or an electrical ST4 measurement. Modern-SDK static startup is next.
+
+Version 28, isolated QHY5III178M / modern SDK: static startup and both logical
+connections succeeded, all four 100 ms guide directions completed, a pulse ran
+during a 1.5 s exposure, and a valid 3056 x 2048 RAW16 frame arrived. Guiding
+also completed after the logical CCD disconnected. Final guider disconnect
+(last shared close) aborted in CloseQHYCCD -> StopQHYCCDLive ->
+QHY5IIIBASE::StopLiveExposure -> libusb_cancel_transfer -> usbi_mutex_lock.
+Report `test_ccd_qhy_hw-2026-09-12-111241.ips`, log
+`/tmp/qhy-v28-hw-178-guide.log`, exit -6. This matches the stop/close assertion
+already reproduced with the unchanged baseline; the complete guide scenario
+is not a pass. Static startup now has physical evidence for both SDK variants.
+
+The final physical checkpoint is complete with partial acceptance, not a full
+camera-suite pass. Existing SDK-blocked streaming/geometry/reconnect/unload
+limitations remain as documented. Hot-plug is intentionally disabled and is
+excluded by user request. No persistent configuration was saved; final settings
+restoration could not complete after the modern SDK abort. All owned HW
+processes have ended.
+
+Final verification: 70/70 fake tests, 70/70 ASan/UBSan, 12 generator cases,
+legacy/modern vendor-SDK builds, C entry symbols, generated-output reproducibility,
+Xcode references/plist and whitespace checks passed. Final physical results are
+recorded above. Test binaries were cleaned after the final hardware checkpoint.
+
+### Legacy SDK source investigation and experimental fix (2026-09-12)
+
+Inspected the separate `libqhy` checkout at commit `a826bac` (the user's
+Development checkout). The user authorized fixes in that SDK checkout. These
+changes have not been installed into INDIGO's bundled SDK archives.
+
+Confirmed source defects:
+
+- `libusbIo.cpp` freed terminal/cancelled transfers but cleared only the callback's
+  local pointer, leaving `cydev[].img_transfer[]` dangling. `StopAsyQCamLive()`
+  could subsequently pass a freed transfer to `libusb_cancel_transfer()`.
+- Stop terminated its event thread before cancelling transfers and did not wait
+  for cancellation callbacks before returning. QHY5-II's non-Windows close did
+  not stop asynchronous transfers at all.
+- `QHY5IIBASE::DisConnectCamera()` did not reset `connected`; reopening the same
+  object could report success with its previous, already closed handle.
+- Repeated `ScanQHYCCD()` clears all open flags and recreates SDK objects globally.
+  This remains an independent multi-camera risk; it is not repaired by the
+  transfer-lifetime patch.
+
+The experimental SDK patch serializes transfer ownership, clears owning slots
+in terminal callbacks, processes received data before resubmission, drains
+cancellation callbacks, joins the event thread, and cleans up partial startup.
+Low-level close now stops asynchronous acquisition before closing USB, and
+QHY5-II close clears its connection/live flags. USB reset behavior is unchanged.
+A regression test is in the SDK checkout's `tests/test_libusb_transfers.cpp`.
+It passed with AddressSanitizer and UndefinedBehaviorSanitizer for terminal
+statuses, resubmit failure, successful completion/timeout resubmission,
+cancellation drain, repeated stop, and invalid handles. All modified SDK units
+compiled, and a complete arm64 SDK archive was built in a temporary directory.
+Thread creation failure, full public open/close cycles, and physical behavior
+remain unverified. The test uses mocked USB events, not physical transfers.
+
+Legacy `SetQHYCCDBitsMode()` dispatches directly to model setters without closing
+the handle, including QHY5L-II and QHY5III178. This offers a candidate alternative
+to the driver's current close/reopen sequence, but it has not been implemented
+or tested on hardware. Single-frame reads may leave SDK acquisition active, so
+safe parameter transitions still need verification. Modern SDK source is not
+available here: resemblance to the observed modern cancellation crash is an
+inference, not proof that its implementation has these exact defects.
+
+Next physical comparison: isolated QHY5III178 with the patched legacy SDK, then
+with the user's newly installed modern SDK. Hardware testing is pending SDK
+installation and a clean camera state; no pass is claimed yet.
+
+### Modern SDK package update (2026-09-12)
+
+Installed the user-supplied Downloads SDK 26.06.04 into ccd_qhy2: Linux x64
+and ARM64 26.06.04.16, ARM32 26.06.04.15, Windows x64 26.06.04.16,
+and common API headers 26.06.04.16. Windows Win32 and Linux x86 retain their
+previous binaries because no replacement packages were supplied. RELEASE
+records these exceptions. Existing auxiliary Windows libraries remain in place.
+
+The macOS vendor dylibs were combined with lipo into the existing SDK path.
+Extracted x86_64 and arm64 slices match their input binaries byte for byte.
+The resulting driver builds for both architectures; the vendor minimum OS
+versions are 10.14 on Intel and 14.0 on Apple Silicon. An arm64 load/version
+query returned 26.6.4.16 without initializing SDK resources or accessing cameras.
+Linux and Windows binaries were checked for architecture and exact copy hashes;
+those platforms have not been runtime-tested.
+
+Shared firmware was updated from the Linux package (identical across all three
+Linux packages). Four added firmware files have Xcode group references; firmware
+for QHY5, QHY5L-II and QHY5III178 is unchanged. The patched legacy SDK remains
+separate from this vendor update. Physical comparison is still pending.
+
+After the package update, all 70 hardware-free driver/SDK scenarios passed
+(35 per SDK variant). These use the fake SDK and verify driver compatibility
+with the updated headers, not vendor acquisition or lifecycle behavior.
+
+### QHY5III178 retest with modern SDK 26.06.04.16 — 2026-09-12
+
+Working-tree generated driver v28, macOS arm64, isolated QHY5III178M after
+user USB reset. Static discovery, CCD/guider connection, four 100 ms guide
+directions, guiding during a 1.5 s exposure, and a 3056 x 2048 RAW16 image
+completed. A guide pulse after logical CCD disconnect also completed. Final
+guider disconnect aborted (SIGABRT/exit -6). The crash stack is CloseQHYCCD ->
+StopQHYCCDLive -> QHY5IIIBASE::StopLiveExposure ->
+QHYBASE::StopAsyQCamLiveClearLibUsb -> StopAsyQCamLive ->
+libusb_cancel_transfer -> usbi_mutex_lock. Thus the supplied modern update
+does not resolve the previously observed last-close failure. The full guide
+scenario remains failed, not passed. No persistent configuration was saved.
+
+Log: `/tmp/qhy-modern-260604-178-guide.log`; crash report:
+`test_ccd_qhy_hw-2026-09-12-150436.ips`. The process has ended.
+
+Legacy comparison preparation exposed two test-build issues before camera
+access: the first temporary build omitted INDIGO_MACOS (so skipped firmware
+initialization); the corrected arm64 build hit the driver's existing Intel-only
+macOS architecture guard. Neither is a camera/SDK acceptance result. Both
+processes ended. A full patched x86_64 SDK and driver have now been built for
+Rosetta. The legacy source intentionally lacks SetQHYCCDLogLevel; only the
+temporary test link supplies a no-op for it, leaving existing logging intact.
+
+## Mode and bit depth workaround (2026-09-12, version 29)
+
+The user narrowed the approved change to mode/bit depth switching only. Camera open, logical disconnect, physical close and driver unload retain their previous lifecycle. The known QHY5III178 close crash remains unresolved.
+
+Plan: reconfigure the current handle with `SetQHYCCDStreamMode`, `InitQHYCCD` and `SetQHYCCDBitsMode`, restoring controls after initialization. After successful streaming stop, return to single-frame mode and reinitialize, invalidating cached settings so the next acquisition restores the requested bit depth and controls. Invalidate settings before any reconfiguration attempt so failure cannot leave a stale success cache. Keep discovery, generator and both vendor SDKs unchanged. Extend fake SDK coverage for repeated 8/16-bit and single/live transitions with `OpenQHYCCD` deliberately unavailable, initialization failure/retry and normal close/unload. Build both variants before physical retesting.
+
+SDK follow-up: user additionally requested INDI's newer SDK, pinned to commit `387a31e4ff863ca29a0d0dbb8b652efc02d6b0f0` (26.07.21). Imported Linux ARM32/ARM64/x64 libraries, four public headers and macOS Intel/Apple Silicon libraries merged with lipo. Each downloaded blob matched its Git SHA; both slices extracted from the universal library match the input bytes. Runtime version-only queries on both macOS architectures return `26.7.21.5`, without camera enumeration or initialization. Ancillary headers are retained because INDI does not supply replacements. Existing Windows and Linux x86 SDKs remain unchanged. Four shared firmware files changed and three were added with Xcode references; udev rules were updated from the same commit. Firmware for the three test cameras and all original legacy SDK headers/libraries remain unchanged.
+
+The user is unavailable and explicitly deferred all physical tests. Required later checks: repeated RAW8/RAW16 exposures, single/live transitions, abort/restart, settings restoration and CCD/guider coexistence on QHY5L-II (legacy) and QHY5III178 (modern). A known crash on actual close is still an accepted limitation, not a passing scenario.
+
+Final software validation: 74/74 fake SDK cases pass (37 per SDK variant), including all new switching/error-recovery cases. Both macOS driver builds succeed; legacy retains its unsupported ARM stub. Generated C++/header/main exactly match regeneration, Xcode project parses successfully, imported SDK/header bytes and universal-library slices match INDI inputs. No new property names or visibility changes. Linux/Windows runtime validation and all physical camera retests remain unverified. Test artifacts were cleaned after validation. Logs: `/tmp/qhy-mode-sdk-final-tests.log`, `/tmp/qhy-mode-build-final.log`, `/tmp/qhy2-mode-build-final.log`.
+
+QHY5III178 physical retest resumed with user confirmation. Added hardware-only `QHY_HW_CASE=switching`: two rounds across all exposed pixel formats, each with a 0.1 s single exposure, three 0.1 s streaming frames and another single exposure, checking frame counts and RAW validity before final disconnect. This isolates the mode/bit-depth workaround from the known close failure; no configuration is saved.
+
+## QHY5III178M hardware retest — SDK 26.7.21.5, driver v29 (2026-09-12)
+
+User confirmed QHY5III178 connected and authorized resuming physical tests. macOS arm64, modern `ccd_qhy2`, SDK 26.7.21.5 and libusb 1.0.29.11990. Seven sequential isolated scenarios all exited 0 without an intervening USB reset:
+
+- `switching`: two rounds of RAW8 and RAW16; each format runs single/live/single, 20 valid full-frame images in total (3056 x 2048).
+- `exposure`: 0.1, 1.5, 2.5 and 16.5 s requested exposures; logical disconnect/reconnect, driver shutdown/dlclose/dlopen/init and a new exposure all succeed. First exposure includes mode-initialization overhead; this is not optical shutter timing validation.
+- `abort`: interrupt a 5 s exposure and acquire a new 0.1 s exposure.
+- `guide`: four 100 ms directional commands, guiding during a 1.5 s exposure, guider survival after CCD disconnect and reconnect after final guider disconnect. Command completion is verified, not physical mount motion.
+- `geometry`: RAW8/RAW16, 128 x 128 ROI and all exposed modes (1x1 and 2x2).
+- `settings`: gain/advanced settings restoration and available read modes with exposure.
+- `stream`: three-frame acquisition, continuous stream, abort and return to single exposure.
+
+Every scenario also completed final physical camera close and driver shutdown without a crash. This supersedes the earlier close-failure result for this camera under this exact driver/SDK combination; it does not establish which part of the combined update fixed it or guarantee other SDK/platform/camera combinations. Hot-plug remains disabled and was not tested. Legacy QHY5/QHY5L-II, cooling, camera-connected CFW, other platforms and optical image quality remain outside this retest. No configuration was saved, and test processes ended. Hardware test binaries were cleaned afterward.
+
+Logs: `/tmp/qhy178-sdk26721-{switching,exposure,abort,guide,geometry,settings,stream}.log`.
+
+## QHY2 hot-plug experiment (2026-09-12)
+
+User authorized testing hot-plug after all seven QHY5III178 scenarios passed with SDK 26.7.21.5. Production `.driver` remains startup-only for both SDKs. An isolated `/tmp/qhy178-hotplug` generated QHY2 build enables the existing `sdk.hotplug` mechanism and deliberately limits matching to QHY5III178 (1618:0178 bootloader, 1618:0179 running firmware). Bootloader arrival reloads firmware and rejects attachment until the running-firmware event. No generator or legacy SDK changes. Fake SDK removal/rearrival while disconnected, idle, exposing and streaming, plus mode switching/recovery, passed.
+
+First physical startup did not discover the camera and exited cleanly. Independent libusb inventory found 1618:0178; an INDIGO-only USB monitor received its arrival. Starting the USB event handler before QHY SDK initialization in the experimental `.driver` allowed the next run to attach 1618:0179 and connect/disconnect normally. This is an observed startup-order workaround candidate, not yet a general fix. The active test now waits for manual unplug/replug, first while logically disconnected. Logs are under `/tmp/qhy178-hotplug`.
+
+### Physical hot-plug outcome: four phases passed
+
+Experimental QHY2 v30, SDK 26.7.21.5, macOS arm64, one QHY5III178M. The user physically unplugged and replugged the camera in each phase: (1) logically disconnected, (2) connected idle, (3) during a 60 s exposure, (4) during continuous streaming. All four detach/rearrival cycles completed; firmware bootloader 1618:0178 became 1618:0179, camera and guider were recreated, and a fresh 0.1 s RAW16 exposure succeeded after every replug. Final close, SDK shutdown and callback deregistration completed, exit 0. During streaming removal the SDK rejected resetting stream mode after USB removal; cleanup and the subsequent replug/exposure still succeeded.
+
+The hardware harness now exposes this manual-only scenario as explicit `QHY_HW_CASE=hotplug`; it is excluded from the default full run. It requires an experimental hot-plug driver, not the checked-in startup-only driver. The exact experiment sources, fake test and generated build remain in `/tmp/qhy178-hotplug`; authoritative physical log: `/tmp/qhy178-hotplug/hardware-early-usb.log`. The hardware build is arm64; the fake test compiled for both macOS architectures and ran natively. All test processes have ended.
+
+Production hot-plug remains disabled. This experiment deliberately matched only QHY5III178 and did not verify discovery while a different camera remains open, SDK-id to physical-USB association with multiple cameras, other QHY models, Windows/Linux, or the legacy SDK. Permanent modern-only activation also needs a shared-source build/DSL decision because `sdk.hotplug` currently accepts a generation-time boolean rather than a QHY2 preprocessor condition. No generator modifications were made.
+
+### QHY5LII-M hot-plug experiment — four phases passed (2026-09-12)
+
+The user connected a camera described as QHY5II; USB bootloader 1618:0920 and SDK discovery identified QHY5LII-M, running firmware 1618:0921. The first process selected the wrong name substring QHY5II and was terminated while waiting for a matching device, before a logical connection; this was a harness-selection error, not an SDK crash. A new process with QHY5LII selection completed all four manual unplug/replug phases: logically disconnected, connected idle, during a 60 s exposure, and during continuous streaming. Each replug loaded firmware, recreated CCD/guider devices and produced a new valid 1280 x 960 RAW8 image. Final camera close and SDK/driver shutdown succeeded, exit 0.
+
+This used the modern SDK 26.7.21.5, macOS arm64 and an isolated QHY2 v30 hot-plug build, with USB handling started before SDK initialization and matching limited to 0920/0921. It does not validate legacy SDK hot-plug or multi-camera scanning. As with QHY5III178, stream-mode reset after physical removal returned an SDK error but cleanup and the following acquisition succeeded. Production hot-plug remains disabled. No persistent camera configuration was saved; all processes ended. Source/build and log: `/tmp/qhy5ii-hotplug`, `/tmp/qhy5ii-hotplug/hardware-qhy5lii.log`.
+
+
+## Independent definitions and production hot-plug (2026-09-12)
+
+The user accepted both modern-SDK physical hot-plug experiments as evidence and requested independent drivers. This supersedes the earlier shared-source and production-hot-plug-disabled decisions above.
+
+Plan and implementation:
+1. Resolve the former QHY2 preprocessor branches into separate `ccd_qhy/indigo_ccd_qhy.driver` and `ccd_qhy2/indigo_ccd_qhy2.driver` sources. Preserve the SDK-specific read modes and readout timeout, real close/reopen behavior, acquisition mode/depth workaround, optional interfaces and mutual exclusion. Both versions advance from 29 to 30.
+2. Replace QHY2 source/main symlinks and obsolete physical copies with its own generated `.cpp`, `.h` and `_main.c`. Use ordinary per-driver generation/build rules. Update Xcode, Windows project inputs and the server include; no generator implementation changes.
+3. Keep `sdk.hotplug = false` for legacy; enable it for modern QHY2. Start USB event handling before modern SDK initialization as in the experiment. Reuse the SDK firmware loader at startup and on accepted vendor arrivals so firmware re-enumeration works beyond the two experimental PID filters. SDK identity determines removal independently of USB/SDK enumeration order; failed or incomplete SDK inventory is inconclusive. The generated driver queue owns attach, detach and connection serialization; default capacity remains five logical devices.
+4. Validate both production variants against the real SDK headers and fake SDK boundary. Modern discovery lifecycle covers the four physical-test scenarios, fresh acquisition after each arrival, callback registration rollback, duplicate arrival, capacity recovery, reversed USB/SDK identity and inconclusive removal inventory. Legacy retains startup-only discovery and existing 37-scenario coverage. Build both native macOS driver variants and verify generated output, project references and whitespace.
+
+Physical evidence remains the four successful unplug/replug phases for each of QHY5III178 and QHY5LII-M recorded above. Multi-camera identity is software-tested; simultaneous physical cameras, other models, Linux/Windows and legacy hot-plug remain unverified. Firmware and vendor SDK binaries are unchanged by this split. Property names/visibility are unchanged. The existing entry adapter remains solely to release SDK resources if generated INIT queue/callback setup fails; cross-variant name/label overrides are gone.
+
+Validation result: 37/37 legacy fake-SDK cases passed under macOS x86_64/Rosetta and 37/37 modern cases passed on macOS arm64. Both driver libraries and standalone executables built as macOS universal binaries (legacy ARM remains the unsupported-architecture stub); the server translation unit compiled with the new header. Regeneration of both definitions reproduced all three checked-in outputs byte-for-byte, Xcode project syntax passed, and scoped whitespace validation passed with existing Windows CRLF respected. Windows/Linux builds were not run. Test/build logs: `/tmp/qhy-split-test-{legacy,modern}.log`, `/tmp/qhy-split-build-{legacy,modern}.log`.
+
+
+### Legacy QHY5LII-M hot-plug experiment (2026-09-12)
+
+An isolated x86_64/Rosetta build of legacy v30 enabled SDK hot-plug only for QHY5LII boot/running USB IDs 1618:0920/0921, with firmware loading on boot arrival and early USB event handling. Production legacy hot-plug remains disabled; SDK binaries are unchanged. The first preparation run used the modern firmware-directory convention and detected no camera; the corrected run used the legacy parent directory `bin_externals/qhyccd`.
+
+The corrected run loaded firmware, attached CCD and guider, acquired a 1280 x 960 RAW8 image at 0.1 s, and disconnected successfully. Physical removal while logically disconnected detached both devices without a crash. Replug loaded firmware (0920 -> 0921); ScanQHYCCD returned one camera and GetQHYCCDId/GetQHYCCDModel identified QHY5LII-M, but the discovery probe did not attach it. The last log was immediately before OpenQHYCCD; no close-error log followed, and a process sample showed the driver queue idle, consistent with OpenQHYCCD returning NULL rather than hanging. No fresh image after replug was obtained. The waiting test was terminated with SIGTERM after diagnosis, not an SDK crash. Connected-idle, exposure and streaming removal phases were not reached.
+
+Artifacts: `/tmp/qhy-legacy-hotplug/hardware-correct-firmware.log`, `/tmp/qhy-legacy-hotplug/sample-replug.txt`, temporary definition and binaries in the same directory. This experiment does not validate legacy hot-plug.
+
+
+### Xcode SDK header collision fixed (2026-09-12)
+
+The indigo_m1 Xcode header map resolved the unqualified qhyccd.h include in QHY2 to the legacy SDK header, producing eight undeclared-function errors (modern read modes, single-frame timeout and autodetection). Replaying the exact failing Xcode compiler command with include tracing confirmed the legacy path. Both definitions now include their own bin_externals/qhyccd/include/qhyccd.h explicitly and advance to version 31. Generated outputs were refreshed. The same Xcode compiler arguments now select the modern header and compile the QHY2 object successfully. This is an include-selection fix with no lifecycle/property change; hardware retesting is unnecessary.
+
+
+### `reject_change` migration (2026-09-18)
+
+The hand-written `qhy_busy()` helper, called from the `on_change_request` block of `CCD_GAIN`, `CCD_OFFSET`, `CCD_GAMMA`, `CCD_FRAME`, `CCD_BIN`, `CCD_MODE`, `X_PIXEL_FORMAT`, `X_ADVANCED` and `X_READ_MODE`, was replaced by the generator's `reject_change` block with the same condition and message, and the helper was removed. Version increased from 31 to 32 (`0x0300001F` to `0x03000020`). This matches the change already applied to `ccd_qhy2`. The behavioral difference is the per-item `do_update` marking the generator emits and the helper did not; without it the protocol adapter omits unchanged items and a client keeps displaying the value the driver refused.
+
+Regeneration is deterministic; a second run produces byte-identical output. SHA-1 values are `5504b144a49b4c01f6224369ae8233c31a7b8d75`, `ac79c662f85d2a4c7520c1c0a6a0dd7358c5774e` and `69d33765a343401769c4b42cc5b9a3a9dd01d530` for `.cpp`, `.h` and `_main.c`; the `.h` and `_main.c` outputs are unchanged.
+
+Validation: both fake-SDK suites pass, 74 test bodies over `indigo_ccd_qhy` and `indigo_ccd_qhy2` (`make -C indigo_test test-ccd-qhy-sdk`), including the extended `acquisition conflicts` case that asserts a refused `CCD_GAIN`, `CCD_OFFSET` or `CCD_GAMMA` change keeps `value`, `target` and the SDK parameter during an exposure and during a stream, and is accepted again once idle.
+
+Hardware: the `reject` scenario of `indigo_test/hardware/test_ccd_qhy_hw.c` passed against a QHY5III178M under x86_64/Rosetta — all eight exposed guards refused with `Acquisition in progress`, values and targets preserved, the exposure still delivered its image, the stream behaved the same, and the guards were not sticky. `X_READ_MODE` is not exposed for this camera by this driver.
+
+The full scenario set was not completed and is not claimed. It hangs in the `switching` scenario, round 1 RAW 16, with the vendor SDK spinning inside `QHY5IIIBASE::GetSingleFrame` and the disconnect blocked behind it in `indigo_queue_remove`. The identical hang reproduces against the pre-migration driver (`0x0300001F`) rebuilt from stash, so it is unrelated to this change. A QHY5III178M is a modern camera driven through the legacy SDK and is not a suitable device for legacy acceptance; the legacy profile still needs a legacy camera such as the QHY5LII-M used earlier. Note also that the hardware test has no overall watchdog, so an SDK call that never returns blocks the run indefinitely.
+
+## Doubled read-directly exposure (2026-09-22)
+
+`ccd_qhy2` was run against a QHY5 and every exposure took twice its duration plus readout; see `indigo_drivers/ccd_qhy2/REFACTOR.md` for the measurement. The cause is shared with this driver: `ExpQHYCCDSingleFrame()` answers `QHYCCD_READ_DIRECTLY` for a camera that does not time the exposure itself, the start call returns at once and `GetQHYCCDSingleFrame()` blocks for the exposure instead, and the driver still waited the full duration before reading. It now starts the read immediately for that return value and keeps the deadline covering the exposure that happens inside the read. Cameras answering `QHYCCD_SUCCESS` are untouched.
+
+Regression: `read directly exposure` in the shared `indigo_test/integration/test_ccd_qhy_sdk.cpp` requires a one second exposure to finish in under 1.6 seconds. Against this driver it failed at 2.017 s before the fix and passes at 1.005 s after.
+
+The companion fix of `ccd_qhy2`, hiding `CCD_STREAMING` for a camera without a live video mode, has no counterpart here: the bundled legacy SDK enum has no `CAM_LIVEVIDEOMODE`, so this driver cannot ask. Its `missing live video` case is `QHY2` only.
+
+### Hardware not exercised
+
+The attached camera could not be used to test this driver:
+
+- The driver declares `supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)"`, so on this macOS arm64 host `INDIGO_DRIVER_INIT` returns `INDIGO_FAILED`. Under `arch -x86_64` it initializes.
+- Both drivers install a `libqhyccd.dylib` of the same name into `build/lib`, so only the SDK of the driver built last is present. A hardware run here would therefore exercise this driver against whichever SDK happened to be installed, not against its own. The drivers are mutually exclusive at runtime anyway, as the `README.md` files state.
+
+`make -C indigo_test test-ccd-qhy-hw` was added alongside the `ccd_qhy2` target and needs a host that satisfies both conditions. Result recorded for this session: `build/integration/test_ccd_qhy_sdk` 38/38, no hardware run.
+
+## macOS universal build and QHY5L-II hardware run (2026-09-22)
+
+### The driver now builds for Apple Silicon
+
+`supported_architecture = "!defined(INDIGO_MACOS) || defined(__x86_64__)"` compiled the whole driver
+out on macOS arm64 and left an entry point that answers `INDIGO_UNSUPPORTED_ARCH`, so on an Apple
+Silicon Mac the driver could only be reached through Rosetta. The reason was the bundled
+`bin_externals/qhyccd/lib/macOS/libqhy.a`, which carried x86_64 code only.
+
+The user supplied the SDK sources at `github.com/polakovic/libqhy` and approved rebuilding them. Two
+changes there make a universal archive possible, both committed to that repository:
+
+- macOS builds each architecture into its own archive through a sub-make and combines the two with
+  `lipo`. Archiving fat objects with `ar` instead produces an archive `lipo` cannot read back.
+- `SetQHYCCDLogLevel()` is declared in `qhyccd.h` and called by this driver, but its definition had
+  been commented out, so a freshly built archive did not link. The fork routes every SDK message
+  through `indigo_error`/`indigo_log`/`indigo_trace` and the verbosity is INDIGO's own, so the entry
+  point is restored as the setter it has to remain.
+
+Every prototype this driver uses is identical in the trimmed INDIGO copy of the headers and in the
+libqhy sources, apart from `GetQHYCCDId()` taking `int` in one and `uint32_t` in the other, which is
+the same ABI. `OSXInitQHYCCDFirmware()` in the current sources resolves the caller's path to
+`<path>/<NAME>.HEX` while every shipped archive resolved it to `<path>/firmware/<NAME>.HEX`; the
+sub-path was put back so the archive stays a drop-in replacement for the one it succeeds and the
+driver's `README.md` stays correct.
+
+The QHY5 case needed that in two places. It is the only camera whose firmware takes two files, so
+it is the only case that rebuilds the path instead of appending to it, and it rebuilt it without the
+sub-path: `QHY5LOADER.HEX` went in and `QHY5.HEX` did not, which left the camera in its loader
+identity and made it look like a camera this SDK no longer supports. With both files found it comes
+up as `QHY5-CMOS`, the same identity the modern SDK gives it. Whether `ScanQHYCCD()` of this SDK
+then offers it was not established: the session was stopped before that run finished, so the QHY5
+has no recorded result on this driver.
+
+The driver builds and links for x86_64 and arm64 and runs natively on arm64.
+
+### QHY5L-II live video does not work through this SDK
+
+`BeginQHYCCDLive()` succeeds on a QHY5L-II-M and `GetQHYCCDLiveFrame()` then answers `QHYCCD_ERROR`
+for as long as the stream is left running - 830 calls over 20 s, not one frame - so the `switching`
+and `stream` scenarios fail on a camera that `ccd_qhy2` streams without trouble.
+
+The cause is in the SDK and was fixed there: `QHY5LIIBASE::BeginLiveExposure()` called
+`UpdateParameters()`, which already allocates the live transfers, starts the asynchronous reader and
+sends the begin-video vendor request, and then sent that request a second time. The camera answers
+the second one by delivering nothing at all. With it gone the same camera delivers frames about
+0.8 s after `BeginQHYCCDLive()`.
+
+### Known failure: the QHY5L-II does not connect through the rebuilt archive
+
+With the rebuilt archive installed, `CONNECTION` on the QHY5L-II-M never leaves BUSY: the device
+queue stays in the connect handler and `CCD_ABORT_EXPOSURE` and the disconnect time out behind it.
+It reproduces on a freshly programmed camera and survived a clean rebuild of the archive with header
+prerequisites added, so it is not a stale object from the header change. The first universal build
+of the session, before the live-video and firmware-path edits, did connect and took 0.1, 1.5, 2.5
+and 16.5 s exposures, so the connect path regressed somewhere between the two, most plausibly in the
+part of the source revision gap that has nothing to do with those edits.
+
+**The user's instruction was to mark this failed and not to pursue it further**, because `ccd_qhy2`
+drives all three cameras of this rig. It is recorded here rather than fixed, and the run is recorded
+as failed in `README.md`.
+
+Anyone picking this up should start by bisecting the libqhy revision gap against the connect path -
+`qhy_open()` plus `qhy_initialize_ccd()` - rather than by reverting the universal build, and should
+check whether the x86_64 slice behaves the same, which this session did not measure.
+
+### Not fixed here
+
+`qhy_write_control()` carries the same readback rule that defect 4 of `indigo_drivers/ccd_qhy2/REFACTOR.md`
+describes, so a QHY5L-II on this driver would walk its `CCD_OFFSET` the same way. It was left alone
+with the rest of the legacy driver.
+
+### Results
+
+| run | result |
+| --- | --- |
+| `build/integration/test_ccd_qhy_sdk` | 38/38 |
+| `INDIGO_TEST_DEVICE="QHY5LII" make -C indigo_test test-ccd-qhy-hw` | 1/0, failed at CONNECTION |
+
+`ScanQHYCCD()` of this SDK returns only the QHY5L-II on this rig; the QHY5 and the QHY-8PRO that
+`ccd_qhy2` drives are not offered by it, so neither could be tested through this driver.
+
+## Coupled mode, pixel format, binning and frame requests (TGT-069, 2026-09-27)
+
+Version 40, finding TGT-069 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`),
+the same class as TGT-066/067/068 (`ccd_asi` 3.0.0.70, `ccd_playerone` 3.0.0.32, `ccd_svb` 3.0.0.33).
+
+### Semantics
+
+CCD_MODE (bit depth and binning), X_PIXEL_FORMAT (bit depth), CCD_BIN and CCD_FRAME are coupled. Of two
+requests queued together the later one wins: the handler of the earlier one still updates a coupled
+property as a side effect, but leaves one that is BUSY (a request sent after it, still queued) to that
+request's own handler, which then decides and publishes it.
+
+### Defect (source audit, reproduced by the regression test below)
+
+All four handlers run on the device queue and rewrote the coupled properties whatever their state:
+
+- The CCD_MODE handler wrote the X_PIXEL_FORMAT values, the CCD_BIN values and targets and, through
+  `qhy_update_geometry()`, the CCD_FRAME values and targets. A pixel format request queued behind it
+  was read from the rewritten `sw.value` and lost; CCD_BIN and CCD_FRAME read their request from the
+  targets (`preserve_values`), which were overwritten, so a binning or frame request was lost too.
+- The X_PIXEL_FORMAT and CCD_BIN handlers rebuilt CCD_MODE with `qhy_modes()`, whose
+  `indigo_init_switch_item()` resets values and targets, so a mode request queued behind them was lost.
+
+In each case the later handler applied the earlier request's setting and reported OK.
+
+### Fix
+
+- The CCD_MODE and X_PIXEL_FORMAT handlers apply their request with `indigo_apply_switch_targets()`
+  before they derive the coupled settings from it.
+- The CCD_MODE handler leaves a BUSY X_PIXEL_FORMAT, CCD_BIN or CCD_FRAME alone (it still sets
+  `selected_bpp` and the CCD_FRAME bit depth, which the CCD_FRAME handler overwrites from `selected_bpp`
+  anyway), and the X_PIXEL_FORMAT and CCD_BIN handlers skip `qhy_modes()` and the update of a BUSY
+  CCD_MODE; X_PIXEL_FORMAT does not publish a BUSY CCD_FRAME. The CCD_FRAME handler writes only its own
+  bit depth from `selected_bpp` and needed no change; a client bit depth in CCD_FRAME is ignored as before.
+- No `_finalizer` reference was added; the regenerated handlers keep the generated OK prologue and
+  final update.
+
+### Verification
+
+- `make -C indigo_drivers -f ../Makefile.drvs ccd_qhy/ OP=all` builds on Linux x64; the existing
+  fake-SDK suite passed 38/38 on version 40.
+
+### Regression test (2026-09-27)
+
+`queued coupled requests keep the last` in `indigo_test/integration/test_ccd_qhy_sdk.cpp`. A gate
+handler holds the device queue, each coupled pair is queued in both orders (CCD_MODE / X_PIXEL_FORMAT,
+CCD_BIN / CCD_MODE, CCD_MODE / CCD_FRAME), the gate is released and a marker handler queued behind them
+waits until all ran. Each pair sets its own starting mode, so a failing pair does not hide another. The
+case checks that the later request was BUSY while queued, that all four properties end OK with the later
+request's values, and what the fake SDK received in the following exposure (`SetQHYCCDBitsMode()`,
+`SetQHYCCDBinMode()`, `SetQHYCCDResolution()`). CCD_FRAME then CCD_MODE ends with the full frame of the
+mode, which was already the behaviour before the fix.
+
+The file is shared with `test_ccd_qhy2_sdk`. Both builds compile the case, but it is registered only
+where `QHY_COUPLED_REQUESTS_FIXED` is defined, which the file does for `#ifndef QHY2`; the ccd_qhy2 fix
+of TGT-070 removes that condition.
+
+Proof on Linux x64, only this case (`build/integration/test_ccd_qhy_sdk "queued coupled"`), the driver
+restored from the `.driver` of each version, regenerated and rebuilt:
+
+- 3.0.0.39 (before TGT-069): FAIL, 5 assertions, one in each order the fix changes: mode then format
+  ended with X_PIXEL_FORMAT RAW 8, format then mode and bin then mode lost the requested mode, mode then
+  bin ended with binning 2, and mode then frame reset the region (LEFT 0 instead of 16). Only frame then
+  mode passed.
+- 3.0.0.40 (TGT-069 fix): FAIL, 2 assertions: after mode then format and after mode then bin the client
+  still saw the previous CCD_MODE (found defect below).
+- 3.0.0.41: PASS. Regenerating from the `.driver` gives no diff.
+
+### Found defect: reselected CCD_MODE not published (3.0.0.41)
+
+- Impact: after an X_PIXEL_FORMAT or CCD_BIN change, clients kept seeing the previous CCD_MODE item
+  selected; the driver itself used the right bit depth and binning. Reproduced by the regression test
+  above on 3.0.0.39 and 3.0.0.40.
+- Root cause: both handlers rebuilt CCD_MODE with `qhy_modes()`, whose `indigo_init_switch_item()` sets
+  `previous_value` equal to the new value. With CCD_MODE already OK, `indigo_update_property()` saw no
+  changed item and no state change and sent no update.
+- Fix: `qhy_select_mode()` sets value and target of the items `qhy_modes()` built at connection time;
+  the X_PIXEL_FORMAT and CCD_BIN handlers call it instead of `qhy_modes()`. The item list only depends on
+  the camera, which does not change while connected.
+- Regression test: `queued coupled requests keep the last` (mode then format, mode then bin).
+
+## Final test summary
+
+- Simulated tests run: 39; passed: 39 (`build/integration/test_ccd_qhy_sdk`, recorded with
+  `tools/run_driver_test.py ccd_qhy` on Linux x64, version 3.0.0.41).
+- Hardware tests run: 1; passed: 0. QHY5L-II-M on a Pegasus Ultimate Powerbox v1.7 hub, macOS arm64.

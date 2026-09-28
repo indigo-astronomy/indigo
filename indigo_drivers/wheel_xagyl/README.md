@@ -27,3 +27,7 @@ Looking for device owners!!! :)
 Based on protocol description found here:
 
 https://www.xagylastro.com/manuals/FW5125_User_Manual-3.1.5.pdf
+
+## Testing
+
+2026-09-27 22:44 3.0.0.9 mac arm64 simulator 8/8 OK

@@ -17,6 +17,7 @@
 #include <signal.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 // ----------------------------------------------------------------- options
 
@@ -24,12 +25,14 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *profile;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.profile = "normal"
 };
 
 static void usage(const char *name) {
@@ -38,7 +41,13 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --profile <name>        normal, configured, no-handshake, bad-status or\n");
+	printf("                          external-motion, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
+	printf("\n");
+	printf("INDIGO_DMFC_EVENTS names a file receiving every accepted request, one per line.\n");
+	printf("INDIGO_DMFC_FAULT names a file holding '<command prefix> <silent|garbage|close>'\n");
+	printf("which is applied once to the next matching request and then removed.\n");
 }
 
 // ----------------------------------------------------------------- state
@@ -49,12 +58,14 @@ static int serial_fd = -1;
 static int motor_mode = 0;
 static double temperature = 22.4;
 static int position = 50;
+static serial_motion motion = { .position = 50, .target = 50 };
 static int moving_status = 0;
 static int led_status = 0;
 static int reverse = 0;
 static int disabled_encoder = 0;
 static int backlash_value = 100;
 static int speed = 400;
+static FILE *events = NULL;
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -83,12 +94,35 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--profile")) {
+			if (++i == argc) {
+				fprintf(stderr, "--profile requires a name\n");
+				return false;
+			}
+			options.profile = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
 	}
 	return true;
+}
+
+// The controller state a scenario needs is selected once at startup, so a
+// connecting driver reads back exactly the configuration under test.
+static void apply_profile(void) {
+	if (!strcmp(options.profile, "configured")) {
+		motor_mode = 1;
+		led_status = 1;
+		reverse = 1;
+		disabled_encoder = 1;
+		backlash_value = 42;
+		temperature = -5.5;
+		position = 1234;
+		serial_motion_sync(&motion, position);
+	} else if (!strcmp(options.profile, "external-motion")) {
+		serial_motion_start(&motion, 3000, 500);
+	}
 }
 
 // ----------------------------------------------------------------- protocol
@@ -154,13 +188,69 @@ static bool sim_printf(int handle, const char *format, ...) {
 	return serial_simulator_write_all(handle, buffer, (size_t)length);
 }
 
+// One-shot fault injection. The control file names a command prefix and the
+// way the next matching request has to misbehave, so a test can fail exactly
+// one transaction without disturbing the rest of the session.
+static const char *pending_fault(const char *command) {
+	static char action[32];
+	const char *path = getenv("INDIGO_DMFC_FAULT");
+	if (path == NULL) {
+		return NULL;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return NULL;
+	}
+	char prefix[32] = { 0 };
+	action[0] = '\0';
+	bool matched = fscanf(file, "%31s %31s", prefix, action) == 2 && !strncmp(command, prefix, strlen(prefix));
+	fclose(file);
+	if (!matched) {
+		return NULL;
+	}
+	unlink(path);
+	return action;
+}
+
 static void dispatch_command(int handle, const char *command) {
+	position = (int)serial_motion_update(&motion);
+	moving_status = motion.duration > 0;
+	if (events != NULL) {
+		fprintf(events, "%s\n", command);
+		fflush(events);
+	}
+	const char *fault = pending_fault(command);
+	if (fault != NULL) {
+		if (!strcmp(fault, "close")) {
+			running = 0;
+			if (serial_fd >= 0) {
+				close(serial_fd);
+				serial_fd = -1;
+			}
+			return;
+		}
+		if (!strcmp(fault, "silent")) {
+			return;
+		}
+		if (!strcmp(fault, "garbage")) {
+			sim_printf(handle, "ERR\n");
+			return;
+		}
+		if (!strcmp(fault, "slow")) {
+			// the reply keeps the state from before the delay, so a request can arrive while the driver waits for it
+			usleep(500000);
+		}
+	}
 	if (!strcmp(command, "#")) {
-		sim_printf(handle, "OK_DMFCN\n");
+		sim_printf(handle, strcmp(options.profile, "no-handshake") ? "OK_DMFCN\n" : "ERR\n");
 	} else if (!strcmp(command, "V")) {
 		sim_printf(handle, "2.6\n");
 	} else if (!strcmp(command, "A")) {
-		sim_printf(handle, "OK_DMFCN:2.6:%d:%.1f:%d:%d:%d:%d:%d:%d\n", motor_mode, temperature, position, moving_status, led_status, reverse, disabled_encoder, backlash_value);
+		if (!strcmp(options.profile, "bad-status")) {
+			sim_printf(handle, "ERR\n");
+		} else {
+			sim_printf(handle, "OK_DMFCN:2.6:%d:%.1f:%d:%d:%d:%d:%d:%d\n", motor_mode, temperature, position, moving_status, led_status, reverse, disabled_encoder, backlash_value);
+		}
 	} else if (!strcmp(command, "T")) {
 		sim_printf(handle, "%.1f\n", temperature);
 	} else if (!strcmp(command, "P")) {
@@ -168,14 +258,13 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (!strcmp(command, "I")) {
 		sim_printf(handle, "%d\n", moving_status);
 	} else if (!strncmp(command, "G:", 2)) {
-		position += atoi(command + 2);
-		moving_status = 0;
+		serial_motion_start(&motion, position + atoi(command + 2), 1000);
 	} else if (!strncmp(command, "M:", 2)) {
-		position = atoi(command + 2);
-		moving_status = 0;
+		serial_motion_start(&motion, atoi(command + 2), 1000);
 	} else if (!strncmp(command, "W:", 2)) {
-		position = atoi(command + 2);
+		serial_motion_sync(&motion, position = atoi(command + 2));
 	} else if (!strcmp(command, "H")) {
+		serial_motion_stop(&motion);
 		moving_status = 0;
 	} else if (!strncmp(command, "S:", 2)) {
 		speed = atoi(command + 2);
@@ -206,6 +295,10 @@ int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
 		return 1;
 	}
+
+	apply_profile();
+	const char *journal = getenv("INDIGO_DMFC_EVENTS");
+	events = journal == NULL ? NULL : fopen(journal, "w");
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
@@ -239,6 +332,9 @@ int main(int argc, char *argv[]) {
 
 	if (serial_fd >= 0) {
 		close(serial_fd);
+	}
+	if (events != NULL) {
+		fclose(events);
 	}
 	return 0;
 }

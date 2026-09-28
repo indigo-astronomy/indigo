@@ -1,0 +1,106 @@
+00:37:59.689 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 06 August 2026 12:47:41          
+00:37:59.689                                              
+00:37:59.691 Operating system is macOS 26.7.0, Processor is ARM 64bit, Application is 64bit.          
+00:37:59.691                                              
+00:37:59.691 Alpaca device:  (localhost:7678 Focuser/6)          
+00:37:59.691                                              
+00:37:59.692 CreateDevice                        INFO     Creating Alpaca device: IP address: localhost, IP Port: 7678, Alpaca device number: 6
+00:37:59.698 CreateDevice                        INFO     Alpaca device created OK
+00:37:59.699 CreateDevice                        INFO     Successfully created driver
+00:38:00.755 CreateDevice                        OK       Found a valid interface version: 3
+00:38:00.755 CreateDevice                        OK       Driver instance created successfully
+00:38:00.755                                              
+00:38:00.755 Connect to device                            
+00:38:00.843 Connected                           OK       Connected to device successfully using Connected = True
+00:38:00.843                                              
+00:38:00.846 Common Driver Methods                        
+00:38:00.847 InterfaceVersion                    OK       3
+00:38:00.847 Connected                           OK       True
+00:38:00.849 Description                         OK       CCD Imager Simulator (focuser)
+00:38:00.849 DriverInfo                          OK       indigo_ccd_simulator
+00:38:00.850 DriverVersion                       OK       3.0.0.30
+00:38:00.850 Name                                OK       CCD Imager Simulator (focuser)
+00:38:00.850                                              
+00:38:00.851 SupportedActions                    OK       Driver returned an empty action list
+00:38:00.851 Action                              INFO     Conform cannot test the Action method
+00:38:00.851                                              
+00:38:00.852 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+00:38:00.852                                              
+00:38:00.852 Properties                                   
+00:38:00.853 Absolute                            OK       True
+00:38:00.853 IsMoving                            OK       False
+00:38:00.865 MaxStep                             OK       19999998
+00:38:00.865 MaxIncrement                        OK       19999998
+00:38:00.865 Position                            OK       9999999
+00:38:00.883 StepSize                            OK       Optional member returned a NotImplementedException error.
+00:38:00.885 TempCompAvailable                   OK       True
+00:38:00.886 TempComp Read                       OK       False
+00:38:00.886 TempComp Write                      OK       Successfully turned temperature compensation on
+00:38:00.887 TempComp Write                      OK       Successfully turned temperature compensation off
+00:38:00.888 Temperature                         OK       25
+00:38:00.888                                              
+00:38:00.888 Methods                                      
+00:38:00.890 Halt                                OK       Focuser halted OK
+00:39:00.905 Move                                ISSUE    Unexpected error: The "Moving focuser" operation exceeded its 60 second timeout.
+00:39:00.906 Move - TempComp True V3             ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:39:00.906 Move - TempComp True V3             OK       Absolute move OK
+00:40:00.911 Move - TempComp True V3             ISSUE    Unexpected error: The "Moving back to starting position" operation exceeded its 60 second timeout.
+00:40:00.912 Move - To 0                         ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.912 Move - To 0                         ISSUE    Move ended at 10001134, which is 10001134 steps away from the expected position 0. This is outside Conform's configured move tolerance: 2.
+00:40:00.913 Move - Below 0                      ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.913 Move - Below 0                      ISSUE    Move was permitted below position 0. Move ended at 10001134, which is 10001134 steps away from the expected position 0. This is outside Conform's configured move tolerance: 2.
+00:40:00.913 Move - To MidPoint                  ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.914 Move - To MidPoint                  ISSUE    Move ended at 10001134, which is 1135 steps away from the expected position 9999999. This is outside Conform's configured move tolerance: 2.
+00:40:00.914 Move - To MaxStep                   ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.914 Move - To MaxStep                   ISSUE    Move ended at 10001134, which is 9998864 steps away from the expected position 19999998. This is outside Conform's configured move tolerance: 2.
+00:40:00.915 Move - Above MaxStep                ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.915 Move - Above MaxStep                ISSUE    Move was permitted above position MaxStep. Move ended at 10001134, which is 9998864 steps away from the expected position 19999998. This is outside Conform's configured move tolerance: 2.
+00:40:00.915                                              
+00:40:00.915 Disconnect from device                       
+00:40:00.974 Connected                           OK       False
+00:40:00.974                                              
+00:40:00.974 Conformance test has finished                
+00:40:00.974                                              
+00:40:00.974 Your device had 13 issues, 0 errors and 0 configuration alerts          
+00:40:00.974                                              
+00:40:00.974 Issue Summary                                
+00:40:00.974 Move                                ISSUE    Unexpected error: The "Moving focuser" operation exceeded its 60 second timeout.
+00:40:00.974 Move - TempComp True V3             ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.974 Move - TempComp True V3             ISSUE    Unexpected error: The "Moving back to starting position" operation exceeded its 60 second timeout.
+00:40:00.974 Move - To 0                         ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.974 Move - To 0                         ISSUE    Move ended at 10001134, which is 10001134 steps away from the expected position 0. This is outside Conform's configured move tolerance: 2.
+00:40:00.974 Move - Below 0                      ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.974 Move - Below 0                      ISSUE    Move was permitted below position 0. Move ended at 10001134, which is 10001134 steps away from the expected position 0. This is outside Conform's configured move tolerance: 2.
+00:40:00.974 Move - To MidPoint                  ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.974 Move - To MidPoint                  ISSUE    Move ended at 10001134, which is 1135 steps away from the expected position 9999999. This is outside Conform's configured move tolerance: 2.
+00:40:00.974 Move - To MaxStep                   ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.974 Move - To MaxStep                   ISSUE    Move ended at 10001134, which is 9998864 steps away from the expected position 19999998. This is outside Conform's configured move tolerance: 2.
+00:40:00.974 Move - Above MaxStep                ISSUE    Focuser is already moving before start of Move test, rest of test skipped
+00:40:00.974 Move - Above MaxStep                ISSUE    Move was permitted above position MaxStep. Move ended at 10001134, which is 9998864 steps away from the expected position 19999998. This is outside Conform's configured move tolerance: 2.
+00:40:00.975                                     
+00:40:00.975 Timing Summary                               See Help for further information.
+00:40:00.975 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+00:40:00.975 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+00:40:00.975 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+00:40:00.975 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+00:40:00.975                                              
+00:40:00.975 InterfaceVersion                             At 00:38:00.847 InterfaceVersion         0,000 seconds. ✓ (FAST)
+00:40:00.975 Connected                                    At 00:38:00.847 Connected                0,000 seconds. ✓ (FAST)
+00:40:00.975 Description                                  At 00:38:00.849 Description              0,001 seconds. ✓ (FAST)
+00:40:00.975 DriverInfo                                   At 00:38:00.849 DriverInfo               0,000 seconds. ✓ (FAST)
+00:40:00.975 DriverVersion                                At 00:38:00.850 DriverVersion            0,000 seconds. ✓ (FAST)
+00:40:00.975 Name                                         At 00:38:00.850 Name                     0,000 seconds. ✓ (FAST)
+00:40:00.975 SupportedActions                             At 00:38:00.851 SupportedActions         0,001 seconds. ✓ (FAST)
+00:40:00.975 Absolute                                     At 00:38:00.853 Absolute                 0,000 seconds. ✓ (FAST)
+00:40:00.975 IsMoving                                     At 00:38:00.853 IsMoving                 0,000 seconds. ✓ (FAST)
+00:40:00.975 MaxStep                                      At 00:38:00.865 MaxStep                  0,011 seconds. ✓ (FAST)
+00:40:00.975 MaxIncrement                                 At 00:38:00.865 MaxIncrement             0,000 seconds. ✓ (FAST)
+00:40:00.975 Position                                     At 00:38:00.865 Position                 0,000 seconds. ✓ (FAST)
+00:40:00.975 TempCompAvailable                            At 00:38:00.885 TempCompAvailable        0,001 seconds. ✓ (FAST)
+00:40:00.975 TempComp Read                                At 00:38:00.886 TempComp Read            0,000 seconds. ✓ (FAST)
+00:40:00.975 TempComp Write                               At 00:38:00.886 TempComp Write           0,000 seconds. ✓ (STANDARD)
+00:40:00.975 Temperature                                  At 00:38:00.888 Temperature              0,001 seconds. ✓ (FAST)
+00:40:00.975 Halt                                         At 00:38:00.890 Halt                     0,001 seconds. ✓ (STANDARD)
+00:40:00.975 Move to 11999998                             At 00:38:00.892 Move to 11999998         0,000 seconds. ✓ (STANDARD)
+00:40:00.975                                              
+00:40:00.975 Congratulations, all members returned within their target response times!!          

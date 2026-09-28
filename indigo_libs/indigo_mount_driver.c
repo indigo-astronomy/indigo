@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -41,6 +42,116 @@
 
 static double indigo_range24(double ha) {
 	return fmod(ha + (24000), 24);
+}
+
+// Manual motion (MOUNT_MOTION_DEC/RA) runs until the client releases it, so it is registered with the bus to be
+// released (all items of the same property switched off) if the client that started it detaches, e.g. because its
+// network connection was lost. The requester is recorded by change_property() when the request is accepted, as the
+// reference of its current bus attachment, and the registration is done by the change handler once the driver has
+// started the motion; the reference makes the bus refuse it if the requester detached in between, even if a new client
+// was attached at the same address meanwhile. The bus does not guess when the
+// motion ends, the entries are unregistered here when it is released, aborted, the device disconnects or detaches.
+static void mount_forget_manual_motion(indigo_device *device) {
+	if (MOUNT_MOTION_DEC_PROPERTY != NULL) {
+		indigo_unregister_detach_abort(device, MOUNT_MOTION_DEC_PROPERTY->name);
+	}
+	if (MOUNT_MOTION_RA_PROPERTY != NULL) {
+		indigo_unregister_detach_abort(device, MOUNT_MOTION_RA_PROPERTY->name);
+	}
+}
+
+// the context field recording the requester of the motion property matching name, NULL for other properties
+static indigo_client_ref *mount_motion_client(indigo_device *device, const char *name) {
+	if (MOUNT_MOTION_DEC_PROPERTY != NULL && !strcmp(name, MOUNT_MOTION_DEC_PROPERTY->name)) {
+		return &MOUNT_CONTEXT->motion_dec_client;
+	}
+	if (MOUNT_MOTION_RA_PROPERTY != NULL && !strcmp(name, MOUNT_MOTION_RA_PROPERTY->name)) {
+		return &MOUNT_CONTEXT->motion_ra_client;
+	}
+	return NULL;
+}
+
+void indigo_mount_record_motion_client(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(property != NULL);
+	indigo_client_ref *owner = mount_motion_client(device, property->name);
+	if (owner != NULL) {
+		// change_property() runs with the bus mutex locked, the bus reads the record under the same mutex
+		*owner = indigo_current_client_ref(client);
+	}
+}
+
+// The target is written on the bus thread and read by the handler on the device queue. Queuing the handler after the
+// write orders the two; the accesses are atomic for a request arriving while an earlier handler is still starting.
+#if defined(_MSC_VER)
+// MSVC volatile accesses of aligned scalars are atomic with acquire/release semantics (/volatile:ms)
+#define MOUNT_TARGET_STORE(type, target, value) (*(volatile type *)&(target) = (value))
+#define MOUNT_TARGET_LOAD(type, target) (*(volatile type *)&(target))
+#else
+#define MOUNT_TARGET_STORE(type, target, value) __atomic_store_n(&(target), (type)(value), __ATOMIC_RELEASE)
+#define MOUNT_TARGET_LOAD(type, target) __atomic_load_n(&(target), __ATOMIC_ACQUIRE)
+#endif
+
+void indigo_mount_set_utc_target(indigo_device *device, indigo_property *request) {
+	assert(device != NULL);
+	assert(request != NULL);
+	if (MOUNT_UTC_TIME_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return;
+	}
+	time_t secs = -1;
+	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
+	for (int i = 0; i < request->count; i++) {
+		indigo_item *item = request->items + i;
+		if (!strcmp(item->name, MOUNT_UTC_ITEM->name)) {
+			secs = indigo_isogmtotime(item->text.value);
+		} else if (!strcmp(item->name, MOUNT_UTC_OFFSET_ITEM->name)) {
+			offset = atoi(item->text.value);
+		}
+	}
+	MOUNT_TARGET_STORE(int, MOUNT_CONTEXT->utc_offset_target, offset);
+	MOUNT_TARGET_STORE(time_t, MOUNT_CONTEXT->utc_target, secs);
+}
+
+time_t indigo_mount_get_utc_target(indigo_device *device, int *offset) {
+	assert(device != NULL);
+	time_t secs = MOUNT_TARGET_LOAD(time_t, MOUNT_CONTEXT->utc_target);
+	if (offset != NULL) {
+		*offset = MOUNT_TARGET_LOAD(int, MOUNT_CONTEXT->utc_offset_target);
+	}
+	return secs;
+}
+
+void indigo_mount_commit_motion_client(indigo_device *device, indigo_property *property) {
+	assert(device != NULL);
+	assert(property != NULL);
+	if (property == MOUNT_ABORT_MOTION_PROPERTY) {
+		mount_forget_manual_motion(device);
+		return;
+	}
+	indigo_client_ref *owner = mount_motion_client(device, property->name);
+	if (owner == NULL) {
+		return;
+	}
+	bool running = false;
+	for (int i = 0; i < property->count; i++) {
+		running = running || property->items[i].sw.value;
+	}
+	if (!running || property->state == INDIGO_ALERT_STATE) {
+		indigo_unregister_detach_abort(device, property->name);
+		return;
+	}
+	indigo_property *release = indigo_init_switch_property(NULL, device->name, property->name, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, property->count);
+	for (int i = 0; i < property->count; i++) {
+		indigo_init_switch_item(release->items + i, property->items[i].name, NULL, false);
+	}
+	if (indigo_register_detach_abort(device, owner, property, release) != INDIGO_OK) {
+		// the requesting client is already gone (or unknown) or the registry is full, nobody could stop the motion, so it
+		// is released now; the release passes the change handler again with all items off, which unregisters, no loop
+		INDIGO_LOG(indigo_log("Releasing '%s'.%s, its requesting client is not attached or the motion can't be registered", device->name, property->name));
+		release->access_token = device->access_token;
+		indigo_change_property(NULL, release);
+	}
+	indigo_release_property(release);
 }
 
 indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name, unsigned version) {
@@ -310,23 +421,24 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 }
 
 void indigo_mount_load_alignment_points(indigo_device *device) {
+	char sexagesimal[128], sexagesimal2[128];
 	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, false, ".alignment");
 	if (handle != NULL) {
 		int count;
 		char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-		indigo_uni_read_line(handle, buffer, sizeof(buffer));
+		indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
 		sscanf(buffer, "%d", &count);
 		MOUNT_CONTEXT->alignment_point_count = count;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 0;
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-			indigo_uni_read_line(handle, buffer, sizeof(buffer));
+			indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
 			int used;
 			sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", &used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
 			point->used = used;
 			snprintf(name, INDIGO_NAME_SIZE, "%d", i);
-			snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+			snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 			indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
 			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i + 1, name, label, false);
 		}
@@ -353,11 +465,12 @@ void indigo_mount_save_alignment_points(indigo_device *device) {
 }
 
 void indigo_mount_update_alignment_points(indigo_device *device) {
+	char sexagesimal[128], sexagesimal2[128];
 	indigo_mount_save_alignment_points(device);
 	char label[INDIGO_VALUE_SIZE];
 	for (int i = 0; i < MOUNT_CONTEXT->alignment_point_count; i++) {
 		indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-		snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+		snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 		strcpy(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[i].label, label);
 		strcpy(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items[i + 1].label, label);
 	}
@@ -416,6 +529,7 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 }
 
 indigo_result indigo_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	char sexagesimal[128], sexagesimal2[128];
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
@@ -460,6 +574,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 		} else {
+			mount_forget_manual_motion(device);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -657,14 +772,14 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 					if (ha > 12.0) {
 						ha -= 24.0;
 					}
-					point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+					point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 				} else {
 					point->side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 				}
 
 				char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 				snprintf(name, INDIGO_NAME_SIZE, "%d", index);
-				snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+				snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 				indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + index, name, label, true);
 				point->used = true;
 
@@ -822,6 +937,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 
 indigo_result indigo_mount_detach(indigo_device *device) {
 	assert(device != NULL);
+	mount_forget_manual_motion(device);
 	indigo_release_property(MOUNT_INFO_PROPERTY);
 	indigo_release_property(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(MOUNT_LST_TIME_PROPERTY);
@@ -1053,7 +1169,7 @@ indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double 
 		if (ha > 12.0) {
 			ha -= 24.0;
 		}
-		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 		return indigo_translated_to_raw_with_lst(device, lst, ra, dec, side_of_pier, raw_ra, raw_dec);
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 
@@ -1132,7 +1248,7 @@ indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, dou
 		if (ha > 12.0) {
 			ha -= 24.0;
 		}
-		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_WEST : MOUNT_SIDE_EAST;
+		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 		return indigo_raw_to_translated_with_lst(device, lst, raw_ra, raw_dec, side_of_pier, ra, dec);
 	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 
@@ -1220,4 +1336,56 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 	}
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
+}
+
+// Drivers are separate modules (static archives or dlopen()ed libraries loaded without RTLD_GLOBAL), so the only
+// state a mount simulator and a camera simulator can share is the one owned by the library they both link.
+// Guide offsets requested by a camera simulator's guider are visible to indigo_get_simulated_mount_state() at once
+// and handed over to the mount on its next indigo_set_simulated_mount_state().
+static pthread_mutex_t simulated_mount_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_device *simulated_mount_owner = NULL;
+static indigo_simulated_mount_state simulated_mount_state;
+static double simulated_mount_ra_offset, simulated_mount_dec_offset;
+
+static void add_simulated_mount_offset(indigo_simulated_mount_state *state, double ra, double dec) {
+	state->ra = fmod(state->ra + ra + 24, 24);
+	state->dec = fmax(-90, fmin(90, state->dec + dec));
+}
+
+void indigo_set_simulated_mount_state(indigo_device *device, indigo_simulated_mount_state *state) {
+	pthread_mutex_lock(&simulated_mount_mutex);
+	if (state != NULL) {
+		if (simulated_mount_owner == device && state->guidable) {
+			add_simulated_mount_offset(state, simulated_mount_ra_offset, simulated_mount_dec_offset);
+		}
+		simulated_mount_ra_offset = simulated_mount_dec_offset = 0;
+		simulated_mount_owner = device;
+		simulated_mount_state = *state;
+	} else if (simulated_mount_owner == device) {
+		simulated_mount_owner = NULL;
+		simulated_mount_ra_offset = simulated_mount_dec_offset = 0;
+	}
+	pthread_mutex_unlock(&simulated_mount_mutex);
+}
+
+bool indigo_get_simulated_mount_state(indigo_simulated_mount_state *state) {
+	pthread_mutex_lock(&simulated_mount_mutex);
+	bool result = simulated_mount_owner != NULL;
+	if (result) {
+		*state = simulated_mount_state;
+	}
+	pthread_mutex_unlock(&simulated_mount_mutex);
+	return result;
+}
+
+bool indigo_simulated_mount_guide(double ra, double dec) {
+	pthread_mutex_lock(&simulated_mount_mutex);
+	bool result = simulated_mount_owner != NULL && simulated_mount_state.guidable;
+	if (result) {
+		simulated_mount_ra_offset += ra;
+		simulated_mount_dec_offset += dec;
+		add_simulated_mount_offset(&simulated_mount_state, ra, dec);
+	}
+	pthread_mutex_unlock(&simulated_mount_mutex);
+	return result;
 }

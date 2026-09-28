@@ -38,12 +38,16 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	const char *firmware;
+	char control_file[PATH_MAX];
+	char event_file[PATH_MAX];
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
+	.firmware = "1.8m"
 };
 
 static const char *simulator_name = "aux_skyalert";
@@ -54,6 +58,10 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --firmware <version>    Reported firmware version, default is 1.8m\n");
+	printf("  Faults: drop, header, truncate <n>, garbage <n>, infinite <n>, close\n");
+	printf("  Runtime control is read once from <ready-file>.control as ACTION ARGUMENT\n");
+	printf("  and every complete command is recorded in <ready-file>.events.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -73,10 +81,20 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--firmware")) {
+			if (++i == argc) {
+				fprintf(stderr, "--firmware requires a version\n");
+				return false;
+			}
+			options.firmware = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
+	}
+	if (options.ready_file != NULL) {
+		snprintf(options.control_file, sizeof(options.control_file), "%s.control", options.ready_file);
+		snprintf(options.event_file, sizeof(options.event_file), "%s.events", options.ready_file);
 	}
 	return true;
 }
@@ -158,20 +176,95 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 	return -1;
 }
 
+static void record_command(const char *command) {
+	if (*options.event_file == '\0') {
+		return;
+	}
+	FILE *file = fopen(options.event_file, "a");
+	if (file == NULL) {
+		return;
+	}
+	fprintf(file, "%s\n", command);
+	fclose(file);
+}
+
+// One fault is armed at a time in <ready-file>.control as "ACTION ARGUMENT" and consumed by the
+// next record. ARGUMENT is the one-based index of the affected record line for the actions that
+// take one, and "*" for the rest.
+typedef struct {
+	char action[16];
+	int line;
+} simulator_fault;
+
+static simulator_fault take_fault(void) {
+	simulator_fault fault = { { 0 }, 0 };
+	if (*options.control_file == '\0') {
+		return fault;
+	}
+	FILE *file = fopen(options.control_file, "r");
+	if (file == NULL) {
+		return fault;
+	}
+	char argument[16] = { 0 };
+	int count = fscanf(file, "%15s %15s", fault.action, argument);
+	fclose(file);
+	if (count != 2) {
+		fault.action[0] = '\0';
+		return fault;
+	}
+	unlink(options.control_file);
+	fault.line = atoi(argument);
+	return fault;
+}
+
+// The record the device answers "send" with, in the order the driver reads it. The temperature and
+// the sky brightness advance per record, one in each published property, so a test can prove that a
+// later reading is a new one - a reading whose every value repeats is not published at all, because
+// indigo_update_property() suppresses an update in which nothing changed.
+static void send_record(int fd, const simulator_fault *fault) {
+	static int samples = 0;
+	char lines[10][32];
+	snprintf(lines[0], sizeof(lines[0]), "Data");
+	snprintf(lines[1], sizeof(lines[1]), "%.1f", 20.3 + 0.1 * samples);  // temperature [C]
+	snprintf(lines[2], sizeof(lines[2]), "1");                           // sky temperature [C]
+	snprintf(lines[3], sizeof(lines[3]), "1008");                        // rain / dampness [raw]
+	snprintf(lines[4], sizeof(lines[4]), "%d", 751 + samples);           // sky brightness [raw]
+	snprintf(lines[5], sizeof(lines[5]), "66.3");                        // humidity [%]
+	snprintf(lines[6], sizeof(lines[6]), "415");                         // wind speed [raw]
+	snprintf(lines[7], sizeof(lines[7]), "1");                           // power [1=ok, 0=failure]
+	snprintf(lines[8], sizeof(lines[8]), "%s", options.firmware);        // firmware version
+	snprintf(lines[9], sizeof(lines[9]), "101791.83");                   // pressure [Pa]
+	samples++;
+	int count = 10;
+	if (!strcmp(fault->action, "drop")) {
+		return;
+	}
+	if (!strcmp(fault->action, "close")) {
+		running = 0;
+		close(serial_fd);
+		serial_fd = -1;
+		return;
+	}
+	if (!strcmp(fault->action, "header")) {
+		snprintf(lines[0], sizeof(lines[0]), "Busy");
+		count = 1;
+	} else if (!strcmp(fault->action, "truncate")) {
+		count = fault->line > 0 && fault->line < 10 ? fault->line : 1;
+	} else if (!strcmp(fault->action, "garbage") && fault->line > 0 && fault->line < 10) {
+		snprintf(lines[fault->line], sizeof(lines[fault->line]), "n/a");
+	} else if (!strcmp(fault->action, "infinite") && fault->line > 0 && fault->line < 10) {
+		snprintf(lines[fault->line], sizeof(lines[fault->line]), "inf");
+	}
+	for (int i = 0; i < count; i++) {
+		sim_printf(fd, "%s\r", lines[i]);
+	}
+}
+
 static void dispatch_command(int fd, const char *cmd) {
+	record_command(cmd);
 	if (!strcmp(cmd, "send")) {
-		// Respond in the same order the driver reads: Data, temp, sky_temp,
-		// rain, sky_brightness, humidity, wind_speed, power, firmware, pressure.
-		sim_printf(fd, "Data\r");
-		sim_printf(fd, "20.3\r");      // temperature [C]
-		sim_printf(fd, "1\r");         // sky temperature [C]
-		sim_printf(fd, "1008\r");      // rain / dampness [raw]
-		sim_printf(fd, "751\r");       // sky brightness [raw]
-		sim_printf(fd, "66.3\r");      // humidity [%]
-		sim_printf(fd, "415\r");       // wind speed [raw]
-		sim_printf(fd, "1\r");         // power [1=ok, 0=failure]
-		sim_printf(fd, "1.8m\r");      // firmware version
-		sim_printf(fd, "101791.83\r"); // pressure [Pa]
+		simulator_fault fault = take_fault();
+		send_record(fd, &fault);
 	} else {
 		serial_simulator_trace_line(options.trace, "??", cmd);
 	}

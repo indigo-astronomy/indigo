@@ -131,7 +131,7 @@ static indigo_alpaca_error alpaca_set_guideraterightascension(indigo_alpaca_devi
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_pulseguide(indigo_alpaca_device *device, int version, int direction, double duration) {
+indigo_alpaca_error indigo_alpaca_guider_pulseguide(indigo_alpaca_device *device, int direction, int duration) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -141,28 +141,37 @@ static indigo_alpaca_error alpaca_pulseguide(indigo_alpaca_device *device, int v
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
+	if (duration < 0) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidValue;
+	}
+	// Alpaca GuideDirection: 0 = North, 1 = South, 2 = East, 3 = West, duration in milliseconds
+	const char *property_name;
+	const char *item_name;
+	switch (direction) {
+		case 0:
+			property_name = GUIDER_GUIDE_DEC_PROPERTY_NAME;
+			item_name = GUIDER_GUIDE_NORTH_ITEM_NAME;
+			break;
+		case 1:
+			property_name = GUIDER_GUIDE_DEC_PROPERTY_NAME;
+			item_name = GUIDER_GUIDE_SOUTH_ITEM_NAME;
+			break;
+		case 2:
+			property_name = GUIDER_GUIDE_RA_PROPERTY_NAME;
+			item_name = GUIDER_GUIDE_EAST_ITEM_NAME;
+			break;
+		case 3:
+			property_name = GUIDER_GUIDE_RA_PROPERTY_NAME;
+			item_name = GUIDER_GUIDE_WEST_ITEM_NAME;
+			break;
+		default:
+			pthread_mutex_unlock(&device->mutex);
+			return indigo_alpaca_error_InvalidValue;
+	}
 	if (duration > 0) {
-		switch (direction) {
-			case 0:
-				device->guider.ispulseguiding = true;
-				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, duration);
-				break;
-			case 1:
-				device->guider.ispulseguiding = true;
-				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, duration);
-				break;
-			case 2:
-				device->guider.ispulseguiding = true;
-				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, duration);
-				break;
-			case 3:
-				device->guider.ispulseguiding = true;
-				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, duration);
-				break;
-			default:
-				pthread_mutex_unlock(&device->mutex);
-				return indigo_alpaca_error_InvalidValue;
-		}
+		device->guider.ispulseguiding = true;
+		indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, property_name, item_name, duration);
 	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
@@ -265,7 +274,7 @@ long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int v
 		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
-	if (!strcmp(command, "guideraterightascensionrate")) {
+	if (!strcmp(command, "guideraterightascension")) {
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "GuideRateRightAscension=%lf", &value) == 1) {
@@ -277,10 +286,10 @@ long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int v
 	}
 	if (!strcmp(command, "pulseguide")) {
 		int direction = 0;
-		double duration = 0;
+		int duration = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Direction=%d", &direction) == 1 && sscanf(param_2, "Duration=%lf", &duration) == 1) {
-			result = alpaca_pulseguide(alpaca_device, version, direction, duration);
+		if (sscanf(param_1, "Direction=%d", &direction) == 1 && sscanf(param_2, "Duration=%d", &duration) == 1) {
+			result = indigo_alpaca_guider_pulseguide(alpaca_device, direction, duration);
 		} else {
 			result = indigo_alpaca_error_InvalidValue;
 		}

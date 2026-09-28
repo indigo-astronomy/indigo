@@ -114,7 +114,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 		} else if (c == 'G' || c == 'P') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
-			while ((res = indigo_uni_read_line(handle, request, BUFFER_SIZE)) > 0) {
+			while ((res = indigo_uni_read_line(handle, request, sizeof(request) - 1)) > 0) {
 				bool keep_alive = true;
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
@@ -129,7 +129,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 					char websocket_key[256] = "";
 					bool use_gzip = false;
 					bool use_imagebytes = false;
-					while (indigo_uni_read_line(handle, header, BUFFER_SIZE) > 0) {
+					while (indigo_uni_read_line(handle, header, sizeof(header) - 1) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19)) {
 							strncpy(websocket_key, header + 19, sizeof(websocket_key) - 1);
 							websocket_key[sizeof(websocket_key) - 1] = '\0';
@@ -341,7 +341,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
 							int content_length = 0;
 							char header[BUFFER_SIZE];
-							while (indigo_uni_read_line(handle, header, INDIGO_BUFFER_SIZE) > 0) {
+							while (indigo_uni_read_line(handle, header, sizeof(header) - 1) > 0) {
 								if (!strncasecmp(header, "Content-Length:", 15)) {
 									content_length = atoi(header + 15);
 								}

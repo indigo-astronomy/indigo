@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 
 //+ include
 
@@ -40,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_wheel_qhy"
 #define DRIVER_LABEL         "QHY CFW Filter Wheel"
 #define WHEEL_DEVICE_NAME    "CFW Filter Wheel"
@@ -122,6 +121,9 @@ static void wheel_connection_handler(indigo_device *device) {
 					if (qhy_command(device, "NOW", reply, 1, 1)) {
 						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
 					}
+				} else if (X_MODEL_PROPERTY->state == INDIGO_BUSY_STATE) {
+					// A model request copied while the handshake ran is left to its handler.
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, model request pending");
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, fallback to CFW1");
 					indigo_set_switch(X_MODEL_PROPERTY, X_MODEL_1_ITEM, true);
@@ -157,6 +159,18 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			WHEEL_SLOT_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
+		if (X_MODEL_PROPERTY != NULL && X_MODEL_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(X_MODEL_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		qhy_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -188,6 +202,9 @@ static void wheel_slot_handler(indigo_device *device) {
 
 static void wheel_x_model_handler(indigo_device *device) {
 	X_MODEL_PROPERTY->state = INDIGO_OK_STATE;
+	//+ wheel.X_MODEL.on_change
+	indigo_apply_switch_targets(X_MODEL_PROPERTY);
+	//- wheel.X_MODEL.on_change
 	indigo_update_property(device, X_MODEL_PROPERTY, NULL);
 }
 
@@ -226,11 +243,7 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, wheel_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(wheel_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
@@ -274,28 +287,30 @@ indigo_result indigo_wheel_qhy(indigo_driver_action action, indigo_driver_info *
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(qhy_private_data));
-			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+			private_data = (qhy_private_data *)indigo_safe_malloc(sizeof(qhy_private_data));
+			wheel = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 			wheel->private_data = private_data;
 			indigo_attach_device(wheel);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(wheel);
 			last_action = action;
 			if (wheel != NULL) {
 				indigo_detach_device(wheel);
-				free(wheel);
+				indigo_safe_free(wheel);
 				wheel = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

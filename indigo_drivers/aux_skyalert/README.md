@@ -24,3 +24,7 @@ indigo_server indigo_aux_skyalert
 ## Status: Untested
 
 Developed with a simulator only
+
+## Testing
+
+2026-09-27 20:55 3.0.0.8 mac arm64 simulator 10/10 OK

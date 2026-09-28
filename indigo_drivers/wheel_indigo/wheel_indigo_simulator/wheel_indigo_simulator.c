@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 
 typedef struct {
 	bool headless;
@@ -42,6 +43,7 @@ static int serial_fd = -1;
 static int current_filter = 1;
 static int target_filter = 1;
 static int moving = 0;
+static serial_motion motion = { .position = 1, .target = 1 };
 
 static void usage(const char *name) {
 	printf("Pegasus Indigo filter wheel serial simulator\n");
@@ -91,12 +93,10 @@ static bool write_response(const char *response) {
 }
 
 static void update_state(void) {
-	if (current_filter < target_filter) {
-		current_filter++;
-	} else if (current_filter > target_filter) {
-		current_filter--;
-	} else {
-		moving = 0;
+	serial_motion_update(&motion);
+	moving = motion.duration > 0;
+	if (!moving) {
+		current_filter = motion.position;
 	}
 }
 
@@ -118,6 +118,7 @@ static void dispatch_command(const char *command) {
 		int slot = atoi(command + 3);
 		if (slot >= 1 && slot <= 7) {
 			target_filter = slot;
+			serial_motion_start(&motion, slot, 3);
 			moving = current_filter != target_filter;
 		}
 		snprintf(response, sizeof(response), "%s\n", command);
@@ -128,6 +129,7 @@ static void dispatch_command(const char *command) {
 	} else if (!strcmp(command, "WI")) {
 		moving = 0;
 		current_filter = target_filter = 1;
+		serial_motion_sync(&motion, 1);
 		write_response("WI:1\n");
 	} else if (!strcmp(command, "WQ")) {
 		/* The Arduino sketch intentionally gives no response to WQ. */
@@ -156,7 +158,9 @@ static void run_loop(void) {
 		char buffer[32];
 		ssize_t count = read(serial_fd, buffer, sizeof(buffer));
 		if (count <= 0) {
-			if (count < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO)) {
+			if (count == 0 || errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO) {
+				used = 0;
+				usleep(1000);
 				continue;
 			}
 			break;

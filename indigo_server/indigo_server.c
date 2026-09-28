@@ -87,7 +87,7 @@
 #include "wheel_asi/indigo_wheel_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
 #include "wheel_atik/indigo_wheel_atik.h"
-#include "ccd_qhy2/indigo_ccd_qhy.h"
+#include "ccd_qhy2/indigo_ccd_qhy2.h"
 #include "focuser_fcusb/indigo_focuser_fcusb.h"
 #include "ccd_iidc/indigo_ccd_iidc.h"
 #include "mount_lx200/indigo_mount_lx200.h"
@@ -172,7 +172,6 @@
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #include "ccd_svb/indigo_ccd_svb.h"
 #include "ccd_svb2/indigo_ccd_svb2.h"
-#include "agent_astap/indigo_agent_astap.h"
 #include "rotator_optec/indigo_rotator_optec.h"
 #include "mount_starbook/indigo_mount_starbook.h"
 #include "ccd_playerone/indigo_ccd_playerone.h"
@@ -202,6 +201,7 @@
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
 #include "focuser_qhy/indigo_focuser_qhy.h"
 #include "aux_svbpowerbox/indigo_aux_svbpowerbox.h"
+#include "polaralign_mlastro/indigo_polaralign_mlastro.h"
 #include "polaralign_simulator/indigo_polaralign_simulator.h"
 #include "focuser_askar/indigo_focuser_askar.h"
 #ifndef __aarch64__
@@ -217,7 +217,6 @@
 #ifdef INDIGO_LINUX
 #include "ccd_gphoto2/indigo_ccd_gphoto2.h"
 #endif
-#include "agent_snoop/indigo_agent_snoop.h"
 #include "agent_scripting/indigo_agent_scripting.h"
 #endif
 
@@ -227,14 +226,12 @@ driver_entry_point static_drivers[] = {
 #ifdef STATIC_DRIVERS
 	indigo_agent_alpaca,
 	indigo_agent_astrometry,
-	indigo_agent_astap,
 	indigo_agent_auxiliary,
 	indigo_agent_guider,
 	indigo_agent_imager,
 	indigo_agent_config,
 	indigo_agent_scripting,
 	indigo_agent_mount,
-	indigo_agent_snoop,
 	indigo_agent_test,
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
@@ -351,6 +348,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_starbook,
 	indigo_mount_synscan,
 	indigo_mount_temma,
+	indigo_polaralign_mlastro,
 	indigo_polaralign_simulator,
 	indigo_rotator_asi,
 	indigo_rotator_falcon,
@@ -914,6 +912,7 @@ static char *execute_query(char *command, ...) {
 }
 
 static void check_versions(indigo_device *device) {
+	indigo_rename_thread("Version checker");
 	while (true) {
 		bool redefine = false;
 		char *line = execute_query("s_rpi_ctrl.sh --list-available-versions");
@@ -1961,7 +1960,7 @@ static void server_main() {
 // Runs in the worker process (the forked child, or the whole process when --do-not-fork is set):
 // reaps exited driver/INDI subprocesses on SIGCHLD and initiates shutdown on SIGINT/SIGTERM/SIGHUP.
 static void *server_signal_thread(void *arg) {
-	indigo_rename_thread("Signals");
+	indigo_rename_thread("Server signal handler");
 	sigset_t set;
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
@@ -1994,7 +1993,7 @@ static void *server_signal_thread(void *arg) {
 // whether the worker should be restarted (SIGHUP) or the server should exit (SIGINT/SIGTERM).
 // SIGCHLD is left to the parent's explicit waitpid(server_pid) loop, avoiding a reap race.
 static void *supervisor_signal_thread(void *arg) {
-	indigo_rename_thread("Signals");
+	indigo_rename_thread("Supervisor signal handler");
 	sigset_t set;
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);

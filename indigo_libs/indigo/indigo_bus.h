@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Sexagesimal buffer handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -37,6 +38,10 @@
 #include <indigo/indigo_config.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_uni_io.h>
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <sys/time.h>
+#endif
 
 #define INDIGO_VERSION_3
 
@@ -71,6 +76,10 @@ extern "C" {
 
 typedef struct indigo_client indigo_client;
 typedef struct indigo_device indigo_device;
+
+/** Timer and background callback function prototype.
+ */
+typedef void (*indigo_timer_callback)(indigo_device *device);
 
 /** Device interface (value should be used for INFO_DEVICE_INTERFACE_ITEM->text.value)
  */
@@ -260,6 +269,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 			bool value;                     ///< item value (for switch properties)
 			bool default_value;            	///< item default value (for switch properties)
 			bool previous_value;            ///< item previous value (for switch properties)
+			bool target;                    ///< item target value (for switch properties), the last requested value; set with value by indigo_property_copy_values(), never sent over the protocol
 		} sw;
 		/** Light property item specific fields.
 		 */
@@ -310,7 +320,7 @@ INDIGO_EXTERN indigo_property *ALERT_PROPERTY;
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
-	indigo_uni_handle *lock;            ///< device global lock
+	indigo_uni_handle *lock;            ///< deprecated, unused since the file based global lock was removed
 	bool is_remote;                     ///< is remote device
 	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data
@@ -548,6 +558,15 @@ INDIGO_EXTERN indigo_result indigo_update_property_to_client(indigo_device *devi
  */
 INDIGO_EXTERN indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...);
 
+/** Refuse a change request the driver can not serve right now.
+
+    A request answered with a bare INDIGO_OK is indistinguishable from a lost one: a client that waits
+    for a response never gets it, and a configuration restore, which waits per property, stalls on it
+    and loses every setting after it in file order. This publishes the refusal instead, restating the
+    property's unchanged values so the client can correct its own copy.
+ */
+INDIGO_EXTERN indigo_result indigo_reject_change(indigo_device *device, indigo_property *property, const char *format, ...);
+
 /** Broadcast property removal.
  */
 INDIGO_EXTERN indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...);
@@ -560,6 +579,41 @@ INDIGO_EXTERN indigo_result indigo_send_message(indigo_device *device, indigo_pr
  */
 INDIGO_EXTERN indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property);
 
+/** Identity of one attachment of a client to the bus. The bus gives a client a new, never reused generation every time
+    it is attached, so a reference taken while the client was attached never matches a later attachment, even of another
+    client allocated at the same address after the first one was detached and freed. Treat it as an opaque value.
+ */
+typedef struct {
+	indigo_client *client;						///< client pointer, NULL for no client
+	uint64_t generation;							///< attach generation, 0 for no client
+} indigo_client_ref;
+
+/** Return the reference of the current attachment of client, or a reference matching no client ({ NULL, 0 }) if client
+    is NULL or not attached. The pointer and the generation are read together under the bus mutex, so the result is
+    consistent also when called from change_property() (which the bus calls with its mutex locked).
+ */
+INDIGO_EXTERN indigo_client_ref indigo_current_client_ref(indigo_client *client);
+
+/** Register an operation that the device started on behalf of a client and that is potentially dangerous to leave
+    running if the client detaches from the bus (e.g. because its network connection was lost) before the operation ends.
+    client is the address of the device's record of the requesting client, taken by indigo_current_client_ref() when the
+    request was accepted; the record is written by the device's change_property() (which the bus calls with its mutex
+    locked) and dereferenced here under the same mutex, so no other lock is needed. If the recorded client is NULL or its
+    attachment has ended (it detached, even if a client was attached at the same address since then), nothing is
+    registered and INDIGO_NOT_FOUND is returned; the device should then stop the operation itself. The operation is identified by the device and the name of the property,
+    a later registration for the same property replaces the previous one (e.g. when another client takes the operation
+    over). If the client detaches, abort (copied at registration: device, name and items) is sent with the device's
+    current access token through indigo_change_property() and the entry is removed. The bus does not infer the end of the
+    operation from property updates or deletions: the device must call indigo_unregister_detach_abort() whenever the
+    operation ends or is stopped (including disconnect and detach). Entries left behind by a detached device are dropped
+    with a log message.
+ */
+INDIGO_EXTERN indigo_result indigo_register_detach_abort(indigo_device *device, const indigo_client_ref *client, indigo_property *property, indigo_property *abort);
+
+/** Unregister an operation registered by indigo_register_detach_abort(), e.g. when it ended or was stopped normally.
+ */
+INDIGO_EXTERN indigo_result indigo_unregister_detach_abort(indigo_device *device, const char *property_name);
+
 /** Broadcast property change request.
  */
 INDIGO_EXTERN indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
@@ -567,6 +621,18 @@ INDIGO_EXTERN indigo_result indigo_change_property(indigo_client *client, indigo
 /** Broadcast enableBLOB request.
  */
 INDIGO_EXTERN indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
+
+/** Schedule short background work without acquiring the device/master mutex.
+ * Callbacks must not perform hardware I/O or block. Call after indigo_start(),
+ * stop producers and cancel before releasing callback resources or stopping the bus.
+ */
+INDIGO_EXTERN bool indigo_execute_background_handler_in(indigo_device *device, double delay, indigo_timer_callback handler);
+
+/** Cancel background work; NULL matches every callback for the device.
+ * Stop recurring producers first. Waits for matching running work, except when called
+ * from the background worker itself. Do not hold a lock needed by the callback.
+ */
+INDIGO_EXTERN void indigo_cancel_background_handler(indigo_device *device, indigo_timer_callback handler);
 
 /** Stop bus operation.
  Call has no effect if bus is already stopped.
@@ -684,6 +750,21 @@ INDIGO_EXTERN indigo_item *indigo_get_item(indigo_property *property, const char
 /** Get switch item value.
  */
 INDIGO_EXTERN bool indigo_get_switch(indigo_property *property, const char *item_name);
+
+/** Get switch item target, the value last requested by a client.
+ A change handler reads the target instead of the value, because a status poll may overwrite the value
+ between the moment the request is copied and the moment the handler runs; the poll never writes the target.
+ The target is internal and never sent over the protocol. It is safe only for requests guarded by BUSY
+ (INDIGO_COPY_VALUES_PROCESS_CHANGE); a request accepted while BUSY (the _ANYTIME variants) may overwrite
+ the targets while the handler reads them, one item of a one-of-many property at a time.
+ */
+INDIGO_EXTERN bool indigo_get_switch_target(indigo_property *property, const char *item_name);
+
+/** Apply switch item targets to the values.
+ A change handler that sent the targets to the device calls it when the device accepted them. On failure
+ the handler sets the values to the state the device reports instead, e.g. with indigo_set_switch().
+ */
+INDIGO_EXTERN void indigo_apply_switch_targets(indigo_property *property);
 
 /** Copy item values from other property into property (optionally including property state).
  */
@@ -809,7 +890,12 @@ INDIGO_EXTERN bool indigo_async(void *fun(void *data), void *data);
  */
 INDIGO_EXTERN double indigo_stod(const char *string);
 
-/** Convert double to sexagesimal string.
+/** Convert double to sexagesimal string in caller-owned storage.
+ */
+INDIGO_EXTERN char *indigo_dtos_r(double value, const char *format, char *buffer, size_t size);
+
+/** Convert double to sexagesimal string using four rotating static buffers.
+ * Not thread-safe; use indigo_dtos_r() for caller-owned storage.
  */
 INDIGO_EXTERN char* indigo_dtos(double value, const char *format);
 
@@ -843,14 +929,26 @@ INDIGO_EXTERN void indigo_set_text_item_value(indigo_item *item, const char *val
 #define INDIGO_COPY_NAME(target, source) { memset(target, 0, INDIGO_NAME_SIZE); strncpy(target, source, INDIGO_NAME_SIZE - 1); }
 #define INDIGO_COPY_VALUE(target, source) { memset(target, 0, INDIGO_VALUE_SIZE); strncpy(target, source, INDIGO_VALUE_SIZE - 1); }
 
-#define INDIGO_DEFINE_MATCHING_PROPERTY(template) if (indigo_property_match(template, property)) { if (client != NULL) indigo_define_property_to_client(device, client, template, NULL); else indigo_define_property(device, template, NULL); }
-#define INDIGO_COPY_VALUES_PROCESS_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
-#define INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(p, h) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
+	#define INDIGO_DEFINE_MATCHING_PROPERTY(template) if (indigo_property_match(template, property)) { if (client != NULL) indigo_define_property_to_client(device, client, template, NULL); else indigo_define_property(device, template, NULL); }
+	#define INDIGO_COPY_VALUES_PROCESS_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
+	#define INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0, h); }
+	#define INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, 0, h); }
+	#define INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(p, h) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
+	#define INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(p, h) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0, h); }
 #define INDIGO_COPY_TARGETS_PROCESS_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
 #define INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); h(device); }
 #define INDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); h(device); }
 
 #define INDIGO_UPDATE_PROPERTY_STATE(p, s, f, ...) { p->state = s; indigo_update_property(device, p, f, ##__VA_ARGS__); }
+
+/** Refuse a change request the driver can not serve right now and leave the change branch.
+
+    Use it where INDIGO_COPY_*_PROCESS_CHANGE would otherwise be skipped by a driver-specific
+    admission check, so the request is answered instead of silently dropped; see
+    indigo_reject_change(). The property's own BUSY state is already handled by those macros and
+    must not be refused this way, because that would overwrite the running operation's state.
+ */
+#define INDIGO_REJECT_CHANGE_IF(c, p, f, ...) if (c) { indigo_reject_change(device, p, f, ##__VA_ARGS__); return INDIGO_OK; }
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
@@ -897,10 +995,6 @@ INDIGO_EXTERN bool indigo_use_blob_caching;
 /** Proxy BLOB content
  */
 INDIGO_EXTERN bool indigo_proxy_blob;
-
-/** Use recursive locks for dispaching all bus messages
- */
-INDIGO_EXTERN bool indigo_use_strict_locking;
 
 /** Allocate, assert and zero
  */

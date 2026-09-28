@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_focuser_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_focuser_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS Focuser"
 #define FOCUSER_DEVICE_NAME  "ASTROMECHANICS Focuser"
@@ -54,6 +53,7 @@ typedef struct {
 	indigo_property *x_focuser_aperture_property;
 	//+ data
 	char response[16];
+	int motion_polls;
 	//- data
 } astromechanics_private_data;
 
@@ -69,7 +69,7 @@ static bool astromechanics_command(indigo_device *device, char *command, int res
 		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 		va_end(args);
 		if (result > 0 && response > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n#", "\n#", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n#", "\n#", INDIGO_DELAY(1));
 		}
 	}
 	return result > 0;
@@ -86,6 +86,52 @@ static void astromechanics_close(indigo_device *device) {
 
 //- code
 
+//+ focuser.code
+
+static bool astromechanics_position(indigo_device *device, int *position) {
+	if (!astromechanics_command(device, "P#", 16)) {
+		return false;
+	}
+	char tail;
+	return sscanf(PRIVATE_DATA->response, "%d%c", position, &tail) == 1 && *position >= 0 && *position <= 9999;
+}
+
+static void focuser_motion_finalizer(indigo_device *device) {
+	int position;
+	if (!astromechanics_position(device, &position)) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		FOCUSER_POSITION_ITEM->number.value = position;
+		if (position == (int)FOCUSER_POSITION_ITEM->number.target) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (--PRIVATE_DATA->motion_polls <= 0) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
+		}
+	}
+	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+static void astromechanics_start_motion(indigo_device *device, int position) {
+	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+	FOCUSER_POSITION_ITEM->number.target = position;
+	if (astromechanics_command(device, "M%04d#", 0, position)) {
+		PRIVATE_DATA->motion_polls = 100;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+//- focuser.code
+
 #pragma mark - High level code (focuser)
 
 static void focuser_connection_handler(indigo_device *device) {
@@ -94,8 +140,10 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = astromechanics_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			if (astromechanics_command(device, "P#", 16)) {
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(PRIVATE_DATA->response);
+			int position;
+			connection_result = astromechanics_position(device, &position);
+			if (connection_result) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 			}
 			//- focuser.on_connect
 		}
@@ -110,6 +158,17 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			X_FOCUSER_APERTURE_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			FOCUSER_POSITION_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_APERTURE_PROPERTY, NULL);
 		astromechanics_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
@@ -129,76 +188,29 @@ static void focuser_x_focuser_aperture_handler(indigo_device *device) {
 }
 
 static void focuser_steps_handler(indigo_device *device) {
-	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
-	int position;
-	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-		position = (int)FOCUSER_POSITION_ITEM->number.value - (int)FOCUSER_STEPS_ITEM->number.value;
-		if (position < 0) {
-			position = 0;
-		}
-	} else {
-		position = (int)FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value;
-		if (position > 9999) {
-			position = 9999;
-		}
-	}
-	if (astromechanics_command(device, "M%04d#", 0, position)) {
-		for (int i = 0; i < 50; i++) {
-			if (astromechanics_command(device, "P#", 16)) {
-				FOCUSER_POSITION_ITEM->number.value = position = atoi(PRIVATE_DATA->response);
-				if (FOCUSER_POSITION_ITEM->number.value == position) {
-					break;
-				} else {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				}
-			} else {
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
-			}
-			indigo_usleep(100000);
-		}
-	} else {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	//- focuser.FOCUSER_STEPS.on_change
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-}
-
-static void focuser_position_handler(indigo_device *device) {
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-	//+ focuser.FOCUSER_POSITION.on_change
-	int position;
-	position = (int)FOCUSER_POSITION_ITEM->number.target;
+	int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1;
+	int position = (int)FOCUSER_POSITION_ITEM->number.value + direction * (int)FOCUSER_STEPS_ITEM->number.value;
 	if (position < 0) {
 		position = 0;
 	} else if (position > 9999) {
 		position = 9999;
 	}
-	FOCUSER_POSITION_ITEM->number.target = position;
-	if (astromechanics_command(device, "M%04d#", 0, position)) {
-		for (int i = 0; i < 50; i++) {
-			if (astromechanics_command(device, "P#", 16)) {
-				FOCUSER_POSITION_ITEM->number.value = position = atoi(PRIVATE_DATA->response);
-				if (FOCUSER_POSITION_ITEM->number.value == position) {
-					break;
-				} else {
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				}
-			} else {
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
-			}
-			indigo_usleep(100000);
-		}
-	} else {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	astromechanics_start_motion(device, position);
+	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
+	}
+	//- focuser.FOCUSER_STEPS.on_change
+}
+
+static void focuser_position_handler(indigo_device *device) {
+	//+ focuser.FOCUSER_POSITION.on_change
+	int position = (int)FOCUSER_POSITION_ITEM->number.target;
+	astromechanics_start_motion(device, position);
+	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
 	}
 	//- focuser.FOCUSER_POSITION.on_change
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (focuser)
@@ -247,19 +259,17 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, focuser_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_APERTURE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_APERTURE_PROPERTY, focuser_x_focuser_aperture_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	}
@@ -294,28 +304,30 @@ indigo_result indigo_focuser_astromechanics(indigo_driver_action action, indigo_
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(astromechanics_private_data));
-			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			private_data = (astromechanics_private_data *)indigo_safe_malloc(sizeof(astromechanics_private_data));
+			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			indigo_attach_device(focuser);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(focuser);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);
-				free(focuser);
+				indigo_safe_free(focuser);
 				focuser = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

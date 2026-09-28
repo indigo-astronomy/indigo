@@ -1,9 +1,9 @@
-// Copyright (c) 2017-2025 Rumen G. Bogdanovski
+// Copyright (c) 2017-2026 Rumen G. Bogdanovski
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,18 +16,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 Build 0 - PoC by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// This file generated from indigo_guider_asi.driver
 
-/** INDIGO ZWO USB2ST4 guider driver main
- \file indigo_guider_asi_main.c
- */
-
-#include <stdio.h>
-#include <string.h>
+#include <indigo/indigo_driver_xml.h>
 
 #include "indigo_guider_asi.h"
-#include <indigo/indigo_driver_xml.h>
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;

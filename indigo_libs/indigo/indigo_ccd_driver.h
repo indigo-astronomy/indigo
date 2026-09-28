@@ -555,7 +555,6 @@ typedef struct {
 	bool countdown_canceled;									///< countdown canceled
 	bool countdown_enabled;									///< countdown enabled
 	double countdown_endtime;									///< countdown end time
-	indigo_timer *countdown_timer;								///< countdown timer
 	void *preview_image;													///< preview image buffer
 	unsigned long preview_image_size;							///< preview image buffer size
 	void *preview_histogram;											///< preview histogram buffer
@@ -652,6 +651,10 @@ INDIGO_EXTERN void indigo_finalize_video_stream(indigo_device *device);
 /** Finalize DSLR video stream.
  */
 INDIGO_EXTERN void indigo_finalize_dslr_video_stream(indigo_device *device);
+
+/** Pre exposure setup..
+ */
+INDIGO_EXTERN indigo_result indigo_ccd_exposure_setup(indigo_device *device);
 
 /** Set alert state on dependent properties.
  */

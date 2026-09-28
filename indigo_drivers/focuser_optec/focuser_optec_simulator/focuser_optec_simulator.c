@@ -1,241 +1,365 @@
-// Optec TCF-S focuser simulator
+// Optec TCF-S/TCF-S3 focuser simulator
 //
 // Copyright (c) 2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
+//
+// This simulator was refactored by a Codex agent.
 
+#include <ctype.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <string.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <signal.h>
+#include <sys/select.h>
+#include <unistd.h>
 
+#include "../../../indigo_test/simulator_common/serial_motion.h"
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
-typedef struct {
-	bool headless;
-	bool trace;
-	const char *ready_file;
-} simulator_options;
+typedef enum { FREE_MODE, MANUAL_MODE, AUTO_A_MODE, AUTO_B_MODE, SLEEP_MODE } controller_mode;
 
-static simulator_options options = {
-	.headless = false,
-	.trace = true,
-	.ready_file = NULL
-};
-
+static const char *profile = "normal", *ready_file, *fault_file;
+static FILE *events;
+static bool headless, trace, quiet, stalled;
 static volatile sig_atomic_t running = 1;
-static int serial_fd = -1;
+static int serial_fd = -1, maximum = 9999;
+static int slope[2] = { 86, 42 }, sign_value[2], delay_value[2];
+static double temperature = 24.5, sleep_temperature, telemetry_time, automatic_temperature;
+static serial_motion motion;
+static controller_mode mode = FREE_MODE, sleep_previous_mode = AUTO_A_MODE;
+static int sleep_position, automatic_position;
 
-static unsigned position = 5000;
-static unsigned target = 5000;
-static unsigned slope_a = 86;
-static char slope_a_sign = '0';
-static bool manual_mode = false;
-static bool quiet = false;
-
-static void usage(const char *name) {
-	printf("Optec TCF-S focuser simulator\n");
-	printf("Usage: %s [OPTIONS]\n", name);
-	printf("  --headless              Disable interactive output suitable for terminals\n");
-	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
-	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  -h, --help              Show this help and exit\n");
+static void stop_signal(int signal) {
+	(void)signal;
+	running = 0;
 }
 
-static void signal_handler(int sig) {
-	(void)sig;
-	running = 0;
-	if (serial_fd >= 0) {
-		close(serial_fd);
-		serial_fd = -1;
+static void event(const char *kind, const char *frame) {
+	if (events) {
+		fprintf(events, "%.6f %s %s\n", serial_motion_time(), kind, frame);
+		fflush(events);
 	}
 }
 
-static bool parse_args(int argc, char *argv[]) {
-	for (int i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			usage(argv[0]);
-			exit(0);
-		} else if (!strcmp(argv[i], "--headless")) {
-			options.headless = true;
-			options.trace = false;
-		} else if (!strcmp(argv[i], "--trace")) {
-			options.trace = true;
-		} else if (!strcmp(argv[i], "--ready-file")) {
-			if (++i == argc) {
-				fprintf(stderr, "--ready-file requires a path\n");
-				return false;
-			}
-			options.ready_file = argv[i];
-		} else {
-			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
+static void update_motion(void) {
+	if (mode == AUTO_A_MODE || mode == AUTO_B_MODE) {
+		int slot = mode == AUTO_B_MODE;
+		double signed_slope = sign_value[slot] ? -slope[slot] : slope[slot];
+		int target = automatic_position + (int)((temperature - automatic_temperature) * signed_slope);
+		target = target < 0 ? 0 : target > maximum ? maximum : target;
+		if (!stalled && target != (int)motion.target) {
+			serial_motion_start(&motion, target, 200);
+		}
+	}
+	if (!stalled) {
+		serial_motion_update(&motion);
+	}
+}
+
+static bool exact_digits(const char *text, int count, int *value) {
+	if ((int)strlen(text) != count) {
+		return false;
+	}
+	int result = 0;
+	for (int index = 0; index < count; index++) {
+		if (!isdigit((unsigned char)text[index])) {
 			return false;
 		}
+		result = result * 10 + text[index] - '0';
+	}
+	*value = result;
+	return true;
+}
+
+static bool read_fault(const char *command, char *action, size_t size) {
+	char key[64] = { 0 };
+	FILE *file = fault_file ? fopen(fault_file, "r") : NULL;
+	if (!file) {
+		return false;
+	}
+	if (fscanf(file, "%63s %63s", key, action) != 2) {
+		*action = 0;
+	}
+	fclose(file);
+	if (!strcmp(key, "external")) {
+		int position = atoi(action);
+		position = position < 0 ? 0 : position > maximum ? maximum : position;
+		serial_motion_sync(&motion, position);
+		stalled = false;
+		unlink(fault_file);
+		return false;
+	}
+	if (!strcmp(key, "temperature")) {
+		temperature = strtod(action, NULL);
+		unlink(fault_file);
+		return false;
+	}
+	if (strcmp(key, command)) {
+		*action = 0;
+		return false;
+	}
+	bool persistent = !strncmp(action, "always_", 7);
+	if (persistent) {
+		memmove(action, action + 7, strlen(action + 7) + 1);
+	}
+	action[size - 1] = 0;
+	if (!persistent) {
+		unlink(fault_file);
 	}
 	return true;
 }
 
-static bool sim_printf(int handle, const char *format, ...) {
-	char buffer[128];
-	va_list args;
+static bool write_reply(const char *payload, const char *action) {
+	if (!strcmp(action, "silent") || !strcmp(action, "reject")) {
+		return true;
+	}
+	if (!strcmp(action, "close")) {
+		running = 0;
+		close(serial_fd);
+		serial_fd = -1;
+		return true;
+	}
+	if (!strcmp(action, "malformed")) {
+		payload = "INVALID";
+	} else if (!strcmp(action, "badvalue")) {
+		payload = "P=ABCD";
+	} else if (!strcmp(action, "error1")) {
+		payload = "ER=1";
+	} else if (!strcmp(action, "error2")) {
+		payload = "ER=2";
+	} else if (!strcmp(action, "error3")) {
+		payload = "ER=3";
+	}
+	char frame[160];
+	if (!strcmp(action, "overlong")) {
+		snprintf(frame, sizeof(frame), "0123456789012345678901234567890123456789012345678901234567890123456789\n\r");
+	} else {
+		snprintf(frame, sizeof(frame), "%s\n\r", payload);
+	}
+	event("TX", frame);
+	if (trace) {
+		fprintf(stderr, "<- %s", frame);
+	}
+	size_t length = strlen(frame);
+	if (!strcmp(action, "partial") || !strcmp(action, "unterminated")) {
+		return serial_simulator_write_all(serial_fd, frame, length > 2 ? length - 2 : 0);
+	}
+	if (!strcmp(profile, "split") && length > 2) {
+		if (!serial_simulator_write_all(serial_fd, frame, 1)) {
+			return false;
+		}
+		usleep(10000);
+		return serial_simulator_write_all(serial_fd, frame + 1, length - 1);
+	}
+	return serial_simulator_write_all(serial_fd, frame, length);
+}
 
-	va_start(args, format);
-	int length = vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-
-	if (length < 0) {
+static bool dispatch(const char *command) {
+	event("RX", command);
+	if (trace) {
+		fprintf(stderr, "-> %s\n", command);
+	}
+	char action[64] = { 0 }, reply[32];
+	read_fault(command, action, sizeof(action));
+	if (!strcmp(action, "reject")) {
+		return true;
+	}
+	update_motion();
+	int value = 0;
+	if (!strcmp(command, "FMMODE")) {
+		mode = MANUAL_MODE;
+		stalled = false;
+		return write_reply("!", action);
+	}
+	if (!strcmp(command, "FWAKUP") && mode == SLEEP_MODE) {
+		mode = MANUAL_MODE;
+		return write_reply("WAKE", action);
+	}
+	if (!strcmp(command, "FQUIT0")) {
+		quiet = false;
+		return write_reply("DONE", action);
+	}
+	if (!strcmp(command, "FQUIT1")) {
+		quiet = true;
+		return write_reply("DONE", action);
+	}
+	if (mode != MANUAL_MODE) {
 		return false;
 	}
-	if ((size_t)length >= sizeof(buffer)) {
-		length = (int)sizeof(buffer) - 1;
+	if (!strcmp(command, "FFMODE")) {
+		mode = FREE_MODE;
+		return write_reply("END", action);
 	}
-	if (options.trace) {
-		fprintf(stderr, "<- %s", buffer);
+	if (!strcmp(command, "FAMODE") || !strcmp(command, "FBMODE")) {
+		mode = command[1] == 'A' ? AUTO_A_MODE : AUTO_B_MODE;
+		sleep_previous_mode = mode;
+		automatic_position = (int)motion.position;
+		automatic_temperature = temperature;
+		telemetry_time = serial_motion_time();
+		return true;
 	}
-	return serial_simulator_write_all(handle, buffer, (size_t)length);
-}
-
-static int read_exact(int handle, char *buffer, int length) {
-	int total_bytes = 0;
-	while (running && total_bytes < length) {
-		ssize_t bytes_read = read(handle, buffer + total_bytes, (size_t)(length - total_bytes));
-		if (bytes_read < 0) {
-			if (errno == EINTR) {
-				continue;
-			}
-			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO) {
-				return total_bytes;
-			}
-			return -1;
+	if (!strcmp(command, "FPOSRO")) {
+		snprintf(reply, sizeof(reply), "P=%04d", (int)motion.position);
+		return write_reply(reply, action);
+	}
+	if (!strcmp(command, "FTMPRO")) {
+		snprintf(reply, sizeof(reply), "T=%+05.1f", temperature);
+		return write_reply(reply, action);
+	}
+	if (!strcmp(command, "FREADA") || !strcmp(command, "FREADB")) {
+		int slot = command[5] == 'B';
+		snprintf(reply, sizeof(reply), "%c=%04d", slot ? 'B' : 'A', slope[slot]);
+		return write_reply(reply, action);
+	}
+	if (!strcmp(command, "FTxxxA") || !strcmp(command, "FTxxxB")) {
+		int slot = command[5] == 'B';
+		snprintf(reply, sizeof(reply), "%c=%d", slot ? 'B' : 'A', sign_value[slot]);
+		return write_reply(reply, action);
+	}
+	if ((!strncmp(command, "FI", 2) || !strncmp(command, "FO", 2)) && exact_digits(command + 2, 4, &value) && value <= maximum) {
+		int target = (int)motion.position + (command[1] == 'I' ? -value : value);
+		target = target < 0 ? 0 : target > maximum ? maximum : target;
+		if (!strcmp(action, "stall")) {
+			stalled = true;
+			action[0] = 0;
+		} else {
+			stalled = false;
+			serial_motion_start(&motion, target, 200);
 		}
-		if (bytes_read == 0) {
-			return total_bytes;
+		return write_reply("*", action);
+	}
+	if ((!strncmp(command, "FLA", 3) || !strncmp(command, "FLB", 3)) && exact_digits(command + 3, 3, &value)) {
+		slope[command[2] == 'B'] = value;
+		return write_reply("DONE", action);
+	}
+	if ((!strncmp(command, "FZAxx", 5) || !strncmp(command, "FZBxx", 5)) && (command[5] == '0' || command[5] == '1')) {
+		sign_value[command[2] == 'B'] = command[5] - '0';
+		return write_reply("DONE", action);
+	}
+	if ((!strncmp(command, "FDA", 3) || !strncmp(command, "FDB", 3)) && exact_digits(command + 3, 3, &value)) {
+		delay_value[command[2] == 'B'] = value;
+		return write_reply("DONE", action);
+	}
+	if (!strcmp(command, "FCENTR")) {
+		serial_motion_start(&motion, maximum == 7000 ? 3500 : 5000, 200);
+		return write_reply("CENTER", action);
+	}
+	if (!strcmp(command, "FSLEEP")) {
+		sleep_position = (int)motion.position;
+		sleep_temperature = temperature;
+		mode = SLEEP_MODE;
+		return write_reply("ZZZ", action);
+	}
+	if (!strcmp(command, "FHOME")) {
+		int slot = sleep_previous_mode == AUTO_B_MODE;
+		double signed_slope = sign_value[slot] ? -slope[slot] : slope[slot];
+		int target = sleep_position + (int)((temperature - sleep_temperature) * signed_slope);
+		target = target < 0 ? 0 : target > maximum ? maximum : target;
+		serial_motion_start(&motion, target, 200);
+		return write_reply("DONE", action);
+	}
+	return false;
+}
+
+static bool parse_args(int argc, char **argv) {
+	for (int index = 1; index < argc; index++) {
+		if (!strcmp(argv[index], "--headless")) {
+			headless = true;
+		} else if (!strcmp(argv[index], "--trace")) {
+			trace = true;
+		} else if (index + 1 < argc && !strcmp(argv[index], "--ready-file")) {
+			ready_file = argv[++index];
+		} else if (index + 1 < argc && !strcmp(argv[index], "--profile")) {
+			profile = argv[++index];
+		} else if (!strcmp(argv[index], "--help") || !strcmp(argv[index], "-h")) {
+			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|tcf-s]\n", argv[0]);
+			exit(0);
+		} else {
+			fprintf(stderr, "Unknown/incomplete option: %s\n", argv[index]);
+			return false;
 		}
-		total_bytes += (int)bytes_read;
 	}
-	return total_bytes;
+	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "alternate") || !strcmp(profile, "tcf-s");
 }
 
-static int read_optec_command(int handle, char *buffer, int length) {
-	if (length < 7) {
-		return -1;
-	}
-	int bytes = read_exact(handle, buffer, 6);
-	if (bytes <= 0) {
-		return bytes;
-	}
-	if (bytes != 6) {
-		return 0;
-	}
-	buffer[6] = '\0';
-	serial_simulator_trace_line(options.trace, "->", buffer);
-	return bytes;
-}
-
-static void complete_motion_on_poll(void) {
-	if (target != position) {
-		position = target;
-	}
-}
-
-static void dispatch_command(int handle, const char *command) {
-	if (!strcmp(command, "FMMODE")) {
-		manual_mode = true;
-		sim_printf(handle, "!\n");
-	} else if (!strcmp(command, "FFMODE")) {
-		manual_mode = false;
-		sim_printf(handle, "END\n");
-	} else if (!strcmp(command, "FAMODE")) {
-		manual_mode = false;
-	} else if (!strcmp(command, "FBMODE")) {
-		manual_mode = false;
-	} else if (!strcmp(command, "FQUIT0")) {
-		quiet = false;
-		sim_printf(handle, "DONE\n");
-	} else if (!strcmp(command, "FQUIT1")) {
-		quiet = true;
-		sim_printf(handle, "DONE\n");
-	} else if (!strcmp(command, "FPOSRO")) {
-		complete_motion_on_poll();
-		sim_printf(handle, "P=%04u\n", position);
-	} else if (!strcmp(command, "FTMPRO")) {
-		sim_printf(handle, "T=+24.5\n");
-	} else if (!strcmp(command, "FREADA")) {
-		sim_printf(handle, "A=%04u\n", slope_a);
-	} else if (!strcmp(command, "FTxxxA")) {
-		sim_printf(handle, "A=%c\n", slope_a_sign);
-	} else if (!strncmp(command, "FI", 2)) {
-		unsigned steps = (unsigned)atoi(command + 2);
-		target = position > steps ? position - steps : 0;
-		sim_printf(handle, "*\n");
-	} else if (!strncmp(command, "FO", 2)) {
-		target = position + (unsigned)atoi(command + 2);
-		sim_printf(handle, "*\n");
-	} else if (!strncmp(command, "FLA", 3)) {
-		slope_a = (unsigned)atoi(command + 3);
-		sim_printf(handle, "DONE\n");
-	} else if (!strncmp(command, "FZAxx", 5)) {
-		slope_a_sign = command[5];
-		sim_printf(handle, "DONE\n");
-	} else if (!strcmp(command, "FCENTR")) {
-		position = target = 5000;
-		sim_printf(handle, "CENTER\n");
-	} else if (!strcmp(command, "FSLEEP")) {
-		sim_printf(handle, "ZZZ\n");
-	} else if (!strcmp(command, "FWAKUP")) {
-		sim_printf(handle, "WAKE\n");
-	}
-	(void)manual_mode;
-	(void)quiet;
-}
-
-int main(int argc, char *argv[]) {
-	char port[128];
-	char buffer[16];
-
+int main(int argc, char **argv) {
+	(void)serial_simulator_trace_line;
 	if (!parse_args(argc, argv)) {
 		return 1;
 	}
-
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-
+	maximum = !strcmp(profile, "tcf-s") ? 7000 : 9999;
+	int initial = !strcmp(profile, "alternate") ? 1234 : 5000;
+	serial_motion_sync(&motion, initial);
+	if (!strcmp(profile, "alternate")) {
+		temperature = -5.5;
+		slope[0] = 12;
+		sign_value[0] = 1;
+	}
+	fault_file = getenv("INDIGO_OPTEC_FAULT");
+	const char *event_path = getenv("INDIGO_OPTEC_EVENTS");
+	events = event_path ? fopen(event_path, "w") : NULL;
+	signal(SIGTERM, stop_signal);
+	signal(SIGINT, stop_signal);
+	char port[128];
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
-	if (serial_fd < 0) {
+	if (serial_fd < 0 || (ready_file && !serial_simulator_write_ready_file(ready_file, "focuser_optec_simulator", port))) {
+		if (events) {
+			fclose(events);
+		}
 		return 1;
 	}
-
-	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, "focuser_optec_simulator", port)) {
-		close(serial_fd);
-		return 1;
-	}
-
-	if (!options.headless) {
-		printf("Optec TCF-S focuser simulator is listening on %s\n", port);
+	if (!headless) {
+		printf("Optec focuser simulator is listening on %s\n", port);
 		fflush(stdout);
 	}
-
+	char command[16];
+	size_t used = 0;
 	while (running) {
-		int bytes = read_optec_command(serial_fd, buffer, sizeof(buffer));
-		if (bytes < 0) {
+		update_motion();
+		if ((mode == AUTO_A_MODE || mode == AUTO_B_MODE) && !quiet && serial_motion_time() - telemetry_time >= 1) {
+			char reply[32];
+			snprintf(reply, sizeof(reply), "P=%04d", (int)motion.position);
+			write_reply(reply, "");
+			snprintf(reply, sizeof(reply), "T=%+05.1f", temperature);
+			write_reply(reply, "");
+			telemetry_time = serial_motion_time();
+		}
+		fd_set reads;
+		FD_ZERO(&reads);
+		FD_SET(serial_fd, &reads);
+		struct timeval timeout = { 0, 10000 };
+		if (select(serial_fd + 1, &reads, NULL, NULL, &timeout) <= 0) {
+			continue;
+		}
+		char bytes[64];
+		ssize_t count = read(serial_fd, bytes, sizeof(bytes));
+		if (count > 0) {
+			for (ssize_t index = 0; index < count; index++) {
+				if (used + 1 >= sizeof(command)) {
+					used = 0;
+				}
+				command[used++] = bytes[index];
+				command[used] = 0;
+				size_t expected = used >= 5 && !strncmp(command, "FHOME", 5) ? 5 : 6;
+				if (used == expected) {
+					dispatch(command);
+					used = 0;
+				}
+			}
+		} else if (count < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK && errno != EIO) {
 			break;
 		}
-		if (bytes > 0) {
-			dispatch_command(serial_fd, buffer);
-		} else {
-			usleep(1000);
-		}
 	}
-
 	if (serial_fd >= 0) {
 		close(serial_fd);
+	}
+	if (events) {
+		fclose(events);
 	}
 	return 0;
 }

@@ -1,0 +1,782 @@
+# Partial refactoring plan for ccd_touptek
+
+Date: 2026-09-08.
+
+Status: Steps 1–7 completed for the available macOS build environment and physical guiding cameras on 2026-09-08. Eleven branded variants build for arm64/x86_64; native regression, queue and AddressSanitizer checks pass. ToupTek and Altair hardware workflows pass, including physical Altair unplug/replug under streaming load and SDK unload/reload. Unavailable platform/hardware validation is explicitly deferred below. Rosetta runs require a separate user request and were not repeated in step 7.
+
+## Goal and scope
+
+Refactor the handwritten `indigo_ccd_touptek.c` to use INDIGO handler queues and a persistent driver-wide queue for SDK discovery, hot-plug and connection lifecycle, following the current `wheel_asi`, `focuser_asi` and `rotator_asi` implementation model.
+
+Do not migrate to `indigo_generator`, create a `.driver` file, modify the generator or replace vendor SDKs. Preserve public device names, properties, configuration, camera/guider sharing, filter-wheel and focuser behavior. Include lifecycle fixes required to make the queue conversion safe; avoid unrelated feature changes.
+
+The source is shared by multiple branded drivers through `#include` and SDK macros. Inventory all consumers, including Altair, Baccam, Bresser, OmegonPro, StarshootG, Rising, Mallin, Meade, Ogma and SVBony, before editing. A source change must remain compatible with their available SDK variants.
+
+## Minimal-change constraint
+
+Explicit user instruction: make only changes necessary for queues and safe hot-plug; preserve the driver's overall logic. This constraint governs all steps below.
+
+- Move existing operation bodies into handlers while preserving their branching, SDK call order, validation, messages and property transitions.
+- Preserve current SDK-id/OEM discovery, device naming, shared-handle ownership and `gp_bits` unless a specific queue/lifetime defect requires a narrowly scoped correction.
+- Do not redesign exposure, streaming, frame processing, configuration or connection accounting as part of this task. Add guards or synchronization only where the execution-context change demonstrably requires them.
+- Updated user requirement during step 3: eliminate all driver-owned timers and custom mutexes. SDK callbacks only enqueue notifications; all SDK operations and image processing execute on driver/device queues. Preserve the original settling intervals through delayed handlers.
+- Do not centralize helpers, rename unrelated functions, remove working locks, coalesce events or reformat code merely for cleanup. Each behavioral change must have a concrete queue or hot-plug safety justification.
+- Implement and validate in small steps. If an independent pre-existing bug is found, record it separately rather than expanding this refactor.
+
+## References
+
+- `indigo_docs/TIMERS_AND_QUEUES.md` and `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md`: queue execution, cancellation, master-device routing and lifecycle.
+- `indigo_docs/DEVELOPMENT.md`, `README.md`, `TESTING.md` and `indigo_docs/MAKEFILES.md`: bus semantics, build and validation.
+- Current ASI `.driver` and generated `.c` files: implementation references only; use their final driver-queue approach, not an intermediate migration state.
+- `indigo_drivers/REVIEW.md`: existing ToupTek findings, especially SDK callback and disconnect risks. Record new findings here without advancing the whole-folder review baseline.
+- Bundled SDK headers: callback restrictions, Stop/Close behavior, enumeration and device identity. Do not assume ASI SDK contracts apply to ToupTek.
+- `indigo_test/AGENTS.md` and the ASI SDK replacement integration tests: hardware-free validation conventions.
+
+## Baseline structure and risks to address (before refactoring)
+
+- `process_plug_event()` scans `EnumV2()` and the ToupTek OEM inventory, reconciles SDK ids, attaches CCD/guider, wheel or focuser devices, and removes missing devices. Every libusb arrival/removal currently schedules a fresh timer callback after 0.5 seconds.
+- An enumeration mutex serializes discovery with selected Open/Close calls, but does not provide a stable execution thread or ownership of pending hot-plug work during shutdown.
+- Four connection callbacks run on timer threads. Camera and guider share one SDK handle and private data; connection ownership currently uses `gp_bits`.
+- Property callbacks contain synchronous SDK calls on the bus path. Polling, guide-pulse completion and exposure watchdog use timers.
+- The SDK image callback pulls and processes frames and schedules completion/abort/video-stop callbacks. Some SDK operations can wait for the callback thread, so moving code or adding a mutex can introduce a deadlock.
+- Disconnect, queued completions, SDK callback termination, buffer release and shared-handle close require an explicit ordering. Preserve independent guider operation when the CCD disconnects.
+
+## Target execution model
+
+| Work | Execution context |
+| --- | --- |
+| SDK enumeration, discovery probes, attach/detach, Open/Close and all CONNECTION handlers | One persistent queue per compiled driver instance, shared by all its physical devices |
+| Property SDK operations, motion/temperature polling, pulse completion and exposure control | Physical device's master handler queue; guider uses the camera's queue |
+| SDK event notification | SDK callback only enqueues an event value; frame retrieval, processing and completion run on the camera queue |
+| Bus property callbacks | Validate/copy requests, publish appropriate state, enqueue work and return |
+
+Driver and device queues are different threads: explicitly coordinate connection/disconnection with running device handlers. Serializing connection handlers alone does not serialize them with exposures, polling or SDK image delivery. The connection handlers drain the logical device queue before using the framework master-device lock, which also serializes a CCD connection with the still-connected guider on the shared handle. There are no private or enumeration pthread mutexes. After CCD Stop joins SDK callbacks, release the framework lock, drain final notifications, then reacquire it before freeing the buffer or closing the shared handle.
+
+## Implementation steps
+
+### 1. Capture baseline and contracts
+
+- [x] Record HEAD and existing workspace changes; inventory shared-source consumers and available build targets.
+- [x] Inventory all SDK calls, timers, property branches, private-data ownership and every attach/detach path.
+- [x] Record existing property counts, visibility, permissions, ranges and persistence as the compatibility baseline.
+- [x] Read relevant SDK callback restrictions and determine which operations join or stop SDK threads.
+- [x] Document existing connection/removal state and camera-only, guider-only and combined ownership; add state only where required to reject work during teardown.
+
+### Step 1 results
+
+#### Baseline and build coverage
+
+Baseline commit: `30e667c8cd0b57c0aa0feb285ae79a651ce3dd2c`. Driver version: `0x03000029`. All source line references below refer to this commit's `indigo_ccd_touptek.c`, unless another file is named. The committed source is the exact baseline for SDK-dependent values and inherited property defaults; the tables below record driver specializations, not a replacement definition of the base classes.
+
+Workspace at entry: `indigo.xcodeproj/project.pbxproj` already modified, and this `REFACTOR.md` untracked. Preserve the existing Xcode edit. This step changes documentation only.
+
+| Driver directory | Selection macro / SDK prefix | Bundled macOS SDK |
+| --- | --- | --- |
+| `ccd_touptek` | default TOUPTEK / Toupcam | libtoupcam |
+| `ccd_altair` | ALTAIR / Altaircam | libaltaircam |
+| `ccd_baccam` | BACCAM / Baccam | libbaccam |
+| `ccd_bresser` | BRESSER / Bressercam | libbressercam |
+| `ccd_omegonpro` | OMEGONPRO / Omegonprocam | libomegonprocam |
+| `ccd_ssg` | STARSHOOTG / Starshootg | libstarshootg |
+| `ccd_rising` | RISING / Nncam | libnncam |
+| `ccd_mallin` | MALLIN / Mallincam | libmallincam |
+| `ccd_meade` | MEADE / Toupcam | libmeadecam (directory `libmedecam`) |
+| `ccd_ogma` | OGMA / Ogmacam | libogmacam |
+| `ccd_svb2` | SVBONY / Svbonycam | libsvbonycam |
+
+All ten wrapper sources include the ToupTek C file. All eleven directories contain headers and macOS dylibs; `lipo -archs` confirms x86_64 and arm64 in every listed dylib. Each uses `../../Makefile.drv` without a local Makefile or Makefile.inc. The `all` target provides the driver archive, dylib and executable. The local generated configuration is Darwin/arm64 with universal x86_64+arm64 compiler/linker flags. Do not copy its absolute paths into committed build files.
+
+Verified target discovery with `make -n -C indigo_drivers/ccd_touptek -f ../../Makefile.drv all`; this was a dry run only, and existing outputs were up to date. Later compilation must ensure wrapper objects rebuild when the included ToupTek source changes. Availability of universal SDK slices does not establish successful compilation, Linux/Windows coverage or hardware behavior.
+
+#### Execution and timer inventory
+
+| Existing context | Functions / responsibilities | Baseline references |
+| --- | --- | --- |
+| Bus change callback | CCD mode/bin/frame, exposure/stream/abort, cooler/temperature/gain/offset, advanced/fan/heater/conversion gain/LED/bin mode, CONFIG | 1170–1557 |
+| Bus change callback | Guider CONNECTION, DEC and RA pulses | 1679–1735 |
+| Bus change callback | Wheel CONNECTION, slot, calibration, model and CONFIG | 1930–2004 |
+| Bus change callback | Focuser CONNECTION, reverse, absolute position, limits, backlash, relative steps, abort, compensation, buzzer, mode and CONFIG | 2360–2641 |
+| Immediate timer, or synchronous call from detach | `ccd_connect_callback`, `guider_connect_callback`, `wheel_connect_callback`, `focuser_connect_callback` | 936, 1602, 1855, 2244 |
+| SDK thread | `pull_callback`; optional `pull_callback_dummy` under disabled `USB3_EXPOSURE_CLUDGE` | 474–573 |
+| Immediate, unreferenced device timers | `finish_exposure_async`, `abort_cleanup_async`, `stop_video_mode_async` | 417–451, scheduled from image/abort paths |
+| Device timer | Exposure watchdog: exposure +25 seconds, or 1.5× exposure above 50 seconds; canceled synchronously by SDK callback, abort and CCD disconnect | 453, 496, 1298–1299, 1333 |
+| Device timer | CCD temperature: starts at 5 seconds and repeats every 5 seconds | 575–620, 968 |
+| Device timers | RA/DEC completion after requested pulse duration; replacement cancels the previous axis timer; guider disconnect cancels both synchronously | 1638–1727 |
+| Device timer | Wheel move: 0.5-second polling; calibration starts after 0.5 seconds then sleeps/polls at 1-second intervals; both use `wheel_timer` | 1766–1814, 1965–1978 |
+| Device timers | Focuser motion: 0.5 seconds; temperature starts at 0.1 seconds and repeats every 2 seconds, with compensation able to schedule motion | 2019–2175, 2330–2331 |
+| Unowned timer | Every USB arrival/removal schedules `process_plug_event` after 0.5 seconds, with no retained timer reference or USB pointer | 2887–2889 |
+
+Connection requests copy values, publish BUSY and schedule the connection timer. Detach sets the disconnected switch and invokes the same callback synchronously when `IS_CONNECTED`. Polling cancellation is therefore part of each class's disconnect contract. Wheel initialization and calibration contain blocking loops: do not transfer an indefinite wait onto the shared driver queue without considering removal/shutdown progress (review reference below).
+
+#### Property compatibility baseline
+
+| Class / property | Existing specialization to preserve |
+| --- | --- |
+| CCD INFO | Count 8; model name/pixel geometry from SDK model; maximum preview width/height from all preview resolutions. Serial/HW/FW read at connection. |
+| CCD MODE, BIN, FRAME | RW mode list, initially count 0 then populated for bin 1–8: supported RAW08/10/12/14/16 plus RGB08 for color, supported MON08/10/12/14/16 for mono. First mode selected. Binning RW, both axes 1–8 with square-bin enforcement. Frame maxima follow sensor dimensions; FRAME RO without ROI_HARDWARE. Bit-depth limits initially 8 and raised according to supported flags. Preserve the exact format-selection code (709–832). |
+| CCD temperature/cooler | Temperature visible with GETTEMPERATURE; RW plus visible cooler and cooler power with TEC_ONOFF, otherwise temperature RO. Cooler defaults OFF. |
+| CCD streaming/image formats/gain/offset | Streaming and gain visible; image-format count 7. Exposure/streaming range read from SDK microseconds and divided by 1e6; gain bounds read from SDK. Offset shown on successful black-level support probe, min BLACKLEVEL_MIN, max 248 (conversion logic stays unchanged). |
+| X_CCD_ADVANCED | RW number, 9 items for color, count 1 (SPEED only) for mono. SPEED 0..model.maxspeed; other items use SDK MIN/MAX/DEF macros and step 1. ToupTek values: CONTRAST −255..255 default 0; HUE −180..180 default 0; SATURATION 0..255 default 128; BRIGHTNESS −255..255 default 0; GAMMA 20..180 default 100; R_GAIN/G_GAIN/B_GAIN −127..127 default 0. Preserve branded SDK macro evaluation. |
+| X_CCD_FAN / HEATER | Allocated only with FAN / HEAT flags; each RW number, one item FAN_SPEED / POWER, initial 0..0 step 1 default 0; maxima queried at connection. |
+| X_CCD_CONVERSION_GAIN | RW one-of-many: LCG default, HCG; HDR third item only with CGHDR. Allocated with CG or CGHDR; count 2 or 3. |
+| X_CCD_BIN_MODE | RW one-of-many, count 3: SATURATE default, EXPAND, AVERAGE. |
+| X_CCD_LED | RW one-of-many, count 2: ON default, OFF; initially hidden, visibility determined by successful TAILLIGHT query. |
+| CCD custom lifecycle/configuration | Custom properties are enumerated only while connected and deleted on disconnect. Explicit CONFIG saves: ADVANCED, CONVERSION_GAIN, BIN_MODE, LED. FAN and HEATER are not explicitly saved here. Remaining handling passes to the CCD base class. |
+| Guider | INFO count 8, model from SDK and serial/HW/FW at connection; standard RA/DEC properties retained. SDK directions N=0, S=1, E=2, W=3. Completion zeros both axis items and publishes OK. |
+| Wheel | INFO count 7. X_CALIBRATE: connected-only RW one-of-many, count 1, START=false. X_WHEEL_MODEL: RW one-of-many, 5_POSITIONS/7_POSITIONS/8_POSITIONS, default 7; explicitly saved by CONFIG. Slot maximum, slot-name count, slot-offset count and private `count` track model selection. SDK slots are zero-based; public slots one-based. |
+| Focuser limits/position/steps | Limits visible, minimum position fixed at 0, maximum-position range 0..65000 step 100. POSITION and STEPS 0..65000 step 1. Connection reads hardware maximum into the limits value/target. |
+| Focuser other standard properties | SPEED hidden; BACKLASH visible 0..10000 step 1; ON_POSITION_SET, TEMPERATURE, REVERSE_MOTION, COMPENSATION and MODE visible. COMPENSATION count 2, coefficient −10000..10000. Other item defaults/thresholds remain inherited. |
+| Focuser mode | MANUAL defines motion controls and POSITION RW; automatic mode deletes manual motion controls and redefines POSITION RO (2603–2627). Preserve this explicit define/delete behavior, including existing SPEED handling. |
+| X_AAF_BEEP | Connected-only RW one-of-many, count 2, ON=false/OFF=true before SDK read. No active custom CONFIG save; the commented EAF save is not implemented behavior. Base focuser CONFIG handling remains active. |
+
+No property schema change is authorized by this inventory. Driver property constructors, item constructors, count/hidden/permission assignments, numeric range assignments and explicit saves were inspected. Inherited definitions remain authoritative in the base driver sources at the baseline commit; hardware-dependent values cannot be reduced to a single static property snapshot.
+
+#### Ownership and connection state
+
+- `DRIVER_PRIVATE_DATA` (262–300) owns SDK descriptor/handle, presence flag, CCD/guider pointers, buffer and exposure format/state, mutex, timer references and class-specific custom properties. Wheel/focuser allocate separate private data, with their own logical device stored in `camera`; that field does not always mean a CCD.
+- A physical CCD is its own master; its optional ST4 guider shares private data and points to the CCD as master. `devices[SDK_DEF(MAX)]` stores physical master devices, not guider slots. There is no independent connection reference count: each logical device's `gp_bits` is used as a 0/1 connection marker.
+- First logical connect acquires the global lock and opens `@<SDK id>` when handle is NULL. A sibling reuses an existing handle. Failed Open releases the acquired global lock, publishes ALERT/disconnected and resets that device's `gp_bits` to 0.
+- With both CCD and guider connected: CCD disconnect calls Stop and cancels its timers/releases buffer; it retains the handle while guider `gp_bits` is 1. Guider disconnect cancels its own timers and retains the handle while CCD `gp_bits` is 1. The last logical disconnect closes when its sibling exists and has `gp_bits == 0`.
+- Exact existing exception: CCD close condition requires `PRIVATE_DATA->guider != NULL`; a CCD without guider skips this block. Wheel/focuser close conditions check their own device through `PRIVATE_DATA->camera` before clearing their own `gp_bits`, so ordinary successful disconnect skips Close there too. These are baseline findings, not a reason to silently rewrite connection accounting; see DRV-059 in the folder review file.
+- Existing lock order in connection: master-device lock, enumeration mutex around Open, and enumeration mutex then private mutex around Close. Discovery holds enumeration mutex but releases it before detach, avoiding recursive acquisition by disconnect. SDK callbacks do not take the private mutex.
+- `present` is a scan marker: all existing devices are marked false, then matched SDK ids become true. It is not a synchronized disconnecting/removing guard. There is no session generation or explicit removal flag. Do not add general state machinery in step 1; introduce only the minimum guard required by the eventual queue teardown protocol.
+- Discovery (2717–2884) allocates/attaches CCD, optional guider, wheel or focuser based on model flags. macOS probes camera serial with temporary Open/Close for naming; other platforms use unique display names. ToupTek additionally maps OEM VID/PIDs in `OEMCamEnum` (2694). Preserve id-based reconciliation rather than inventing a libusb-to-SDK identity mapping.
+- Both missing-device removal and `remove_all_devices` detach/free guider first, then master, private data and master allocation. Class detach releases custom properties and delegates to the appropriate base detach. SHUTDOWN currently checks masters, deregisters hot-plug and calls removal synchronously. Pending unowned discovery timers are not explicitly canceled.
+
+#### SDK callback contract and minimal migration decisions
+
+The bundled `libtoupcam/include/toupcam.h:427–430` explicitly forbids Close/Stop inside the event callback (deadlock), and forbids `put_Option` with TRIGGER, BITDEPTH, PIXEL_FORMAT, BINNING or ROTATE there (`E_WRONG_THREAD`). The data callback restriction is repeated at 583–584. Equivalent restrictions were verified in all ten branded headers; Meade uses lines 410–411 and 564, the others use 427–428 and 584.
+
+`setup_exposure` calls Stop and restarts pull mode when the format changes, and also changes trigger/binning/bit-depth options (624–700). `stop_video_mode_async` changes OPTION_TRIGGER and the driver comment at 423–426 says it joins the SDK callback thread and must not hold bus/private mutexes. The SDK headers establish forbidden contexts, but do not document an exhaustive internal join graph or complete callback-quiescence guarantees for every failure return. Treat the join statement as an existing driver contract, not newly verified vendor implementation.
+
+Consequences for subsequent steps: retain SDK frame pulling/processing and its current sequencing; move only deferred control work. No SDK callback may synchronously wait for a queue executing Stop/Close/trigger-mode changes. Do not hold locks needed for image publication while waiting for callbacks. The exposure watchdog may remain a timer if converting it would change cancellation behavior. Existing DRV-026 and DRV-030 fixes remain intact. No new state fields or synchronization changes were made in step 1.
+
+Validation performed: source inventory, all branded SDK callback restrictions, all macOS SDK architecture slices, build-target dry run and documentation whitespace check. Runtime behavior, queue safety and physical device behavior remain to be validated in later steps.
+
+#### SDK call-site index
+
+Lexical inventory of call expressions (log strings/macros/comments excluded). `pull_callback_dummy` and selected setup/connect calls remain conditional on `USB3_EXPOSURE_CLUDGE`; it is disabled at baseline. Numbers identify baseline source lines.
+
+| Function | SDK operations and call-site lines |
+| --- | --- |
+| `get_blacklevel` | `get_Option` (331, 336) |
+| `handle_offset` | `put_Option` (373) |
+| `get_bayer_pattern` | `get_RawFormat` (397) |
+| `stop_video_mode_async` | `put_Option` (440) |
+| `exposure_watchdog_callback` | `put_Option` (463) |
+| `pull_callback_dummy` | `put_Option` (481) |
+| `pull_callback` | `PullImageV2` (509); `put_Option` (559) |
+| `ccd_temperature_callback` | `get_Temperature` (581); `get_Option` (604, 608) |
+| `setup_exposure` | `Stop` (631); `put_Option` (634, 636, 641, 643, 648, 650, 655, 695); `StartPullModeWithCallback` (660); `put_Roi` (686) |
+| `ccd_connect_callback` | `Open` (947); `get_Option` (961, 964, 983, 985, 992, 1008, 1051, 1057, 1059, 1065, 1083); `put_Option` (970, 1093); `get_SerialNumber` (972); `get_HwVersion` (974); `get_FwVersion` (976); `get_ExpTimeRange` (1015); `put_AutoExpoEnable` (1019); `get_ExpoAGainRange` (1021); `get_ExpoAGain` (1023); `get_Speed` (1043); `get_FanMaxSpeed` (1049); `StartPullModeWithCallback` (1104, 1114); `Trigger` (1106); `Stop` (1109, 1124); `Close` (1156) |
+| `ccd_change_property` | `put_ExpoTime` (1293, 1320); `Trigger` (1296, 1348); `put_Option` (1324, 1356, 1374, 1470, 1484, 1506, 1520); `put_Temperature` (1369); `put_ExpoAGain` (1393); `put_Contrast` (1413); `put_Hue` (1420); `put_Saturation` (1427); `put_Brightness` (1434); `put_Gamma` (1441); `put_WhiteBalanceGain` (1449); `put_Speed` (1457) |
+| `guider_connect_callback` | `Open` (1612); `put_Option` (1622); `get_SerialNumber` (1624); `get_HwVersion` (1626); `get_FwVersion` (1628); `Close` (1645) |
+| `guider_change_property` | `ST4PlusGuide` (1700, 1703, 1719, 1722) |
+| `set_wheel_positions` | `put_Option` (1755); `get_Option` (1758) |
+| `wheel_timer_callback` | `get_Option` (1768) |
+| `calibrate_callback` | `put_Option` (1786); `get_Option` (1793) |
+| `wheel_connect_callback` | `Open` (1866); `get_HwVersion` (1876); `get_FwVersion` (1878); `put_Option` (1891); `get_Option` (1896); `Close` (1916) |
+| `wheel_change_property` | `put_Option` (1956); `get_Option` (1960) |
+| `focuser_timer_callback` | `AAF` (2024, 2033) |
+| `compensate_focus` | `AAF` (2098, 2113) |
+| `temperature_timer_callback` | `AAF` (2135, 2152) |
+| `focuser_connect_callback` | `Open` (2255); `get_HwVersion` (2265); `get_FwVersion` (2267); `AAF` (2272, 2279, 2288, 2297, 2306, 2314); `Close` (2346) |
+| `focuser_change_property` | `AAF` (2381, 2419, 2431, 2438, 2463, 2484, 2515, 2538, 2559, 2566, 2592) |
+| `process_plug_event` | `EnumV2` (2726); `Open` (2757); `get_SerialNumber` (2760); `Close` (2761) |
+| `ENTRY_POINT` | `Version` (2927) |
+
+The TOUPTEK-only `OEMCamEnum` also calls `Toupcam_get_Model` directly at line 2704 and uses libusb enumeration; the commented model-dump example in ENTRY_POINT is not active code. `get_blacklevel`, `handle_offset`, `get_bayer_pattern`, `setup_exposure`, `set_wheel_positions` and `compensate_focus` inherit their caller's execution context.
+
+### 2. Introduce the persistent driver lifecycle queue
+
+- [x] Create the driver queue before hot-plug registration/startup enumeration; handle queue creation and registration failure with complete rollback.
+- [x] Queue all four CONNECTION handlers and discovery-time Open/Close calls on this queue.
+- [x] Keep the first SDK enumeration and subsequent enumerations on the same live worker throughout the loaded driver lifecycle.
+- [x] Preserve shared-handle acquisition/release and global-lock ownership; verify that queue migration still closes exactly once when the last logical user disconnects. Check camera-without-guider and failed-open paths explicitly; correct only lifecycle defects necessary for this change.
+- [x] Define coordination with the master queue before Stop/Close: prevent new device work, finish or cancel existing work, and avoid waiting while holding a lock needed by the worker or SDK callback.
+
+### Step 2 results
+
+- Added one persistent `driver_queue` per compiled driver variant before USB callback registration. SDK discovery/probing and CCD/guider/wheel/focuser connection handlers use that queue. SDK version reporting remains synchronous; it does not enumerate/open hardware.
+- Replaced unowned hot-plug timers with delayed discovery tasks on the driver queue, preserving the existing 0.5-second settling delay and SDK/OEM reconciliation. The callback carries no USB pointer, so no new libusb reference ownership is introduced.
+- Connection functions now use the `_connection_handler` naming convention. They cancel pending device handlers before acquiring the master lock. Disconnect cancels the relevant existing timers before Close; CCD also cancels completion timers after Stop, before releasing its image buffer. Ordinary property callbacks and image acquisition logic are unchanged and remain for subsequent steps.
+- Wheel connection uses `wheel_connection_handler` plus `wheel_connection_finalizer`; calibration uses `wheel_calibrate_handler` plus `wheel_calibrate_finalizer`. A handler sends the existing SDK command once; a finalizer makes one status read and schedules its next invocation through `indigo_execute_handler_in()` when unfinished. No sleeping/waiting loop or private polling thread was introduced. Finalizers run on the device queue and disconnect cancels them before taking the master lock/closing the handle. Calibration was included because waiting for its old timer loop during disconnect could otherwise stall the lifecycle queue.
+- Fixed only the close guards identified in DRV-059: a CCD without guider and standalone wheel/focuser now release their handle/global lock on disconnect. Camera+guider still use their existing per-logical-device `gp_bits`. Removal clears the guider pointer after freeing the guider so the CCD does not read freed sibling state.
+- A small submission gate prevents new lifecycle requests during shutdown/removal. Removal drops pending connection tasks for both logical devices. Shutdown uses standard `indigo_queue_remove`/`indigo_queue_delete`, with no private condition-variable shutdown protocol. It rejects connected/connecting CCD, guider, wheel or focuser, and resumes discovery on rejection. Queue creation/registration failure restores a retryable driver state. Normal shutdown removes already-disconnected devices after draining discovery/lifecycle work; their handles have already been closed by connection handlers.
+- Queue submission capacity is unlimited, matching the old timer submission behavior: the queue API has no enqueue failure result, so connection requests must not silently disappear at the default pending-task limit. Coalescing scans remains outside this minimal step.
+- Driver version advanced to `0x0300002a`; license year and Codex refactoring notice updated. No property/item additions, removals or range changes, hence no PROPERTIES.md schema update.
+
+Validation: all eleven branded driver archive/dylib/executable builds succeeded with universal macOS arm64+x86_64 flags. The linker reports the existing SDK deployment-target mismatch (SDK macOS 11.0 versus project 10.10). `test_ccd_touptek_sdk` compiles the production source separately against replacement SDK/USB hooks and is registered in the integration test target. It covers both CCD/guider connection orders, CCD-only close, wheel/focuser close, stable enumeration/Open/Close worker identity, a moving wheel not blocking another device, rejected shutdown with unfinished wheel connection, calibration cancellation, unplug during wheel initialization, failed Open, failed queue creation, failed registration and repeated load/unload. The final test passed natively on arm64 and as x86_64 under Rosetta (not on a physical Intel Mac). The expected queue-creation error message is injected by the failure-path test. The fixture does not emulate image callbacks or vendor SDK internals; exposure/callback races and physical hardware remain unvalidated here.
+
+User standardization constraint: subsequent steps must keep the same handler + finalizer model and normal INDIGO queue APIs. Do not introduce blocking handler loops, private polling workers or a custom queue synchronization protocol.
+
+### 3. Move property operations to device handlers
+
+- [x] Split CCD property branches into bus dispatch and queued handlers: exposure, streaming, abort, cooler/temperature, gain/offset and vendor controls; also serialize mode/bin/frame state used by exposure setup.
+- [x] Convert guider pulses, wheel slot/calibration/model controls and focuser movement/settings/abort to handlers on the appropriate master queue.
+- [x] Preserve BUSY/OK/ALERT transitions, validation, property messages and base-class dispatch.
+- [x] Guard queued operations against disconnected/removing devices. Do not allow a delayed request to operate on a closed handle or a later connection session.
+- [x] Decide per property whether repeated requests coalesce or retain individual values; avoid handlers accidentally executing overwritten request values.
+
+### 4. Convert polling and exposure completion safely
+
+- [x] Replace temperature, wheel/focuser motion and guide-pulse timers with delayed handlers and targeted cancellation. Ensure only one polling chain is active.
+- [x] Move deferred exposure completion, abort cleanup and video-stop work to handlers with connection/session guards.
+- [x] Preserve watchdog semantics and verify cancellation against image completion. The watchdog is now a delayed device handler with the same timeout formula. Do not make the SDK callback synchronously wait for a queue that may be waiting for that callback.
+- [x] Move frame retrieval and processing to the camera queue. The bundled SDK header supports both event callbacks and window-message pull mode and does not require PullImageV2 on its internal callback thread. The SDK callback only reads an atomic generation and queues an integer notification; buffer, abort and video state belong to the camera queue.
+- [x] Ensure OPTION_TRIGGER changes, Stop and Close run outside the bus callback and without locks needed by SDK callbacks. Preserve finite/infinite streaming and abort cleanup.
+- [x] Remove obsolete timer fields and helper names only after all call sites are converted. Document any deliberately retained timer and its ownership.
+
+#### Step 3–4 implementation and validation
+
+- Readiness checks are centralized in each bus dispatcher; the repeated `property_handler_ready` and `property_change_allowed` wrappers were removed. Queue draining owns task lifetime. `_handler` and `_finalizer` suffixes are reserved for queue tasks; directly called helpers use ordinary names. No tests or builds will be rerun without the user’s instruction.
+- Every custom `change_property` branch now dispatches a named handler through the standard INDIGO macros. Configuration is also queued; its base-class call receives a local property copy because the base switch-copy operation cannot use the same vector as both source and destination. Unknown properties retain the ordinary typed-base fallback.
+- Preserved base fall-through for CCD exposure/streaming/abort/gain, successful CCD frame changes, wheel model and CONFIG; all former explicit-return branches remain self-contained. In particular, gain still reports its SDK error and then invokes the original base path (which publishes OK); offset returns its own result. This existing difference is asserted by the test.
+- `handle_offset` is merged into `ccd_offset_handler`. Guider pulses, wheel/focuser motion, calibration and temperature use delayed handlers/finalizers and targeted cancellation. No `indigo_set_timer`, `indigo_reschedule_timer`, timer references, `indigo_usleep`, or `pthread_mutex_*` remain in the driver. The disabled USB3 workaround was removed; none of the consumers enabled it.
+- SDK format, binning and ROI settling retain the original 0.1-second intervals via separate setup handlers. Abort cancels the unfinished setup chain and forces format setup on the next acquisition. Mode/bin/frame and bin-mode changes are rejected while acquisition owns the format; exposure and streaming cannot overwrite each other's pending setup.
+- Standard BUSY admission retains the first pending request for command/settings properties, including focuser motion; requests received while BUSY are ignored before copying. Guide axes use ANYTIME to retain the baseline replacement/cancellation behavior (DRV-061 follow-up). Temperature uses the standard ANYTIME macro because BUSY also means physical settling; newer setpoints intentionally replace the desired value. CCD bin dispatch copies targets so the handler can still compare the old horizontal/vertical values. Related mode/bin/frame reservations are checked together. Focuser STEPS retains its own BUSY predicate, including after switching from automatic compensation to manual control. Cancelled BUSY properties are reset to ALERT for the next connection session.
+- SDK notifications contain the event number and pull-mode generation without allocated payloads. Stop invalidates notifications from the old pull mode; streaming stop invalidates its last notifications and finalizes an aborted stream on the queue. Disconnect drains before Stop and again after the SDK callback has terminated. These handoffs prevent stale events from accessing freed buffers or completing a later acquisition.
+- `test_ccd_touptek_sdk` now has six scenarios: lifecycle, CCD controls/base dispatch, acquisition/watchdog/streaming, guider, wheel and focuser. The fake SDK creates a separate callback thread and joins it during simulated Stop/trigger transitions. Tests cover a successful image, timeout with the original delay formula, finite/infinite streaming, abort, stale Stop notifications, shared CCD/guider worker identity, rejected duplicate values and queued-command cancellation followed by reconnect. The watchdog-only test hook shortens its wait after recording the requested production delay.
+- An earlier revision compiled and linked all eleven branded variants for arm64 and x86_64; the latest cleanup remains unvalidated after the user stopped testing. Hardware-free native/Rosetta validation does not establish vendor SDK throughput, real USB timing, image fidelity or physical Intel Mac behavior. Those remain hardware checks in steps 6–7.
+
+### 5. Serialize hot-plug and make teardown complete
+
+- [x] Replace unowned hot-plug timers with driver-queue work. Preserve the existing SDK-id reconciliation and OEM enumeration where needed; do not assume an ASI-style one-to-one mapping from a libusb pointer to an SDK id.
+- [x] Preserve the existing discovery settling delay and scan behavior. Add coalescing only if required for correct bounded queue operation, without losing removal or final topology state.
+- [x] If queued events retain `libusb_device *`, balance references on every enqueue, rejection, cancellation, attach failure and detach path. If events only request a rescan, do not retain unused USB pointers.
+- [x] Handle duplicate arrivals, missing slots, partial camera/guider attach failures and rapid unplug/replug without leaks or duplicate devices.
+- [x] Mark devices as removing, prevent new work and cancel/drain their queued operations before releasing properties or private data. Detach guider before its camera/master.
+- [x] Quiesce SDK image callbacks before freeing the image buffer; ensure no deferred completion accesses detached devices.
+- [x] Shutdown: stop accepting hot-plug work, deregister callbacks, resolve queued discovery/connection work, remove already-disconnected devices after lifecycle work has stopped, then delete the driver queue (the standard ASI shutdown pattern; no SDK calls in this final detach). Define the failure/rollback path when connected devices prevent shutdown.
+- [x] Validate unload/reload in the same process with the fake SDK; real vendor SDK thread association remains a hardware check.
+
+#### Step 5 implementation and deferred validation
+
+- Hot-plug uses the three generated-driver-style functions: `hotplug_callback` dispatches ARRIVED to `process_plug_event_handler` and LEFT to `process_unplug_event_handler`, both on the driver queue with the existing 0.5-second delay. Plug enumerates SDK/OEM records and attaches missing ids; unplug enumerates and removes missing ids. Plug first invokes unplug reconciliation to reclaim stale slots. Shutdown and attach rollback invoke the same unplug handler with an explicit device, without enumeration. There is no `hotplug_handler`, separate plug/unplug helper or `remove_all_devices` wrapper. USB pointers are not retained because identity still comes from the SDK.
+- Kept the existing 0.5-second queued rescan, SDK-id matching and OEM enumeration. Events retain no USB pointers; repeated scans do not attach another device with an existing id. The queue remains unlimited, so no new coalescing mechanism is needed. Shutdown deregisters the USB callback before cancelling/draining discovery work; the scan itself needs no driver-state guard.
+- Reconcile presence and detach missing ids before attaching arrivals, making vacated slots available in the same scan. Check for a free slot before probing or allocating a new device. Skip SDK records without a model.
+- Check both bus registration and attach callback results. On failure, mark private data as removing, cancel pending lifecycle work, detach and free the partial device. If guider attach fails, roll back the CCD too, so a later scan can retry the complete pair. Normal detach drains device handlers; guider is always detached before its master.
+- Failed OEM USB-list/descriptor reads no longer use uninitialized discovery data. A short or missing serial from a discovery probe no longer causes a read before the serial buffer; successful serial-based names retain the same suffix.
+- The file-local atomic `last_action` also controls work admission; there is no separate `driver_queue_accepting` flag. Set INIT before registering callbacks, restore SHUTDOWN on registration failure, and restore INIT when shutdown is rejected.
+- Retained the existing CCD Stop/generation invalidation/drain ordering before buffer release. Reference counting uses `PRIVATE_DATA->count`; shutdown rejects active references and pending connection transitions. Rejected shutdown restores INIT, re-registers the USB callback and schedules a fresh discovery scan. Failure to restore the callback is logged and returns INDIGO_FAILED; the connected driver remains loaded.
+- Like the ASI reference drivers, successful shutdown performs final detach of already-disconnected devices on the entry-point thread after draining driver work, then deletes the driver queue. All SDK enumeration, Open, Stop and Close work remains on the lifecycle/device queues. No custom waiting protocol, timer, mutex or helper wrapper was introduced.
+- Initially inspected only while testing was paused. After the user authorized testing again, step 6 covered unload/reload, callback registration failures, rejected shutdown, duplicate arrivals, partial attach rollback and active removal with the fake SDK. Real SDK/hardware validation remains pending.
+
+### 6. Hardware-free regression coverage
+
+- [x] Add an SDK replacement integration harness, compiling the production driver as a separate translation unit and exercising public bus APIs. Follow existing ASI tests; do not include production `.c` directly in the test.
+- [x] Simulate CCD-only, CCD+guider, filter wheel, focuser and multiple physical devices.
+- [x] Assert that enumeration/probing/Open/Close use one stable driver worker, and that device operations share the correct master queue.
+- [x] Test camera-first/guider-first connect and disconnect, repeated connect, failed Open and balanced Close/global-lock ownership.
+- [x] Exercise exposure success/timeout/abort, finite and indefinite streaming, final-frame/abort overlap and disconnect during an SDK callback. Have the fake SDK model callback-joining behavior to expose deadlocks.
+- [x] Test pulse replacement while BUSY, cancellation and subsequent requests, polling cancellation, unplug during work, duplicate/rapid hot-plug, queue shutdown, registration failure and unload/reload with pending events.
+- [x] Use bounded waits and check cleanup. Document fake-SDK limitations in `indigo_test/CHANGES.md`; passing these tests is not proof of vendor SDK or physical USB behavior.
+
+#### Step 6 results (2026-09-08)
+
+The harness is consolidated into `indigo_test/integration/test_ccd_touptek_sdk.c`. The production driver, framework dispatcher and simulator image fixture remain separately compiled translation units. The build uses SDK/USB replacements and real bus/queue code. Configuration files and image/video output use a temporary directory without changing HOME.
+
+The initial 17 scenarios passed on native macOS arm64 and x86_64 under Rosetta, both with exit status 0. Coverage includes all four logical devices, published property inventories and passive writable property round-trips; dedicated workflows exercise CCD controls, exposure/abort/watchdog/recovery, finite/infinite streaming and all seven image formats, guiding, wheel calibration and focuser motion/temperature compensation. RAW payloads are checked against samples from `ccd_simulator/indigo_ccd_simulator_data.c`; FITS headers and finalized local SER/AVI signatures are checked. CONFIG SAVE/LOAD and CLIENT/LOCAL/BOTH/NONE uploads also passed.
+
+Lifecycle tests cover shared CCD/guider ownership, queue affinity, duplicate BUSY rejection, cancelled work and reconnect, failed registration/Open/attach, hot-plug duplicates, active removal and unload/reload. Three additional hardware-free scenarios now force final-frame/abort overlap in both queue orders, disconnect inside the real SDK callback, and rapid hot-plug plus shutdown with pending events. The corresponding step 6 checkboxes are complete; this covers the specified interleavings without claiming every possible vendor SDK schedule. Guide requests received while BUSY replace the active pulse, restoring baseline behavior in the DRV-061 follow-up.
+
+The universal test binary compiled without warnings. After merging the four harness files into one, it rebuilt successfully and the focused configuration persistence/upload scenario passed again. `git diff --check` passed; test build artifacts were removed with `make -C indigo_test test-clean`. Detailed coverage and fake-SDK limitations are recorded in `indigo_test/CHANGES.md`.
+
+#### Additional step 6 race coverage
+
+- A one-frame stream is tested in both orders: abort queued before its final notification, and abort queued while the final frame is being pulled. Assertions check exact frame/BLOB counts, standard base CCD states and successful acquisition afterward. A cancelled finite stream is ALERT; an abort arriving after completed streaming is itself ALERT.
+- The real SDK callback is held inside its enqueue call after reading the event generation. Disconnect reaches SDK Stop and must join that still-running callback. After release, no stale frame is pulled or published; the guider stays connected and a new CCD connection successfully exposes.
+- Eight unplug/replug cycles submit 1,024 alternating USB arrival/removal notifications. A further 64 USB events are explicitly held pending while shutdown deregisters the callback and drains its queue. Assertions verify no additional enumeration, balanced Open/Close/global locks, complete detach and a working unload/reload/connect/disconnect/shutdown cycle.
+
+Test-only gates have bounded 10-second waits and delegate to the real queue APIs. The production driver logic is unchanged. The complete harness now contains 20 scenarios. Full native macOS arm64 and x86_64/Rosetta runs both passed all 20 with exit status 0, including all three new race cases, without gate timeouts. The universal build emitted no compiler warnings and `git diff --check` passed. Build artifacts were removed with `make -C indigo_test test-clean`. In this repeat run, mean guiding completion errors were +3.443 ms on arm64 and +3.899 ms on Rosetta, illustrating why the earlier lower Rosetta mean is not an architectural advantage.
+
+#### Guiding pulse timing (initial 17-scenario run)
+
+Each architecture run measured 20 pulses: EAST, WEST, NORTH and SOUTH at 20, 50, 100, 250 and 500 ms. `CLOCK_MONOTONIC` timestamps are taken when the fake SDK accepts the ST4 command and when the matching guide property returns to OK with zero axis values. Guiding delays are not accelerated. The output reports each duration/error and aggregate statistics.
+
+| Execution | Samples | Mean signed error | Mean absolute error | p95 absolute error | Maximum absolute error |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Native macOS arm64 | 20 | +3.703 ms | 3.703 ms | 5.048 ms | 5.066 ms |
+| x86_64/Rosetta | 20 | +2.947 ms | 2.947 ms | 5.048 ms | 5.063 ms |
+
+These measure software completion latency, including queue scheduling and property delivery, not physical ST4 signal duration. Rosetta's lower sample mean does not demonstrate faster or more accurate execution: the runs were sequential, contained only 20 samples each and experienced different scheduler conditions. The p95 and maximum were practically identical. Establishing an architectural difference would require many more samples and repeated alternating runs under comparable load. Rosetta is not physical Intel Mac validation.
+
+### 7. Build, documentation and hardware validation
+
+- [x] Build ToupTek and available branded consumers; validate macOS arm64 and x86_64 compilation and linking. Record unavailable platform/SDK combinations explicitly.
+- [x] Run the focused regression suite and relevant existing queue tests. Use sanitizer runs where supported to investigate remaining callback/lifetime risks.
+- [x] Preserve the license header, extend its year to 2026 and add the required Codex refactoring notice. Update driver version according to repository convention.
+- [x] Compare property inventory with the baseline; update `indigo_docs/PROPERTIES.md` if a property or item is added/removed. This refactor intends no public schema change.
+- [x] Update this plan with completed stages and actual validation results; keep risks in `REVIEW.md` and coverage/deferred tests in `indigo_test/CHANGES.md`.
+- [x] On available physical guiding cameras, validate discovery/connect cycles, exposure/streaming/abort, guider sharing and USB removal under load. Record unavailable wheel/focuser, simultaneous multi-camera and physical Intel validation separately.
+
+#### Step 7 physical guiding camera result (2026-09-08)
+
+Added the explicitly opt-in `indigo_test/hardware/test_ccd_touptek_hw.c`. Run `make -C indigo_test test-ccd-touptek-hw`; normal `make test` neither builds nor runs it. The executable also requires `--run` before touching USB. It links the real driver and vendor SDK, with no test replacements.
+
+Native arm64 execution passed on Touptek GPCMOS01200KMB #04E69B: three exposures, exposure abort, five-frame streaming, indefinite streaming/abort, four 100 ms guide directions, guider operation with CCD disconnected, both shared-handle connection orders and a successful exposure after full disconnect/reconnect. All 12 delivered RAW frames had valid 1280 × 960 payloads (1,228,812 bytes). Cleanup disconnected both devices and driver shutdown succeeded. Running outside the sandbox was required for SDK enumeration and explicitly approved. Rosetta was not run.
+
+The optional target and its exclusion from the default suite were verified. Build/link succeeded with the existing macOS deployment-target warning from the bundled SDK (11.0 versus repository flags 10.10). The build and available physical-camera checks are now complete; unavailable platforms and hardware are listed separately below. Detailed invocation and limits are in `indigo_test/CHANGES.md`.
+
+#### Step 7 final validation
+
+- Forced fresh compilation of ToupTek, Altair, Baccam, Bresser, OmegonPro, StarshootG, Rising, Mallin, Meade, Ogma and SVBony shared-source consumers with their bundled SDKs. Every archive, dylib and executable built successfully; `lipo -archs` confirmed arm64 and x86_64 dylib slices. No Rosetta execution was performed. The SDKs produce existing linker deployment-target warnings (SDK minimum macOS 11.0 versus repository target 10.10); these builds do not establish runtime support on macOS 10.10.
+- The native SDK regression suite passed all 20 scenarios. Native `test_timer` passed all 86 timer/handler/queue cases. AddressSanitizer instrumentation of the test harness, production driver, image fixture and framework dispatcher passed the three deterministic race scenarios without a sanitizer report. Prebuilt framework archives and closed-source SDK internals are outside that instrumentation; this is not a ThreadSanitizer or full-stack instrumentation claim.
+- All 45 property/item initialization calls match baseline `30e667c8cd0b57c0aa0feb285ae79a651ce3dd2c` after resolving extracted name defines and whitespace. All 27 property count/visibility assignments preserve their public effect; the wheel assignment no longer also writes the private slot count because `PRIVATE_DATA->count` now holds connection references. No property/item was added or removed, so `indigo_docs/PROPERTIES.md` needs no schema update.
+- License/copyright includes 2026, and driver version is `0x0300002c` (baseline `0x03000029`). The configuration delegation now clears the queued BUSY state before entering the base CONFIG handler, allowing SAVE and asynchronous LOAD to complete.
+- Altair ALTAIRGP224C #E61F50 passed the same physical acquisition/guider workflows using the real Altair SDK, with RGB RAW frames at 1280 × 960 (3,686,412 bytes). The user physically unplugged it during active streaming; both logical devices were removed. After replug, a fresh exposure and guide pulse succeeded. A further native run successfully shut down/reinitialized the driver in the same process and acquired a frame on its new queue. Both runs exited 0.
+- Hardware testing remains opt-in: `make -C indigo_test test-ccd-touptek-hw HW_DRIVER=altair` selects Altair; append `HW_HOTPLUG=1` only when an operator can unplug/replug at the printed prompts. Default `HW_DRIVER=touptek` selects ToupTek. `make -n test` confirms that normal tests neither build nor run the hardware executable. Detailed coverage is recorded in `indigo_test/CHANGES.md`; no review baseline was advanced.
+
+Deferred external validation: Linux/Windows toolchains, physical Intel macOS, real wheel/focuser hardware, simultaneous multiple physical cameras and prolonged vendor-SDK stress are unavailable/unverified in this session. They are not represented as passed. The two guiding cameras were tested sequentially; only Altair underwent the manual cable-removal test. `git diff --check` passed and test/ASan build artifacts were removed with `make -C indigo_test test-clean`.
+
+## Atomic implementation sequence
+
+- [x] Identify every CCD OEM driver that compiles `ccd_touptek` and inventory its bundled SDK header, exported prefix and public entry point.
+- [x] Refactor the existing ToupTek fake-SDK harness into a prefix-neutral shared body while preserving its 28 scenario groups.
+- [x] Add one OEM wrapper and one independent Makefile target for Altair, BacCam, Bresser, MallinCam, Meade, OGMA, OmegonPro, RisingCam, StarShootG and SVBONY.
+- [x] Compile each wrapper against its actual bundled SDK header and a separately compiled OEM driver translation unit.
+- [x] Run all 28 fake-SDK scenarios for every OEM target and record the results in `indigo_test/CHANGES.md`.
+- [x] Add every created OEM test source to the Xcode integration-test group; this is now a mandatory repository test rule in `indigo_test/AGENTS.md`.
+
+Result (2026-09-11): ToupTek plus all ten OEM targets passed the 28 shared fake-SDK scenarios. Each OEM binary compiled its own driver translation unit against its bundled header. The test matrix includes lifecycle and USB hot-plug, camera/guider/wheel/focuser control, acquisition and streaming races, configuration SAVE/LOAD and pulse timing.
+
+## Completion criteria
+
+The handwritten source uses a stable driver-wide SDK lifecycle queue and master-device handlers for normal work; bus callbacks no longer perform blocking SDK control operations. Hot-plug and shutdown cannot leave pending work targeting freed devices. Camera/guider ownership and SDK callback termination are covered by focused tests, available branded builds pass, and public behavior is preserved. SDK callback handoff and queue teardown are documented; no driver timers remain. Every production change is necessary for execution-context migration or its lifecycle safety, with existing overall logic preserved. Hardware-dependent claims remain explicitly pending until tested. No generator migration is part of this change.
+
+## Rejected-change regression coverage (2026-09-18)
+
+Three defects on the refusal path were fixed; they apply to every driver built from this source (altair, baccam, bresser, mallin, meade, ogma, omegonpro, rising, ssg, svb2).
+
+`ccd_gain_handler` ended with `indigo_ccd_change_property(device, NULL, CCD_GAIN_PROPERTY)`, and the base `CCD_GAIN` branch sets `INDIGO_OK_STATE` and publishes, so a refused gain was reported to the client as success; that call now runs only on the success path. `CCD_GAIN` and `CCD_OFFSET` were dispatched with `INDIGO_COPY_VALUES_PROCESS_CHANGE`, so a failed `put_ExpoAGain()` or `put_Option(OPTION_BLACKLEVEL)` left the refused value in the property with no previous value kept; both now use `INDIGO_COPY_TARGETS_PROCESS_CHANGE`, restore `target` from `value` on failure and commit `value` on success. `ccd_offset_handler` additionally resyncs both from the blacklevel it reads back from the camera, and the connect path seeds `CCD_GAIN_ITEM->number.target` alongside `value`.
+
+Covered by `Rejected change keeps values` in `indigo_test/integration/test_ccd_touptek_sdk.c`: a failed gain write and a failed blacklevel write both leave the property in ALERT with unchanged value and target, and gain is accepted again afterwards. The `CCD property handlers and base dispatch` case now requires the refused gain to stay in ALERT instead of ending in OK.
+
+```sh
+cd indigo_test && INDIGO_TEST_FILTER="Rejected change" ./build/integration/test_ccd_touptek_sdk
+```
+
+## Hardware coverage of the accepted gain and offset path (2026-09-18)
+
+`indigo_test/hardware/test_ccd_touptek_hw.c` now drives `CCD_GAIN` and `CCD_OFFSET` on the physical camera between the short exposures and the abort case. It changes gain to the middle of the reported range, requires `value` and `target` to both hold the requested gain, takes an exposure at that gain, restores the original gain and repeats the value/target check. When `CCD_OFFSET` is exposed, it drives the black level to the opposite limit and back with the same value/target check; the offset scale is a power of two, so both limits map back to an exact offset. Cameras without `FLAG_BLACKLEVEL` hide the property and the test prints that the black level part was skipped.
+
+The refused path stays exclusive to `indigo_test/integration/test_ccd_touptek_sdk.c`, because a real camera cannot be made to fail `put_ExpoAGain()` or `put_Option(OPTION_BLACKLEVEL)` on demand.
+
+Verified on 2026-09-18 with a Touptek GPCMOS01200KMB: the test passes against the current driver (gain 100 -> 550 -> 100, offset 8 -> 248 -> 8), and it fails when either success-path `value = target` assignment is removed from `ccd_gain_handler` or `ccd_offset_handler`.
+
+## Hardware acceptance — ToupTek GPCMOS01200KMB and Altair ALTAIRGP224C (2026-09-21)
+
+Environment: macOS 26.6.2 (Darwin 25.6.0) arm64, arm64 runtime. This source is shared by every OEM
+variant through `#include "../ccd_touptek/indigo_ccd_touptek.c"`, so the two runs below exercise the
+same implementation against two different vendor SDKs and two different cameras. Driver version
+`0x03000030` (3.0.0.48).
+
+`indigo_test/hardware/test_ccd_touptek_hw.c` was restructured from one monolithic workflow into 28
+independently named and reported cases, following `test_ccd_asi_hw.c` and `test_ccd_playerone_hw.c`,
+and extended to the capability-gated coverage the CCD class standard asks for: every published mode,
+bins and a nonzero ROI checked against the delivered frame geometry, every frame type, gain, offset,
+gamma, the advanced controls, binning mode, conversion gain, fan, heater and LED, cooling, the
+configuration roundtrip, fractional and repeated exposures, guiding during acquisition, abort and
+reacquisition, exact and sustained streaming, all four guide directions, simultaneous axes, both
+connection orders, reconnect, the refused shutdown, reinitialisation and frame validity. The harness
+also gained a `send_message` callback, without which the driver's own messages — including the reason
+a configuration restore fails — never reached the test output, and a temporary configuration directory
+so a run no longer writes into the user's own INDIGO configuration or image cache.
+
+Commands:
+
+```sh
+make -C indigo_test build/hardware/test_ccd_touptek_hw
+INDIGO_TEST_DRIVER=touptek indigo_test/build/hardware/test_ccd_touptek_hw --run
+INDIGO_TEST_DRIVER=altair indigo_test/build/hardware/test_ccd_touptek_hw --run
+```
+
+Results: 27 of 28 cases pass on each camera. The single failure is the configuration roundtrip,
+recorded as an expected baseline failure in TT-D03 below. Capability profiles differ as expected: the
+GPCMOS01200KMB publishes gain, offset, advanced and binning mode; the ALTAIRGP224C adds conversion
+gain. Neither is cooled and neither exposes fan, heater or LED, so those rows report themselves as not
+applicable. Physical hot-plug was excluded from this session by request; the two cable-cycle cases are
+implemented behind `--hotplug` and need an operator.
+
+## Found defects — 2026-09-21
+
+### TT-D01 — the binning mode was never published to a connected client
+
+Observable impact: `X_CCD_BIN_MODE` was created in attach, had a working change handler, was written
+into the saved configuration and was deleted on disconnect, but the connection handler never defined
+it. A client that attaches before connecting — which is every real client — therefore never saw the
+binning mode control and could not change it. Only a client that issued an explicit enumeration for
+that one property while connected would receive it, through `ccd_enumerate_properties()`.
+
+Root cause: the connect block defines `X_CCD_ADVANCED`, `X_CCD_FAN`, `X_CCD_HEATER`,
+`X_CCD_CONVERSION_GAIN` and `X_CCD_LED`, and the `X_CCD_BIN_MODE` define was simply missing from that
+list.
+
+Fix: the connection handler now defines `X_CCD_BIN_MODE` alongside the other advanced controls.
+Version `0x0300002f` -> `0x03000030`.
+
+Regression test: `tp_publishes_the_property_contract` reports every optional control it finds. Against
+the pre-fix driver it printed `optional X_CCD_BIN_MODE: absent` on both cameras and
+`tp_selects_the_bin_mode` skipped itself; after the fix it prints `published` and
+`tp_selects_the_bin_mode` exercises all three items.
+
+### TT-D02 — a hidden control was written into the saved configuration
+
+Observable impact: `ccd_config_handler()` saved `X_CCD_ADVANCED`, `X_CCD_CONVERSION_GAIN`,
+`X_CCD_BIN_MODE` and `X_CCD_LED` unconditionally. `indigo_save_property()` does not skip a hidden
+property, unlike define and update, so a camera whose LED option read fails — which sets
+`X_CCD_LED_PROPERTY->hidden` — wrote a control into the file that the camera does not publish. The
+configuration restore dispatches every saved property and waits for each, so such an entry can stall
+the whole restore and lose every setting after it in file order.
+
+Root cause: no visibility check before the save.
+
+Fix: a small `save_if_published()` helper skips a NULL or hidden property. Version `0x0300002f` ->
+`0x03000030`, together with TT-D01.
+
+Regression test: not covered. Neither available camera reports a hidden `X_CCD_LED`, so the stalling
+entry cannot be produced on this hardware; the fake SDK suite would need an option-read failure
+profile to reach it. Recorded as a deferred gap rather than claimed as tested.
+
+### TT-D03 — one refused property discarded the whole configuration restore
+
+Observable impact: reproduced on the Touptek GPCMOS01200KMB and the Altair ALTAIRGP224C. `CONFIG SAVE`
+writes a correct file — verified by reading it back, it contains `CCD_GAIN GAIN 101` and thirteen other
+properties — but `CONFIG LOAD` answers "Configuration restore failed or timed out" and applies nothing.
+A debug trace shows no vendor SDK call at all between the load request and the failure, so the saved
+values never reach the driver.
+
+Root cause, reproduced under the fake SDK on 2026-09-21. `config_restore` in `indigo_libs/indigo_driver.c`
+dispatches the saved properties in file order and waits for each one to answer before moving on. Two
+answers ended the whole restore rather than that one property:
+
+- **No answer at all.** `ccd_change_property()` returned `INDIGO_OK` without publishing anything when a
+  request arrived while a related property was BUSY. The restore cannot tell that from "still working",
+  so it waited out its 120 s deadline and dropped every setting after that property in file order.
+- **An ALERT answer.** `config_restore_observe_property()` set `restore->failed` on any ALERT, so an
+  explicit refusal aborted the restore just as fatally as a lost request.
+
+Both were confirmed by holding `CCD_EXPOSURE` BUSY across a `CONFIG LOAD` in the fake-SDK suite. The
+trace showed `dispatched X_CCD_BIN_MODE updated=0 state=1` followed by `success=0`, with `CCD_GAIN` —
+last but one in the file — never applied.
+
+Fix, in two parts:
+
+- Driver: `INDIGO_REJECT_CHANGE_IF()` answers the cross-property interlocks explicitly, restating the
+  unchanged values with `INDIGO_ALERT_STATE` and a message, in the seven places that previously
+  returned `INDIGO_OK` silently, the focuser's `FOCUSER_POSITION` among them. A request arriving
+  while the target property is itself BUSY is deliberately left to the
+  `INDIGO_COPY_*_PROCESS_CHANGE` guard, which must not overwrite a running operation's state; the
+  framework change below covers that case. The four connection branches also moved to
+  `INDIGO_PROCESS_QUEUED_CONNECT()`. Version `0x03000030` -> `0x03000031`.
+- Framework: `indigo_reject_change()` was added to the bus as the one place that publishes a refusal,
+  with `INDIGO_REJECT_CHANGE_IF()` wrapping it for change branches. A property that answers ALERT, or
+  that publishes nothing within `CONFIG_RESTORE_ACK_TIMEOUT`, is now recorded and skipped so the rest
+  of the file is still applied.
+  `CONFIG` ends in `INDIGO_ALERT_STATE` with a message naming the properties the driver did not
+  accept, which makes the failure diagnosable instead of silent. `config_restore_pop()` also resets
+  `restore->state`, which previously leaked into the next request until its probe arrived.
+
+Regression test: `Configuration restore survives a refused property` in
+`indigo_test/integration/test_ccd_touptek_sdk.c` saves a configuration, changes it, starts an exposure
+so `CCD_MODE`, `CCD_BIN`, `CCD_FRAME` and `X_CCD_BIN_MODE` are all refused, and asserts that `CCD_GAIN`
+and `X_CCD_ADVANCED` — which follow them in the file — are still restored, that `CONFIG` reports
+ALERT, and that the same file restores cleanly with nothing in flight. Against the pre-fix framework
+the case fails at `(21) == ((int)item_number(0, "CCD_GAIN", "GAIN", 0))`, which is exactly the
+hardware symptom.
+
+`Acquisition admission, errors and reconnect` was updated in the same change: it asserted the old
+silent-drop contract by checking that a refused `CCD_MODE` produced no property revision at all. It
+now asserts the explicit refusal and that the mode items keep their values.
+
+Hardware status: not re-verified. `tp_saves_and_loads_configuration` in
+`indigo_test/hardware/test_ccd_touptek_hw.c` is unchanged and still asserts the real contract; whether
+the two cameras now pass it has to be confirmed with the hardware attached. The fake-SDK suite could
+not reproduce the failure with an idle camera in any profile that was tried, including a mono RAW8
+model producing the same fourteen saved properties, so the specific property refused on those cameras
+is still unknown. The framework change makes the restore report it by name when it next runs.
+
+## Final test summary — 2026-09-21
+
+- Simulated (fake SDK) tests: 30 run, 30 passed. `make -C indigo_test build/integration/test_ccd_touptek_sdk`
+  then `indigo_test/build/integration/test_ccd_touptek_sdk`, macOS arm64/x86_64. The suite grew one case,
+  `Configuration restore survives a refused property`, which is the TT-D03 regression test; it fails
+  against the pre-fix framework and passes after it. The earlier note that the suite had not been re-run
+  in this pass no longer applies.
+- Hardware tests: 56 run, 54 passed, all before the TT-D03 fix — 28 cases on the Touptek GPCMOS01200KMB
+  and 28 on the Altair ALTAIRGP224C, with the same single failure (`tp_saves_and_loads_configuration`) on
+  each. The cameras were not available after the fix, so it is not known whether that case now passes;
+  the test is unchanged and still asserts the real contract. Two physical hot-plug cases exist behind
+  `--hotplug` and were not run; they need an operator at the cable.
+
+## TT-D04 — a lost guide frame stalled guiding for exposure + 25 s (2026-09-25)
+
+Observed impact: with two ToupTek cameras acquiring at the same time (SkyEye 26AM plus as the imager, GPM462M as
+the guider), the guide camera sometimes got no SDK notification after `Trigger(1)`. That happened three times in
+two hours. The exposure then waited for `ccd_exposure_watchdog_handler()`, which fires after exposure + 25 s, and
+the guiding was ruined.
+
+Probable cause, not yet confirmed on hardware: the frame is lost on USB and the SDK throws it away without
+notifying anyone. `OPTION_NOPACKET_TIMEOUT` and `OPTION_NOFRAME_TIMEOUT` are both disabled by default. The GPM462M
+has no frame buffer on the camera, so if the host is late reading its data while the imager downloads a large
+frame, part of the frame is lost.
+
+A second defect was found in the same path: `ccd_event_handler()` cancelled the watchdog for every SDK event
+before checking the event type, and it ignored `EVENT_TRIGGERFAIL` ("trigger failed, for example bad frame data
+or timeout"). So any unrelated event, or a trigger failure, left the exposure BUSY forever.
+
+Fix, version `0x03000031` -> `0x03000032`:
+
+- `set_no_packet_timeout()` arms `OPTION_NOPACKET_TIMEOUT` before every `Trigger(1)` and every stream start. The
+  value is exposure * 1020 + 4000 ms, the trigger timeout the SDK documentation recommends. The timeout is disarmed
+  (set to 0) when the image arrives, on SDK failure, on watchdog expiry, on single-exposure abort, when video mode
+  stops and on CCD disconnect, so it is never armed while the camera is idle. The SDK documents the option as
+  changeable while the camera is running.
+- The watchdog is cancelled only by `EVENT_IMAGE` and by the failure events. `EVENT_TRIGGERFAIL` joins
+  `EVENT_ERROR`, `EVENT_NOFRAMETIMEOUT` and `EVENT_NOPACKETTIMEOUT`, and each failure is now logged at error level
+  with its event code.
+
+Regression test: `Acquisition no-packet timeout and unrelated SDK events` in
+`indigo_test/integration/test_ccd_touptek_sdk.c` covers these cases:
+
+- the timeout is armed before the trigger and at stream start with the expected value;
+- it is disarmed after an image, after each failure event, after the watchdog, after streaming and after an abort;
+- `EVENT_NOPACKETTIMEOUT`, `EVENT_TRIGGERFAIL` and `EVENT_ERROR` end a single exposure in ALERT;
+- an unrelated event (`EVENT_EXPOSURE`) leaves the watchdog to end the exposure.
+
+Each part was checked against the old code by reverting it on its own:
+
+| Reverted part | Where the test fails |
+| --- | --- |
+| Whole driver change | Arming assertion |
+| `EVENT_TRIGGERFAIL` handling | Failure-event loop |
+| Watchdog cancel for every event | Unrelated-event case |
+
+Validation, fake SDK, macOS arm64/x86_64:
+
+- The ToupTek suite passed 30 of its 31 cases at the time, and the Altair variant gave the same result. (This was
+  first recorded as 31 of 32, which miscounted the cases.)
+- The one failing case, `Driver configuration persistence` (`configs == 3`), also failed with this change stashed,
+  so it was not caused by this change. The cause was the test harness, which is fixed under TT-D05 below.
+- All ten OEM variants that include this source (Altair, BacCam, Bresser, OmegonPro, StarshootG, Rising, Mallin,
+  Meade, Ogma, SVBony) build without compiler warnings.
+
+Still needed on hardware:
+
+- Confirm the SDK counts the no-packet timeout from the trigger or from the last packet, not from some earlier
+  point. If it counted from an earlier point, every exposure started after an idle period would fail at once with
+  `pull_callback(0085) reported failure`.
+- Confirm that a lost GPM462M frame now ends in ALERT within exposure + about 4 s.
+
+## TT-D05 — CONFIG stayed BUSY for clients after a connection change (2026-09-25)
+
+Observed impact: the configuration control of a ToupTek camera, wheel or focuser could stay BUSY in clients
+long after the request was over.
+
+Root cause: the refactor to queues moved `CONFIG` onto the device queue, through `INDIGO_COPY_VALUES_PROCESS_CHANGE`.
+The request published BUSY at once and queued `ccd_config_handler()`, `wheel_config_handler()` or
+`focuser_config_handler()`. A connection change starts with `indigo_cancel_pending_handlers()`, which removed a
+config handler that had not run yet. The connection handler then set `CONFIG` to ALERT in memory only; it never
+published the change. The other properties in that cleanup list are deleted and redefined on connect and
+disconnect, so clients do receive their new state. `CONFIG` stays defined the whole time, so clients kept the
+BUSY state indefinitely. A connect or disconnect sent together with a `CONFIG` request is enough to trigger this,
+for example a client that saves the configuration just before it disconnects. The disconnect path also cancels
+pending handlers a second time, and nothing reset `CONFIG` there at all.
+
+A second effect of queuing: while `CONFIG` was BUSY, a new `CONFIG` request was silently dropped by the macro.
+Because the request reached the base class only through the queued handler, the base class never gave its
+"Configuration restore is in progress" answer.
+
+Fix, version `0x03000032` -> `0x03000033`:
+
+- The camera, wheel and focuser handle `CONFIG` on the bus thread, as the generated drivers do (compare
+  `ccd_asi`). On SAVE they write their own properties, then pass the request to the base class.
+- The three config handlers are removed, and so is `CONFIG_PROPERTY` in the three connection-cleanup lists.
+- The driver no longer marks `CONFIG` BUSY itself. A LOAD is still BUSY while the framework's restore runs,
+  because the base class sets that state.
+
+Regression test: `Configuration request survives a connection change` holds the camera queue, sends `CONFIG SAVE`,
+disconnects, and then requires the last `CONFIG` state published to clients to be OK. It runs for the camera and
+for the wheel. Against the previous driver it fails: the last published state is BUSY.
+
+Test harness fix: `test_ccd_touptek_sdk.c` still redirected the configuration folder with the compile-time
+replacement of `indigo_uni_config_folder()`. Commit `7cbd43fb4` removed that replacement from the Makefile, so the
+suite saved to and loaded from the developer's own `~/.indigo`. That is why `Driver configuration persistence`
+failed (`configs == 3`), and each run left fake `Touptek_*` and `Altair_*` files in `~/.indigo`. The suite now
+uses `indigo_test_mkdtemp_home()` from `test_runner.h`, reads the configs from `<test folder>/.indigo` and removes
+the whole folder at exit. A full run leaves no files in `~/.indigo`.
+
+Validation, fake SDK, macOS arm64/x86_64:
+
+- ToupTek suite: 32 of 32 cases pass.
+- Altair variant: 32 of 32 cases pass.
+- All ten OEM variants that include this source build without compiler warnings.
+- Not verified on hardware.
+
+## TT-D06 — a connection change reset cancelled requests to ALERT (2026-09-25)
+
+Each of the four connection handlers starts with `indigo_cancel_pending_handlers()` and then set every listed
+property still BUSY to ALERT, without publishing it. Two things were wrong with that:
+
+- A new session should start in a clean state. A request cancelled by the connection change belongs to the old
+  session, and ALERT reported a failure the user never had.
+- `X_WHEEL_MODEL` stays defined while the wheel is disconnected, and its change is queued. Because the reset was not
+  published, clients kept seeing it BUSY.
+
+Fix, version `0x03000033` -> `0x03000034`: the four loops reset to OK. The wheel loop also publishes
+`X_WHEEL_MODEL` when it resets it. The generated drivers got the same behaviour through the generator (TOOLS-014,
+DRV-217).
+
+Regression test: `Cancelled change does not survive a connection change` covers two cases:
+
+- **Camera:** the camera queue is held, a `CCD_GAIN` change is queued, and the camera disconnects and reconnects.
+  `CCD_GAIN` must come back OK and accept the next value.
+- **Wheel:** the same with an `X_WHEEL_MODEL` change. The reset to OK must be published while the wheel is
+  disconnected.
+
+Against the previous driver the case fails at the camera's `CCD_GAIN` state.
+
+## TT-D07 — lost guide frames: pre-trigger hard flush removed, watchdog diagnostics (2026-09-25)
+
+Follow-up to TT-D04. On hardware the problem still occurs, and the no-packet timeout armed by TT-D04 never fires: the
+SDK sends no notification of any kind after `Trigger(1)`. So the SDK apparently receives no data for the lost frame.
+
+The only difference found from INDI's toupbase driver is the flush. INDI never flushes before `Trigger(1)`; it flushes
+only when a frame arrives while no exposure runs, and in its optional exposure timeout, which is off by default and
+has no retry. INDIGO has done a hard flush (`OPTION_FLUSH` 3, which also discards frames cached in the camera)
+immediately before every trigger since at least 2022. Suspected cause, not yet confirmed: when USB is loaded by a
+second camera, the hard-flush command sometimes discards the frame the trigger has just requested, and the SDK reports
+nothing.
+
+Changes, version `0x03000034` -> `0x03000035`:
+
+- **Pre-trigger flush:** before each exposure the driver now does a soft flush only (`OPTION_FLUSH` 2, the SDK's own
+  buffers). The paths that can leave frames in the camera still hard flush themselves:
+  - watchdog expiry and SDK failure events, as before;
+  - now also after a single-exposure abort (`Trigger(0)`);
+  - now also when streaming stops.
+- **Watchdog report:** when the watchdog fires, it logs at error level:
+  - the time since `Trigger(1)`;
+  - whether the camera reported exposure start and exposure stop;
+  - the received-packet count at trigger time and now (`OPTION_PACKET_NUMBER`);
+  - the frames the SDK dropped (`OPTION_NUMBER_DROP_FRAME`);
+  - the current and full counts of the SDK's frontend and backend frame queues.
+- **Hardware exposure events:** on cameras with `FLAG_EVENT_HARDWARE`, exposure start and stop events are enabled at
+  connect and recorded for each trigger. They do not end the exposure.
+- **Failed `Trigger(1)`:** now logged at error level; it was debug only.
+
+Reading the watchdog report: no exposure start (on a camera that reports it) and no new packets means the camera
+never executed the trigger. New packets, or frames dropped by the SDK, mean the frame was lost in transfer or dropped
+by the SDK.
+
+Regression test: `Flush modes and hardware exposure events` in `indigo_test/integration/test_ccd_touptek_sdk.c`
+checks:
+
+- the flush in force at `Trigger(1)` is 2, for both a completed and a running exposure;
+- abort and stream stop leave a hard flush (3);
+- a camera with `FLAG_EVENT_HARDWARE` enables the master switch and both sub-switches, and one without it enables none;
+- an exposure that produces only an exposure-start event still ends through the watchdog.
+
+Against the previous driver the case fails at the first flush check (3 instead of 2).
+
+Validation, fake SDK, macOS arm64/x86_64: the ToupTek suite passes 34 of 34, and the Altair variant 34 of 34. All ten
+OEM variants build without compiler warnings. Not verified on hardware.
+
+## TT-D08 — measured exposure watchdog, last-good-frame report, no-packet timeout removed (2026-09-25)
+
+Two watchdog reports from the GPM462M guide camera, taken with the TT-D07 driver:
+
+| Report | Packets after `Trigger(1)` | Frontend queue | Backend queue |
+| --- | --- | --- | --- |
+| First | none (56544 -> 56544) | 6 | 0 |
+| Second | 10 (2592 -> 2602) | 6 | 0 |
+
+In both the SDK dropped no frames and neither queue had ever been full. The camera does not report hardware exposure
+events. The packet counter restarts when pull mode is restarted after a watchdog.
+
+What this shows:
+
+- The soft pre-trigger flush of TT-D07 did not remove the problem.
+- The no-packet timeout of TT-D04 did not fire even after packets stopped, so it does not catch this failure.
+- Without values from a healthy frame, the queue level of 6 and the 10 packets cannot be interpreted.
+
+Changes, version `0x03000035` -> `0x03000036`:
+
+- **Last-good-frame values.** For every frame that arrives after `Trigger(1)`, the driver records the download time
+  (time to the image minus the exposure), the packets received, both queue levels, and the number of stale frames the
+  soft flush removed before the trigger. The watchdog report adds a second line comparing these with the lost frame.
+- **Measured watchdog.** A fixed short timeout would falsely fail cameras whose downloads take more than 10 s, so the
+  margin after the exposure comes from the camera's own measured downloads:
+  - margin = 3 × the longest download measured, but at least 5 s;
+  - the result is never longer than the fixed timeout (exposure + 25 s, or 1.5 × exposure above 50 s);
+  - the fixed timeout still applies until a download has been measured.
+- **When the measurement is discarded:** on connect, on a mode change (bit depth, binning, binning mode, and the mode
+  restart after an abort or watchdog), on an ROI change, and on an `X_CCD_ADVANCED` change (USB speed).
+- **No-packet timeout removed:** the option is no longer set anywhere.
+- **Hard flush restored (user decision):** the flush before every `Trigger(1)` is `OPTION_FLUSH` 3 again. The hard
+  flushes on abort and stream stop that TT-D07 added only to make up for the soft flush are removed, so every flush is
+  back where it was before TT-D07. The value the flush returns (stale frames discarded from the SDK buffers) is still
+  recorded for the report. The TT-D07 test `Flush modes and hardware exposure events` is reduced to
+  `Hardware exposure events`.
+
+Regression tests:
+
+- `Measured exposure watchdog` checks:
+  - the fixed timeout before any measurement (26 s for a 1 s exposure);
+  - exposure + 5 s after a fast download;
+  - the fixed timeout again after the watchdog's restart;
+  - a simulated 2.5 s download giving a 7.5 s margin (107 s for a 100 s exposure);
+  - the reset after an ROI change.
+- `Acquisition failure and unrelated SDK events` keeps the TT-D04 event checks without the no-packet assertions.
+- The test harness now treats any scheduled delay over 5 s as the watchdog, because the driver schedules nothing else
+  that long.
+
+Against the previous driver the new case fails at its first measured check (26 instead of 6).
+
+Validation, fake SDK, macOS arm64/x86_64, repeated after the hard flush was restored: the ToupTek suite passes 35 of
+35, and the Altair variant 35 of 35. All ten OEM variants build without compiler warnings. Not verified on hardware.
+
+## TT-D09 — a cooler OFF queued behind a temperature change became ON (TGT-065, 2026-09-27)
+
+Finding TGT-065 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+
+Defect (reproduced): CCD_TEMPERATURE is accepted with `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME`, and its handler
+switched the cooler on (`put_Option(OPTION_TEC, 1)`) and wrote CCD_COOLER ON/OK whenever CCD_COOLER showed OFF. A
+cooler OFF sent after a temperature change is copied into CCD_COOLER on the bus thread and queued behind the
+temperature handler, which saw the copied OFF, sent `OPTION_TEC` 1 and overwrote the request with ON; the CCD_COOLER
+handler then read `sw.value` and sent `OPTION_TEC` 1 again, reporting ON/OK, so the camera kept cooling although the
+client asked it to stop. A rejected cooler request was also shown with the requested state and ALERT instead of the
+state the camera kept.
+
+Other CCD_COOLER writers: the connection handler (`get_Option(OPTION_TEC)` on connect) runs only after
+`indigo_cancel_pending_handlers()` and the BUSY reset of TT-D06, so no cooler request can be pending there; the
+temperature poll only reads CCD_COOLER. Both are unchanged.
+
+Fix, version `0x03000036` -> `0x03000037`:
+
+- The CCD_COOLER handler sends the request read with `indigo_get_switch_target()` and applies it with
+  `indigo_apply_switch_targets()` when the SDK accepts it. On failure it shows the cooler state the camera reports
+  (`get_Option(OPTION_TEC)`) with ALERT.
+- The CCD_TEMPERATURE handler still sets the setpoint and, with no cooler request pending, still switches the cooler
+  on and shows CCD_COOLER ON; it leaves a BUSY CCD_COOLER to its own handler, so the last client request wins. A
+  request copied while its `OPTION_TEC` call runs is not overwritten either (the state is checked again after the
+  call).
+
+Regression test: `Cooler off queued behind a temperature change survives` in
+`indigo_test/integration/test_ccd_touptek_sdk.c` checks that a setpoint without a pending cooler request turns the
+cooler on, then holds the camera queue with a gate handler, sends a CCD_TEMPERATURE change and a CCD_COOLER OFF,
+releases the gate and waits for a marker handler. It requires the new setpoint, exactly one more `OPTION_TEC` call
+with 0, and CCD_COOLER OFF/OK; then a rejected OFF must show ON with ALERT. Version 54 failed 3/3 (`OPTION_TEC` 1
+sent twice, no OFF); version 55 passes 3/3. With only the failure display reverted the case fails at the final ON
+check.
+
+Test harness fix (Linux): `Multiple camera identity and capacity recovery` failed on Linux with the unchanged driver.
+The test's attach hook took the camera index from the `#<serial>` suffix of the device name, which only the macOS
+build appends; on Linux both cameras were refused (`Failed to attach Touptek Camera`). The hook now takes the index
+from the SDK id in the driver's private data, which starts with the SDK device record, so the case passes on both
+platforms.
+
+Validation, fake SDK, Linux x64: `TZ=Europe/Bratislava python3 tools/run_driver_test.py ccd_touptek` 36 of 36.
+The OEM variant suites, which include the same test source, were not run in this change. Not verified on hardware.
+
+Test totals for this change: simulated (fake SDK) tests run 36, passed 36; hardware tests run 0.

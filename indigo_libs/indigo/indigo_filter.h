@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -218,6 +218,8 @@ typedef struct {
 	indigo_device *device;
 	indigo_client *client;
 	char device_name[INDIGO_FILTER_LIST_COUNT][INDIGO_NAME_SIZE];
+	int selection_phase[INDIGO_FILTER_LIST_COUNT]; ///< connect, config restore, enumeration
+	double selection_deadline[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_related_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_related_agent_list_property;

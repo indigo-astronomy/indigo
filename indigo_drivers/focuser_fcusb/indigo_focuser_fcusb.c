@@ -18,15 +18,12 @@
 
 // This file generated from indigo_focuser_fcusb.driver
 
-// TODO: Add libfcusb for windows
-
 #pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 
 //+ include
 
@@ -43,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_fcusb"
 #define DRIVER_LABEL         "Shoestring FCUSB focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -74,7 +71,12 @@ typedef struct {
 
 #pragma mark - Low level code
 
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 //+ code
+
+static void focuser_steps_handler(indigo_device *device);
 
 static bool fcusb_match(libusb_device *dev, const char **name) {
 	return libfcusb_focuser(dev, name);
@@ -95,6 +97,16 @@ static void fcusb_debug(const char *message) {
 
 //- code
 
+//+ focuser.code
+
+static void focuser_motion_finalizer(indigo_device *device) {
+	bool ok = libfcusb_stop(PRIVATE_DATA->device_context);
+	FOCUSER_STEPS_ITEM->number.value = 0;
+	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
+}
+
+//- focuser.code
+
 #pragma mark - High level code (focuser)
 
 static void focuser_connection_handler(indigo_device *device) {
@@ -112,6 +124,17 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			FOCUSER_ABORT_MOTION_PROPERTY,
+			FOCUSER_STEPS_PROPERTY,
+			X_FOCUSER_FREQUENCY_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 		fcusb_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
@@ -121,55 +144,35 @@ static void focuser_connection_handler(indigo_device *device) {
 }
 
 static void focuser_abort_motion_handler(indigo_device *device) {
-	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_cancel_pending_handler(device, focuser_steps_handler);
+	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+	if (!libfcusb_stop(PRIVATE_DATA->device_context)) {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-	//- focuser.FOCUSER_ABORT_MOTION.on_change
+	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
 }
 
 static void focuser_steps_handler(indigo_device *device) {
-	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
-	if (FOCUSER_STEPS_ITEM->number.value > 0) {
-		libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
-		if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
-			libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
-		else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
-			libfcusb_set_frequency(PRIVATE_DATA->device_context, 4);
-		else if (X_FOCUSER_FREQUENCY_16_ITEM->sw.value)
-			libfcusb_set_frequency(PRIVATE_DATA->device_context, 16);
-		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			libfcusb_move_in(PRIVATE_DATA->device_context);
-		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-			libfcusb_move_out(PRIVATE_DATA->device_context);
-		}
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
-		int delay = FOCUSER_STEPS_ITEM->number.target;
-		while (delay > 0) {
-			if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-				break;
-			}
-			indigo_usleep(1000);
-			delay--;
-		}
-		libfcusb_stop(PRIVATE_DATA->device_context);
-		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		}
+	int frequency = X_FOCUSER_FREQUENCY_16_ITEM->sw.value ? 16 : (X_FOCUSER_FREQUENCY_4_ITEM->sw.value ? 4 : 1);
+	bool ok = FOCUSER_STEPS_ITEM->number.value > 0 && libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value) && libfcusb_set_frequency(PRIVATE_DATA->device_context, frequency);
+	if (ok) {
+		ok = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? libfcusb_move_in(PRIVATE_DATA->device_context) : libfcusb_move_out(PRIVATE_DATA->device_context);
+	}
+	if (ok) {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, FOCUSER_STEPS_ITEM->number.value / 1000.0, focuser_motion_finalizer);
 	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- focuser.FOCUSER_STEPS.on_change
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-}
-
-static void focuser_x_focuser_frequency_handler(indigo_device *device) {
-	X_FOCUSER_FREQUENCY_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
+	//- focuser.FOCUSER_STEPS.on_change
 }
 
 #pragma mark - Device API (focuser)
@@ -208,20 +211,18 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, focuser_connection_handler);
-		}
+		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_FREQUENCY_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_FREQUENCY_PROPERTY, focuser_x_focuser_frequency_handler);
+		indigo_property_copy_values(X_FOCUSER_FREQUENCY_PROPERTY, property, false);
+		X_FOCUSER_FREQUENCY_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -247,60 +248,94 @@ static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE
 
 #pragma mark - Hot-plug code
 
-static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *devices[MAX_DEVICES];
 
-static void process_plug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static indigo_result verify_devices_disconnected(void) {
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		VERIFY_NOT_CONNECTED(devices[i]);
+	}
+	return INDIGO_OK;
+}
+
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
+	bool dev_ref_transferred = false;
+	fcusb_private_data *private_data = NULL;
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		if (devices[i] && ((fcusb_private_data *)devices[i]->private_data)->usbdev == dev) {
+			libusb_unref_device(dev);
+			return;
+		}
+	}
 	const char *name;
 	if (fcusb_match(dev, &name)) {
-		fcusb_private_data *private_data = indigo_safe_malloc(sizeof(fcusb_private_data));
+		private_data = (fcusb_private_data *)indigo_safe_malloc(sizeof(fcusb_private_data));
 		private_data->usbdev = dev;
-		libusb_ref_device(dev);
-			indigo_device *focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+			indigo_device *focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
 			snprintf(focuser->name, INDIGO_NAME_SIZE, "%s", name);
+			bool focuser_attached = false;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, devices[j] = focuser);
+					devices[j] = focuser;
+					if (indigo_attach_device(focuser) == INDIGO_OK) {
+						dev_ref_transferred = true;
+						focuser_attached = true;
+					} else {
+						devices[j] = NULL;
+					}
 					break;
 				}
 			}
+			if (!focuser_attached) {
+				indigo_safe_free(focuser);
+				indigo_safe_free(private_data);
+				libusb_unref_device(dev);
+				return;
+			}
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	if (!dev_ref_transferred) {
+		indigo_safe_free(private_data);
+		libusb_unref_device(dev);
+	}
 }
 
-static void process_unplug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
 	fcusb_private_data *private_data = NULL;
-	for (int j = 0; j < MAX_DEVICES; j++) {
+	for (int j = MAX_DEVICES - 1; j >= 0; j--) {
 		if (devices[j] != NULL) {
 			indigo_device *device = devices[j];
 			if (PRIVATE_DATA->usbdev == dev) {
 				private_data = PRIVATE_DATA;
 				indigo_detach_device(device);
-				free(device);
+				indigo_safe_free(device);
 				devices[j] = NULL;
 			}
 		}
 	}
 	if (private_data != NULL) {
 		libusb_unref_device(dev);
-		free(private_data);
+		indigo_safe_free(private_data);
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	libusb_unref_device(dev);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_ASYNC(process_plug_event, dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			process_unplug_event(dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
 }
@@ -312,14 +347,14 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
 			//+ on_init
 			libfcusb_debug = &fcusb_debug;
@@ -327,26 +362,45 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = NULL;
 			}
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FCUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, FCUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
+				indigo_queue_delete(&driver_queue);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				VERIFY_NOT_CONNECTED(devices[i]);
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
+			pthread_mutex_lock(&driver_queue_mutex);
+			indigo_result shutdown_result = verify_devices_disconnected();
+			pthread_mutex_unlock(&driver_queue_mutex);
+			if (shutdown_result != INDIGO_OK) {
+				return shutdown_result;
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			indigo_queue_drain(driver_queue);
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] != NULL) {
 					indigo_device *device = devices[i];
-					hotplug_callback(NULL, PRIVATE_DATA->usbdev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+					process_unplug_event_handler(NULL, libusb_ref_device(PRIVATE_DATA->usbdev));
 				}
 			}
+			indigo_queue_delete(&driver_queue);
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

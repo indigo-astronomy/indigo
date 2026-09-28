@@ -24,7 +24,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -33,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_skyalert"
 #define DRIVER_LABEL         "Interactive Astronomy SkyAlert"
 #define AUX_DEVICE_NAME      "Interactive Astronomy SkyAlert"
@@ -68,39 +67,34 @@ typedef struct {
 
 //+ code
 
-static double skyalert_read_value(indigo_device *device) {
-	if (indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1))) {
-		return indigo_atod(PRIVATE_DATA->response);
-	}
-	return -1;
+static bool skyalert_read_value(indigo_device *device, double *value) {
+	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%lf", value) == 1 && isfinite(*value);
 }
 
 static bool skyalert_read_record(indigo_device *device) {
-	long result = indigo_uni_discard(PRIVATE_DATA->handle);
-	if (result >= 0) {
-		result = indigo_uni_printf(PRIVATE_DATA->handle, "send\r");
-	}
-	if (result > 0) {
-		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1));
-	}
-	if (result && !strcmp(PRIVATE_DATA->response, "Data")) {
-		AUX_WEATHER_TEMPERATURE_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_RAIN_ITEM->number.value = skyalert_read_value(device);
-		AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_HUMIDITY_ITEM->number.value = skyalert_read_value(device);
-		AUX_WEATHER_WIND_SPEED_ITEM->number.value = skyalert_read_value(device);
-		AUX_INFO_POWER_ITEM->number.value = skyalert_read_value(device);
-		if (indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1))) {
-			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
-		}
-		AUX_WEATHER_PRESSURE_ITEM->number.value = skyalert_read_value(device);
-		return true;
-	} else {
-		AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
-		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_printf(PRIVATE_DATA->handle, "send\r") <= 0 || indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) <= 0 || strcmp(PRIVATE_DATA->response, "Data")) {
 		return false;
 	}
+	double values[8];
+	for (int i = 0; i < 7; i++) {
+		if (!skyalert_read_value(device, values + i)) {
+			return false;
+		}
+	}
+	char firmware[sizeof(PRIVATE_DATA->response)];
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, firmware, sizeof(firmware) - 1, "\r", "\r", INDIGO_DELAY(1)) <= 0 || !skyalert_read_value(device, values + 7)) {
+		return false;
+	}
+	AUX_WEATHER_TEMPERATURE_ITEM->number.value = values[0];
+	AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = values[1];
+	AUX_WEATHER_RAIN_ITEM->number.value = values[2];
+	AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = values[3];
+	AUX_WEATHER_HUMIDITY_ITEM->number.value = values[4];
+	AUX_WEATHER_WIND_SPEED_ITEM->number.value = values[5];
+	AUX_INFO_POWER_ITEM->number.value = values[6];
+	AUX_WEATHER_PRESSURE_ITEM->number.value = values[7] / 100;
+	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+	return true;
 }
 
 static bool skyalert_open(indigo_device *device) {
@@ -127,6 +121,25 @@ static void skyalert_close(indigo_device *device) {
 
 #pragma mark - High level code (aux)
 
+static void aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	//+ aux.on_timer
+	// The device has no unsolicited output: every reading is one "send" request. The 2.0
+	// driver polled it every 10 seconds; the generated 3.0 driver read the record only in
+	// skyalert_open(), so the published weather never changed after connection.
+	if (skyalert_read_record(device)) {
+		AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	indigo_execute_handler_in(device, 10, aux_timer_callback);
+	//- aux.on_timer
+}
+
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
@@ -143,6 +156,16 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
+		indigo_property *cancelled_properties[] = {
+			AUX_INFO_PROPERTY,
+			AUX_WEATHER_PROPERTY,
+		};
+		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
+			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
+				cancelled_properties[i]->state = INDIGO_OK_STATE;
+			}
+		}
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		skyalert_close(device);
@@ -150,6 +173,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	if (IS_CONNECTED) {
+		indigo_execute_handler(device, aux_timer_callback);
+	}
 }
 
 #pragma mark - Device API (aux)
@@ -199,11 +225,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (!indigo_ignore_connection_change(device, property)) {
-			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, aux_connection_handler);
-		}
+		INDIGO_PROCESS_CONNECT(aux_connection_handler);
 		return INDIGO_OK;
 	}
 	return indigo_aux_change_property(device, client, property);
@@ -238,28 +260,30 @@ indigo_result indigo_aux_skyalert(indigo_driver_action action, indigo_driver_inf
 	}
 
 	switch (action) {
-		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(skyalert_private_data));
-			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			private_data = (skyalert_private_data *)indigo_safe_malloc(sizeof(skyalert_private_data));
+			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
 
-		case INDIGO_DRIVER_SHUTDOWN:
+		}
+		case INDIGO_DRIVER_SHUTDOWN: {
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
 			if (aux != NULL) {
 				indigo_detach_device(aux);
-				free(aux);
+				indigo_safe_free(aux);
 				aux = NULL;
 			}
 			if (private_data != NULL) {
-				free(private_data);
+				indigo_safe_free(private_data);
 				private_data = NULL;
 			}
 			break;
 
+		}
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

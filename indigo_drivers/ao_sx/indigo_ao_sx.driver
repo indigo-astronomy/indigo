@@ -26,13 +26,14 @@ driver sx {
 	label = "StarlightXpress AO";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 11;
+	version = 15;
 	serial;
 	data {
 		char response[6];
 	}
 	code {
 		static bool sx_command(indigo_device *device, char *command, int response, ...) {
+			memset(PRIVATE_DATA->response, 0, sizeof(PRIVATE_DATA->response));
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
 				va_list args;
@@ -43,10 +44,14 @@ driver sx {
 					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, response, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1));
 				}
 			}
-			return result > 0;
+			return response > 0 ? result == response : result > 0;
 		}
 
+		// The port and the identity belong to the master device, but the generated reference counting
+		// calls the close helper with whichever logical device released the last reference, so both
+		// helpers step up to the master before touching DEVICE_PORT or INFO.
 		static bool sx_open(indigo_device *device) {
+			device = device->master_device;
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
@@ -63,6 +68,7 @@ driver sx {
 		}
 
 		static void sx_close(indigo_device *device) {
+			device = device->master_device;
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -75,10 +81,14 @@ driver sx {
 		on_connect {
 			if (sx_command(device, "L", 1)) {
 				AO_GUIDE_DEC_PROPERTY->state = AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-				if (PRIVATE_DATA->response[0] & 0x05)
+				if (PRIVATE_DATA->response[0] & 0x05) {
 					AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (PRIVATE_DATA->response[0] & 0x0A)
+				}
+				if (PRIVATE_DATA->response[0] & 0x0A) {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else {
+				connection_result = false;
 			}
 		}
 		on_attach {
@@ -89,45 +99,51 @@ driver sx {
 		}
 		inherited AO_GUIDE_DEC {
 			on_change {
+				bool command_result = true;
 				if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
-					sx_command(device, "GN%05d", 1, (int)AO_GUIDE_NORTH_ITEM->number.value);
+					command_result = sx_command(device, "GN%05d", 1, (int)AO_GUIDE_NORTH_ITEM->number.value);
 				} else if (AO_GUIDE_SOUTH_ITEM->number.value > 0) {
-					sx_command(device, "GS%05d", 1, (int)AO_GUIDE_SOUTH_ITEM->number.value);
+					command_result = sx_command(device, "GS%05d", 1, (int)AO_GUIDE_SOUTH_ITEM->number.value);
 				}
-				AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
-				if (PRIVATE_DATA->response[0] != 'G') {
+				if (!command_result || ((AO_GUIDE_NORTH_ITEM->number.value > 0 || AO_GUIDE_SOUTH_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'G')) {
 					AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = 0;
 			}
 		}
 		inherited AO_GUIDE_RA {
 			on_change {
+				bool command_result = true;
 				if (AO_GUIDE_WEST_ITEM->number.value > 0) {
-					sx_command(device, "GW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
+					command_result = sx_command(device, "GW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
 				} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
-					sx_command(device, "GT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
+					command_result = sx_command(device, "GT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
 				}
-				AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
-				if (PRIVATE_DATA->response[0] != 'G') {
+				if (!command_result || ((AO_GUIDE_WEST_ITEM->number.value > 0 || AO_GUIDE_EAST_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'G')) {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
 			}
 		}
 		inherited AO_RESET {
 			on_change {
-				if (AO_CENTER_ITEM->sw.value) {
-					sx_command(device, "K", 1);
-					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
-				} else if (AO_UNJAM_ITEM->sw.value) {
-					sx_command(device, "R", 1);
-					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+				bool requested = AO_CENTER_ITEM->sw.value || AO_UNJAM_ITEM->sw.value;
+				if (requested) {
+					if (sx_command(device, AO_CENTER_ITEM->sw.value ? "K" : "R", 1) && PRIVATE_DATA->response[0] == 'K') {
+						// A centred mechanism clears a limit reported on either axis, but a correction
+						// requested while the reset held the queue is still waiting to be sent and has to
+						// publish its own outcome.
+						if (AO_GUIDE_DEC_PROPERTY->state != INDIGO_BUSY_STATE) {
+							INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+						}
+						if (AO_GUIDE_RA_PROPERTY->state != INDIGO_BUSY_STATE) {
+							INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+						}
+					} else {
+						AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				}
 				AO_CENTER_ITEM->sw.value = AO_UNJAM_ITEM->sw.value = false;
-				if (PRIVATE_DATA->response[0] != 'K') {
-					AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
 			}
 		}
 	}
@@ -135,28 +151,30 @@ driver sx {
 		name = "SX AO (guider)";
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
+				bool command_result = true;
 				if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
-					sx_command(device, "MN%05d", 1, (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
+					command_result = sx_command(device, "MN%05d", 1, (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
 				} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
-					sx_command(device, "MS%05d", 1, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
+					command_result = sx_command(device, "MS%05d", 1, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value / 10);
 				}
-				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-				if (PRIVATE_DATA->response[0] != 'M') {
+				if (!command_result || ((GUIDER_GUIDE_NORTH_ITEM->number.value > 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'M')) {
 					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
 			on_change {
-				if (AO_GUIDE_WEST_ITEM->number.value > 0) {
-					sx_command(device, "MW%05d", 1, (int)AO_GUIDE_WEST_ITEM->number.value);
-				} else if (AO_GUIDE_EAST_ITEM->number.value > 0) {
-					sx_command(device, "MT%05d", 1, (int)AO_GUIDE_EAST_ITEM->number.value);
+				bool command_result = true;
+				if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+					command_result = sx_command(device, "MW%05d", 1, (int)GUIDER_GUIDE_WEST_ITEM->number.value / 10);
+				} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+					command_result = sx_command(device, "MT%05d", 1, (int)GUIDER_GUIDE_EAST_ITEM->number.value / 10);
 				}
-				AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = 0;
-				if (PRIVATE_DATA->response[0] != 'M') {
-					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (!command_result || ((GUIDER_GUIDE_WEST_ITEM->number.value > 0 || GUIDER_GUIDE_EAST_ITEM->number.value > 0) && PRIVATE_DATA->response[0] != 'M')) {
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 			}
 		}
 	}

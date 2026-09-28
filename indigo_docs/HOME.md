@@ -18,8 +18,11 @@
 - [Development Introduction](DEVELOPMENT.md)
 - [Driver Development Basics](DRIVER_DEVELOPMENT_BASICS.md)
   > Every driver also has a README.md file in its own directory.
+- [Timers and Handler Queues](TIMERS_AND_QUEUES.md)
+- [Driver Code Generator Basics](DRIVER_GENERATOR_BASICS.md)
 - [Driver Code Generator Migration](DRIVER_GENERATOR_MIGRATION.md)
 - [Serial Device Simulators](SERIAL_DEVICE_SIMULATORS.md)
+- [Driver Testing Basics](DRIVER_TESTING_BASICS.md)
 - [Client Development Basics](CLIENT_DEVELOPMENT_BASICS.md)
 - [Multi-instance Support](MULTI-INSTANCE_SUPPORT.md)
 - [Device Access Control and Locking](INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
@@ -33,11 +36,11 @@
 - [Guider Agent](../indigo_drivers/agent_guider/README.md)
 - [Auxiliary Agent](../indigo_drivers/agent_auxiliary/README.md)
 - [Astrometry Agent](../indigo_drivers/agent_astrometry/README.md)
-- [ASTAP Agent](../indigo_drivers/agent_astap/README.md)
+- [ASTAP Agent](../obsoleted_drivers/agent_astap/README.md)
 - [Config Agent](../indigo_drivers/agent_config/README.md)
 - [Script Agent](../indigo_drivers/agent_scripting/README.md)
 - [Alpaca Agent](../indigo_drivers/agent_alpaca/README.md)
-- [Snoop Agent](../indigo_drivers/agent_snoop/README.md)
+- [Snoop Agent](../obsoleted_drivers/agent_snoop/README.md)
 
 ## Scripting
 - [INDIGO Scripting Guide](INDIGO_SCRIPT_GUIDE.md)

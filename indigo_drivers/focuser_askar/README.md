@@ -34,3 +34,8 @@ reconnects directly without re-broadcasting.
 
 Driver is developed and tested with:
 * Askar-WAF focuser
+
+## Testing
+
+2026-09-24 17:14 3.0.0.7 linux x64 simulator 10/10 OK
+2026-09-27 22:37 3.0.0.8 mac arm64 simulator 10/10 OK

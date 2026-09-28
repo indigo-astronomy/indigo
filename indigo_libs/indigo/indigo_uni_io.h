@@ -1,4 +1,4 @@
-// Copyright (c) 2025 CloudMakers, s. r. o.
+// Copyright (c) 2025-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Server callback context refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -183,15 +184,42 @@ INDIGO_EXTERN int indigo_uni_set_rts(indigo_uni_handle *handle, bool state);
 
 INDIGO_EXTERN int indigo_uni_set_cts(indigo_uni_handle *handle, bool state);
 
+/** Read CTS: 1 when asserted, 0 when clear, -1 on an invalid/unsupported handle or I/O error.
+ *  Does not latch errors on the data handle, so unsupported modem-line probes do not prevent subsequent I/O.
+ */
+
+INDIGO_EXTERN int indigo_uni_get_cts(indigo_uni_handle *handle);
+
 #endif
 
 /** Perform passive UDP discovery
  */
 INDIGO_EXTERN bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max_host, char *message, int max_message);
 
+/** Perform active UDP discovery
+ */
+INDIGO_EXTERN bool indigo_perform_active_discovery(const char *host, int port, int timeout, const char *payload, int payload_size, char *responder, int max_responder, char *message, int max_message);
+
+#define INDIGO_UNI_DISCOVERY_MAX_TARGETS	32
+
+/** Callback for indigo_uni_discover(), called for every reply; return false to stop the discovery.
+ */
+typedef bool (*indigo_uni_discovery_callback)(const char *responder, int responder_port, const char *reply, long length, void *context);
+
+/** Perform UDP discovery with multiple responders. The request is sent to target (IPv4 address) or, when target is NULL,
+    to the broadcast address of every broadcast capable IPv4 interface (and 127.255.255.255 if include_loopback is set).
+    Each of the polls sends the request and collects replies until no reply arrives within timeout (in microseconds).
+    Returns the number of replies passed to callback.
+ */
+INDIGO_EXTERN int indigo_uni_discover(const char *target, int port, const char *payload, long payload_length, int polls, long timeout, bool include_loopback, indigo_uni_discovery_callback callback, void *context);
+
 /** Open client socket.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level);
+
+/** Open client socket, connection attempt is limited by timeout (in microseconds, negative value means no limit).
+ */
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket_with_timeout(const char *host, int port, int type, long timeout, int log_level);
 
 #define indigo_uni_client_tcp_socket(host, port, log_level) indigo_uni_open_client_socket(host, port, SOCK_STREAM, log_level);
 #define indigo_uni_client_udp_socket(host, port, log_level) indigo_uni_open_client_socket(host, port, SOCK_DGRAM, log_level);
@@ -213,6 +241,11 @@ INDIGO_EXTERN void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handl
 /** Open server socket.
  */
 INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level);
+
+/** Open server socket; callback(0, callback_data) runs after listen succeeds.
+ * Like indigo_uni_open_tcp_server_socket(), blocks until the listener finishes.
+ */
+INDIGO_EXTERN void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int, void *), void *callback_data, int log_level);
 
 #endif
 
@@ -303,6 +336,15 @@ INDIGO_EXTERN void indigo_uni_kill_socket(indigo_uni_handle *handle);
 /** Close handle.
  */
 INDIGO_EXTERN void indigo_uni_close(indigo_uni_handle **handle);
+
+/** Synchronize a regular file before publishing its contents.
+ */
+INDIGO_EXTERN bool indigo_uni_sync_file(indigo_uni_handle *handle);
+
+/** Replace a destination with a completed temporary file on the same filesystem.
+ * Failure leaves the existing destination intact.
+ */
+INDIGO_EXTERN bool indigo_uni_replace_file(const char *temporary_path, const char *destination_path);
 
 /** Home folder (~/)
  */

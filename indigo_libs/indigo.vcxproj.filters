@@ -85,6 +85,9 @@
     <ClCompile Include="indigo_mount_driver.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
+    <ClCompile Include="indigo_polaralign_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
     <ClCompile Include="indigo_rotator_driver.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
@@ -586,6 +589,9 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="indigo\indigo_mount_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="indigo\indigo_polaralign_driver.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="indigo\indigo_rotator_driver.h">

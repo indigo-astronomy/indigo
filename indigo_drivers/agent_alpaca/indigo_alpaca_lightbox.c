@@ -88,7 +88,7 @@ static indigo_alpaca_error alpaca_calibratoron(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
-	if (value > device->covercalibrator.maxbrightness) {
+	if (value < 0 || value > device->covercalibrator.maxbrightness) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}

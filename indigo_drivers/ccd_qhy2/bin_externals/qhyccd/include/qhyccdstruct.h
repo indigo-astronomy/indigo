@@ -258,7 +258,7 @@ enum CONTROL_ID
 /*66*/  CAM_32BITS,
 /*67*/  CAM_Sensor_ULVO_Status, /// Sensor working status [0:init  1:good  2:checkErr  3:monitorErr 8:good 9:powerChipErr]  410 461 411 600 268 [Eris board]
 /*68*/  CAM_SensorPhaseReTrain, /// 2020,4040/PRO，6060,42PRO
-/*69*/  CAM_InitConfigFromFlash, /// 2410 461 411 600 268 for now
+/*69*/  CAM_InitConfigFromFlash, /// 2410 461 411 600 268 for now 268001 342 410 533 630 163
 /*70*/  CAM_TRIGER_MODE, //check if camera has multiple triger mode
 /*71*/  CAM_TRIGER_OUT, //check if camera support triger out function
 /*72*/  CAM_BURST_MODE, //check if camera support burst mode
@@ -284,6 +284,9 @@ enum CONTROL_ID
 /*90*/  CONTROL_AUTOEXPSampleArea,   //!<auto exposure Sample Area
 /*91*/  CONTROL_AUTOEXPexpMaxMS,        //!<auto exposure max exp(ms)
 /*92*/  CONTROL_AUTOEXPgainMax,         //!<auto exposure max gain
+/*93*/	CONTROL_Error_Led,  // 992s 411s Error Led
+/*94*/  CONTROL_HEATINGBOARD,         //!< control camera heating board
+/*95*/  CONTROL_CAA_ROTATOR,          //!< CAA rotator angle
 
 /* Do not Put Item after  CONTROL_MAX_ID !! This should be the max index of the list */
 /*Last One */  CONTROL_MAX_ID,

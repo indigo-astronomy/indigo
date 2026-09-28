@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -15,6 +15,7 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Empty start handling refactored by OpenAI Codex (2026).
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -238,7 +239,11 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_BUSY_STATE) {
-			indigo_error("Mount Agent didn't become busy in 1s");
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_ALERT_STATE) {
+				indigo_error("Mount Agent %s failed", operation);
+			} else {
+				indigo_error("Mount Agent didn't become busy in 1s");
+			}
 			return false;
 		}
 		for (int i = 0; i < 6000; i++) { // wait 60s to become not BUSY
@@ -253,7 +258,11 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_OK_STATE) {
-			indigo_error("Mount Agent didn't finish in 60s");
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_BUSY_STATE) {
+				indigo_error("Mount Agent didn't finish in 60s");
+			} else {
+				indigo_error("Mount Agent %s failed", operation);
+			}
 			return false;
 		}
 		indigo_sleep(settle_time);
@@ -383,6 +392,45 @@ static void to_jnow_if_not(indigo_device *device, double *ra, double *dec) {
 	}
 }
 
+/* Precess coordinates between epochs, 0 standing for JNow. Hints and the GOTO target are in the hints epoch, the
+   solution in the WCS epoch and the mount works in its MOUNT_EPOCH, so coordinates are converted where they pass
+   from one to another. */
+static void convert_epoch(double from, double to, double *ra, double *dec) {
+	if (from != to) {
+		indigo_eq_to_j2k(from, ra, dec);
+		indigo_j2k_to_eq(to, ra, dec);
+	}
+}
+
+/* Hints follow the mount's pointing, which eq_coordinates keep in the mount's epoch, in the hints epoch */
+static void update_hints_from_mount(indigo_device *device) {
+	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.r == 0) {
+		return;
+	}
+	double ra = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a * RAD2DEG / 15;
+	double dec = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG;
+	convert_epoch(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_epoch, AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value, &ra, &dec);
+	if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value != ra || AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value != dec) {
+		AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.target = ra;
+		AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.target = dec;
+		AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
+	}
+}
+
+/* Target of the next polar alignment reference in the mount's epoch: the start position moved by hour_angle degrees
+   with its JNow declination kept. The polar error is computed in JNow, so a mount aligned on the true pole has to turn
+   its RA axis only; keeping the declination of another epoch moves the declination axis by the precession between
+   the epochs (about 9' from J2000 in 2026), which reads as polar error. */
+static void pa_reference_target(indigo_device *device, double hour_angle, double *ra, double *dec) {
+	double mount_epoch = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_epoch;
+	*ra = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a * RAD2DEG / 15;
+	*dec = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.d * RAD2DEG;
+	convert_epoch(mount_epoch, 0, ra, dec);
+	*ra = fmod(*ra - hour_angle / 15 + 24, 24);
+	convert_epoch(0, mount_epoch, ra, dec);
+}
+
 static void process_failed(indigo_device *device, char *message) {
 	if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -451,7 +499,9 @@ static void start_process(indigo_device *device) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_GOTO;
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		if (!mount_slew(device, AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.target,AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.target, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value)) {
+		double ra = AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.target, dec = AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.target;
+		convert_epoch(AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_epoch, &ra, &dec);
+		if (!mount_slew(device, ra, dec, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value)) {
 			process_failed(device, "Slew failed");
 			return;
 		}
@@ -505,8 +555,10 @@ static void solve(indigo_platesolver_task *task) {
 	}
 	// Continue with a generic process
 	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->copy_solution_to_target) {
-		AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.value = AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.target = AGENT_PLATESOLVER_WCS_RA_ITEM->number.value;
-		AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.value = AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.target = AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value;
+		double ra = AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, dec = AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value;
+		convert_epoch(AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value, AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value, &ra, &dec);
+		AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.value = AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.target = ra;
+		AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.value = AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.target = dec;
 		indigo_update_property(device, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->copy_solution_to_target = false;
 	}
@@ -514,7 +566,9 @@ static void solve(indigo_platesolver_task *task) {
 	if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SYNCING;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		if (!mount_sync(device, AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value, 2)) {
+		double ra = AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, dec = AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value;
+		convert_epoch(AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_epoch, &ra, &dec);
+		if (!mount_sync(device, ra, dec, 2)) {
 			process_failed(device, "Sync failed");
 			return;
 		}
@@ -523,6 +577,7 @@ static void solve(indigo_platesolver_task *task) {
 	if (AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_CENTERING;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+		convert_epoch(AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_epoch, &recenter_ra, &recenter_dec);
 		if (!mount_slew(device, recenter_ra, recenter_dec, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value)) {
 			process_failed(device, "Slew failed");
 			return;
@@ -543,7 +598,8 @@ static void solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 			AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_CENTERING;
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-			bool ok = mount_slew(device, (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a * RAD2DEG - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.d * RAD2DEG, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value);
+			pa_reference_target(device, AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value, &ra, &dec);
+			bool ok = mount_slew(device, ra, dec, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value);
 			if (ok) {
 				ok = start_exposure(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.value);
 			}
@@ -567,7 +623,8 @@ static void solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 			AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_CENTERING;
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-			bool ok = mount_slew(device, (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a * RAD2DEG - 2 * AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.d * RAD2DEG, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value);
+			pa_reference_target(device, 2 * AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value, &ra, &dec);
+			bool ok = mount_slew(device, ra, dec, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value);
 			if (ok) {
 				ok = start_exposure(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.value);
 			}
@@ -880,6 +937,8 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_process_state = INDIGO_IDLE_STATE;
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_pause_state = INDIGO_IDLE_STATE;
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state = INDIGO_IDLE_STATE;
+		// the MOUNT_EPOCH default until the related mount reports its own
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_epoch = 2000;
 		pthread_mutex_init(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex, NULL);
 		return INDIGO_OK;
 	}
@@ -1045,9 +1104,17 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_START_PROCESS
-		indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PLATESOLVER_WCS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
+			bool operation_selected = false;
+			for (int i = 0; i < AGENT_START_PROCESS_PROPERTY->count; i++) {
+				operation_selected |= AGENT_START_PROCESS_PROPERTY->items[i].sw.value;
+			}
+			if (!operation_selected) {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				return INDIGO_OK;
+			}
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 			if (AGENT_RESET_ITEM->sw.value) {
@@ -1138,7 +1205,6 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
-			bool update = false;
 			double ra = NAN, dec = NAN;
 			if (property->state == INDIGO_BUSY_STATE) {
 				/* if mount is moved and polar alignment is in progress stop polar alignment and invalidate values */
@@ -1150,22 +1216,14 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 					if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
 						ra = item->number.value;
 						INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.a = 15 * DEG2RAD * ra;
-						if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value != ra) {
-							AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.target = ra;
-							update = true;
-						}
 					} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
 						dec = item->number.value;
 						INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.d = DEG2RAD * dec;
-						if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value != dec) {
-							AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.target = dec;
-							update = true;
-						}
 					}
 				}
-				if (update) {
-					AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
+				if (!isnan(ra) && !isnan(dec)) {
+					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.r = 1;
+					update_hints_from_mount(device);
 				}
 			}
 		} else if (!strcmp(property->name, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
@@ -1181,6 +1239,13 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 					lon = item->number.value;
 					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.a = DEG2RAD * lon;
 				}
+			}
+		} else if (!strcmp(property->name, MOUNT_EPOCH_PROPERTY_NAME)) {
+			indigo_item *item = indigo_get_item(property, MOUNT_EPOCH_ITEM_NAME);
+			if (item && INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_epoch != item->number.value) {
+				INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_epoch = item->number.value;
+				// the pointing does not have to change with the epoch, so the hints are converted again here
+				update_hints_from_mount(FILTER_CLIENT_CONTEXT->device);
 			}
 		} else if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_process_state = property->state;

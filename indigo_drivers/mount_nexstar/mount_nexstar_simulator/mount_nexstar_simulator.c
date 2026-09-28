@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <errno.h>
+#include <math.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -21,6 +22,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
@@ -28,17 +30,32 @@
 #define RA_AXIS   0x10
 #define DEC_AXIS  0x11
 #define GPS       0xB0
+#define GOTO_DURATION_SECONDS 1.0
+#define MANUAL_RATE_SCALE     0x100000
 
 typedef enum {
 	DIALECT_CELESTRON,
 	DIALECT_SKYWATCHER
 } simulator_dialect;
 
+typedef enum {
+	HC_NEXSTAR = 0x11,
+	HC_STARSENSE = 0x13
+} simulator_hc_type;
+
 typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
 	simulator_dialect dialect;
+	simulator_hc_type hc_type;
+	int model_id;
+	int firmware_major, firmware_minor;
+	int gps_firmware_major, gps_firmware_minor;
+	bool gps_linked;
+	uint32_t axis_ra_offset, axis_dec_offset;
+	char control_file[PATH_MAX];
+	char event_file[PATH_MAX];
 } simulator_options;
 
 typedef struct {
@@ -49,10 +66,17 @@ typedef struct {
 	uint8_t tracking_mode;
 	uint32_t ra;
 	uint32_t dec;
+	uint32_t motion_start_ra;
+	uint32_t motion_start_dec;
 	uint32_t target_ra;
 	uint32_t target_dec;
 	uint16_t ra_rate;
 	uint16_t dec_rate;
+	int ra_direction;
+	int dec_direction;
+	double motion_start;
+	double manual_update;
+	double motion_duration;
 	uint8_t ra_guide_rate;
 	uint8_t dec_guide_rate;
 } simulator_state;
@@ -61,7 +85,14 @@ static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
-	.dialect = DIALECT_CELESTRON
+	.dialect = DIALECT_CELESTRON,
+	.hc_type = HC_STARSENSE,
+	.firmware_major = 4,
+	.firmware_minor = 15,
+	.gps_firmware_major = 1,
+	.gps_firmware_minor = 2,
+	.gps_linked = true,
+	.model_id = -1
 };
 static simulator_state state = {
 	.location = { 48, 8, 0, 0, 17, 6, 0, 1 },
@@ -70,11 +101,18 @@ static simulator_state state = {
 	.slewing = false,
 	.tracking_mode = 2,
 	.ra = 0x40000000,
-	.dec = 0x40000000,
+	.dec = 0x20000000,
+	.motion_start_ra = 0x40000000,
+	.motion_start_dec = 0x20000000,
 	.target_ra = 0x40000000,
-	.target_dec = 0x40000000,
+	.target_dec = 0x20000000,
 	.ra_rate = 0,
 	.dec_rate = 0,
+	.ra_direction = 0,
+	.dec_direction = 0,
+	.motion_start = 0,
+	.manual_update = 0,
+	.motion_duration = GOTO_DURATION_SECONDS,
 	.ra_guide_rate = 128,
 	.dec_guide_rate = 128
 };
@@ -87,9 +125,20 @@ static void usage(const char *name) {
 	printf("NexStar mount serial simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --dialect <name>        celestron or skywatcher\n");
+	printf("  --hc-type <name>        nexstar or starsense\n");
+	printf("  --model-id <id>         Override the dialect default model id\n");
+	printf("  --axis-offset <ra,dec>  Mechanical-axis offsets from sky coordinates (degrees)\n");
+	printf("  --firmware <major.minor> Celestron binary firmware version\n");
+	printf("  --gps-firmware <major.minor> GPS accessory firmware version\n");
+	printf("  --gps-no-fix           GPS accessory present without a satellite fix\n");
+	printf("  --unaligned             Report the mount as not aligned\n");
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR\n");
+	printf("  and every command is recorded in <ready-file>.events. Actions: drop, short,\n");
+	printf("  malformed, delay (answer 500 ms late), track (hand controller starts EQ\n");
+	printf("  tracking, answer 500 ms late) and close.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -98,6 +147,17 @@ static bool parse_dialect(const char *value, simulator_dialect *dialect) {
 		*dialect = DIALECT_CELESTRON;
 	} else if (!strcmp(value, "skywatcher")) {
 		*dialect = DIALECT_SKYWATCHER;
+	} else {
+		return false;
+	}
+	return true;
+}
+
+static bool parse_hc_type(const char *value, simulator_hc_type *hc_type) {
+	if (!strcmp(value, "nexstar")) {
+		*hc_type = HC_NEXSTAR;
+	} else if (!strcmp(value, "starsense")) {
+		*hc_type = HC_STARSENSE;
 	} else {
 		return false;
 	}
@@ -119,6 +179,38 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "--dialect requires celestron or skywatcher\n");
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--hc-type")) {
+			if (++i == argc || !parse_hc_type(argv[i], &options.hc_type)) {
+				fprintf(stderr, "--hc-type requires nexstar or starsense\n");
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--axis-offset")) {
+			double ra, dec;
+			if (++i == argc || sscanf(argv[i], "%lf,%lf", &ra, &dec) != 2 || !isfinite(ra) || !isfinite(dec)) {
+				return false;
+			}
+			options.axis_ra_offset = (uint32_t)(fmod(fmod(ra, 360) + 360, 360) / 360 * 4294967296.0);
+			options.axis_dec_offset = (uint32_t)(fmod(fmod(dec, 360) + 360, 360) / 360 * 4294967296.0);
+		} else if (!strcmp(argv[i], "--firmware")) {
+			if (++i == argc || sscanf(argv[i], "%d.%d", &options.firmware_major, &options.firmware_minor) != 2 || options.firmware_major < 0 || options.firmware_major > 255 || options.firmware_minor < 0 || options.firmware_minor > 255) {
+				fprintf(stderr, "--firmware requires two byte values\n");
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--gps-firmware")) {
+			if (++i == argc || sscanf(argv[i], "%d.%d", &options.gps_firmware_major, &options.gps_firmware_minor) != 2 || options.gps_firmware_major < 0 || options.gps_firmware_major > 255 || options.gps_firmware_minor < 0 || options.gps_firmware_minor > 255) {
+				fprintf(stderr, "--gps-firmware requires two byte values\n");
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--gps-no-fix")) {
+			options.gps_linked = false;
+		} else if (!strcmp(argv[i], "--unaligned")) {
+			state.aligned = false;
+		} else if (!strcmp(argv[i], "--model-id")) {
+			if (++i == argc) {
+				fprintf(stderr, "--model-id requires a numeric value\n");
+				return false;
+			}
+			options.model_id = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -129,6 +221,10 @@ static bool parse_args(int argc, char *argv[]) {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
+	}
+	if (options.ready_file != NULL) {
+		snprintf(options.control_file, sizeof(options.control_file), "%s.control", options.ready_file);
+		snprintf(options.event_file, sizeof(options.event_file), "%s.events", options.ready_file);
 	}
 	return true;
 }
@@ -169,6 +265,89 @@ static void trace_bytes(const char *prefix, const uint8_t *data, size_t length) 
 	fprintf(stderr, "\n");
 }
 
+static double monotonic_seconds(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1000000000.0;
+}
+
+static void record_command(const uint8_t *command, size_t length) {
+	if (*options.event_file == '\0') {
+		return;
+	}
+	FILE *file = fopen(options.event_file, "a");
+	if (file == NULL) {
+		return;
+	}
+	fprintf(file, "%.9f", monotonic_seconds());
+	for (size_t i = 0; i < length; i++) {
+		fprintf(file, " %02X", command[i]);
+	}
+	fputc('\n', file);
+	fclose(file);
+}
+
+static void command_selector(const uint8_t *command, size_t length, char *selector, size_t size) {
+	if (length >= 4 && command[0] == 'P') {
+		snprintf(selector, size, "P%02X", command[3]);
+	} else {
+		snprintf(selector, size, "%c", command[0]);
+	}
+}
+
+static bool apply_control(const uint8_t *command, size_t length) {
+	if (*options.control_file == '\0') {
+		return false;
+	}
+	FILE *file = fopen(options.control_file, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char action[16] = { 0 };
+	char expected[16] = { 0 };
+	int count = fscanf(file, "%15s %15s", action, expected);
+	fclose(file);
+	if (count != 2) {
+		return false;
+	}
+	char actual[16];
+	command_selector(command, length, actual, sizeof(actual));
+	if (strcmp(expected, "*") && strcmp(expected, actual)) {
+		return false;
+	}
+	unlink(options.control_file);
+	if (!strcmp(action, "drop")) {
+		return true;
+	}
+	if (!strcmp(action, "short")) {
+		static const uint8_t reply[] = { '0', '#' };
+		write_all(reply, sizeof(reply));
+		return true;
+	}
+	if (!strcmp(action, "malformed")) {
+		static const uint8_t reply[] = { 'B', 'A', 'D', '#' };
+		write_all(reply, sizeof(reply));
+		return true;
+	}
+	if (!strcmp(action, "delay")) {
+		usleep(500000);
+		return false;
+	}
+	if (!strcmp(action, "track")) {
+		// EQ north tracking started on the hand controller while this command is on the way, answered late like "delay"
+		state.tracking_mode = 2;
+		usleep(500000);
+		return false;
+	}
+	if (!strcmp(action, "close")) {
+		running = 0;
+		close(serial_fd);
+		serial_fd = -1;
+		return true;
+	}
+	return false;
+}
+
 static void write_reply(const uint8_t *data, size_t length) {
 	uint8_t reply[64];
 	if (length + 1 > sizeof(reply)) {
@@ -205,12 +384,83 @@ static uint8_t from_hex(char ch) {
 	return 0;
 }
 
+static double now_seconds(void) {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec + tv.tv_usec / 1000000.0;
+}
+
+static uint32_t interpolate_u32(uint32_t from, uint32_t to, double fraction) {
+	int64_t delta = (int64_t)to - (int64_t)from;
+	return (uint32_t)(from + (int64_t)(delta * fraction));
+}
+
+static void update_manual_motion(double now) {
+	if (state.manual_update == 0) {
+		state.manual_update = now;
+		return;
+	}
+	double elapsed = now - state.manual_update;
+	state.manual_update = now;
+	if (elapsed <= 0) {
+		return;
+	}
+	if (state.ra_rate > 0 && state.ra_direction != 0) {
+		uint32_t delta = (uint32_t)(state.ra_rate * elapsed * MANUAL_RATE_SCALE);
+		state.ra += state.ra_direction > 0 ? delta : -delta;
+	}
+	if (state.dec_rate > 0 && state.dec_direction != 0) {
+		uint32_t delta = (uint32_t)(state.dec_rate * elapsed * MANUAL_RATE_SCALE);
+		state.dec += state.dec_direction > 0 ? delta : -delta;
+	}
+}
+
+static void update_motion(void) {
+	double now = now_seconds();
+	update_manual_motion(now);
+	if (!state.slewing) {
+		return;
+	}
+	double elapsed = now - state.motion_start;
+	if (elapsed >= state.motion_duration) {
+		state.ra = state.target_ra;
+		state.dec = state.target_dec;
+		state.slewing = false;
+		return;
+	}
+	if (elapsed <= 0) {
+		return;
+	}
+	double fraction = elapsed / state.motion_duration;
+	state.ra = interpolate_u32(state.motion_start_ra, state.target_ra, fraction);
+	state.dec = interpolate_u32(state.motion_start_dec, state.target_dec, fraction);
+}
+
+static void start_motion(uint32_t target_ra, uint32_t target_dec) {
+	update_motion();
+	state.motion_start_ra = state.ra;
+	state.motion_start_dec = state.dec;
+	state.target_ra = target_ra;
+	state.target_dec = target_dec;
+	state.motion_start = now_seconds();
+	state.motion_duration = GOTO_DURATION_SECONDS;
+	state.slewing = true;
+}
+
 static uint32_t read_hex32(const uint8_t *text) {
 	uint32_t value = 0;
 	for (int i = 0; i < 8; i++) {
 		value = (value << 4) | from_hex((char)text[i]);
 	}
 	return value;
+}
+
+static uint32_t read_hex16(const uint8_t *text) {
+	uint32_t value = 0;
+	for (int i = 0; i < 4; i++) {
+		value = (value << 4) | from_hex((char)text[i]);
+	}
+	return value << 16;
 }
 
 static void format_hex16(char *buffer, uint32_t value) {
@@ -232,17 +482,23 @@ static void handle_pass_through(const uint8_t *command) {
 
 	if (pass_command == 0x06 || pass_command == 0x07) {
 		uint16_t rate = (uint16_t)(command[4] << 8) | command[5];
+		update_motion();
 		if (destination == RA_AXIS) {
 			state.ra_rate = rate;
+			state.ra_direction = rate == 0 ? 0 : (pass_command == 0x06 ? 1 : -1);
 		} else if (destination == DEC_AXIS) {
 			state.dec_rate = rate;
+			state.dec_direction = rate == 0 ? 0 : (pass_command == 0x06 ? 1 : -1);
 		}
 		write_empty_reply();
 	} else if (pass_command == 0x24 || pass_command == 0x25) {
+		update_motion();
 		if (destination == RA_AXIS) {
 			state.ra_rate = command[4];
+			state.ra_direction = command[4] == 0 ? 0 : (pass_command == 0x24 ? 1 : -1);
 		} else if (destination == DEC_AXIS) {
 			state.dec_rate = command[4];
+			state.dec_direction = command[4] == 0 ? 0 : (pass_command == 0x24 ? 1 : -1);
 		}
 		write_empty_reply();
 	} else if (pass_command == 0x46) {
@@ -258,11 +514,11 @@ static void handle_pass_through(const uint8_t *command) {
 	} else if (pass_command == 0x26 || pass_command == 0x27) {
 		write_empty_reply();
 	} else if (pass_command == 0x37 && destination == GPS) {
-		response[0] = 1;
+		response[0] = options.gps_linked ? 1 : 0;
 		write_reply(response, 1);
 	} else if (pass_command == 0xFE) {
-		response[0] = 1;
-		response[1] = 2;
+		response[0] = destination == GPS ? options.gps_firmware_major : 1;
+		response[1] = destination == GPS ? options.gps_firmware_minor : 2;
 		write_reply(response, 2);
 	} else {
 		write_empty_reply();
@@ -274,6 +530,11 @@ static void handle_command(const uint8_t *command, size_t length) {
 	char text[32] = { 0 };
 
 	trace_bytes("->", command, length);
+	record_command(command, length);
+	if (apply_control(command, length)) {
+		return;
+	}
+	update_motion();
 
 	switch (command[0]) {
 		case 'K':
@@ -282,19 +543,19 @@ static void handle_command(const uint8_t *command, size_t length) {
 			break;
 		case 'V':
 			if (options.dialect == DIALECT_CELESTRON) {
-				response[0] = 4;
-				response[1] = 15;
+				response[0] = options.firmware_major;
+				response[1] = options.firmware_minor;
 				write_reply(response, 2);
 			} else {
 				write_reply((const uint8_t *)"042507", 6);
 			}
 			break;
 		case 'v':
-			response[0] = 0x13;
+			response[0] = (uint8_t)options.hc_type;
 			write_reply(response, 1);
 			break;
 		case 'm':
-			response[0] = options.dialect == DIALECT_CELESTRON ? 20 : 0;
+			response[0] = options.model_id >= 0 ? (uint8_t)options.model_id : (options.dialect == DIALECT_CELESTRON ? 20 : 0);
 			write_reply(response, 1);
 			break;
 		case 'J':
@@ -307,6 +568,10 @@ static void handle_command(const uint8_t *command, size_t length) {
 			break;
 		case 'M':
 			state.slewing = false;
+			state.ra_rate = 0;
+			state.dec_rate = 0;
+			state.ra_direction = 0;
+			state.dec_direction = 0;
 			write_empty_reply();
 			break;
 		case 'p':
@@ -315,7 +580,13 @@ static void handle_command(const uint8_t *command, size_t length) {
 			break;
 		case 't':
 			response[0] = state.tracking_mode;
-			write_reply(response, 1);
+			if (options.hc_type == HC_STARSENSE && options.firmware_major == 1 && options.firmware_minor == 20) {
+				response[1] = 1;
+				response[2] = 20;
+				write_reply(response, 3);
+			} else {
+				write_reply(response, 1);
+			}
 			break;
 		case 'T':
 			state.tracking_mode = command[1];
@@ -347,18 +618,44 @@ static void handle_command(const uint8_t *command, size_t length) {
 			format_hex16(text + 5, state.dec);
 			write_reply((uint8_t *)text, 9);
 			break;
+		case 'z':
+			format_hex32(text, state.ra + options.axis_ra_offset);
+			text[8] = ',';
+			format_hex32(text + 9, state.dec + options.axis_dec_offset);
+			write_reply((uint8_t *)text, 17);
+			break;
+		case 'Z':
+			format_hex16(text, state.ra + options.axis_ra_offset);
+			text[4] = ',';
+			format_hex16(text + 5, state.dec + options.axis_dec_offset);
+			write_reply((uint8_t *)text, 9);
+			break;
 		case 's':
 			state.ra = read_hex32(command + 1);
 			state.dec = read_hex32(command + 10);
 			state.slewing = false;
 			write_empty_reply();
 			break;
-		case 'r':
-			state.target_ra = read_hex32(command + 1);
-			state.target_dec = read_hex32(command + 10);
-			state.ra = state.target_ra;
-			state.dec = state.target_dec;
+		case 'S':
+			state.ra = read_hex16(command + 1);
+			state.dec = read_hex16(command + 6);
 			state.slewing = false;
+			write_empty_reply();
+			break;
+		case 'r':
+			start_motion(read_hex32(command + 1), read_hex32(command + 10));
+			write_empty_reply();
+			break;
+		case 'R':
+			start_motion(read_hex16(command + 1), read_hex16(command + 6));
+			write_empty_reply();
+			break;
+		case 'b':
+			start_motion(read_hex32(command + 1) - options.axis_ra_offset, read_hex32(command + 10) - options.axis_dec_offset);
+			write_empty_reply();
+			break;
+		case 'B':
+			start_motion(read_hex16(command + 1) - options.axis_ra_offset, read_hex16(command + 6) - options.axis_dec_offset);
 			write_empty_reply();
 			break;
 		case 'P':
@@ -372,15 +669,16 @@ static void handle_command(const uint8_t *command, size_t length) {
 
 static size_t expected_command_length(uint8_t first) {
 	switch (first) {
-		case 'K':
-		case 'T':
-			return 2;
-		case 'W':
-		case 'H':
-			return 9;
-		case 'S':
-		case 'R':
-			return 10;
+			case 'K':
+			case 'T':
+				return 2;
+			case 'W':
+			case 'H':
+				return 9;
+			case 'B':
+			case 'S':
+			case 'R':
+				return 10;
 		case 's':
 		case 'r':
 		case 'b':

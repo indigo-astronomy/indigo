@@ -1,0 +1,19 @@
+00:42:40.209 Check Alpaca Protocol - Conform Universal 4.5.0 (Build 53834.49ab847) 
+00:42:40.210                                     
+00:42:40.210 Test Dome device:  - localhost:7679 through URL: http://localhost:7679 
+00:42:40.210                                     
+00:42:40.213 OK messages are suppressed, they can be enabled through the Alpaca and COM settings page. 
+00:42:40.213                                     
+00:42:40.213 Connecting to device...             
+00:42:40.302                                     
+00:42:40.302 Successfully connected to device, disconnecting in order to test that connection using a different PUT parameter order is successful... 
+00:42:40.363                                     
+00:42:40.363 Successfully disconnected from device, re-connecting using re-ordered PUT parameters... 
+00:42:40.363                                     
+00:42:40.417 Successfully connected to device using re-ordered PUT parameters, testing device... 
+00:42:40.417                                     
+00:42:40.421 Device exposes interface version 1  
+00:44:02.226                                     
+00:44:02.227 Successfully disconnected from device. 
+00:44:02.227                                     
+00:44:02.227 Congratulations there were no errors, issues or information alerts - Your device passes ASCOM Alpaca protocol validation!! 

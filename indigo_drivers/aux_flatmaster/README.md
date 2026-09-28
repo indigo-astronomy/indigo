@@ -25,3 +25,7 @@ indigo_server indigo_aux_flatmaster
 
 * Developed with Arduino simulator
 * Tested with real Pegasus Astro Flatmaster
+
+## Testing
+
+2026-09-27 20:49 3.0.0.11 mac arm64 simulator 8/8 OK

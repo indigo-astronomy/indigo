@@ -406,7 +406,7 @@ static bool ptp_olympus_recover(indigo_device *device) {
 			PTP_DUMP_CONTAINER(&event);
 		}
 		PRIVATE_DATA->transaction_id = 0;
-		if (!ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id)) {
+		if (!ptp_transaction_1_0(device, ptp_operation_OpenSession, 1)) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "reopen session failed (%04x)", PRIVATE_DATA->last_error);
 			continue;
 		}
@@ -442,6 +442,9 @@ static void ptp_olympus_check_event(indigo_device *device) {
 		int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_int, (unsigned char *)&event, sizeof(event), &length, 100);
 		if (rc < 0 || length == 0) {
 			break;
+		}
+		if (length < (int)PTP_CONTAINER_HDR_SIZE || event.type != ptp_container_event || event.length != (uint32_t)length || event.length > PTP_CONTAINER_COMMAND_SIZE(5) || (event.length - PTP_CONTAINER_HDR_SIZE) % sizeof(uint32_t)) {
+			continue;
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> OK, %d", length);
 		PTP_DUMP_CONTAINER(&event);
@@ -541,7 +544,7 @@ static void ptp_olympus_check_event(indigo_device *device) {
 	if (IS_CONNECTED) {
 		// 2Hz halves the dial-change latency (event tick + quiet-tick refresh)
 		// and bounds silently changed modes at 5s via the forced refresh
-		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->event_checker);
+		indigo_execute_handler_in(device, 0.5, ptp_olympus_check_event);
 	}
 }
 
@@ -756,109 +759,76 @@ bool ptp_olympus_initialise(indigo_device *device) {
 		}
 #endif
 	}
-	indigo_set_timer(device, 0.5, ptp_olympus_check_event, &PRIVATE_DATA->event_checker);
+	indigo_execute_handler_in(device, 0.5, ptp_olympus_check_event);
 	return true;
 }
 
+static bool olympus_capture_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->shutter_open) {
+		return true;
+	}
+	bool result = ptp_transaction_1_0(device, ptp_operation_olympus_Capture, OLYMPUS_CAPTURE_RELEASE);
+	PRIVATE_DATA->shutter_open = !result;
+	return result;
+}
+
 bool ptp_olympus_exposure(indigo_device *device) {
-	// in the B dial position the shutter property reports one of the
-	// bulb/live-time/live-comp sentinels (0xFFFFFFFx) instead of a real fraction:
-	// hold the shutter with 0x03, time the exposure on the host, release with 0x06
-	ptp_property *shutter = ptp_property_supported(device, ptp_property_olympus_Shutterspeed);
-	bool is_bulb = shutter && (shutter->value.sw.value & 0xFFFFFF00) == 0xFFFFFF00;
-	PRIVATE_DATA->image_added = false;
-	bool result = ptp_transaction_1_0(device, ptp_operation_olympus_Capture, OLYMPUS_CAPTURE_PRESS);
-	if (result) {
-		if (is_bulb) {
-			ptp_blob_exposure_timer(device);
+	if (PRIVATE_DATA->capture_phase == 0) {
+		PRIVATE_DATA->capture_stop = olympus_capture_stop;
+		ptp_property *shutter = ptp_property_supported(device, ptp_property_olympus_Shutterspeed);
+		bool bulb = shutter && (shutter->value.sw.value & 0xFFFFFF00) == 0xFFFFFF00;
+		if (PRIVATE_DATA->abort_capture || !ptp_transaction_1_0(device, ptp_operation_olympus_Capture, OLYMPUS_CAPTURE_PRESS)) {
+			return false;
 		}
-		// the release must be sent even after an abort, it ends the exposure
-		result = ptp_transaction_1_0(device, ptp_operation_olympus_Capture, OLYMPUS_CAPTURE_RELEASE) && result;
-	} else {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_operation_olympus_Capture failed (%04x)", PRIVATE_DATA->last_error);
+		PRIVATE_DATA->shutter_open = true;
+		if (!bulb && !olympus_capture_stop(device)) {
+			return false;
+		}
+		ptp_capture_start(device, bulb, 0);
+		return true;
 	}
-	if (result) {
-		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_olympus_check_dual_compression(device)) {
-			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+	if (PRIVATE_DATA->capture_phase == 1) {
+		if (!PRIVATE_DATA->abort_capture && indigo_monotonic_time() < PRIVATE_DATA->shutter_deadline) {
+			return true;
 		}
-		// the image arrives asynchronously via the event pipe, wait for the exposure
-		// plus a 60s margin for processing and download
-		int timeout = 600 + 10 * (int)CCD_EXPOSURE_ITEM->number.target;
-		for (int i = 0; i < timeout && !PRIVATE_DATA->abort_capture && !PRIVATE_DATA->image_added; i++) {
-			indigo_usleep(100000);
+		if (!olympus_capture_stop(device)) {
+			return false;
 		}
-		result = PRIVATE_DATA->image_added;
+		PRIVATE_DATA->capture_phase = 2;
 	}
-	if (!result || PRIVATE_DATA->abort_capture) {
-		if (CCD_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
-		if (CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_OK_STATE) {
-			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-		}
-		if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_OK_STATE) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		}
+	return ptp_capture_wait(device);
+}
+
+static bool olympus_liveview_stop(indigo_device *device) {
+	if (!PRIVATE_DATA->stream_started) {
+		return true;
 	}
-	return result && !PRIVATE_DATA->abort_capture;
+	uint32_t mode = 0;
+	bool result = ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_olympus_LiveViewModeOM, &mode, sizeof(mode));
+	PRIVATE_DATA->stream_started = !result;
+	return result;
 }
 
 bool ptp_olympus_liveview(indigo_device *device) {
+	PRIVATE_DATA->liveview_stop = olympus_liveview_stop;
+	if (!PRIVATE_DATA->stream_started) {
+		uint32_t mode = 0x04000300;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_olympus_LiveViewModeOM, &mode, sizeof(mode))) {
+			return false;
+		}
+		PRIVATE_DATA->stream_started = true;
+		return true;
+	}
 	void *buffer = NULL;
 	uint32_t size = 0;
-	int retry_count = 0;
-	uint32_t mode = 0x04000300;
-	// enable the live view stream (libgphoto2 uses the same LiveViewModeOM value)
-	if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_olympus_LiveViewModeOM, &mode, sizeof(uint32_t))) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "failed to enable live view (%04x)", PRIVATE_DATA->last_error);
-		return false;
+	bool result = ptp_transaction_1_0_i(device, ptp_operation_olympus_GetLiveViewImage, 1, &buffer, &size);
+	if (result && buffer && size > 1024) {
+		ptp_stream_frame(device, buffer, buffer, size);
+		return true;
 	}
-	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-		if (ptp_transaction_1_0_i(device, ptp_operation_olympus_GetLiveViewImage, 1, &buffer, &size) && size > 1024) {
-			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			}
-			if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-				CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-			}
-			indigo_process_dslr_image(device, buffer, size, ".jpeg", true);
-			if (PRIVATE_DATA->image_buffer) {
-				free(PRIVATE_DATA->image_buffer);
-			}
-			PRIVATE_DATA->image_buffer = buffer;
-			buffer = NULL;
-			CCD_STREAMING_COUNT_ITEM->number.value--;
-			if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
-				CCD_STREAMING_COUNT_ITEM->number.value = -1;
-			}
-			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-			retry_count = 0;
-		} else {
-			// DeviceBusy or an undersized placeholder frame while live view spins up
-			if (buffer) {
-				free(buffer);
-				buffer = NULL;
-			}
-			if (retry_count++ > 100) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "live view failed to start (%04x)", PRIVATE_DATA->last_error);
-				mode = 0;
-				ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_olympus_LiveViewModeOM, &mode, sizeof(uint32_t));
-				indigo_finalize_dslr_video_stream(device);
-				return false;
-			}
-		}
-		indigo_usleep(50000);
-	}
-	mode = 0;
-	ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_olympus_LiveViewModeOM, &mode, sizeof(uint32_t));
-	indigo_finalize_dslr_video_stream(device);
-	return !PRIVATE_DATA->abort_capture;
+	free(buffer);
+	// Preserve the original retry policy for transient errors and placeholder frames.
+	return PRIVATE_DATA->stream_retries++ <= 100;
 }
 
 bool ptp_olympus_focus(indigo_device *device, int steps) {

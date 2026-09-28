@@ -22,3 +22,7 @@ indigo_server indigo_aux_arteskyflat
 ## Comments
 
 ## Status: Tested with simulator
+
+## Testing
+
+2026-09-27 20:47 3.0.0.9 mac arm64 simulator 9/9 OK

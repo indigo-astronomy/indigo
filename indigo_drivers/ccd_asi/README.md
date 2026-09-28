@@ -24,7 +24,7 @@ indigo_server indigo_ccd_asi
 
 Driver is developed and tested with:
 * ASI224MC
-* ASI120MM
+* ASI120MM (linux only)
 * ASI120MC-S
 * ASI1600MC-Cool
 * ASI071MC-Cool
@@ -32,6 +32,7 @@ Driver is developed and tested with:
 * ASI2600MM Pro
 * ASI174 Mini
 * ASI290 Mini
+* ASI294MC Pro
 
 ## Notes
 
@@ -55,3 +56,21 @@ If you see occasional or frequent "Exposure failed" errors reported, one of the 
 6. If you are using a Raspberry Pi or some other SBC, the power adapter may not be powerful enough. Please use more powerful adapter. We recommend at least 5.1V @ 2.5A for RPi3 and 5.1 @ 3A for RPi4.
 
 If none of the above helps, enable ZWO ASI debug log as described [here](https://www.indigo-astronomy.org/download/How%20to%20get%20log%20file%20on%20Linux.pdf). You do not need ASI Studio, you can connect and disconnect the camera from INDIGO. Once the ASI debug log is enabled start INDIGO as usual and when the issue is reproduced please send the log file to indigo@cloudmakers.eu
+
+### Custom property names from driver version 0x0300002E
+
+Custom properties now follow the INDIGO `X_` naming convention: `PIXEL_FORMAT` becomes `X_PIXEL_FORMAT`, `ASI_ADVANCED` becomes `X_ADVANCED`, `ASI_PRESETS` becomes `X_PRESETS`, and `ASI_CUSTOM_SUFFIX` becomes `X_CUSTOM_SUFFIX`. Item names remain unchanged. Update client scripts and recreate saved custom-property settings under the new names; old property names are not aliases. The camera's eight-byte flash suffix remains stored in the camera and changes the device name on replug.
+
+### ASI120 acquisition recovery
+
+The bundled SDK can report `ASI_EXP_FAILED` after shortening an exposure or stopping a long stream on ASI120MC-S. The driver retries that failed snapshot at most three times, preserving its requested duration and dark/light setting. Each retry stops the failed exposure and waits 150 ms on the handler queue before restarting. Abort and disconnect cancel pending retries; exhausted retries and other SDK failures remain ALERT.
+
+After aborting a long snapshot, ASI120 video frames may initially arrive more slowly than the new exposure setting. Video readout allows at least five seconds per frame while individual SDK reads remain bounded to 20 ms. This allowance does not change the requested exposure duration.
+
+## Testing
+
+2026-09-21 21:17 3.0.0.65 mac arm64 ASI294MC Pro 28/28 OK
+2026-09-26 19:50 3.0.0.68 mac arm64 ZWO ASI120MC-S 28/28 OK
+2026-09-26 19:59 3.0.0.68 mac arm64 ZWO ASI120MC-S (hot-plug) 32/32 OK
+2026-09-27 08:50 3.0.0.70 linux x64 fake SDK 54/54 OK
+2026-09-27 21:26 3.0.0.70 mac arm64 fake SDK 54/54 OK

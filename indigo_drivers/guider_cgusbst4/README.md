@@ -24,3 +24,8 @@ indigo_server indigo_guider_cgusbst4
 
 Driver is developed and tested with:
 * CG-USB-ST4
+
+## Testing
+
+2026-09-21 23:52 3.0.0.7 mac arm64 CG-USB-ST4 10/10 OK
+2026-09-27 22:39 3.0.0.8 mac arm64 simulator 7/7 OK

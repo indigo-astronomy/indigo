@@ -172,6 +172,23 @@ if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
 indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 ```
 
+#### Switch Item Target
+Switch items have an internal *sw.target* as well, but unlike the numeric target it is never sent to the clients: they see exactly what they saw before, the requested value during <span style="color:orange">**BUSY**</span> and the device state afterwards. `indigo_property_copy_values()` writes the target together with the value (including the reset of the other items of a one-of-many property), `indigo_set_switch()` writes only the value.
+
+The target solves one race. A status poll on the device queue checks that the property is not <span style="color:orange">**BUSY**</span> and then writes the device state into the items, while a client request is copied on the bus thread. A request copied between that check and that write is overwritten, and a handler that reads *sw.value* then sends the device the poll's state instead of the request. A handler of a property that a poll writes therefore reads the request with `indigo_get_switch_target()`, calls `indigo_apply_switch_targets()` when the device accepted it, and on failure sets the values to the state the device reports before publishing <span style="color:red">**ALERT**</span>:
+
+```C
+bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
+if (set_tracking(device, on)) {
+	indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
+} else {
+	indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+}
+```
+
+The poll keeps its <span style="color:orange">**BUSY**</span> check. Only requests guarded by <span style="color:orange">**BUSY**</span> (`INDIGO_COPY_VALUES_PROCESS_CHANGE`) may rely on the target: a request accepted while <span style="color:orange">**BUSY**</span> (the `_ANYTIME` variants) may overwrite the targets while the handler reads them. Selector properties that an action reads right after them on the bus thread (for example `MOUNT_ON_COORDINATES_SET`) stay synchronous and do not need the target. Text items have no target.
+
 ## Types of INDIGO Drivers
 
 There are three types of INDIGO drivers. The build system of INDIGO automatically produces the three of them:
@@ -375,8 +392,10 @@ Timers in INDIGO are managed with several calls:
 
 - *indigo_set_timer()* - schedule callback to be called after a certain amount of time. The callback will be executed in a separate thread (prototype changed in INDIGO 2.0-122).
 - *indigo_reschedule_timer()* - reschedule already scheduled timer, can be used for recurring operations.
-- *indigo_cancel_timer()* - request cancellation of a scheduled timer and return, the timer may finish after the function returned.
-- *indigo_cancel_timer_sync()* - request cancellation of a scheduled timer and wait until canceled (introduced in INDIGO 2.0-122).
+- *indigo_cancel_timer()* - request cancellation of a scheduled timer and return. It returns true if a pending timer was prevented from running and false if the timer was already running or the reference did not identify a live timer.
+- *indigo_cancel_timer_sync()* - request cancellation of a scheduled timer and wait until it is safe to release resources used by the callback (introduced in INDIGO 2.0-122). It returns true when a live timer was canceled or waited for, and false when the reference did not identify a live timer.
+
+If a non-NULL timer reference is passed to *indigo_set_timer()*, the pointed-to value must be NULL. Passing a reference that already contains a live timer handle fails instead of waiting for the old timer to complete.
 
 The timer callback should be a void function that accepts pointer to *indigo_device*. The following function illustrates how to poll the Atik filter wheel until the desired filter is set:
 
@@ -440,7 +459,7 @@ indigo_cancel_timer(device, &wheel_timer);
 
 Rather than using a global timer objects, as shown above, it is a good idea to store them in the device private data. Good example for this is [indigo_wheel_asi.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/wheel_asi/indigo_wheel_asi.c).
 
-As of INDIGO 2.0-122 new call is introduced -  *indigo_cancel_timer_sync()*. This call is useful in an event of device disconnect and device detach to prevent releasing of the device resources before the timer is canceled. It should not be called directly in the **change property** callback, as it may deadlock this thread. So if some timers need to be canceled at disconnect it is a good idea to handle the connection property asynchronously with *indigo_async()*, *indigo_handle_property_async()* or *indigo_set_timer()* (with 0 time delay). There are examples of this in almost every driver.
+As of INDIGO 2.0-122 new call is introduced -  *indigo_cancel_timer_sync()*. This call is useful in an event of device disconnect and device detach to prevent releasing of the device resources before the timer is canceled. The call is safe when invoked from the timer's own callback; in that case it cancels any future reschedule of the same timer but does not wait for the current callback to return. It can still block when called from another thread while the timer callback is running, so drivers should continue to handle disconnect and other prolonged property changes asynchronously with *indigo_async()*, *indigo_handle_property_async()* or *indigo_set_timer()* (with 0 time delay). There are examples of this in almost every driver.
 
 Blocking or prolonged operations executed in the driver main thread may block the whole INDIGO framework. Because of this they should be executed asynchronously in a separate thread. Asynchronous operations can be executed with:
 
@@ -500,6 +519,14 @@ static indigo_result wheel_change_property(indigo_device *device,
 
 This is the recommended pattern for all new drivers and is exactly what the driver code generator emits. Because everything for one device runs on a single queue, the connection handler can safely call *indigo_cancel_pending_handlers()* on disconnect to discard any still queued polling before it closes the hardware.
 
+#### Shared background work
+
+`indigo_execute_background_handler_in(device, delay, callback)` schedules short, non-I/O work on the shared framework background queue. It returns false when the queue is unavailable. The queue is defined in `indigo_bus.c` and created/destroyed by `indigo_start()`/`indigo_stop()`. Tasks retain their original logical device and do not acquire the device/master mutex. Callbacks must not block or perform hardware I/O: one slow callback delays every user of this queue. Use the ordinary device queue for hardware work.
+
+Call `indigo_cancel_background_handler(device, callback)` after stopping a recurring producer; pass NULL to cancel all background callbacks for the device. Cancellation waits for matching running work except when invoked by that worker itself. Derived detach handlers must cancel before freeing callback-owned resources. Base detach also cancels remaining background tasks before freeing the base context. Submit only while the bus is running and the device/callback resources remain valid.
+
+CCD countdown uses this queue without additional mutexes or device locks. It keeps the existing exposure property updates and suspend/resume model, calculates elapsed time with `indigo_monotonic_time()`, and terminates at zero even if its callback arrives after the deadline. A driver-supplied zero also terminates countdown. Countdown never changes the exposure state to OK; readout completion remains the driver's responsibility.
+
 #### Handler Priorities
 
 Because the queue is serialized, an ordinary long running task would delay everything queued after it. That is unacceptable for operations that are time critical - a guiding pulse must fire on time, an **abort** must be honored immediately even while a slew handler is queued. INDIGO 3.0 therefore lets a task be submitted with a **priority**: higher priority tasks are pulled from the queue ahead of lower priority ones. The predefined levels are defined in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h):
@@ -531,7 +558,20 @@ indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT,
 	((double)north) / 1000.0, guider_guide_dec_finish_callback);
 ```
 
-A driver that needs a queue outside of the standard device queue (for example an auxiliary control channel) can create and manage one directly with *indigo_queue_create()*, *indigo_queue_add()* / *indigo_queue_add_with_data()*, *indigo_queue_remove()* and *indigo_queue_delete()*, all declared in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h). Most drivers never need this - the device queue reached through the *indigo_execute_handler()* family is sufficient.
+A driver that needs a queue outside of the standard device queue (for example an auxiliary control channel) can create and manage one directly with *indigo_queue_create()*, *indigo_queue_add()* / *indigo_queue_add_with_data()*, *indigo_queue_remove()*, *indigo_queue_drain()* and *indigo_queue_delete()*, all declared in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h). Most drivers never need this - the device queue reached through the *indigo_execute_handler()* family is sufficient.
+
+After stopping task producers (for example by deregistering USB hot-plug), call `indigo_queue_drain(queue)` to wait synchronously until both pending and running tasks finish. Delayed tasks retain their deadlines, and callback-enqueued follow-up work is included. Stop recurring polling first; do not hold a task mutex or delete the queue concurrently. Calling from the queue's own worker returns `false` instead of deadlocking. Draining leaves the queue usable; `indigo_queue_delete()` cancels pending tasks and destroys it.
+
+Generated hot-plug drivers use this shutdown sequence for libusb, SDK and HID: verify that devices are disconnected under the driver task mutex; on success stop SDK discovery retries, deregister hot-plug, cancel pending retries, drain the queue without holding the task mutex, and only then detach devices and delete the queue. A rejected shutdown leaves hot-plug and discovery active.
+
+
+### Configuration completion and filter readiness
+
+The base `CONFIG.LOAD` handler parses the selected configuration and applies its saved property requests in order. CONFIG stays BUSY until these requests complete. A property handler must publish BUSY when accepting asynchronous work and publish its final OK or ALERT only when the operation is finished, including any delayed finalizer. This contract applies equally to `indigo_set_timer()` handlers and handler queues. An unrelated periodic update must not falsely report OK while the requested operation is still pending. A queue-tail callback alone cannot establish completion because an earlier handler may have scheduled a later finalizer.
+
+The configuration observer waits only for properties requested by that restore. It does not wait for unrelated BUSY properties. Missing, hidden or read-only saved properties are skipped; a requested operation's ALERT, deletion, device disconnection or restore timeout fails CONFIG. The synchronous `indigo_load_properties()` helper used by existing driver initialization code still dispatches requests without waiting; a driver must finish its connection initialization before reporting CONNECTION/OK.
+
+The shared filter keeps a device selection BUSY until connection, configuration restore and final enumeration finish. Device-specific enumerators must emit their definitions before calling the base enumerator, which emits CONNECTION last. The filter then exposes the completed cache and signals selection/OK. Agents can safely apply their initial device policy at that point. A remote server must also implement the completion-aware CONFIG handler; a server that acknowledges only parsing does not provide the same guarantee.
 
 ### Communication with the Hardware
 

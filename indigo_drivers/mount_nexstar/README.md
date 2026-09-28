@@ -36,3 +36,17 @@ This driver uses libnexstar library https://sourceforge.net/projects/libnexstar/
 A non-standard switch property "Tracking mode" is provided by this driver for fork mounts. It is set to "auto" by default and in such case driver tries to guess the mode from tracking mode reported by the hand controller. If the mount is not tracking, error is reported.
 
 A non-standard switch property "Guider rate" is provided by this driver.
+
+## Testing
+
+2026-09-23 23:55 3.0.0.35 mac arm64 MountSim 2.3 (SE wedge EQ) 20/20 OK
+2026-09-24 06:25 3.0.0.35 mac arm64 MountSim 2.3 (CGEM) 21/21 OK
+2026-09-24 06:32 3.0.0.35 mac arm64 MountSim 2.3 (CGE) 20/20 OK
+2026-09-24 06:57 3.0.0.36 mac arm64 MountSim 2.3 (AVX) 21/21 OK
+2026-09-24 07:19 3.0.0.37 mac arm64 MountSim 2.3 (CGX) 21/21 OK
+2026-09-24 08:00 3.0.0.38 mac arm64 MountSim 2.3 (SynScan) 18/18 OK
+2026-09-24 21:14 3.0.0.41 mac arm64 Celestron NexStar 4/5 SE (NexStar+ 5.35, EQ wedge) 12/12 OK
+2026-09-24 21:25 3.0.0.41 mac arm64 Celestron GPS (NexStar+ 5.35, detection only) 1/1 OK
+2026-09-24 21:57 3.0.0.42 mac arm64 Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) 12/12 OK
+2026-09-27 00:04 3.0.0.46 linux x64 simulator 23/23 OK
+2026-09-27 22:56 3.0.0.46 mac arm64 simulator 23/23 OK
