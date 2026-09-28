@@ -23,13 +23,13 @@
 |  | 2026-09-25 00:59 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Camera (ZWO ASI120MC-S, ASI294MC Pro) | 4 / 4 | ✅ OK |
 |  | 2026-09-25 01:01 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 FilterWheel (ZWO EFW) | 2 / 2 | ✅ OK |
 | agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
-|  | 2026-09-27 19:41 | 2.0.0.23 | mac arm64 | simulator | 31 / 31 | ✅ OK |
+|  | 2026-09-28 07:01 | 2.0.0.23 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
 |  | 2026-09-27 19:42 | 3.0.0.28 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
-|  | 2026-09-27 19:42 | 3.0.0.50 | mac arm64 | simulator | 90 / 90 | ✅ OK |
+|  | 2026-09-28 07:01 | 3.0.0.50 | mac arm64 | simulator | 90 / 90 | ✅ OK |
 | agent_imager | 2026-09-24 12:56 | 3.0.0.61 | linux x64 | simulator | 53 / 53 | ✅ OK |
-|  | 2026-09-27 21:15 | 3.0.0.62 | mac arm64 | simulator | 55 / 55 | ✅ OK |
+|  | 2026-09-28 07:07 | 3.0.0.62 | mac arm64 | simulator | 55 / 54 | ❌ Failed |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
 |  | 2026-09-27 20:12 | 3.0.0.24 | mac arm64 | simulator | 69 / 69 | ✅ OK |
 | agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
@@ -134,7 +134,7 @@
 | ccd_qsi | 2026-09-27 08:05 | 3.0.0.23 | linux x64 | fake SDK | 61 / 61 | ✅ OK |
 | ccd_rising | 2026-09-27 21:49 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_simulator | 2026-09-27 13:44 | 3.0.0.37 | linux x64 | simulator | 25 / 25 | ✅ OK |
-|  | 2026-09-27 21:51 | 3.0.0.37 | mac arm64 | simulator | 25 / 25 | ✅ OK |
+|  | 2026-09-28 06:59 | 3.0.0.38 | mac arm64 | simulator | 25 / 25 | ✅ OK |
 | ccd_ssag | 2026-09-22 10:13 | 3.0.0.14 | mac arm64 | QHY5 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:53 | 3.0.0.16 | mac arm64 | fake SDK | 13 / 13 | ✅ OK |
 | ccd_ssg | 2026-09-27 21:53 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |

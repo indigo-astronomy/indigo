@@ -122,4 +122,4 @@ As of INDIGO version 2.0-237 recalibration after GOTO or meridian flip is not re
 ## Testing
 
 2026-09-24 12:56 3.0.0.48 linux x64 simulator 88/88 OK
-2026-09-27 19:42 3.0.0.50 mac arm64 simulator 90/90 OK
+2026-09-28 07:01 3.0.0.50 mac arm64 simulator 90/90 OK
