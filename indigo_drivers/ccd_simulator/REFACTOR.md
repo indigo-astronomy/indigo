@@ -180,6 +180,7 @@ Regression tests in `integration/test_ccd_simulator.c`:
 
 - All follow tests run on an image rotated by 36° (`FOLLOW_ROTATION`) and check each shift as a vector against the projection's north and west axes (`follow_axis()`, `shifted_along()`), not only its length.
 - `simulator_guider_periodic_error_follows_ra_axis`: the periodic error moves the stars along the RA axis.
+- `simulator_guider_periodic_error_period_and_amplitude`: over four 6 s cycles the star position along the RA axis fits a sine of `PER_ERR_CYCLE` seconds (within 0.1 s) and `PER_ERR_VAL` pixels (within 0.2 px); measured 6.00 s and 4.016 px, 0.028 px rms.
 - `simulator_guider_offset_model_pulses_follow_mount_axes`: without a mount, 3 s north and west pulses of `CCD Guider Simulator (guider)` move the stars 7.5 px along the mount's axes on both sides of the pier.
 - Against the source before `226977c11`, `simulator_guider_offsets_follow_simulated_mount_axes`, `simulator_guider_periodic_error_follows_ra_axis` and `simulator_guider_offset_model_pulses_follow_mount_axes` fail. Before this fix, the west side of `simulator_guider_offset_model_pulses_follow_mount_axes` failed.
 
