@@ -2186,7 +2186,7 @@ test-agent-imager-guider-mount: check-lib $(INTEGRATION_BUILD)/test_agent_imager
 
 # The production Astrometry agent with the real astrometry.net solver, the Imager and Mount agents
 # and the CCD and mount simulators. Opt-in: it needs solve-field and image2xy installed and
-# downloads index 4113 from data.astrometry.net.
+# downloads index 4112 from data.astrometry.net.
 ASTROMETRY_SOLVER_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_astrometry.a $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_mount.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(BUILD_DRIVERS)/indigo_mount_simulator.a
 
 $(INTEGRATION_BUILD)/test_agent_astrometry_solver: integration/test_agent_astrometry_solver.c test_runner.h $(ASTROMETRY_SOLVER_ARCHIVES) | $(INTEGRATION_BUILD)

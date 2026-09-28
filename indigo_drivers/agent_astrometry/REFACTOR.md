@@ -85,3 +85,7 @@ Validation on macOS arm64: `test_agent_astrometry` 34/34 (3 runs; 1 intermittent
 ## Real solver test with the extended catalogue (2026-09-28)
 
 The CCD simulator's catalogue now reaches magnitude 9.3; `test_agent_astrometry_solver` renders all of it (`MAGNITUDE_LIMIT` 9.5). The polar alignment case runs at a fixed sidereal time (9.35 h, set through the site longitude on the Mount Agent), so its references are the same fields at any time of the day, and each step has to be within 0.5' of the error set on the simulator. With 44 catalogue stars in the field the south galactic pole (0.85 h, -27°) still does not solve with index 4113, blind or with the camera scale; position 20 is 5.5 h, -35°. `test_agent_astrometry_solver` 25/25 on macOS arm64.
+
+## Index 4112 for the real solver test (2026-09-28)
+
+The south galactic pole did not solve with index 4113 although the index has its 42 stars around it (10 per HEALPix cell, all brighter than 9.13) and the simulator renders all of them. A synthetic source list of the same stars, projected without the simulator, showed it depends on the angle of the field: it solves at 0, 36, 90 and 216° and not at -36, 144 and 150°, where solve-field sees the simulator's frame. With 2.8-4° quads too few fit in the 4° x 5.3° frame there; the 2-2.8° quads of index 4112 solve it at every angle. `test_agent_astrometry_solver` now uses index 4112 only and has a `south galactic pole` case; 26/26 passed on macOS arm64 with it.
