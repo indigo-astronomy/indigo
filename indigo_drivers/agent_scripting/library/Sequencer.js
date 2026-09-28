@@ -499,9 +499,12 @@ Sequence.prototype.wait_for_gps = function() {
 	this.sequence.push({ execute: 'wait_for_gps()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.calibrate_guiding = function(exposure) {
+Sequence.prototype.calibrate_guiding = function(exposure, step) {
 	if (exposure != undefined) {
 		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	}
+	if (step != undefined) {
+		this.sequence.push({ execute: 'set_guider_calibration_step(' + step + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'start_guider_process("CALIBRATION")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -1695,6 +1698,10 @@ var indigo_sequencer = {
 
 	set_guider_exposure: function(exposure) {
 		this.change_numbers(this.devices[GUIDER_AGENT], "AGENT_GUIDER_SETTINGS", { EXPOSURE: exposure });
+	},
+
+	set_guider_calibration_step: function(step) {
+		this.change_numbers(this.devices[GUIDER_AGENT], "AGENT_GUIDER_SETTINGS", { STEP0: step });
 	},
 
 	start_guider_process: function(name, state) {

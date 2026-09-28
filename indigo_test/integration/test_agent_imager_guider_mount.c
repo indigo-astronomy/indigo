@@ -387,7 +387,7 @@ static bool related_abort_allowed(const char *item_name) {
 
 typedef enum {
 	NO_MOUNT,
-	PARKED_UNRELATED_MOUNT,
+	TRACKING_UNRELATED_MOUNT,
 	ACTIVE_RELATED_MOUNT
 } mount_setup;
 
@@ -417,9 +417,13 @@ static bool setup(mount_setup mount) {
 		REQUIRE(indigo_mount_simulator(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 		mount_started = true;
 	}
-	if (mount == PARKED_UNRELATED_MOUNT) {
+	if (mount == TRACKING_UNRELATED_MOUNT) {
 		REQUIRE(change_switch_and_wait(MOUNT_DEVICE, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true, INDIGO_OK_STATE, 20));
 		direct_mount_connected = true;
+		// a parked mount ignores guide pulses, the guider needs it unparked and away from the pole
+		REQUIRE(change_switch_and_wait(MOUNT_DEVICE, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE, 60));
+		REQUIRE(indigo_change_number_property(&observer, MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ number(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), 20 }) == INDIGO_OK);
+		REQUIRE(WAIT_UNTIL(state(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && fabs(number(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 20) < 0.01, 120));
 	} else if (mount == ACTIVE_RELATED_MOUNT) {
 		REQUIRE(indigo_agent_mount(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 		mount_agent_started = true;
@@ -576,6 +580,7 @@ static void guiding_without_mount(void) {
 	ASSERT_TRUE(abort_agent(GUIDER));
 }
 
+// A tracking mount simulator that no agent is related to is guided through the CCD guider's guide output.
 static void guiding_without_related_mount(void) {
 	guiding_without_mount();
 }
@@ -652,7 +657,7 @@ int main(int argc, char **argv) {
 			if (!indigo_test_use_private_home()) {
 				exit(1);
 			}
-			mount_setup mount = tests[i].function == guiding_without_mount ? NO_MOUNT : tests[i].function == guiding_without_related_mount ? PARKED_UNRELATED_MOUNT : ACTIVE_RELATED_MOUNT;
+			mount_setup mount = tests[i].function == guiding_without_mount ? NO_MOUNT : tests[i].function == guiding_without_related_mount ? TRACKING_UNRELATED_MOUNT : ACTIVE_RELATED_MOUNT;
 			bool ready = setup(mount);
 			int status = ready ? indigo_run_tests("Imager, Guider and Mount Agent cooperation", tests + i, 1) : 1;
 			cleanup();

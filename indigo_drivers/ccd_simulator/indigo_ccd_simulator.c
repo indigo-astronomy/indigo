@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000026
+#define DRIVER_VERSION       0x03000027
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -71,7 +71,7 @@
 
 #define FILTER_COUNT         5
 #define GUIDER_MAX_STARS     400
-#define GUIDER_FOV           7
+#define GUIDER_FOV           4
 #define GUIDER_MAX_HOTPIXELS 1500
 #define ECLIPSE              360
 #define TEMP_UPDATE          5.0
@@ -113,7 +113,7 @@
 #define RA_ITEM                        (SIMULATION_SETUP_PROPERTY->items + 16)
 #define DEC_ITEM                       (SIMULATION_SETUP_PROPERTY->items + 17)
 #define SIDE_OF_PIER_ITEM              (SIMULATION_SETUP_PROPERTY->items + 18)
-#define J2000_ITEM                     (SIMULATION_SETUP_PROPERTY->items + 19)
+#define EPOCH_ITEM                     (SIMULATION_SETUP_PROPERTY->items + 19)
 #define MAGNITUDE_LIMIT_ITEM           (SIMULATION_SETUP_PROPERTY->items + 20)
 #define ALT_POLAR_ERROR_ITEM           (SIMULATION_SETUP_PROPERTY->items + 21)
 #define AZ_POLAR_ERROR_ITEM            (SIMULATION_SETUP_PROPERTY->items + 22)
@@ -139,7 +139,7 @@
 #define RA_ITEM_NAME                   "RA"
 #define DEC_ITEM_NAME                  "DEC"
 #define SIDE_OF_PIER_ITEM_NAME         "SIDE_OF_PIER"
-#define J2000_ITEM_NAME                "J2000"
+#define EPOCH_ITEM_NAME                "EPOCH"
 #define MAGNITUDE_LIMIT_ITEM_NAME      "MAGNITUDE_LIMIT"
 #define ALT_POLAR_ERROR_ITEM_NAME      "ALT_POLAR_ERROR"
 #define AZ_POLAR_ERROR_ITEM_NAME       "AZ_POLAR_ERROR"
@@ -322,10 +322,10 @@ static void follow_simulated_mount(indigo_device *device) {
 	int side_of_pier = mount.west ? 1 : 0;
 	// the star catalog has J2000 and current positions only
 	double epoch = mount.epoch == 0 ? 0 : 2000;
-	if (RA_ITEM->number.value == mount.ra && DEC_ITEM->number.value == mount.dec && SIDE_OF_PIER_ITEM->number.value == side_of_pier && LAT_ITEM->number.value == mount.latitude && LONG_ITEM->number.value == mount.longitude && J2000_ITEM->number.value == epoch) {
+	if (RA_ITEM->number.value == mount.ra && DEC_ITEM->number.value == mount.dec && SIDE_OF_PIER_ITEM->number.value == side_of_pier && LAT_ITEM->number.value == mount.latitude && LONG_ITEM->number.value == mount.longitude && EPOCH_ITEM->number.value == epoch) {
 		return;
 	}
-	if (J2000_ITEM->number.value != epoch) {
+	if (EPOCH_ITEM->number.value != epoch) {
 		PRIVATE_DATA->lst = 0;
 	}
 	RA_ITEM->number.value = RA_ITEM->number.target = mount.ra;
@@ -333,7 +333,7 @@ static void follow_simulated_mount(indigo_device *device) {
 	SIDE_OF_PIER_ITEM->number.value = SIDE_OF_PIER_ITEM->number.target = side_of_pier;
 	LAT_ITEM->number.value = LAT_ITEM->number.target = mount.latitude;
 	LONG_ITEM->number.value = LONG_ITEM->number.target = mount.longitude;
-	J2000_ITEM->number.value = J2000_ITEM->number.target = epoch;
+	EPOCH_ITEM->number.value = EPOCH_ITEM->number.target = epoch;
 	indigo_update_property(device, SIMULATION_SETUP_PROPERTY, NULL);
 }
 
@@ -366,8 +366,8 @@ static void search_stars(indigo_device *device) {
 			if (star_data->mag > MAGNITUDE_LIMIT_ITEM->number.value) {
 				continue;
 			}
-			double ra = (J2000_ITEM->number.target != 0 ? star_data->ra : star_data->ra_now) * h2r;
-			double dec = (J2000_ITEM->number.target != 0 ? star_data->dec : star_data->dec_now) * d2r;
+			double ra = (EPOCH_ITEM->number.target != 0 ? star_data->ra : star_data->ra_now) * h2r;
+			double dec = (EPOCH_ITEM->number.target != 0 ? star_data->dec : star_data->dec_now) * d2r;
 			double cos_dec = cos(dec);
 			double sin_dec = sin(dec);
 			double sin_dec_dec = sin_mount_dec * sin_dec;
@@ -1024,8 +1024,8 @@ static void configure_ccd(indigo_device *device, int kind) {
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
-		CCD_LENS_FOCAL_LENGTH_ITEM->number.value = kind == 0 ? 12.7 : 5.1;
-		CCD_LENS_PHYSICAL_LENGTH_ITEM->number.value = kind == 0 ? 12.7 : 5.1;
+		CCD_LENS_FOCAL_LENGTH_ITEM->number.value = kind == 0 ? 12.7 : 8.9;
+		CCD_LENS_PHYSICAL_LENGTH_ITEM->number.value = kind == 0 ? 12.7 : 8.9;
 		CCD_LENS_APERTURE_ITEM->number.value = kind == 0 ? 4 : 2;
 		CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
 		for (int i = 0; i <= GUIDER_MAX_HOTPIXELS; i++) {
@@ -1165,9 +1165,15 @@ static double guider_offset_pixels(indigo_device *device, double degrees) {
 	return degrees * IMAGE_HEIGHT_ITEM->number.target / GUIDER_FOV;
 }
 
+// Without a mount simulator the offset model moves the stars, a parked or slewing one ignores the pulses
+static bool guider_offset_model(void) {
+	indigo_simulated_mount_state mount;
+	return !indigo_get_simulated_mount_state(&mount);
+}
+
 static void guider_ra_finalizer(indigo_device *device) {
 	// a connected, guidable mount simulator is guided at the physical guide rate and the image follows its pointing
-	if (!indigo_simulated_mount_guide(PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 1000.0, 0)) {
+	if (!indigo_simulated_mount_guide(PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * (GUIDER_GUIDE_EAST_ITEM->number.value - GUIDER_GUIDE_WEST_ITEM->number.value) / 1000.0, 0) && guider_offset_model()) {
 		double degrees = cos(M_PI * DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * SIDEREAL_RA_RATE * 15 * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 1000.0;
 		IMAGE_RA_OFFSET_ITEM->number.value += guider_offset_pixels(device, degrees);
 	}
@@ -1177,7 +1183,7 @@ static void guider_ra_finalizer(indigo_device *device) {
 }
 
 static void guider_dec_finalizer(indigo_device *device) {
-	if (!indigo_simulated_mount_guide(0, PRIVATE_DATA->guide_rate * SIDEREAL_DEC_RATE * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 1000.0)) {
+	if (!indigo_simulated_mount_guide(0, PRIVATE_DATA->guide_rate * SIDEREAL_DEC_RATE * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 1000.0) && guider_offset_model()) {
 		IMAGE_DEC_OFFSET_ITEM->number.value += guider_offset_pixels(device, PRIVATE_DATA->guide_rate * SIDEREAL_DEC_RATE * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 1000.0);
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -1447,8 +1453,8 @@ static void guider_ccd_ccd_bin_handler(indigo_device *device) {
 static void guider_ccd_simulation_setup_handler(indigo_device *device) {
 	SIMULATION_SETUP_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider_ccd.SIMULATION_SETUP.on_change
-	if (J2000_ITEM->number.target != 0 && J2000_ITEM->number.target != 2000) {
-		J2000_ITEM->number.value = J2000_ITEM->number.target = 2000;
+	if (EPOCH_ITEM->number.target != 0 && EPOCH_ITEM->number.target != 2000) {
+		EPOCH_ITEM->number.value = EPOCH_ITEM->number.target = 2000;
 	}
 	PRIVATE_DATA->ra = PRIVATE_DATA->dec = 0;
 	int width = (int)IMAGE_WIDTH_ITEM->number.target;
@@ -1518,7 +1524,7 @@ static indigo_result guider_ccd_attach(indigo_device *device) {
 		indigo_init_number_item(RA_ITEM, RA_ITEM_NAME, "RA", 0, 24, 0, 18.84);
 		indigo_init_number_item(DEC_ITEM, DEC_ITEM_NAME, "Dec", -90, 90, 0, 38.75);
 		indigo_init_number_item(SIDE_OF_PIER_ITEM, SIDE_OF_PIER_ITEM_NAME, "Side of pier", 0, 1, 0, 0);
-		indigo_init_number_item(J2000_ITEM, J2000_ITEM_NAME, "J2000", 0, 2050, 0, 2000);
+		indigo_init_number_item(EPOCH_ITEM, EPOCH_ITEM_NAME, "Epoch", 0, 2050, 0, 2000);
 		indigo_init_number_item(MAGNITUDE_LIMIT_ITEM, MAGNITUDE_LIMIT_ITEM_NAME, "Magnitude limit", -2, 12, 1, 8);
 		indigo_init_number_item(ALT_POLAR_ERROR_ITEM, ALT_POLAR_ERROR_ITEM_NAME, "Altitude polar error", -30, 30, 0, 0);
 		indigo_init_number_item(AZ_POLAR_ERROR_ITEM, AZ_POLAR_ERROR_ITEM_NAME, "Azimuth polar error", -30, 30, 0, 0);

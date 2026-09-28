@@ -282,7 +282,7 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 
 | Method | Description |
 |---|---|
-| `calibrate_guiding(exposure)` | Calibrate the guider. `exposure` is optional; if given it sets the guider exposure first. |
+| `calibrate_guiding(exposure, step)` | Calibrate the guider. `exposure` and `step` are optional; if given they set the guider exposure and the initial calibration step (s) first. |
 | `start_guiding(exposure)` | Start guiding. `exposure` is optional (sets the guider exposure first if given). |
 | `stop_guiding()` | Stop guiding. |
 | `clear_guider_selection()` | Clear the guide star selection. |

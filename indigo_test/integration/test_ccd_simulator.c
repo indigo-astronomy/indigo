@@ -395,7 +395,7 @@ static void assert_ccd_camera_compliance(const simulator_driver_case *driver_cas
 	start_connected_simulator(driver_case);
 
 	if (driver_case == &ccd_imager_simulator || driver_case == &ccd_guider_camera_simulator) {
-		double focal_length = driver_case == &ccd_imager_simulator ? 12.7 : 5.1;
+		double focal_length = driver_case == &ccd_imager_simulator ? 12.7 : 8.9;
 		double aperture = driver_case == &ccd_imager_simulator ? 4 : 2;
 		ASSERT_TRUE(wait_for_number_item_value(CCD_LENS_PROPERTY_NAME, CCD_LENS_FOCAL_LENGTH_ITEM_NAME, focal_length, 0.001));
 		ASSERT_TRUE(wait_for_number_item_value(CCD_LENS_PROPERTY_NAME, CCD_LENS_PHYSICAL_LENGTH_ITEM_NAME, focal_length, 0.001));
@@ -813,8 +813,8 @@ static void simulator_camera_modes_and_settings(void) {
 	for (int i = 0; i < 3; i++) {
 		sim_begin(drivers[i]);
 		if (i == 0) {
-			SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "J2000" }, (double []){ 1950 }, INDIGO_OK_STATE));
-			SIM_CHECK(cached_number_value("SIMULATION_SETUP", "J2000") == 2000);
+			SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "EPOCH" }, (double []){ 1950 }, INDIGO_OK_STATE));
+			SIM_CHECK(cached_number_value("SIMULATION_SETUP", "EPOCH") == 2000);
 			const char *modes[] = { "STARS", "FLIPPED_STARS", "SUN", "ECLIPSE" };
 			for (int mode = 0; mode < 4; mode++) {
 				SIM_CHECK(sim_switch("GUIDER_MODE", modes[mode], INDIGO_OK_STATE));
@@ -898,8 +898,8 @@ cleanup:
 // Betelgeuse (HIP 27989, J2000), the brightest star within the guider camera field around it
 #define FOLLOW_RA               5.919529
 #define FOLLOW_DEC              7.407064
-// Guider camera field is GUIDER_FOV (7 degrees) over the default 1200 px image height
-#define FOLLOW_PX_PER_DEGREE    (1200.0 / 7.0)
+// Guider camera field is GUIDER_FOV (4 degrees) over the default 1200 px image height
+#define FOLLOW_PX_PER_DEGREE    (1200.0 / 4.0)
 // The follow tests run on a rotated image: at 0 degrees the sin terms of the projection and of the offset model vanish,
 // so the two models agree whatever the sign of those terms and a model turning the wrong way passes unnoticed
 #define FOLLOW_ROTATION         36.0
@@ -983,7 +983,7 @@ static void simulator_guider_camera_follows_simulated_mount(void) {
 	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "LAT") == 48.5);
 	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "LONG") == 17.5);
 	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "SIDE_OF_PIER") == 0);
-	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "J2000") == 2000);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "EPOCH") == 2000);
 	printf("    star at %.2f, %.2f in %u x %u frame\n", x0, y0, atomic_load(&sim_width), atomic_load(&sim_height));
 	SIM_CHECK(fabs(x0 - atomic_load(&sim_width) / 2.0) < 2 && fabs(y0 - atomic_load(&sim_height) / 2.0) < 2);
 	// Half a pixel in Dec: the star has to move by a fraction of a pixel, not by zero or a whole one
@@ -997,7 +997,7 @@ static void simulator_guider_camera_follows_simulated_mount(void) {
 	state.west = true;
 	indigo_set_simulated_mount_state(&publisher, &state);
 	SIM_CHECK(sim_expose());
-	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "J2000") == 0);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "EPOCH") == 0);
 	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "SIDE_OF_PIER") == 1);
 	// Once the mount is gone, the client's own pointing is kept
 	indigo_set_simulated_mount_state(&publisher, NULL);
@@ -1088,7 +1088,7 @@ static bool sim_offset_changes(const char *item, double before) {
 // the same axes a mount would, on either side of the pier
 static void simulator_guider_offset_model_pulses_follow_mount_axes(void) {
 	double x0, y0, x1, y1, x2, y2;
-	// 3 s at the default 50 % guide rate moves the stars as far as it would turn a mount, about 1.07 px, RA by cos(dec) of it
+	// 3 s at the default 50 % guide rate moves the stars as far as it would turn a mount, about 1.88 px, RA by cos(dec) of it
 	double dec_shift = 0.5 * 15.0410686 / 3600.0 * 3 * FOLLOW_PX_PER_DEGREE, ra_shift = dec_shift * 1.00273791 * 15 / 15.0410686 * cos(FOLLOW_DEC * M_PI / 180);
 	SIM_CHECK(sim_follow_begin());
 	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
@@ -1152,12 +1152,16 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	SIM_CHECK(mount_connect("CCD Guider Simulator (guider)", true));
 	indigo_usleep(200000);
 	SIM_CHECK(indigo_get_simulated_mount_state(&state));
-	double parked_ra = state.ra, parked_dec = state.dec;
-	double before = cached_number_value("SIMULATION_SETUP", "IMAGE_DEC_OFFSET");
+	double parked_dec = state.dec;
+	// a parked mount ignores the pulses and the offset model stays unused, the image does not move
+	double dec_before = cached_number_value("SIMULATION_SETUP", "IMAGE_DEC_OFFSET"), ra_before = cached_number_value("SIMULATION_SETUP", "IMAGE_RA_OFFSET");
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300) == INDIGO_OK);
-	SIM_CHECK(sim_offset_changes("IMAGE_DEC_OFFSET", before));
-	SIM_CHECK(mount_state_matches(true, parked_ra, parked_dec, 1e-9, 0.1));
-	SIM_CHECK(sim_number("SIMULATION_SETUP", 1, (const char *[]){ "IMAGE_DEC_OFFSET" }, (double []){ 0 }, INDIGO_OK_STATE));
+	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300) == INDIGO_OK);
+	indigo_usleep(1000000);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "IMAGE_DEC_OFFSET") == dec_before);
+	SIM_CHECK(cached_number_value("SIMULATION_SETUP", "IMAGE_RA_OFFSET") == ra_before);
+	// the parked RA follows the sidereal time, the Dec stays at the park position
+	SIM_CHECK(indigo_get_simulated_mount_state(&state) && state.dec == parked_dec);
 	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK);
 	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true) == INDIGO_OK);
 	SIM_CHECK(indigo_change_number_property(&simulator_test_client, "Mount Simulator", MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ FOLLOW_RA, FOLLOW_DEC }) == INDIGO_OK);
@@ -1168,7 +1172,7 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	SIM_CHECK(fabs(x0 - atomic_load(&sim_width) / 2.0) < 2 && fabs(y0 - atomic_load(&sim_height) / 2.0) < 2);
 	SIM_CHECK(mount_connect("Mount Simulator (guider)", true));
 	indigo_usleep(200000);
-	// 3 s at the default 50 % of sidereal rate is 22.6 arcsec, about 1.07 px
+	// 3 s at the default 50 % of sidereal rate is 22.6 arcsec, about 1.88 px
 	double expected = 0.5 * 15.0410686 / 3600.0 * 3 * FOLLOW_PX_PER_DEGREE;
 	SIM_CHECK(indigo_get_simulated_mount_state(&state));
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "Mount Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 3000) == INDIGO_OK);

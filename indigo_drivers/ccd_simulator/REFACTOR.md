@@ -153,7 +153,7 @@ Root cause: the master driver followed the mount through `CCD_SET_FITS_HEADER`. 
 Fix (version 31 to 32): the FITS-header path is not restored. The camera and the mount simulator now share state through `libindigo` (`indigo_set_simulated_mount_state()`, `indigo_get_simulated_mount_state()` and `indigo_simulated_mount_guide()` in `indigo_mount_driver.h`). The library is the only state both drivers share: they are separate static archives or `dlopen()`ed modules, and those are loaded without `RTLD_GLOBAL`.
 
 - `search_stars()` first takes the published physical (raw) pointing, epoch, site and side of pier into `SIMULATION_SETUP` and publishes it when it changed. Epoch 0 selects the JNow catalogue positions and any other epoch selects J2000. Without a connected mount simulator, the client's own values stay.
-- Star positions are kept as `double` instead of truncated to whole pixels. A 7° field over 1200 px is about 21″ per pixel, so a real guide pulse moves stars by a fraction of a pixel. With truncation, the image would move only in whole-pixel steps.
+- Star positions are kept as `double` instead of truncated to whole pixels. A 4° field over 1200 px is about 12″ per pixel, so a real guide pulse moves stars by a fraction of a pixel. With truncation, the image would move only in whole-pixel steps.
 - While a mount simulator is connected, `CCD Guider Simulator (guider)` pulses move the mount at the physical rate (`GUIDER_RATE` % of sidereal) through `indigo_simulated_mount_guide()`, and the image follows the mount. Without a mount, the pixel-offset model (`GUIDER_GUIDE_SCALE`) is unchanged.
 - The off-by-one `star_count++ == GUIDER_MAX_STARS` wrote one element past the star arrays when the field held more than `GUIDER_MAX_STARS` stars. It is now `++star_count == GUIDER_MAX_STARS`.
 
@@ -273,3 +273,14 @@ Build note: `simulator_guider_camera_follows_mount_simulator_guiding` also fails
 `refactoring` bumped the driver to version 37 for the offset model above, the number this branch had already
 used for the previous merge. The merged driver carries both and is bumped once more to version 38, regenerated
 with the unchanged generator.
+
+## EPOCH item, parked mount and 4° guider camera (2026-09-28)
+
+Version 38 to 39.
+
+- `SIMULATION_SETUP.J2000` is renamed to `EPOCH` (item, macro and label). Epoch 0 still selects the JNow catalogue positions and any other epoch J2000; a connected mount simulator still sets it.
+- A pulse of `CCD Guider Simulator (guider)` falls back to the offset model only when no mount simulator is connected. A connected mount that is parked or slewing (`guidable` false) ignores the pulse, as a real one does. This closes the open `guiding without related mount` item above: the test now unparks the unrelated Mount Simulator and points it at Dec 20° through the driver, without the Mount Agent.
+- `GUIDER_FOV` is 4° instead of 7°, about 12″/px (the guider camera's `CCD_LENS` focal length follows, 8.9 cm instead of 5.1 cm for its 5.2 µm pixels), so a pulse at the default 50 % rate moves the stars about 0.625 px per second, with or without a mount (3 s pulse: 1.91 / 1.84 px without and 1.95 / 1.86 px with Mount Simulator, north / west). The field still holds 15 to 44 catalogue stars at the tested pointings; the catalogue ends at magnitude 8, so 1° would leave only 1 or 2.
+- Calibration time is bound by the guide rate, not by the step: the backlash and calibration legs need about 26 px, 42 s of pulses at 0.625 px/s. With the Guider Agent's `STEP0` set from 0.2 to 1.8 s, one sequencer calibration took 54 to 66 s; 0.2 and 0.4 s report "Drift is too slow" and restart, 0.6 to 1.8 s complete at once. The Dec leg reports "Drift is too fast" above about 2 s and the backlash legs need at least 0.5 s, so the sequencer tests start at 1 s.
+
+Tests: `test_ccd_simulator` 25/25, `test_agent_imager_guider_mount` `guiding without mount` and `guiding without related mount`, `test_agent_scripting_sequencer` `all public constructors`, `simulator guiding` and `simulator guiding calibration step`, and `test_agent_guider` 90/90 passed on macOS arm64.

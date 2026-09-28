@@ -332,6 +332,16 @@ static bool has_message(const char *text) {
 	return result;
 }
 
+// The sequencer publishes the final SEQUENCE_STATE before it sends the message that goes with it
+static bool wait_message(const char *text, double timeout) {
+	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(1000)) {
+		if (has_message(text)) {
+			return true;
+		}
+	}
+	return has_message(text);
+}
+
 static bool wait_exists(const char *device, const char *name, double timeout) {
 	double deadline = indigo_monotonic_time() + timeout;
 	while (indigo_monotonic_time() < deadline) {
@@ -481,7 +491,7 @@ static void published_property_schema(void) {
 }
 
 static void all_public_constructors(void) {
-	ASSERT_TRUE(run_js("publicMethods=Object.getOwnPropertyNames(Sequence.prototype).filter(function(n){return n!=='constructor'}); publicCalls={}; publicMethods.forEach(function(n){var original=Sequence.prototype[n]; Sequence.prototype[n]=function(){publicCalls[n]=(publicCalls[n]||0)+1; return original.apply(this,arguments)}}); var s=new Sequence('all'); s.enable_reset_loop_content_state(); s.disable_reset_loop_content_state(); s.repeat(1,function(){s.send_message('loop')}); s.enable_verbose(); s.disable_verbose(); s.recovery_point(); s.wait(0); s.wait_until(1704112495); s.continue_on_failure(); s.recover_on_failure(); s.abort_on_failure(); s.break_at(1704112495); s.break_at_ha('01:00:00'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,1,2); s.break_if_solar_altitude_above(91); s.break_if_target_altitude_below(-91,1,2); s.resume_point(); s.evaluate('testValue=1'); s.send_message('message'); s.load_config('Config'); s.load_driver('Driver'); s.unload_driver('Driver'); s.select_imager_agent('Imager Agent'); s.select_mount_agent('Mount Agent'); s.select_guider_agent('Guider Agent'); s.select_imager_camera('CCD Imager Simulator'); s.select_filter_wheel('CCD Imager Simulator (wheel)'); s.select_focuser('CCD Imager Simulator (focuser)'); s.select_rotator('Field Rotator Simulator'); s.select_mount('Mount Simulator'); s.select_dome('Dome Simulator'); s.select_gps('GPS Simulator'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.select_frame_type('Light'); s.select_image_format('RAW'); s.set_frame(0,0,100,100); s.reset_frame(); s.select_camera_mode('BIN_1x1'); s.set_gain(10); s.set_offset(5); s.set_gamma(1); s.select_program('M'); s.select_aperture('f/4'); s.select_shutter('1/10'); s.select_iso('800'); s.enable_cooler(-10); s.disable_cooler(); s.enable_dithering(2,3,4); s.disable_dithering(); s.enable_meridian_flip(true,0); s.disable_meridian_flip(); s.enable_filter_offsets(); s.disable_filter_offsets(); s.set_fits_header('OBJECT','M42'); s.remove_fits_header('OBJECT'); s.select_filter('L'); s.set_directory('/tmp'); s.set_file_template('frame'); s.set_object_name('M42'); s.start_preview(0.1); s.stop_preview(); s.capture_batch(2,0.1); s.capture_batch('batch',2,0.1); s.capture_stream(2,0.1); s.capture_stream('stream',2,0.1); s.set_manual_focuser_mode(); s.set_automatic_focuser_mode(); s.focus(0.1); s.focus_ignore_failure(0.1); s.clear_focuser_selection(); s.set_focuser_position(100); s.slew(1,2); s.park(); s.unpark(); s.home(); s.enable_tracking(); s.disable_tracking(); s.dome_slew(90); s.dome_park(); s.dome_unpark(); s.dome_open(); s.dome_close(); s.enable_ha_limit(); s.disable_ha_limit(); s.enable_time_limit(); s.disable_time_limit(); s.enable_dome_slaving(); s.disable_dome_slaving(); s.make_dome_slaving_persistent(); s.make_dome_slaving_not_persistent(); s.enable_field_derotation(); s.disable_field_derotation(); s.make_field_derotation_persistent(); s.make_field_derotation_not_persistent(); s.enable_joystick_control(); s.disable_joystick_control(); s.wait_for_gps(); s.calibrate_guiding(); s.calibrate_guiding(0.1); s.start_guiding(); s.start_guiding(0.1); s.start_guiding_exposure(0.1); s.stop_guiding(); s.clear_guider_selection(); s.sync_center(0.1); s.precise_goto(0.1,1,2); s.set_rotator_angle(45); new Sequence('start').start();"));
+	ASSERT_TRUE(run_js("publicMethods=Object.getOwnPropertyNames(Sequence.prototype).filter(function(n){return n!=='constructor'}); publicCalls={}; publicMethods.forEach(function(n){var original=Sequence.prototype[n]; Sequence.prototype[n]=function(){publicCalls[n]=(publicCalls[n]||0)+1; return original.apply(this,arguments)}}); var s=new Sequence('all'); s.enable_reset_loop_content_state(); s.disable_reset_loop_content_state(); s.repeat(1,function(){s.send_message('loop')}); s.enable_verbose(); s.disable_verbose(); s.recovery_point(); s.wait(0); s.wait_until(1704112495); s.continue_on_failure(); s.recover_on_failure(); s.abort_on_failure(); s.break_at(1704112495); s.break_at_ha('01:00:00'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,1,2); s.break_if_solar_altitude_above(91); s.break_if_target_altitude_below(-91,1,2); s.resume_point(); s.evaluate('testValue=1'); s.send_message('message'); s.load_config('Config'); s.load_driver('Driver'); s.unload_driver('Driver'); s.select_imager_agent('Imager Agent'); s.select_mount_agent('Mount Agent'); s.select_guider_agent('Guider Agent'); s.select_imager_camera('CCD Imager Simulator'); s.select_filter_wheel('CCD Imager Simulator (wheel)'); s.select_focuser('CCD Imager Simulator (focuser)'); s.select_rotator('Field Rotator Simulator'); s.select_mount('Mount Simulator'); s.select_dome('Dome Simulator'); s.select_gps('GPS Simulator'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.select_frame_type('Light'); s.select_image_format('RAW'); s.set_frame(0,0,100,100); s.reset_frame(); s.select_camera_mode('BIN_1x1'); s.set_gain(10); s.set_offset(5); s.set_gamma(1); s.select_program('M'); s.select_aperture('f/4'); s.select_shutter('1/10'); s.select_iso('800'); s.enable_cooler(-10); s.disable_cooler(); s.enable_dithering(2,3,4); s.disable_dithering(); s.enable_meridian_flip(true,0); s.disable_meridian_flip(); s.enable_filter_offsets(); s.disable_filter_offsets(); s.set_fits_header('OBJECT','M42'); s.remove_fits_header('OBJECT'); s.select_filter('L'); s.set_directory('/tmp'); s.set_file_template('frame'); s.set_object_name('M42'); s.start_preview(0.1); s.stop_preview(); s.capture_batch(2,0.1); s.capture_batch('batch',2,0.1); s.capture_stream(2,0.1); s.capture_stream('stream',2,0.1); s.set_manual_focuser_mode(); s.set_automatic_focuser_mode(); s.focus(0.1); s.focus_ignore_failure(0.1); s.clear_focuser_selection(); s.set_focuser_position(100); s.slew(1,2); s.park(); s.unpark(); s.home(); s.enable_tracking(); s.disable_tracking(); s.dome_slew(90); s.dome_park(); s.dome_unpark(); s.dome_open(); s.dome_close(); s.enable_ha_limit(); s.disable_ha_limit(); s.enable_time_limit(); s.disable_time_limit(); s.enable_dome_slaving(); s.disable_dome_slaving(); s.make_dome_slaving_persistent(); s.make_dome_slaving_not_persistent(); s.enable_field_derotation(); s.disable_field_derotation(); s.make_field_derotation_persistent(); s.make_field_derotation_not_persistent(); s.enable_joystick_control(); s.disable_joystick_control(); s.wait_for_gps(); s.calibrate_guiding(); s.calibrate_guiding(0.1); s.calibrate_guiding(0.1,0.4); s.start_guiding(); s.start_guiding(0.1); s.start_guiding_exposure(0.1); s.stop_guiding(); s.clear_guider_selection(); s.sync_center(0.1); s.precise_goto(0.1,1,2); s.set_rotator_angle(45); new Sequence('start').start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("publicMethods.length===106 && publicMethods.every(function(n){return publicCalls[n]>0}) && s.step>100 && s.progress>100 && s.exposure===0.8 && s.reset_loop_content_state===false"));
 	ASSERT_TRUE(check_js("s.sequence.every(function(entry){var name=entry.execute.substring(0,entry.execute.indexOf('(')); return typeof indigo_sequencer[name]==='function' && Function('return function(){indigo_sequencer.'+entry.execute+'}')})"));
@@ -516,28 +526,28 @@ static void empty_sequence_execution(void) {
 	ASSERT_EQ_INT(0, property->items[1].number.value);
 	ASSERT_EQ_INT(0, property->items[2].number.value);
 	indigo_release_property(property);
-	ASSERT_TRUE(has_message("Sequence finished"));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
 }
 
 static void evaluate_wait_and_messages(void) {
 	ASSERT_TRUE(run_js("testSequenceValue=0; var s=new Sequence('flow'); s.disable_verbose(); s.evaluate('testSequenceValue=41'); s.enable_verbose(); s.wait(0.01); s.send_message('flow-message'); s.evaluate('testSequenceValue++'); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("testSequenceValue===42"));
-	ASSERT_TRUE(has_message("flow-message"));
+	ASSERT_TRUE(wait_message("flow-message", 5));
 }
 
 static void string_arguments_and_utc_break(void) {
 	ASSERT_TRUE(run_js("quotedValue=''; breakValue=''; var text='quote '+String.fromCharCode(34)+' slash '+String.fromCharCode(92); var s=new Sequence('quoted'); s.send_message(text); s.evaluate('quotedValue='+JSON.stringify(text)); s.break_at('2024-01-01 12:34:55'); s.evaluate('breakValue+=String.fromCharCode(65)'); s.resume_point(); s.evaluate('breakValue+=String.fromCharCode(66)'); testBreakStep=s.sequence[2].execute; s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("quotedValue===text && breakValue==='B' && testBreakStep==='break_at(1704112495)'"));
-	ASSERT_TRUE(has_message("quote \" slash \\"));
+	ASSERT_TRUE(wait_message("quote \" slash \\", 5));
 }
 
 static void failure_abort_policy(void) {
 	ASSERT_TRUE(run_js("afterFailure=false; var s=new Sequence('abort failure'); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.evaluate('afterFailure=true'); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
 	ASSERT_TRUE(check_js("afterFailure===false"));
-	ASSERT_TRUE(has_message("Sequence failed"));
+	ASSERT_TRUE(wait_message("Sequence failed", 5));
 }
 
 static void failure_continue_policy(void) {
@@ -555,7 +565,7 @@ static void failure_recovery_policy(void) {
 static void recovery_without_point(void) {
 	ASSERT_TRUE(run_js("var s=new Sequence('recover without point'); s.recover_on_failure(); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
-	ASSERT_TRUE(has_message("no recovery point found"));
+	ASSERT_TRUE(wait_message("no recovery point found", 5));
 }
 
 static void pause_resume_abort_reset(void) {
@@ -580,8 +590,8 @@ static void past_waits_and_breaks(void) {
 	ASSERT_TRUE(run_js("timeTrace=''; var s=new Sequence('past times'); s.wait_until('2024-01-01 12:34:55'); s.wait_until(1704112495); s.break_at(1704112495); s.evaluate(\"timeTrace+='A'\"); s.resume_point(); s.evaluate(\"timeTrace+='B'\"); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("timeTrace==='B'"));
-	ASSERT_TRUE(has_message("Target time has passed"));
-	ASSERT_TRUE(has_message("Break executed"));
+	ASSERT_TRUE(wait_message("Target time has passed", 5));
+	ASSERT_TRUE(wait_message("Break executed", 5));
 }
 
 static void simulator_imaging(void) {
@@ -589,7 +599,7 @@ static void simulator_imaging(void) {
 	snprintf(script, sizeof(script), "var s=new Sequence('simulator imaging'); s.select_imager_camera('CCD Imager Simulator'); s.select_filter_wheel('CCD Imager Simulator (wheel)'); s.select_focuser('CCD Imager Simulator (focuser)'); s.select_frame_type('Light'); s.select_image_format('RAW'); s.select_camera_mode('BIN_1x1'); s.set_directory('%s'); s.set_file_template('seq_XXX'); s.set_object_name('Simulator'); s.set_fits_header('OBJECT','Simulator'); s.remove_fits_header('OBJECT'); s.set_frame(0,0,64,64); s.reset_frame(); s.set_gain(10); s.set_offset(5); s.set_gamma(1); s.enable_filter_offsets(); s.disable_filter_offsets(); s.enable_cooler(25); s.select_filter('1'); s.set_manual_focuser_mode(); s.set_focuser_position(1); s.set_automatic_focuser_mode(); s.clear_focuser_selection(); s.capture_batch(1,0.05); s.disable_cooler(); s.start();", test_root);
 	ASSERT_TRUE(run_js(script));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 40));
-	ASSERT_TRUE(has_message("Sequence finished"));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
 }
 
 static void simulator_preview_and_stream(void) {
@@ -627,9 +637,19 @@ static void simulator_altitude_and_hour_angle(void) {
 	ASSERT_TRUE(check_js("altitudeTrace===''"));
 }
 
+// At the physical guide rate the guider's 0.2 s default step is doubled twice before the calibration can complete,
+// 1 s moves the star about 0.6 px per step on the 4 degree guider camera; the legs need about 26 px, 50-60 s in total
 static void simulator_guiding(void) {
-	ASSERT_TRUE(run_js("var s=new Sequence('simulator guiding'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.calibrate_guiding(0.05); s.start_guiding(0.05); s.wait(0.2); s.stop_guiding(); s.clear_guider_selection(); s.start();"));
-	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 60));
+	ASSERT_TRUE(run_js("var s=new Sequence('simulator guiding'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.evaluate('indigo_change_number_property(\"Guider Agent\", \"AGENT_GUIDER_SETTINGS\", { STEP0: 1 })'); s.calibrate_guiding(0.05); s.start_guiding(0.05); s.wait(0.2); s.stop_guiding(); s.clear_guider_selection(); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 120));
+	ASSERT_FALSE(has_message("Drift is too slow"));
+}
+
+static void simulator_guiding_calibration_step(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('simulator guiding calibration step'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.calibrate_guiding(0.05,1); s.clear_guider_selection(); s.start();"));
+	ASSERT_TRUE(check_js("s.sequence.some(function(entry){return entry.execute==='set_guider_calibration_step(1)'})"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 120));
+	ASSERT_FALSE(has_message("Drift is too slow"));
 }
 
 static void custom_agent_arguments(void) {
@@ -683,6 +703,7 @@ static const indigo_test_case tests[] = {
 	{ "simulator agent features", simulator_agent_features },
 	{ "simulator altitude and hour angle", simulator_altitude_and_hour_angle },
 	{ "simulator guiding", simulator_guiding },
+	{ "simulator guiding calibration step", simulator_guiding_calibration_step },
 	{ "custom agent arguments", custom_agent_arguments },
 	{ "configuration and driver orchestration", configuration_and_driver_orchestration },
 	{ "astrometry orchestration", astrometry_orchestration }
