@@ -406,6 +406,8 @@ static bool setup(void) {
 	REQUIRE(indigo_agent_astrometry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	astrometry_started = true;
 	REQUIRE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, CAMERA, true, INDIGO_OK_STATE, 20));
+	// the whole catalogue, it ends at magnitude 9.3
+	REQUIRE(change_number(CAMERA, "SIMULATION_SETUP", "MAGNITUDE_LIMIT", 9.5));
 	REQUIRE(change_switch_and_wait(MOUNT, FILTER_MOUNT_LIST_PROPERTY_NAME, MOUNT_DEVICE, true, INDIGO_OK_STATE, 20));
 	REQUIRE(relate(ASTROMETRY, IMAGER));
 	REQUIRE(relate(ASTROMETRY, MOUNT));
@@ -512,8 +514,9 @@ static void polar_alignment(void) {
 	double alt_error = 0.8, az_error = -1.1;
 	ASSERT_TRUE(change_numbers(CAMERA, "SIMULATION_SETUP", 2, (const char *[]){ "ALT_POLAR_ERROR", "AZ_POLAR_ERROR" }, (double []){ alt_error, az_error }));
 	// The references follow the sidereal time; a longitude putting it at 9.35 h keeps them at RA 9.1, 7.8 and 6.4 h
-	// (Hydra, Monoceros) at any time of the day, the simulator's catalogue ends at magnitude 8 and sparse fields fail to solve
-	double longitude = remainder(SITE_LONGITUDE + (9.35 - indigo_lst(NULL, SITE_LONGITUDE)) * 15, 360);
+	// (Hydra, Monoceros) at any time of the day, so that the case does not depend on the time it runs
+	double pinned_lst = getenv("PA_LST") ? atof(getenv("PA_LST")) : 9.35;
+	double longitude = remainder(SITE_LONGITUDE + (pinned_lst - indigo_lst(NULL, SITE_LONGITUDE)) * 15, 360);
 	ASSERT_TRUE(change_numbers(MOUNT, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME }, (double []){ SITE_LATITUDE, longitude }));
 	ASSERT_TRUE(WAIT_UNTIL(fabs(remainder(number(MOUNT, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - longitude, 360)) < 1e-6, 10));
 	// POLAR_ALIGNMENT.md: start just past the meridian at 35-50° altitude, the positive hour angle move goes west
@@ -526,8 +529,8 @@ static void polar_alignment(void) {
 		double measured_az = pa_state(AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM_NAME);
 		double measured = pa_state(AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM_NAME);
 		printf("  step %d: polar error %6.2f' (alt %+7.2f' az %+7.2f'), simulator %6.2f' (alt %+7.2f' az %+7.2f')\n", step, measured * 60, measured_alt * 60, measured_az * 60, hypot(alt_error, az_error) * 60, alt_error * 60, az_error * 60);
-		// within an arcminute of the error set on the simulator in every step
-		ASSERT_TRUE(fabs(measured_alt - alt_error) < 1.0 / 60 && fabs(measured_az - az_error) < 1.0 / 60);
+		// within half an arcminute of the error set on the simulator in every step
+		ASSERT_TRUE(fabs(measured_alt - alt_error) < 0.5 / 60 && fabs(measured_az - az_error) < 0.5 / 60);
 		if (measured < 1.0 / 60) {
 			aligned = true;
 			break;
@@ -543,8 +546,8 @@ static void polar_alignment(void) {
 }
 
 // Precise GOTO with a pointing error at 20 places spread over the whole sky, dense and sparse fields,
-// both celestial hemispheres and near the pole. The south galactic pole (0.85 h, -27°) is left out: the
-// simulator's catalogue ends at magnitude 8 and leaves too few stars there for index 4113.
+// both celestial hemispheres and near the pole. The south galactic pole (0.85 h, -27°) is left out: with 44
+// catalogue stars in the field index 4113 does not solve it, blind or with the camera scale.
 static const double sky[][2] = {
 	{ 0.0, 0 }, { 1.5, 45 }, { 3.0, -30 }, { 4.5, 70 }, { 6.0, 20 },
 	{ 7.5, -60 }, { 9.0, 40 }, { 10.5, -10 }, { 12.0, 80 }, { 12.85, 27.1 },

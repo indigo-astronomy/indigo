@@ -81,3 +81,7 @@ Other findings, not changed:
 - `peer failures and Imager abort forwarding` of `test_agent_astrometry` counted 2 Imager aborts instead of 1 in 1 of 16 runs; not investigated.
 
 Validation on macOS arm64: `test_agent_astrometry` 34/34 (3 runs; 1 intermittent failure in 16 further runs, above); `test_agent_astrometry_solver` 24/25 in the last full run, the polar alignment case failed on a sparse field; after moving it to a fixed sidereal time its step 0 differed by 0.74' from the simulator and the per-step tolerance was set to 1', not rerun. Hardware 0 run / 0 passed.
+
+## Real solver test with the extended catalogue (2026-09-28)
+
+The CCD simulator's catalogue now reaches magnitude 9.3; `test_agent_astrometry_solver` renders all of it (`MAGNITUDE_LIMIT` 9.5). The polar alignment case runs at a fixed sidereal time (9.35 h, set through the site longitude on the Mount Agent), so its references are the same fields at any time of the day, and each step has to be within 0.5' of the error set on the simulator. With 44 catalogue stars in the field the south galactic pole (0.85 h, -27°) still does not solve with index 4113, blind or with the camera scale; position 20 is 5.5 h, -35°. `test_agent_astrometry_solver` 25/25 on macOS arm64.
