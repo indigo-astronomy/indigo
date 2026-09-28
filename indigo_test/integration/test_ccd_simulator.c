@@ -1075,6 +1075,78 @@ cleanup:
 	sim_follow_end();
 }
 
+#define PE_CYCLE                6.0
+#define PE_AMPLITUDE            4.0
+#define PE_SAMPLES              64
+
+// Least squares fit of offset + a * sin + b * cos at the given period, returns the residual sum of squares
+static double pe_fit(const double *t, const double *p, int count, double period, double *amplitude) {
+	double m[3][4] = { { 0 } };
+	for (int i = 0; i < count; i++) {
+		double row[4] = { 1, sin(2 * M_PI * t[i] / period), cos(2 * M_PI * t[i] / period), p[i] };
+		for (int r = 0; r < 3; r++) {
+			for (int c = 0; c < 4; c++) {
+				m[r][c] += row[r] * row[c];
+			}
+		}
+	}
+	for (int k = 0; k < 3; k++) {
+		for (int r = 0; r < 3; r++) {
+			if (r != k) {
+				double f = m[r][k] / m[k][k];
+				for (int c = 0; c < 4; c++) {
+					m[r][c] -= f * m[k][c];
+				}
+			}
+		}
+	}
+	double offset = m[0][3] / m[0][0], a = m[1][3] / m[1][1], b = m[2][3] / m[2][2], residual = 0;
+	for (int i = 0; i < count; i++) {
+		double e = p[i] - offset - a * sin(2 * M_PI * t[i] / period) - b * cos(2 * M_PI * t[i] / period);
+		residual += e * e;
+	}
+	*amplitude = hypot(a, b);
+	return residual;
+}
+
+// The periodic error has to be a sine of PER_ERR_VAL pixels and PER_ERR_CYCLE seconds along the RA axis. The driver
+// evaluates it on whole seconds, so only frames started and finished within the same second are sampled.
+static void simulator_guider_periodic_error_period_and_amplitude(void) {
+	double t[PE_SAMPLES], p[PE_SAMPLES], x, y, ux, uy, best_period = 0, best_amplitude = 0, best_residual = INFINITY;
+	int count = 0;
+	SIM_CHECK(sim_follow_begin());
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 2, (const char *[]){ "RA", "DEC" }, (double []){ FOLLOW_RA, FOLLOW_DEC }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 2, (const char *[]){ "PER_ERR_CYCLE", "PER_ERR_VAL" }, (double []){ PE_CYCLE, PE_AMPLITUDE }, INDIGO_OK_STATE));
+	follow_axis(false, false, &ux, &uy);
+	time_t start = time(NULL), last = 0;
+	while (count < PE_SAMPLES && time(NULL) - start < 4 * PE_CYCLE) {
+		time_t before = time(NULL);
+		SIM_CHECK(sim_expose_centroid(&x, &y));
+		if (time(NULL) == before && before != last) {
+			t[count] = (double)(before - start);
+			p[count++] = x * ux + y * uy;
+			last = before;
+		}
+		indigo_usleep(100000);
+	}
+	SIM_CHECK(count >= 2 * PE_CYCLE + 3);
+	printf("    %d samples over %.0f s\n", count, t[count - 1]);
+	for (double period = 2.5; period <= 20; period += 0.01) {
+		double amplitude, residual = pe_fit(t, p, count, period, &amplitude);
+		if (residual < best_residual) {
+			best_residual = residual;
+			best_period = period;
+			best_amplitude = amplitude;
+		}
+	}
+	printf("    fitted period %.2f s (expected %.1f), amplitude %.3f px (expected %.1f), rms %.3f px\n", best_period, PE_CYCLE, best_amplitude, PE_AMPLITUDE, sqrt(best_residual / count));
+	SIM_CHECK(fabs(best_period - PE_CYCLE) < 0.1);
+	SIM_CHECK(fabs(best_amplitude - PE_AMPLITUDE) < 0.2);
+	SIM_CHECK(sqrt(best_residual / count) < 0.2);
+cleanup:
+	sim_follow_end();
+}
+
 static bool mount_connect(const char *device_name, bool connected);
 
 static bool sim_offset_changes(const char *item, double before) {
@@ -1391,6 +1463,7 @@ int main(int argc, char **argv) {
 		{ "simulator_guider_camera_follows_simulated_mount", simulator_guider_camera_follows_simulated_mount },
 		{ "simulator_guider_offsets_follow_simulated_mount_axes", simulator_guider_offsets_follow_simulated_mount_axes },
 		{ "simulator_guider_periodic_error_follows_ra_axis", simulator_guider_periodic_error_follows_ra_axis },
+		{ "simulator_guider_periodic_error_period_and_amplitude", simulator_guider_periodic_error_period_and_amplitude },
 		{ "simulator_guider_offset_model_pulses_follow_mount_axes", simulator_guider_offset_model_pulses_follow_mount_axes },
 		{ "simulator_guider_camera_follows_mount_simulator_guiding", simulator_guider_camera_follows_mount_simulator_guiding },
 		{ "simulator_focuser_direction_queued_behind_a_move_keeps_the_last", simulator_focuser_direction_queued_behind_a_move_keeps_the_last },
