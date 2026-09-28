@@ -1163,9 +1163,10 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	// the parked RA follows the sidereal time, the Dec stays at the park position
 	SIM_CHECK(indigo_get_simulated_mount_state(&state) && state.dec == parked_dec);
 	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK);
-	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true) == INDIGO_OK);
+	// a sync changes only the coordinates the mount reports, the telescope is moved off the park position by a GOTO
+	SIM_CHECK(indigo_change_switch_property_1(&simulator_test_client, "Mount Simulator", MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true) == INDIGO_OK);
 	SIM_CHECK(indigo_change_number_property(&simulator_test_client, "Mount Simulator", MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ FOLLOW_RA, FOLLOW_DEC }) == INDIGO_OK);
-	SIM_CHECK(mount_state_matches(true, FOLLOW_RA, FOLLOW_DEC, 1e-9, 5));
+	SIM_CHECK(mount_state_matches(true, FOLLOW_RA, FOLLOW_DEC, 1e-9, 60));
 	SIM_CHECK(sim_expose_centroid(&x0, &y0));
 	SIM_CHECK(fabs(cached_number_value("SIMULATION_SETUP", "RA") - FOLLOW_RA) < 1e-9);
 	SIM_CHECK(fabs(cached_number_value("SIMULATION_SETUP", "DEC") - FOLLOW_DEC) < 1e-9);

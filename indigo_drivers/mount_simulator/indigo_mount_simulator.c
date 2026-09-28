@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -51,6 +51,7 @@ typedef struct {
 	bool slew_in_progress;
 	double guide_ra_rate, guide_ra_start, guide_ra_duration;
 	double guide_dec_rate, guide_dec_start, guide_dec_duration;
+	double sync_ra_offset, sync_dec_offset; // physical pointing minus the controller's (raw) coordinates, set by a controller sync
 	//- data
 } simulator_private_data;
 
@@ -77,16 +78,18 @@ static void move_raw_position(indigo_device *device, double ra, double dec) {
 // Share the physical pointing with camera simulators and take over the guide pulses of their guiders
 static void publish_simulated_mount_state(indigo_device *device) {
 	indigo_simulated_mount_state state = { 0 };
-	state.ra = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
-	state.dec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
+	double physical_ra = fmod(MOUNT_RAW_COORDINATES_RA_ITEM->number.value + PRIVATE_DATA->sync_ra_offset + 24, 24);
+	double physical_dec = fmax(-90, fmin(90, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value + PRIVATE_DATA->sync_dec_offset));
+	state.ra = physical_ra;
+	state.dec = physical_dec;
 	state.epoch = MOUNT_EPOCH_ITEM->number.value;
 	state.latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
 	state.longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 	state.west = MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value;
 	state.guidable = !(PRIVATE_DATA->parked || PRIVATE_DATA->parking || PRIVATE_DATA->slew_in_progress);
 	indigo_set_simulated_mount_state(device, &state);
-	if (state.ra != MOUNT_RAW_COORDINATES_RA_ITEM->number.value || state.dec != MOUNT_RAW_COORDINATES_DEC_ITEM->number.value) {
-		move_raw_position(device, state.ra, state.dec);
+	if (state.ra != physical_ra || state.dec != physical_dec) {
+		move_raw_position(device, fmod(MOUNT_RAW_COORDINATES_RA_ITEM->number.value + remainder(state.ra - physical_ra, 24) + 24, 24), fmax(-90, fmin(90, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value + state.dec - physical_dec)));
 	}
 }
 
@@ -423,6 +426,9 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+		// a controller sync changes the coordinates the controller reports, not where the telescope points
+		PRIVATE_DATA->sync_ra_offset = remainder(PRIVATE_DATA->sync_ra_offset + MOUNT_RAW_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, 24);
+		PRIVATE_DATA->sync_dec_offset += MOUNT_RAW_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 		MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;

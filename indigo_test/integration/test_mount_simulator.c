@@ -725,9 +725,16 @@ static void mount_shares_pointing_and_follows_guide_pulses(void) {
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
 	mount_connected = true;
 	SERIAL_CHECK_TRUE(unpark_mount());
-	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(3, 30));
-	SERIAL_CHECK_TRUE(simulated_pointing_matches(3, 30, 1e-9));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 30, 1e-6));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(simulated_pointing_matches(3, 30, 1e-6));
+	// A controller sync changes the reported coordinates only, the telescope keeps pointing where it did
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(3.2, 31));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 31, 1e-6));
+	SERIAL_CHECK_TRUE(simulated_pointing_matches(3, 30, 1e-6));
 	SERIAL_CHECK_TRUE(indigo_get_simulated_mount_state(&state));
 	SERIAL_CHECK_TRUE(state.epoch == cached_number_value(MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME));
 	SERIAL_CHECK_TRUE(state.latitude == cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME));
@@ -735,11 +742,11 @@ static void mount_shares_pointing_and_follows_guide_pulses(void) {
 	SERIAL_CHECK_TRUE(state.guidable);
 	// A camera guider's move is visible at once and the mount takes it over on its next position update
 	SERIAL_CHECK_TRUE(indigo_simulated_mount_guide(0.001, 0.01));
-	SERIAL_CHECK_TRUE(simulated_pointing_matches(3.001, 30.01, 1e-9));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 3.001, 1e-6));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 30.01, 1e-6));
+	SERIAL_CHECK_TRUE(simulated_pointing_matches(3.001, 30.01, 1e-6));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 3.201, 1e-6));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 31.01, 1e-6));
 	indigo_usleep(1500000);
-	SERIAL_CHECK_TRUE(simulated_pointing_matches(3.001, 30.01, 1e-9));
+	SERIAL_CHECK_TRUE(simulated_pointing_matches(3.001, 30.01, 1e-6));
 	// The mount's own guider: 2 s at the default 50 % of sidereal rate
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
 	guider_connected = true;
@@ -913,11 +920,14 @@ static void guider_pulse_survives_previous_finalizer(void) {
 	driver_started = true;
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
 	mount_connected = true;
-	// Unparked, tracking and away from the pole, so the mount moves only by guide pulses and follows both axes
+	// Unparked, tracking and away from the pole, so the mount moves only by guide pulses and follows both axes;
+	// a sync would not move the telescope off the pole, a GOTO does
 	SERIAL_CHECK_TRUE(unpark_mount());
-	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(3, 30));
-	SERIAL_CHECK_TRUE(simulated_pointing_matches(3, 30, 1e-9));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 30, 1e-6));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(simulated_pointing_matches(3, 30, 1e-6));
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_guider_simulator, NULL));
 	guider_connected = true;
 	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME));

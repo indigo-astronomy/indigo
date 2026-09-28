@@ -261,3 +261,13 @@ Regression tests in `integration/test_mount_simulator.c`:
 Both cases failed against the version 21 driver and pass with version 22. `test_mount_simulator` 19/19 on Linux x64. `test_mount_simulator_asan` reports a LeakSanitizer leak from `indigo_init_light_property` (one light property per driver lifecycle) that the unchanged version 21 test and driver report as well; not addressed here.
 
 Final test summary for this change: simulator suite 19 run / 19 passed; hardware 0 run / 0 passed.
+
+## Controller sync keeps the pointing (2026-09-28)
+
+Version 24. A SYNC in the CONTROLLER alignment mode overwrote the raw coordinates, which are also the physical pointing the mount shares with camera simulators, so a sync moved the telescope. A real controller only changes the coordinates it reports. The driver now keeps the difference between the physical pointing and the controller's raw coordinates (`sync_ra_offset`, `sync_dec_offset`); a sync changes the raw coordinates and the offset, `publish_simulated_mount_state()` shares raw plus offset, and a guide pulse taken over from a camera guider moves the raw coordinates by the same amount.
+
+Found by `test_agent_astrometry_solver`: a sync to wrong coordinates, meant as a pointing error for the Astrometry agent to find, moved the rendered field instead.
+
+Tests: `mount_shares_pointing_and_follows_guide_pulses` now slews to 3 h/30°, syncs to 3.2 h/31° and checks the shared pointing stays at 3 h/30° while the reported coordinates follow the sync; `guider_pulse_survives_previous_finalizer` and `test_ccd_simulator` leave the park position by a GOTO instead of a sync.
+
+Validation on macOS arm64: `test_mount_simulator`, `test_ccd_simulator`, `test_agent_imager_guider_mount` 10/10, `test_agent_scripting_sequencer` 26/26 and `test_detach_abort` passed. Hardware 0 run / 0 passed.
