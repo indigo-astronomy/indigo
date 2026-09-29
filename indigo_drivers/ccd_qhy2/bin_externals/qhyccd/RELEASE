@@ -2,7 +2,12 @@ https://github.com/indilib/indi-3rdparty/tree/387a31e4ff863ca29a0d0dbb8b652efc02
 
 SDK 26.07.21 from INDI commit 387a31e4ff863ca29a0d0dbb8b652efc02d6b0f0.
 macOS: universal x86_64 + arm64, runtime version 26.7.21.5 on both architectures.
-Linux arm32, arm64, x64: 26.07.21 platform libraries from the same commit.
+Linux arm32, arm64: 26.07.21 platform libraries from the same commit.
+Linux x64: V2026.06.04.16 retained. The 26.07.21 x64 library needs glibc 2.38
+and GLIBCXX_3.4.32, newer than the Debian bookworm the packages are built on;
+V2026.06.04.16 needs glibc 2.14 and GLIBCXX_3.4.21. The 26.07.21 headers only
+add ParseGPSFromFrame, GetQHYCCDDDRBufferValue and RegisterPnpEventUVLO, which
+the driver does not use.
 Windows x64: 26.06.04.16 retained (INDI does not supply Windows binaries).
 Windows Win32: 25.03.24 retained.
 Linux x86: 20.05.22 retained (INDI does not supply x86-32 binaries).

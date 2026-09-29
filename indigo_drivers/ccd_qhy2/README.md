@@ -12,7 +12,7 @@ Unplugging a camera while it is streaming is not safe: the process can abort aft
 
 ## Supported platforms
 
-This driver depends on a 3rd party library and is supported on Linux and macOS. The bundled SDK 26.07.21 supports Linux x64, ARM32 and ARM64, and requires macOS 14.0 or later on Intel and Apple Silicon. Linux x86 retains the older SDK because no updated package was supplied.
+This driver depends on a 3rd party library and is supported on Linux and macOS. The bundled SDK 26.07.21 supports Linux ARM32 and ARM64, and requires macOS 14.0 or later on Intel and Apple Silicon. Linux x64 retains SDK 26.06.04.16 because the 26.07.21 x64 library requires glibc 2.38, newer than the Debian bookworm the packages are built on. Linux x86 retains the older SDK because no updated package was supplied.
 
 ## License
 
