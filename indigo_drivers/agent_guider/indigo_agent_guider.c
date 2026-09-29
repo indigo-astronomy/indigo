@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x03000032
+#define DRIVER_VERSION 0x03000033
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -65,6 +65,11 @@
 #define GUIDE_CYCLE_TIME_SMOOTHING (0.25)     /* how far a new sample pulls the estimate towards it: 0 = ignore it, 1 = jump to it */
 #define GUIDE_CYCLE_TIME_OUTLIER_FACTOR (2.0) /* sample/estimate ratio beyond which a sample is rejected as a one-off stall */
 #define GUIDE_CYCLE_TIME_MAX_REJECTS (3)      /* consecutive rejections after which the cadence is assumed to have really changed */
+
+#define CALIBRATION_STEP_MIN (0.05)           /* shortest calibration step (s) */
+#define CALIBRATION_STEP_MAX (2.0)            /* longest calibration step (s) */
+#define CALIBRATION_STEP_DEFAULT (0.2)        /* calibration step (s) when auto mode has no pixel scale to estimate it from */
+#define CALIBRATION_GUIDE_RATE (0.5 * 15.041) /* guide rate assumed by the calibration step estimate ("/s), 0.5x sidereal */
 
 #define DEVICE_PRIVATE_DATA										((guider_agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((guider_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
@@ -1354,8 +1359,8 @@ static void preview_process(indigo_device *device) {
 static void change_step(indigo_device *device, double q) {
 	if (q > 1) {
 		indigo_send_message(device, ALERT_PROPERTY, "Drift is too slow");
-		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
-			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmin(AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
+		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < CALIBRATION_STEP_MAX) {
+			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmin(CALIBRATION_STEP_MAX, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
 			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Increasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
 			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 		} else {
@@ -1363,8 +1368,8 @@ static void change_step(indigo_device *device, double q) {
 		}
 	} else {
 		indigo_send_message(device, ALERT_PROPERTY, "Drift is too fast");
-		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > AGENT_GUIDER_SETTINGS_STEP_ITEM->number.min) {
-			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmax(AGENT_GUIDER_SETTINGS_STEP_ITEM->number.min, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
+		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > CALIBRATION_STEP_MIN) {
+			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmax(CALIBRATION_STEP_MIN, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
 			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Decreasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
 			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 		} else {
@@ -1476,6 +1481,30 @@ static void handle_gp_reset(indigo_device *device, indigo_property *reset_proper
 	}
 }
 
+/* A calibration step of 0 asks for an estimate: the step that drifts the star by MIN_CALIBRATION_DRIFT in the geometric
+   middle of the pulse counts the Dec leg accepts, MAX_CALIBRATION_STEPS / 5 to MAX_CALIBRATION_STEPS, at an assumed
+   0.5x sidereal guide rate. The estimate replaces the 0, so calibration adjusts it like an entered step. Without a
+   pixel scale the default step is used instead. */
+static void estimate_calibration_step(indigo_device *device) {
+	if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > 0) {
+		return;
+	}
+	double scale = 3600 * sqrt(CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value);
+	if (scale > 0 && AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value > 0) {
+		double speed = CALIBRATION_GUIDE_RATE / scale;
+		// without the Dec leg the step is calibrated on RA, which the declination slows down
+		if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
+			speed *= fmax(cos(PI * AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value / 180), MIN_COS_DEC);
+		}
+		double step = AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM->number.value * sqrt(5) / (AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value * speed);
+		AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = round(1000 * fmin(CALIBRATION_STEP_MAX, fmax(CALIBRATION_STEP_MIN, step))) / 1000;
+		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Calibration step estimated to %.3g s for %.3g\"/px", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, scale);
+	} else {
+		AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = CALIBRATION_STEP_DEFAULT;
+		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Pixel scale is unknown, calibration step set to %.3g s", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value);
+	}
+}
+
 static bool calibrate(indigo_device *device) {
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0; // Number of completed pulses in the preceding outward leg.
@@ -1497,6 +1526,8 @@ static bool calibrate(indigo_device *device) {
 	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 		check_selection(device);
 	}
+	// once, not in INITIALIZING: change_step() returns there and the estimate would undo its correction
+	estimate_calibration_step(device);
 	DEVICE_PRIVATE_DATA->first_frame = true;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -2528,7 +2559,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 120, 0.1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DELAY_ITEM, AGENT_GUIDER_SETTINGS_DELAY_ITEM_NAME, "Delay time (s)", 0, 120, 1, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STEP_ITEM, AGENT_GUIDER_SETTINGS_STEP_ITEM_NAME, "Calibration step (s)", 0.05, 2, 0.05, 0.200);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STEP_ITEM, AGENT_GUIDER_SETTINGS_STEP_ITEM_NAME, "Calibration step (s, 0 = auto)", 0, CALIBRATION_STEP_MAX, 0.05, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM, AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM_NAME, "Max clear backlash steps", 0, 50, 1, 10);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM_NAME, "Min clear backlash drift (px)", 0, 25, 1, 3);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM, AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM_NAME, "Max calibration steps", 0, 50, 1, 20);

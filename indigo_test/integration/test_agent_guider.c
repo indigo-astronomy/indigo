@@ -543,6 +543,8 @@ static bool model_camera(void) {
 	REQUIRE(num(CAMERA, "SIMULATION_SETUP", "IMAGE_WIDTH", 400));
 	REQUIRE(num(CAMERA, "SIMULATION_SETUP", "IMAGE_HEIGHT", 300));
 	REQUIRE(num(AGENT, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 0.1));
+	// motion_scale, not the camera's pixel scale, sets how far the model moves, so the step is entered rather than estimated
+	REQUIRE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.2));
 	return true;
 }
 
@@ -834,6 +836,65 @@ static void calibration_adaptive_maximum(void) {
 	double maximum = maximum_pulse;
 	pthread_mutex_unlock(&motion_mutex);
 	ASSERT_TRUE(maximum <= 2000);
+}
+
+// Star speed in px/s at the 0.5x sidereal guide rate the calibration step estimate assumes, 0 without a pixel scale
+static double half_sidereal_speed(void) {
+	double scale = 3600 * sqrt(value(AGENT, "CCD_LENS_FOV", "PIXEL_SCALE_WIDTH") * value(AGENT, "CCD_LENS_FOV", "PIXEL_SCALE_HEIGHT"));
+	return scale > 0 ? 0.5 * 15.041 / scale : 0;
+}
+
+// Short calibration legs: 2 px of drift, 1 px to clear backlash
+static bool short_calibration_legs(void) {
+	REQUIRE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 2));
+	REQUIRE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_BL_DRIFT", 1));
+	return true;
+}
+
+// STEP0 = 0 estimates the step from the camera's pixel scale at 0.5x sidereal, aiming at the middle of the pulse counts
+// the Dec leg accepts. With the model moving at that rate calibration never halves or doubles the step, and the estimate
+// replaces the 0.
+static void calibration_step_estimate(void) {
+	ASSERT_TRUE(model_camera());
+	// a 50 cm guide scope, about 2"/px, keeps the legs short; the simulator's 8.9 cm lens drifts only 0.6 px/s
+	ASSERT_TRUE(num(CAMERA, "CCD_LENS", "FOCAL_LENGTH", 50));
+	double deadline = indigo_monotonic_time() + 5;
+	while (half_sidereal_speed() < 1 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	double speed = half_sidereal_speed();
+	printf("    %.3f px/s at 0.5x sidereal\n", speed);
+	ASSERT_TRUE(speed > 0);
+	motion_scale = speed / 1000;
+	ASSERT_TRUE(short_calibration_legs());
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	double expected = round(1000 * fmin(2, fmax(0.05, 2 * sqrt(5) / (value(AGENT, "AGENT_GUIDER_SETTINGS", "MAX_CALIBRATION_STEPS") * speed)))) / 1000;
+	printf("    step %.3f s, expected %.3f s, Dec speed %.3f px/s\n", value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), expected, value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC"));
+	ASSERT_NEAR(expected, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0005);
+	ASSERT_NEAR(speed, fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC")), 0.15 * speed);
+}
+
+// An entered step is used as it is, even with a pixel scale to estimate from, and STEP0 = 0 without a pixel scale starts
+// from the 0.2 s default. The model moves at a rate both steps suit, so calibration keeps them.
+static void calibration_step_entered_and_default(void) {
+	ASSERT_TRUE(model_camera());
+	ASSERT_TRUE(half_sidereal_speed() > 0);
+	// 0.224 px per 0.2 s pulse, the 2 px drift in 9 pulses
+	motion_scale = 0.00112;
+	ASSERT_TRUE(short_calibration_legs());
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.3));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	ASSERT_NEAR(0.3, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0005);
+	ASSERT_TRUE(num(CAMERA, "CCD_LENS", "FOCAL_LENGTH", 0));
+	double deadline = indigo_monotonic_time() + 5;
+	while (half_sidereal_speed() > 0 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(half_sidereal_speed() == 0);
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	ASSERT_NEAR(0.2, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0005);
 }
 
 static void calibration(void) {
@@ -2104,6 +2165,8 @@ static const indigo_test_case tests[] = {
 	{ "calibration adaptive step", calibration_adaptive_step },
 	{ "calibration adaptive minimum", calibration_adaptive_minimum },
 	{ "calibration adaptive maximum", calibration_adaptive_maximum },
+	{ "calibration step estimate", calibration_step_estimate },
+	{ "calibration step entered and default", calibration_step_entered_and_default },
 	{ "calibration speed accuracy", calibration_speed_accuracy },
 	{ "calibration single pulse speed", calibration_single_pulse_speed },
 	{ "calibration directional speed", calibration_directional_speed },

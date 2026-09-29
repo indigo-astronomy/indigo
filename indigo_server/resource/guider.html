@@ -161,7 +161,7 @@
 							<template v-if="window.guiderCameraSelected() && window.guiderGuiderSelected() && findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">
-										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'STEP0')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'" :cls="'w-100'"></indigo-edit-number>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'STEP0')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration step (0 = auto)'" :cls="'w-100'"></indigo-edit-number>
 										<indigo-show-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'ANGLE')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'ANGLE'" :icon="'angle'" :tooltip="'Angle'" :cls="'w-25'"></indigo-show-number>
 										<indigo-show-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'BACKLASH')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'BACKLASH'" :icon="'b-lash'" :tooltip="'Backlash'" :cls="'w-25'"></indigo-show-number>
 										<indigo-show-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'SPEED_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'" :cls="'w-25'"></indigo-show-number>
