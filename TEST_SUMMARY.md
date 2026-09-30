@@ -307,6 +307,7 @@
 | rotator_wa | 2026-09-27 22:46 | 3.0.0.6 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.17 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
+|  | 2026-09-30 19:13 | 3.0.0.17 | linux arm64 | EFW | 16 / 16 | ✅ OK |
 | wheel_astroasis | 2026-09-27 16:51 | 3.0.0.12 | linux x64 | fake SDK | 15 / 15 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.12 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
 | wheel_atik | 2026-09-27 22:39 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
