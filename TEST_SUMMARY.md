@@ -162,6 +162,7 @@
 |  | 2026-09-22 00:14 | 3.0.0.49 | linux arm64 | Touptek GPCMOS01200KMB | 6 / 6 | ✅ OK |
 |  | 2026-09-27 08:36 | 3.0.0.55 | linux x64 | fake SDK | 36 / 36 | ✅ OK |
 |  | 2026-09-27 22:00 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
+|  | 2026-09-30 18:22 | 3.0.0.55 | linux arm64 | GPCMOS01200KMB | 28 / 28 | ✅ OK |
 | ccd_uvc | 2026-09-21 20:24 | 3.0.0.27 | linux arm64 | SVBONY SV205 | 11 / 11 | ✅ OK |
 |  | 2026-09-21 20:26 | 3.0.0.27 | linux arm64 | Creative Live! Cam Sync HD VF0770 | 11 / 11 | ✅ OK |
 |  | 2026-09-27 22:02 | 3.0.0.30 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
