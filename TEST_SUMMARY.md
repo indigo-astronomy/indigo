@@ -227,6 +227,7 @@
 |  | 2026-09-27 23:35 | 3.0.0.19 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | focuser_usbv3 | 2026-09-22 01:09 | 3.0.0.10 | mac arm64 | USB_Focus v3 | 16 / 16 | ✅ OK |
 |  | 2026-09-27 23:26 | 3.0.0.11 | mac arm64 | simulator | 28 / 28 | ✅ OK |
+|  | 2026-09-30 19:29 | 3.0.0.11 | linux arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
 | focuser_wemacro | 2026-09-27 23:28 | 3.0.0.8 | mac arm64 | simulator | 23 / 23 | ✅ OK |
 | gps_gpsd | 2026-09-27 22:38 | 3.0.0.5 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | gps_nmea | 2026-09-22 21:38 | 3.0.0.20 | mac arm64 | u-blox 7 | 9 / 9 | ✅ OK |
