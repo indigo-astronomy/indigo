@@ -115,6 +115,7 @@
 | ccd_fli | 2026-09-27 21:33 | 3.0.0.15 | mac arm64 | fake SDK | 22 / 22 | ✅ OK |
 | ccd_iidc | 2026-09-22 07:51 | 3.0.0.20 | mac arm64 | Atik GP | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:34 | 3.0.0.22 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
+|  | 2026-09-30 18:41 | 3.0.0.22 | linux arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
 | ccd_mallin | 2026-09-27 21:34 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_meade | 2026-09-27 21:37 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_mi | 2026-09-22 15:05 | 3.0.0.35 | mac arm64 | MI G0-0300 | 1 / 1 | ✅ OK |

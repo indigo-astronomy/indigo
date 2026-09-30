@@ -31,3 +31,4 @@ Driver is developed and tested with:
 
 2026-09-22 07:51 3.0.0.20 mac arm64 Atik GP 1/1 OK
 2026-09-27 21:34 3.0.0.22 mac arm64 fake SDK 16/16 OK
+2026-09-30 18:41 3.0.0.22 linux arm64 Chameleon CMLN-13S2M 1/1 OK
