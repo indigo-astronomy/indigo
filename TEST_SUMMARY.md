@@ -90,6 +90,8 @@
 |  | 2026-09-26 19:59 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S (hot-plug) | 32 / 32 | ✅ OK |
 |  | 2026-09-27 08:50 | 3.0.0.70 | linux x64 | fake SDK | 54 / 54 | ✅ OK |
 |  | 2026-09-27 21:26 | 3.0.0.70 | mac arm64 | fake SDK | 54 / 54 | ✅ OK |
+|  | 2026-09-30 18:17 | 3.0.0.70 | linux arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
+|  | 2026-09-30 18:19 | 3.0.0.70 | linux arm64 | ZWO ASI294MC Pro | 28 / 28 | ✅ OK |
 | ccd_atik | 2026-09-22 10:06 | 3.0.0.44 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 |  | 2026-09-22 10:08 | 3.0.0.44 | mac arm64 | ArtemisCCD VS | 1 / 1 | ✅ OK |
 |  | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
