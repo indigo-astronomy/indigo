@@ -52,9 +52,14 @@ This will come at the cost of somewhat reduced performance.
 
 ## Testing
 
-2026-09-22 07:29 3.0.0.36 linux arm64 QHY5III178M 6/6 OK
 2026-09-22 19:37 3.0.0.40 mac arm64 QHY5-M 1/1 OK
 2026-09-22 19:39 3.0.0.40 mac arm64 QHY8PRO-C 1/1 OK
 2026-09-22 19:41 3.0.0.40 mac arm64 QHY5LII-M 2/2 OK
 2026-09-27 09:27 3.0.0.44 linux x64 fake SDK 41/41 OK
 2026-09-27 21:48 3.0.0.44 mac arm64 fake SDK 42/42 OK
+2026-09-30 17:25 3.0.0.45 linux arm64 fake SDK 41/41 OK
+2026-09-30 17:27 3.0.0.45 linux arm64 QHY5III178M (hot-plug) 6/6 OK
+2026-09-30 17:48 3.0.0.45 linux arm64 QHY5III178M 1/1 OK
+2026-09-30 17:50 3.0.0.45 linux arm64 QHY5LII-M 1/1 OK
+2026-09-30 17:54 3.0.0.45 linux arm64 QHY5-M 1/1 OK
+2026-09-30 17:55 3.0.0.45 linux arm64 QHY8PRO-C 1/1 OK

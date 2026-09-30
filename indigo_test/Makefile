@@ -2297,7 +2297,7 @@ $(INTEGRATION_BUILD)/ccd_qhy_sdk_framework.o: ../indigo_libs/indigo_driver.c Mak
 # Physical acceptance requires explicit --run, library and device selection. The driver is loaded
 # through dlopen(), so the same binary serves the QHY SDK driver and its legacy sibling; set
 # INDIGO_TEST_DEVICE to a unique substring of the camera name.
-$(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c hardware/hardware_device_record.h hardware/powerbox_hotplug_test_common.h test_runner.h | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_ccd_qhy_hw: hardware/test_ccd_qhy_hw.c hardware/hardware_device_record.h hardware/powerbox_hotplug_test_common.h hardware/usb_hotplug_test_common.h test_runner.h | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 .PHONY: test-ccd-qhy-hw
