@@ -5632,6 +5632,7 @@
 		C0DE20260917F4F000000005 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260918000100000001 /* test_ccd_mi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_mi_hw.c; sourceTree = "<group>"; };
 		C0DE20260918000200000001 /* test_ccd_iidc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_iidc_hw.c; sourceTree = "<group>"; };
+		C0DE20260930000100000001 /* test_ccd_dsi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_dsi_hw.c; sourceTree = "<group>"; };
 		C0DE20260918100000000000 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -14729,6 +14730,7 @@
 				9D239B3D30500558002E0722 /* test_ccd_touptek_hw.c */,
 				C0DE20260918000100000001 /* test_ccd_mi_hw.c */,
 				C0DE20260918000200000001 /* test_ccd_iidc_hw.c */,
+				C0DE20260930000100000001 /* test_ccd_dsi_hw.c */,
 			);
 			path = hardware;
 			sourceTree = "<group>";

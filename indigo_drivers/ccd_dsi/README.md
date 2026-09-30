@@ -30,3 +30,8 @@ Driver is developed and tested with:
 ## NOTES:
 DSI cameras are not supported by Meade any more. We provide this driver as they are still popular.
 The firmware has issues but we tried to make the driver as stable as possible bypassing the instabilities of the firmware.
+
+## Testing
+
+2026-09-30 18:52 3.0.0.18 linux arm64 DSI Color 15/15 OK
+2026-09-30 18:52 3.0.0.18 linux arm64 DSI Color (hot-plug) 17/17 OK

@@ -1456,6 +1456,14 @@ test-ccd-iidc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
 
 # Physical IIDC camera hardware is opt-in and excluded from normal integration tests.
+# Physical Meade DSI hardware is opt-in; HW_HOTPLUG=1 adds the unplug cases, which switch the camera's USB port on Linux.
+.PHONY: test-ccd-dsi-hw
+test-ccd-dsi-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_dsi_hw
+	$(TEST_BUILD)/hardware/test_ccd_dsi_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
+
+$(TEST_BUILD)/hardware/test_ccd_dsi_hw: hardware/test_ccd_dsi_hw.c hardware/hardware_device_record.h hardware/usb_hotplug_test_common.h test_runner.h ../build/drivers/indigo_ccd_dsi.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_dsi.a -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
 .PHONY: test-ccd-iidc-hw
 test-ccd-iidc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_iidc_hw
 	INDIGO_TEST_SKIP_MODES=$(HW_SKIP_MODES) $(TEST_BUILD)/hardware/test_ccd_iidc_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)

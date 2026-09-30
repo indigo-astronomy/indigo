@@ -110,6 +110,8 @@
 |  | 2026-09-27 08:27 | 3.0.0.18 | linux x64 | fake SDK | 27 / 27 | ✅ OK |
 | ccd_baccam | 2026-09-27 21:28 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_bresser | 2026-09-27 21:31 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
+| ccd_dsi | 2026-09-30 18:52 | 3.0.0.18 | linux arm64 | DSI Color | 15 / 15 | ✅ OK |
+|  | 2026-09-30 18:52 | 3.0.0.18 | linux arm64 | DSI Color (hot-plug) | 17 / 17 | ✅ OK |
 | ccd_fli | 2026-09-27 21:33 | 3.0.0.15 | mac arm64 | fake SDK | 22 / 22 | ✅ OK |
 | ccd_iidc | 2026-09-22 07:51 | 3.0.0.20 | mac arm64 | Atik GP | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:34 | 3.0.0.22 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |

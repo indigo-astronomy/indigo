@@ -507,3 +507,40 @@ Goal: refactor the Meade DSI CCD driver into a generator-friendly INDIGO 3.0 str
 - Preserve DSI equal-X/Y binning semantics with a synchronous `CCD_BIN` handler that explicitly calls the CCD base handler with `CCD_BIN_PROPERTY`.
 - Preserve global SDK enumeration/open/close serialization with `indigo_device_enumeration_mutex`.
 - Re-evaluate the per-device `usb_mutex` after queue conversion; keep it only if SDK calls still need protection outside generated queue serialization.
+
+## Hardware acceptance suite (2026-09-30)
+
+`indigo_test/hardware/test_ccd_dsi_hw.c`, run with `tools/run_driver_test.py ccd_dsi --hw` (target
+`test-ccd-dsi-hw`) and `--hot-plug` (`HW_HOTPLUG=1`). It selects the only attached DSI, or the one
+`INDIGO_TEST_DEVICE` names, and runs against driver 3.0.0.18, working tree on top of 809e6c13d.
+
+Hardware: DSI Color (156c:0101, firmware loaded by the udev fxload rule), serial 03e200000a0d0105,
+508 x 488, 9.6 x 7.5 um pixels, no binning, no temperature sensor. Linux arm64 (Raspberry Pi 5).
+
+| Case | Result |
+| --- | --- |
+| identity: label, API generation, multi-device support, CCD interface, INFO driver, model and serial | passed |
+| property contract: CCD_INFO, read-only full-sensor CCD_FRAME at 16 bit, CCD_MODE, CCD_BIN visible exactly with a 2x2 mode, CCD_GAIN and CCD_OFFSET 0..100, no cooler or streaming, read-only temperature | passed |
+| 0.1 s, 1.5 s and 5 s exposures, one frame each of the full sensor size, no early completion | passed |
+| every CCD_MODE with an exposure of the matching size | passed (BIN_1x1 only on this model) |
+| CCD_BIN keeps both axes equal when one is changed | not applicable, this model does not bin |
+| gain and offset: value and target committed, exposure, original restored | passed |
+| light, bias, dark, flat and dark flat frames | passed |
+| abort of a 10 s exposure, no late frame, reacquisition | passed (abort acknowledged in 0.01 s) |
+| temperature within its range | not applicable, no sensor |
+| ten repeated short exposures, three reconnects with the same model, shutdown refused while connected, shutdown and reinit | passed |
+| every delivered frame a valid 16 bit raw frame | passed |
+| hot-plug: port switched off while connected and during a 10 s exposure, camera withdrawn, published again after the firmware reload, fresh exposure | passed |
+
+Recorded: 15/15, and 17/17 with hot-plug.
+
+### Gaps
+
+- There is no hardware-free test of this driver: `libdsi.c` talks to the camera over libusb directly,
+  and a fake USB transport for its protocol does not exist yet.
+- Binning (DSI Pro II/III) and the temperature sensor are untested on hardware; the camera at hand
+  has neither. Two things to check on such a model: the `CCD_BIN` handler compares each axis with a
+  value it has just read, so it may never keep the axes equal, and `CCD_INFO` reports a maximum bin of
+  1 even when the camera bins 2x2.
+- Only one camera was attached, so running several DSIs together is untested.
+
