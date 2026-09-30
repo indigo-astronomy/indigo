@@ -117,6 +117,7 @@
 | ccd_mi | 2026-09-22 15:05 | 3.0.0.35 | mac arm64 | MI G0-0300 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 08:00 | 3.0.0.39 | linux x64 | fake SDK | 18 / 18 | ✅ OK |
 |  | 2026-09-27 21:39 | 3.0.0.39 | mac arm64 | fake SDK | 18 / 18 | ✅ OK |
+|  | 2026-09-30 18:21 | 3.0.0.39 | linux arm64 | MI G0-0300 | 1 / 1 | ✅ OK |
 | ccd_ogma | 2026-09-27 21:40 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_omegonpro | 2026-09-27 21:42 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_playerone | 2026-09-21 21:23 | 3.0.0.26 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
