@@ -48,6 +48,7 @@
 |  | 2026-09-27 20:48 | 3.0.0.8 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | aux_dsusb | 2026-09-21 23:41 | 3.0.0.16 | mac arm64 | DSUSB | 11 / 11 | ✅ OK |
 |  | 2026-09-27 20:48 | 3.0.0.17 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
+|  | 2026-09-30 19:16 | 3.0.0.17 | linux arm64 | DSUSB Shutter | 11 / 11 | ✅ OK |
 | aux_fbc | 2026-09-27 20:49 | 3.0.0.9 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | aux_flatmaster | 2026-09-27 20:49 | 3.0.0.11 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | aux_flipflat | 2026-09-27 20:49 | 3.0.0.10 | mac arm64 | simulator | 11 / 11 | ✅ OK |
