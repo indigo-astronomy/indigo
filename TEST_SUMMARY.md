@@ -23,7 +23,7 @@
 |  | 2026-09-25 00:59 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Camera (ZWO ASI120MC-S, ASI294MC Pro) | 4 / 4 | ✅ OK |
 |  | 2026-09-25 01:01 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 FilterWheel (ZWO EFW) | 2 / 2 | ✅ OK |
 | agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
-|  | 2026-09-28 11:35 | 2.0.0.23 | mac arm64 | simulator | 34 / 34 | ✅ OK |
+|  | 2026-09-30 21:58 | 2.0.0.26 | mac arm64 | simulator | 68 / 68 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
 |  | 2026-09-27 19:42 | 3.0.0.28 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
