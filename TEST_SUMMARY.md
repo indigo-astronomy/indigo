@@ -212,6 +212,7 @@
 | focuser_optecfl | 2026-09-27 23:10 | 3.0.0.5 | mac arm64 | simulator | 45 / 45 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 |  | 2026-09-27 23:12 | 3.0.0.15 | mac arm64 | simulator | 36 / 36 | ✅ OK |
+|  | 2026-09-30 18:48 | 3.0.0.15 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-09-27 23:17 | 3.0.0.9 | mac arm64 | simulator | 58 / 58 | ✅ OK |
 | focuser_qhy | 2026-09-27 12:50 | 3.0.0.10 | linux x64 | simulator | 32 / 32 | ✅ OK |
