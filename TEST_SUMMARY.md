@@ -312,5 +312,6 @@
 | wheel_quantum | 2026-09-27 22:42 | 3.0.0.6 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | wheel_sx | 2026-09-20 23:09 | 3.0.0.6 | mac arm64 | SX filter wheel | 12 / 12 | ✅ OK |
 |  | 2026-09-27 22:42 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
+|  | 2026-09-30 18:12 | 3.0.0.7 | linux arm64 | SX Filter Wheel #0302 | 12 / 12 | ✅ OK |
 | wheel_trutek | 2026-09-27 22:43 | 3.0.0.7 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | wheel_xagyl | 2026-09-27 22:44 | 3.0.0.9 | mac arm64 | simulator | 8 / 8 | ✅ OK |
