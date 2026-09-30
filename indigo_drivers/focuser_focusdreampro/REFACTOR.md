@@ -251,3 +251,31 @@ Not covered, and why:
 - Hardware tests: **15 executed, 15 passed** (2026-09-22, AstroGadget FocusDreamPro, driver
   3.0.0.9). The first hardware run of the same 15 scenarios, against driver 3.0.0.8, failed at
   set-up with 0 executed; that is `DRV-135`.
+
+## Wrong serial port on a host with other adapters (3.0.0.11, 2026-09-30)
+
+### Defect
+
+`on_attach` overwrote `DEVICE_PORT` with `/dev/ttyUSB0` on Linux and with the first `/dev/cu.usbmodem*`
+on macOS. The framework selects a port by the driver's CP2102 pattern (`10c4:ea60`) only while
+`DEVICE_PORT` is empty or `auto://`, so the pattern never applied and the driver connected to whatever
+adapter enumerated first. On indigosky `/dev/ttyUSB0` is a Pegasus UPB and the FocusDreamPro sits on
+`/dev/ttyUSB1`: the hardware suite connected to the UPB, got no banner and failed every case.
+
+### Fix
+
+The hard-coded defaults are gone and `DEVICE_PORT` keeps the framework's `auto://` value, which the
+pattern now resolves: `auto:///dev/ttyUSB1` on indigosky. No other pattern driver overwrites its port.
+
+### Tests
+
+- `default_port_is_auto_selected` in `test_focuser_focusdreampro_simulator.c` checks that the port is
+  still `auto://` after attach. 3.0.0.10 fails it (`/dev/ttyUSB0`), 3.0.0.11 passes.
+- `silent_controller` waited for the refused connection with `connect_serial_device()`, whose 5 s window
+  equals the driver's identity read timeout, so on Linux it read CONNECTION while it was still BUSY and
+  failed 8 to 10 runs out of 10 with either driver version. It now waits for the attempt to settle: 10/10.
+- The hardware temperature case waited for a fresh publication of FOCUSER_TEMPERATURE, which INDIGO
+  suppresses while the reading is steady; it now checks the published value only.
+
+Recorded on linux arm64: simulator 18/18, AGadget FocusDreamPro 15/15, with no port given.
+

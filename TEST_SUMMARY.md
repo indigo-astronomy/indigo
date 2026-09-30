@@ -201,6 +201,8 @@
 | focuser_fli | 2026-09-27 22:54 | 3.0.0.14 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
 | focuser_focusdreampro | 2026-09-22 21:05 | 3.0.0.9 | mac arm64 | AstroGadget FocusDreamPro | 15 / 15 | ✅ OK |
 |  | 2026-09-27 22:54 | 3.0.0.10 | mac arm64 | simulator | 17 / 17 | ✅ OK |
+|  | 2026-09-30 19:34 | 3.0.0.11 | linux arm64 | simulator | 18 / 18 | ✅ OK |
+|  | 2026-09-30 19:36 | 3.0.0.11 | linux arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
 | focuser_ioptron | 2026-09-27 00:32 | 3.0.0.10 | linux x64 | simulator | 42 / 42 | ✅ OK |
 |  | 2026-09-27 22:56 | 3.0.0.10 | mac arm64 | simulator | 42 / 42 | ✅ OK |
 | focuser_lacerta | 2026-09-27 22:59 | 3.0.0.8 | mac arm64 | simulator | 43 / 43 | ✅ OK |

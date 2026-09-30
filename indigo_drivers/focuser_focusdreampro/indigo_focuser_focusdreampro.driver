@@ -26,7 +26,7 @@ driver focusdreampro {
 	label = "AGadget FocusDreamPro Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 10;
+	version = 11;
 	serial {
 		// The AstroGadget controller is wired to a Silicon Labs CP2102 bridge.
 		pattern {
@@ -146,17 +146,9 @@ driver focusdreampro {
 		on_attach {
 			INFO_PROPERTY->count = 5;
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-#ifdef INDIGO_MACOS
-			for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-				if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
-					INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-					break;
-				}
-			}
-#endif
-#ifdef INDIGO_LINUX
-			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
-#endif
+			// DEVICE_PORT keeps the framework's auto:// default, so the port is chosen by the CP2102
+			// pattern above. A fixed /dev/ttyUSB0 or first /dev/cu.usbmodem* disabled that selection and
+			// connected to whatever adapter enumerated first, e.g. a Pegasus UPB.
 		}
 		on_connect {
 			// A controller without a probe answers T:false, so the property has

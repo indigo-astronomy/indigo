@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_focusdreampro"
 #define DRIVER_LABEL         "AGadget FocusDreamPro Focuser"
 #define FOCUSER_DEVICE_NAME  "FocusDreamPro"
@@ -379,17 +379,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		//+ focuser.on_attach
 		INFO_PROPERTY->count = 5;
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
-				INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-				break;
-			}
-		}
-		#endif
-		#ifdef INDIGO_LINUX
-		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
-		#endif
+		// DEVICE_PORT keeps the framework's auto:// default, so the port is chosen by the CP2102
+		// pattern above. A fixed /dev/ttyUSB0 or first /dev/cu.usbmodem* disabled that selection and
+		// connected to whatever adapter enumerated first, e.g. a Pegasus UPB.
 		//- focuser.on_attach
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;

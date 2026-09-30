@@ -208,10 +208,8 @@ static void focusdreampro_reads_the_temperature(void) {
 	// A probe that is not wired up reads as a rail value, so require something a room can produce.
 	ASSERT_TRUE(temperature > -40 && temperature < 80);
 	printf("    temperature %.2f C\n", temperature);
-	// The polling callback republishes it every second, which is the only evidence that the timer
-	// is running at all.
-	unsigned before = hw_revision(focuser, FOCUSER_TEMPERATURE_PROPERTY_NAME);
-	ASSERT_TRUE(hw_wait_state(focuser, FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_OK_STATE, POLL_TIMEOUT));
+	// No fresh publication is waited for: INDIGO suppresses an update that changes no item, so a
+	// steady probe reading is never republished even though the polling timer runs.
 }
 
 static void focusdreampro_moves_to_an_absolute_position(void) {

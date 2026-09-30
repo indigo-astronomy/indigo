@@ -200,6 +200,24 @@ cleanup:
 	driver_stop();
 }
 
+// The port is left to the framework's auto:// selection by the CP2102 pattern. The driver used to
+// overwrite it with /dev/ttyUSB0 on Linux, which connected to whatever adapter enumerated first.
+static void default_port_is_auto_selected(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&focusdreampro));
+	indigo_item *port = NULL;
+	for (int i = 0; i < 200 && port == NULL; i++) {
+		port = find_cached_item(DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME);
+		if (port == NULL) {
+			indigo_usleep(10000);
+		}
+	}
+	SERIAL_CHECK_TRUE(port != NULL);
+	printf("    default port: %s\n", port->text.value);
+	SERIAL_CHECK_TRUE(!strncmp(port->text.value, "auto://", 7));
+cleanup:
+	driver_stop();
+}
+
 static void sync_and_goto(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(select_fastest_speed());
@@ -363,9 +381,24 @@ cleanup:
 	stop_external_serial_simulator(&with_probe);
 }
 
+// The refused connection is published only when the identity read gives up, after the 5 s read
+// timeout of indigo_uni_read_line(). connect_serial_device() waits 5 s as well, so it can return while
+// CONNECTION is still BUSY with CONNECTED set; the case waits for the attempt to settle before it
+// looks at the outcome.
+static bool connection_settled(void) {
+	for (int i = 0; i < 150; i++) {
+		if (context.last_connection_state != INDIGO_BUSY_STATE) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
 static void silent_controller(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&focusdreampro));
 	SERIAL_CHECK_TRUE(!connect_serial_device(&focusdreampro, fixture.port));
+	SERIAL_CHECK_TRUE(connection_settled());
 	SERIAL_CHECK_TRUE(!context.connected);
 	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_DUTY_CYCLE_PROPERTY_NAME) == NULL);
 cleanup:
@@ -443,6 +476,7 @@ typedef struct { const char *name; void (*run)(void); const char *profile; } sim
 int main(void) {
 	const simulated_case cases[] = {
 		{ "metadata", metadata, "normal" },
+		{ "default_port_is_auto_selected", default_port_is_auto_selected, "normal" },
 		{ "sync_and_goto", sync_and_goto, "normal" },
 		{ "relative_move", relative_move, "normal" },
 		{ "limits_clamp", limits_clamp, "normal" },
