@@ -29,3 +29,4 @@ Driver is developed and tested with:
 
 2026-09-20 23:43 3.0.0.13 mac arm64 SX AO-L 16/16 OK
 2026-09-27 21:22 3.0.0.15 mac arm64 simulator 11/11 OK
+2026-09-30 18:14 3.0.0.15 linux arm64 StarlightXpress AO 16/16 OK
