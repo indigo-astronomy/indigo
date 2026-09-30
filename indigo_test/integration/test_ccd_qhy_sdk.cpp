@@ -41,6 +41,12 @@ extern "C" indigo_result ENTRY(indigo_driver_action, indigo_driver_info *);
 #define QHY_COUPLED_REQUESTS_FIXED
 
 static std::atomic<int> opens, closes, active, attached, blobs, after_close, bus_calls, resources;
+// Set while the camera is off the bus after the SDK released its handle on its own, as the real SDK
+// does from its libusb hot-plug listener. Calls on the released handle fail rather than count as
+// calls after close, because the driver learns of the removal only after the SDK did; closing it
+// again is what aborts the real process (QHY2-001) and is counted in released_closes.
+static std::atomic<bool> released;
+static std::atomic<int> released_closes;
 static std::atomic<bool> fail_mode, fail_bits;
 static std::atomic<int> fail_open, fail_init, fail_chip, fail_start, fail_read, fail_stop, fail_control;
 static std::atomic<int> malformed, guide_calls, guide_direction, guide_duration, fw_slot, read_mode;
@@ -118,7 +124,9 @@ static void call(void) {
 static bool valid(qhyccd_handle *h) {
 	call();
 	if (!h || active <= 0) {
-		after_close++;
+		if (!released) {
+			after_close++;
+		}
 		return false;
 	}
 	return true;
@@ -171,7 +179,13 @@ qhyccd_handle *OpenQHYCCD(char *id) {
 	return (qhyccd_handle *)&usb_token;
 }
 
-uint32_t CloseQHYCCD(qhyccd_handle *h) { valid(h); closes++; active--; return QHYCCD_SUCCESS; }
+uint32_t CloseQHYCCD(qhyccd_handle *h) {
+	if (released) {
+		released_closes++;
+		return QHYCCD_ERROR;
+	}
+	valid(h); closes++; active--; return QHYCCD_SUCCESS;
+}
 
 uint32_t InitQHYCCD(qhyccd_handle *h) { valid(h); bits = formats == 1 ? 8 : formats == 2 ? 16 : sensor_depth.load(); if (reset_controls) { params[CONTROL_GAIN] = params[CONTROL_OFFSET] = params[CONTROL_GAMMA] = params[CONTROL_USBTRAFFIC] = params[CONTROL_SPEED] = 0; } return fail_init ? QHYCCD_ERROR : QHYCCD_SUCCESS; }
 
@@ -415,7 +429,7 @@ static void sw(int d, const char *p, const char *item) { mark(d, p); indigo_chan
 static bool connect(int d, bool on) { sw(d, "CONNECTION", on ? "CONNECTED" : "DISCONNECTED"); return wait_state(d, "CONNECTION", INDIGO_OK_STATE); }
 
 static bool begin(int expected = 3) {
-	bus_calls = 0; after_close = 0; blobs = 0;
+	bus_calls = 0; after_close = 0; blobs = 0; released = false; released_closes = 0;
 	if (ENTRY(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) { return false; }
 	for (int i = 0; i < 600 && attached < expected; i++) { indigo_usleep(10000); }
 	return attached == expected;
@@ -658,10 +672,13 @@ static void startup_only_discovery(void) {
 		if (phase) { ASSERT_TRUE(connect(0, true)); }
 		if (phase == 2) { number(0, "CCD_EXPOSURE", "EXPOSURE", 20); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_BUSY_STATE)); }
 		if (phase == 3) { stream_start(-1); ASSERT_TRUE(wait_state(0, "CCD_STREAMING", INDIGO_BUSY_STATE)); }
-		visible = false; usb_callback(NULL, (libusb_device *)&usb_tokens[0], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+		// The SDK runs its own libusb hot-plug listener and releases the handle of a camera that left
+		// the bus by itself, so the driver must not close it again: on the real SDK that call
+		// dereferences the released camera and aborts the process (QHY2-001).
+		visible = false; released = true; active = 0; usb_callback(NULL, (libusb_device *)&usb_tokens[0], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 		for (int i = 0; i < 600 && attached; i++) { indigo_usleep(10000); }
-		ASSERT_EQ_INT(0, attached.load()); ASSERT_EQ_INT(0, active.load());
-		visible = true; usb_callback(NULL, (libusb_device *)&usb_tokens[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+		ASSERT_EQ_INT(0, attached.load()); ASSERT_EQ_INT(0, active.load()); ASSERT_EQ_INT(0, released_closes.load());
+		visible = true; released = false; usb_callback(NULL, (libusb_device *)&usb_tokens[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
 		for (int i = 0; i < 600 && attached != 3; i++) { indigo_usleep(10000); }
 		ASSERT_EQ_INT(3, attached.load()); ASSERT_TRUE(connect(0, true));
 		number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));

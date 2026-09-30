@@ -28,6 +28,7 @@
 #include "../test_runner.h"
 #include "hardware_device_record.h"
 #include "powerbox_hotplug_test_common.h"
+#include "usb_hotplug_test_common.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MAX_DEVICES 16
@@ -51,8 +52,12 @@ static int camera = -1, guider = -1;
 // A camera the SDK reports without live mode does not publish CCD_STREAMING at all, and asking it
 // to stream used to hang the vendor call and with it the whole device queue.
 static bool streams;
-// Set from QHY_HW_HUB_PORT; hub_port.hub stays NULL when the hot-plug phases wait for a person.
+// Set from QHY_HW_HUB_PORT; hub_port.hub stays NULL unless a Pegasus Powerbox hub is asked for.
 static powerbox_hub_port hub_port;
+// The camera's own USB port, switched through its sysfs `disable` attribute on Linux. The hot-plug
+// phases wait for a person only when neither this nor the Powerbox hub is available.
+static usb_hotplug_port usb_port;
+static bool usb_switch;
 static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *);
 static void *driver_library;
 static const char *library_path, *entry_symbol;
@@ -475,7 +480,10 @@ static void hardware_workflows(void) {
 	printf("Driver %s version 0x%08x, process %zu-bit\n", info.name, info.version, sizeof(void *) * 8);
 	CHECK(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	initialized = true;
+	// Without INDIGO_TEST_DEVICE the suite runs against the only camera attached, like the ASI and Atik
+	// suites, and refuses to guess when there are more.
 	const char *requested = getenv("INDIGO_TEST_DEVICE");
+	if (requested == NULL) { requested = ""; }
 	for (int attempt = 0; attempt < 6000; attempt++) {
 		bool found = false;
 		pthread_mutex_lock(&mutex);
@@ -486,6 +494,10 @@ static void hardware_workflows(void) {
 		if (found) { break; }
 		indigo_usleep(10000);
 	}
+	if (!*requested) {
+		// Let every attached camera appear before counting them.
+		indigo_usleep(2000000);
+	}
 	int matches = 0;
 	pthread_mutex_lock(&mutex);
 	for (int d = 0; d < MAX_DEVICES; d++) {
@@ -495,6 +507,7 @@ static void hardware_workflows(void) {
 		}
 	}
 	pthread_mutex_unlock(&mutex);
+	if (matches != 1) { fprintf(stderr, "Expected one camera, found %d; set INDIGO_TEST_DEVICE to a unique model/name substring.\n", matches); }
 	CHECK(matches == 1);
 	printf("Selected %s\n", devices[camera].name);
 	CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
@@ -515,6 +528,11 @@ static void hardware_workflows(void) {
 	CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
 	if (getenv("QHY_HW_CASE") && selected("hotplug")) {
 		const char *phases[] = { "disconnected", "connected idle", "exposure", "streaming" };
+		if (!hub_port.hub && USB_HOTPLUG_SUPPORTED) {
+			usb_switch = usb_hotplug_find((const unsigned []){ 0x1618 }, 1, &usb_port);
+			CHECK(usb_switch);
+			printf("Switching USB port of %s (%04x:%04x %s)\n", usb_port.device, usb_port.vendor, usb_port.product, usb_port.product_name);
+		}
 		for (int phase = 0; phase < 4; phase++) {
 			if (phase == 0) { CHECK(disconnect_device(camera)); }
 			if (phase == 2) { CHECK(number_value(camera, "CCD_EXPOSURE", "EXPOSURE", 60, INDIGO_BUSY_STATE)); }
@@ -530,17 +548,23 @@ static void hardware_workflows(void) {
 				CHECK(frames() >= before + 3);
 			}
 			printf("HOTPLUG PHASE %d %s: WAITING FOR UNPLUG\n", phase + 1, phases[phase]);
-			// With QHY_HW_HUB_PORT the camera hangs on the hub inside a Pegasus Powerbox and the
-			// cable is pulled by switching that port instead of by a person. On macOS neither
-			// event reaches the driver while the port is off, so the unplug is only observable
-			// once the power is back - the suite waits for the withdrawal and the arrival after
-			// the cycle rather than in between, and the camera really was unpowered for the whole
-			// off period. Without the variable the phase waits for a person, as it always did.
+			// On Linux the cable is pulled by switching the camera's own port off through sysfs,
+			// which reaches the driver at once. macOS has no such switch; there QHY_HW_HUB_PORT
+			// names the port of a Pegasus Powerbox hub the camera hangs on, and because neither
+			// event reaches the driver while that port is off, the suite waits for the withdrawal
+			// and the arrival after the cycle rather than in between. With neither, the phase waits
+			// for a person.
 			if (hub_port.hub) {
 				CHECK(powerbox_hub_cycle(&hub_port, 6));
+			} else if (usb_switch) {
+				CHECK(usb_hotplug_off(&usb_port, 30));
 			}
 			CHECK(wait_presence(false));
 			printf("HOTPLUG PHASE %d: DETACHED, WAITING FOR REPLUG\n", phase + 1);
+			if (usb_switch) {
+				indigo_usleep(2000000);
+				CHECK(usb_hotplug_on(&usb_port, 60));
+			}
 			CHECK(wait_presence(true));
 			CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
 			CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
@@ -680,6 +704,7 @@ static void hardware_workflows(void) {
 	printf("Driver dlclose/dlopen and fresh exposure succeeded; SDK may remain mapped by its own runtime\n");
 	pthread_mutex_lock(&mutex); unsigned invalid = devices[camera].invalid_frames; pthread_mutex_unlock(&mutex); CHECK(invalid == 0);
 cleanup:
+	if (usb_port.off) { usb_hotplug_on(&usb_port, 60); }
 	if (camera >= 0) {
 		switch_value(camera, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE);
 		indigo_property *connection = snapshot(camera, "CONNECTION");
@@ -696,8 +721,8 @@ cleanup:
 }
 
 int main(int argc, char **argv) {
-	if (argc != 4 || strcmp(argv[1], "--run") || !getenv("INDIGO_TEST_DEVICE") || !*getenv("INDIGO_TEST_DEVICE")) {
-		fprintf(stderr, "Set INDIGO_TEST_DEVICE to a unique model/name substring and run --run <driver-library> <entry-symbol>. QHY_HW_CASE optionally selects exposure, switching, geometry, settings, reject, abort, stream, guide or hotplug. QHY_HW_HUB_PORT runs the hotplug phases unattended by switching that port of the Pegasus Powerbox hub.\n");
+	if (argc != 4 || strcmp(argv[1], "--run")) {
+		fprintf(stderr, "Run --run <driver-library> <entry-symbol>. INDIGO_TEST_DEVICE selects the camera by a unique model/name substring when more than one is attached. QHY_HW_CASE optionally selects exposure, switching, geometry, settings, reject, abort, stream, guide or hotplug. On Linux the hotplug phases switch the camera's USB port through sysfs; on macOS QHY_HW_HUB_PORT runs them unattended by switching that port of a Pegasus Powerbox hub, and without it they wait for a person.\n");
 		return 2;
 	}
 	library_path = argv[2]; entry_symbol = argv[3];

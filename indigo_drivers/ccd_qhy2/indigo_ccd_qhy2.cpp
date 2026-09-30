@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002C
+#define DRIVER_VERSION       0x0300002D
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -89,7 +89,7 @@ typedef struct {
 	qhyccd_handle *handle;
 	char sid[256], camera_name[INDIGO_NAME_SIZE], guider_name[INDIGO_NAME_SIZE], wheel_name[INDIGO_NAME_SIZE];
 	bool has_guider, has_wheel, has_shutter, has_cooler, has_temperature;
-	bool bins[4], acquiring, streaming, last_live;
+	bool bins[4], acquiring, streaming, last_live, unplugged;
 	int last_bpp, sensor_bpp, selected_bpp, read_mode;
 	uint32_t width, height, offset_x, offset_y, frame_width, frame_height;
 	double pixel_width, pixel_height, duration, exposure_end, deadline, wheel_deadline;
@@ -167,7 +167,14 @@ static bool qhy2_geometry(indigo_device *device) {
 
 static void qhy2_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle) {
-		qhy2_result(CloseQHYCCD(PRIVATE_DATA->handle), "CloseQHYCCD");
+		// The SDK runs its own libusb hot-plug listener and releases a camera that has left
+		// the bus by itself. CloseQHYCCD() on that handle afterwards dereferences the released
+		// camera and aborts the process (QHY2-001), so an unplugged camera is only forgotten.
+		if (PRIVATE_DATA->unplugged) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s left the bus, CloseQHYCCD skipped", PRIVATE_DATA->sid);
+		} else {
+			qhy2_result(CloseQHYCCD(PRIVATE_DATA->handle), "CloseQHYCCD");
+		}
 		PRIVATE_DATA->handle = NULL;
 	}
 	indigo_safe_free(PRIVATE_DATA->buffer);
@@ -1568,6 +1575,9 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 							unplug_result = false;
 						}
 					}
+				}
+				if (unplug_result) {
+					private_data->unplugged = true;
 				}
 				//- sdk.unplug_match
 			}

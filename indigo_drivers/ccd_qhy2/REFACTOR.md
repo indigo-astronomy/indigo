@@ -57,7 +57,7 @@ guard was moved there rather than kept in this driver's hook; this driver's `unp
 to its plain form. `ccd_svb` passes the suite unchanged either way, because its SDK stops reporting
 a camera that is gone.
 
-### Open: the process can abort after an unplug during streaming (QHY2-001)
+### Resolved in 3.0.0.45: the process can abort after an unplug (QHY2-001)
 
 With the withdrawal fixed, the full suite aborts with SIGSEGV in two runs out of four, always after
 the streaming case has had its port switched off and back on, and never with a message beyond
@@ -352,3 +352,41 @@ for `INDIGO_MACOS`; no driver change.
 - Simulated tests run: 41; passed: 41 (`build/integration/test_ccd_qhy2_sdk`, recorded with
   `tools/run_driver_test.py ccd_qhy2` on Linux x64, version 3.0.0.44; macOS registers 42 cases).
 - Hardware tests run: 0; passed: 0.
+
+## Unplug of a connected camera aborts the process (QHY2-001, 2026-09-30)
+
+Version 45.
+
+### Cause
+
+Found under gdb on indigosky (Linux arm64, SDK 26.7.21.5, QHY5III178M), with the QHY suite's
+`hotplug` case now switching the camera's USB port through sysfs: the port of a connected, idle camera
+was switched off and the queue thread aborted in
+`process_unplug_event_handler` -> `indigo_detach_device` -> `ccd_detach` -> `ccd_connection_handler` ->
+`qhy2_close` -> `CloseQHYCCD` -> `releaseKeyOperation`, in `pthread_mutex_unlock(0xe8)`. The SDK runs a
+libusb hot-plug listener of its own (`StartPnpEventListener`, `hotplug_callback_detach`) and releases
+a camera that left the bus by itself; `CloseQHYCCD()` on that handle afterwards dereferences the
+released camera. Whether it crashed depended on which of the two listeners handled the removal first,
+which is why the earlier runs aborted only two times out of four.
+
+### Fix
+
+`unplug_match` marks the private data `unplugged` once a removal is confirmed, and `qhy2_close()` then
+forgets the handle without calling `CloseQHYCCD()`. The private data is freed with the device and a
+replugged camera gets a fresh one, so the flag never outlives the removal. A shutdown does not enter
+`unplug_match`, so it still closes every open camera.
+
+### Regression test
+
+The fake SDK in `indigo_test/integration/test_ccd_qhy_sdk.cpp` now releases the handle when
+`startup_only_discovery` takes the camera off the bus, as the real SDK does. Calls on the released handle
+fail instead of counting as calls after close, because the driver learns of the removal only after the
+SDK; a `CloseQHYCCD()` on it is counted in `released_closes`, which must stay 0. 3.0.0.44 fails the case
+(`released_closes` 1) and 3.0.0.45 passes it.
+
+### Test summary
+
+- Simulated tests run: 41; passed: 41 (`tools/run_driver_test.py ccd_qhy2`, Linux arm64).
+- Hardware tests run: QHY5III178M, `--hw` 1/1 and `--hot-plug` 6/6 (Linux arm64), and the QHY suite's
+  `QHY_HW_CASE=hotplug`, all four phases (disconnected, idle, exposing, streaming). 3.0.0.44 aborted in
+  the second phase.
