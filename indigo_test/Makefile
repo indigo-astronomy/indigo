@@ -1332,6 +1332,58 @@ $(TEST_BUILD)/hardware/test_ccd_touptek_hw: hardware/test_ccd_touptek_hw.c hardw
 $(TEST_BUILD)/hardware/ccd_altair_hw_driver.o: ../indigo_drivers/ccd_altair/indigo_ccd_altair.c ../indigo_drivers/ccd_altair/indigo_ccd_altair.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) -I../indigo_drivers/ccd_altair/bin_externals/libaltaircam/include -c $< -o $@
 
+# The ToupTek suite once per OEM driver, so tools/run_driver_test.py ccd_<oem> --hw finds
+# test-ccd-<oem>-hw. Each binary links only its own driver and SDK; the SDK reaches build/lib when
+# the driver is built, which the runner does first.
+TOUPTEK_OEM_HW_DRIVERS = altair baccam bresser mallin meade ogma omegonpro rising ssg svb2
+TOUPTEK_OEM_HW_SDK_altair = altaircam
+TOUPTEK_OEM_HW_SDK_baccam = baccam
+TOUPTEK_OEM_HW_SDK_bresser = bressercam
+TOUPTEK_OEM_HW_SDK_mallin = mallincam
+TOUPTEK_OEM_HW_SDK_meade = meadecam
+TOUPTEK_OEM_HW_SDK_ogma = ogmacam
+TOUPTEK_OEM_HW_SDK_omegonpro = omegonprocam
+TOUPTEK_OEM_HW_SDK_rising = nncam
+TOUPTEK_OEM_HW_SDK_ssg = starshootg
+TOUPTEK_OEM_HW_SDK_svb2 = svbonycam
+TOUPTEK_OEM_HW_INCLUDE_altair = $(ALTAIR_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_baccam = $(BACCAM_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_bresser = $(BRESSER_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_mallin = $(MALLIN_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_meade = $(MEADE_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_ogma = $(OGMA_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_omegonpro = $(OMEGONPRO_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_rising = $(RISING_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_ssg = $(SSG_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_INCLUDE_svb2 = $(SVB2_SDK_TEST_INCLUDE)
+TOUPTEK_OEM_HW_LABEL_altair = AltairAstro Camera
+TOUPTEK_OEM_HW_LABEL_baccam = BacCam Camera
+TOUPTEK_OEM_HW_LABEL_bresser = Bresser Camera
+TOUPTEK_OEM_HW_LABEL_mallin = MallinCam Camera
+TOUPTEK_OEM_HW_LABEL_meade = Meade Camera
+TOUPTEK_OEM_HW_LABEL_ogma = OGMA Camera
+TOUPTEK_OEM_HW_LABEL_omegonpro = OmegonPro Camera
+TOUPTEK_OEM_HW_LABEL_rising = RisingCam Camera
+TOUPTEK_OEM_HW_LABEL_ssg = Orion StarShot G Camera
+TOUPTEK_OEM_HW_LABEL_svb2 = SVBONY (OEM) Camera
+TOUPTEK_OEM_HW_TARGETS = $(TOUPTEK_OEM_HW_DRIVERS:%=test-ccd-%-hw)
+TOUPTEK_OEM_HW_BINARIES = $(TOUPTEK_OEM_HW_DRIVERS:%=$(TEST_BUILD)/hardware/test_ccd_%_hw)
+
+.PHONY: $(TOUPTEK_OEM_HW_TARGETS)
+$(TOUPTEK_OEM_HW_TARGETS): test-ccd-%-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_%_hw
+	$(TEST_BUILD)/hardware/test_ccd_$*_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
+
+# A pattern substitutes only the first % of a prerequisite, and the driver source names the OEM twice, so
+# the object rules are generated. ccd_altair_hw_driver.o has its own rule above.
+define TOUPTEK_OEM_HW_OBJECT_RULE
+$(TEST_BUILD)/hardware/ccd_$(1)_hw_driver.o: ../indigo_drivers/ccd_$(1)/indigo_ccd_$(1).c ../indigo_drivers/ccd_$(1)/indigo_ccd_$(1).h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.h ../indigo_drivers/ccd_touptek/indigo_ccd_touptek.c ../indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h Makefile | $(TEST_BUILD)/hardware
+	$$(CC) $$(TEST_CFLAGS) $$(TOUPTEK_OEM_HW_INCLUDE_$(1)) -c $$< -o $$@
+endef
+$(foreach d,$(filter-out altair,$(TOUPTEK_OEM_HW_DRIVERS)),$(eval $(call TOUPTEK_OEM_HW_OBJECT_RULE,$(d))))
+
+$(TOUPTEK_OEM_HW_BINARIES): $(TEST_BUILD)/hardware/test_ccd_%_hw: hardware/test_ccd_touptek_hw.c hardware/hardware_device_record.h test_runner.h $(TEST_BUILD)/hardware/ccd_%_hw_driver.o $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o Makefile | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -DTOUPTEK_HW_OEM=indigo_ccd_$* -DTOUPTEK_HW_OEM_NAME='"indigo_ccd_$*"' -DTOUPTEK_HW_OEM_LABEL='"$(TOUPTEK_OEM_HW_LABEL_$*)"' $< $(TEST_BUILD)/hardware/ccd_$*_hw_driver.o $(TEST_BUILD)/hardware/ccd_touptek_hw_framework.o -o $@ $(TEST_LDFLAGS) -l$(TOUPTEK_OEM_HW_SDK_$*) -lusb-1.0
+
 .PHONY: test-generator-architecture
 test-generator-architecture: $(INTEGRATION_BUILD)/test_generator_architecture
 	$(INTEGRATION_BUILD)/test_generator_architecture

@@ -28,7 +28,9 @@
 #include <unistd.h>
 #include <indigo/indigo_driver.h>
 #include <indigo_drivers/ccd_touptek/indigo_ccd_touptek.h>
+#ifndef TOUPTEK_HW_OEM
 #include <indigo_drivers/ccd_altair/indigo_ccd_altair.h>
+#endif
 #include "../test_runner.h"
 #include "hardware_device_record.h"
 
@@ -51,9 +53,19 @@ static observed_device devices[MAX_DEVICES];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static int camera = -1, guider = -1;
 static bool hotplug;
+#ifdef TOUPTEK_HW_OEM
+// Built once per ToupTek OEM driver: the Makefile names the entry point, driver name and label, and
+// the binary links only that driver and its own SDK, so an OEM whose SDK is not built yet does not
+// break the others.
+extern indigo_result TOUPTEK_HW_OEM(indigo_driver_action action, indigo_driver_info *info);
+static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *) = TOUPTEK_HW_OEM;
+static const char *driver_name = TOUPTEK_HW_OEM_NAME;
+static const char *driver_label = TOUPTEK_HW_OEM_LABEL;
+#else
 static indigo_result (*driver_entry)(indigo_driver_action, indigo_driver_info *) = indigo_ccd_touptek;
 static const char *driver_name = "indigo_ccd_touptek";
 static const char *driver_label = "Touptek Camera";
+#endif
 static indigo_client client;
 // Any local output stays inside this directory, so a run never touches the user's own image cache.
 static char session_folder[] = "/tmp/indigo_touptek_hw_XXXXXX";
@@ -1144,6 +1156,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "This test operates a physical ToupTek or Altair camera. Run with --run [--hotplug] [--debug] [name filter], and INDIGO_TEST_DRIVER=touptek|altair.\n");
 		return 2;
 	}
+#ifndef TOUPTEK_HW_OEM
 	const char *selected_driver = getenv("INDIGO_TEST_DRIVER");
 	if (selected_driver && !strcmp(selected_driver, "altair")) {
 		driver_entry = indigo_ccd_altair;
@@ -1153,6 +1166,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "INDIGO_TEST_DRIVER must be touptek or altair\n");
 		return 2;
 	}
+#endif
 	setvbuf(stdout, NULL, _IONBF, 0);
 	client = (indigo_client){ .name = "ToupTek hardware test", .version = INDIGO_VERSION_CURRENT, .define_property = define_property, .update_property = update_property, .delete_property = delete_property, .send_message = report_message };
 	if (!mkdtemp(session_folder)) {
