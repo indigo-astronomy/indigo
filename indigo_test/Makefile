@@ -615,8 +615,11 @@ $(INTEGRATION_BUILD)/test_focuser_askar_simulator: integration/test_focuser_aska
 $(INTEGRATION_BUILD)/test_dome_baader_simulator: integration/test_dome_baader_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_baader/original_reference_trace.txt fixtures/dome_baader/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_baader_simulator $(BUILD_DRIVERS)/indigo_dome_baader.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_BAADER_SIMULATOR_TEST_LDFLAGS)
 
-DOME_BAADER_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-DOME_BAADER_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+# The sanitizer builds pin arm64 on macOS, where TEST_CFLAGS may carry a universal -arch list; gcc on Linux
+# has no -arch option at all.
+SANITIZE_ARCH = $(if $(filter Darwin,$(OS_DETECTED)),-arch arm64)
+DOME_BAADER_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_BAADER_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
 $(INTEGRATION_BUILD)/test_dome_baader_simulator_sanitize: integration/test_dome_baader_simulator.c ../indigo_drivers/dome_baader/indigo_dome_baader.c ../indigo_drivers/dome_baader/indigo_dome_baader.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_baader/original_reference_trace.txt fixtures/dome_baader/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_baader_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(DOME_BAADER_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_baader/indigo_dome_baader.c $(DOME_BAADER_SANITIZE_LDFLAGS)
@@ -636,8 +639,8 @@ test-dome-baader-simulator-network: $(INTEGRATION_BUILD)/test_dome_baader_simula
 $(INTEGRATION_BUILD)/test_dome_beaver_simulator: integration/test_dome_beaver_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_beaver/original_reference_trace.txt fixtures/dome_beaver/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_beaver_simulator $(BUILD_DRIVERS)/indigo_dome_beaver.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_BEAVER_SIMULATOR_TEST_LDFLAGS)
 
-DOME_BEAVER_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-DOME_BEAVER_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+DOME_BEAVER_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_BEAVER_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
 $(INTEGRATION_BUILD)/test_dome_beaver_simulator_sanitize: integration/test_dome_beaver_simulator.c ../indigo_drivers/dome_beaver/indigo_dome_beaver.c ../indigo_drivers/dome_beaver/indigo_dome_beaver.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_beaver/original_reference_trace.txt fixtures/dome_beaver/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_beaver_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(DOME_BEAVER_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_beaver/indigo_dome_beaver.c $(DOME_BEAVER_SANITIZE_LDFLAGS)
@@ -657,8 +660,8 @@ test-dome-beaver-simulator-network: $(INTEGRATION_BUILD)/test_dome_beaver_simula
 $(INTEGRATION_BUILD)/test_dome_nexdome_simulator: integration/test_dome_nexdome_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome/original_reference_trace.txt fixtures/dome_nexdome/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome_simulator $(BUILD_DRIVERS)/indigo_dome_nexdome.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_NEXDOME_SIMULATOR_TEST_LDFLAGS)
 
-DOME_NEXDOME_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-DOME_NEXDOME_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+DOME_NEXDOME_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_NEXDOME_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
 $(INTEGRATION_BUILD)/test_dome_nexdome_simulator_sanitize: integration/test_dome_nexdome_simulator.c ../indigo_drivers/dome_nexdome/indigo_dome_nexdome.c ../indigo_drivers/dome_nexdome/indigo_dome_nexdome.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome/original_reference_trace.txt fixtures/dome_nexdome/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(DOME_NEXDOME_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_nexdome/indigo_dome_nexdome.c $(DOME_NEXDOME_SANITIZE_LDFLAGS)
@@ -676,8 +679,8 @@ test-dome-nexdome-simulator-network: $(INTEGRATION_BUILD)/test_dome_nexdome_simu
 $(INTEGRATION_BUILD)/test_dome_nexdome3_simulator: integration/test_dome_nexdome3_simulator.c integration/parallel_case_runner.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome3/original_reference_trace.txt fixtures/dome_nexdome3/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome3_simulator $(BUILD_DRIVERS)/indigo_dome_nexdome3.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_NEXDOME3_SIMULATOR_TEST_LDFLAGS)
 
-DOME_NEXDOME3_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-DOME_NEXDOME3_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+DOME_NEXDOME3_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_NEXDOME3_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
 $(INTEGRATION_BUILD)/test_dome_nexdome3_simulator_sanitize: integration/test_dome_nexdome3_simulator.c integration/parallel_case_runner.h ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.c ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_nexdome3/original_reference_trace.txt fixtures/dome_nexdome3/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_nexdome3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(DOME_NEXDOME3_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.c $(DOME_NEXDOME3_SANITIZE_LDFLAGS)
@@ -699,8 +702,8 @@ $(INTEGRATION_BUILD)/test_dome_skyroof_simulator: integration/test_dome_skyroof_
 $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator: integration/test_dome_talon6ror_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_talon6ror/original_reference_trace.txt fixtures/dome_talon6ror/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_talon6ror_simulator $(BUILD_DRIVERS)/indigo_dome_talon6ror.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_TALON6ROR_SIMULATOR_TEST_LDFLAGS)
 
-DOME_TALON6ROR_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-DOME_TALON6ROR_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+DOME_TALON6ROR_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+DOME_TALON6ROR_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
 $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator_sanitize: integration/test_dome_talon6ror_simulator.c ../indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.c ../indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_talon6ror/original_reference_trace.txt fixtures/dome_talon6ror/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_talon6ror_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(DOME_TALON6ROR_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.c $(DOME_TALON6ROR_SANITIZE_LDFLAGS)
@@ -737,8 +740,8 @@ $(INTEGRATION_BUILD)/test_gps_gpsd_simulator: integration/test_gps_gpsd_simulato
 test-gps-gpsd-simulator: $(INTEGRATION_BUILD)/test_gps_gpsd_simulator
 	$(INTEGRATION_BUILD)/test_gps_gpsd_simulator
 
-GPSD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-GPSD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+GPSD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+GPSD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/gps_gpsd_simulator_driver_sanitize.o: ../indigo_drivers/gps_gpsd/indigo_gps_gpsd.c ../indigo_drivers/gps_gpsd/indigo_gps_gpsd.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(GPSD_SANITIZE_CFLAGS) $(GPSD_TEST_INCLUDE) $(GPSD_TEST_REPLACEMENTS) -c $< -o $@
@@ -825,8 +828,8 @@ $(INTEGRATION_BUILD)/mount_rainbow_simulator: ../indigo_drivers/mount_rainbow/mo
 $(INTEGRATION_BUILD)/test_mount_rainbow_simulator: integration/test_mount_rainbow_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator $(BUILD_DRIVERS)/indigo_mount_rainbow.a | $(INTEGRATION_BUILD)
 	$(CC) $(MOUNT_RAINBOW_TEST_CFLAGS) -o $@ $< $(MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS)
 
-MOUNT_RAINBOW_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(MOUNT_RAINBOW_TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-MOUNT_RAINBOW_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+MOUNT_RAINBOW_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(MOUNT_RAINBOW_TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+MOUNT_RAINBOW_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
 $(INTEGRATION_BUILD)/test_mount_rainbow_simulator_sanitize: integration/test_mount_rainbow_simulator.c ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.c ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(MOUNT_RAINBOW_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.c $(MOUNT_RAINBOW_SANITIZE_LDFLAGS)
@@ -910,8 +913,8 @@ $(INTEGRATION_BUILD)/test_focuser_dmfc_simulator: integration/test_focuser_dmfc_
 $(INTEGRATION_BUILD)/test_focuser_dsd_simulator: integration/test_focuser_dsd_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/focuser_dsd/original_reference_trace.txt fixtures/focuser_dsd/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_dsd_simulator $(BUILD_DRIVERS)/indigo_focuser_dsd.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_DSD_SIMULATOR_TEST_LDFLAGS)
 
-FOCUSER_DSD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-FOCUSER_DSD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined -lindigocat
+FOCUSER_DSD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+FOCUSER_DSD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
 $(INTEGRATION_BUILD)/test_focuser_dsd_simulator_sanitize: integration/test_focuser_dsd_simulator.c ../indigo_drivers/focuser_dsd/indigo_focuser_dsd.c ../indigo_drivers/focuser_dsd/indigo_focuser_dsd.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/focuser_dsd/original_reference_trace.txt fixtures/focuser_dsd/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_dsd_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(FOCUSER_DSD_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/focuser_dsd/indigo_focuser_dsd.c $(FOCUSER_DSD_SANITIZE_LDFLAGS)
@@ -1120,8 +1123,8 @@ $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk: integration/test_focuser_astroa
 test-focuser-astroasis-sdk: $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk
 	$(INTEGRATION_BUILD)/test_focuser_astroasis_sdk
 
-OAF_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-OAF_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+OAF_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+OAF_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver_sanitize.o: ../indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.c ../indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(OAF_SANITIZE_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -1176,8 +1179,8 @@ $(INTEGRATION_BUILD)/test_wheel_mi_sdk: integration/test_wheel_mi_sdk.c integrat
 test-wheel-mi-sdk: $(INTEGRATION_BUILD)/test_wheel_mi_sdk
 	$(INTEGRATION_BUILD)/test_wheel_mi_sdk
 
-MIW_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-MIW_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+MIW_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+MIW_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/wheel_mi_sdk_driver_sanitize.o: ../indigo_drivers/wheel_mi/indigo_wheel_mi.c ../indigo_drivers/wheel_mi/indigo_wheel_mi.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(MIW_SANITIZE_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(MIW_SDK_TEST_INCLUDE) $(MIW_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -1361,8 +1364,8 @@ $(INTEGRATION_BUILD)/test_ccd_mi_sdk: integration/test_ccd_mi_sdk.c integration/
 test-ccd-mi-sdk: $(INTEGRATION_BUILD)/test_ccd_mi_sdk
 	$(INTEGRATION_BUILD)/test_ccd_mi_sdk
 
-MI_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-MI_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+MI_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+MI_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/ccd_mi_sdk_driver_sanitize.o: ../indigo_drivers/ccd_mi/indigo_ccd_mi.c ../indigo_drivers/ccd_mi/indigo_ccd_mi.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(MI_SANITIZE_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(MI_SDK_TEST_INCLUDE) $(MI_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -1387,8 +1390,8 @@ $(INTEGRATION_BUILD)/test_ccd_iidc_sdk: integration/test_ccd_iidc_sdk.c integrat
 test-ccd-iidc-sdk: $(INTEGRATION_BUILD)/test_ccd_iidc_sdk
 	$(INTEGRATION_BUILD)/test_ccd_iidc_sdk
 
-IIDC_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-IIDC_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+IIDC_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+IIDC_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/ccd_iidc_sdk_driver_sanitize.o: ../indigo_drivers/ccd_iidc/indigo_ccd_iidc.c ../indigo_drivers/ccd_iidc/indigo_ccd_iidc.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(IIDC_SANITIZE_CFLAGS) $(IIDC_SDK_TEST_INCLUDE) $(IIDC_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -1421,8 +1424,8 @@ $(INTEGRATION_BUILD)/test_ccd_uvc_sdk: integration/test_ccd_uvc_sdk.c integratio
 test-ccd-uvc-sdk: $(INTEGRATION_BUILD)/test_ccd_uvc_sdk
 	$(INTEGRATION_BUILD)/test_ccd_uvc_sdk
 
-UVC_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-UVC_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+UVC_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+UVC_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/ccd_uvc_sdk_driver_sanitize.o: ../indigo_drivers/ccd_uvc/indigo_ccd_uvc.c ../indigo_drivers/ccd_uvc/indigo_ccd_uvc.h ../indigo_drivers/ccd_uvc/libuvc.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(UVC_SANITIZE_CFLAGS) $(UVC_SDK_TEST_INCLUDE) $(UVC_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -1530,7 +1533,8 @@ test-wheel-asi-hw: check-lib $(TEST_BUILD)/hardware/test_wheel_asi_hw
 
 # The bundled EFW SDK is a static archive on both supported platforms, so it is linked by path.
 WHEEL_ASI_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/macOS/libEFWFilter.a,../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/Linux/$(ARCH_DETECTED)/libEFWFilter.a)
-WHEEL_ASI_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_asi.a $(WHEEL_ASI_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0 -lstdc++
+# The Linux archive enumerates wheels through hidapi's udev backend, so it needs libudev after it.
+WHEEL_ASI_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_asi.a $(WHEEL_ASI_HW_TEST_SDK) $(TEST_LDFLAGS) -lusb-1.0 -lstdc++ $(if $(filter Darwin,$(OS_DETECTED)),,-ludev)
 
 $(TEST_BUILD)/hardware/test_wheel_asi_hw: hardware/test_wheel_asi_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_asi.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $< -o $@ $(WHEEL_ASI_HW_TEST_LDFLAGS)
@@ -1564,13 +1568,15 @@ $(TEST_BUILD)/hardware/test_ccd_sx_hw: hardware/test_ccd_sx_hw.c hardware/hardwa
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_sx.a -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 
-# Physical ASI hardware is opt-in and excluded from normal integration tests.
+# Physical ASI hardware is opt-in and excluded from normal integration tests. The SDK is a dylib on
+# macOS and a static archive on Linux, linked by path because it is not installed anywhere -l finds it.
+CCD_ASI_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS -lASICamera2,../indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/Linux/$(ARCH_DETECTED)/libASICamera2.a)
 .PHONY: test-ccd-asi-hw
 test-ccd-asi-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_asi_hw
 	$(TEST_BUILD)/hardware/test_ccd_asi_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug)
 
 $(TEST_BUILD)/hardware/test_ccd_asi_hw: hardware/test_ccd_asi_hw.c hardware/hardware_device_record.h ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS) -lASICamera2
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_asi.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_asi_sdk_framework.o -o $@ $(CCD_ASI_HW_TEST_SDK) $(TOUPTEK_SDK_TEST_LDFLAGS)
 
 # Dynamic-loader acceptance uses the shared bus and never saves user configuration.
 .PHONY: test-ccd-asi-reload-hw
@@ -1601,8 +1607,12 @@ $(TEST_BUILD)/hardware/test_ccd_playerone_reload_hw: hardware/test_ccd_playerone
 test-ccd-svb-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_svb_hw
 	$(TEST_BUILD)/hardware/test_ccd_svb_hw --run $(if $(filter 1,$(HW_ACCEPTANCE)),--acceptance,$(if $(filter 1,$(HW_HOTPLUG)),--hotplug))
 
+# Same as CCD_ASI_HW_TEST_SDK, but linked after the system libraries: the Linux archive bundles an older
+# libusb, which must not take the place of the system one that libindigo's hidapi needs.
+CCD_SVB_HW_TEST_SDK = $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS -lSVBCameraSDK,../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/Linux/$(ARCH_DETECTED)/libSVBCameraSDK.a)
+
 $(TEST_BUILD)/hardware/test_ccd_svb_hw: hardware/test_ccd_svb_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o | $(TEST_BUILD)/hardware
-	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),-L../indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS) -lSVBCameraSDK
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_svb.a ../build/drivers/indigo_agent_imager.a $(INTEGRATION_BUILD)/ccd_svb_sdk_framework.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS) $(CCD_SVB_HW_TEST_SDK)
 
 # Physical Moravian Instruments camera hardware is opt-in and excluded from normal integration tests.
 # The bundled gxccd SDK is a static archive on both supported platforms, so it is linked by path.
@@ -1632,8 +1642,8 @@ $(INTEGRATION_BUILD)/ccd_ssag_usb_driver.o: ../indigo_drivers/ccd_ssag/indigo_cc
 $(INTEGRATION_BUILD)/test_ccd_ssag_usb: integration/test_ccd_ssag_usb.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_ssag_usb_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/ccd_ssag_usb_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
 
-SSAG_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-SSAG_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+SSAG_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+SSAG_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/ccd_ssag_usb_driver_sanitize.o: ../indigo_drivers/ccd_ssag/indigo_ccd_ssag.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(SSAG_SANITIZE_CFLAGS) $(SSAG_USB_TEST_REPLACEMENTS) -c $< -o $@
@@ -2085,8 +2095,8 @@ test-agent-config: check-lib $(INTEGRATION_BUILD)/test_agent_config
 
 # Real Astrometry Agent with controlled local image2xy, solve-field and curl peers.
 ASTROMETRY_TEST_FLAGS = -DINDIGO_ASTROMETRY_TEST
-ASTROMETRY_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-ASTROMETRY_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+ASTROMETRY_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+ASTROMETRY_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/agent_astrometry_driver.o: ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(ASTROMETRY_TEST_FLAGS) -c $< -o $@
@@ -2240,8 +2250,8 @@ $(INTEGRATION_BUILD)/test_ccd_svb_sdk: integration/test_ccd_svb_sdk.c integratio
 test-ccd-svb-sdk: $(INTEGRATION_BUILD)/test_ccd_svb_sdk
 	$(INTEGRATION_BUILD)/test_ccd_svb_sdk
 
-SVB_CCD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
-SVB_CCD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64 -fsanitize=address,undefined
+SVB_CCD_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+SVB_CCD_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/ccd_svb_sdk_driver_sanitize.o: ../indigo_drivers/ccd_svb/indigo_ccd_svb.c ../indigo_drivers/ccd_svb/indigo_ccd_svb.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(SVB_CCD_SANITIZE_CFLAGS) $(if $(findstring clang,$(CC)),-Wunreachable-code -Werror=unreachable-code) $(SVB_CCD_SDK_TEST_INCLUDE) $(SVB_CCD_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -2438,8 +2448,8 @@ $(INTEGRATION_BUILD)/test_wheel_fli_sdk: integration/test_wheel_fli_sdk.c integr
 test-wheel-fli-sdk: $(INTEGRATION_BUILD)/test_wheel_fli_sdk
 	$(INTEGRATION_BUILD)/test_wheel_fli_sdk
 
-FLI_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64 -O1 -fsanitize=address -fno-omit-frame-pointer
-FLI_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) -arch arm64 -fsanitize=address
+FLI_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address -fno-omit-frame-pointer
+FLI_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address
 
 $(INTEGRATION_BUILD)/wheel_fli_sdk_driver_asan.o: ../indigo_drivers/wheel_fli/indigo_wheel_fli.c ../indigo_drivers/wheel_fli/indigo_wheel_fli.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(FLI_SANITIZE_CFLAGS) $(FLI_SDK_TEST_INCLUDE) $(FLI_SDK_TEST_REPLACEMENTS) -c $< -o $@
