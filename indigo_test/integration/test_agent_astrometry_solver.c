@@ -39,6 +39,7 @@
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_platesolver.h>
 #include <indigo_drivers/agent_astrometry/indigo_agent_astrometry.h>
+#include <indigo_drivers/agent_guider/indigo_agent_guider.h>
 #include <indigo_drivers/agent_imager/indigo_agent_imager.h>
 #include <indigo_drivers/agent_mount/indigo_agent_mount.h>
 #include <indigo_drivers/ccd_simulator/indigo_ccd_simulator.h>
@@ -48,6 +49,7 @@
 
 #define ASTROMETRY "Astrometry Agent"
 #define IMAGER "Imager Agent"
+#define GUIDER "Guider Agent"
 #define MOUNT "Mount Agent"
 #define CAMERA "CCD Guider Simulator"
 #define MOUNT_DEVICE "Mount Simulator"
@@ -76,7 +78,7 @@ static observation cache[4096];
 static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_client observer;
 static char messages[262144];
-static bool bus_started, observer_attached, ccd_started, mount_started, imager_started, mount_agent_started, astrometry_started;
+static bool bus_started, observer_attached, ccd_started, mount_started, imager_started, guider_started, mount_agent_started, astrometry_started;
 
 static observation *find_observation(const char *device, const char *name) {
 	observation *free_entry = NULL;
@@ -413,6 +415,8 @@ static bool setup(void) {
 	mount_started = true;
 	REQUIRE(indigo_agent_imager(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	imager_started = true;
+	REQUIRE(indigo_agent_guider(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+	guider_started = true;
 	REQUIRE(indigo_agent_mount(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	mount_agent_started = true;
 	REQUIRE(indigo_agent_astrometry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
@@ -438,6 +442,9 @@ static void cleanup(void) {
 	}
 	if (mount_agent_started) {
 		indigo_agent_mount(INDIGO_DRIVER_SHUTDOWN, NULL);
+	}
+	if (guider_started) {
+		indigo_agent_guider(INDIGO_DRIVER_SHUTDOWN, NULL);
 	}
 	if (imager_started) {
 		indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL);
@@ -560,6 +567,141 @@ static void polar_alignment(void) {
 	ASSERT_TRUE(hypot(alt_error, az_error) < 1.0 / 60);
 }
 
+// True while a solver started by the agent is still running
+static bool solver_running(void) {
+	return system("pgrep -f 'image2xy -[O]|astrometry[.]cfg' >/dev/null") == 0;
+}
+
+// Anything a process of the agent started that is still moving: the agent itself, a capture,
+// an exposure, a slew or a solver
+static bool anything_busy(void) {
+	return state(ASTROMETRY, AGENT_START_PROCESS_PROPERTY_NAME) == INDIGO_BUSY_STATE ||
+		state(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME) == INDIGO_BUSY_STATE ||
+		state(IMAGER, AGENT_IMAGER_CAPTURE_PROPERTY_NAME) == INDIGO_BUSY_STATE ||
+		state(GUIDER, AGENT_START_PROCESS_PROPERTY_NAME) == INDIGO_BUSY_STATE ||
+		state(CAMERA, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE ||
+		state(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME) == INDIGO_BUSY_STATE ||
+		state(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE ||
+		solver_running();
+}
+
+static void print_busy(void) {
+	fprintf(stderr, "  agent %d, WCS %d (solver state %g), capture %d, guider %d, exposure %d, mount agent %d, mount %d, solver %s\n",
+		state(ASTROMETRY, AGENT_START_PROCESS_PROPERTY_NAME), state(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME), wcs(AGENT_PLATESOLVER_WCS_STATE_ITEM_NAME),
+		state(IMAGER, AGENT_IMAGER_CAPTURE_PROPERTY_NAME), state(GUIDER, AGENT_START_PROCESS_PROPERTY_NAME), state(CAMERA, CCD_EXPOSURE_PROPERTY_NAME),
+		state(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME), state(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME), solver_running() ? "running" : "not running");
+}
+
+// Starts a process and waits until the solver reaches the given state
+static bool start_and_wait_for(const char *operation, int solver_state, double timeout) {
+	REQUIRE(indigo_change_switch_property_1(&observer, ASTROMETRY, AGENT_START_PROCESS_PROPERTY_NAME, operation, true) == INDIGO_OK);
+	if (!WAIT_UNTIL(state(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME) == INDIGO_BUSY_STATE && (int)wcs(AGENT_PLATESOLVER_WCS_STATE_ITEM_NAME) == solver_state, timeout)) {
+		fprintf(stderr, "%s did not reach solver state %d\n", operation, solver_state);
+		print_busy();
+		dump_messages();
+		return false;
+	}
+	return true;
+}
+
+// Aborts the running process: the agent ends it in ALERT within a few seconds, everything it started
+// stops and nothing starts again afterwards
+static bool abort_and_check(void) {
+	double start = indigo_monotonic_time();
+	REQUIRE(indigo_change_switch_property_1(&observer, ASTROMETRY, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true) == INDIGO_OK);
+	bool stopped = WAIT_UNTIL(!anything_busy(), 10);
+	printf("  abort took %.1f s\n", indigo_monotonic_time() - start);
+	if (!stopped) {
+		fprintf(stderr, "still busy 10 s after the abort\n");
+		print_busy();
+		dump_messages();
+		return false;
+	}
+	REQUIRE(state(ASTROMETRY, AGENT_START_PROCESS_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	if (WAIT_UNTIL(anything_busy(), 10)) {
+		fprintf(stderr, "the process continued after the abort\n");
+		print_busy();
+		dump_messages();
+		return false;
+	}
+	return true;
+}
+
+// The agent works again after an abort
+static bool solves_after_abort(void) {
+	REQUIRE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 180));
+	REQUIRE(solution_matches_rendered_field());
+	return true;
+}
+
+// Abort while solve-field runs
+static void abort_while_solving(void) {
+	ASSERT_TRUE(slew(18.6, 38.8));
+	ASSERT_TRUE(start_and_wait_for(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_SOLVER_STATE_SOLVING, 60));
+	ASSERT_TRUE(WAIT_UNTIL(system("pgrep -f 'astrometry[.]cfg' >/dev/null") == 0, 20));
+	ASSERT_TRUE(abort_and_check());
+	ASSERT_TRUE(solves_after_abort());
+}
+
+// Abort while the related Imager Agent exposes the frame
+static void abort_while_exposing(void) {
+	ASSERT_TRUE(slew(18.6, 38.8));
+	ASSERT_TRUE(change_number(ASTROMETRY, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME, 30));
+	ASSERT_TRUE(start_and_wait_for(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_SOLVER_STATE_WAITING_FOR_IMAGE, 20));
+	ASSERT_TRUE(WAIT_UNTIL(state(CAMERA, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE, 10));
+	indigo_usleep(2000000);
+	ASSERT_TRUE(abort_and_check());
+	ASSERT_TRUE(change_number(ASTROMETRY, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME, 1));
+	ASSERT_TRUE(solves_after_abort());
+}
+
+// Abort while the related Guider Agent exposes the frame, the image source when no Imager Agent is related
+static void abort_while_guider_exposes(void) {
+	// a camera is used by one agent at a time
+	ASSERT_TRUE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, FILTER_DEVICE_LIST_NONE_ITEM_NAME, true, INDIGO_OK_STATE, 20));
+	ASSERT_TRUE(WAIT_UNTIL(switch_value(CAMERA, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME) && state(CAMERA, CONNECTION_PROPERTY_NAME) != INDIGO_BUSY_STATE, 20));
+	ASSERT_TRUE(change_switch_and_wait(GUIDER, FILTER_CCD_LIST_PROPERTY_NAME, CAMERA, true, INDIGO_OK_STATE, 20));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, ASTROMETRY, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, IMAGER, false));
+	ASSERT_TRUE(WAIT_UNTIL(!switch_value(ASTROMETRY, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, IMAGER), 10));
+	ASSERT_TRUE(relate(ASTROMETRY, GUIDER));
+	ASSERT_TRUE(slew(18.6, 38.8));
+	ASSERT_TRUE(change_number(ASTROMETRY, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME, 30));
+	ASSERT_TRUE(start_and_wait_for(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_SOLVER_STATE_WAITING_FOR_IMAGE, 20));
+	ASSERT_TRUE(WAIT_UNTIL(state(CAMERA, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE, 10));
+	indigo_usleep(2000000);
+	ASSERT_TRUE(abort_and_check());
+	ASSERT_TRUE(change_number(ASTROMETRY, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME, 1));
+	ASSERT_TRUE(solves_after_abort());
+}
+
+// Abort while precise GOTO slews to its target
+static void abort_while_goto_slews(void) {
+	ASSERT_TRUE(slew(18.6, 38.8));
+	ASSERT_TRUE(change_numbers(ASTROMETRY, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY_NAME, 2, (const char *[]){ AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM_NAME, AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM_NAME }, (double []){ 12.0, -20.0 }));
+	ASSERT_TRUE(start_and_wait_for(AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, INDIGO_SOLVER_STATE_GOTO, 20));
+	ASSERT_TRUE(WAIT_UNTIL(state(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, 10));
+	indigo_usleep(1000000);
+	ASSERT_TRUE(abort_and_check());
+}
+
+// Abort while the solution of solve, sync and center is being centred
+static void abort_while_centering(void) {
+	ASSERT_TRUE(slew(18.6, 38.8));
+	// the mount reports a position 10° off, so centring needs a long slew
+	ASSERT_TRUE(add_pointing_error(0, 10));
+	ASSERT_TRUE(start_and_wait_for(AGENT_PLATESOLVER_START_CENTER_ITEM_NAME, INDIGO_SOLVER_STATE_CENTERING, 180));
+	ASSERT_TRUE(abort_and_check());
+}
+
+// Abort in the middle of the three point polar alignment, while it slews to the second reference
+static void abort_polar_alignment(void) {
+	ASSERT_TRUE(slew(fmod(indigo_lst(NULL, SITE_LONGITUDE) - 0.25 + 24, 24), 5));
+	ASSERT_TRUE(start_and_wait_for(AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME, INDIGO_SOLVER_STATE_CENTERING, 180));
+	ASSERT_TRUE(abort_and_check());
+	ASSERT_EQ_INT(INDIGO_POLAR_ALIGN_IDLE, (int)pa_state(AGENT_PLATESOLVER_PA_STATE_ITEM_NAME));
+	ASSERT_TRUE(state(ASTROMETRY, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME) != INDIGO_BUSY_STATE);
+}
+
 // Precise GOTO with a pointing error at 20 places spread over the whole sky, dense and sparse fields,
 // both celestial hemispheres and near the pole; the south galactic pole has a case of its own
 static const double sky[][2] = {
@@ -586,6 +728,12 @@ static indigo_test_case tests[] = {
 	{ "solve, sync and center", solve_sync_and_center },
 	{ "precise goto", precise_goto },
 	{ "polar alignment", polar_alignment },
+	{ "abort while solving", abort_while_solving },
+	{ "abort while exposing", abort_while_exposing },
+	{ "abort while guider exposes", abort_while_guider_exposes },
+	{ "abort while precise goto slews", abort_while_goto_slews },
+	{ "abort while centering", abort_while_centering },
+	{ "abort polar alignment", abort_polar_alignment },
 	{ "sky 01 RA 0.00 Dec +0", sky_1 },
 	{ "sky 02 RA 1.50 Dec +45", sky_2 },
 	{ "sky 03 RA 3.00 Dec -30", sky_3 },

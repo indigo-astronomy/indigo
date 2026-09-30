@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x03000034
+#define DRIVER_VERSION 0x03000035
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -357,6 +357,7 @@ typedef struct {
 	bool first_frame;
 	bool has_camera;
 	bool silence_warnings;
+	bool preview_1_aborted;
 } guider_agent_private_data;
 
 static char default_log_path[PATH_MAX] = { 0 };
@@ -731,6 +732,12 @@ static void do_dither(indigo_device *device) {
 	return;
 }
 
+/* A capture ends on an aborted process and, in the single frame preview a plate solver requests, on an
+   exposure aborted through the agent, which it would otherwise take for a failed one and repeat */
+static bool capture_aborted(indigo_device *device) {
+	return AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || DEVICE_PRIVATE_DATA->preview_1_aborted;
+}
+
 static bool capture_frame(indigo_device *device) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	if (DEVICE_PRIVATE_DATA->last_image) {
@@ -739,13 +746,13 @@ static bool capture_frame(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->last_image_size = 0;
 	}
 	for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (capture_aborted(device)) {
 			return false;
 		}
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.target);
-		for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->exposure_state) != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+		for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->exposure_state) != INDIGO_BUSY_STATE && !capture_aborted(device); i++)
 			indigo_usleep(1000);
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (capture_aborted(device)) {
 			return false;
 		}
 		if (state != INDIGO_BUSY_STATE) {
@@ -755,7 +762,7 @@ static bool capture_frame(indigo_device *device) {
 		}
 		double remaining_exposure_time = DEVICE_PRIVATE_DATA->remaining_exposure_time;
 		while ((state = DEVICE_PRIVATE_DATA->exposure_state) == INDIGO_BUSY_STATE) {
-			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (capture_aborted(device)) {
 				return false;
 			}
 			if (remaining_exposure_time > 1) {
@@ -764,7 +771,7 @@ static bool capture_frame(indigo_device *device) {
 				indigo_usleep(10000);
 			}
 		}
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (capture_aborted(device)) {
 			return false;
 		}
 		if (state != INDIGO_OK_STATE) {
@@ -1313,6 +1320,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 
 static void preview_1_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
+	DEVICE_PRIVATE_DATA->preview_1_aborted = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_PREVIEWING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
@@ -1325,6 +1333,7 @@ static void preview_1_process(indigo_device *device) {
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	bool aborted = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE;
+	DEVICE_PRIVATE_DATA->preview_1_aborted = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = captured || aborted ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -3230,6 +3239,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 		save_config(device);
 		return INDIGO_OK;
+	} else if (!strcmp(property->device, device->name) && !strcmp(property->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME)) {
+// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE of the selected camera
+		indigo_item *abort_item = indigo_get_item(property, CCD_ABORT_EXPOSURE_ITEM_NAME);
+		if (abort_item && abort_item->sw.value && AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value) {
+			DEVICE_PRIVATE_DATA->preview_1_aborted = true;
+		}
+		return indigo_filter_change_property(device, client, property);
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		if (FILTER_DEVICE_CONTEXT->client == NULL) {

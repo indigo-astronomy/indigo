@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0300003E
+#define DRIVER_VERSION 0x0300003F
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -297,6 +297,7 @@ typedef struct {
 	bool use_ucurve_focusing;
 	bool use_iterative_focusing;
 	bool use_aux_1;
+	bool capture_aborted;
 	bool barrier_resume;
 	unsigned int dither_num;
 	indigo_property_state related_solver_process_state;
@@ -668,6 +669,12 @@ static bool capture_frame(indigo_device *device) {
 	return false;
 }
 
+/* A single frame capture ends on an aborted process and on an exposure aborted through the agent, which it
+   would otherwise take for a failed one and repeat */
+static bool capture_aborted(indigo_device *device) {
+	return AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || DEVICE_PRIVATE_DATA->capture_aborted;
+}
+
 static bool capture_plain_frame(indigo_device *device) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	if (DEVICE_PRIVATE_DATA->last_image) {
@@ -676,7 +683,7 @@ static bool capture_plain_frame(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->last_image_size = 0;
 	}
 	for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (capture_aborted(device)) {
 			return false;
 		}
 		if (DEVICE_PRIVATE_DATA->use_aux_1) {
@@ -685,9 +692,9 @@ static bool capture_plain_frame(indigo_device *device) {
 		} else {
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, AGENT_IMAGER_CAPTURE_ITEM->number.target);
 		}
-		for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->exposure_state) != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+		for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->exposure_state) != INDIGO_BUSY_STATE && !capture_aborted(device); i++)
 			indigo_usleep(1000);
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (capture_aborted(device)) {
 			return false;
 		}
 		if (state != INDIGO_BUSY_STATE) {
@@ -699,7 +706,7 @@ static bool capture_plain_frame(indigo_device *device) {
 		AGENT_IMAGER_CAPTURE_ITEM->number.value = remaining_exposure_time;
 		indigo_update_property(device, AGENT_IMAGER_CAPTURE_PROPERTY, NULL);
 		while ((state = DEVICE_PRIVATE_DATA->exposure_state) == INDIGO_BUSY_STATE) {
-			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (capture_aborted(device)) {
 				return false;
 			}
 			if (remaining_exposure_time != DEVICE_PRIVATE_DATA->remaining_exposure_time) {
@@ -712,7 +719,7 @@ static bool capture_plain_frame(indigo_device *device) {
 				indigo_usleep(10000);
 			}
 		}
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (capture_aborted(device)) {
 			return false;
 		}
 		if (state != INDIGO_OK_STATE) {
@@ -3029,6 +3036,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE || AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_IMAGER_CAPTURE_PROPERTY, property, false);
 			AGENT_IMAGER_CAPTURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			DEVICE_PRIVATE_DATA->capture_aborted = false;
 			if (INDIGO_FILTER_CCD_SELECTED) {
 				indigo_update_property(device, AGENT_IMAGER_CAPTURE_PROPERTY, NULL);
 				indigo_set_timer(device, 0, capture, NULL);
@@ -3335,7 +3343,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ADDITIONAL_INSTANCES_PROPERTY, additional_instances_handler);
 		return INDIGO_OK;
 	} else if (!strcmp(property->device, device->name)) {
-		if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
+		if (!strcmp(property->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME) || !strcmp(property->name, "AUX_1_" CCD_ABORT_EXPOSURE_PROPERTY_NAME)) {
+			indigo_item *abort_item = indigo_get_item(property, CCD_ABORT_EXPOSURE_ITEM_NAME);
+			if (abort_item && abort_item->sw.value && AGENT_IMAGER_CAPTURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				DEVICE_PRIVATE_DATA->capture_aborted = true;
+			}
+		} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
 			AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
 			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
 		} else if (!strcmp(property->name, CCD_SET_FITS_HEADER_PROPERTY_NAME)) {
