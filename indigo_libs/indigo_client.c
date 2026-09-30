@@ -40,6 +40,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/wait.h>
 #endif
 
 #if defined(INDIGO_MACOS)
@@ -279,11 +280,15 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			strncpy(subprocess->last_error, strerror(errno), sizeof(subprocess->last_error));
 			return NULL;
 		}
-		subprocess->pid = fork();
+		pid_t child = subprocess->pid = fork();
 		if (subprocess->pid == -1) {
 			INDIGO_ERROR(indigo_error("Can't create subprocess %s (%s)", subprocess->executable, strerror(errno)));
 			strncpy(subprocess->last_error, strerror(errno), sizeof(subprocess->last_error));
 		} else if (subprocess->pid == 0) {
+			/* the server blocks SIGTERM, SIGINT, SIGHUP and SIGCHLD for its sigwait() thread, the mask survives exec() */
+			sigset_t empty_set;
+			sigemptyset(&empty_set);
+			sigprocmask(SIG_SETMASK, &empty_set, NULL);
 			close(0);
 			dup2(output[0], 0);
 			close(1);
@@ -310,6 +315,9 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			indigo_release_xml_client_adapter(subprocess->protocol_adapter);
 			indigo_uni_close(&in);
 			indigo_uni_close(&out);
+			/* the subprocess is reaped here, the server no longer reaps every child of the process */
+			kill(child, SIGKILL);
+			while (waitpid(child, NULL, 0) < 0 && errno == EINTR);
 		}
 		if (subprocess->pid >= 0) {
 			 indigo_usleep(sleep_interval * 1000000);

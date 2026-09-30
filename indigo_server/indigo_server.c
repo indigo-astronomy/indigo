@@ -1958,7 +1958,9 @@ static void server_main() {
 // The managed signals are blocked process-wide (see main()) so they are delivered only here.
 
 // Runs in the worker process (the forked child, or the whole process when --do-not-fork is set):
-// reaps exited driver/INDI subprocesses on SIGCHLD and initiates shutdown on SIGINT/SIGTERM/SIGHUP.
+// initiates shutdown on SIGINT/SIGTERM/SIGHUP. SIGCHLD is consumed without reaping: waitpid(-1) here
+// raced with the drivers waiting for their own children (the Astrometry Agent lost the exit status of
+// image2xy and solve-field), every INDI subprocess is reaped by its own thread in indigo_client.c.
 static void *server_signal_thread(void *arg) {
 	indigo_rename_thread("Server signal handler");
 	sigset_t set;
@@ -1973,8 +1975,6 @@ static void *server_signal_thread(void *arg) {
 			continue;
 		}
 		if (signo == SIGCHLD) {
-			int status;
-			while (waitpid(-1, &status, WNOHANG) > 0);
 			continue;
 		}
 		INDIGO_LOG(indigo_log("Shutdown initiated (signal %d)...", signo));

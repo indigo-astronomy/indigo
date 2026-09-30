@@ -294,6 +294,7 @@ static void create_fake_tools(void) {
 		"  image_slow) sleep 30 ;;\n"
 		"esac\n"
 		"echo 'simplexy: nx=100, ny=50'\n"
+		"case \"$ASTROMETRY_FAKE_MODE\" in exit_before_eof) (sleep 0.3) & ;; esac\n"
 		"exit 0\n");
 	write_executable("solve-field",
 		"#!/bin/sh\n"
@@ -316,6 +317,7 @@ static void create_fake_tools(void) {
 		"echo 'Field rotation angle: up is 42.5 degrees E of N'\n"
 		"echo 'Field 1: solved with index index-4205'\n"
 		"case \"$ASTROMETRY_FAKE_MODE\" in parity_neg) echo 'Field parity: neg' ;; *) echo 'Field parity: pos' ;; esac\n"
+		"case \"$ASTROMETRY_FAKE_MODE\" in exit_before_eof) (sleep 0.3) & ;; esac\n"
 		"exit 0\n");
 	write_executable("curl",
 		"#!/bin/sh\n"
@@ -879,6 +881,55 @@ static void abort_and_recover(void) {
 	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
 }
 
+static atomic_bool reaper_running;
+
+static void *reap_every_child(void *arg) {
+	while (atomic_load(&reaper_running)) {
+		while (waitpid(-1, NULL, WNOHANG) > 0);
+		indigo_usleep(200);
+	}
+	return NULL;
+}
+
+// indigo_server blocks SIGTERM, SIGINT, SIGHUP and SIGCHLD for its sigwait() thread, a mask every thread and every
+// child inherits, and it used to reap every child with waitpid(-1). In such a host the solves have to succeed
+// although their exit status is lost, and abort has to stop the solver.
+static void host_signal_mask_and_reaper(void) {
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGHUP);
+	sigaddset(&set, SIGCHLD);
+	pthread_sigmask(SIG_BLOCK, &set, NULL);
+	atomic_store(&reaper_running, true);
+	pthread_t reaper;
+	ASSERT_EQ_INT(0, pthread_create(&reaper, NULL, reap_every_child, NULL));
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	// the tools exit while a background process still holds their output open, so the reaper collects them
+	// before the agent reads the end of their output and waits for them
+	setenv("ASTROMETRY_FAKE_MODE", "exit_before_eof", 1);
+	for (int i = 0; i < 3; i++) {
+		ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
+	}
+	setenv("ASTROMETRY_FAKE_MODE", "image_slow", 1);
+	unsigned before = revision(AGENT_PLATESOLVER_WCS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_blob_property_1(&observer, AGENT, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, data, sizeof(data), ".fits", ""));
+	ASSERT_TRUE(wait_state_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	double start = indigo_monotonic_time();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true));
+	ASSERT_TRUE(wait_not_busy_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, before));
+	// the fake image2xy sleeps 30 s unless the abort kills it
+	ASSERT_TRUE(indigo_monotonic_time() - start < 5);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property_state(AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
+	atomic_store(&reaper_running, false);
+	pthread_join(reaper, NULL);
+}
+
 static void overlapping_solve_rejected(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
@@ -1253,6 +1304,7 @@ static const indigo_test_case tests[] = {
 	{ "child process exit status", child_exit_status },
 	{ "empty image upload", empty_upload },
 	{ "abort and recovery", abort_and_recover },
+	{ "host signal mask and child reaper", host_signal_mask_and_reaper },
 	{ "overlapping solve rejection and recovery", overlapping_solve_rejected },
 	{ "direct upload copies GOTO target", direct_upload_copies_target },
 	{ "related Imager Agent capture", related_agent_capture },

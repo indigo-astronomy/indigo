@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000018
+#define DRIVER_VERSION 0x02000019
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -407,6 +407,11 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		}
 		case 0: {
 			setpgid(0, 0);
+			/* a host such as indigo_server blocks SIGTERM for its sigwait() thread and the mask survives exec(),
+			   so abort could not stop the solver */
+			sigset_t empty_set;
+			sigemptyset(&empty_set);
+			sigprocmask(SIG_SETMASK, &empty_set, NULL);
 			close(pipe_stdout[0]);
 			dup2(pipe_stdout[1], STDOUT_FILENO);
 			close(pipe_stdout[1]);
@@ -445,7 +450,10 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		waited = waitpid(child_pid, &status, 0);
 	} while (waited < 0 && errno == EINTR);
 	ASTROMETRY_DEVICE_PRIVATE_DATA->pid = 0;
-	if (waited != child_pid || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+	if (waited < 0 && errno == ECHILD) {
+		/* the host reaped the child before us, its exit status is lost and the output decides */
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exit status of %s not available", buffer);
+	} else if (waited != child_pid || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		res = false;
 	}
 	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
