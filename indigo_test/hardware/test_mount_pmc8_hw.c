@@ -39,13 +39,18 @@
 // controller's primary interface to WiFi, after which the serial port no longer answers until the
 // interface is switched back over the network.
 //
-// MOUNT_PMC8_HW_PORT names the serial port and is required. MOUNT_PMC8_HW_LATITUDE and
+// MOUNT_PMC8_HW_PORT names the serial port. Without it, on Linux, the suite uses the only attached
+// FTDI FT232R (0403:6001), the bridge the PMC-Eight has on board, and stops when there is none or
+// more than one: the chip reports no product string of its own, so nothing tells two of them apart,
+// and no other port is ever opened. MOUNT_PMC8_HW_LATITUDE and
 // MOUNT_PMC8_HW_LONGITUDE give the observing site; the driver has no site command, so the values
 // only have to be real for the hour angle arithmetic to describe the real sky.
 
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <dirent.h>
 #include <indigo_drivers/mount_pmc8/indigo_mount_pmc8.h>
 #include "hardware_test_common.h"
 
@@ -1088,10 +1093,74 @@ static void restore_initial_state(void) {
 	set_tracking(initial_tracking);
 }
 
+#ifdef __linux__
+// Reads idVendor or idProduct of the USB device a tty belongs to, walking up from the tty's own
+// device directory, which is a USB interface or a serial port below the device.
+static unsigned usb_id_of_tty(const char *tty, const char *attribute) {
+	char path[PATH_MAX], resolved[PATH_MAX];
+	snprintf(path, sizeof(path), "/sys/class/tty/%s/device", tty);
+	if (realpath(path, resolved) == NULL) {
+		return 0;
+	}
+	for (int depth = 0; depth < 4; depth++) {
+		char file[PATH_MAX + 16];
+		snprintf(file, sizeof(file), "%s/%s", resolved, attribute);
+		FILE *f = fopen(file, "r");
+		if (f != NULL) {
+			unsigned value = 0;
+			bool ok = fscanf(f, "%x", &value) == 1;
+			fclose(f);
+			return ok ? value : 0;
+		}
+		char *slash = strrchr(resolved, '/');
+		if (slash == NULL || slash == resolved) {
+			return 0;
+		}
+		*slash = 0;
+	}
+	return 0;
+}
+#endif
+
+// The only attached FT232R, or NULL with the reason printed. Linux only; elsewhere the port has to be given.
+static const char *find_ft232r_port(void) {
+#ifdef __linux__
+	static char port[PATH_MAX];
+	int count = 0;
+	DIR *dir = opendir("/sys/class/tty");
+	if (dir == NULL) {
+		fprintf(stderr, "MOUNT_PMC8_HW_PORT is not set and /sys/class/tty is not readable\n");
+		return NULL;
+	}
+	struct dirent *entry;
+	while ((entry = readdir(dir)) != NULL) {
+		if (strncmp(entry->d_name, "ttyUSB", 6) && strncmp(entry->d_name, "ttyACM", 6)) {
+			continue;
+		}
+		if (usb_id_of_tty(entry->d_name, "idVendor") == 0x0403 && usb_id_of_tty(entry->d_name, "idProduct") == 0x6001) {
+			if (count++ == 0) {
+				snprintf(port, sizeof(port), "/dev/%s", entry->d_name);
+			}
+			printf("FT232R serial port: /dev/%s\n", entry->d_name);
+		}
+	}
+	closedir(dir);
+	if (count == 1) {
+		printf("Using the only FT232R port: %s\n", port);
+		return port;
+	}
+	fprintf(stderr, "MOUNT_PMC8_HW_PORT is not set and %s FT232R serial port is attached; name the mount's port with --port\n", count ? "more than one" : "no");
+	return NULL;
+#else
+	fprintf(stderr, "MOUNT_PMC8_HW_PORT is not set; name the mount's port with --port\n");
+	return NULL;
+#endif
+}
+
 int main(int argc, char **argv) {
 	if (argc < 2 || strcmp(argv[1], "--run")) {
 		fprintf(stderr, "Physical PMC-Eight mount test: run explicitly with --run (or make test-mount-pmc8-hw).\n");
-		fprintf(stderr, "THE MOUNT MOVES. Start it in the park position; MOUNT_PMC8_HW_PORT names the serial port.\n");
+		fprintf(stderr, "THE MOUNT MOVES. Start it in the park position; MOUNT_PMC8_HW_PORT names the serial port, otherwise the only FT232R port is used on Linux.\n");
 		return 2;
 	}
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -1102,7 +1171,9 @@ int main(int argc, char **argv) {
 	}
 	serial_port = hw_port("MOUNT_PMC8_HW_PORT");
 	if (serial_port == NULL || !*serial_port) {
-		fprintf(stderr, "MOUNT_PMC8_HW_PORT is not set\n");
+		serial_port = find_ft232r_port();
+	}
+	if (serial_port == NULL) {
 		return 2;
 	}
 	const char *latitude = getenv("MOUNT_PMC8_HW_LATITUDE");
