@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x03000033
+#define DRIVER_VERSION 0x03000034
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -68,8 +68,17 @@
 
 #define CALIBRATION_STEP_MIN (0.05)           /* shortest calibration step (s) */
 #define CALIBRATION_STEP_MAX (2.0)            /* longest calibration step (s) */
-#define CALIBRATION_STEP_DEFAULT (0.2)        /* calibration step (s) when auto mode has no pixel scale to estimate it from */
-#define CALIBRATION_GUIDE_RATE (0.5 * 15.041) /* guide rate assumed by the calibration step estimate ("/s), 0.5x sidereal */
+#define CALIBRATION_STEP_DEFAULT (0.2)        /* first calibration pulse (s) when auto mode has no pixel scale to estimate it from */
+#define CALIBRATION_GUIDE_RATE (0.5 * 15.041) /* guide rate assumed by the first calibration pulse estimate ("/s), 0.5x sidereal */
+#define CALIBRATION_STEPS_FRACTION (0.4)      /* part of MAX_CALIBRATION_STEPS a calibration leg aims to take, 8 of the default 20 */
+#define CALIBRATION_STEPS_FRACTION_MIN (0.25) /* fewest pulses, as part of MAX_CALIBRATION_STEPS, a step set for backlash clearing aims at */
+#define CALIBRATION_FIT_MIN (0.2)             /* a step fits when a calibration leg takes this part of MAX_CALIBRATION_STEPS or more */
+#define CALIBRATION_FIT_MAX (0.8)             /* ... and this part or less */
+#define CALIBRATION_BACKLASH_MARGIN (1.2)     /* a step set for backlash clearing aims at this multiple of the drift per pulse it needs */
+#define CALIBRATION_MIN_MEASURED_MOVE (0.2)   /* smallest move (px) of the measuring pulse the calibration step is set from */
+#define CALIBRATION_PULSE_MARGIN (1.5)        /* a lengthened calibration pulse aims at this multiple of the move it missed */
+#define CALIBRATION_PULSE_FACTOR_MIN (1.5)    /* smallest factor a calibration pulse is lengthened by */
+#define CALIBRATION_PULSE_FACTOR_MAX (8.0)    /* largest factor a calibration pulse is lengthened by */
 
 #define DEVICE_PRIVATE_DATA										((guider_agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((guider_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
@@ -336,6 +345,7 @@ typedef struct {
 	int last_width;
 	int last_height;
 	int phase;
+	double calibration_pulse; // backlash clearing and measuring pulse (s)
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
 	int stack_size;
 	unsigned int dither_num;
@@ -1356,27 +1366,25 @@ static void preview_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
-static void change_step(indigo_device *device, double q) {
-	if (q > 1) {
-		indigo_send_message(device, ALERT_PROPERTY, "Drift is too slow");
-		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < CALIBRATION_STEP_MAX) {
-			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmin(CALIBRATION_STEP_MAX, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
-			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Increasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
-			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-		} else {
-			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
-		}
+/* A round of backlash clearing pulses that leaves the star short of MIN_BL_DRIFT, or a measuring pulse that moves it
+   less than CALIBRATION_MIN_MEASURED_MOVE, lengthens the clearing and measuring pulse by the move the next round has to
+   make against the move this one made, with a margin, up to CALIBRATION_STEP_MAX. The factor is at least
+   CALIBRATION_PULSE_FACTOR_MIN, to make progress, and at most CALIBRATION_PULSE_FACTOR_MAX: a star that did not move
+   at all, in backlash or behind a wrong guider, would otherwise jump to the longest pulse, and one such pulse on a fast
+   mount can move the star out of its search area. Longer pulses, not more of them, also move mounts that ignore very
+   short pulses. A star that does not move even with the longest pulses fails calibration: the pulses more likely go to
+   a guider that does not drive this mount than through backlash that large. */
+static void lengthen_calibration_pulse(indigo_device *device, double moved, double needed) {
+	indigo_send_message(device, BUSY_PROPERTY, "Drift is too slow");
+	if (DEVICE_PRIVATE_DATA->calibration_pulse < CALIBRATION_STEP_MAX) {
+		double factor = moved > 0 ? CALIBRATION_PULSE_MARGIN * needed / moved : CALIBRATION_PULSE_FACTOR_MAX;
+		factor = fmin(CALIBRATION_PULSE_FACTOR_MAX, fmax(CALIBRATION_PULSE_FACTOR_MIN, factor));
+		DEVICE_PRIVATE_DATA->calibration_pulse = round(1000 * fmin(CALIBRATION_STEP_MAX, factor * DEVICE_PRIVATE_DATA->calibration_pulse)) / 1000;
+		indigo_send_message(device, IDLE_PROPERTY, "Increasing calibration pulse to %.3g s, the star moved %.2g px and needs %.2g px more", DEVICE_PRIVATE_DATA->calibration_pulse, fmax(0, moved), needed);
 	} else {
-		indigo_send_message(device, ALERT_PROPERTY, "Drift is too fast");
-		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > CALIBRATION_STEP_MIN) {
-			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = fmax(CALIBRATION_STEP_MIN, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value * q));
-			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Decreasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
-			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-		} else {
-			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
-		}
+		indigo_send_message(device, ALERT_PROPERTY, "The star does not move with %.3g s pulses, check that the selected guider drives this mount", DEVICE_PRIVATE_DATA->calibration_pulse);
+		DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 	}
-	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 }
 
 static bool guide_and_capture_frame(indigo_device *device, double ra, double dec, char *message) {
@@ -1481,28 +1489,104 @@ static void handle_gp_reset(indigo_device *device, indigo_property *reset_proper
 	}
 }
 
-/* A calibration step of 0 asks for an estimate: the step that drifts the star by MIN_CALIBRATION_DRIFT in the geometric
-   middle of the pulse counts the Dec leg accepts, MAX_CALIBRATION_STEPS / 5 to MAX_CALIBRATION_STEPS, at an assumed
-   0.5x sidereal guide rate. The estimate replaces the 0, so calibration adjusts it like an entered step. Without a
-   pixel scale the default step is used instead. */
-static void estimate_calibration_step(indigo_device *device) {
+/* Drift per pulse (px) the calibration step aims at, and the range it fits in. A calibration leg reaches
+   MIN_CALIBRATION_DRIFT in CALIBRATION_STEPS_FRACTION of MAX_CALIBRATION_STEPS pulses, and fits taking between
+   CALIBRATION_FIT_MIN and CALIBRATION_FIT_MAX of them. Backlash clearing needs more than MIN_BL_DRIFT in MAX_BL_STEPS
+   pulses (20 times as many on RA only); when a step can give that, with CALIBRATION_BACKLASH_MARGIN, and still leave a
+   calibration leg CALIBRATION_STEPS_FRACTION_MIN of MAX_CALIBRATION_STEPS pulses, the step is chosen for both, so
+   backlash clearing does not have to lengthen its pulse. Otherwise the step suits the calibration legs alone. */
+static void calibration_drift_per_pulse(indigo_device *device, double *low, double *target, double *high) {
+	double cal_drift = AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM->number.value, cal_steps = AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value;
+	double bl_steps = AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value * (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value ? 20 : 1);
+	*low = cal_drift / (CALIBRATION_FIT_MAX * cal_steps);
+	*target = cal_drift / (CALIBRATION_STEPS_FRACTION * cal_steps);
+	*high = cal_drift / (CALIBRATION_FIT_MIN * cal_steps);
+	double backlash = bl_steps > 0 ? AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value / bl_steps : 0;
+	if (CALIBRATION_BACKLASH_MARGIN * backlash <= cal_drift / (CALIBRATION_STEPS_FRACTION_MIN * cal_steps)) {
+		*low = fmax(*low, backlash);
+		*target = fmax(*target, CALIBRATION_BACKLASH_MARGIN * backlash);
+	}
+}
+
+// Calibration step for a star moving speed px/s
+static double calibration_step_for_speed(indigo_device *device, double speed) {
+	double low, target, high;
+	calibration_drift_per_pulse(device, &low, &target, &high);
+	return round(1000 * fmin(CALIBRATION_STEP_MAX, fmax(CALIBRATION_STEP_MIN, target / speed))) / 1000;
+}
+
+/* A calibration step of 0 asks for the step to be estimated from the pixel scale at an assumed 0.5x sidereal guide rate,
+   or set to CALIBRATION_STEP_DEFAULT without one. The step replaces the 0 and is saved with the calibration, so only the
+   first calibration estimates it; like an entered step it is checked against the speed measured after backlash clearing. */
+static void seed_calibration_step(indigo_device *device) {
 	if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > 0) {
 		return;
 	}
 	double scale = 3600 * sqrt(CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value);
 	if (scale > 0 && AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value > 0) {
-		double speed = CALIBRATION_GUIDE_RATE / scale;
-		// without the Dec leg the step is calibrated on RA, which the declination slows down
-		if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
-			speed *= fmax(cos(PI * AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value / 180), MIN_COS_DEC);
-		}
-		double step = AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM->number.value * sqrt(5) / (AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value * speed);
-		AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = round(1000 * fmin(CALIBRATION_STEP_MAX, fmax(CALIBRATION_STEP_MIN, step))) / 1000;
+		AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = calibration_step_for_speed(device, CALIBRATION_GUIDE_RATE / scale);
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Calibration step estimated to %.3g s for %.3g\"/px", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, scale);
 	} else {
 		AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = CALIBRATION_STEP_DEFAULT;
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Pixel scale is unknown, calibration step set to %.3g s", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value);
 	}
+}
+
+/* Once backlash is cleared, one more pulse along the same axis measures how fast the star moves. The calibration step,
+   entered or estimated, is kept when the drift per pulse it gives fits calibration_drift_per_pulse(), and otherwise set
+   for its target, so the legs never have to change it and a step saved for the next calibration clears its backlash
+   too. A pulse that moves the star less than CALIBRATION_MIN_MEASURED_MOVE is lengthened and the backlash clearing
+   phase retried. Returns false when the step is not checked. */
+static bool measure_calibration_step(indigo_device *device, bool ra) {
+	double x = DEVICE_PRIVATE_DATA->drift_x, y = DEVICE_PRIVATE_DATA->drift_y, pulse = DEVICE_PRIVATE_DATA->calibration_pulse;
+	if (!guide_and_capture_frame(device, ra ? pulse : 0, ra ? 0 : pulse, NULL)) {
+		return false;
+	}
+	double move = hypot(DEVICE_PRIVATE_DATA->drift_x - x, DEVICE_PRIVATE_DATA->drift_y - y);
+	if (move < CALIBRATION_MIN_MEASURED_MOVE) {
+		lengthen_calibration_pulse(device, move, CALIBRATION_MIN_MEASURED_MOVE);
+		return false;
+	}
+	double speed = move / pulse, step = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, low, target, high;
+	calibration_drift_per_pulse(device, &low, &target, &high);
+	if (speed * step >= low && speed * step <= high) {
+		indigo_send_message(device, IDLE_PROPERTY, "Calibration step %.3g s fits, the star moves %.3g px/s", step, speed);
+	} else {
+		AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = calibration_step_for_speed(device, speed);
+		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Calibration step changed from %.3g to %.3g s, the star moves %.3g px/s", step, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, speed);
+	}
+	return true;
+}
+
+/* Pulses along one axis until the star drifts MIN_BL_DRIFT from the phase's reference frame. A round of round_pulses
+   pulses that falls short lengthens the pulse by what is still missing against what the round moved the star, and the
+   pulses go on from the same reference, so the drift already made counts. Returns true when backlash is cleared, false
+   when the phase changed, the star was lost or calibration was aborted. */
+static bool clear_backlash(indigo_device *device, bool ra, int round_pulses) {
+	int phase = DEVICE_PRIVATE_DATA->phase;
+	// the reference frame does not update the drift, the first round starts at 0
+	double bl_drift = AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value, start = 0;
+	while (DEVICE_PRIVATE_DATA->phase == phase) {
+		for (int i = 0; i < round_pulses; i++) {
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
+				return false;
+			}
+			double pulse = DEVICE_PRIVATE_DATA->calibration_pulse;
+			if (!guide_and_capture_frame(device, ra ? pulse : 0, ra ? 0 : pulse, NULL)) {
+				return false;
+			}
+			if (ra) {
+				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+			}
+			if (DEVICE_PRIVATE_DATA->drift > bl_drift) {
+				return true;
+			}
+		}
+		lengthen_calibration_pulse(device, DEVICE_PRIVATE_DATA->drift - start, bl_drift - DEVICE_PRIVATE_DATA->drift);
+		start = DEVICE_PRIVATE_DATA->drift;
+	}
+	return false;
 }
 
 static bool calibrate(indigo_device *device) {
@@ -1526,8 +1610,8 @@ static bool calibrate(indigo_device *device) {
 	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 		check_selection(device);
 	}
-	// once, not in INITIALIZING: change_step() returns there and the estimate would undo its correction
-	estimate_calibration_step(device);
+	seed_calibration_step(device);
+	DEVICE_PRIVATE_DATA->calibration_pulse = AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value;
 	DEVICE_PRIVATE_DATA->first_frame = true;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1556,21 +1640,9 @@ static bool calibrate(indigo_device *device) {
 				if (!guide_and_capture_frame(device, 0, 0, "Clearing DEC backlash")) {
 					break;
 				}
-				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
-					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
-						break;
-					}
-					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, NULL)) {
-						break;
-					}
-					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
-						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_CLEARING_RA;
-						break;
-					}
-				}
-				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_CLEARING_DEC) {
-					change_step(device, 2);
+				// RA backlash clearing keeps the pulse that moved the mount, a shorter step might not move it
+				if (clear_backlash(device, false, (int)AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value) && measure_calibration_step(device, false)) {
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_CLEARING_RA;
 				}
 				break;
 			}
@@ -1583,24 +1655,10 @@ static bool calibrate(indigo_device *device) {
 				if (!guide_and_capture_frame(device, 0, 0, "Clearing RA backlash")) {
 					break;
 				}
-				/* cos(87deg) = 0.05 => so 20 is ok for 87 declination */
-				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value * 20; i++) {
-					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
-						break;
-					}
-					if (!guide_and_capture_frame(device, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0, NULL)) {
-						break;
-					}
-					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
-						indigo_send_message(device, IDLE_PROPERTY, "Backlash cleared");
-						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_NORTH;
-						break;
-					}
-				}
-				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_CLEARING_RA) {
-					change_step(device, 2);
+				/* cos(87deg) = 0.05 => so 20 is ok for 87 declination; without the Dec leg the step is measured on RA */
+				if (clear_backlash(device, true, (int)AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value * 20) && (!AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value || measure_calibration_step(device, true))) {
+					indigo_send_message(device, IDLE_PROPERTY, "Backlash cleared");
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_NORTH;
 				}
 				break;
 			}
@@ -1622,28 +1680,25 @@ static bool calibrate(indigo_device *device) {
 						break;
 					}
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM->number.value) {
-						if (i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value / 5) {
-							change_step(device, 0.5);
-							break;
+						last_drift = DEVICE_PRIVATE_DATA->drift;
+						dec_angle = atan2(-AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
+						AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = round(180 * dec_angle / PI);
+						last_count = i + 1;
+						AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = round(1000 * last_drift / (last_count * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
+						indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+						if (AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value == 0) {
+							indigo_send_message(device, IDLE_PROPERTY, "DEC speed is 0 px/s");
+							DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						} else {
-							last_drift = DEVICE_PRIVATE_DATA->drift;
-							dec_angle = atan2(-AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
-							AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = round(180 * dec_angle / PI);
-							last_count = i + 1;
-							AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = round(1000 * last_drift / (last_count * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
-							indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-							if (AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value == 0) {
-								indigo_send_message(device, IDLE_PROPERTY, "DEC speed is 0 px/\"");
-								DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
-							} else {
-								DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_SOUTH;
-							}
-							break;
+							DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_SOUTH;
 						}
+						break;
 					}
 				}
+				// the step was measured to reach the drift in well under MAX_CALIBRATION_STEPS: the mount stopped moving
 				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_MOVING_NORTH) {
-					change_step(device, 2);
+					indigo_send_message(device, BUSY_PROPERTY, "Drift is too slow");
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 				}
 				break;
 			}
@@ -1715,7 +1770,7 @@ static bool calibrate(indigo_device *device) {
 						AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = round(1000 * last_drift / (last_count * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
 						indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 						if (fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value) < 0.1) {
-							indigo_send_message(device, ALERT_PROPERTY, "RA drift speed is too slow");
+							indigo_send_message(device, BUSY_PROPERTY, "RA drift speed is too slow");
 							DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						} else {
 							DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_EAST;

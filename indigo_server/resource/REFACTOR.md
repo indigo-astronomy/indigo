@@ -790,7 +790,7 @@ Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.ST
 
 Add a dedicated calibration card in the guider side panel.
 
-- **Calibration step** (`AGENT_GUIDER_SETTINGS.STEP0`) as an `indigo-edit-number` with preset values `[0, 0.05, 0.1, 0.2, 0.5, 1]` (0 = auto, estimated by the agent from the pixel scale), icon `glyphicons-hourglass`, and tooltip `'Calibration step (0 = auto)'`. Full width.
+- **Calibration step** (`AGENT_GUIDER_SETTINGS.STEP0`) as an `indigo-edit-number` with preset values `[0, 0.05, 0.1, 0.2, 0.5, 1]` (0 = auto: the agent estimates the step in the first calibration and keeps it, correcting it when it does not fit the measured speed), icon `glyphicons-hourglass`, and tooltip `'Calibration step (0 = auto)'`. Full width.
 
 - **Read-only results** on the next row — four `indigo-show-number` fields from `AGENT_GUIDER_SETTINGS_PROPERTY`, all on the same flex row with `:cls="'w-25'"`:
   - `ANGLE` — icon `'angle'`, tooltip `'Angle'`

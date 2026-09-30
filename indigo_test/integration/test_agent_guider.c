@@ -112,9 +112,30 @@ static indigo_result deleted(indigo_client *client, indigo_device *device, indig
 	return INDIGO_OK;
 }
 
+static pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char messages[16384];
+
 static indigo_result message(indigo_client *client, indigo_device *device, indigo_property *property, const char *text) {
 	fprintf(stderr, "  %s: %s\n", device->name, text ? text : "");
+	pthread_mutex_lock(&messages_mutex);
+	size_t length = strlen(messages);
+	snprintf(messages + length, sizeof(messages) - length, "%s\n", text ? text : "");
+	pthread_mutex_unlock(&messages_mutex);
 	return INDIGO_OK;
+}
+
+static void clear_messages(void) {
+	pthread_mutex_lock(&messages_mutex);
+	messages[0] = 0;
+	pthread_mutex_unlock(&messages_mutex);
+}
+
+// Whether a message the agent sent so far contains text
+static bool saw_message(const char *text) {
+	pthread_mutex_lock(&messages_mutex);
+	bool found = strstr(messages, text) != NULL;
+	pthread_mutex_unlock(&messages_mutex);
+	return found;
 }
 
 static indigo_client client = { .name = "Guider integration client", .define_property = defined, .update_property = updated, .delete_property = deleted, .send_message = message };
@@ -215,6 +236,7 @@ static pthread_mutex_t motion_mutex = PTHREAD_MUTEX_INITIALIZER;
 static double offset_x, offset_y;
 static _Atomic double motion_scale = 0.01;
 static _Atomic double east_motion_factor = 1;
+static _Atomic double minimum_moving_pulse = 0; // ms; shorter pulses do not move the model, as some mounts ignore them
 static _Atomic double extended_amplitude = 30000;
 static double pulse_ra, pulse_dec, maximum_pulse;
 static unsigned ra_commands, dec_commands, east_commands;
@@ -323,13 +345,13 @@ static indigo_result guider_spy(indigo_device *device, indigo_client *sender, in
 			if (pulse_ra < 0) {
 				east_commands++;
 			}
-			if (synthetic && !freeze_motion && !fault) {
+			if (synthetic && !freeze_motion && !fault && fabs(pulse_ra) >= minimum_moving_pulse) {
 				offset_x += pulse_ra * motion_scale * (pulse_ra < 0 ? east_motion_factor : 1);
 			}
 		} else {
 			dec_commands++;
 			pulse_dec = positive - negative;
-			if (synthetic && !freeze_motion && !fault) {
+			if (synthetic && !freeze_motion && !fault && fabs(pulse_dec) >= minimum_moving_pulse) {
 				offset_y -= pulse_dec * motion_scale;
 			}
 		}
@@ -810,18 +832,44 @@ static void calibration_adaptive_step(void) {
 	ASSERT_TRUE(fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC")) > 0);
 }
 
+// Pulses a calibration leg aims at: MIN_CALIBRATION_DRIFT in 8 of the default 20 MAX_CALIBRATION_STEPS, or fewer when
+// backlash clearing needs more drift per pulse, 1.2 x MIN_BL_DRIFT / MAX_BL_STEPS, and the leg still gets 5 of 20
+static double target_pulses(void) {
+	double drift = value(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT"), steps = value(AGENT, "AGENT_GUIDER_SETTINGS", "MAX_CALIBRATION_STEPS");
+	double per_pulse = drift / (0.4 * steps), backlash = 1.2 * value(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_BL_DRIFT") / value(AGENT, "AGENT_GUIDER_SETTINGS", "MAX_BL_STEPS");
+	if (backlash <= drift / (0.25 * steps)) {
+		per_pulse = fmax(per_pulse, backlash);
+	}
+	return drift / per_pulse;
+}
+
+// The calibration step drifts the star by MIN_CALIBRATION_DRIFT in target_pulses(), at the Dec speed the calibration
+// legs measured
+static bool step_fits_speed(void) {
+	double step = value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), speed = fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC"));
+	double drift = value(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT"), target = target_pulses();
+	double pulses = drift / (step * speed);
+	printf("    step %.3f s at %.3f px/s: %.1f pulses for %g px, %.1f aimed at\n", step, speed, pulses, drift, target);
+	return fabs(pulses - target) < 0.15 * target;
+}
+
+// A fast mount, 40 px/s: 1 px in 8 pulses would take 3 ms pulses, so the step is held at 0.05 s and calibration completes
+// in fewer pulses. It used to halve the step down to 0.05 s and fail as too fast. At 10 px/s an entered 0.5 s reaches 10 px
+// in 2 pulses, too few, and is changed to 0.125 s, 8 pulses.
 static void calibration_adaptive_minimum(void) {
 	ASSERT_TRUE(model_camera());
 	motion_scale = 0.04;
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.15));
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 1));
-	ASSERT_TRUE(run("CALIBRATION", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
 	ASSERT_NEAR(0.05, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0001);
-	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_NEAR(40, fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC")), 2);
 	motion_scale = 0.01;
-	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.2));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.5));
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 10));
 	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	ASSERT_NEAR(0.125, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.002);
+	ASSERT_TRUE(step_fits_speed());
 }
 
 static void calibration_adaptive_maximum(void) {
@@ -830,12 +878,23 @@ static void calibration_adaptive_maximum(void) {
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 1.5));
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MAX_BL_STEPS", 1));
 	ASSERT_TRUE(run("CALIBRATION", INDIGO_ALERT_STATE));
-	ASSERT_NEAR(2, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0001);
+	// backlash clearing lengthens its pulse to the 2 s limit and fails before the step is measured
+	ASSERT_NEAR(1.5, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0001);
 	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
 	pthread_mutex_lock(&motion_mutex);
 	double maximum = maximum_pulse;
 	pthread_mutex_unlock(&motion_mutex);
-	ASSERT_TRUE(maximum <= 2000);
+	ASSERT_NEAR(2000, maximum, 0.5);
+}
+
+// A mount that ignores pulses shorter than 150 ms moves 2 px per 0.2 s backlash clearing pulse; the measured 10 px/s
+// sets a 62.5 ms step, which the mount ignores. Calibration fails in the Dec leg instead of retrying.
+static void calibration_step_ignored_pulses(void) {
+	ASSERT_TRUE(model_camera());
+	minimum_moving_pulse = 150;
+	ASSERT_TRUE(run("CALIBRATION", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	ASSERT_NEAR(0.0625, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.001);
 }
 
 // Star speed in px/s at the 0.5x sidereal guide rate the calibration step estimate assumes, 0 without a pixel scale
@@ -844,16 +903,20 @@ static double half_sidereal_speed(void) {
 	return scale > 0 ? 0.5 * 15.041 / scale : 0;
 }
 
-// Short calibration legs: 2 px of drift, 1 px to clear backlash
-static bool short_calibration_legs(void) {
-	REQUIRE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 2));
-	REQUIRE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_BL_DRIFT", 1));
+// A calibration at 1 to 2 px/s, whose backlash clearing and legs take longer than run() waits for a process to finish
+static bool slow_calibration(void) {
+	REQUIRE(run("CALIBRATION", INDIGO_BUSY_STATE));
+	double deadline = indigo_monotonic_time() + 60;
+	while (state(AGENT, "AGENT_START_PROCESS") == INDIGO_BUSY_STATE && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	REQUIRE(state(AGENT, "AGENT_START_PROCESS") == INDIGO_OK_STATE);
 	return true;
 }
 
-// STEP0 = 0 estimates the step from the camera's pixel scale at 0.5x sidereal, aiming at the middle of the pulse counts
-// the Dec leg accepts. With the model moving at that rate calibration never halves or doubles the step, and the estimate
-// replaces the 0.
+// STEP0 = 0 estimates the step from the camera's pixel scale at 0.5x sidereal; with the model moving at that rate the
+// estimate fits the speed measured after backlash clearing and is kept. With 2 px of drift the step aims at the 0.36 px
+// per pulse backlash clearing needs, 2 px in 5.6 pulses, so backlash clears without lengthening the pulse.
 static void calibration_step_estimate(void) {
 	ASSERT_TRUE(model_camera());
 	// a 50 cm guide scope, about 2"/px, keeps the legs short; the simulator's 8.9 cm lens drifts only 0.6 px/s
@@ -866,26 +929,96 @@ static void calibration_step_estimate(void) {
 	printf("    %.3f px/s at 0.5x sidereal\n", speed);
 	ASSERT_TRUE(speed > 0);
 	motion_scale = speed / 1000;
-	ASSERT_TRUE(short_calibration_legs());
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 2));
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0));
+	clear_messages();
 	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
-	double expected = round(1000 * fmin(2, fmax(0.05, 2 * sqrt(5) / (value(AGENT, "AGENT_GUIDER_SETTINGS", "MAX_CALIBRATION_STEPS") * speed)))) / 1000;
-	printf("    step %.3f s, expected %.3f s, Dec speed %.3f px/s\n", value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), expected, value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC"));
-	ASSERT_NEAR(expected, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0005);
 	ASSERT_NEAR(speed, fabs(value(AGENT, "AGENT_GUIDER_SETTINGS", "SPEED_DEC")), 0.15 * speed);
+	ASSERT_TRUE(step_fits_speed());
+	ASSERT_FALSE(saw_message("Increasing calibration pulse"));
 }
 
-// An entered step is used as it is, even with a pixel scale to estimate from, and STEP0 = 0 without a pixel scale starts
-// from the 0.2 s default. The model moves at a rate both steps suit, so calibration keeps them.
+// The 8 pulse step the first version saved for 2 px, 0.25 px per pulse, fits the calibration legs but moves the star only
+// 2.5 of the 3 px backlash clearing needs in 10 pulses. Backlash clearing lengthens its pulse and carries on from the
+// drift it made, and the step is changed to the 0.36 px per pulse that clears backlash, so the next calibration clears it
+// in the first round.
+static void calibration_step_saved_short_for_backlash(void) {
+	ASSERT_TRUE(model_camera());
+	// a 20 cm guide scope, 5.4"/px
+	ASSERT_TRUE(num(CAMERA, "CCD_LENS", "FOCAL_LENGTH", 20));
+	double deadline = indigo_monotonic_time() + 5;
+	while ((half_sidereal_speed() < 1 || half_sidereal_speed() > 2) && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	double speed = half_sidereal_speed();
+	ASSERT_TRUE(speed > 1 && speed < 2);
+	motion_scale = speed / 1000;
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 0.02));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 2));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", round(1000 * 0.25 / speed) / 1000));
+	clear_messages();
+	ASSERT_TRUE(slow_calibration());
+	ASSERT_TRUE(saw_message("Increasing calibration pulse"));
+	ASSERT_TRUE(saw_message("Calibration step changed"));
+	ASSERT_TRUE(step_fits_speed());
+	clear_messages();
+	ASSERT_TRUE(slow_calibration());
+	ASSERT_FALSE(saw_message("Increasing calibration pulse"));
+	ASSERT_TRUE(saw_message("fits"));
+}
+
+// 1 px of calibration drift with the default backlash clearing, 3 px in 10 pulses: 1 px in 8 pulses clears too little
+// backlash, so backlash clearing lengthens its own pulse and the estimate, 1 px in 8 pulses, is kept. It used to be
+// doubled for backlash clearing and halved in the Dec leg without end.
+static void calibration_step_small_drift(void) {
+	ASSERT_TRUE(model_camera());
+	// a 20 cm guide scope, 5.4"/px
+	ASSERT_TRUE(num(CAMERA, "CCD_LENS", "FOCAL_LENGTH", 20));
+	double deadline = indigo_monotonic_time() + 5;
+	while ((half_sidereal_speed() < 1 || half_sidereal_speed() > 2) && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	double speed = half_sidereal_speed();
+	printf("    %.3f px/s at 0.5x sidereal\n", speed);
+	ASSERT_TRUE(speed > 1 && speed < 2);
+	motion_scale = speed / 1000;
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "EXPOSURE", 0.02));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 1));
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0));
+	ASSERT_TRUE(slow_calibration());
+	pthread_mutex_lock(&motion_mutex);
+	double maximum = maximum_pulse;
+	pthread_mutex_unlock(&motion_mutex);
+	printf("    longest pulse %.0f ms\n", maximum);
+	ASSERT_TRUE(step_fits_speed());
+	ASSERT_TRUE(maximum > 1000 * value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0") * 1.5);
+}
+
+// Longest pulse the model has seen since the last reset
+static double longest_pulse(bool reset) {
+	pthread_mutex_lock(&motion_mutex);
+	double maximum = maximum_pulse;
+	if (reset) {
+		maximum_pulse = 0;
+	}
+	pthread_mutex_unlock(&motion_mutex);
+	return maximum;
+}
+
+// An entered step that fits is kept even with a pixel scale to estimate from, and STEP0 = 0 without a pixel scale starts
+// from the 0.2 s default. At 1.12 px/s the entered 0.3 s, 0.34 px per pulse, clears the 3 px of backlash within 10
+// pulses and takes 6 for 2 px: it fits. The default 0.2 s moves the star 2.24 px in 10 pulses; backlash clearing
+// lengthens its pulse by the minimum 1.5 to 0.3 s and goes on, and the step is changed to 0.36 px per pulse.
 static void calibration_step_entered_and_default(void) {
 	ASSERT_TRUE(model_camera());
 	ASSERT_TRUE(half_sidereal_speed() > 0);
-	// 0.224 px per 0.2 s pulse, the 2 px drift in 9 pulses
 	motion_scale = 0.00112;
-	ASSERT_TRUE(short_calibration_legs());
+	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MIN_CALIBRATION_DRIFT", 2));
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0.3));
-	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
+	longest_pulse(true);
+	ASSERT_TRUE(slow_calibration());
 	ASSERT_NEAR(0.3, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0005);
+	ASSERT_NEAR(300, longest_pulse(true), 0.5);
 	ASSERT_TRUE(num(CAMERA, "CCD_LENS", "FOCAL_LENGTH", 0));
 	double deadline = indigo_monotonic_time() + 5;
 	while (half_sidereal_speed() > 0 && indigo_monotonic_time() < deadline) {
@@ -893,8 +1026,12 @@ static void calibration_step_entered_and_default(void) {
 	}
 	ASSERT_TRUE(half_sidereal_speed() == 0);
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0", 0));
-	ASSERT_TRUE(run("CALIBRATION", INDIGO_OK_STATE));
-	ASSERT_NEAR(0.2, value(AGENT, "AGENT_GUIDER_SETTINGS", "STEP0"), 0.0005);
+	clear_messages();
+	ASSERT_TRUE(slow_calibration());
+	ASSERT_TRUE(saw_message("Pixel scale is unknown, calibration step set to 0.2 s"));
+	ASSERT_TRUE(saw_message("Increasing calibration pulse to 0.3 s"));
+	ASSERT_TRUE(saw_message("Calibration step changed from 0.2"));
+	ASSERT_TRUE(step_fits_speed());
 }
 
 static void calibration(void) {
@@ -928,7 +1065,7 @@ static void calibration_single_pulse_speed(void) {
 	unsigned east = east_commands, ra = ra_commands, dec = dec_commands;
 	pthread_mutex_unlock(&motion_mutex);
 	ASSERT_EQ_INT(1, east);
-	ASSERT_EQ_INT(3, ra); // One backlash-clear pulse, one west pulse and one east pulse.
+	ASSERT_EQ_INT(4, ra); // One backlash-clear pulse, one measuring pulse, one west pulse and one east pulse.
 	ASSERT_EQ_INT(0, dec);
 }
 
@@ -944,7 +1081,7 @@ static void calibration_directional_speed(void) {
 	unsigned east = east_commands, ra = ra_commands;
 	pthread_mutex_unlock(&motion_mutex);
 	ASSERT_TRUE(east > 1);
-	ASSERT_EQ_INT(2, ra - 2 * east); // Two backlash-clear pulses precede equally long west/east legs.
+	ASSERT_EQ_INT(3, ra - 2 * east); // Two backlash-clear pulses and one measuring pulse precede equally long west/east legs.
 }
 
 static void calibration_abort(void) {
@@ -1124,6 +1261,13 @@ static void calibration_no_motion(void) {
 	ASSERT_TRUE(num(AGENT, "AGENT_GUIDER_SETTINGS", "MAX_CALIBRATION_STEPS", 2));
 	ASSERT_TRUE(run("CALIBRATION", INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(INDIGO_GUIDER_PHASE_FAILED, value(AGENT, "AGENT_GUIDER_STATS", "PHASE"));
+	// a guider that does not drive the mount looks like this, and the message says so
+	ASSERT_TRUE(saw_message("check that the selected guider drives this mount"));
+	// a star that did not move lengthens the pulse 8 times, 0.2, 1.6 and 2 s, where doubling took 0.2 to 2 s in 5 rounds
+	pthread_mutex_lock(&motion_mutex);
+	unsigned dec = dec_commands;
+	pthread_mutex_unlock(&motion_mutex);
+	ASSERT_EQ_INT(3, dec);
 }
 
 static void star_loss_fail(void) {
@@ -2166,6 +2310,9 @@ static const indigo_test_case tests[] = {
 	{ "calibration adaptive minimum", calibration_adaptive_minimum },
 	{ "calibration adaptive maximum", calibration_adaptive_maximum },
 	{ "calibration step estimate", calibration_step_estimate },
+	{ "calibration step small drift", calibration_step_small_drift },
+	{ "calibration step saved short for backlash", calibration_step_saved_short_for_backlash },
+	{ "calibration step ignored pulses", calibration_step_ignored_pulses },
 	{ "calibration step entered and default", calibration_step_entered_and_default },
 	{ "calibration speed accuracy", calibration_speed_accuracy },
 	{ "calibration single pulse speed", calibration_single_pulse_speed },
