@@ -165,6 +165,7 @@ typedef struct {
 	long size;
 	char format[INDIGO_NAME_SIZE];
 	char image_url[INDIGO_VALUE_SIZE];
+	unsigned abort_generation;              ///< abort_generation of the solver when the image arrived
 } indigo_platesolver_task;
 
 /** Platesolver private data structure.
@@ -219,6 +220,7 @@ typedef struct {
 	bool failed;
 	bool abort_process_requested;
 	int saved_sync_mode;
+	unsigned abort_generation;              ///< incremented by every abort, a task of an older generation is aborted
 } platesolver_private_data;
 
 INDIGO_EXTERN bool indigo_platesolver_validate_executable(const char *executable);

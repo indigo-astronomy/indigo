@@ -31,6 +31,9 @@
 #include <math.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -436,7 +439,10 @@ static bool setup(void) {
 	return true;
 }
 
+static void detach_remote_imager(void);
+
 static void cleanup(void) {
+	detach_remote_imager();
 	if (astrometry_started) {
 		indigo_agent_astrometry(INDIGO_DRIVER_SHUTDOWN, NULL);
 	}
@@ -702,6 +708,170 @@ static void abort_polar_alignment(void) {
 	ASSERT_TRUE(state(ASTROMETRY, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME) != INDIGO_BUSY_STATE);
 }
 
+// A loopback HTTP server handing out one small FITS image per connection, each after a delay, as a remote
+// camera does over a slow link
+typedef struct {
+	int socket;
+	int connections;
+	double delay;
+} slow_image_server;
+
+static void *serve_slowly(void *arg) {
+	slow_image_server *server = arg;
+	static char image[2880];
+	memset(image, ' ', sizeof(image));
+	memcpy(image, "SIMPLE  =                    T", 30);
+	memcpy(image + 80, "END", 3);
+	for (int i = 0; i < server->connections; i++) {
+		int connection = accept(server->socket, NULL, NULL);
+		if (connection < 0) {
+			break;
+		}
+		char request[1024];
+		long received = 0;
+		while (received < (long)sizeof(request) - 1) {
+			long n = read(connection, request + received, sizeof(request) - 1 - received);
+			if (n <= 0) {
+				break;
+			}
+			received += n;
+			request[received] = 0;
+			if (strstr(request, "\r\n\r\n")) {
+				break;
+			}
+		}
+		indigo_usleep(server->delay * 1000000);
+		char header[128];
+		int length = snprintf(header, sizeof(header), "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n", (int)sizeof(image));
+		if (write(connection, header, length) != length || write(connection, image, sizeof(image)) != (long)sizeof(image)) {
+			fprintf(stderr, "slow image server: write failed\n");
+		}
+		close(connection);
+	}
+	return NULL;
+}
+
+static bool start_slow_image_server(slow_image_server *server, pthread_t *thread, char *url, size_t url_size) {
+	server->socket = socket(AF_INET, SOCK_STREAM, 0);
+	REQUIRE(server->socket >= 0);
+	struct sockaddr_in address = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK), .sin_port = 0 };
+	socklen_t address_size = sizeof(address);
+	REQUIRE(bind(server->socket, (struct sockaddr *)&address, sizeof(address)) == 0);
+	REQUIRE(listen(server->socket, 4) == 0);
+	REQUIRE(getsockname(server->socket, (struct sockaddr *)&address, &address_size) == 0);
+	snprintf(url, url_size, "http://127.0.0.1:%d/image.fits", ntohs(address.sin_port));
+	REQUIRE(pthread_create(thread, NULL, serve_slowly, server) == 0);
+	return true;
+}
+
+// An Imager Agent of another server: its images arrive as URLs, the agent downloads them
+#define REMOTE_IMAGER "Imager Agent @ remote"
+
+static indigo_property *remote_properties[4];
+static char remote_image_url[128];
+static indigo_device remote_imager;
+static bool remote_attached;
+
+static indigo_result remote_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	for (int i = 0; i < (int)ARRAY_SIZE(remote_properties); i++) {
+		if (indigo_property_match(remote_properties[i], property)) {
+			indigo_define_property(device, remote_properties[i], NULL);
+		}
+	}
+	return INDIGO_OK;
+}
+
+static void remote_capture_done(indigo_device *device) {
+	indigo_item *image = remote_properties[3]->items;
+	image->blob.value = NULL;
+	image->blob.size = 0;
+	INDIGO_COPY_VALUE(image->blob.url, remote_image_url);
+	INDIGO_COPY_NAME(image->blob.format, ".fits");
+	remote_properties[3]->state = INDIGO_OK_STATE;
+	indigo_update_property(device, remote_properties[3], NULL);
+	remote_properties[1]->state = INDIGO_OK_STATE;
+	indigo_update_property(device, remote_properties[1], NULL);
+}
+
+static indigo_result remote_change(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(remote_properties[1], property)) {
+		indigo_property_copy_values(remote_properties[1], property, false);
+		remote_properties[1]->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, remote_properties[1], NULL);
+		remote_properties[3]->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, remote_properties[3], NULL);
+		indigo_set_timer(device, 0.1, remote_capture_done, NULL);
+	} else if (indigo_property_match(remote_properties[2], property)) {
+		remote_properties[2]->state = INDIGO_OK_STATE;
+		indigo_update_property(device, remote_properties[2], NULL);
+	}
+	return INDIGO_OK;
+}
+
+static bool attach_remote_imager(void) {
+	char interface[32];
+	snprintf(interface, sizeof(interface), "%d", INDIGO_INTERFACE_AGENT);
+	remote_properties[0] = indigo_init_text_property(NULL, REMOTE_IMAGER, INFO_PROPERTY_NAME, "Main", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+	indigo_init_text_item(remote_properties[0]->items, INFO_DEVICE_INTERFACE_ITEM_NAME, "Interface", interface);
+	remote_properties[1] = indigo_init_number_property(NULL, REMOTE_IMAGER, AGENT_IMAGER_CAPTURE_PROPERTY_NAME, "Agent", "Capture", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_number_item(remote_properties[1]->items, AGENT_IMAGER_CAPTURE_ITEM_NAME, "Capture", 0, 60, 1, 0);
+	remote_properties[2] = indigo_init_switch_property(NULL, REMOTE_IMAGER, CCD_ABORT_EXPOSURE_PROPERTY_NAME, "Camera", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+	indigo_init_switch_item(remote_properties[2]->items, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort", false);
+	remote_properties[3] = indigo_init_blob_property(NULL, REMOTE_IMAGER, CCD_IMAGE_PROPERTY_NAME, "Camera", "Image", INDIGO_OK_STATE, 1);
+	indigo_init_blob_item(remote_properties[3]->items, CCD_IMAGE_ITEM_NAME, "Image");
+	remote_imager = (indigo_device)INDIGO_DEVICE_INITIALIZER(REMOTE_IMAGER, NULL, remote_enumerate, remote_change, NULL, NULL);
+	REQUIRE(indigo_attach_device(&remote_imager) == INDIGO_OK);
+	remote_attached = true;
+	for (int i = 0; i < (int)ARRAY_SIZE(remote_properties); i++) {
+		indigo_define_property(&remote_imager, remote_properties[i], NULL);
+	}
+	return true;
+}
+
+static void detach_remote_imager(void) {
+	if (!remote_attached) {
+		return;
+	}
+	remote_attached = false;
+	indigo_delete_property(&remote_imager, NULL, NULL);
+	indigo_detach_device(&remote_imager);
+	for (int i = 0; i < (int)ARRAY_SIZE(remote_properties); i++) {
+		indigo_release_property(remote_properties[i]);
+	}
+}
+
+// Abort while the agent downloads the image of a remote Imager Agent: the solve must not start once the image
+// arrives. The first process, not aborted, shows that the downloaded image does get solved.
+static void abort_while_image_downloads(void) {
+	slow_image_server server = { .connections = 2, .delay = 2 };
+	pthread_t thread;
+	ASSERT_TRUE(start_slow_image_server(&server, &thread, remote_image_url, sizeof(remote_image_url)));
+	ASSERT_TRUE(attach_remote_imager());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, ASTROMETRY, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, IMAGER, false));
+	ASSERT_TRUE(WAIT_UNTIL(!switch_value(ASTROMETRY, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, IMAGER), 10));
+	ASSERT_TRUE(relate(ASTROMETRY, REMOTE_IMAGER));
+	unsigned busy = state_count(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	ASSERT_TRUE(start_and_wait_for(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_SOLVER_STATE_SOLVING, 20));
+	ASSERT_TRUE(WAIT_UNTIL(state(ASTROMETRY, AGENT_START_PROCESS_PROPERTY_NAME) != INDIGO_BUSY_STATE, 60));
+	busy = state_count(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	unsigned solving_before = busy;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, ASTROMETRY, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, true));
+	// the image is published 0.1 s after the capture starts and its download takes 2 s
+	indigo_usleep(1000000);
+	busy = state_count(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	ASSERT_TRUE(abort_and_check());
+	pthread_join(thread, NULL);
+	close(server.socket);
+	// the image arrived about a second after the abort; nothing may start solving it
+	bool started = WAIT_UNTIL(state_count(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_BUSY_STATE) > busy || solver_running(), 5);
+	if (started) {
+		fprintf(stderr, "the aborted image was solved\n");
+		dump_messages();
+	}
+	printf("  WCS busy updates: %u before the process, %u at the abort, %u now\n", solving_before, busy, state_count(ASTROMETRY, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_FALSE(started);
+}
+
 // Precise GOTO with a pointing error at 20 places spread over the whole sky, dense and sparse fields,
 // both celestial hemispheres and near the pole; the south galactic pole has a case of its own
 static const double sky[][2] = {
@@ -734,6 +904,7 @@ static indigo_test_case tests[] = {
 	{ "abort while precise goto slews", abort_while_goto_slews },
 	{ "abort while centering", abort_while_centering },
 	{ "abort polar alignment", abort_polar_alignment },
+	{ "abort while image downloads", abort_while_image_downloads },
 	{ "sky 01 RA 0.00 Dec +0", sky_1 },
 	{ "sky 02 RA 1.50 Dec +45", sky_2 },
 	{ "sky 03 RA 3.00 Dec -30", sky_3 },

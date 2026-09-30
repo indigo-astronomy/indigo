@@ -465,6 +465,7 @@ static void factory_reset(indigo_device *device) {
 }
 
 static void abort_process(indigo_device *device) {
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_generation++;
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = true;
 	abort_exposure(device);
 	abort_mount_move(device);
@@ -511,11 +512,28 @@ static void start_process(indigo_device *device) {
 	}
 }
 
+/* An abort between the arrival of the image and the start of its solving, typically while the image is
+   downloaded, has to discard it; clearing the abort request unconditionally used to solve it anyway. */
+static bool task_aborted(indigo_platesolver_task *task) {
+	indigo_device *device = task->device;
+	return task->abort_generation != INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_generation;
+}
+
+static void discard_task(indigo_platesolver_task *task) {
+	indigo_debug("%s(): image discarded, the process was aborted", __FUNCTION__);
+	indigo_safe_free(task->image);
+	indigo_safe_free(task);
+}
+
 static void solve(indigo_platesolver_task *task) {
 	indigo_device *device = task->device;
 	double recenter_ra = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value;
 	double recenter_dec = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value;
-	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = task_aborted(task);
+	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
+		discard_task(task);
+		return;
+	}
 	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
 		if ((int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_REFERENCE_1) {
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a;
@@ -526,7 +544,17 @@ static void solve(indigo_platesolver_task *task) {
 	if (task->image == NULL) {
 		indigo_send_message(device, IDLE_PROPERTY, "Downloading image");
 		if (!indigo_download_blob(task->image_url, &task->image, &task->size, task->format)) {
-			process_failed(device, "Image download failed");
+			if (task_aborted(task)) {
+				discard_task(task);
+			} else {
+				indigo_safe_free(task->image);
+				indigo_safe_free(task);
+				process_failed(device, "Image download failed");
+			}
+			return;
+		}
+		if (task_aborted(task)) {
+			discard_task(task);
 			return;
 		}
 	}
@@ -1142,6 +1170,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		if ((AGENT_PLATESOLVER_IMAGE_ITEM->blob.size > 0 && AGENT_PLATESOLVER_IMAGE_ITEM->blob.value) || *AGENT_PLATESOLVER_IMAGE_ITEM->blob.url) {
 			indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 			task->device = device;
+			task->abort_generation = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_generation;
 			INDIGO_COPY_VALUE(task->image_url, AGENT_PLATESOLVER_IMAGE_ITEM->blob.url);
 			INDIGO_COPY_NAME(task->format, AGENT_PLATESOLVER_IMAGE_ITEM->blob.format);
 			if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.value != NULL) {
@@ -1310,6 +1339,7 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
 							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 							task->device = FILTER_CLIENT_CONTEXT->device;
+							task->abort_generation = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_generation;
 							INDIGO_COPY_VALUE(task->image_url, item->blob.url);
 							INDIGO_COPY_NAME(task->format, item->blob.format);
 							if (item->blob.value != NULL) {

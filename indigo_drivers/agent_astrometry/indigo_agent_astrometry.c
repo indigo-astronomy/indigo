@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000019
+#define DRIVER_VERSION 0x0200001A
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -559,7 +559,8 @@ static void astrometry_abort(indigo_device *device) {
 
 static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *task) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
-		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
+		/* an abort since the image arrived stays requested, an older one is cleared */
+		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = task->abort_generation != INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_generation;
 		indigo_send_message(device, IDLE_PROPERTY, "Solving started");
 		void *image = task->image;
 		unsigned long image_size = task->size;
