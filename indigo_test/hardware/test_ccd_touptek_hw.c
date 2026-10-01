@@ -176,9 +176,9 @@ static indigo_result delete_property(indigo_client *client, indigo_device *devic
 static bool wait_presence(bool present) {
 	for (int i = 0; i < 18000; i++) {
 		pthread_mutex_lock(&mutex);
-		bool ready = devices[camera].present == present && devices[guider].present == present;
+		bool ready = devices[camera].present == present && (guider < 0 || devices[guider].present == present);
 		if (present) {
-			ready = ready && slot(camera, "CONNECTION") >= 0 && slot(guider, "CONNECTION") >= 0;
+			ready = ready && slot(camera, "CONNECTION") >= 0 && (guider < 0 || slot(guider, "CONNECTION") >= 0);
 		}
 		pthread_mutex_unlock(&mutex);
 		if (ready) {
@@ -187,6 +187,15 @@ static bool wait_presence(bool present) {
 		indigo_usleep(10000);
 	}
 	fprintf(stderr, "Timed out waiting for physical %s\n", present ? "replug" : "unplug");
+	// A device that came back under another name lands in a different slot, so report every slot.
+	pthread_mutex_lock(&mutex);
+	fprintf(stderr, "    expecting camera '%s'%s%s\n", devices[camera].name, guider < 0 ? "" : " and guider ", guider < 0 ? "" : devices[guider].name);
+	for (int d = 0; d < MAX_DEVICES; d++) {
+		if (*devices[d].name) {
+			fprintf(stderr, "    slot %d: '%s' present=%s interface=0x%x CONNECTION=%s\n", d, devices[d].name, devices[d].present ? "yes" : "no", devices[d].interface, slot(d, "CONNECTION") >= 0 ? "yes" : "no");
+		}
+	}
+	pthread_mutex_unlock(&mutex);
 	return false;
 }
 
@@ -1011,8 +1020,9 @@ static void tp_selects_the_conversion_gain(void) {
 }
 
 static void tp_switches_the_fan_heater_and_led(void) {
-	ASSERT_TRUE(exercise_switch_control("X_CCD_FAN"));
-	ASSERT_TRUE(exercise_switch_control("X_CCD_HEATER"));
+	// X_CCD_FAN and X_CCD_HEATER are number properties (speed/power), not switches.
+	ASSERT_TRUE(exercise_number_control("X_CCD_FAN", "FAN_SPEED"));
+	ASSERT_TRUE(exercise_number_control("X_CCD_HEATER", "POWER"));
 	ASSERT_TRUE(exercise_switch_control("X_CCD_LED"));
 }
 
@@ -1085,6 +1095,11 @@ static void tp_reinitializes(void) {
 	driver_initialized = false;
 	ASSERT_TRUE(driver_entry(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	driver_initialized = true;
+	// Re-init re-enumerates over libusb, so the camera may already be back before the cable is touched;
+	// the SDK only reopens a device it closed in an earlier session after a physical replug.
+	printf("HOTPLUG_READY: driver reinitialized; unplug USB camera now: %s\n", devices[camera].name);
+	ASSERT_TRUE(wait_presence(false));
+	printf("HOTPLUG_REMOVED: reconnect the same USB camera now\n");
 	ASSERT_TRUE(wait_presence(true));
 	ASSERT_TRUE(connect_device(camera));
 	ASSERT_TRUE(connect_device(guider));
@@ -1203,12 +1218,12 @@ int main(int argc, char **argv) {
 		{ "tp_rejects_shutdown_while_connected", tp_rejects_shutdown_while_connected },
 		{ "tp_takes_repeated_short_exposures", tp_takes_repeated_short_exposures },
 		{ "tp_reconnects", tp_reconnects },
-		{ "tp_reinitializes", tp_reinitializes },
 		{ "tp_delivered_only_valid_frames", tp_delivered_only_valid_frames }
 	};
 	const indigo_test_case hotplug_tests[] = {
 		{ "tp_survives_transport_loss_while_idle", tp_survives_transport_loss_while_idle },
-		{ "tp_survives_transport_loss_during_streaming", tp_survives_transport_loss_during_streaming }
+		{ "tp_survives_transport_loss_during_streaming", tp_survives_transport_loss_during_streaming },
+		{ "tp_reinitializes", tp_reinitializes }
 	};
 	int result = 1;
 	if (!begin_session()) {
