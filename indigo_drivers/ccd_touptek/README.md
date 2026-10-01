@@ -45,3 +45,4 @@ Tested with:
 2026-09-27 08:36 3.0.0.55 linux x64 fake SDK 36/36 OK
 2026-09-27 22:00 3.0.0.55 mac arm64 fake SDK 36/36 OK
 2026-09-30 18:22 3.0.0.55 linux arm64 GPCMOS01200KMB 28/28 OK
+2026-10-01 23:23 3.0.0.55 linux x64 focuser 0/0 Failed
