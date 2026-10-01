@@ -43,3 +43,5 @@ The generated implementation was validated on Mars-C II (macOS arm64, SDK 3.10.1
 2026-09-27 09:00 3.0.0.32 linux x64 fake SDK 52/52 OK
 2026-09-27 21:45 3.0.0.32 mac arm64 fake SDK 52/52 OK
 2026-09-30 17:17 3.0.0.32 linux arm64 Mars-C II (IMX662) 27/27 OK
+2026-09-30 22:23 3.0.0.32 linux x64 Poseidon-C PRO (IMX571) 27/27 OK
+2026-09-30 22:31 3.0.0.32 linux x64 Sedna-M (IMX178) 27/27 OK
