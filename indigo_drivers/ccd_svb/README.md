@@ -30,5 +30,5 @@ Driver is developed and tested with:
 
 2026-09-22 11:25 3.0.0.29 mac arm64 SVBONY SV305PRO 1/1 OK
 2026-09-27 09:06 3.0.0.33 linux x64 fake SDK 48/48 OK
-2026-09-27 21:56 3.0.0.33 mac arm64 fake SDK 48/48 OK
 2026-09-30 18:34 3.0.0.33 linux arm64 SVBONY SV305PRO 1/1 OK
+2026-10-01 15:00 3.0.0.34 mac arm64 fake SDK 48/48 OK

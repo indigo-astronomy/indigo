@@ -295,3 +295,15 @@ connection (temporary split build, not committed) failed 3/3 on version 32:
 
 Simulated (fake SDK) tests run 48, passed 48 (Linux x64, `tools/run_driver_test.py ccd_svb`).
 Hardware tests run 0.
+
+## 2026-10-01 regression repair
+
+Restore the diagnostic SVBIsCameraNeedToUpgrade call after successful open, using the SDK-required 64-byte version buffer. Missing query suppresses the firmware warning; query errors must remain nonfatal. Extend Open Init rollback with upgrade/no-upgrade/error and shared-session checks.
+
+Plan: (1) reproduce with the extended existing test, (2) apply the minimal fix and increment the version (regenerate SVB outputs), (3) run the complete hardware-free suite through tools/run_driver_test.py and record results. Hardware testing is not part of this repair; Linux and Windows are unavailable here. No properties are added or removed.
+
+Status: steps 1 and 2 complete. The extended Open Init rollback case failed before the repair: expected one firmware check, observed zero. The query and warning are restored in the generator input; version is 3.0.0.34. Step 3 complete: unchanged generator regenerated C/header/main; only C changed (query plus version). Production build and `python3 tools/run_driver_test.py ccd_svb` passed on mac arm64, 48/48. Existing Open Init rollback now also verifies all three firmware-query outcomes, the exact warning including minimum version, reconnect, and no repeated query for the sibling guider session. Header/main remain identical.
+
+### Final test summary for this repair
+
+Simulated (fake SDK) tests: 48 run, 48 passed in the final recorded run. The pre-fix regression failed as expected (0/1). Hardware tests: 0 run, 0 passed.

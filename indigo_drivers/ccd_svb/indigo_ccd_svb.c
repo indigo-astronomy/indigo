@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000021
+#define DRIVER_VERSION       0x03000022
 #define DRIVER_NAME          "indigo_ccd_svb"
 #define DRIVER_LABEL         "SVBONY Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -236,6 +236,17 @@ static bool svb_open(indigo_device *device) {
 	if (result != SVB_SUCCESS) {
 		indigo_unlock_master_device(device);
 		return false;
+	}
+	char min_version[64] = { 0 };
+	SVB_BOOL is_update_needed = SVB_FALSE;
+	result = SVBIsCameraNeedToUpgrade(PRIVATE_DATA->dev_id, &is_update_needed, min_version);
+	if (result == SVB_SUCCESS && is_update_needed) {
+		indigo_send_message(device, BUSY_PROPERTY, "Camera firmware needs to be updated. Minimal required version: %s", min_version);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s firmware needs to be updated. Minimal required version: %s", device->name, min_version);
+	} else if (result == SVB_SUCCESS) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s firmware update not needed. Minimal required version: %s", device->name, min_version);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBIsCameraNeedToUpgrade(%d) = %d", PRIVATE_DATA->dev_id, result);
 	}
 	result = SVBSetAutoSaveParam(PRIVATE_DATA->dev_id, SVB_FALSE);
 	if (result != SVB_SUCCESS) {

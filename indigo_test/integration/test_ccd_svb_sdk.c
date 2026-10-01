@@ -59,6 +59,7 @@ typedef struct {
 	atomic_bool visible, opened, exposing, video, snapshot_needs_stop;
 	atomic_int opens, closes, frames, starts, stops, width, height, bin, left, top, format, delivery_format, readback_format, format_sets;
 	atomic_int open_error, init_error, read_error, start_error, stop_error;
+	atomic_int firmware_checks, firmware_error, firmware_upgrade, firmware_warnings;
 	atomic_int read_config_fail, write_config_fail, caps_fail, status_error, roi_error;
 	atomic_int relays, config_error, roi_write_error, origin_read_error, origin_write_error, malformed_roi;
 	atomic_int snapshot_failures, failed_statuses;
@@ -330,7 +331,14 @@ static indigo_result observe_image(indigo_client *client, indigo_device *device,
 	return observe(client, device, property, message);
 }
 
-static indigo_client test_client = { .name = "SVB camera SDK test", .version = INDIGO_VERSION_CURRENT, .define_property = observe, .update_property = observe_image, .delete_property = observe_delete };
+static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (message && !strcmp(message, "Camera firmware needs to be updated. Minimal required version: 1.2.3")) {
+		atomic_fetch_add(&cameras[0].firmware_warnings, 1);
+	}
+	return INDIGO_OK;
+}
+
+static indigo_client test_client = { .name = "SVB camera SDK test", .version = INDIGO_VERSION_CURRENT, .define_property = observe, .update_property = observe_image, .delete_property = observe_delete, .send_message = observe_message };
 
 indigo_result svb_test_attach(indigo_device *device) {
 	if (atomic_exchange(&fail_attach, 0)) {
@@ -645,6 +653,18 @@ SVB_ERROR_CODE SVBOpenCamera(int id) {
 		atomic_fetch_add(&concurrent_sdk, 1);
 	}
 	atomic_fetch_add(&c->opens, 1);
+	return SVB_SUCCESS;
+}
+
+SVB_ERROR_CODE SVBIsCameraNeedToUpgrade(int id, SVB_BOOL *upgrade, char *minimum_version) {
+	SDK_CHECK(id, true);
+	mock_camera *c = camera(id);
+	atomic_fetch_add(&c->firmware_checks, 1);
+	if (c->firmware_error) {
+		return SVB_ERROR_GENERAL_ERROR;
+	}
+	*upgrade = c->firmware_upgrade ? SVB_TRUE : SVB_FALSE;
+	strcpy(minimum_version, "1.2.3");
 	return SVB_SUCCESS;
 }
 
@@ -1153,6 +1173,20 @@ static void guider_shared_session(void) {
 }
 
 static void open_init_rollback(void) {
+	for (int mode = 0; mode < 3; mode++) {
+		cameras[0].firmware_upgrade = mode == 1;
+		cameras[0].firmware_error = mode == 2;
+		int checks = cameras[0].firmware_checks;
+		int warnings = cameras[0].firmware_warnings;
+		ASSERT_TRUE(connect_device(0, true));
+		ASSERT_EQ_INT(checks + 1, cameras[0].firmware_checks);
+		ASSERT_EQ_INT(warnings + (mode == 1), cameras[0].firmware_warnings);
+		ASSERT_TRUE(connect_device(1, true));
+		ASSERT_EQ_INT(checks + 1, cameras[0].firmware_checks);
+		ASSERT_TRUE(connect_device(1, false));
+		ASSERT_TRUE(connect_device(0, false));
+	}
+	cameras[0].firmware_error = 0;
 	cameras[0].open_error = 1;
 	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
 	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
