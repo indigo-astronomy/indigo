@@ -84,7 +84,7 @@ All requests are GET. Responses have `Value`, `ClientTransactionID` and `ServerT
 - `ServerTransactionID`: used for logging only.
 - Formatting:
   - Invariant locale: `.` as decimal separator, no thousands separators. `printf` must not depend on `LC_NUMERIC`.
-  - Booleans are sent as `true` / `false`.
+  - Booleans are sent as `True` / `False`, the way ASCOMLibrary does (`boolValue.ToString(CultureInfo.InvariantCulture)`); servers compare the value case-insensitively. Corrected on 2026-10-01 from the earlier `true` / `false`, see `alpaca_http_form_add_bool()`.
   - All form values are URL-encoded.
 - Response envelope (HTTP 200): `{"Value":…, "ClientTransactionID":n, "ServerTransactionID":n, "ErrorNumber":0, "ErrorMessage":""}`.
   - Check `ErrorNumber` **before** reading `Value`.
@@ -365,13 +365,75 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
   - **Not deterministic:** motion and exposures run on real-time timers.
   - ConformU reports 9 issues against its own focuser (timeouts).
 
+**Not part of the INDIGO project (decision D9).** OmniSim is an extra application, installed only on the machines where `system_alpaca` is developed.
+
+- It lives in the working tree, in `indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim/`, next to the sources of the deterministic C simulator (section 6/2), but it is **never committed**. The root `.gitignore` carries the rule `/indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim/`, so neither the archive nor the unpacked build can reach the remote repository. Only that subdirectory is ignored; the simulator sources beside it are tracked as usual.
+- Nothing of OmniSim is tracked: no binary, no archive, no submodule, no entry in `indigo_libs/externals`, and no download step in any Makefile or test target.
+- The INDIGO build, the packages and the default test targets do not depend on it. A machine without OmniSim builds and tests INDIGO exactly as before; only the opt-in OmniSim tier (section 6/5) is skipped there.
+- The developer installs, updates and removes it by hand, as described below.
+
+**Installation.** The release is a plain archive holding a self-contained build, so there is no installer and no .NET runtime to install. The steps are the same on every platform: download the asset for the host, check it, and unpack it into the ignored `omnisim/` directory.
+
+1. Pick the asset of release **v0.5.0** from https://github.com/ASCOMInitiative/ASCOM.Alpaca.Simulators/releases/tag/v0.5.0:
+
+   | Host | Asset | SHA-256 |
+   |---|---|---|
+   | macOS arm64 | `ascom.alpaca.simulators.macos-arm64.zip` (49 MB) | `ca8069a24e2e7c2049db15b98069308230c4d0cc15c6e41a2ea8c2cff0ad4893` |
+   | macOS x64 | `ascom.alpaca.simulators.macos-x64.zip` (51 MB) | `2b6724b033130862834dc3f1816e18ba7c7cdf5d8929609dff468cbc60cad9fa` |
+   | Linux x64 | `ascom.alpaca.simulators.linux-x64.tar.xz` (34 MB) | `5d9dd3ecdaefb3b36ffe17223172e656a7920c7830185f19390f5d84f051d625` |
+   | Linux arm64 | `ascom.alpaca.simulators.linux-aarch64.tar.xz` (31 MB) | `7b55ebaeb662046eca6ed7dcbb0947d322894fb2ce7eedca6554f695aa160195` |
+   | Linux armhf | `ascom.alpaca.simulators.linux-armhf.tar.xz` (33 MB) | `8c7eadaac9a80a0c565865de5c86561f3d910043ee48176326f30e63cda1daed` |
+   | Windows x64 | `ascom.alpaca.simulators.windows-x64.zip` (51 MB) | `f808dc0d9c8d5cbfaa8b03ceaad64454a3a52728e2602795c397d847fbc367a0` |
+
+   The checksums are the digests GitHub publishes for the release assets (read on 2026-10-01). The `*.AppImage.tar.xz` assets (experimental, need libfuse2) and `net80.zip` (needs an installed .NET 8 runtime) are not used.
+2. Download, verify and unpack into the ignored directory. From the root of the INDIGO working tree, on macOS arm64:
+
+   ```sh
+   mkdir -p indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim
+   cd indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim
+   curl -LO https://github.com/ASCOMInitiative/ASCOM.Alpaca.Simulators/releases/download/v0.5.0/ascom.alpaca.simulators.macos-arm64.zip
+   shasum -a 256 ascom.alpaca.simulators.macos-arm64.zip
+   unzip -q ascom.alpaca.simulators.macos-arm64.zip
+   ```
+
+   On Linux the same with `sha256sum` and `tar -xJf ascom.alpaca.simulators.linux-x64.tar.xz`, plus the ICU library from the distribution (`libicu` package), which the self-contained build still needs.
+3. The archive unpacks into a directory named after the asset (about 130 MB), so the executable ends up as `omnisim/ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators`. Verified for the macOS arm64 zip from its file listing; the Linux archives are expected to follow the same layout, to be confirmed on the first Linux install.
+4. Check that git does not see it. `git status --short` must not list anything under `omnisim/`, and
+
+   ```sh
+   git check-ignore -v indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim
+   ```
+
+   must print the `.gitignore` rule. Never use `git add -f` on this directory.
+5. macOS only: the release is a plain executable, not an application bundle. An archive downloaded with a browser carries the quarantine attribute, which may have to be removed before the first start (`xattr -dr com.apple.quarantine omnisim`). A `curl` download is not quarantined.
+6. Smoke test. Start the server in one terminal, with a private `HOME` so that the run leaves nothing in the developer's own ASCOM profile:
+
+   ```sh
+   HOME="$(mktemp -d)" ./ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators --urls=http://127.0.0.1:32323 --set-no-browser
+   ```
+
+   and query it from another one:
+
+   ```sh
+   curl http://127.0.0.1:32323/management/v1/configureddevices
+   ```
+
+   The reply must list the simulated devices. Stop the server with Ctrl-C.
+
+- **How the tests find it:** the opt-in tier looks for `omnisim/*/ascom.alpaca.simulators` in the directory above. `INDIGO_TEST_OMNISIM` (the path of the executable) overrides this for an installation kept elsewhere. If neither yields an executable, the tier is skipped and reported as not run.
+- **Update:** delete the content of `omnisim/` and unpack the new version. The version used is recorded with every OmniSim result.
+- **Removal:** delete `omnisim/`. Outside it, OmniSim only writes its profiles (`.config/ascom/alpaca/...`) and logs under the `HOME` it was started with.
+- **State of this procedure:** the asset names, sizes, checksums and the macOS arm64 archive layout were read from the release on 2026-10-01, and the `.gitignore` rule was checked with `git check-ignore`. The measurements above come from the linux-x64 research run. The macOS start (steps 5 and 6) has not been run yet and is to be confirmed on the first install.
+
 ### 4.2 ConformU v4.5.0 (GPL-3.0, run only as an external tool)
+
+**Not relevant for `system_alpaca` (decision D9).** ConformU tests the opposite side of the protocol: it is an Alpaca client that checks **servers**, whereas `system_alpaca` is itself a client. It was the right tool for `agent_alpaca` (decision D8, done), and it is not installed, required or run for this driver. The former round-trip idea (`OmniSim → system_alpaca → INDIGO bus → agent_alpaca → ConformU`) is dropped: its result would be dominated by the limits of `agent_alpaca`, not by this driver. The notes below are kept only as a record of the research.
 
 - CLI: `conformu conformance <uri>` and `conformu alpacaprotocol <uri>`, with `-r` writing JSON results. The exit code is the number of errors plus issues.
 - Measured against OmniSim:
   - `alpacaprotocol` on the focuser: 6 s.
   - Full `conformance`: focuser 117 s, switch 479 s.
-- It tests **servers only**, so it cannot test our client directly. Round trip: `OmniSim → system_alpaca → INDIGO bus → agent_alpaca → ConformU`, evaluated **differentially** against a baseline run directly on OmniSim. The limits of `agent_alpaca` apply:
+- It tests **servers only**, so it cannot test our client directly. The dropped round trip would have been `OmniSim → system_alpaca → INDIGO bus → agent_alpaca → ConformU`, evaluated **differentially** against a baseline run directly on OmniSim, with the limits of `agent_alpaca`:
   - no SafetyMonitor or ObservingConditions;
   - interface V1–V3 only, so no P7;
   - no MoveAxis.
@@ -468,6 +530,8 @@ A dedicated **deterministic C simulator** is necessary. It is the only way to co
 
 ### 5.3 Library changes (outside the driver folder)
 
+**Superseded in part by decision D10 (2026-10-01).** Items 1 and 4 are implemented as driver-local modules in `indigo_drivers/system_alpaca/` with the symbol prefixes `alpaca_json_` and `alpaca_http_`; `indigo_libs` is not changed. Items 2 and 3 were already delivered by D8. The requirements listed below still describe what the modules must do; only their location and names changed.
+
 Each is a separate commit with its own tests in `indigo_test` (unit and fixture tests).
 
 1. **General JSON parser in `indigo_libs/indigo_json.c` / `indigo_json.h`** (user requirement). Proposed API (DOM over a single allocation, portable C):
@@ -547,14 +611,50 @@ Following `indigo_test/AGENTS.md` and `indigo_test/DRIVER_TESTING_RULES.md`:
 
    Cases that use a fixed or broadcast port run with `jobs = 1`, or as opt-in.
 4. **Loopback test with `agent_alpaca`** (opt-in): `system_alpaca` against an in-process `agent_alpaca` fronting the INDIGO simulators, on a non-default discovery port.
-5. **OmniSim tier** (opt-in `make -C indigo_test test-system-alpaca-omnisim`, Linux x64):
-   - a pinned v0.5.0 with a checksum, `HOME` in a temporary directory, a pre-seeded `server/v1/instance-0.xml`;
+5. **OmniSim tier** (opt-in `make -C indigo_test test-system-alpaca-omnisim`, on any development machine where OmniSim is installed as described in section 4.1):
+   - the target never downloads or installs anything; it starts the executable found in the git-ignored `system_alpaca_simulator/omnisim/` directory (or named by `INDIGO_TEST_OMNISIM`) and is skipped (reported as not run) when there is none;
+   - the expected version is v0.5.0, read from the running instance and recorded with the result;
+   - `HOME` in a temporary directory, a pre-seeded `server/v1/instance-0.xml`;
    - one instance serialised with a lock, and a reset between cases;
    - timing tolerances.
 
    The results are recorded as "OmniSim 0.5.0" separately from the hardware-free counts.
-6. **ConformU round trip** (manual or nightly): a differential comparison against a direct OmniSim baseline.
-7. **Hardware** (`indigo_test/hardware/`): only if hardware is available (decision D6).
+6. **Hardware** (`indigo_test/hardware/`): only if hardware is available (decision D6).
+
+### 6.1 Deterministic simulator (`system_alpaca_simulator`)
+
+Host-side Alpaca server for the integration tests. Sources: `system_alpaca_simulator/system_alpaca_simulator.c` (framework), `system_alpaca_simulator.h` (module interface) and one `system_alpaca_simulator_<type>.c` per Alpaca device type. Built by `indigo_test/Makefile` into `$(INTEGRATION_BUILD)/system_alpaca_simulator`. `--help` lists every option, control endpoint and fault action.
+
+**Start.** `system_alpaca_simulator --headless --ready-file <dir>/ready.env [--discovery-port 0] [--device ...]`. The ready file holds `INDIGO_SIMULATOR_HOST`, `INDIGO_SIMULATOR_TCP_PORT`, `INDIGO_SIMULATOR_TCP_URL`, `INDIGO_SIMULATOR_PID`, and with discovery `INDIGO_SIMULATOR_UDP_PORT`. HTTP listens on 127.0.0.1 on a free port. Discovery is off unless `--discovery-port` is given (0 = free port). The simulator stops on SIGTERM / SIGINT, on `PUT /simulator/v1/shutdown`, and when its parent process exits.
+
+**Topology.** Without `--device` there is one device of each of the 10 types. `--device <type>:key=value,...` (repeatable) builds any other set: `number`, `name`, `uid`, `interface=p7|legacy|<n>` plus any state key, e.g. `--device camera:number=3,CameraXSize=64,CameraYSize=48,SensorType=2`. `--indigo-bridge` makes `description` look like `agent_alpaca`. Two servers with the same UniqueID: start two simulators with `--device focuser:uid=<same>`. Devices can be added and removed at run time with `PUT /simulator/v1/devices` and `.../devices/remove`.
+
+**Time.** With the default `--clock manual` device time moves only by `PUT /simulator/v1/clock Advance=<seconds>` (or by `--tick-per-request`). Every move, slew, exposure, settle and connect delay is measured on that clock, so a test starts an operation, sees it in progress for as long as it likes, advances the clock and sees it complete. `--clock real` follows wall time for manual use.
+
+**Control API** (`/simulator/v1/...`, form-encoded PUT, `Key=value` text answers split on `&` and newline, values percent-encoded): `status`, `clock`, `reset`, `requests`, `requests/clear`, `faults`, `faults/clear`, `discovery`, `server`, `devices`, `devices/remove`, `shutdown`, and per device `<type>/<n>/state`, `<type>/<n>/reset`, `<type>/<n>/error`.
+
+```sh
+. "$dir/ready.env"; B=$INDIGO_SIMULATOR_TCP_URL
+curl -X PUT -d 'Position=51000&ClientID=7&ClientTransactionID=2' $B/api/v1/focuser/0/move
+curl -X PUT -d 'Advance=1' $B/simulator/v1/clock                      # one second of device time
+curl -X PUT -d 'InterfaceVersion=legacy' $B/simulator/v1/focuser/0/state
+curl -X PUT -d 'Method=GET&Path=*/focuser/0/position&Action=http-status&Value=503' $B/simulator/v1/faults
+curl -X PUT -d 'Member=temperature&ErrorNumber=1024' $B/simulator/v1/focuser/0/error
+curl -X PUT -d 'Mode=delayed&Delay=300&Count=1' $B/simulator/v1/discovery
+curl "$B/simulator/v1/requests?Method=PUT&Path=*/focuser/*"
+```
+
+**Faults.** A rule is `Path` (glob) + `Action`, optionally `Method`, `Skip`, `Count` (default 1), `Value`, `Delay` (ms, real time), `Bytes`, `Message`. Actions: `http-status`, `ascom-error`, `malformed-json`, `truncated-json`, `missing-value`, `null-value`, `wrong-transaction-id`, `chunked`, `connection-close`, `silent-close`, `stall-before`, `stall-within`, `truncated-body`, `drop`, `reset`, `imagebytes-version`, `imagebytes-datastart`, `imagebytes-type`, `imagebytes-rank`, `imagebytes-dimensions`, `imagebytes-short`, `imagebytes-error`, `imagebytes-json`. Except for `http-status` and `ascom-error` the request is executed and only the reply is damaged; `Dispatch=false` drops it before the device. Discovery faults are set with `PUT /simulator/v1/discovery`: `Mode=silent|malformed|duplicate|delayed`, `Copies`, `Delay`, `Count`, `Reply` (raw text), `AlpacaPort=<p>|<p>` (one reply per port, as if several servers shared the host).
+
+**Recording.** Every Alpaca request is kept in order with its sequence number, simulated and real time, connection number, method, path, query, body, `Content-Type`, `Content-Length`, `Accept`, `Connection`, `Host`, `User-Agent`, resulting status, ErrorNumber and applied fault. `GET /simulator/v1/requests` returns them; the same goes to the event log `<ready-file>.events` (`<time> RX|TX|FAULT|CONTROL|STATE|MOVE|DISCOVERY|OPEN|CLOSE ...`). RX lines contain the driver's `ClientID`, which a reference-trace comparison has to mask.
+
+**Camera test pattern.** `value = (3*sensor_x + 7*sensor_y + 31*colour) % (MaxADU + 1)` with `sensor_x = (StartX + x) * BinX`, `sensor_y = (StartY + y) * BinY`, origin top left. `colour` is the plane (0 R, 1 G, 2 B) for `SensorType=1`, the filter colour for a CFA sensor (`(sensor_x + BayerOffsetX) % 2 + (sensor_y + BayerOffsetY) % 2`) and 0 for mono. A dark frame is `value % 16`. Any transpose, flip, wrong subframe or swapped plane changes the values.
+
+**Protocol strictness.** Lower-case paths only. Unknown type, device number, member or method, and a missing or wrongly cased PUT parameter, are HTTP 400. GET parameter names are case-insensitive. ASCOM errors are HTTP 200 with `ErrorNumber`. `ClientTransactionID` is echoed (0 when absent or invalid). `ServerTransactionID` grows with every Alpaca response and survives a reset. A member that the selected interface version does not have is HTTP 400 by default; `MissingMember=404` or `1024` (NotImplemented) select the other behaviours seen in the field.
+
+**Extending a type.** Add a field to the module's state struct and a row to its `alpaca_member` table; add a handler only for methods and conditional members. See the comment at the top of `system_alpaca_simulator.h`.
+
+**Known limits.** Not built or run on Linux or with GCC yet. No gzip, HTTPS, authentication or IPv6. Hermetic discovery on macOS: `lo0` has no broadcast, so a test probes `127.0.0.1` with one discovery port per simulator, or lets one responder announce several servers with `AlpacaPort=<p1>|<p2>`; the shared-port path is implemented but unproven. Simplifications per type (for example synchronous slews completing at once, `reverse` only stored, temperature compensation not moving the focuser) are listed in the module sources and are closed by the class packages of wave 3 where a driver test needs them.
 
 ## 7. Atomic plan
 
@@ -565,18 +665,69 @@ States: `todo`, `in progress`, `done`, `blocked`. Every step records its evidenc
 | S0 | Research of the standard, simulators and INDIGO infrastructure; this document; registration in `DEVELOPED_DRIVERS` + temporarily `EXCLUDED_DRIVERS`; `ccd_pentax` also added to `EXCLUDED_DRIVERS` at the user's request | Review by the user | done (commits `7e0a2cc`, `Exclude ccd_pentax from the default build`, and this commit) |
 | S1 | User decisions D1–D8 (section 9) | Recorded in this document | done (2026-09-24) |
 | S1a | D8: ConformU baseline against `agent_alpaca` + all INDIGO simulators, fix AGENT-1..3 and LIB-1..2, rerun ConformU, unit/regression tests | ConformU JSON results before/after; unit tests | done (2026-09-24). See `../agent_alpaca/REFACTOR.md` and section 8. `indigo_uni_discover()` and the connect timeout from WP3 / S4 already exist now. |
-| S2 | Library: general JSON parser in `indigo_json.c/.h` plus unit tests and fixtures | `make -C indigo_test test-unit`, strict build, ASan | todo |
-| S3 | Driver skeleton: `.c/.h/_main.c`, bridge device, remove from `EXCLUDED_DRIVERS`, Xcode registration | `make -C indigo_drivers/system_alpaca -f ../../Makefile.drv`, the driver loads in `indigo_server` | todo |
-| S4 | Library: `indigo_uni_io` connect timeout + multi-responder UDP discovery, with tests | unit/integration tests on loopback | todo |
-| S5 | HTTP/1.1 client in `indigo_uni_io` (D3) + Alpaca transport layer in the driver (envelope, errors, IDs, encoding) + unit tests | unit tests on fixtures and a loopback HTTP server | todo |
-| S6 | Deterministic simulator: management API, discovery, fault injection, ready file | Smoke test of the simulator; cross-check with alpyca as the reference client | todo |
-| S7 | Discovery + management + attach/detach of proxies, proxy-loop filter | Integration: dynamic devices, duplicates, removal, SHUTDOWN | todo |
-| S8 | Focuser, Wheel, Rotator (simplest classes, validate the pattern) | Class checklists | todo |
-| S9 | Mount + guider | Mount/guider checklist, guider timing measurement | todo |
-| S10 | CCD (+ guider), ImageBytes, JSON fallback | CCD checklist, image contract (dimensions, orientation, Bayer, RGB) | todo |
-| S11 | Dome, CoverCalibrator, Switch, ObservingConditions, SafetyMonitor | Dome and AUX checklists | todo |
-| S12 | OmniSim opt-in tier + ConformU round trip | Record of the OmniSim run | todo |
+| S2 | General JSON parser, driver-local per D10: `indigo_system_alpaca_json.c/.h` plus `indigo_test/unit/test_system_alpaca_json.c` and fixtures | unit test, strict build, ASan/UBSan | done (2026-10-01, WP1). Evidence in section 7.1. |
+| S3 | Driver skeleton: `.c/.h/_main.c`, bridge device, remove from `EXCLUDED_DRIVERS`, Xcode registration | `make -C indigo_drivers/system_alpaca -f ../../Makefile.drv`, the driver loads in `indigo_server` | done (2026-10-01, WP5). Evidence in section 7.1. Xcode: group references only; target membership follows when the driver is complete. |
+| S4 | Library: `indigo_uni_io` connect timeout + multi-responder UDP discovery, with tests | unit/integration tests on loopback | done by D8 (S1a): `indigo_uni_open_client_socket_with_timeout()` and `indigo_uni_discover()` exist in `indigo_uni_io.h`, covered by `indigo_test/unit/test_uni_io.c`. No further library change (D10). |
+| S5 | HTTP/1.1 client, driver-local per D10: `indigo_system_alpaca_http.c/.h` + Alpaca transport layer in the driver (envelope, errors, IDs, encoding) + tests | `test_system_alpaca_http` against a loopback HTTP server; transport tests on fixtures | done (2026-10-01, WP2 + WP5). Evidence in section 7.1. |
+| S6 | Deterministic simulator: management API, discovery, fault injection, ready file | Smoke test of the simulator; cross-check with alpyca as the reference client | done (2026-10-01, WP4). Evidence in section 7.1, usage in section 6.1. alpyca is not installed, so there was no cross-check with a reference client. |
+| S7 | Discovery + management + attach/detach of proxies, proxy-loop filter | Integration: dynamic devices, duplicates, removal, SHUTDOWN | done (2026-10-01, WP5). Evidence in section 7.1. |
+| S8 | Focuser, Wheel, Rotator (simplest classes, validate the pattern) | Class checklists | in progress (wave 3, started 2026-10-01) |
+| S9 | Mount + guider | Mount/guider checklist, guider timing measurement | in progress (wave 3, started 2026-10-01) |
+| S10 | CCD (+ guider), ImageBytes, JSON fallback | CCD checklist, image contract (dimensions, orientation, Bayer, RGB) | in progress (wave 3, started 2026-10-01) |
+| S11 | Dome, CoverCalibrator, Switch, ObservingConditions, SafetyMonitor | Dome and AUX checklists | in progress (wave 3, started 2026-10-01) |
+| S12 | OmniSim opt-in tier (OmniSim installed on the development machine per section 4.1; no ConformU, decision D9) | Record of the OmniSim run | todo |
 | S13 | `PROPERTIES.md`, README (only with approval), `TEST_SUMMARY.md`, optionally `MIGRATION_STATUS.md` / Windows / `STATIC_DRIVERS` | Final audit per `AGENTS.override.md` checklist | todo |
+
+### 7.1 Step evidence
+
+All runs on macOS arm64 (Apple clang), 2026-10-01. Nothing here was built or run on Linux or Windows; the x86_64 slices were compiled only. These are tests of driver-local modules and of the simulator, not driver test runs, so they are not part of the final test summary counts.
+
+**S2, JSON parser (WP1).** `indigo_system_alpaca_json.c/.h`, 17 exported `alpaca_json_` symbols: a DOM parser in one allocation (`alpaca_json_parse`, typed getters, case-insensitive and exact member lookup, depth limit 32, size limit 4 MB) and `alpaca_json_parse_image`, which scans an `imagearray` envelope without a DOM and streams a rank 2 or 3 `Value` into a caller buffer in transmission order (`Value[x][y][plane]`; the transpose is the caller's job).
+
+- `make -C indigo_drivers/system_alpaca -f ../../Makefile.drv all`, then `make -C indigo_test build/unit/test_system_alpaca_json` and `./build/unit/test_system_alpaca_json` from `indigo_test`: 48/48 cases pass (orchestrator rerun through the wired Makefile).
+- Strict warnings build and ASan + UBSan build (subagent, by hand in a scratch directory; the sanitizer run repeated by the orchestrator): 48/48, no report. `leaks -atExit`: 0 leaks.
+- Subagent's extra check, not kept in the repository: 200 000 mutated documents under ASan + UBSan compared with Python `json`, no accept/reject disagreement.
+- The fixtures `indigo_test/fixtures/protocol/alpaca_*.json` are hand-written from the specification, not captured from OmniSim.
+- The test is in `UNIT_TESTS`. `tools/run_driver_test.py` selects only integration and opt-in tests, so this unit test is not counted in the driver's recorded run.
+
+**S5, HTTP client part (WP2).** `indigo_system_alpaca_http.c/.h`, 22 exported `alpaca_http_` symbols: a keep-alive connection per `host:port`, `alpaca_http_get` / `alpaca_http_put`, Content-Length, chunked and EOF-delimited bodies into a caller-owned reusable buffer with a hard maximum, separate connect / first-byte / inter-byte / total timeouts, distinct result codes, percent-encoding and a form builder with locale-independent doubles. `indigo_libs` is unchanged.
+
+- `make -C indigo_test build/integration/test_system_alpaca_http` and `./build/integration/test_system_alpaca_http`: 44/44 cases pass (orchestrator rerun through the wired Makefile; the test is in `OPT_IN_DRIVER_TESTS` because it opens loopback sockets).
+- Strict warnings build and ASan + UBSan build (subagent; the sanitizer binary rerun by the orchestrator): 44/44, no report. `leaks --atExit`: 0 leaks.
+- `connect_timeout` is skipped on macOS and counted as passed: a full accept queue does not drop SYNs there. The hermetic path is written for Linux and has not run.
+- Decisions the core has to respect:
+  - gzip is not implemented and `Accept-Encoding` is never sent.
+  - A GET is re-sent once when a reused socket fails before any response byte. A PUT is re-sent only when the caller marks it `replayable`; otherwise the result is `ALPACA_HTTP_RESET` and the device may or may not have executed it, so the driver polls the state instead of repeating a move, a pulse or an exposure start.
+  - Redirects are reported, not followed.
+- Limits of `indigo_uni_io` that were worked around rather than patched (D10): the connect helper does not report why it failed (refused vs. timeout is told apart by elapsed time), `getaddrinfo` has no deadline (use the numeric address from discovery), there is no write deadline API, `indigo_uni_write()` can raise SIGPIPE on Linux unless the process ignores it (`indigo_server` does; the standalone driver executable has to be checked), and read errors are logged unconditionally.
+
+**S6, deterministic simulator (WP4).** Twelve files in `system_alpaca_simulator/`, usage in section 6.1.
+
+- `make -C indigo_test build/integration/system_alpaca_simulator` builds it (orchestrator).
+- Subagent's smoke script (curl for HTTP, Python for UDP discovery and ImageBytes decoding; kept outside the repository) against the Makefile-built binary, rerun by the orchestrator: 377 checks passed, 0 failed. It covers management, the strict-protocol answers, P7 and legacy connect, every device type from connect to an operation completing and being aborted, JSON and ImageBytes images compared pixel by pixel with the pattern formula, every fault action, request recording, the clock modes, discovery faults on loopback, concurrency and the shutdown paths.
+- The subagent also reports clean strict, ASan + UBSan and TSan builds, each passing the same 377 checks, and 0 leaks.
+- Not verified: Linux, GCC, a cross-check with alpyca (not installed), and broadcast discovery on macOS (see section 6.1).
+
+**S3, S5 (transport), S7: driver core (WP5).** `indigo_system_alpaca.c/.h/_main.c` (bridge device, discovery, registry, proxy framework, entry point), `indigo_system_alpaca_transport.c/.h` (Alpaca request layer), `indigo_system_alpaca_private.h` (the class-module interface, with the recipe for writing a class module in its header comment) and eleven class stubs that attach with the right INDIGO base class, connect, poll and disconnect. `DRIVER_VERSION 0x03000001`. `system_alpaca` is removed from `EXCLUDED_DRIVERS` in the root `Makefile`, so the default build now includes it.
+
+- `make -C indigo_drivers/system_alpaca -f ../../Makefile.drv all`: archive, library and executable build without warnings (orchestrator rerun).
+- `make -C indigo_test build/integration/test_system_alpaca_simulator` and `./build/integration/test_system_alpaca_simulator`: **56 run, 56 passed** (orchestrator rerun; 47 core cases and 9 cases that exercise the class-module interface on a live proxy). Each case runs in a forked child with its own HOME, simulators and ports. The test is in `OPT_IN_DRIVER_TESTS`.
+- After the archive grew to the whole driver, `test_system_alpaca_json` (48/48) and `test_system_alpaca_http` (44/44) still pass (orchestrator rerun).
+- Subagent's further runs: strict warnings build of all 16 driver sources clean; ASan + UBSan build 56/56 without a report; TSan build 56/56 with 0 warnings; more than 10 repetitions with `INDIGO_TEST_JOBS` 1 to 32 without a flake; the driver loads and unloads in `indigo_server`, and an end-to-end pass through the server with `indigo_prop_tool` (manual server, camera selected, proxy and guider attached, connect, `CONFIG SAVE`, disconnect) showed `connect` and `disconnect` in the simulator's record.
+- Not verified: Linux, Windows, GCC, x86_64 execution; real broadcast discovery (tests use explicit loopback targets); IPv6; the `UNSUPPORTED` device-type and API-version branches and the rollback of a failing class attach (the simulator cannot produce them); the standalone executable beyond starting it.
+- The bridge properties are documented in `indigo_docs/PROPERTIES.md`, section `system_alpaca`. Beyond the plan of section 5.2 there are `X_ALPACA_DISCOVERY_TARGETS` (explicit IPv4 targets, needed for hermetic tests and for networks without broadcast), `X_ALPACA_SERVER_STATUS`, `X_ALPACA_DEVICE_STATUS`, `X_ALPACA_TIMEOUTS` and `X_ALPACA_POLLING`; the planned single `X_ALPACA_DEVICES` list is split into the selection switch and a read-only status text.
+- Deviations from section 5.2, with reasons:
+  - Each proxy is its own `master_device` with its own connection and handler queue (only the guider shares its primary's). With per-device selection (D4) the first device of a server can be detached, which would take away the queue the others run on.
+  - `CONNECTION` runs on the proxy's own handler queue, not on the driver queue, so a slow device does not block discovery. The driver queue keeps discovery, management and attach/detach.
+  - Disabling discovery only skips the UDP request; the cycle still refreshes the known servers, otherwise a manual server that was down at start would never be picked up.
+  - On a name collision the suffix is ` #<6 hex digits of the UniqueID hash>`, not a running number, so device names and their config files do not depend on the attach order.
+  - A listed device that does not answer `interfaceversion` is `FAILED` and retried every cycle.
+  - NotConnected (0x407) takes the device to disconnected / ALERT; there is no automatic reconnect.
+  - The proxy loop is filtered by `description` (ServerName or Manufacturer) only.
+  - `_main.c` ignores SIGPIPE; the driver library never touches signal dispositions.
+- Known limits: 32 proxies, 16 servers, 128 known devices, 64 devices per server listing, 16 discovery targets. A request with the long timeout class blocks its own device's queue for up to that time. `" @ "` in proxy names is the framework's remote-host separator; it worked through `indigo_server`, a remote service named exactly like an Alpaca ServerName is untested.
+
+**Xcode.** Every new file is registered in `indigo.xcodeproj` as a group reference as soon as it exists (user's instruction, 2026-10-01). Membership in the Sources and Headers phases of the `indigo` and `indigo_m1` targets follows when the driver is complete.
 
 ## 8. Found defects
 
@@ -590,6 +741,17 @@ All were originally found **by source audit only**. Under decision D8 they were 
 - **Pre-existing failures:** `test_timer` fails 2–4 fork-related cases, and fails the same way with the original `indigo_uni_io`. Unrelated.
 
 The table below keeps the original audit record.
+
+Found during the implementation (2026-10-01):
+
+| ID | Location | Impact | Cause | Fix | Regression test |
+|---|---|---|---|---|---|
+| LIB-3 | `indigo_libs/indigo_ccd_driver.c:242`, `indigo_ccd_detach()` | Every detach of a CCD device leaks 4096 bytes. Reproduced with `leaks` on `test_system_alpaca_simulator`; it matters more for this driver than for others, because proxies are attached and detached at run time. | `CCD_FPS_PROPERTY` is created in attach and never released in detach. | **Not fixed**: a framework change, outside D10. Reported to the user. | none |
+| CORE-1 | `indigo_system_alpaca.c` (first version, never committed) | A bus request during a list rebuild deadlocked the driver. | The driver queue published properties while holding the lock that a bus callback also takes. | The driver queue only edits items under the lock; the dynamic properties are allocated at full size so they never move. | `core_bus_requests_during_list_changes` |
+| CORE-2 | same | SHUTDOWN called from a bus callback during a discovery cycle could deadlock. | Unbounded wait for the cycle. | The wait is bounded (5 s) and returns `INDIGO_BUSY`. | `core_shutdown_from_bus_callback` |
+| CORE-3 | same | A restored `X_ALPACA_DEVICES` selection took 5 s and ended in ALERT. | The restore request was not answered. | Answered at once; the harness requires a prompt OK restore on every driver start. | every case, through the harness |
+
+Further corrections of the first version of the core, each covered by a core case: coalescing of selection and server requests, the transaction-ID tolerance (`core_transaction_id_policy`), a lost reattach on a second refresh pass, D5 skipped after a single transport error, and text truncation splitting a UTF-8 character (`core_unusual_identifiers`).
 
 | ID | Location | Impact | Cause | Proposed fix | Regression test |
 |---|---|---|---|---|---|
@@ -614,13 +776,25 @@ Decided by the user on 2026-09-24:
 | D7 | No CI. The OmniSim and ConformU tiers stay manual / opt-in. |
 | D8 | Fix and test defects AGENT-1..3 and LIB-1..2. **This goes first**, before the `system_alpaca` implementation. ConformU (https://ascom-standards.org/COMDeveloper/Conformance.htm) is run against `agent_alpaca` exposing every INDIGO simulator, before and after the fixes. |
 
+Decided by the user on 2026-10-01:
+
+| ID | Decision |
+|---|---|
+| D9 | OmniSim is **not installed into the INDIGO project**. It is an extra application, installed by hand only on the machines where the driver is developed (section 4.1). It may be unpacked in `system_alpaca/system_alpaca_simulator/omnisim/`, which `.gitignore` keeps out of the remote repository. ConformU is **not relevant** for `system_alpaca`, because it tests the opposite (server) side; the ConformU round trip is dropped from the test strategy and from D7. |
+| D10 | **Minimise the impact on the framework and on other drivers; keep the changes in `indigo_drivers/system_alpaca/` wherever possible.** This supersedes the library placement in D2 and D3: the general JSON parser and the HTTP/1.1 client are driver-local modules (`indigo_system_alpaca_json.c/.h`, `indigo_system_alpaca_http.c/.h`), not additions to `indigo_libs/indigo_json.c` and `indigo_uni_io`. The driver uses the existing `indigo_uni_io` API as it is (`indigo_uni_discover()` and the connect timeout already exist from D8). The requirement of D2 that everything is covered by unit tests stands. Outside the driver folder only the unavoidable registration remains: tests and fixtures under `indigo_test/`, the root `Makefile` driver lists, `indigo.xcodeproj`, `indigo_docs/PROPERTIES.md`, and the status documents. The work runs on subagents from step S2 on (section 11). |
+
 ## 10. Baseline
 
 This is a new driver, so there is no original implementation to build or test. No baseline build was run: the folder contains no sources, and `system_alpaca` is in `EXCLUDED_DRIVERS`.
 
-## 11. Implementation plan split between subagents (proposal, not executed)
+## 11. Implementation plan split between subagents
 
-Status: **proposal only**. Nothing in this section has been started. It is executed only after D8 is finished and the user approves this plan.
+Status: **in execution since 2026-10-01**, from step S2, on the user's instruction. Changes against the proposal:
+
+- **D10:** WP1 and WP2 own driver-local files instead of `indigo_libs` (see the tables below). WP3 is not needed: its output already exists from D8.
+- **Wave 3 builds.** The five class packages cannot build in the shared driver directory at the same time, so each builds a private tree outside the repository: a frozen snapshot of the core, simulator framework and harness taken after wave 2, overlaid with the live copies of the files that package owns. A change a package needs in a file it does not own is delivered as a separate copy with a justification and merged by the orchestrator. The guider module and its cases belong to WP7 for both primaries; WP8 only attaches the guider from the camera.
+- **No worktrees and no subagent commits.** The parallel packages of a wave own disjoint files, work in the one working tree, build only into private scratch directories, and never run a git command that writes. The orchestrator wires the shared files (Makefiles, Xcode project, this document) after each wave. Nothing is committed without the user's instruction.
+- The `refactoring` branch named below is stale (43 commits behind `master`, nothing ahead); the work stays in the working tree of `master`.
 
 ### 11.1 Roles and ground rules
 
@@ -653,7 +827,9 @@ Status: **proposal only**. Nothing in this section has been started. It is execu
   | File | Contents |
   |---|---|
   | `indigo_system_alpaca.c` | core: bridge device, discovery, attach/detach, entry point |
-  | `indigo_system_alpaca_transport.c` / `.h` | Alpaca envelope and errors on top of the `indigo_uni_io` HTTP client |
+  | `indigo_system_alpaca_json.c` / `.h` | general JSON parser (`alpaca_json_`), D10 |
+| `indigo_system_alpaca_http.c` / `.h` | HTTP/1.1 client on top of `indigo_uni_io` (`alpaca_http_`), D10 |
+| `indigo_system_alpaca_transport.c` / `.h` | Alpaca envelope and errors on top of the driver-local HTTP client |
   | `indigo_system_alpaca_<class>.c` | device classes |
   | `indigo_system_alpaca_private.h` | shared types |
 
@@ -673,9 +849,9 @@ Status: **proposal only**. Nothing in this section has been started. It is execu
 
 | WP | Subagent | Output (owned files) | Verification |
 |---|---|---|---|
-| WP1 | JSON parser | `indigo_libs/indigo_json.c/.h`, the `_value` API (section 5.3/1), including the numeric-array fast path; `indigo_test/unit/test_json_value.c`; fixtures in `indigo_test/fixtures/protocol/alpaca_*.json` (captured from OmniSim) | unit tests: valid and malformed JSON, UTF-8/`\uXXXX`, depth/size limits, locale (`LC_NUMERIC=de_DE`), ASan/UBSan |
-| WP2 | HTTP client (D3) | `indigo_uni_io.c/.h`: `indigo_uni_http_request()` (GET/PUT, Content-Length, chunked, keep-alive + a single retry on a stale socket, gzip, binary body, timeouts), `indigo_uni_url_encode()` / form encoding; unit tests with a loopback HTTP server in the test | unit tests: chunked, `Connection: close`, truncated body, stall→timeout, reset, 1xx/3xx/4xx/5xx, large binary body |
-| WP3 | UDP discovery | `indigo_uni_io.c/.h`: `indigo_uni_discover()` (broadcast on every interface + loopback, a callback per reply, deduplication left to the caller). If D8/LIB-2 has not already done it, move `focuser_askar` onto this helper. | unit tests: several responders on loopback, duplicates, late replies, malformed replies, timeout; askar regression tests |
+| WP1 | JSON parser | D10: `indigo_drivers/system_alpaca/indigo_system_alpaca_json.c/.h`, the `alpaca_json_` API (section 5.3/1), including the numeric-array fast path; `indigo_test/unit/test_system_alpaca_json.c`; fixtures in `indigo_test/fixtures/protocol/alpaca_*.json` (hand-written from the specification; OmniSim captures follow in WP11) | unit tests: valid and malformed JSON, UTF-8/`\uXXXX`, depth/size limits, locale (`LC_NUMERIC=de_DE`), ASan/UBSan |
+| WP2 | HTTP client (D10) | `indigo_drivers/system_alpaca/indigo_system_alpaca_http.c/.h`: the `alpaca_http_` API (GET/PUT, Content-Length, chunked, keep-alive + a single retry on a stale socket, binary body, timeouts), URL / form encoding; `indigo_test/integration/test_system_alpaca_http.c` with a loopback HTTP server in the test (opt-in, it opens sockets) | unit tests: chunked, `Connection: close`, truncated body, stall→timeout, reset, 1xx/3xx/4xx/5xx, large binary body |
+| WP3 | UDP discovery (**not run: delivered by D8**) | `indigo_uni_io.c/.h`: `indigo_uni_discover()` (broadcast on every interface + loopback, a callback per reply, deduplication left to the caller). If D8/LIB-2 has not already done it, move `focuser_askar` onto this helper. | unit tests: several responders on loopback, duplicates, late replies, malformed replies, timeout; askar regression tests |
 | WP4 | Deterministic simulator | `indigo_drivers/system_alpaca/system_alpaca_simulator/`: HTTP server, discovery responder, management API, device framework (types registered through a table so that wave 3 only adds modules), scripted faults, request recording, explicit tick, ready file; `README`-style usage notes in `REFACTOR.md` (delivered to the orchestrator as a snippet) | Smoke test of the simulator, cross-checked with alpyca as the reference client (if available) and with curl |
 
 Dependencies: WP2 builds on the LIB-1 connect timeout from D8. WP4 is independent; it parses JSON in its own simple way and does not depend on WP1.
@@ -710,7 +886,7 @@ The orchestrator merges the worktrees one at a time and runs the full integratio
 
 | WP | Output |
 |---|---|
-| WP11 | OmniSim opt-in tier: `make -C indigo_test test-system-alpaca-omnisim` (pinned v0.5.0 + checksum, private `HOME`, lock, reset between cases), plus the ConformU round trip `OmniSim → system_alpaca → agent_alpaca → ConformU`, evaluated differentially. The results are recorded as "OmniSim 0.5.0" (D7: manual only, no CI). |
+| WP11 | OmniSim opt-in tier: `make -C indigo_test test-system-alpaca-omnisim` (OmniSim v0.5.0 installed on the development machine per section 4.1 in the git-ignored `system_alpaca_simulator/omnisim/`, never downloaded by the target; private `HOME`, lock, reset between cases). No ConformU round trip (D9). The results are recorded as "OmniSim 0.5.0" (D7: manual only, no CI). |
 | WP12 | Independent review of the whole diff, following `AGENTS.md` / `AGENTS.override.md` (formatting, lifecycle, `X_` prefixes, `PROPERTIES.md`, queues vs. bus callbacks, leaks under ASan, platform-independence of the driver). Findings go into section 8. |
 | Orchestrator | Fixes from WP12, `PROPERTIES.md`, Xcode registration of every file, `README.md` (only with the user's approval), the README `## Testing` record + `python3 tools/make_test_summary.py`, optionally `MIGRATION_STATUS.md`, the final audit per the `AGENTS.override.md` checklist, and the final summary in this document |
 

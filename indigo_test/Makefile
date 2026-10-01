@@ -46,6 +46,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_uni_io \
+	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
@@ -223,6 +224,13 @@ MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_rainbow.a $
 MOUNT_RAINBOW_TEST_CFLAGS = $(TEST_CFLAGS) -DMOUNT_RAINBOW_SIMULATOR_EXECUTABLE='"$(abspath $(INTEGRATION_BUILD)/mount_rainbow_simulator)"' -DRAINBOW_REFERENCE_TRACE_PATH='"$(abspath fixtures/mount_rainbow/original_reference_trace.txt)"'
 MOUNT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_simulator.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_STARBOOK_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_starbook.a $(TEST_LDFLAGS) -lindigocat
+SYSTEM_ALPACA_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_system_alpaca.a $(TEST_LDFLAGS)
+SYSTEM_ALPACA_DIR = ../indigo_drivers/system_alpaca
+SYSTEM_ALPACA_SIMULATOR_DIR = $(SYSTEM_ALPACA_DIR)/system_alpaca_simulator
+SYSTEM_ALPACA_SIMULATOR_SOURCES = $(wildcard $(SYSTEM_ALPACA_SIMULATOR_DIR)/system_alpaca_simulator*.c)
+SYSTEM_ALPACA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_system_alpaca.a $(TEST_LDFLAGS) -lindigocat
+SYSTEM_ALPACA_SIMULATOR_TEST_CFLAGS = $(TEST_CFLAGS) -DSYSTEM_ALPACA_SIMULATOR_EXECUTABLE='"$(abspath $(INTEGRATION_BUILD)/system_alpaca_simulator)"'
+SYSTEM_ALPACA_SIMULATOR_TEST_HEADERS = $(wildcard integration/system_alpaca/*.h)
 MOUNT_TEMMA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_temma.a $(TEST_LDFLAGS) -lindigocat
 POLARALIGN_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_simulator.a $(TEST_LDFLAGS) -lindigocat
 ROTATOR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_simulator.a $(TEST_LDFLAGS) -lindigocat
@@ -307,6 +315,8 @@ endif
 OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator \
+	$(INTEGRATION_BUILD)/test_system_alpaca_http \
+	$(INTEGRATION_BUILD)/test_system_alpaca_simulator \
 	$(INTEGRATION_BUILD)/test_agent_astrometry_solver
 
 test-integration: check-lib $(INTEGRATION_TESTS)
@@ -846,6 +856,30 @@ $(INTEGRATION_BUILD)/mount_starbook_simulator: ../indigo_drivers/mount_starbook/
 
 $(INTEGRATION_BUILD)/test_mount_starbook_simulator: integration/test_mount_starbook_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_starbook_simulator $(BUILD_DRIVERS)/indigo_mount_starbook.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_STARBOOK_SIMULATOR_TEST_LDFLAGS)
+
+# system_alpaca keeps its JSON parser and HTTP client in the driver directory, so their tests link the driver archive.
+$(UNIT_BUILD)/test_system_alpaca_json: unit/test_system_alpaca_json.c test_runner.h $(SYSTEM_ALPACA_DIR)/indigo_system_alpaca_json.h $(BUILD_DRIVERS)/indigo_system_alpaca.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(SYSTEM_ALPACA_TEST_LDFLAGS)
+
+# Opt-in: the system_alpaca HTTP client is tested against a loopback HTTP server inside the test.
+$(INTEGRATION_BUILD)/test_system_alpaca_http: integration/test_system_alpaca_http.c test_runner.h $(SYSTEM_ALPACA_DIR)/indigo_system_alpaca_http.h $(BUILD_DRIVERS)/indigo_system_alpaca.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(SYSTEM_ALPACA_TEST_LDFLAGS)
+
+.PHONY: test-system-alpaca-http
+test-system-alpaca-http: $(INTEGRATION_BUILD)/test_system_alpaca_http
+	./$(INTEGRATION_BUILD)/test_system_alpaca_http
+
+$(INTEGRATION_BUILD)/system_alpaca_simulator: $(SYSTEM_ALPACA_SIMULATOR_SOURCES) $(SYSTEM_ALPACA_SIMULATOR_DIR)/system_alpaca_simulator.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $(SYSTEM_ALPACA_SIMULATOR_SOURCES) -lm
+
+# Opt-in: the system_alpaca driver against the system_alpaca_simulator child processes, over loopback sockets.
+# The cases live in integration/system_alpaca/, one header for the driver core and one for every device class.
+$(INTEGRATION_BUILD)/test_system_alpaca_simulator: integration/test_system_alpaca_simulator.c $(SYSTEM_ALPACA_SIMULATOR_TEST_HEADERS) integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/parallel_case_runner.h test_runner.h $(wildcard $(SYSTEM_ALPACA_DIR)/*.h) $(INTEGRATION_BUILD)/system_alpaca_simulator $(BUILD_DRIVERS)/indigo_system_alpaca.a | $(INTEGRATION_BUILD)
+	$(CC) $(SYSTEM_ALPACA_SIMULATOR_TEST_CFLAGS) -o $@ $< $(SYSTEM_ALPACA_SIMULATOR_TEST_LDFLAGS)
+
+.PHONY: test-system-alpaca-simulator
+test-system-alpaca-simulator: $(INTEGRATION_BUILD)/test_system_alpaca_simulator
+	./$(INTEGRATION_BUILD)/test_system_alpaca_simulator
 
 $(INTEGRATION_BUILD)/mount_temma_simulator: ../indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm

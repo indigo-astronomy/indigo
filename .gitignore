@@ -46,3 +46,4 @@ indigo_libs/externals/libusb/test-driver
 indigo_libs/externals/hidapi/windows/x64/
 indigo_test/build/
 **/*.dSYM
+/indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim/

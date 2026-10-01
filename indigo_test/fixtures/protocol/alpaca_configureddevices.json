@@ -1,0 +1,9 @@
+{
+	"Value": [
+		{ "DeviceName": "Test Camera", "DeviceType": "Camera", "DeviceNumber": 0, "UniqueID": "0a1b2c3d-0000-4000-8000-000000000001" },
+		{ "DeviceName": "Test Telescope", "DeviceType": "Telescope", "DeviceNumber": 0, "UniqueID": "0a1b2c3d-0000-4000-8000-000000000002" },
+		{ "DeviceName": "Test Cover & Calibrator", "DeviceType": "CoverCalibrator", "DeviceNumber": 3, "UniqueID": "0A1B2C3D-0000-4000-8000-000000000003" }
+	],
+	"ClientTransactionID": 3,
+	"ServerTransactionID": 3
+}

@@ -1473,6 +1473,18 @@ Driver-specific use of existing properties: `ROTATOR_ABORT_MOTION`, `ROTATOR_BAC
 
 Source: `indigo_drivers/rotator_wa/indigo_rotator_wa.driver`; generated output in `indigo_drivers/rotator_wa/indigo_rotator_wa.c`.
 
+### system_alpaca
+
+Custom properties: `X_ALPACA_DEVICES`, `X_ALPACA_DEVICE_STATUS`, `X_ALPACA_DISCOVER`, `X_ALPACA_DISCOVERY`, `X_ALPACA_DISCOVERY_SETTINGS`, `X_ALPACA_DISCOVERY_TARGETS`, `X_ALPACA_POLLING`, `X_ALPACA_SERVERS`, `X_ALPACA_SERVER_STATUS`, `X_ALPACA_TIMEOUTS`.
+
+Driver-specific use of existing properties: `CONNECTION` (hidden on the bridge device), `INFO` (proxy devices: `DEVICE_MODEL` is the Alpaca `Description`, `DEVICE_FIRMWARE_REVISION` is labelled "Alpaca driver" and holds `DriverVersion (DriverInfo)`, `DEVICE_HARDWARE_REVISION` is labelled "Alpaca interface version", `DEVICE_SERIAL_NUMBER` is labelled "Alpaca UniqueID"), `SIMULATION` (hidden on proxy devices).
+
+The driver always attaches the bridge device `Alpaca` and one proxy device named `<DeviceName> @ <ServerName>` for every selected Alpaca device; a camera or telescope that can pulse guide gets a secondary `... (guider)` device while it is connected. All custom properties below belong to `Alpaca`.
+
+`X_ALPACA_DISCOVERY` (`ENABLED`, `DISABLED`) decides whether the periodic cycle sends the UDP discovery request; the cycle itself always runs every `INTERVAL` seconds and asks the known servers for their devices. `X_ALPACA_DISCOVERY_SETTINGS` holds `PORT` (32227), `INTERVAL` (s), `TIMEOUT` (ms), `POLLS` and `RETENTION` (cycles a silent server is kept). `X_ALPACA_DISCOVERY_TARGETS` (`TARGETS`) is a list of IPv4 `address[:port]` the request is sent to instead of the broadcast. `X_ALPACA_DISCOVER` (`DISCOVER`) runs one cycle now. `X_ALPACA_SERVERS` holds the manually added servers in `LIST` (`host:port, ...`); `ADD` and `REMOVE` edit the list. `X_ALPACA_SERVER_STATUS` (read-only, one item per server named `host:port`) starts with `ONLINE`, `SILENT`, `OFFLINE`, `IGNORED` or `UNSUPPORTED`. `X_ALPACA_DEVICES` has one switch per known Alpaca device, named by its UniqueID in lower case with unsafe characters replaced by `_`; a device is proxied while its switch is on. `X_ALPACA_DEVICE_STATUS` (read-only, same item names) starts with `AVAILABLE`, `ATTACHED`, `OFFLINE`, `FAILED` or `UNSUPPORTED`. `X_ALPACA_TIMEOUTS` holds `ESTABLISH`, `STANDARD` and `LONG` (s), `X_ALPACA_POLLING` holds `IDLE` and `ACTIVE` (s). All but the two status properties and `X_ALPACA_DISCOVER` are saved by CONFIG.
+
+Sources: `indigo_drivers/system_alpaca/indigo_system_alpaca.c`, `indigo_drivers/system_alpaca/indigo_system_alpaca_private.h`.
+
 ### system_ascol
 
 Custom properties: `ASCOL_ABERRATION`, `ASCOL_ABERRATION_NUTATION`, `ASCOL_ALARMS`, `ASCOL_AXIS_CALIBRATED`, `ASCOL_CORRECTION_MODEL`, `ASCOL_COUDE_TUBE`, `ASCOL_DEC_CALIBRATION`, `ASCOL_DOME_POWER`, `ASCOL_DOME_SHUTTER_STATE`, `ASCOL_DOME_STATE`, `ASCOL_ERROR_CORRECTION`, `ASCOL_FLAP_STATE`, `ASCOL_FLAP_TUBE`, `ASCOL_FOCUSER_STATE`, `ASCOL_GLME`, `ASCOL_GUIDE_CORRECTION`, `ASCOL_GUIDE_MODE`, `ASCOL_HADEC_COORDINATES`, `ASCOL_HADEC_RELATIVE_MOVE`, `ASCOL_MOUNT_STATE`, `ASCOL_OIL_POWER`, `ASCOL_OIL_STATE`, `ASCOL_OIMV`, `ASCOL_RADEC_RELATIVE_MOVE`, `ASCOL_RA_CALIBRATION`, `ASCOL_REFRACTION`, `ASCOL_T1_SPEED`, `ASCOL_T2_SPEED`, `ASCOL_T3_SPEED`, `ASCOL_TELESCOPE_POWER`, `ASCOL_USER_SPEED`, `DOME_SLAVING`.
