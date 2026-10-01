@@ -312,6 +312,7 @@ static void create_fake_tools(void) {
 		"case \"$ASTROMETRY_FAKE_MODE\" in\n"
 		"  arcminutes) echo 'Field size: 120 x 60 arcminutes' ;;\n"
 		"  arcseconds) echo 'Field size: 7200 x 3600 arcseconds' ;;\n"
+		"  long_unit) echo 'Field size: 999 x 999 degrees_abcdefghijklmnopqrstuvwxyz0123456789'; echo 'Field size: 2 x 1 degrees' ;;\n"
 		"  *) echo 'Field size: 2 x 1 degrees' ;;\n"
 		"esac\n"
 		"echo 'Field rotation angle: up is 42.5 degrees E of N'\n"
@@ -777,7 +778,7 @@ static void solver_hints_and_config(void) {
 static void solver_units_and_parity(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
-	const char *modes[] = { "arcminutes", "arcseconds", "parity_neg" };
+	const char *modes[] = { "arcminutes", "arcseconds", "parity_neg", "long_unit" };
 	for (unsigned i = 0; i < ARRAY_SIZE(modes); i++) {
 		setenv("ASTROMETRY_FAKE_MODE", modes[i], 1);
 		ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_OK_STATE));
@@ -980,9 +981,17 @@ static void peer_failures_and_abort_forwarding(void) {
 	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	atomic_store(&fail_mount_start, false);
 	atomic_store(&hold_imager_capture, true);
+	pthread_mutex_lock(&cache_mutex);
+	*messages = 0;
+	pthread_mutex_unlock(&cache_mutex);
 	before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, true));
 	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	// Abort an established capture, after start_exposure has left its startup abort path.
+	for (int i = 0; i < 5000 && !has_message("Capture started"); i++) {
+		indigo_usleep(1000);
+	}
+	ASSERT_TRUE(has_message("Capture started"));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true));
 	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(1, atomic_load(&imager_abort_requests));

@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0200001A
+#define DRIVER_VERSION 0x0200001B
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -231,7 +231,7 @@ static bool process_execution_line(indigo_device *device, char *line) {
 			AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 2000;
 		}
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
-	} else if (sscanf(line, "Field size: %lg x %lg %s", &d1, &d2, s) == 3) {
+	} else if (sscanf(line, "Field size: %lg x %lg %15s", &d1, &d2, s) == 3) {
 		if (!strcmp(s, "degrees")) {
 			AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1;
 			AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2;

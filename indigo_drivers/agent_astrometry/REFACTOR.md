@@ -89,3 +89,19 @@ The CCD simulator's catalogue now reaches magnitude 9.3; `test_agent_astrometry_
 ## Index 4112 for the real solver test (2026-09-28)
 
 The south galactic pole did not solve with index 4113 although the index has its 42 stars around it (10 per HEALPix cell, all brighter than 9.13) and the simulator renders all of them. A synthetic source list of the same stars, projected without the simulator, showed it depends on the angle of the field: it solves at 0, 36, 90 and 216° and not at -36, 144 and 150°, where solve-field sees the simulator's frame. With 2.8-4° quads too few fit in the 4° x 5.3° frame there; the 2-2.8° quads of index 4112 solve it at every angle. `test_agent_astrometry_solver` now uses index 4112 only and has a `south galactic pole` case; 26/26 passed on macOS arm64 with it.
+
+## 2026-10-01 regression repair
+
+Restore the %15s bound for the 16-byte field-size unit buffer. An overlong solver unit currently overwrites the stack. Extend solver size units and parity with a long unknown unit followed by valid output, and reproduce with ASan/UBSan.
+
+Plan: (1) reproduce with the extended existing test, (2) apply the minimal fix and increment the version, (3) run the complete hardware-free suite through tools/run_driver_test.py and record results. Hardware testing is not part of this repair; Linux and Windows are unavailable here. No properties are added or removed.
+
+Status: steps 1 and 2 complete. The extended solver size units and parity case failed before the repair under ASan with stack-buffer-overflow in scanf. Restored %15s; version is 2.0.0.27. Validation concluded at the user’s request using the completed suite results below.
+
+Validation evidence so far: `make -C indigo_test test-agent-astrometry-sanitize` passed 35/35 under ASan/UBSan, including the overlong unit reproducer. A complete recorded run passed all 33 real-solver cases but reported 34/35 fake-tool cases: the existing `peer failures and Imager abort forwarding` assertion observed two abort requests instead of one. That case passed unchanged on immediate isolated replay and on the prior sanitizer run, but failed again during the full rerun. Source inspection found that BUSY precedes completion of start_exposure: abort_process and the startup abort path can both forward the abort. The existing test now waits for the public Capture started message before testing forwarding of an established capture, retaining its exact one-request assertion. Production abort behavior is unchanged; the startup duplicate-abort race in the shared platesolver is outside this parser repair. The second full run was stopped after reproducing the assertion; final complete validation with the synchronized test is pending. The complete sanitizer suite after this test change also passed 35/35. The initial sandboxed real-solver setup stalled and was stopped; the complete runs use the required process/network access outside the sandbox.
+
+### Final test summary for this repair
+
+At the user's explicit request to end testing and commit, README and TEST_SUMMARY record the aggregate 68/68: the complete fake-tool suite passed 35/35 through `tools/run_driver_test.py agent_astrometry` after the test synchronization fix, and the unchanged real-solver suite passed 33/33 through the same script in the preceding complete run. These are results from separate runs, not a claim that one final combined run completed successfully. The last combined repetition was stopped at the user's request during the sky-position cases, with no failure reported so far. The earlier complete combined run was 67/68 before the test synchronization fix.
+
+Simulated tests in the recorded aggregate: 68 run, 68 passed. Additional ASan/UBSan validation after all changes: 35 run, 35 passed. Hardware tests: 0 run, 0 passed. The shared-framework duplicate-abort startup race remains outside this parser repair, as described above.

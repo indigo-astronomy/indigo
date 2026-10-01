@@ -16,7 +16,7 @@
 |  | 2026-10-01 10:17 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD Imager Simulator | 118 / 118 | ✅ OK |
 |  | 2026-10-01 10:30 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Switch, Ultimate Powerbox 3 | 772 / 772 | ✅ OK |
 | agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
-|  | 2026-09-30 21:58 | 2.0.0.26 | mac arm64 | simulator | 68 / 68 | ✅ OK |
+|  | 2026-10-01 15:27 | 2.0.0.27 | mac arm64 | simulator | 68 / 68 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
 |  | 2026-09-27 19:42 | 3.0.0.28 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
