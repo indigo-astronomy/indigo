@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0300000A
+#define DRIVER_VERSION 0x0300000B
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -82,7 +82,14 @@ static int discovery_server_socket = INVALID_SOCKET;
 static SOCKET discovery_server_socket = INVALID_SOCKET;
 #endif
 
+// Device records are linked and unlinked by the bus client callbacks and used by the HTTP worker threads, which keep
+// a record for a whole request (minutes in the indigo_alpaca_wait_for_* calls). The list, the user count and the
+// transaction counter are guarded by alpaca_devices_mutex. A record unlinked while a request or a callback is in
+// progress is kept on alpaca_released_devices and freed when the last of them ends.
+static pthread_mutex_t alpaca_devices_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_alpaca_device *alpaca_devices = NULL;
+static indigo_alpaca_device *alpaca_released_devices = NULL;
+static int alpaca_devices_users = 0;
 static uint32_t server_transaction_id = 1;
 
 indigo_device *indigo_agent_alpaca_device = NULL;
@@ -104,6 +111,86 @@ static void save_config(indigo_device *device) {
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
 		pthread_mutex_unlock(&private_data->mutex);
 	}
+}
+
+// -------------------------------------------------------------------------------- ALPACA device records
+
+static void alpaca_devices_enter(void) {
+	pthread_mutex_lock(&alpaca_devices_mutex);
+	alpaca_devices_users++;
+	pthread_mutex_unlock(&alpaca_devices_mutex);
+}
+
+static void alpaca_devices_leave(void) {
+	indigo_alpaca_device *released = NULL;
+	pthread_mutex_lock(&alpaca_devices_mutex);
+	if (--alpaca_devices_users == 0) {
+		released = alpaca_released_devices;
+		alpaca_released_devices = NULL;
+	}
+	pthread_mutex_unlock(&alpaca_devices_mutex);
+	while (released) {
+		indigo_alpaca_device *alpaca_device = released;
+		released = released->next;
+		pthread_mutex_destroy(&alpaca_device->mutex);
+		indigo_safe_free(alpaca_device);
+	}
+}
+
+static uint32_t next_server_transaction_id(void) {
+	pthread_mutex_lock(&alpaca_devices_mutex);
+	uint32_t result = server_transaction_id++;
+	pthread_mutex_unlock(&alpaca_devices_mutex);
+	return result;
+}
+
+// The caller has to be between alpaca_devices_enter() and alpaca_devices_leave() to use the returned record.
+static indigo_alpaca_device *find_alpaca_device(int device_number) {
+	pthread_mutex_lock(&alpaca_devices_mutex);
+	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	while (alpaca_device) {
+		if (alpaca_device->device_type && alpaca_device->device_number == device_number) {
+			break;
+		}
+		alpaca_device = alpaca_device->next;
+	}
+	pthread_mutex_unlock(&alpaca_devices_mutex);
+	return alpaca_device;
+}
+
+static indigo_alpaca_device *get_alpaca_device(const char *name, bool create) {
+	pthread_mutex_lock(&alpaca_devices_mutex);
+	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	while (alpaca_device) {
+		if (!strcmp(name, alpaca_device->indigo_device)) {
+			break;
+		}
+		alpaca_device = alpaca_device->next;
+	}
+	if (alpaca_device == NULL && create) {
+		unsigned char digest[15] = { 0 };
+		for (int i = 0, j = 0; name[i]; i++, j = (j + 1) % 15) {
+			digest[j] = digest[j] ^ name[i];
+		}
+		alpaca_device = indigo_safe_malloc(sizeof(indigo_alpaca_device));
+		strcpy(alpaca_device->indigo_device, name);
+		alpaca_device->device_number = -1;
+		strcpy(alpaca_device->device_uid, "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx");
+		static char *hex = "0123456789ABCDEF";
+		int i = 0;
+		for (char *c = alpaca_device->device_uid; *c; c++) {
+			if (*c == 'x') {
+				int r = i % 2 == 0 ? digest[i / 2] % 15 : digest[i / 2] / 15;
+				*c = hex[r];
+				i++;
+			}
+		}
+		pthread_mutex_init(&alpaca_device->mutex, NULL);
+		alpaca_device->next = alpaca_devices;
+		alpaca_devices = alpaca_device;
+	}
+	pthread_mutex_unlock(&alpaca_devices_mutex);
+	return alpaca_device;
 }
 
 // -------------------------------------------------------------------------------- ALPACA bridge implementation
@@ -704,7 +791,7 @@ static bool alpaca_apiversions_handler(indigo_uni_handle *handle, char *method, 
 	alpaca_request request;
 	char buffer[128];
 	parse_params(params, &request, false);
-	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request.client_transaction_id, server_transaction_id++);
+	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request.client_transaction_id, next_server_transaction_id());
 	send_json_response(handle, path, 200, "OK", buffer);
 	return true;
 }
@@ -713,7 +800,7 @@ static bool alpaca_v1_description_handler(indigo_uni_handle *handle, char *metho
 	alpaca_request request;
 	char buffer[512];
 	parse_params(params, &request, false);
-	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerVersion\": \"%d.%d-%s\", \"Location\": \"\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, request.client_transaction_id, server_transaction_id++);
+	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerVersion\": \"%d.%d-%s\", \"Location\": \"\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, request.client_transaction_id, next_server_transaction_id());
 	send_json_response(handle, path, 200, "OK", buffer);
 	return true;
 }
@@ -723,8 +810,9 @@ static bool alpaca_v1_configureddevices_handler(indigo_uni_handle *handle, char 
 	char *buffer = indigo_alloc_large_buffer();
 	parse_params(params, &request, false);
 	long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ \"Value\": [ ");
-	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	bool comma_needed = false;
+	pthread_mutex_lock(&alpaca_devices_mutex);
+	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	while (alpaca_device) {
 		if (alpaca_device->device_type) {
 			if (comma_needed) {
@@ -737,7 +825,8 @@ static bool alpaca_v1_configureddevices_handler(indigo_uni_handle *handle, char 
 		}
 		alpaca_device = alpaca_device->next;
 	}
-	snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request.client_transaction_id, server_transaction_id++);
+	pthread_mutex_unlock(&alpaca_devices_mutex);
+	snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request.client_transaction_id, next_server_transaction_id());
 	send_json_response(handle, path, 200, "OK", buffer);
 	indigo_free_large_buffer(buffer);
 	return true;
@@ -771,14 +860,7 @@ static bool alpaca_v1_api_request(indigo_uni_handle *handle, char *method, char 
 		send_text_response(handle, path, 400, "Bad Request", "Invalid device number");
 		return true;
 	}
-	indigo_alpaca_device *alpaca_device = alpaca_devices;
-	int number = atoi(device_number);
-	while (alpaca_device) {
-		if (alpaca_device->device_type && alpaca_device->device_number == number) {
-			break;
-		}
-		alpaca_device = alpaca_device->next;
-	}
+	indigo_alpaca_device *alpaca_device = find_alpaca_device(atoi(device_number));
 	if (alpaca_device == NULL) {
 		send_text_response(handle, path, 400, "Bad Request", "No such device");
 		return true;
@@ -806,7 +888,7 @@ static bool alpaca_v1_api_request(indigo_uni_handle *handle, char *method, char 
 		} else if (!validate_params(request, member->get_params, false, message, sizeof(message))) {
 			send_text_response(handle, path, 400, "Bad Request", message);
 		} else if (!strcmp(command, "imagearray") || !strcmp(command, "imagearrayvariant")) {
-			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, handle, request->client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
+			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, handle, request->client_transaction_id, next_server_transaction_id(), !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
 			keep_alive = false;
 		} else {
 			const char *id = find_param(request, "Id", false);
@@ -822,7 +904,7 @@ static bool alpaca_v1_api_request(indigo_uni_handle *handle, char *method, char 
 				length = indigo_alpaca_append_error(buffer + index, INDIGO_BUFFER_SIZE - index, indigo_alpaca_error_NotImplemented);
 			}
 			index += length;
-			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request->client_transaction_id, server_transaction_id++);
+			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request->client_transaction_id, next_server_transaction_id());
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 			send_json_response(handle, path, 200, "OK", buffer);
 			indigo_free_large_buffer(buffer);
@@ -850,7 +932,7 @@ static bool alpaca_v1_api_request(indigo_uni_handle *handle, char *method, char 
 				length = indigo_alpaca_append_error(buffer + index, INDIGO_BUFFER_SIZE - index, indigo_alpaca_error_NotImplemented);
 			}
 			index += length;
-			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request->client_transaction_id, server_transaction_id++);
+			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", request->client_transaction_id, next_server_transaction_id());
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 			send_json_response(handle, path, 200, "OK", buffer);
 			indigo_free_large_buffer(buffer);
@@ -885,7 +967,10 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 		body[content_length] = 0;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", body);
 	}
+	// the device record found by the request stays valid until alpaca_devices_leave()
+	alpaca_devices_enter();
 	bool keep_alive = alpaca_v1_api_request(handle, method, path, params, body);
+	alpaca_devices_leave();
 	if (body) {
 		indigo_free_large_buffer(body);
 	}
@@ -1033,6 +1118,7 @@ static bool is_mount_guider(indigo_alpaca_device *mount, indigo_alpaca_device *g
 }
 
 static void pair_guider(indigo_alpaca_device *alpaca_device) {
+	pthread_mutex_lock(&alpaca_devices_mutex);
 	for (indigo_alpaca_device *other = alpaca_devices; other; other = other->next) {
 		if (other == alpaca_device) {
 			continue;
@@ -1043,40 +1129,15 @@ static void pair_guider(indigo_alpaca_device *alpaca_device) {
 			other->guider_device = alpaca_device;
 		}
 	}
+	pthread_mutex_unlock(&alpaca_devices_mutex);
 }
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == indigo_agent_alpaca_device) {
 		return INDIGO_OK;
 	}
-	indigo_alpaca_device *alpaca_device = alpaca_devices;
-	while (alpaca_device) {
-		if (!strcmp(property->device, alpaca_device->indigo_device))
-			break;
-		alpaca_device = alpaca_device->next;
-	}
-	if (alpaca_device == NULL) {
-		unsigned char digest[15] = { 0 };
-		for (int i = 0, j = 0; property->device[i]; i++, j = (j + 1) % 15) {
-			digest[j] = digest[j] ^ property->device[i];
-		}
-		alpaca_device = indigo_safe_malloc(sizeof(indigo_alpaca_device));
-		strcpy(alpaca_device->indigo_device, property->device);
-		alpaca_device->device_number = -1;
-		strcpy(alpaca_device->device_uid, "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx");
-		static char *hex = "0123456789ABCDEF";
-		int i = 0;
-		for (char *c = alpaca_device->device_uid; *c; c++) {
-			if (*c == 'x') {
-				int r = i % 2 == 0 ? digest[i / 2] % 15 : digest[i / 2] / 15;
-				*c = hex[r];
-				i++;
-			}
-		}
-		pthread_mutex_init(&alpaca_device->mutex, NULL);
-		alpaca_device->next = alpaca_devices;
-		alpaca_devices = alpaca_device;
-	}
+	alpaca_devices_enter();
+	indigo_alpaca_device *alpaca_device = get_alpaca_device(property->device, true);
 	if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
@@ -1179,43 +1240,49 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	} else {
 		indigo_alpaca_update_property(alpaca_device, property);
 	}
+	alpaca_devices_leave();
 	return INDIGO_OK;
 }
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	indigo_alpaca_device *alpaca_device = alpaca_devices;
-	while (alpaca_device) {
-		if (!strcmp(property->device, alpaca_device->indigo_device)) {
-			indigo_alpaca_update_property(alpaca_device, property);
-			break;
-		}
-		alpaca_device = alpaca_device->next;
+	alpaca_devices_enter();
+	indigo_alpaca_device *alpaca_device = get_alpaca_device(property->device, false);
+	if (alpaca_device) {
+		indigo_alpaca_update_property(alpaca_device, property);
 	}
+	alpaca_devices_leave();
 	return INDIGO_OK;
 }
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (*property->name != 0 && strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+		return INDIGO_OK;
+	}
+	alpaca_devices_enter();
+	pthread_mutex_lock(&alpaca_devices_mutex);
 	indigo_alpaca_device *alpaca_device = alpaca_devices, *previous = NULL;
 	while (alpaca_device) {
 		if (!strcmp(property->device, alpaca_device->indigo_device)) {
-			if (*property->name == 0 || !strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-				if (previous == NULL) {
-					alpaca_devices = alpaca_device->next;
-				} else {
-					previous->next = alpaca_device->next;
-				}
-				for (indigo_alpaca_device *other = alpaca_devices; other; other = other->next) {
-					if (other->guider_device == alpaca_device) {
-						other->guider_device = NULL;
-					}
-				}
-				indigo_safe_free(alpaca_device);
+			if (previous == NULL) {
+				alpaca_devices = alpaca_device->next;
+			} else {
+				previous->next = alpaca_device->next;
 			}
+			for (indigo_alpaca_device *other = alpaca_devices; other; other = other->next) {
+				if (other->guider_device == alpaca_device) {
+					other->guider_device = NULL;
+				}
+			}
+			// a request may still use the record, it is freed when the last user leaves
+			alpaca_device->next = alpaca_released_devices;
+			alpaca_released_devices = alpaca_device;
 			break;
 		}
 		previous = alpaca_device;
 		alpaca_device = alpaca_device->next;
 	}
+	pthread_mutex_unlock(&alpaca_devices_mutex);
+	alpaca_devices_leave();
 	return INDIGO_OK;
 }
 
@@ -1282,13 +1349,16 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 				free(private_data);
 				private_data = NULL;
 			}
-			indigo_alpaca_device *alpaca_device = alpaca_devices;
-			while (alpaca_device) {
-				indigo_alpaca_device *tmp = alpaca_device;
-				alpaca_device = alpaca_device->next;
-				indigo_safe_free(tmp);
+			alpaca_devices_enter();
+			pthread_mutex_lock(&alpaca_devices_mutex);
+			while (alpaca_devices) {
+				indigo_alpaca_device *alpaca_device = alpaca_devices;
+				alpaca_devices = alpaca_device->next;
+				alpaca_device->next = alpaca_released_devices;
+				alpaca_released_devices = alpaca_device;
 			}
-			alpaca_devices = NULL;
+			pthread_mutex_unlock(&alpaca_devices_mutex);
+			alpaca_devices_leave();
 			break;
 
 		case INDIGO_DRIVER_INFO:

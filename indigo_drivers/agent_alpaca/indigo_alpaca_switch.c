@@ -297,7 +297,11 @@ static indigo_alpaca_error alpaca_get_switchname(indigo_alpaca_device *device, i
 	while (section < 4 && id >= counts[section]) {
 		id -= counts[section++];
 	}
+	// a switch that has no entry in AUX_OUTLET_NAMES or AUX_SENSOR_NAMES is named by the label of its item
 	*value = device->sw.switchname[section * ALPACA_MAX_SWITCHES + id];
+	if (**value == 0) {
+		*value = device->sw.switchlabel[section * ALPACA_MAX_SWITCHES + id];
+	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -478,6 +482,7 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < count; i++) {
 				indigo_item *item = property->items + i;
+				INDIGO_COPY_VALUE(alpaca_device->sw.switchlabel[offset + i], item->label);
 				alpaca_device->sw.canwrite[offset + i] = property->perm == INDIGO_RW_PERM;
 				alpaca_device->sw.minswitchvalue[offset + i] = 0;
 				alpaca_device->sw.maxswitchvalue[offset + i] = 1;
@@ -496,6 +501,7 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < count; i++) {
 				indigo_item *item = property->items + i;
+				INDIGO_COPY_VALUE(alpaca_device->sw.switchlabel[offset + i], item->label);
 				alpaca_device->sw.canwrite[offset + i] = property->perm == INDIGO_RW_PERM;
 				alpaca_device->sw.minswitchvalue[offset + i] = item->number.min;
 				alpaca_device->sw.maxswitchvalue[offset + i] = item->number.max;
@@ -514,6 +520,7 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < count; i++) {
 				indigo_item *item = property->items + i;
+				INDIGO_COPY_VALUE(alpaca_device->sw.switchlabel[offset + i], item->label);
 				alpaca_device->sw.canwrite[offset + i] = property->perm == INDIGO_RW_PERM;
 				alpaca_device->sw.minswitchvalue[offset + i] = 0;
 				alpaca_device->sw.maxswitchvalue[offset + i] = 1;
@@ -532,6 +539,7 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < count; i++) {
 				indigo_item *item = property->items + i;
+				INDIGO_COPY_VALUE(alpaca_device->sw.switchlabel[offset + i], item->label);
 				alpaca_device->sw.canwrite[offset + i] = property->perm == INDIGO_RW_PERM;
 				alpaca_device->sw.minswitchvalue[offset + i] = 0;
 				alpaca_device->sw.maxswitchvalue[offset + i] = 1;
@@ -550,6 +558,7 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < count; i++) {
 				indigo_item *item = property->items + i;
+				INDIGO_COPY_VALUE(alpaca_device->sw.switchlabel[offset + i], item->label);
 				alpaca_device->sw.canwrite[offset + i] = false;
 				alpaca_device->sw.minswitchvalue[offset + i] = item->number.min;
 				alpaca_device->sw.maxswitchvalue[offset + i] = item->number.max;

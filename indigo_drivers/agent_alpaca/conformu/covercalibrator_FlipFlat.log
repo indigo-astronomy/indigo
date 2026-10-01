@@ -1,0 +1,94 @@
+10:06:40.440 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 01 October 2026 08:14:51          
+10:06:40.440                                              
+10:06:40.441 Operating system is macOS 27.0.0, Processor is ARM 64bit, Application is 64bit.          
+10:06:40.441                                              
+10:06:40.441 Alpaca device:  (localhost:7810 CoverCalibrator/10)          
+10:06:40.441                                              
+10:06:40.442 CreateDevice                        INFO     Creating Alpaca device: IP address: localhost, IP Port: 7810, Alpaca device number: 10
+10:06:40.449 CreateDevice                        INFO     Alpaca device created OK
+10:06:40.449 CreateDevice                        INFO     Successfully created driver
+10:06:41.537 CreateDevice                        OK       Found a valid interface version: 1
+10:06:41.537 CreateDevice                        OK       Driver instance created successfully
+10:06:41.537                                              
+10:06:41.537 Pre-connect checks                           
+10:06:41.537                                              
+10:06:41.537 Connect to device                            
+10:06:43.720 Connected                           OK       Connected to device successfully using Connected = True
+10:06:43.720                                              
+10:06:43.727 Common Driver Methods                        
+10:06:43.728 InterfaceVersion                    OK       1
+10:06:43.729 Connected                           OK       True
+10:06:43.732 Description                         OK       FlipFlat
+10:06:43.732 DriverInfo                          OK       indigo_aux_flipflat
+10:06:43.733 DriverVersion                       OK       3.0.0.10
+10:06:43.734 Name                                OK       FlipFlat
+10:06:43.734                                              
+10:06:43.735 SupportedActions                    OK       Driver returned an empty action list
+10:06:43.735 Action                              INFO     Conform cannot test the Action method
+10:06:43.735                                              
+10:06:43.735 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+10:06:43.736                                              
+10:06:43.736 Properties                                   
+10:06:43.752 CalibratorState                     OK       Off
+10:06:43.764 CoverState                          OK       Closed
+10:06:43.775 MaxBrightness                       OK       100
+10:06:43.776 Brightness                          OK       50
+10:06:43.776                                              
+10:06:43.776 Methods                                      
+10:06:45.789 OpenCover                           OK       OpenCover was successful. The asynchronous open took 2,0 seconds
+10:06:47.801 CloseCover                          OK       CloseCover was successful. The asynchronous close took 2,0 seconds
+10:06:47.820 HaltCover                           OK       Optional member returned a NotImplementedException error.
+10:06:47.827 CalibratorOn                        OK       CalibratorOn with brightness -1 threw an InvalidValueException as expected
+10:06:48.332 CalibratorOn                        OK       Synchronous operation: CalibratorState was 'Ready' when the method completed: the call took 0,5 seconds
+10:06:48.333 CalibratorOn                        OK       The Brightness property does return the value that was set
+10:06:48.841 CalibratorOn                        OK       Synchronous operation: CalibratorState was 'Ready' when the method completed: the call took 0,5 seconds
+10:06:48.842 CalibratorOn                        OK       The Brightness property does return the value that was set
+10:06:49.348 CalibratorOn                        OK       Synchronous operation: CalibratorState was 'Ready' when the method completed: the call took 0,5 seconds
+10:06:49.349 CalibratorOn                        OK       The Brightness property does return the value that was set
+10:06:49.853 CalibratorOn                        OK       Synchronous operation: CalibratorState was 'Ready' when the method completed: the call took 0,5 seconds
+10:06:49.854 CalibratorOn                        OK       The Brightness property does return the value that was set
+10:06:50.361 CalibratorOn                        OK       Synchronous operation: CalibratorState was 'Ready' when the method completed: the call took 0,5 seconds
+10:06:50.362 CalibratorOn                        OK       The Brightness property does return the value that was set
+10:06:50.363 CalibratorOn                        OK       CalibratorOn with brightness 101 threw an InvalidValueException as expected
+10:06:50.872 CalibratorOff                       OK       Synchronous operation: CalibratorState was 'Ready' when the method completed: the call took 0,5 seconds
+10:06:50.872                                              
+10:06:50.872 Post-run Checks                              
+10:06:50.874 PostRunCheck                        INFO     Closing the cover...
+10:06:53.382 PostRunCheck                        INFO     Cover closed.
+10:06:53.383 PostRunCheck                        INFO     Turning off the calibrator...
+10:06:53.890 PostRunCheck                        INFO     Calibrator off.
+10:06:53.890                                              
+10:06:53.890 Disconnect from device                       
+10:06:53.948 Connected                           OK       False
+10:06:53.948                                              
+10:06:53.949 Conformance test has finished                
+10:06:53.949                                              
+10:06:53.949 Congratulations, no errors, warnings or issues found: your driver passes ASCOM validation!!          
+10:06:53.949                                     
+10:06:53.949 Timing Summary                               See Help for further information.
+10:06:53.950 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+10:06:53.950 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+10:06:53.950 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+10:06:53.950 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+10:06:53.950                                              
+10:06:53.950 InterfaceVersion                             At 10:06:43.728 InterfaceVersion     0,000 seconds. ✓ (FAST)
+10:06:53.950 Connected                                    At 10:06:43.729 Connected            0,001 seconds. ✓ (FAST)
+10:06:53.950 Description                                  At 10:06:43.732 Description          0,002 seconds. ✓ (FAST)
+10:06:53.950 DriverInfo                                   At 10:06:43.732 DriverInfo           0,001 seconds. ✓ (FAST)
+10:06:53.950 DriverVersion                                At 10:06:43.733 DriverVersion        0,001 seconds. ✓ (FAST)
+10:06:53.950 Name                                         At 10:06:43.734 Name                 0,000 seconds. ✓ (FAST)
+10:06:53.950 SupportedActions                             At 10:06:43.735 SupportedActions     0,002 seconds. ✓ (FAST)
+10:06:53.950 CalibratorState                              At 10:06:43.752 CalibratorState      0,015 seconds. ✓ (FAST)
+10:06:53.950 CoverState                                   At 10:06:43.764 CoverState           0,012 seconds. ✓ (FAST)
+10:06:53.950 MaxBrightness                                At 10:06:43.775 MaxBrightness        0,011 seconds. ✓ (FAST)
+10:06:53.950 Brightness                                   At 10:06:43.776 Brightness           0,000 seconds. ✓ (FAST)
+10:06:53.950 OpenCover                                    At 10:06:43.778 OpenCover            0,000 seconds. ✓ (EXTENDED)
+10:06:53.951 CloseCover                                   At 10:06:45.793 CloseCover           0,002 seconds. ✓ (EXTENDED)
+10:06:53.952 CalibratorOn                                 At 10:06:48.332 CalibratorOn         0,505 seconds. ✓ (EXTENDED)
+10:06:53.952 CalibratorOn                                 At 10:06:48.840 CalibratorOn         0,506 seconds. ✓ (EXTENDED)
+10:06:53.952 CalibratorOn                                 At 10:06:49.346 CalibratorOn         0,503 seconds. ✓ (EXTENDED)
+10:06:53.952 CalibratorOn                                 At 10:06:49.852 CalibratorOn         0,503 seconds. ✓ (EXTENDED)
+10:06:53.952 CalibratorOn                                 At 10:06:50.360 CalibratorOn         0,506 seconds. ✓ (EXTENDED)
+10:06:53.952 CalibratorOff                                At 10:06:50.871 CalibratorOff        0,506 seconds. ✓ (EXTENDED)
+10:06:53.952                                              
+10:06:53.952 Congratulations, all members returned within their target response times!!          

@@ -1,0 +1,97 @@
+10:06:16.454 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 01 October 2026 08:14:51          
+10:06:16.454                                              
+10:06:16.455 Operating system is macOS 27.0.0, Processor is ARM 64bit, Application is 64bit.          
+10:06:16.456                                              
+10:06:16.456 Alpaca device:  (localhost:7809 Rotator/9)          
+10:06:16.456                                              
+10:06:16.457 CreateDevice                        INFO     Creating Alpaca device: IP address: localhost, IP Port: 7809, Alpaca device number: 9
+10:06:16.466 CreateDevice                        INFO     Alpaca device created OK
+10:06:16.466 CreateDevice                        INFO     Successfully created driver
+10:06:17.523 CreateDevice                        OK       Found a valid interface version: 1
+10:06:17.523 CreateDevice                        OK       Driver instance created successfully
+10:06:17.523                                              
+10:06:17.523 Connect to device                            
+10:06:17.611 Connected                           OK       Connected to device successfully using Connected = True
+10:06:17.612                                              
+10:06:17.619 Common Driver Methods                        
+10:06:17.622 InterfaceVersion                    OK       1
+10:06:17.623 Connected                           OK       True
+10:06:17.624 Description                         INFO     Description test omitted - Description is not a member of this interface version.
+10:06:17.624 DriverInfo                          INFO     DriverInfo test omitted - DriverInfo is not a member of this interface version.
+10:06:17.624 DriverVersion                       INFO     DriverVersion test omitted - DriverVersion is not a member of this interface version.
+10:06:17.624 Name                                INFO     Skipping test because Name is not a member of this interface version.
+10:06:17.625                                              
+10:06:17.625 SupportedActions                    INFO     Skipping test because SupportedActions is not a member of this interface version.
+10:06:17.625 Action                              INFO     Conform cannot test the Action method
+10:06:17.625                                              
+10:06:17.625 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+10:06:17.625                                              
+10:06:17.625 Can Properties                               
+10:06:17.627 CanReverse                          OK       True
+10:06:17.627                                              
+10:06:17.627 Pre-run Checks                               
+10:06:17.629 Pre-run Check                       OK       Rotator is stationary
+10:06:17.644 Pre-run Check                       OK       Rotator initial position: 0
+10:06:17.645 Pre-run Check                       OK       Rotator initial mechanical position: 0, Initial sync offset: 0
+10:06:17.645                                              
+10:06:17.645 Properties                                   
+10:06:17.646 IsMoving                            OK       False
+10:06:17.649 Position                            OK       0
+10:06:17.650 TargetPosition                      OK       0
+10:06:17.659 StepSize                            OK       Optional member returned a NotImplementedException error.
+10:06:17.668 Reverse Read                        OK       False
+10:06:17.677 Reverse Write                       OK       Reverse state successfully changed and restored
+10:06:17.677                                              
+10:06:17.677 Methods                                      
+10:06:17.678 Halt                                OK       Halt command successful
+10:06:22.689 MoveAbsolute 45                     OK       Rotator is at the expected position: 45
+10:06:32.199 MoveAbsolute 135                    OK       Rotator is at the expected position: 135
+10:06:41.705 MoveAbsolute 225                    OK       Rotator is at the expected position: 225
+10:06:51.212 MoveAbsolute 315                    OK       Rotator is at the expected position: 315
+10:06:51.215 MoveAbsolute -405                   OK       Movement to large negative angle -405 degrees
+10:06:51.216 MoveAbsolute 405                    OK       Movement to large positive angle 405 degrees
+10:06:52.727 Move -10                            OK       Rotator is at the expected position: 305
+10:06:54.237 Move 10                             OK       Rotator is at the expected position: 315
+10:06:58.748 Move -40                            OK       Rotator is at the expected position: 275
+10:07:03.259 Move 40                             OK       Rotator is at the expected position: 315
+10:07:17.270 Move -130                           OK       Rotator is at the expected position: 185
+10:07:31.281 Move 130                            OK       Rotator is at the expected position: 315
+10:07:33.291 Move -375                           OK       Rotator is at the expected position: 300
+10:07:33.293 Move 375                            OK       Movement to large positive angle 375 degrees
+10:07:33.293                                              
+10:07:33.293 Post-run Checks                              
+10:07:33.295 Post-run Check                      OK       Current position: 300
+10:07:39.801 Post-run Check                      OK       Rotator starting position successfully restored to 0
+10:07:39.801                                              
+10:07:39.801 Disconnect from device                       
+10:07:39.862 Connected                           OK       False
+10:07:39.862                                              
+10:07:39.862 Conformance test has finished                
+10:07:39.862                                              
+10:07:39.863 Congratulations, no errors, warnings or issues found: your driver passes ASCOM validation!!          
+10:07:39.864                                     
+10:07:39.864 Timing Summary                               See Help for further information.
+10:07:39.864 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+10:07:39.864 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+10:07:39.864 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+10:07:39.864 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+10:07:39.864                                              
+10:07:39.864 InterfaceVersion                             At 10:06:17.621 InterfaceVersion         0,000 seconds. ✓ (FAST)
+10:07:39.864 Connected                                    At 10:06:17.623 Connected                0,001 seconds. ✓ (FAST)
+10:07:39.864 CanReverse                                   At 10:06:17.627 CanReverse               0,001 seconds. ✓ (FAST)
+10:07:39.864 Position                                     At 10:06:17.649 Position                 0,001 seconds. ✓ (FAST)
+10:07:39.864 TargetPosition                               At 10:06:17.649 TargetPosition           0,001 seconds. ✓ (FAST)
+10:07:39.865 Reverse                                      At 10:06:17.668 Reverse                  0,007 seconds. ✓ (FAST)
+10:07:39.865 MoveAbsolute 45                              At 10:06:17.683 MoveAbsolute 45          0,001 seconds. ✓ (STANDARD)
+10:07:39.865 MoveAbsolute 135                             At 10:06:22.691 MoveAbsolute 135         0,001 seconds. ✓ (STANDARD)
+10:07:39.865 MoveAbsolute 225                             At 10:06:32.201 MoveAbsolute 225         0,001 seconds. ✓ (STANDARD)
+10:07:39.865 MoveAbsolute 315                             At 10:06:41.706 MoveAbsolute 315         0,000 seconds. ✓ (STANDARD)
+10:07:39.865 Move -10                                     At 10:06:51.218 Move -10                 0,001 seconds. ✓ (STANDARD)
+10:07:39.865 Move 10                                      At 10:06:52.729 Move 10                  0,001 seconds. ✓ (STANDARD)
+10:07:39.865 Move -40                                     At 10:06:54.239 Move -40                 0,001 seconds. ✓ (STANDARD)
+10:07:39.865 Move 40                                      At 10:06:58.751 Move 40                  0,001 seconds. ✓ (STANDARD)
+10:07:39.865 Move -130                                    At 10:07:03.261 Move -130                0,001 seconds. ✓ (STANDARD)
+10:07:39.865 Move 130                                     At 10:07:17.272 Move 130                 0,001 seconds. ✓ (STANDARD)
+10:07:39.865 Move -375                                    At 10:07:31.283 Move -375                0,001 seconds. ✓ (STANDARD)
+10:07:39.865                                              
+10:07:39.866 Congratulations, all members returned within their target response times!!          
