@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 42;
+	version = 43;
 	multi_device_support = true;
 	include {
 		#include <math.h>
@@ -1319,6 +1319,12 @@ driver simulator {
 			}
 
 			static void start_focuser_move(indigo_device *device, int target) {
+				// a relative move ends at the end of the travel
+				if (target < FOCUSER_POSITION_ITEM->number.min) {
+					target = (int)FOCUSER_POSITION_ITEM->number.min;
+				} else if (target > FOCUSER_POSITION_ITEM->number.max) {
+					target = (int)FOCUSER_POSITION_ITEM->number.max;
+				}
 				PRIVATE_DATA->target_position = target;
 				bool inward = target < PRIVATE_DATA->current_position;
 				// the backlash is taken up when the motor reverses; FOCUSER_DIRECTION is the client's selector for FOCUSER_STEPS and stays untouched here
@@ -1338,7 +1344,11 @@ driver simulator {
 			}
 		}
 		on_attach {
-			FOCUSER_SPEED_ITEM->number.value = 1;
+			// a range and a speed of a real focuser: 40000 steps of travel, 1000 steps per second at full speed
+			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.max;
+			FOCUSER_POSITION_ITEM->number.min = -20000;
+			FOCUSER_POSITION_ITEM->number.max = 20000;
+			FOCUSER_STEPS_ITEM->number.max = 40000;
 			FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 			FOCUSER_TEMPERATURE_PROPERTY->hidden = false;

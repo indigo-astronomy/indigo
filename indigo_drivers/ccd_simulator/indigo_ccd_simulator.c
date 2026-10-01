@@ -53,7 +53,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002A
+#define DRIVER_VERSION       0x0300002B
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -1144,6 +1144,12 @@ static void focuser_move_finalizer(indigo_device *device) {
 }
 
 static void start_focuser_move(indigo_device *device, int target) {
+	// a relative move ends at the end of the travel
+	if (target < FOCUSER_POSITION_ITEM->number.min) {
+		target = (int)FOCUSER_POSITION_ITEM->number.min;
+	} else if (target > FOCUSER_POSITION_ITEM->number.max) {
+		target = (int)FOCUSER_POSITION_ITEM->number.max;
+	}
 	PRIVATE_DATA->target_position = target;
 	bool inward = target < PRIVATE_DATA->current_position;
 	// the backlash is taken up when the motor reverses; FOCUSER_DIRECTION is the client's selector for FOCUSER_STEPS and stays untouched here
@@ -2245,7 +2251,11 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ focuser.on_attach
-		FOCUSER_SPEED_ITEM->number.value = 1;
+		// a range and a speed of a real focuser: 40000 steps of travel, 1000 steps per second at full speed
+		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.max;
+		FOCUSER_POSITION_ITEM->number.min = -20000;
+		FOCUSER_POSITION_ITEM->number.max = 20000;
+		FOCUSER_STEPS_ITEM->number.max = 40000;
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;

@@ -150,7 +150,7 @@
 | ccd_qsi | 2026-09-27 08:05 | 3.0.0.23 | linux x64 | fake SDK | 61 / 61 | ✅ OK |
 | ccd_rising | 2026-09-27 21:49 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_simulator | 2026-09-27 13:44 | 3.0.0.37 | linux x64 | simulator | 25 / 25 | ✅ OK |
-|  | 2026-09-28 14:29 | 3.0.0.40 | mac arm64 | simulator | 25 / 25 | ✅ OK |
+|  | 2026-10-01 09:31 | 3.0.0.43 | mac arm64 | simulator | 26 / 26 | ✅ OK |
 | ccd_ssag | 2026-09-22 10:13 | 3.0.0.14 | mac arm64 | QHY5 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:53 | 3.0.0.16 | mac arm64 | fake SDK | 13 / 13 | ✅ OK |
 | ccd_ssg | 2026-09-27 21:53 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |

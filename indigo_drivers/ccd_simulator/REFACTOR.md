@@ -299,3 +299,11 @@ Validation on macOS arm64 with the real astrometry.net solver: `test_agent_astro
 ## Polar error against the true pole (2026-09-28)
 
 Version 42. `search_stars()` applied `ALT_POLAR_ERROR`/`AZ_POLAR_ERROR` to the J2000 pointing, so the simulated polar axis was misaligned against the J2000 pole, 0.36° away from the true one. The Astrometry agent computes the polar error against the true pole (JNow), and its three point alignment measured the error set here 0.4-0.8' off depending on the field. With a J2000 mount the pointing is now precessed to JNow, turned by the polar error and precessed back; everything else stays J2000. The three point alignment in `test_agent_astrometry_solver` now measures it within 0.3'.
+
+## Focuser travel and speed of a real focuser (2026-10-01)
+
+Version 43. The focuser kept the range of the base class, -9 999 999 to 9 999 999 steps, and moved one step per 0.1 s tick at its default `FOCUSER_SPEED` of 1. ASCOM ConformU, run against `indigo_agent_alpaca`, moves an absolute focuser by a tenth of its range, to both ends and to the middle and allows 60 s for each move; the first move alone was about 2 000 000 steps at 10 steps per second, so 13 of its 42 focuser tests failed (see `../agent_alpaca/REFACTOR.md`, section 11.4). The user asked for a sensible range.
+
+`FOCUSER_POSITION` now runs from -20 000 to 20 000 steps, `FOCUSER_STEPS` up to 40 000, and `FOCUSER_SPEED` defaults to its maximum of 100, which is 1000 steps per second, so the whole travel takes 40 s. `start_focuser_move()` ends a relative move at the end of the travel. The zero position stays in the middle of the travel, so the focus model and the existing tests, which set the speed they need themselves, are unchanged.
+
+Validation on macOS arm64: recorded run `python3 tools/run_driver_test.py ccd_simulator` 26/26; `agent_imager` 55/55 (not recorded, its sources are unchanged); ConformU focuser test through `indigo_agent_alpaca` 35/35. Hardware 0 run / 0 passed.
