@@ -1,27 +1,20 @@
 | Driver | Timestamp | Version | Platform | Type | Tests | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| agent_alpaca | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Camera (INDIGO simulators) | 12 / 10 | ❌ Failed |
-|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 FilterWheel (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Focuser (INDIGO simulators) | 4 / 2 | ❌ Failed |
-|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Telescope (INDIGO simulators) | 2 / 1 | ❌ Failed |
-|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Dome (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Rotator (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 CoverCalibrator (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-24 17:44 | 3.0.0.6 | linux x64 | ConformU 4.5.0 Switch (INDIGO simulators) | 4 / 4 | ✅ OK |
-|  | 2026-09-25 00:37 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Camera (INDIGO simulators) | 10 / 10 | ✅ OK |
-|  | 2026-09-25 00:37 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Focuser (INDIGO simulators) | 4 / 2 | ❌ Failed |
-|  | 2026-09-25 00:37 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Dome (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-25 00:39 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Telescope (Pegasus NYX-101) | 2 / 1 | ❌ Failed |
-|  | 2026-09-25 00:41 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 FilterWheel (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-25 00:42 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Telescope (INDIGO simulators) | 2 / 1 | ❌ Failed |
-|  | 2026-09-25 00:44 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Rotator (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-25 00:46 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 CoverCalibrator (INDIGO simulators) | 2 / 2 | ✅ OK |
-|  | 2026-09-25 00:47 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Switch (INDIGO simulators) | 4 / 4 | ✅ OK |
-|  | 2026-09-25 00:47 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Telescope (LX200 NYX simulator) | 2 / 1 | ❌ Failed |
-|  | 2026-09-25 00:49 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Focuser (Pegasus UPB v1, NYX-101) | 4 / 1 | ❌ Failed |
-|  | 2026-09-25 00:50 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Switch (Pegasus UPB v1, NYX-101) | 4 / 2 | ❌ Failed |
-|  | 2026-09-25 00:59 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 Camera (ZWO ASI120MC-S, ASI294MC Pro) | 4 / 4 | ✅ OK |
-|  | 2026-09-25 01:01 | 3.0.0.10 | mac arm64 | ConformU 4.5.0 FilterWheel (ZWO EFW) | 2 / 2 | ✅ OK |
+| agent_alpaca | 2026-10-01 10:02 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD Guider Simulator | 115 / 115 | ✅ OK |
+|  | 2026-10-01 10:02 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Focuser, CCD Imager Simulator (focuser) | 35 / 35 | ✅ OK |
+|  | 2026-10-01 10:03 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD Bahtinov Mask Simulator | 107 / 107 | ✅ OK |
+|  | 2026-10-01 10:03 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, DSLR Simulator | 107 / 107 | ✅ OK |
+|  | 2026-10-01 10:04 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD File Simulator | 107 / 107 | ✅ OK |
+|  | 2026-10-01 10:05 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 FilterWheel, CCD Imager Simulator (wheel) | 49 / 49 | ✅ OK |
+|  | 2026-10-01 10:05 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Telescope, Mount LX200 | 234 / 234 | ✅ OK |
+|  | 2026-10-01 10:05 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Telescope, Mount Simulator | 234 / 234 | ✅ OK |
+|  | 2026-10-01 10:06 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 CoverCalibrator, FlipFlat | 40 / 40 | ✅ OK |
+|  | 2026-10-01 10:07 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Rotator, Field Rotator Simulator | 43 / 43 | ✅ OK |
+|  | 2026-10-01 10:10 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Dome, Dome Simulator | 69 / 69 | ✅ OK |
+|  | 2026-10-01 10:16 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Focuser, Ultimate Powerbox 3 (focuser) | 28 / 28 | ✅ OK |
+|  | 2026-10-01 10:16 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Switch, Pocket Powerbox | 241 / 241 | ✅ OK |
+|  | 2026-10-01 10:17 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD Imager Simulator | 118 / 118 | ✅ OK |
+|  | 2026-10-01 10:30 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Switch, Ultimate Powerbox 3 | 772 / 772 | ✅ OK |
 | agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
 |  | 2026-09-30 21:58 | 2.0.0.26 | mac arm64 | simulator | 68 / 68 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
@@ -75,7 +68,7 @@
 |  | 2026-09-27 20:59 | 3.0.0.35 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 |  | 2026-09-30 19:19 | 3.0.0.35 | linux arm64 | PeagasusAstro UPB | 15 / 15 | ✅ OK |
 | aux_upb3 | 2026-09-27 14:57 | 3.0.0.9 | linux x64 | simulator | 31 / 31 | ✅ OK |
-|  | 2026-09-27 21:01 | 3.0.0.10 | mac arm64 | simulator | 33 / 33 | ✅ OK |
+|  | 2026-10-01 10:31 | 3.0.0.10 | mac arm64 | simulator | 33 / 33 | ✅ OK |
 | aux_usbdp | 2026-09-27 14:54 | 3.0.0.14 | linux x64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-09-27 21:02 | 3.0.0.14 | mac arm64 | simulator | 20 / 20 | ✅ OK |
 | aux_wbplusv3 | 2026-09-27 06:37 | 3.0.0.8 | linux x64 | simulator | 20 / 20 | ✅ OK |
@@ -150,7 +143,7 @@
 | ccd_qsi | 2026-09-27 08:05 | 3.0.0.23 | linux x64 | fake SDK | 61 / 61 | ✅ OK |
 | ccd_rising | 2026-09-27 21:49 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_simulator | 2026-09-27 13:44 | 3.0.0.37 | linux x64 | simulator | 25 / 25 | ✅ OK |
-|  | 2026-09-28 14:29 | 3.0.0.40 | mac arm64 | simulator | 25 / 25 | ✅ OK |
+|  | 2026-10-01 09:31 | 3.0.0.43 | mac arm64 | simulator | 26 / 26 | ✅ OK |
 | ccd_ssag | 2026-09-22 10:13 | 3.0.0.14 | mac arm64 | QHY5 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:53 | 3.0.0.16 | mac arm64 | fake SDK | 13 / 13 | ✅ OK |
 | ccd_ssg | 2026-09-27 21:53 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
@@ -261,8 +254,8 @@
 |  | 2026-09-24 23:26 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 (WiFi) | 35 / 35 | ✅ OK |
 |  | 2026-09-26 21:03 | 3.0.0.68 | linux arm64 | simulator | 99 / 99 | ✅ OK |
 |  | 2026-09-27 02:25 | 3.0.0.69 | linux x64 | simulator | 103 / 103 | ✅ OK |
-|  | 2026-09-27 22:47 | 3.0.0.69 | mac arm64 | simulator | 103 / 103 | ✅ OK |
 |  | 2026-09-30 19:42 | 3.0.0.69 | linux arm64 | NYX-101 | 35 / 35 | ✅ OK |
+|  | 2026-10-01 09:33 | 3.0.0.69 | mac arm64 | simulator | 103 / 103 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |

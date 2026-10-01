@@ -25,6 +25,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <math.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -471,6 +472,42 @@ static bool store_site_value(char *field, size_t size, const char *value) {
 	return true;
 }
 
+// The side of the pier :Gm# reports, in the sense every mount driver publishes it and ASCOM defines it: E while the
+// mount points west of the meridian (hour angle 0 to 12 h, the normal pointing state), W while it points east of it.
+// The hour angle comes from the date, the local time, the UTC offset and the longitude the client has set, with the
+// clock running on from the moment it was set. A longitude is positive to the west, as in the LX200 protocol.
+static time_t clock_set_at = 0;
+
+static char pier_side(void) {
+	int year = state.date_year, month = state.date_month;
+	if (month <= 2) {
+		year--;
+		month += 12;
+	}
+	double days = floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + state.date_day + 2 - year / 100 + year / 400 - 1524.5 - 2451545.0;
+	double hours = state.time_hour + state.time_offset + state.time_minute / 60.0 + state.time_second / 3600.0;
+	if (clock_set_at != 0) {
+		hours += difftime(time(NULL), clock_set_at) / 3600.0;
+	}
+	char *degrees = state.longitude + (*state.longitude == '-' || *state.longitude == '+' ? 1 : 0);
+	char *minutes = degrees;
+	while (isdigit((unsigned char)*minutes)) {
+		minutes++;
+	}
+	double longitude = atof(degrees) + (*minutes ? atof(minutes + 1) / 60.0 : 0);
+	if (*state.longitude == '-') {
+		longitude = -longitude;
+	}
+	double hour_angle = fmod(18.697374558 + 24.06570982441908 * (days + hours / 24.0) - longitude / 15.0 - state.ra_cs / 360000.0, 24.0);
+	if (hour_angle < 0) {
+		hour_angle += 24;
+	}
+	if (hour_angle >= 12) {
+		hour_angle -= 24;
+	}
+	return hour_angle >= 0 ? 'E' : 'W';
+}
+
 static void start_reference_motion(bool parking) {
 	manual_ra = manual_dec = 0;
 	state.tracking = false;
@@ -557,7 +594,8 @@ static void handle_command(const char *command) {
 		state.tracking = false;
 		write_response("1");
 	} else if (!strcmp(command, "Gm")) {
-		write_response("W#");
+		snprintf(response, sizeof(response), "%c#", pier_side());
+		write_response(response);
 	} else if (!strcmp(command, "GX") && model_is_oat()) {
 		// The status word of an OpenAstroTracker, in the order its getStatusStateString() tests
 		// them. STATUS_PARKED is defined as zero in the firmware, so "Parked" is the name it
@@ -739,7 +777,8 @@ static void handle_command(const char *command) {
 		// documented character for an OnStep build that has it.
 		bool report_king = state.tracking_rate == 'K' && (options.model != MODEL_ONSTEP || options.status_king);
 		const char *rate = state.tracking_rate == 'L' ? "(" : state.tracking_rate == 'S' ? "O" : report_king ? "k" : "";
-		snprintf(response, sizeof(response), "G%s%s%s%sW%s%s#", state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", auto_flip ? "a" : "", rate);
+		// T is the east and W the west side of the pier in the OnStep status
+		snprintf(response, sizeof(response), "G%s%s%s%s%s%s%s#", state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", pier_side() == 'E' ? "T" : "W", auto_flip ? "a" : "", rate);
 		write_response(response);
 	} else if (!strncmp(command, "SC", 2)) {
 		if (options.model == MODEL_GEMINI && !state.offset_set) {
@@ -779,6 +818,7 @@ static void handle_command(const char *command) {
 		state.time_hour = atoi(command + 2);
 		state.time_minute = atoi(command + 5);
 		state.time_second = atoi(command + 8);
+		clock_set_at = time(NULL);
 		write_response("1");
 	} else if (!strcmp(command, "GL")) {
 		snprintf(response, sizeof(response), "%02d:%02d:%02d#", state.time_hour, state.time_minute, state.time_second);

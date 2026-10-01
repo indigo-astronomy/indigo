@@ -2351,3 +2351,15 @@ MIGRATION_STATUS.md hardware-free count 103 -> 107.
 ### Final test summary for this change
 
 Simulated tests: **103 run, 103 passed** (recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Simulator: side of the pier from the hour angle (2026-10-01)
+
+No driver change, version stays 3.0.0.69. ASCOM ConformU, run against `indigo_agent_alpaca` with this driver on `mount_lx200_simulator --model nyx`, reported `SideofPier` as "physical pier side rather than pointing state": pierWest on both sides of the meridian. The driver maps what the firmware reports and a NYX-101 passes the same test (`../agent_alpaca/REFACTOR.md`, section 10.2), so the defect was in the simulator: its `:GU#` status of OnStep and NYX carried a constant `W` and `:Gm#` answered a constant `W#`.
+
+`pier_side()` in the simulator now derives the side from the hour angle, computed from the date, local time, UTC offset and longitude the client has set, with the clock running on from the moment `:SL` set it: E (`T` in the `:GU#` status) at hour angles from 0 to 12 h, W otherwise. This is the meaning `MOUNT_SIDE_OF_PIER` has in every INDIGO mount driver and in ASCOM (`../agent_alpaca/REFACTOR.md`, section 7a). The ESP32Go `:GU#` reply keeps its constant `E`.
+
+Validation on macOS arm64: recorded run `python3 tools/run_driver_test.py mount_lx200` 103/103; `mount_asi`, which shares the simulator, 10/10 (not recorded); ConformU `SideofPier` through the agent: pierWest at hour angles -5.8, -3 and -0.2 h, pierEast at +0.2, +3 and +5.8 h.
+
+### Final test summary for this change
+
+Simulated tests: **103 run, 103 passed** (recorded run). Hardware tests: **0 run, 0 passed**.

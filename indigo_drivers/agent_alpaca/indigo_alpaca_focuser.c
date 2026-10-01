@@ -113,7 +113,7 @@ static indigo_alpaca_error alpaca_get_tempcomp(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_OK;
 	}
-	*value = device->focuser.tempcomp;
+	*value = device->focuser.tempcomp || device->focuser.tempcompsuspended;
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -128,6 +128,7 @@ static indigo_alpaca_error alpaca_set_tempcomp(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
+	device->focuser.tempcompsuspended = false;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_MODE_PROPERTY_NAME, value ? FOCUSER_MODE_AUTOMATIC_ITEM_NAME : FOCUSER_MODE_MANUAL_ITEM_NAME, true);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_wait_for_bool(&device->focuser.tempcomp, value, 30);
@@ -159,13 +160,33 @@ static indigo_alpaca_error alpaca_get_temperature(indigo_alpaca_device *device, 
 	return indigo_alpaca_error_OK;
 }
 
+// An INDIGO focuser in automatic mode has no motion properties, and IFocuserV3 requires Move to work while temperature
+// compensation is on. The compensation is suspended for the move and switched on again by the first request that finds
+// the move finished; TempComp reads true all the time.
+static void suspend_tempcomp(indigo_alpaca_device *device) {
+	if (device->focuser.tempcomp) {
+		device->focuser.tempcompsuspended = true;
+		indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true);
+	}
+}
+
+static void resume_tempcomp(indigo_alpaca_device *device) {
+	pthread_mutex_lock(&device->mutex);
+	if (device->focuser.tempcompsuspended && !device->focuser.ismoving) {
+		device->focuser.tempcompsuspended = false;
+		if (device->connected) {
+			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true);
+		}
+	}
+	pthread_mutex_unlock(&device->mutex);
+}
+
 static indigo_alpaca_error alpaca_move(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	// IFocuserV3: Move is accepted also while temperature compensation is active
 	if (device->focuser.absolute) {
 		if (value < 0) {
 			value = 0;
@@ -174,12 +195,14 @@ static indigo_alpaca_error alpaca_move(indigo_alpaca_device *device, int version
 			value = device->focuser.maxstep;
 		}
 		if (value != device->focuser.position) {
+			suspend_tempcomp(device);
 			device->focuser.ismoving = true;
 			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true);
 			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, value + device->focuser.offset);
 		}
 	} else {
 		if (value > 0) {
+			suspend_tempcomp(device);
 			device->focuser.ismoving = true;
 			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, value);
@@ -188,6 +211,7 @@ static indigo_alpaca_error alpaca_move(indigo_alpaca_device *device, int version
 				pthread_mutex_unlock(&device->mutex);
 				return indigo_alpaca_error_InvalidValue;
 			}
+			suspend_tempcomp(device);
 			device->focuser.ismoving = true;
 			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
 			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, -value);
@@ -261,6 +285,7 @@ void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, 
 }
 
 long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
+	resume_tempcomp(alpaca_device);
 	if (!strcmp(command, "supportedactions")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
@@ -318,6 +343,7 @@ long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int 
 }
 
 long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
+	resume_tempcomp(alpaca_device);
 	if (!strcmp(command, "tempcomp")) {
 		bool value = !strcasecmp(param_1, "TempComp=true");
 		indigo_alpaca_error result = alpaca_set_tempcomp(alpaca_device, version, value);

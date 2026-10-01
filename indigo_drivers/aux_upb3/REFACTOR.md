@@ -114,6 +114,12 @@ Recorded run: `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_upb3`,
   on) and `usb_request_survives_poll_read` (a USB port request copied while the poll waits for the
   late `UA` reply stays off; with the BUSY check removed it fails, the port is switched back on).
 
+## Simulator: focuser speed option (2026-10-01)
+
+No driver change, version stays 3.0.0.10. ASCOM ConformU, run against `indigo_agent_alpaca` with this driver on `aux_upb3_simulator`, moves an absolute focuser by a tenth of its range and allows 60 s for the move. The driver offers 0 to 9 999 999 steps and the simulator moved one step per millisecond, so the move of 999 999 steps could not finish and 1 of the 28 focuser tests failed (`../agent_alpaca/REFACTOR.md`, section 11.4).
+
+The simulator has a new option `--focuser-rate <steps>`, the number of focuser steps per millisecond tick. Its default of 1 keeps the motion every test of this driver relies on, including the abort in the middle of a 20 000 step move; the ConformU harness starts the simulator with 500. With it the ConformU focuser test passes 28/28.
+
 ## Final test summary
 
 - Simulated tests run: 33; passed: 33.

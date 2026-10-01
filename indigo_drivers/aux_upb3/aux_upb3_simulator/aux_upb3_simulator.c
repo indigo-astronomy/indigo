@@ -59,6 +59,7 @@ static void usage(const char *name) {
 	printf("  --model <upb3>          Select simulated model, default is upb3\n");
 	printf("  --device-id <id>        Override UPB v3 device id\n");
 	printf("  --firmware <version>    Override firmware version\n");
+	printf("  --focuser-rate <steps>  Focuser steps per millisecond, default is 1\n");
 	printf("  --outlets-on            Start with every power outlet and the relay on\n");
 	printf("  --usb-on                Start with every USB port on\n");
 	printf("  --autodew               Start with automatic dew control on\n");
@@ -120,14 +121,18 @@ static void signal_handler(int sig) {
 	}
 }
 
+// Focuser steps per millisecond tick. The driver offers 0 to 9999999 steps, and a client that tests the whole travel
+// (ASCOM ConformU allows 60 s for a move) needs a motor much faster than the default one.
+static int focuser_rate = 1;
+
 static void *background(void *arg) {
 	(void)arg;
 	while (running) {
 		pthread_mutex_lock(&state_mutex);
 		if (target < position) {
-			position--;
+			position = position - target > focuser_rate ? position - focuser_rate : target;
 		} else if (target > position) {
-			position++;
+			position = target - position > focuser_rate ? position + focuser_rate : target;
 		}
 		pthread_mutex_unlock(&state_mutex);
 		usleep(1000);
@@ -162,6 +167,11 @@ static bool parse_args(int argc, char *argv[]) {
 				version = 3;
 			} else {
 				fprintf(stderr, "Unknown model '%s'\n", argv[i]);
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--focuser-rate")) {
+			if (++i == argc || (focuser_rate = atoi(argv[i])) < 1) {
+				fprintf(stderr, "--focuser-rate requires a positive number of steps\n");
 				return false;
 			}
 		} else if (!strcmp(argv[i], "--outlets-on")) {

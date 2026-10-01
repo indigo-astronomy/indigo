@@ -25,6 +25,7 @@
  */
 
 #include <math.h>
+#include <limits.h>
 #include <zlib.h>
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
@@ -34,6 +35,15 @@
 #include <indigo/indigo_ccd_driver.h>
 
 #include "indigo_alpaca_common.h"
+
+// MaxADU is the largest value a pixel can hold, 2^bits - 1; a 24 or 48 bit frame is RGB with 8 or 16 bits per channel
+static int max_adu(double bits_per_pixel) {
+	if (bits_per_pixel == 24 || bits_per_pixel == 48) {
+		bits_per_pixel /= 3;
+	}
+	double value = pow(2, bits_per_pixel) - 1;
+	return value < INT_MAX ? (int)value : INT_MAX;
+}
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 3;
@@ -871,8 +881,9 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 				} else if (!strcmp(item->name, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME)) {
 					alpaca_device->ccd.electronsperadu = 1;
 					alpaca_device->ccd.fullwellcapacity = pow(2, item->number.value);
-					if (!alpaca_device->ccd.has_ccd_info) {
-						alpaca_device->ccd.maxadu = (int)pow(2, item->number.value);
+					// CCD_INFO of a camera that does not know its sensor depth (e.g. DSLR) reports 0 bits per pixel
+					if (!alpaca_device->ccd.has_bits_per_pixel) {
+						alpaca_device->ccd.maxadu = max_adu(item->number.value);
 					}
 				}
 			}
@@ -913,7 +924,10 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 					alpaca_device->ccd.pixelsizey = (item->number.value > 0) ? item->number.value : 1;
 				} else if (!strcmp(item->name, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME)) {
 					alpaca_device->ccd.electronsperadu = 1;
-					alpaca_device->ccd.maxadu = (int)pow(2, item->number.value);
+					if (item->number.value > 0) {
+						alpaca_device->ccd.has_bits_per_pixel = true;
+						alpaca_device->ccd.maxadu = max_adu(item->number.value);
+					}
 				}
 			}
 		}

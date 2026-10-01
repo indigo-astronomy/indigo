@@ -83,6 +83,7 @@ typedef struct indigo_alpaca_device_struct {
 			int cameraxsize;
 			int cameraysize;
 			bool has_ccd_info;
+			bool has_bits_per_pixel;
 			int startx;
 			int starty;
 			int numx;
@@ -123,6 +124,7 @@ typedef struct indigo_alpaca_device_struct {
 			bool ismoving;
 			bool tempcompavailable;
 			bool tempcomp;
+			bool tempcompsuspended;
 			bool temperatureavailable;
 			bool halted;
 			int offset;
@@ -199,6 +201,7 @@ typedef struct indigo_alpaca_device_struct {
 			int maxswitch_gpio_sensor;
 			bool canwrite[5 * ALPACA_MAX_SWITCHES];
 			char switchname[5 * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
+			char switchlabel[5 * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
 			double switchvalue[5 * ALPACA_MAX_SWITCHES];
 			double minswitchvalue[5 * ALPACA_MAX_SWITCHES];
 			double maxswitchvalue[5 * ALPACA_MAX_SWITCHES];

@@ -1,6 +1,6 @@
 # agent_alpaca: ASCOM Alpaca conformance fixes
 
-Status: **done, 2026-09-25**. Driver version 0x03000005 → 0x03000006 (Linux run, 2026-09-24) → **0x0300000A** (macOS run with hardware, section 10).
+Status: **done, 2026-10-01**. Driver version 0x03000005 → 0x03000006 (Linux run, 2026-09-24) → 0x0300000A (macOS run with hardware, section 10) → **0x0300000B** (residual defects, section 11).
 
 This work was requested as decision D8 in `indigo_drivers/system_alpaca/REFACTOR.md`: fix the defects found by the source audit and verify `agent_alpaca` with ASCOM ConformU (https://ascom-standards.org/COMDeveloper/Conformance.htm) against every INDIGO simulator. It is a targeted fix of the Alpaca server, not a generator migration. The agent is hand-written and not generated, and none of that changes here.
 
@@ -13,7 +13,7 @@ This work was requested as decision D8 in `indigo_drivers/system_alpaca/REFACTOR
   - Device numbering is persisted in `AGENT_ALPACA_DEVICES`.
 - **Blocking behaviour.** Alpaca calls block the HTTP worker thread in `indigo_alpaca_wait_for_*` polling loops (0.5 s × N). This is unchanged, apart from the connection wait (section 3, defect AGENT-9).
 - **Concurrency.** The `alpaca_devices` list and `server_transaction_id` are accessed from the HTTP worker threads without a lock. This is unchanged and noted as a residual risk.
-- **Tests.** There were no automated tests. The only earlier evidence is the Windows Conform 6.5 log from 2020 (`ASCOM_CONFORMANCE.txt`).
+- **Tests.** There were no automated tests. The only earlier evidence was the Windows Conform 6.5 log from 2020 (`ASCOM_CONFORMANCE.txt`, removed on 2026-10-01 at the user's request).
 
 ### Hardware-test decision
 
@@ -34,7 +34,7 @@ The harness scripts (`start_server.sh`, `run_all.sh`, `compare.py`) are session-
 
 ## 3. Found defects
 
-Every defect listed here was reproduced by ConformU, by the image comparison or by a dedicated reproducer. The exceptions are AGENT-7 and AGENT-9, which are marked "(source audit)". AGENT-14 to AGENT-16 were found in the macOS simulator run and AGENT-17 to AGENT-20 in the macOS hardware run (section 10).
+Every defect listed here was reproduced by ConformU, by the image comparison or by a dedicated reproducer. The exceptions are AGENT-7, AGENT-9 and AGENT-23, which are marked "(source audit)". AGENT-14 to AGENT-16 were found in the macOS simulator run and AGENT-17 to AGENT-20 in the macOS hardware run (section 10). AGENT-21 to AGENT-24 are the residual defects of section 9 and AGENT-25 was found by ConformU in the same work; all are fixed in section 11.
 
 | ID | Location | Observable impact | Root cause | Fix | Regression evidence |
 |---|---|---|---|---|---|
@@ -58,6 +58,11 @@ Every defect listed here was reproduced by ConformU, by the image comparison or 
 | AGENT-18 | `indigo_alpaca_common.c` (hardware run, section 10) | `SiteLatitude`, `SiteLongitude` and `SiteElevation` writes did not read back ("Test value +58:09:00,0 did not round trip correctly") on the NYX-101. | The setters returned as soon as the change was sent. A serial driver processes `GEOGRAPHIC_COORDINATES` on its queue, so ConformU read the old value 1 ms later. The mount simulator answers synchronously and hid this. | The setters wait until `GEOGRAPHIC_COORDINATES` leaves BUSY (at most 10 s) and return `ValueNotSet` when the driver answers ALERT. | NYX-101 and LX200 NYX simulator: "Test value … set and read correctly" for all three members (3.0.0.7: 3 issues each). |
 | AGENT-19 | `indigo_alpaca_mount.c` (hardware run, section 10) | `SyncToCoordinates` and `SyncToTarget` read back the position from before the sync (3600″ off) on the NYX-101. | `SyncToTarget` did not wait at all; `SyncToCoordinates` waited for `slewing`, which a sync never set. The LX200 driver completes a sync before it reads the new position back. | Both set `slewing` before the change, wait until `MOUNT_EQUATORIAL_COORDINATES` settles, return `UnspecifiedError` on ALERT, and wait up to 3 s for the next position update unless the published position already matches the target (the second condition keeps a sync on a driver that publishes no unchanged position at 0.5 s instead of 3.6 s). | NYX-101 and LX200 NYX simulator: "Synced to sync position OK within tolerance" (3.0.0.7: 4 and 8 issues). Mount simulator: sync 0.5 s. |
 | AGENT-20 | `indigo_alpaca_switch.c` (hardware run, section 10) | The six USB ports of the UPB v1 were named "Heater #3", "Heater" and "" (switches 6–11). | `AUX_OUTLET_NAMES` was copied by position into one 8-slot array, and the name of any outlet was looked up by its overall switch index. Drivers publish more names than outlets (the UPB driver also names a third heater). `SetSwitchName` of a GPIO outlet used the item name `GPIO_OUTLET_%d` instead of `GPIO_OUTLET_NAME_%d`. | The names are assigned by item name to the power, heater, USB and GPIO sections, and looked up in the section of the switch. | UPB v1: switches 6–11 are "Port #1" … "Port #6". |
+| AGENT-21 | `indigo_agent_alpaca.c`, device records (section 11) | `indigo_server` read freed memory when a device was detached while an Alpaca request used it: a connected hot-plug device that is unplugged, or a device of a remote INDIGO server that goes away. The request polls the record for up to 150 s. The device list was also walked by the HTTP workers while the bus callbacks linked and unlinked records. | `agent_delete_property` freed the record at once; neither the list nor the records had an owner across threads. | The list is guarded by `alpaca_devices_mutex`. Every request and every bus callback registers as a user (`alpaca_devices_enter()` / `alpaca_devices_leave()`); an unlinked record goes to `alpaca_released_devices` and is freed, with its mutex destroyed, when the last user leaves. Lookup, creation, guider pairing and the `configureddevices` listing run under the mutex. | `repro_unplug.py` with an AddressSanitizer build: 3.0.0.10 aborts with heap-use-after-free in `indigo_alpaca_wait_for_bool` 1 s after the unplug (freed by `agent_delete_property`); 3.0.0.11 returns `ValueNotSet` after its 15 s wait, the server stays up, the device leaves the list and its URL answers 400. `stress_remote.py` (a remote INDIGO server with ten devices restarts six times while eight clients poll the agent): no report. |
+| AGENT-22 | `indigo_agent_alpaca.c`, `ServerTransactionID` (section 11) | Two responses could carry the same `ServerTransactionID`. | `server_transaction_id++` ran unlocked on every HTTP worker thread. | `next_server_transaction_id()` increments the counter under `alpaca_devices_mutex`. | `stress_remote.py`: 3.0.0.10 returned 1 duplicate in 93 838 and 1 in 93 831 responses (two runs), 3.0.0.11 none in 156 714 and 170 080. |
+| AGENT-23 | `indigo_alpaca_ccd.c` (source audit, section 11) | `MaxADU` was 2^bits, one more than the largest value a pixel can hold (65536 for 16-bit data, 256 for 8-bit), and 1 for a camera whose `CCD_INFO` reports 0 bits per pixel (DSLR Simulator). ConformU accepts any value from 1. | `pow(2, bits)` from `CCD_INFO` and `CCD_FRAME`. | `max_adu()` returns 2^bits − 1, limited to `INT_MAX`. A `CCD_INFO` reporting 0 bits leaves the value to `CCD_FRAME`, and a 24 or 48 bit frame counts as RGB with 8 or 16 bits per channel. The first version of the fix returned 0 for the DSLR Simulator; ConformU reported it ("Invalid value below expected minimum (1): 0") and the `CCD_FRAME` fallback was added. | ConformU camera logs: `MaxADU` 65535, 65535, 255, 255 and 65535 for cameras 0 to 4. |
+| AGENT-24 | `indigo_alpaca_switch.c` (section 11) | `GetSwitchName` and `GetSwitchDescription` returned an empty string for a switch without an entry in `AUX_OUTLET_NAMES` / `AUX_SENSOR_NAMES`: both power outlets of the Pocket Powerbox, and every outlet of a driver that does not publish the property. | Only the names properties were used. | The label of the INDIGO item is kept per switch (`sw.switchlabel`) and returned when the name is empty. | `repro_unplug.py`: the test powerbox has no `AUX_OUTLET_NAMES`; 3.0.0.10 returns `''` for both switches, 3.0.0.11 `'Mount power'` and `'Camera power'`. ConformU switch `Pocket Powerbox`: switches 0 and 1 are named "Power outlets" and "DSLR outlet". |
+| AGENT-25 | `indigo_alpaca_focuser.c` (section 11) | `Move` with `TempComp` true never finished: `IsMoving` stayed true and ConformU's "Move - TempComp True V3" ran into its 60 s timeout. Hidden until the focuser simulator could finish a move at all (section 11.4). | An INDIGO focuser in `FOCUSER_MODE` AUTOMATIC has no `FOCUSER_POSITION` and `FOCUSER_STEPS` properties, so the move request went nowhere while the agent had already set `ismoving`. IFocuserV3 requires `Move` to work with temperature compensation on. | `Move` switches `FOCUSER_MODE` to MANUAL first and marks the compensation as suspended; `TempComp` keeps reading true. The first focuser request that finds the move finished switches the mode back to AUTOMATIC; a `TempComp` write ends the suspension. | ConformU focuser `CCD Imager Simulator (focuser)`: "Move - TempComp True V3 OK Absolute move OK" (ISSUE before). |
 
 ImageBytes now transmits 8-bit data as Byte (6) and 16-bit data as UInt16 (8), with `ImageElementType` Int32 (2). This is the narrowing the spec allows, and it reduces a 16-bit image to half the size of the previous Int32 transmission.
 
@@ -68,50 +73,14 @@ ImageBytes now transmits 8-bit data as Byte (6) and 16-bit data as UInt16 (8), w
   - Numbers assigned to other devices on a fresh configuration are lower, because those devices no longer take numbers. In the test setup Telescope 9 became 7.
 - **Strict requests.** Requests that the Alpaca specification defines as invalid are now answered with HTTP 400 instead of being silently accepted.
 
-## 5. ConformU results
+## 5. ConformU findings of the first runs
 
-### 5.1 Full conformance (`conformu conformance`), each device on a fresh server
+The result tables of the Linux run of 3.0.0.6 and of the macOS runs of 3.0.0.10 were removed on 2026-10-01 at the user's request, together with their logs; they remain in the git history (commit 10f82794d). The current results are in section 11.5. What those runs established and is still referenced by the defect table:
 
-| Device (INDIGO simulator) | Baseline (errors / issues) | After fix (errors / issues) | Notes |
-|---|---|---|---|
-| Camera: CCD Imager, CCD Guider, Bahtinov, DSLR | 0 / 0 each | 0 / 0 each | |
-| Camera: CCD File Simulator | 0 / 1 | 0 / 1 | Simulator limitation: no image file configured, so the connection fails. The agent now reports it immediately (AGENT-9). |
-| FilterWheel | 0 / 0 | 0 / 0 | |
-| Focuser: CCD Imager (focuser) | 1 / 1 (not tested, V1) | 0 / 13 | Simulator limitation, see below. |
-| Focuser: UPB3 (focuser) | 1 / 1 (not tested, V1) | 0 / 1 | Simulator limitation, see below. |
-| Telescope: Mount Simulator (+ guider) | 0 / 2 (pulse guiding, SideOfPier and slew tests unreachable, `CanPulseGuide=false`) | 0 / 21 | See 5.3 and 7a: the remaining issues come from simulator pulse guiding and from `DestinationSideOfPier` not being implemented. |
-| Telescope: CCD Guider (guider), CCD Guider (AO), Mount (guider) | 0 / 13, 0 / 42, 0 / 13 | no longer exposed | AGENT-6 |
-| Dome | 0 / 0 | 0 / 0 | |
-| Rotator | 0 / 0 | 0 / 0 | |
-| CoverCalibrator: FlipFlat | 0 / 1 | 0 / 0 | |
-| Switch: Pocket Powerbox | 0 / 0 | 0 / 0 | |
-| Switch: UPB3 | 0 / 0 | 0 / 0 | |
-
-**Focuser simulator limitation.** ConformU moves an absolute focuser by `MaxStep / 10` and allows 60 s (`FocuserTimeout`).
-- The INDIGO CCD Imager focuser simulator has a range of ±9 999 999 steps (`MaxStep` 19 999 998) and moves at most 100 steps per 0.1 s. The first move of about 2 000 000 steps cannot finish in time, and the remaining move tests cascade from that.
-- The UPB3 focuser simulator hits the same timeout on its first move.
-
-This is simulator behaviour, not agent behaviour. The agent reports `IsMoving` correctly and moves are accepted and completed; see the ConformU log `Move to 999999 … STANDARD`.
-
-### 5.2 Protocol (`conformu alpacaprotocol`)
-
-| | Baseline | After fix |
-|---|---|---|
-| Issues / errors, summed over all devices | 953 / 5 on 17 devices (mostly `ClientTransactionID`, parameter casing and value validation) | 0 / 1 on 14 devices. The error is camera 4 ("Not connected"), the same simulator limitation as in 5.1. |
-
-### 5.3 Telescope details and final reruns
-
-The first post-fix Telescope run used the mount simulator's default site (latitude 0°, longitude 0°). ConformU stopped with "The highest elevation available … is below the horizon", because the newly reachable extended pulse-guide tests use hour angle ±9 h, which is below the horizon at latitude 0 (1 issue, `conformu/final/conformance/telescope7_site_lat0.log`).
-
-The rerun on a fresh server set a realistic site through Alpaca before the test (`SiteLatitude=48.15`, `SiteLongitude=17.1`) and got 0 errors and 23 issues. After the pier-side fix (section 7a) the result is 0 errors and 21 issues (`telescope7.log`):
-
-| Issues | Member | Cause | Classification |
-|---|---|---|---|
-| 16 | `PulseGuide ±3/±9 h N/S/E/W`: "axis did not move" | The `mount_simulator` guider only times the pulse and does not move the mount coordinates. | Simulator limitation. Pulse timing, `IsPulseGuiding` and the parked check pass. |
-| 2 (before the fix only) | `SideofPier`: "pierEast is returned … HA -6..0", "pierWest … HA 0..+6" | `mount_simulator` set `MOUNT_SIDE_OF_PIER.WEST` when the target was in the western sky (`az > 180`). ASCOM and INDI define pierEast as "OTA on the east side of the pier, pointing west". | **Fixed** (section 7a) |
-| 5 | `DestinationSideOfPier` / `SOPPierTest` | Not implemented. INDIGO has no property to predict the pier side of a target. | Known gap (optional member). |
-
-The final protocol rerun on a fresh server is in section 5.2 ("After fix").
+- **Protocol.** The original 3.0.0.5 produced 953 `alpacaprotocol` issues on 17 devices, mostly `ClientTransactionID` handling, parameter casing and value validation (AGENT-5). Since 3.0.0.6 every device is clean.
+- **Guiders.** Standalone guider and AO devices exposed as `Telescope` produced 13 to 42 issues each and are no longer exposed (AGENT-6).
+- **Telescope site.** The extended pulse-guide tests use hour angles of ±9 h, which are below the horizon at latitude 0°, so the harness sets a realistic site (48.15°, 17.1°) through Alpaca before the telescope test.
+- **Simulator limitations found then, and their state now.** The focuser simulators could not finish ConformU's moves within its 60 s timeout, the mount simulator's guider did not move the mount, and the NYX serial simulator reported a constant pier side. All three were simulator behaviour, not agent behaviour; section 11.4 records what was changed.
 
 ## 6. Image orientation and colour verification (`compare.py`)
 
@@ -137,14 +106,14 @@ The original agent was built from `HEAD` (`git archive`) into a scratch director
 | A3 | Guider pairing and pulse guiding through the mount (AGENT-6/7/8) | done | ConformU Telescope pulse guide OK |
 | A4 | Common fixes: `UTCDate`, connection ALERT, focuser V3, calibrator bounds (AGENT-9..12) | done | ConformU |
 | A5 | Rewrite `imagearray` (AGENT-1/2/4/13) | done | `compare.py`, ConformU `ImageArray` / `ImageArrayVariant` |
-| A6 | Full conformance rerun on a fresh server | done | Section 5.1 |
-| A7 | Telescope rerun with a realistic site; protocol rerun on a fresh server | done | Sections 5.2 and 5.3 |
+| A6 | Full conformance rerun on a fresh server | done | Section 5 |
+| A7 | Telescope rerun with a realistic site; protocol rerun on a fresh server | done | Section 5 |
 
 **Discovered during A6: an incorrect build dependency.** `Makefile.drv` does not rebuild objects when `indigo_alpaca_common.h` changes. After the structure layout changed, stale objects crashed `indigo_server` (SIGSEGV in `alpaca_set_connected`, captured with gdb). A clean rebuild (`make -f ../../Makefile.drv clean`) is required after header changes. This is a repository build issue, not an agent defect.
 
 ## 7a. MOUNT_SIDE_OF_PIER semantics across INDIGO (analysis, 2026-09-24)
 
-This analysis follows up the open SideOfPier question in section 5.3. It is based on source and protocol documentation only; no hardware was used. ASCOM and INDI both define **EAST as "OTA on the east side of the pier, pointing west"**, which is the normal (non-flipped) state for HA > 0.
+This analysis follows up the SideOfPier issues of the first ConformU telescope run (section 5). It is based on source and protocol documentation only; no hardware was used. ASCOM and INDI both define **EAST as "OTA on the east side of the pier, pointing west"**, which is the normal (non-flipped) state for HA > 0.
 
 | Component | Where EAST/WEST comes from | Semantics |
 |---|---|---|
@@ -190,32 +159,20 @@ The test build rule of the `mount_temma_simulator` was also missing `-lm` (link 
 
 ## 8. Test logs
 
-[`conformu/`](conformu) holds only the text logs written by ConformU itself, from the final macOS arm64 run of 3.0.0.10 (section 10). `<type><number>.log` is `conformu conformance`, `<type><number>_protocol.log` is `conformu alpacaprotocol` of the same device.
-
-| Folder | Content |
-|---|---|
-| `conformu/simulator/` | INDIGO simulators, device numbers as in section 10.1 |
-| `conformu/simulator/lx200_nyx/` | `indigo_mount_lx200` on the NYX serial simulator (`telescope0`) |
-| `conformu/hardware/zwo/` | ZWO ASI120MC-S (`camera0`), ASI294MC Pro (`camera1`), ZWO EFW (`filterwheel0`) |
-| `conformu/hardware/upb/` | Pegasus Ultimate Powerbox v1.7: `switch0`, `focuser1` |
-| `conformu/hardware/nyx101/` | Pegasus NYX-101: `telescope0`, `focuser1`, `switch2` |
+[`conformu/`](conformu) holds one file per device: the detailed log ConformU writes for `conformu conformance`, the one with an `OK`, `INFO` or `ISSUE` result on every line, named `<device type>_<INDIGO device>.log` with every run of other characters in the device name replaced by `_`. Nothing else is kept: no `alpacaprotocol` log, no JSON result file and no console output. The logs are those of the final run of section 11.5.
 
 The repository ignores `*.log`; `.gitignore` has an exception for `indigo_drivers/agent_alpaca/conformu/**/*.log`.
 
-The JSON result files of the Linux run (`conformu/baseline`, `conformu/final`) were removed at the user's request, and its text logs were never committed; the Linux results survive only as the counts in sections 5 and 7a.
-
 ## 9. Residual risks and gaps
 
-- The `alpaca_devices` list is accessed from HTTP worker threads without a lock, and device records are freed on detach. This is a pre-existing race, unchanged.
-- The blocking `indigo_alpaca_wait_for_*` calls are unchanged. They hold an HTTP worker thread for up to 150 s during slews.
+- The `alpaca_devices` list and the device records are now owned across threads (AGENT-21, section 11). The scalar fields of a record are still written by the bus callbacks and read by the HTTP workers mostly without the per-device mutex; that is unchanged.
+- The blocking `indigo_alpaca_wait_for_*` calls are unchanged. They hold an HTTP worker thread for up to 150 s during slews, and they do not end early when the device is detached: the request returns its timeout error (15 s for `SetSwitch`).
 - A device that is both MOUNT and GUIDER would store guider state in the same union as the mount state. No INDIGO driver does this today.
 - There is no automated regression test in `indigo_test`. The ConformU harness is manual and needs .NET ConformU. A portable C test of the dispatcher, image encoding and connection wait is a possible follow-up.
 - Linux x64 (3.0.0.6) and macOS arm64 (3.0.0.10) were built and tested. Windows was not built, and the Windows project files are unchanged.
-- `MaxADU` is reported as 2^bits (65536 for 16-bit data) instead of 2^bits − 1. ConformU does not flag it; unchanged.
-- The remaining ConformU issues are simulator limitations, not agent defects: the focuser simulators move too slowly for ConformU's 60 s move timeout (section 5.1), and the mount simulator guider does not move the mount during a pulse (section 5.3).
-- A Switch device is exposed for every INDIGO device with the `AUX_POWERBOX` or `AUX_GPIO` interface. The LX200 driver declares `AUX_POWERBOX` for its aux device, which on a NYX-101 publishes only weather and info, so the Alpaca Switch has `MaxSwitch` 0 (ConformU issue). The agent's device list is fixed before connection, when the outlets are not known yet. Weather would belong to an ASCOM ObservingConditions device, which the agent does not implement.
-- A switch whose outlet has no entry in `AUX_OUTLET_NAMES` (the Pocket Powerbox power outlets) has an empty name. Falling back to the INDIGO item label would be a small improvement.
-- The NYX-101 publishes no guide rate, so ConformU expects zero movement from every pulse and reports the real movement as an issue (section 10.2).
+- The simulator limitations ConformU showed in the earlier runs (focuser speed and range, mount simulator pulse guiding, NYX simulator pier side) were removed in the simulators, see section 11.4.
+- A Switch device is exposed for every INDIGO device with the `AUX_POWERBOX` or `AUX_GPIO` interface. The LX200 driver declares `AUX_POWERBOX` for its aux device, which on a NYX-101 publishes only weather and info, so the Alpaca Switch has `MaxSwitch` 0 (ConformU issue). The agent's device list is fixed before connection, when the outlets are not known yet. Weather would belong to an ASCOM ObservingConditions device, which the agent does not implement. The user decided to keep this as a known limitation (section 11.1).
+- A mount that publishes no guide rate (NYX-101, and the LX200 driver on its NYX simulator) is expected by ConformU not to move at all on a pulse, within a default tolerance of 1″ (section 10.2). The harness runs ConformU with `TelescopePulseGuideTolerance` 30″ (section 11.3), so for such a mount the test verifies the direction of the movement only.
 
 ## 10. macOS arm64 run with hardware (2026-09-24/25, 3.0.0.7 → 3.0.0.10)
 
@@ -230,35 +187,15 @@ The JSON result files of the Linux run (`conformu/baseline`, `conformu/final`) w
 
 The harness scripts are session-local, as in section 2. Every device runs twice on a fresh `indigo_server` with a private `HOME`: `conformu conformance`, then `conformu alpacaprotocol`. Each ConformU process gets its own `HOME`. The telescope gets site 48.15°, 17.1° through Alpaca before the test. For hardware, each server loads only the agent and one hardware driver, so cameras, wheel and mount ran in parallel. The UPB ran alone after the cameras, because one UPB output powers the ASI294MC Pro; its outputs were saved before and compared afterwards. The ConformU runs were executed by parallel subagents on separate ports.
 
-### 10.2 Results of the final run (3.0.0.10)
+### 10.2 Hardware observations of the 3.0.0.10 run
 
-A run is one `conformance` or one `alpacaprotocol` execution; it passes with 0 errors and 0 issues. Information messages of `alpacaprotocol` (ASCOM errors the device returns as expected, for example `InvalidWhileParked`) do not fail a run.
+The result tables and the logs of this run were removed on 2026-10-01 at the user's request (git history, commit 10f82794d). Its observations that are not agent defects:
 
-**Simulators**
-
-| Class | Devices | Runs / passed | Remaining issues |
-|---|---|---|---|
-| Camera | CCD Imager, Guider, Bahtinov, DSLR, File (0–4) | 10 / 10 | – |
-| FilterWheel | CCD Imager (wheel) (5) | 2 / 2 | – |
-| Focuser | CCD Imager (focuser) (6), UPB3 (focuser) (13) | 4 / 2 | 13 + 1: first move of MaxStep/10 does not finish in ConformU's 60 s (simulator speed, section 5.1) |
-| Telescope | Mount Simulator (7) | 2 / 1 | 16: the simulator guider does not move the mount (section 5.3) |
-| Telescope | LX200 on NYX serial simulator | 2 / 1 | 20 pulse guide (no guide rate published, see below) + 2 `SideofPier` (the simulator reports the physical side; the NYX-101 itself passes) |
-| Dome | Dome Simulator (8) | 2 / 2 | – |
-| Rotator | Field Rotator Simulator (9) | 2 / 2 | – |
-| CoverCalibrator | FlipFlat (10) | 2 / 2 | – |
-| Switch | Pocket Powerbox (11), UPB3 (12) | 4 / 4 | – |
-
-**Hardware**
-
-| Class | Devices | Runs / passed | Remaining issues |
-|---|---|---|---|
-| Camera | ASI120MC-S, ASI294MC Pro | 4 / 4 | – |
-| FilterWheel | ZWO EFW | 2 / 2 | – |
-| Telescope | NYX-101 | 2 / 1 | 17 pulse guide: the NYX publishes no guide rate (`CanSetGuideRates` False), so ConformU expects zero movement, while the mount moves 11–23″ in Dec and 0.6–1.3 s in RA; 1 `SyncToTarget` start slew settled 71″ from its target (not seen in the 3.0.0.8 run) |
-| Focuser | UPB focuser, NYX-101 "focuser" | 4 / 1 | UPB: the position did not change on the first move (whether a motor is attached was not established). NYX-101: the LX200 driver defines a focuser device that cannot connect on a NYX (no focuser), so conformance stops at connect and `alpacaprotocol` ends without summary |
-| Switch | UPB v1, NYX-101 "aux" | 4 / 2 | UPB: USB port read-back differs from the written value (defect of `indigo_aux_upb`, below); NYX aux: `MaxSwitch` 0 (section 9) |
-
-The protocol runs of all hardware devices except the NYX focuser completed without errors or issues.
+- **Cameras (ASI120MC-S, ASI294MC Pro) and filter wheel (ZWO EFW):** no issue.
+- **NYX-101 telescope, pulse guiding:** the NYX publishes no guide rate (`CanSetGuideRates` False), so ConformU expects zero movement within 1″, while the mount moves 11–23″ in Dec and 0.6–1.3 s in RA. `SideofPier` passed on the mount. One `SyncToTarget` start slew settled 71″ from its target.
+- **UPB v1 focuser:** the position did not change on the first move; whether a motor was attached was not established.
+- **NYX-101 "focuser" and "aux":** the LX200 driver defines a focuser device that cannot connect on a NYX, and an aux device that publishes only weather and info, so the Alpaca Switch has `MaxSwitch` 0 (section 9).
+- **UPB v1 switch:** the USB port read-back differed from the written value, a defect of `indigo_aux_upb` (section 10.4).
 
 ### 10.3 Hardware findings reproduced without hardware
 
@@ -282,35 +219,94 @@ Every agent defect found on the NYX-101 (AGENT-17, -18, -19) reproduces on `indi
 | M5 | Full final run of 3.0.0.10: all simulators, NYX simulator, all hardware | done | Section 10.2 |
 | M6 | Switch off camera cooling after the tests | done | ASI294MC Pro: `CCD_COOLER` OFF, power 0 %, 27.8 °C; the ASI120MC-S has no cooler |
 
+## 11. Residual defects from section 9 (2026-10-01, 3.0.0.10 → 3.0.0.11)
+
+The user asked to finish the agent by fixing the residual defects listed in section 9. The scope and the mode were confirmed before the work started.
+
+### 11.1 Scope, audit and decisions
+
+| Item of section 9 | Audit of 3.0.0.10 | Decision |
+|---|---|---|
+| Device list accessed without a lock, records freed on detach | `alpaca_devices` is a singly linked list. It is walked by the HTTP worker threads (`alpaca_v1_configureddevices_handler`, `alpaca_v1_api_request`) and changed by the bus client callbacks (`agent_define_property` links a record, `agent_delete_property` unlinks and frees it). A request keeps its record for its whole duration, which is up to 150 s in the `indigo_alpaca_wait_for_*` loops, and a Telescope request also uses the record of the paired guider. `server_transaction_id++` runs unlocked on every worker thread. The per-device mutex is never destroyed. | Fix (AGENT-21, AGENT-22) |
+| `MaxADU` is 2^bits | `indigo_alpaca_ccd.c` sets `maxadu = pow(2, bits)` from both `CCD_INFO` and `CCD_FRAME`. | Fix (AGENT-23) |
+| Empty switch name without an `AUX_OUTLET_NAMES` entry | `alpaca_get_switchname()` returns the `AUX_OUTLET_NAMES` / `AUX_SENSOR_NAMES` value only. | Fix (AGENT-24): fall back to the label of the INDIGO item |
+| Switch with `MaxSwitch` 0 | The outlets of a device are known only after it connects (`indigo_mount_lx200` discovers them in `on_connect`), and the Alpaca device list has to be complete before a client connects. | **User decision: left as a known limitation.** Exposing `AUX_WEATHER` / `AUX_INFO` as read-only switches and remembering empty devices in the configuration were offered and declined. |
+| Blocking `indigo_alpaca_wait_for_*` calls | unchanged | not in scope |
+| Automated regression test in `indigo_test`, ConformU harness in the repository | none | **User decision: not in scope.** The harness stays session-local. |
+| ObservingConditions device | not implemented | **User decision: not in scope.** |
+
+### 11.2 Hardware-test decision
+
+No hardware. The user selected the non-interactive simulator mode: INDIGO simulators and the serial simulators behind the agent, tested by ConformU 4.5.0 on macOS arm64. `tools/run_driver_test.py agent_alpaca` reports "no tests named test_agent_alpaca", so the ConformU runs are recorded by hand, as in section 10.
+
+### 11.3 Harness, counting and ConformU settings
+
+The harness is session-local, as before. Every device runs `conformu conformance` and then `conformu alpacaprotocol`, each on a fresh `indigo_server` with a private `HOME`; ConformU gets its own `HOME` too. The simulator server loads `indigo_agent_alpaca`, `indigo_ccd_simulator`, `indigo_mount_simulator`, `indigo_dome_simulator`, `indigo_rotator_simulator`, `indigo_aux_flipflat`, `indigo_aux_ppb` and `indigo_aux_upb3`, the last three on their serial simulators (`aux_upb3_simulator --focuser-rate 500`); the LX200 server loads the agent and `indigo_mount_lx200` on `mount_lx200_simulator --model nyx`. The CCD File Simulator gets a 640×480 MONO16 RAW file through `FILE_NAME`, and a telescope gets the site 48.15°, 17.1° through Alpaca before its test.
+
+Rules the user set on 2026-10-01:
+
+- **Counting.** Every result line of the detailed conformance log is a test: `OK` and `INFO` lines passed, `ISSUE` and `ERROR` lines failed. Counting stops at "Conformance test has finished", because the summary after it repeats the issues. The earlier records counted one conformance and one protocol execution per device as two tests.
+- **Logs.** Only the detailed conformance log is kept, one per device, as described in section 8. The `alpacaprotocol` test still runs for every device as a check, but its log is not kept and its lines are not counted; section 11.5 gives its result.
+- **Record.** `README.md` has one line per device, written after each device finished.
+- **ConformU settings.** Defaults, except `TelescopePulseGuideTolerance` 30″ instead of 1″, passed with `-s`. A mount without a published guide rate is expected by ConformU not to move on a pulse; the LX200 driver on its NYX simulator moves 15–20″ in Dec and 1 s in RA for a 5 s pulse, as the NYX-101 does.
+
+### 11.4 Simulator changes made for this run
+
+ConformU issues that came from a simulator and not from the agent were removed in the simulator, at the user's request. Each driver is its own commit with its own test record.
+
+| Component | ConformU finding | Change | Validation |
+|---|---|---|---|
+| `indigo_ccd_simulator` focuser (3.0.0.42 → 3.0.0.43) | `MaxStep` 19 999 998 at 10 steps per second: the first move of `MaxStep`/10 could not finish in ConformU's 60 s (`FocuserTimeout`), 13 of 42 tests failed | Travel -20 000 to 20 000 steps, default `FOCUSER_SPEED` 100 (1000 steps per second), relative moves end at the end of the travel | `run_driver_test.py ccd_simulator` 26/26; `agent_imager` 55/55 and `agent_scripting` 61/61 (not recorded); ConformU focuser 35/35 |
+| `aux_upb3_simulator` | The driver offers 0 to 9 999 999 steps and the simulator moved 1 step per millisecond: the first move of 999 999 steps could not finish in 60 s, 1 of 28 tests failed | New option `--focuser-rate <steps>` (steps per millisecond, default 1, so the driver's own tests are unchanged); the harness uses 500 | `run_driver_test.py aux_upb3` 33/33; ConformU focuser 28/28 |
+| `mount_lx200_simulator` | `SideofPier` pierWest on both sides of the meridian; the `:GU#` status and `:Gm#` carried a constant `W` | The side is derived from the hour angle (`../mount_lx200/REFACTOR.md`); the driver is unchanged | `run_driver_test.py mount_lx200` 103/103; `mount_asi` 10/10 (not recorded); ConformU telescope 234/234 |
+| `indigo_mount_simulator` | In the 3.0.0.10 run 16 pulse-guide tests failed because the guider did not move the mount | None here: the simulator moves on guide pulses since its 3.0.0.21 (commit 6e6bd4124) | ConformU telescope 234/234 |
+
+### 11.5 Results of the final run (3.0.0.11, macOS arm64, 2026-10-01)
+
+| Class | INDIGO device | Log | Tests | Passed | Failed |
+|---|---|---|---|---|---|
+| Camera | CCD Bahtinov Mask Simulator | `camera_CCD_Bahtinov_Mask_Simulator.log` | 107 | 107 | 0 |
+| Camera | CCD File Simulator | `camera_CCD_File_Simulator.log` | 107 | 107 | 0 |
+| Camera | CCD Guider Simulator | `camera_CCD_Guider_Simulator.log` | 115 | 115 | 0 |
+| Camera | CCD Imager Simulator | `camera_CCD_Imager_Simulator.log` | 118 | 118 | 0 |
+| Camera | DSLR Simulator | `camera_DSLR_Simulator.log` | 107 | 107 | 0 |
+| FilterWheel | CCD Imager Simulator (wheel) | `filterwheel_CCD_Imager_Simulator_wheel.log` | 49 | 49 | 0 |
+| Focuser | CCD Imager Simulator (focuser) | `focuser_CCD_Imager_Simulator_focuser.log` | 35 | 35 | 0 |
+| Focuser | Ultimate Powerbox 3 (focuser) | `focuser_Ultimate_Powerbox_3_focuser.log` | 28 | 28 | 0 |
+| Telescope | Mount LX200 | `telescope_Mount_LX200.log` | 234 | 234 | 0 |
+| Telescope | Mount Simulator | `telescope_Mount_Simulator.log` | 234 | 234 | 0 |
+| Dome | Dome Simulator | `dome_Dome_Simulator.log` | 69 | 69 | 0 |
+| Rotator | Field Rotator Simulator | `rotator_Field_Rotator_Simulator.log` | 43 | 43 | 0 |
+| CoverCalibrator | FlipFlat | `covercalibrator_FlipFlat.log` | 40 | 40 | 0 |
+| Switch | Pocket Powerbox | `switch_Pocket_Powerbox.log` | 241 | 241 | 0 |
+| Switch | Ultimate Powerbox 3 | `switch_Ultimate_Powerbox_3.log` | 772 | 772 | 0 |
+| **Total** | 15 devices | | **2299** | **2299** | **0** |
+
+`Mount LX200` is `indigo_mount_lx200` on the NYX serial simulator; every other device belongs to the simulator server of section 11.3.
+
+The `alpacaprotocol` test of every device ended with no error, issue or information alert, and `indigo_server` was still running after every test.
+
+### 11.6 Plan
+
+| # | Step | State | Evidence |
+|---|---|---|---|
+| R1 | Install ConformU 4.5.0, build the baseline 3.0.0.10 and the serial simulators, recreate the session-local harness | done | ConformU 4.5.0 (Build 53834) from the notarized `ConformU-Installer.dmg` of GitHub release v4.5.0, in `/Applications`; Dome on 3.0.0.10: no issue |
+| R2 | Reproduce the device-record race on 3.0.0.10 with an AddressSanitizer build of the agent | done | `repro_unplug.py`: heap-use-after-free in `indigo_alpaca_wait_for_bool`, freed by `agent_delete_property` |
+| R3 | Fix AGENT-21/22: lock the device list, free unlinked records only when no request or bus callback uses them, lock the transaction counter | done | `repro_unplug.py` and `stress_remote.py` clean under AddressSanitizer |
+| R4 | Fix AGENT-23 (`MaxADU`) and AGENT-24 (switch name fallback) | done | Defect table; Pocket Powerbox switches 0 and 1 are named "Power outlets" and "DSLR outlet" |
+| R5 | Version 3.0.0.11, strict build, reproducers rerun | done | `clang -Wall` on all sources: no warning, as on 3.0.0.10; clean rebuild after the header change |
+| R6 | Full ConformU simulator run of 3.0.0.11 (the locking change is on the path of every request), logs, test record | done | Section 11.5 |
+| R7 | Rules set by the user during the run: old results and logs removed, one detailed log per device, tests counted by result line, simulators fixed where ConformU hit a simulator limitation, wider pulse guide tolerance | done | Sections 8, 11.3 and 11.4 |
+| R8 | Fix AGENT-25 (`Move` with temperature compensation), found once the focuser simulator could finish its moves | done | Defect table |
+
 ## Final test summary
 
-**macOS arm64, final state 3.0.0.10 (section 10.2)**
+The results of the earlier runs were removed on 2026-10-01 at the user's request (sections 5, 8 and 10.2); this summary covers the run that is recorded now.
 
-Simulated tests: 30 run, 26 passed.
-- Camera 10/10, FilterWheel 2/2, Dome 2/2, Rotator 2/2, CoverCalibrator 2/2, Switch 4/4.
-- Focuser 4/2: both simulators too slow for ConformU's 60 s move timeout.
-- Telescope, mount simulator 2/1: the simulator guider does not move the mount.
-- Telescope, LX200 on the NYX serial simulator 2/1: no guide rate published (pulse guide expectation), simulator pier side.
+**macOS arm64, 3.0.0.11, ConformU 4.5.0 (section 11.5)**
 
-Hardware tests: 16 run, 10 passed.
-- Camera (ASI120MC-S, ASI294MC Pro) 4/4, FilterWheel (ZWO EFW) 2/2.
-- Telescope (NYX-101) 2/1: pulse guide expectation without a guide rate, one slew settled 71″ off.
-- Focuser (UPB v1, NYX-101) 4/1: UPB focuser did not move; the NYX-101 has no focuser.
-- Switch (UPB v1, NYX-101) 4/2: `indigo_aux_upb` loses USB port changes during its poll; NYX aux has no switches.
-
-**Linux x64, 3.0.0.6 (sections 5 and 6)**
-
-Simulated tests: 30 run, 25 passed.
-- ConformU conformance: 14 device runs, 10 clean.
-  - Camera 4: simulator without an image file.
-  - Focusers 6 and 13: the simulators move too slowly for ConformU's 60 s timeout.
-  - Telescope 7: simulator pulse guiding and pier side, `DestinationSideOfPier` not implemented.
-- ConformU protocol: 14 runs, 13 clean (camera 4).
-- Image comparison: 2 runs, 2 passed.
-
-The baseline of the original 3.0.0.5 was 36 runs:
-- conformance: 17 runs, 9 clean;
-- protocol: 17 runs, 0 clean;
-- image comparison: 2 runs, 0 passed.
+Simulated tests: 2299 run, 2299 passed. A test is a result line of the detailed ConformU conformance log (section 11.3); 15 devices, none with an issue or an error. The `alpacaprotocol` check of all 15 devices is clean and is not part of the count.
 
 Hardware tests: 0 run, 0 passed.
+
+Reproducers of section 3, not part of the count: `repro_unplug.py` and `stress_remote.py` under AddressSanitizer fail on 3.0.0.10 and pass on 3.0.0.11.
