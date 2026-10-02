@@ -48,3 +48,4 @@ Tested with:
 2026-10-01 23:23 3.0.0.55 linux x64 focuser 0/0 Failed
 2026-10-02 00:32 3.0.0.55 linux x64 ATR585M (hot-plug) 30/30 OK
 2026-10-02 00:37 3.0.0.55 linux x64 ATR585M 27/27 OK
+2026-10-02 20:57 3.0.0.55 mac arm64 GPCMOS01200KMB 27/27 OK

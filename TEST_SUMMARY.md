@@ -81,7 +81,6 @@
 |  | 2026-09-27 21:24 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 |  | 2026-09-30 18:27 | 3.0.0.55 | linux arm64 | ALTAIRGP224C | 28 / 28 | ✅ OK |
 | ccd_asi | 2026-09-21 21:17 | 3.0.0.65 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
-|  | 2026-09-26 19:50 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-09-26 19:59 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S (hot-plug) | 32 / 32 | ✅ OK |
 |  | 2026-09-27 08:50 | 3.0.0.70 | linux x64 | fake SDK | 54 / 54 | ✅ OK |
 |  | 2026-09-27 21:26 | 3.0.0.70 | mac arm64 | fake SDK | 54 / 54 | ✅ OK |
@@ -89,6 +88,8 @@
 |  | 2026-09-30 18:19 | 3.0.0.70 | linux arm64 | ZWO ASI294MC Pro | 28 / 28 | ✅ OK |
 |  | 2026-10-01 23:12 | 3.0.0.70 | linux x64 | ZWO ASI071MC-Cool | 28 / 28 | ✅ OK |
 |  | 2026-10-01 23:15 | 3.0.0.70 | linux x64 | ZWO ASI224MC | 28 / 28 | ✅ OK |
+|  | 2026-10-02 20:48 | 3.0.0.70 | mac arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
+|  | 2026-10-02 20:50 | 3.0.0.70 | mac arm64 | ZWO ASI294MC Pro | 28 / 28 | ✅ OK |
 | ccd_atik | 2026-09-22 10:06 | 3.0.0.44 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 |  | 2026-09-22 10:08 | 3.0.0.44 | mac arm64 | ArtemisCCD VS | 1 / 1 | ✅ OK |
 |  | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
@@ -109,26 +110,29 @@
 | ccd_bresser | 2026-09-27 21:31 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_dsi | 2026-09-30 18:52 | 3.0.0.18 | linux arm64 | DSI Color | 15 / 15 | ✅ OK |
 |  | 2026-09-30 18:52 | 3.0.0.18 | linux arm64 | DSI Color (hot-plug) | 17 / 17 | ✅ OK |
+|  | 2026-10-02 21:06 | 3.0.0.18 | mac arm64 | DSI Color | 15 / 15 | ✅ OK |
 | ccd_fli | 2026-09-27 21:33 | 3.0.0.15 | mac arm64 | fake SDK | 22 / 22 | ✅ OK |
 | ccd_iidc | 2026-09-22 07:51 | 3.0.0.20 | mac arm64 | Atik GP | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:34 | 3.0.0.22 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 |  | 2026-09-30 18:41 | 3.0.0.22 | linux arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
+|  | 2026-10-02 21:02 | 3.0.0.22 | mac arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
 | ccd_mallin | 2026-09-27 21:34 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_meade | 2026-09-27 21:37 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
-| ccd_mi | 2026-09-22 15:05 | 3.0.0.35 | mac arm64 | MI G0-0300 | 1 / 1 | ✅ OK |
-|  | 2026-09-27 08:00 | 3.0.0.39 | linux x64 | fake SDK | 18 / 18 | ✅ OK |
+| ccd_mi | 2026-09-27 08:00 | 3.0.0.39 | linux x64 | fake SDK | 18 / 18 | ✅ OK |
 |  | 2026-09-27 21:39 | 3.0.0.39 | mac arm64 | fake SDK | 18 / 18 | ✅ OK |
 |  | 2026-09-30 18:21 | 3.0.0.39 | linux arm64 | MI G0-0300 | 1 / 1 | ✅ OK |
+|  | 2026-10-02 20:56 | 3.0.0.39 | mac arm64 | MI G0-0300 | 1 / 1 | ✅ OK |
 | ccd_ogma | 2026-09-27 21:40 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_omegonpro | 2026-09-27 21:42 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_playerone | 2026-09-21 21:23 | 3.0.0.26 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
 |  | 2026-09-24 09:09 | 3.0.0.28 | linux arm64 | fake SDK | 50 / 50 | ✅ OK |
 |  | 2026-09-24 09:11 | 3.0.0.28 | linux arm64 | Mars-C II | 27 / 27 | ✅ OK |
 |  | 2026-09-27 09:00 | 3.0.0.32 | linux x64 | fake SDK | 52 / 52 | ✅ OK |
-|  | 2026-09-27 21:45 | 3.0.0.32 | mac arm64 | fake SDK | 52 / 52 | ✅ OK |
 |  | 2026-09-30 17:17 | 3.0.0.32 | linux arm64 | Mars-C II (IMX662) | 27 / 27 | ✅ OK |
 |  | 2026-09-30 22:23 | 3.0.0.32 | linux x64 | Poseidon-C PRO (IMX571) | 27 / 27 | ✅ OK |
 |  | 2026-09-30 22:31 | 3.0.0.32 | linux x64 | Sedna-M (IMX178) | 27 / 27 | ✅ OK |
+|  | 2026-10-02 20:45 | 3.0.0.32 | mac arm64 | fake SDK | 52 / 52 | ✅ OK |
+|  | 2026-10-02 20:47 | 3.0.0.32 | mac arm64 | Mars-C II (IMX662) | 27 / 27 | ✅ OK |
 | ccd_ptp | 2026-09-27 21:46 | 3.0.0.52 | mac arm64 | fake SDK | 128 / 128 | ✅ OK |
 | ccd_qhy | 2026-09-22 20:15 | 3.0.0.37 | mac arm64 | QHY5LII-M | 1 / 0 | ❌ Failed |
 |  | 2026-09-27 09:18 | 3.0.0.41 | linux x64 | fake SDK | 39 / 39 | ✅ OK |
@@ -144,6 +148,7 @@
 |  | 2026-09-30 17:50 | 3.0.0.45 | linux arm64 | QHY5LII-M | 1 / 1 | ✅ OK |
 |  | 2026-09-30 17:54 | 3.0.0.45 | linux arm64 | QHY5-M | 1 / 1 | ✅ OK |
 |  | 2026-09-30 17:55 | 3.0.0.45 | linux arm64 | QHY8PRO-C | 1 / 1 | ✅ OK |
+|  | 2026-10-02 21:05 | 3.0.0.45 | mac arm64 | QHY5III178M | 1 / 1 | ✅ OK |
 | ccd_qsi | 2026-09-27 08:05 | 3.0.0.23 | linux x64 | fake SDK | 61 / 61 | ✅ OK |
 | ccd_rising | 2026-09-27 21:49 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_simulator | 2026-09-27 13:44 | 3.0.0.37 | linux x64 | simulator | 25 / 25 | ✅ OK |
@@ -151,17 +156,18 @@
 | ccd_ssag | 2026-09-22 10:13 | 3.0.0.14 | mac arm64 | QHY5 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:53 | 3.0.0.16 | mac arm64 | fake SDK | 13 / 13 | ✅ OK |
 | ccd_ssg | 2026-09-27 21:53 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
-| ccd_svb | 2026-09-22 11:25 | 3.0.0.29 | mac arm64 | SVBONY SV305PRO | 1 / 1 | ✅ OK |
-|  | 2026-09-27 09:06 | 3.0.0.33 | linux x64 | fake SDK | 48 / 48 | ✅ OK |
+| ccd_svb | 2026-09-27 09:06 | 3.0.0.33 | linux x64 | fake SDK | 48 / 48 | ✅ OK |
 |  | 2026-09-30 18:34 | 3.0.0.33 | linux arm64 | SVBONY SV305PRO | 1 / 1 | ✅ OK |
-|  | 2026-10-01 15:00 | 3.0.0.34 | mac arm64 | fake SDK | 48 / 48 | ✅ OK |
 |  | 2026-10-01 23:07 | 3.0.0.34 | linux x64 | SVBONY SV405CC | 1 / 1 | ✅ OK |
+|  | 2026-10-02 20:43 | 3.0.0.34 | mac arm64 | fake SDK | 48 / 48 | ✅ OK |
+|  | 2026-10-02 20:44 | 3.0.0.34 | mac arm64 | SVBONY SV305PRO | 1 / 1 | ✅ OK |
 | ccd_svb2 | 2026-09-27 21:56 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_sx | 2026-09-22 15:52 | 3.0.0.20 | mac arm64 | SXVR-H694 and LodeStar | 9 / 9 | ✅ OK |
 |  | 2026-09-27 08:17 | 3.0.0.23 | linux x64 | fake SDK | 25 / 25 | ✅ OK |
 |  | 2026-09-27 21:59 | 3.0.0.23 | mac arm64 | fake SDK | 25 / 25 | ✅ OK |
 |  | 2026-09-30 18:07 | 3.0.0.23 | linux arm64 | SXVR-H694 #0302 | 9 / 9 | ✅ OK |
 |  | 2026-09-30 18:11 | 3.0.0.23 | linux arm64 | SX LodeStar #0102 | 9 / 9 | ✅ OK |
+|  | 2026-10-02 20:52 | 3.0.0.23 | mac arm64 | SX LodeStar #01010101 and SXVR-H694 #01010103 | 9 / 9 | ✅ OK |
 | ccd_touptek | 2026-09-21 21:02 | 3.0.0.49 | mac arm64 | Touptek GPCMOS01200KMB | 28 / 28 | ✅ OK |
 |  | 2026-09-22 00:14 | 3.0.0.49 | linux arm64 | Touptek GPCMOS01200KMB | 6 / 6 | ✅ OK |
 |  | 2026-09-27 08:36 | 3.0.0.55 | linux x64 | fake SDK | 36 / 36 | ✅ OK |
@@ -170,6 +176,7 @@
 |  | 2026-10-01 23:23 | 3.0.0.55 | linux x64 | focuser | 0 / 0 | ❌ Failed |
 |  | 2026-10-02 00:32 | 3.0.0.55 | linux x64 | ATR585M (hot-plug) | 30 / 30 | ✅ OK |
 |  | 2026-10-02 00:37 | 3.0.0.55 | linux x64 | ATR585M | 27 / 27 | ✅ OK |
+|  | 2026-10-02 20:57 | 3.0.0.55 | mac arm64 | GPCMOS01200KMB | 27 / 27 | ✅ OK |
 | ccd_uvc | 2026-09-21 20:24 | 3.0.0.27 | linux arm64 | SVBONY SV205 | 11 / 11 | ✅ OK |
 |  | 2026-09-21 20:26 | 3.0.0.27 | linux arm64 | Creative Live! Cam Sync HD VF0770 | 11 / 11 | ✅ OK |
 |  | 2026-09-27 22:02 | 3.0.0.30 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
@@ -317,6 +324,7 @@
 |  | 2026-09-27 22:39 | 3.0.0.17 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
 |  | 2026-09-30 19:13 | 3.0.0.17 | linux arm64 | EFW | 16 / 16 | ✅ OK |
 |  | 2026-10-01 23:18 | 3.0.0.17 | linux x64 | EFW | 16 / 16 | ✅ OK |
+|  | 2026-10-02 21:02 | 3.0.0.17 | mac arm64 | EFW | 16 / 16 | ✅ OK |
 | wheel_astroasis | 2026-09-27 16:51 | 3.0.0.12 | linux x64 | fake SDK | 15 / 15 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.12 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
 | wheel_atik | 2026-09-27 22:39 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
@@ -332,5 +340,6 @@
 | wheel_sx | 2026-09-20 23:09 | 3.0.0.6 | mac arm64 | SX filter wheel | 12 / 12 | ✅ OK |
 |  | 2026-09-27 22:42 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 |  | 2026-09-30 18:12 | 3.0.0.7 | linux arm64 | SX Filter Wheel #0302 | 12 / 12 | ✅ OK |
+|  | 2026-10-02 21:01 | 3.0.0.7 | mac arm64 | SX Filter Wheel #01010103 | 12 / 12 | ✅ OK |
 | wheel_trutek | 2026-09-27 22:43 | 3.0.0.7 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 | wheel_xagyl | 2026-09-27 22:44 | 3.0.0.9 | mac arm64 | simulator | 8 / 8 | ✅ OK |

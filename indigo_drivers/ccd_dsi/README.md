@@ -35,3 +35,4 @@ The firmware has issues but we tried to make the driver as stable as possible by
 
 2026-09-30 18:52 3.0.0.18 linux arm64 DSI Color 15/15 OK
 2026-09-30 18:52 3.0.0.18 linux arm64 DSI Color (hot-plug) 17/17 OK
+2026-10-02 21:06 3.0.0.18 mac arm64 DSI Color 15/15 OK

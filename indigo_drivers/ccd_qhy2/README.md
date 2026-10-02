@@ -63,3 +63,4 @@ This will come at the cost of somewhat reduced performance.
 2026-09-30 17:50 3.0.0.45 linux arm64 QHY5LII-M 1/1 OK
 2026-09-30 17:54 3.0.0.45 linux arm64 QHY5-M 1/1 OK
 2026-09-30 17:55 3.0.0.45 linux arm64 QHY8PRO-C 1/1 OK
+2026-10-02 21:05 3.0.0.45 mac arm64 QHY5III178M 1/1 OK
