@@ -1,6 +1,9 @@
+/* -*- Mode: C++; indent-tabs-mode:t ; c-basic-offset:4 -*- */
 /*
  * Copyright © 2021 Google LLC
  * Copyright © 2023 Ingvar Stepanyan <me@rreverser.com>
+ *
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,8 +25,19 @@
 
 #include <emscripten/version.h>
 
-static_assert((__EMSCRIPTEN_major__ * 100 * 100 + __EMSCRIPTEN_minor__ * 100 +
-			   __EMSCRIPTEN_tiny__) >= 30148,
+#if defined(__EMSCRIPTEN_MAJOR__)
+#define USBI_EMSCRIPTEN_MAJOR __EMSCRIPTEN_MAJOR__
+#define USBI_EMSCRIPTEN_MINOR __EMSCRIPTEN_MINOR__
+#define USBI_EMSCRIPTEN_TINY __EMSCRIPTEN_TINY__
+#else
+/* Emscripten 3.1.48 provides only the legacy mixed-case version macros. */
+#define USBI_EMSCRIPTEN_MAJOR __EMSCRIPTEN_major__
+#define USBI_EMSCRIPTEN_MINOR __EMSCRIPTEN_minor__
+#define USBI_EMSCRIPTEN_TINY __EMSCRIPTEN_tiny__
+#endif
+
+static_assert((USBI_EMSCRIPTEN_MAJOR * 100 * 100 + USBI_EMSCRIPTEN_MINOR * 100 +
+			   USBI_EMSCRIPTEN_TINY) >= 30148,
 			  "Emscripten 3.1.48 or newer is required.");
 
 #include <assert.h>
@@ -538,17 +552,36 @@ private:
 		auto configurations_len = dev->device_descriptor.bNumConfigurations;
 		configurations.reserve(configurations_len);
 		for (uint8_t j = 0; j < configurations_len; j++) {
-			// Note: requesting more than (platform-specific limit) bytes
-			// here will cause the transfer to fail, see
-			// https://crbug.com/1489414. Use the most common limit of 4096
-			// bytes for now.
-			constexpr uint16_t MAX_CTRL_BUFFER_LENGTH = 4096;
-			auto result = co_await_try(
-				requestDescriptor(LIBUSB_DT_CONFIG, j, MAX_CTRL_BUFFER_LENGTH));
-			if (auto error = getTransferStatus(result)) {
+			// Read descriptor header first to discover target length.
+			auto config_header_result = co_await_try(
+				requestDescriptor(LIBUSB_DT_CONFIG, j, LIBUSB_DT_CONFIG_SIZE));
+			if (auto error = getTransferStatus(config_header_result)) {
 				co_return error;
 			}
-			auto configVal = result["data"];
+			union usbi_config_desc_buf config_header = {};
+			copyFromDataView(config_header.buf, config_header_result["data"]);
+			if (config_header.desc.bDescriptorType != LIBUSB_DT_CONFIG ||
+				config_header.desc.bLength < LIBUSB_DT_CONFIG_SIZE) {
+				co_return LIBUSB_ERROR_IO;
+			}
+
+			auto config_total_length =
+				libusb_le16_to_cpu(config_header.desc.wTotalLength);
+			if (config_total_length < LIBUSB_DT_CONFIG_SIZE) {
+				co_return LIBUSB_ERROR_IO;
+			}
+
+			auto config_result = co_await_try(
+				requestDescriptor(LIBUSB_DT_CONFIG, j, config_total_length));
+			if (auto error = getTransferStatus(config_result)) {
+				co_return error;
+			}
+
+			auto configVal = config_result["data"];
+			if (configVal["byteLength"].as<size_t>() < config_total_length) {
+				co_return LIBUSB_ERROR_IO;
+			}
+
 			auto configLen = configVal["byteLength"].as<size_t>();
 			auto& config = configurations.emplace_back(
 				(usbi_configuration_descriptor*)::operator new(configLen));
@@ -623,6 +656,8 @@ val getDeviceList(libusb_context* ctx, discovered_devs** devs) {
 			// This can wrap around but it's the best approximation of a stable
 			// device address and port number we can provide.
 			dev->device_address = dev->port_number = (uint8_t)session_id;
+
+			usbi_connect_device(dev);
 		}
 		*devs = discovered_devs_append(*devs, dev);
 		libusb_unref_device(dev);
@@ -706,7 +741,7 @@ int em_get_config_descriptor_by_value(libusb_device* dev,
 }
 
 int em_set_configuration(libusb_device_handle* dev_handle, int config) {
-	return WebUsbDevicePtr(dev_handle)->awaitOnMain("setConfiguration", config);
+	return WebUsbDevicePtr(dev_handle)->awaitOnMain("selectConfiguration", config);
 }
 
 int em_claim_interface(libusb_device_handle* handle, uint8_t iface) {
@@ -740,7 +775,7 @@ void em_destroy_device(libusb_device* dev) {
 	WebUsbDevicePtr(dev).free();
 }
 
-int em_submit_transfer(usbi_transfer* itransfer) {
+int em_submit_transfer(usbi_transfer* itransfer) REQUIRES(itransfer->lock) {
 	return runOnMain([itransfer] {
 		auto transfer = USBI_TRANSFER_TO_LIBUSB_TRANSFER(itransfer);
 		auto& web_usb_device = WebUsbDevicePtr(transfer->dev_handle)
@@ -758,7 +793,7 @@ int em_submit_transfer(usbi_transfer* itransfer) {
 				auto endpoint =
 					transfer->endpoint & LIBUSB_ENDPOINT_ADDRESS_MASK;
 
-				if (IS_XFERIN(transfer)) {
+				if (usbi_is_xferin(transfer)) {
 					transfer_promise = web_usb_device.call<val>(
 						"transferIn", endpoint, transfer->length);
 				} else {

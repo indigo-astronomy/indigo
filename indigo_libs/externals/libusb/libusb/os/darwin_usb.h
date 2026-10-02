@@ -1,7 +1,10 @@
+/* -*- Mode: C; indent-tabs-mode:nil -*- */
 /*
  * darwin backend for libusb 1.0
  * Copyright © 2008-2023 Nathan Hjelm <hjelmn@users.sourceforge.net>
  * Copyright © 2019-2023 Google LLC. All rights reserved.
+ *
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -113,12 +116,28 @@ struct darwin_cached_device {
   char                  sys_path[21];
   usb_device_t          device;
   io_service_t          service;
-  int                   open_count;
-  UInt8                 first_config, active_config, port;
+  /* replacement interface and service discovered by the hotplug thread while
+     the device is re-enumerating. adopted (and the old ones released) by the
+     re-enumerating thread once the re-enumeration completes, so device and
+     service themselves are never written by the hotplug thread.
+     GUARDED_BY(darwin_cached_devices_mutex) */
+  usb_device_t          pending_device;
+  io_service_t          pending_service;
+  usbi_mutex_t          lock;          /* protects open_count, capture_count and langid */
+  int                   open_count;    /* GUARDED_BY(lock) */
+  int                   capture_count; /* GUARDED_BY(lock) */
+  UInt16                langid;        /* GUARDED_BY(lock), cached primary string-descriptor language ID, 0 if not yet known */
+  UInt8                 port;
+  /* first_config and active_config are written by darwin_check_configuration
+     on the enumeration/hotplug paths and read from user threads with no
+     common lock. Using atomics removes the data race. accesses use explicit
+     memory_order_relaxed operations: no ordering is required, and the Xcode
+     build enables -Watomic-implicit-seq-cst. */
+  _Atomic UInt8         first_config;
+  _Atomic UInt8         active_config;
   int                   can_enumerate;
   int                   refcount;
-  bool                  in_reenumerate;
-  int                   capture_count;
+  atomic_bool           in_reenumerate;
 };
 
 struct darwin_device_priv {
@@ -128,6 +147,7 @@ struct darwin_device_priv {
 struct darwin_interface {
   usb_interface_t      interface;
   uint8_t              num_endpoints;
+  CFRunLoopRef         runloop;  /* retained run loop cfSource is registered on */
   CFRunLoopSourceRef   cfSource;
   uint64_t             frames[256];
   uint8_t              endpoint_addrs[USB_MAXENDPOINTS];
@@ -135,6 +155,7 @@ struct darwin_interface {
 
 struct darwin_device_handle_priv {
   bool                 is_open;
+  CFRunLoopRef         runloop;  /* retained run loop cfSource is registered on */
   CFRunLoopSourceRef   cfSource;
 
   struct darwin_interface interfaces[USB_MAXINTERFACES];
@@ -149,6 +170,14 @@ struct darwin_transfer_priv {
   IOUSBDevRequestTO req;
 
   /* Bulk */
+  /* interface plug-in pinned (retained) at submission for the zero-length
+     packet write in darwin_async_io_callback: the event thread must not
+     take dev_handle->lock to look the pipe up, and the reference keeps the
+     plug-in valid if the interface is released or reclaimed while the
+     transfer is in flight. released by the callback, or by the submission
+     failure path if the callback will never run. */
+  usb_interface_t zlp_interface;
+  uint8_t zlp_pipeRef;
 
   /* Completion status */
   IOReturn result;

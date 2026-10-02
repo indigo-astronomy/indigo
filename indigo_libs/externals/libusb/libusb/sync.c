@@ -5,6 +5,8 @@
  * Copyright © 2019 Nathan Hjelm <hjelmn@cs.unm.edu>
  * Copyright © 2019 Google LLC. All rights reserved.
  *
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -35,9 +37,9 @@
 
 static void LIBUSB_CALL sync_transfer_cb(struct libusb_transfer *transfer)
 {
-	usbi_dbg(TRANSFER_CTX(transfer), "actual_length=%d", transfer->actual_length);
+	usbi_dbg(usbi_transfer_ctx(transfer), "actual_length=%d", transfer->actual_length);
 
-	int *completed = transfer->user_data;
+	int *completed = (int *)transfer->user_data;
 	*completed = 1;
 	/*
 	 * Right after setting 'completed', another thread might free the transfer, so don't
@@ -48,8 +50,8 @@ static void LIBUSB_CALL sync_transfer_cb(struct libusb_transfer *transfer)
 
 static void sync_transfer_wait_for_completion(struct libusb_transfer *transfer)
 {
-	int r, *completed = transfer->user_data;
-	struct libusb_context *ctx = HANDLE_CTX(transfer->dev_handle);
+	int r, *completed = (int *)transfer->user_data;
+	struct libusb_context *ctx = usbi_handle_ctx(transfer->dev_handle);
 
 	while (!*completed) {
 		r = libusb_handle_events_completed(ctx, completed);
@@ -109,14 +111,16 @@ int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 	int completed = 0;
 	int r;
 
-	if (usbi_handling_events(HANDLE_CTX(dev_handle)))
+	assert(dev_handle);
+
+	if (usbi_handling_events(usbi_handle_ctx(dev_handle)))
 		return LIBUSB_ERROR_BUSY;
 
 	transfer = libusb_alloc_transfer(0);
 	if (!transfer)
 		return LIBUSB_ERROR_NO_MEM;
 
-	buffer = malloc(LIBUSB_CONTROL_SETUP_SIZE + wLength);
+	buffer = (unsigned char *)malloc(LIBUSB_CONTROL_SETUP_SIZE + wLength);
 	if (!buffer) {
 		libusb_free_transfer(transfer);
 		return LIBUSB_ERROR_NO_MEM;
@@ -163,7 +167,7 @@ int API_EXPORTED libusb_control_transfer(libusb_device_handle *dev_handle,
 		r = LIBUSB_ERROR_IO;
 		break;
 	default:
-		usbi_warn(HANDLE_CTX(dev_handle),
+		usbi_warn(usbi_handle_ctx(dev_handle),
 			"unrecognised status code %d", transfer->status);
 		r = LIBUSB_ERROR_OTHER;
 	}
@@ -180,7 +184,9 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 	int completed = 0;
 	int r;
 
-	if (usbi_handling_events(HANDLE_CTX(dev_handle)))
+	assert(dev_handle);
+
+	if (usbi_handling_events(usbi_handle_ctx(dev_handle)))
 		return LIBUSB_ERROR_BUSY;
 
 	transfer = libusb_alloc_transfer(0);
@@ -225,7 +231,7 @@ static int do_sync_bulk_transfer(struct libusb_device_handle *dev_handle,
 		r = LIBUSB_ERROR_IO;
 		break;
 	default:
-		usbi_warn(HANDLE_CTX(dev_handle),
+		usbi_warn(usbi_handle_ctx(dev_handle),
 			"unrecognised status code %d", transfer->status);
 		r = LIBUSB_ERROR_OTHER;
 	}
@@ -337,6 +343,7 @@ int API_EXPORTED libusb_interrupt_transfer(libusb_device_handle *dev_handle,
 	unsigned char endpoint, unsigned char *data, int length,
 	int *transferred, unsigned int timeout)
 {
+	assert(dev_handle);
 	return do_sync_bulk_transfer(dev_handle, endpoint, data, length,
 		transferred, timeout, LIBUSB_TRANSFER_TYPE_INTERRUPT);
 }
