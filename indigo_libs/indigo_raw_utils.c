@@ -3250,15 +3250,15 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 
 uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int width, const int height, double sigma) {
 	int size = width * height;
-	long sum = 0;
-	long sum_sq = 0;
+	int64_t sum = 0;
+	int64_t sum_sq = 0;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			uint8_t *source_pixels = (uint8_t *)data;
 			for (int i = 0; i < size; i++) {
 				int value = source_pixels[i];
 				sum += value;
-				sum_sq += value * value;
+				sum_sq += (int64_t)value * value;
 			}
 			break;
 		}
@@ -3267,7 +3267,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 			for (int i = 0; i < size; i++) {
 				int value = source_pixels[i];
 				sum += value;
-				sum_sq += value * value;
+				sum_sq += (int64_t)value * value;
 			}
 			break;
 		}
@@ -3277,7 +3277,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 				int i3 = 3 * i;
 				int value = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) / 3;
 				sum += value;
-				sum_sq += value * value;
+				sum_sq += (int64_t)value * value;
 			}
 			break;
 		}
@@ -3287,7 +3287,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 				int i4 = 4 * i;
 				int value = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) / 3;
 				sum += value;
-				sum_sq += value * value;
+				sum_sq += (int64_t)value * value;
 			}
 			break;
 		}
@@ -3297,7 +3297,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 				int i4 = 4 * i;
 				int value = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) / 3;
 				sum += value;
-				sum_sq += value * value;
+				sum_sq += (int64_t)value * value;
 			}
 			break;
 		}
@@ -3307,7 +3307,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 				int i3 = 3 * i;
 				int value = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) / 3;
 				sum += value;
-				sum_sq += value * value;
+				sum_sq += (int64_t)value * value;
 			}
 			break;
 		}
