@@ -118,6 +118,12 @@
 											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'PPEC_PREDICTION_GAIN_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'PPEC_PREDICTION_GAIN_RA'" :icon="'glyphicons-signal'" :tooltip="'RA PPEC predictive gain (%)'" :cls="'w-50'"></indigo-edit-number>
 											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'PPEC_PERIOD_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'PPEC_PERIOD_RA'" :icon="'glyphicons-stopwatch'" :tooltip="'RA PPEC period (s)'" :cls="'w-50'"></indigo-edit-number>
 										</template>
+										<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderRaCorrectionModeIs('MKGP')">
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MKGP_REACTIVE_GAIN_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MKGP_REACTIVE_GAIN_RA'" :icon="'glyphicons-dashboard'" :tooltip="'RA MKGP reactive gain (%)'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MKGP_PREDICTION_GAIN_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MKGP_PREDICTION_GAIN_RA'" :icon="'glyphicons-signal'" :tooltip="'RA MKGP predictive gain (%)'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MKGP_PERIOD_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MKGP_PERIOD_RA'" :icon="'glyphicons-stopwatch'" :tooltip="'RA MKGP period (s)'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MKGP_PERIOD2_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MKGP_PERIOD2_RA'" :icon="'glyphicons-stopwatch'" :tooltip="'RA MKGP 2nd stage period (s)'" :cls="'w-50'"></indigo-edit-number>
+										</template>
 									</div>
 								</div>
 							</template>
@@ -204,11 +210,11 @@
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
 	<script>
-		
+
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();
 		window.addEventListener("load", init, false);
-		
+
 		function checkState() {
 			var server = INDIGO.devices["Server"];
 			if (server == null) {
@@ -230,7 +236,7 @@
 				}
 			}
 		}
-	
+
 		var targetExposureTime = 0;
 		var guiderStartProcessItem = null;
 
@@ -472,7 +478,7 @@
 						} else {
 							driftRa = property.item("DRIFT_RA").value;
 							driftDec = property.item("DRIFT_DEC").value;
-							driftUnit = '"';
+							driftUnit = "px";
 						}
 						graph.push(driftRa, driftDec, property.item("CORR_RA").value, property.item("CORR_DEC").value, property.item("DITHERING").value, driftUnit);
 					}
@@ -487,7 +493,7 @@
 			}
 			guiSetup();
 		}
-	
+
 		function guiderPreview1() {
 			guiderSetStartProcessItem("PREVIEW_1");
 			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
@@ -511,10 +517,10 @@
 			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
 			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "GUIDING" : true });
 		}
-	
+
 		function stop() {
 			changeProperty("Guider Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
 		}
-	
+
 	</script>
 </html>
