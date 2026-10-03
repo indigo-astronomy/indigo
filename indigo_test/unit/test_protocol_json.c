@@ -182,6 +182,33 @@ static void json_adapter_serializes_define_update_delete_and_blob_url(void) {
 	assert_contains(output, "\"setBLOBVector\"");
 }
 
+/* Agents list devices by name in switch items, a device name with a quote must not break the JSON string. */
+static void json_adapter_escapes_device_and_item_names(void) {
+	char output[8192];
+	indigo_uni_handle *handle = NULL;
+	indigo_client *client = new_output_adapter("build/unit/protocol_json_quoted_names.tmp", &handle);
+	ASSERT_TRUE(client != NULL);
+	indigo_device device;
+	memset(&device, 0, sizeof(device));
+	INDIGO_COPY_NAME(device.name, "Quoted \"Device\"");
+
+	indigo_property *list = indigo_init_switch_property(NULL, "Quoted \"Device\"", SWITCH_PROPERTY_NAME, "Protocol", "List", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+	ASSERT_TRUE(list != NULL);
+	indigo_init_switch_item(list->items, "ALPACA \"Askar\" \\ WAF", "Askar", true);
+	list->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, list, NULL));
+	list->items[0].do_update = true;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_update_property(client, &device, list, NULL));
+	indigo_release_property(list);
+
+	close_output_adapter(client, &handle);
+	ASSERT_TRUE(read_file("build/unit/protocol_json_quoted_names.tmp", output, sizeof(output)));
+	assert_contains(output, "\"device\": \"Quoted \\\"Device\\\"\", \"name\": \"PROTOCOL_SWITCH\", \"group\"");
+	assert_contains(output, "{ \"setSwitchVector\": { \"device\": \"Quoted \\\"Device\\\"\"");
+	assert_contains(output, "{ \"name\": \"ALPACA \\\"Askar\\\" \\\\ WAF\", \"label\": \"Askar\", \"value\": true }");
+	assert_contains(output, "{ \"name\": \"ALPACA \\\"Askar\\\" \\\\ WAF\", \"value\": true }");
+}
+
 /* A text item longer than INDIGO_VALUE_SIZE is kept in item->text.long_value, the adapter has to
    serialize all of it - a truncated script would come back truncated from any JSON client. */
 static void json_adapter_serializes_whole_long_text_value(void) {
@@ -303,6 +330,7 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "json_escape_handles_special_characters", json_escape_handles_special_characters },
 		{ "json_adapter_serializes_define_update_delete_and_blob_url", json_adapter_serializes_define_update_delete_and_blob_url },
+		{ "json_adapter_escapes_device_and_item_names", json_adapter_escapes_device_and_item_names },
 		{ "json_adapter_serializes_whole_long_text_value", json_adapter_serializes_whole_long_text_value },
 		{ "json_parser_routes_number_and_switch_fixtures", json_parser_routes_number_and_switch_fixtures },
 		{ "json_parser_ignores_malformed_fixture_without_change", json_parser_ignores_malformed_fixture_without_change }

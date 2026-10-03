@@ -36,6 +36,8 @@
 #define TEXT_ITEM_NAME "VALUE"
 #define NUMBER_ITEM_NAME "VALUE"
 #define BLOB_ITEM_NAME "IMAGE"
+#define LIST_PROPERTY_NAME "PROTOCOL_LIST"
+#define QUOTED_DEVICE_NAME "ALPACA rumen's \"Askar\" <WAF> & co"
 
 typedef struct {
 	int enumerate_count;
@@ -47,6 +49,7 @@ typedef struct {
 	indigo_property_type last_type;
 	char last_property[INDIGO_NAME_SIZE];
 	char last_item[INDIGO_NAME_SIZE];
+	char last_label[INDIGO_NAME_SIZE];
 	char last_text_value[INDIGO_VALUE_SIZE];
 	char last_message[INDIGO_VALUE_SIZE];
 	double last_number_value;
@@ -85,14 +88,15 @@ static indigo_result test_device_detach(indigo_device *device) {
 }
 
 static indigo_result test_client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (strcmp(property->name, TEXT_PROPERTY_NAME)) {
+	if (strcmp(property->name, TEXT_PROPERTY_NAME) && strcmp(property->name, LIST_PROPERTY_NAME)) {
 		return INDIGO_OK;
 	}
 	context.define_count++;
 	context.last_type = property->type;
 	INDIGO_COPY_NAME(context.last_property, property->name);
 	if (property->count > 0) {
-		INDIGO_COPY_NAME(context.last_item, property->items[0].name);
+		INDIGO_COPY_NAME(context.last_item, property->items[property->count - 1].name);
+		INDIGO_COPY_NAME(context.last_label, property->items[property->count - 1].label);
 		if (property->type == INDIGO_TEXT_VECTOR) {
 			INDIGO_COPY_VALUE(context.last_text_value, property->items[0].text.value);
 		}
@@ -300,6 +304,64 @@ static void xml_adapter_serializes_whole_long_text_value(void) {
 	free(script);
 }
 
+/* Agents list devices by name in switch items, a device name may carry quotes, so item names
+   have to be escaped like labels or the defSwitch attribute breaks on the first apostrophe. */
+static void xml_adapter_round_trips_item_names_with_quotes(void) {
+	char output[8192];
+	indigo_uni_handle *handle = NULL;
+	indigo_client *client = new_output_adapter("build/unit/protocol_xml_quoted_names.tmp", &handle);
+	ASSERT_TRUE(client != NULL);
+	indigo_device device;
+	memset(&device, 0, sizeof(device));
+	INDIGO_COPY_NAME(device.name, TEST_DEVICE_NAME);
+
+	indigo_property *list = indigo_init_switch_property(NULL, TEST_DEVICE_NAME, LIST_PROPERTY_NAME, "Protocol", "List", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	ASSERT_TRUE(list != NULL);
+	indigo_init_switch_item(list->items + 0, "NONE", "None", false);
+	indigo_init_switch_item(list->items + 1, QUOTED_DEVICE_NAME, QUOTED_DEVICE_NAME, true);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_define_property(client, &device, list, NULL));
+	list->items[1].do_update = true;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_update_property(client, &device, list, NULL));
+	close_output_adapter(client, &handle);
+	ASSERT_TRUE(read_file("build/unit/protocol_xml_quoted_names.tmp", output, sizeof(output)));
+	assert_contains(output, "<defSwitch name='ALPACA rumen&apos;s &quot;Askar&quot; &lt;WAF&gt; &amp; co' label='ALPACA rumen&apos;s &quot;Askar&quot; &lt;WAF&gt; &amp; co'>On</defSwitch>");
+	assert_contains(output, "<oneSwitch name='ALPACA rumen&apos;s &quot;Askar&quot; &lt;WAF&gt; &amp; co'>On</oneSwitch>");
+
+	reset_context();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&test_client));
+	indigo_uni_handle *input = indigo_uni_open_file("build/unit/protocol_xml_quoted_names.tmp", INDIGO_LOG_NONE);
+	ASSERT_TRUE(input != NULL);
+	indigo_device *adapter = indigo_xml_client_adapter("Protocol Peer", "", input, NULL);
+	ASSERT_TRUE(adapter != NULL);
+	adapter->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(adapter));
+	reset_context();
+	indigo_xml_parse(adapter, NULL);
+	indigo_uni_close(&input);
+	((indigo_adapter_context *)adapter->device_context)->input = NULL;
+	ASSERT_EQ_INT(1, context.define_count);
+	ASSERT_STREQ(LIST_PROPERTY_NAME, context.last_property);
+	ASSERT_STREQ(QUOTED_DEVICE_NAME, context.last_item);
+	ASSERT_STREQ(QUOTED_DEVICE_NAME, context.last_label);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(adapter));
+	indigo_release_xml_client_adapter(adapter);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&test_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+
+	handle = indigo_uni_create_file("build/unit/protocol_xml_quoted_request.tmp", INDIGO_LOG_NONE);
+	ASSERT_TRUE(handle != NULL);
+	adapter = indigo_xml_client_adapter("Protocol Peer", "", handle, handle);
+	ASSERT_TRUE(adapter != NULL);
+	adapter->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_client_parser_change_property(adapter, &test_client, list));
+	indigo_release_xml_client_adapter(adapter);
+	indigo_uni_close(&handle);
+	indigo_release_property(list);
+	ASSERT_TRUE(read_file("build/unit/protocol_xml_quoted_request.tmp", output, sizeof(output)));
+	assert_contains(output, "<oneSwitch name='ALPACA rumen&apos;s &quot;Askar&quot; &lt;WAF&gt; &amp; co'>On</oneSwitch>");
+}
+
 static void xml_client_adapter_serializes_requests(void) {
 	char output[8192];
 	indigo_uni_handle *handle = indigo_uni_create_file("build/unit/protocol_xml_client_output.tmp", INDIGO_LOG_NONE);
@@ -455,6 +517,7 @@ int main(void) {
 		{ "xml_escape_handles_special_characters", xml_escape_handles_special_characters },
 		{ "xml_adapter_serializes_define_update_delete_and_blob_url", xml_adapter_serializes_define_update_delete_and_blob_url },
 		{ "xml_adapter_serializes_whole_long_text_value", xml_adapter_serializes_whole_long_text_value },
+		{ "xml_adapter_round_trips_item_names_with_quotes", xml_adapter_round_trips_item_names_with_quotes },
 		{ "xml_client_adapter_serializes_requests", xml_client_adapter_serializes_requests },
 		{ "xml_parser_routes_change_and_enable_blob_fixtures", xml_parser_routes_change_and_enable_blob_fixtures },
 		{ "xml_client_adapter_parses_remote_property_events", xml_client_adapter_parses_remote_property_events },

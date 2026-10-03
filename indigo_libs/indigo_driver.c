@@ -567,7 +567,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					if (indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape_b(5, indigo_get_text_item_value(item))) <= 0) {
+					if (indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", indigo_xml_escape_b(1, item->name), indigo_xml_escape_b(5, indigo_get_text_item_value(item))) <= 0) {
 						result = INDIGO_FAILED;
 					}
 				}
@@ -581,7 +581,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					if (indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1)) <= 0) {
+					if (indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", indigo_xml_escape_b(1, item->name), indigo_dtoa(item->number.value, b1)) <= 0) {
 						result = INDIGO_FAILED;
 					}
 				}
@@ -595,7 +595,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 				}
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = &property->items[i];
-					if (indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off") <= 0) {
+					if (indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", indigo_xml_escape_b(1, item->name), item->sw.value ? "On" : "Off") <= 0) {
 						result = INDIGO_FAILED;
 					}
 				}
@@ -652,7 +652,7 @@ indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle
 					indigo_item *item = &property->items[i];
 					for (int j = 0; j < count; j++) {
 						if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
-							indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(item->text.value));
+							indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", indigo_xml_escape_b(1, item->name), indigo_xml_escape(item->text.value));
 							break;
 						}
 					}
@@ -665,7 +665,7 @@ indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle
 					indigo_item *item = &property->items[i];
 					for (int j = 0; j < count; j++) {
 						if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
-							indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
+							indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", indigo_xml_escape_b(1, item->name), indigo_dtoa(item->number.value, b1));
 							break;
 						}
 					}
@@ -678,7 +678,7 @@ indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle
 					indigo_item *item = &property->items[i];
 					for (int j = 0; j < count; j++) {
 						if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
-							indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
+							indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", indigo_xml_escape_b(1, item->name), item->sw.value ? "On" : "Off");
 							break;
 						}
 					}
