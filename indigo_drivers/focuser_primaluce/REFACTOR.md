@@ -257,6 +257,41 @@ neither `MOT1.ABS_POS` nor `MOT2.ABS_POS`, so the defect could not be reproduced
 `primaluce_connects_the_rotator` exercises the sequence and confirms the focuser still moves
 correctly after a rotator session.
 
+### D8 Station mode never joined an existing network (reproduced, 2026-10-03)
+
+`X_WIFI.STA` sent `{"req":{"cmd":{"STA_SET_STATUS":"on"}}}`, which a SESTO SENSO 2 with firmware
+`SWAPP 03.05.08` answers with `{"res":{"cmd":{"ERROR":"SYS: Invalid command"}}}`.
+`primaluce_command` accepted any JSON answer, so the switch reported OK while nothing changed. The
+firmware selects the mode with `{"req":{"set":{"LANCFG":"sta"}}}` (`"ap"` for the access point),
+which the attached unit acknowledges and reads back. The firmware applies a new `LANCFG` only
+after `{"req":{"cmd":{"REBOOT":""}}}`, which it acknowledges before printing its ESP32 boot log on
+the serial line. `X_WIFI_STA`, which carries the network name and password, was hidden, so a client
+could not set the network to join at all. The driver now shows `X_WIFI_STA`, sets `LANCFG` and
+restarts the controller when the mode changes, waits for it to answer again, reads `LANCFG` back on
+connect to show `STA`, and fails a request answered with `ERROR`. The simulator answers `LANCFG` and
+`REBOOT` (with a boot log) and gains a `reject` fault; `wifi_station_mode` covers all of it. On
+hardware the unit joined the network after the restart and reported `LANCONN` `gotip`.
+
+## Network connection (2026-10-03)
+
+The controller's web server (port 80) answers the same JSON requests as
+`GET /ajax.php?jreq=<URL-encoded request>`, one request per connection. It replies with
+`Content-Length` but does not close the connection, so the driver ends the read on the content
+length rather than on end of file. A device port of `http://host[:port]` (or `tcp://`) selects this
+transport. Verified against the attached SESTO SENSO 2 in station mode: connect, readback of model,
+firmware, serial number, position, temperature, voltage and WiFi mode, and a 100-step move out and
+back, with each request taking about 20 ms. The full hardware suite passes over WiFi
+(`--port http://192.168.111.152`, 18/18) as well as over USB (18/18). The web interface itself sends no WiFi commands (its
+WiFi page is disabled), so `LANCFG` and `REBOOT` come from probing the serial protocol. The
+simulator has no HTTP transport, so the network path has hardware coverage only.
+
+## Generator fix (2026-10-03)
+
+`indigo_generator` counted braces inside string and character literals and comments, so a code
+block containing a string such as `"{\"res\":{"` failed with "Failed to parse C code". The code
+lexer now tracks strings, character literals, line and block comments. Regenerating all 116
+`.driver` files in the tree with the fixed generator changed no output.
+
 ### Intentional behaviour deviations
 
 - `focuser_movement_finalizer` now reschedules itself with a 0.2 s delay instead of immediately, the

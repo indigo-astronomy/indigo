@@ -46,6 +46,7 @@ static int backlash = 0;
 static int speed = 0;
 static int hold_current = 1;
 static const char *wifi_status = "on";
+static const char *lan_cfg = "ap";
 static const char *led_status = "on";
 static const char *model = "SESTOSENSO2";
 static const char *firmware = "3.10";
@@ -67,7 +68,7 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_PRIMALUCE_EVENTS names a file receiving every accepted request.\n");
-	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|close>' which is\n");
+	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|close>' which is\n");
 	printf("applied once to the next request containing that key and then removed.\n");
 }
 
@@ -258,7 +259,7 @@ static void send_state(int handle) {
 	sim_printf(handle,
 		"{\"res\":{\"get\":{"
 		"\"MODNAME\":\"%s\",\"SN\":\"SESTOSENSO20716\","
-		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"},"
+		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"},\"LANCFG\":\"%s\","
 		"\"WIFIAP\":{\"SSID\":\"SESTOSENSO20716\",\"PWD\":\"primalucelab\",\"STATUS\":\"%s\"},"
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
 		"\"EXT_T\":\"22.50\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
@@ -270,7 +271,7 @@ static void send_state(int handle) {
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"stop\"}"
 		"}}}\n",
-		model, firmware, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart);
+		model, firmware, lan_cfg, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart);
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -296,6 +297,11 @@ static void dispatch_command(int handle, const char *command) {
 			sim_printf(handle, "\"Error: invalid cmd\"\n");
 			return;
 		}
+		// The way a SESTO SENSO 2 answers a request its firmware does not know.
+		if (!strcmp(fault, "reject")) {
+			sim_printf(handle, "{\"res\":{\"cmd\":{\"ERROR\":\"SYS: Invalid command\"}}}\n");
+			return;
+		}
 	}
 	if (strstr(command, "\"MODNAME\"") != NULL) {
 		sim_printf(handle, "{\"res\":{\"get\":{\"MODNAME\":\"%s\"}}}\n", model);
@@ -317,9 +323,13 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (strstr(command, "AP_SET_STATUS") != NULL) {
 		wifi_status = strstr(command, "\"off\"") != NULL ? "off" : "on";
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"done\"}}}\n");
-	} else if (strstr(command, "STA_SET_STATUS") != NULL) {
-		wifi_status = "sta";
-		sim_printf(handle, "{\"res\":{\"cmd\":{\"STA_SET_STATUS\":\"done\"}}}\n");
+	} else if (strstr(command, "\"LANCFG\"") != NULL) {
+		lan_cfg = strstr(command, "\"sta\"") != NULL ? "sta" : "ap";
+		sim_printf(handle, "{\"res\":{\"set\":{\"LANCFG\":\"done\"}}}\n");
+	} else if (strstr(command, "\"REBOOT\"") != NULL) {
+		// A SESTO SENSO 2 acknowledges, then prints its ESP32 boot log while it restarts.
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"REBOOT\":\"done\"}}}\n");
+		sim_printf(handle, "ets Jun  8 2016 00:22:57\n\nrst:0xc (SW_CPU_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)\nentry 0x400806a4\nUnable to find DS18B20\n________ shell start __\n");
 	} else if (strstr(command, "DIMLEDS") != NULL) {
 		led_status = strstr(command, "\"low\"") != NULL ? "low" : (strstr(command, "\"off\"") != NULL ? "off" : "on");
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"DIMLEDS\":\"done\"}}}\n");

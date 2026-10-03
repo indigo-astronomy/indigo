@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 15;
+	version = 16;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -32,6 +32,7 @@ driver primaluce {
 		#define JSMN_STRICT
 		#define JSMN_PARENT_LINKS
 		#include "jsmn.h"
+		#include <ctype.h>
 	}
 	define {
 		#define MAX_RESPONSE_SIZE	4096
@@ -44,6 +45,9 @@ driver primaluce {
 		bool has_abs_pos;
 		bool rotator_has_abs_pos;
 		bool is_sestosenso_3;
+		bool is_http;
+		char http_host[INDIGO_NAME_SIZE];
+		int http_port;
 	}
 	code {
 		static void focuser_position_handler(indigo_device *device);
@@ -51,6 +55,9 @@ driver primaluce {
 		static void rotator_position_handler(indigo_device *device);
 
 		static char *GET_MODNAME[] = { "res", "get", "MODNAME", NULL };
+		static char *GET_ERROR[] = { "res", "get", "ERROR", NULL };
+		static char *SET_ERROR[] = { "res", "set", "ERROR", NULL };
+		static char *CMD_ERROR[] = { "res", "cmd", "ERROR", NULL };
 		static char *GET_SN[] = { "res", "get", "SN", NULL };
 		static char *GET_SWAPP[] = { "res", "get", "SWVERS", "SWAPP", NULL };
 		static char *GET_SWWEB[] = { "res", "get", "SWVERS", "SWWEB", NULL };
@@ -81,6 +88,7 @@ driver primaluce {
 		static char *GET_MOT1_ERROR[] = { "res", "get", "MOT1", "ERROR", NULL };
 		static char *GET_MOT2_ERROR[] = { "res", "get", "MOT2", "ERROR", NULL };
 		static char *GET_WIFIAP_STATUS[] = { "res", "get", "WIFIAP", "STATUS", NULL };
+		static char *GET_LANCFG[] = { "res", "get", "LANCFG", NULL };
 		static char *GET_WIFIAP_SSID[] = { "res", "get", "WIFIAP", "SSID", NULL };
 		static char *GET_WIFIAP_PWD[] = { "res", "get", "WIFIAP", "PWD", NULL };
 		static char *GET_WIFISTA_SSID[] = { "res", "get", "WIFISTA", "SSID", NULL };
@@ -137,25 +145,92 @@ driver primaluce {
 		static char *GET_RUNPRESET_3_M1CDEC[] = { "res", "get", "RUNPRESET_3", "M1CDEC", NULL };
 		static char *GET_RUNPRESET_3_M1HOLD[] = { "res", "get", "RUNPRESET_3", "M1HOLD", NULL };
 
+		// Over the network the controller serves the same JSON requests as GET /ajax.php?jreq=<request>, one request per connection.
+		static bool primaluce_http_exchange(indigo_device *device, const char *request) {
+			char query[3 * MAX_RESPONSE_SIZE + 1];
+			char *out = query;
+			for (const unsigned char *in = (const unsigned char *)request; *in && out < query + sizeof(query) - 4; in++) {
+				if (isalnum(*in) || strchr("-_.~", *in)) {
+					*out++ = *in;
+				} else {
+					out += sprintf(out, "%%%02X", *in);
+				}
+			}
+			*out = 0;
+			indigo_uni_handle *handle = indigo_uni_open_client_socket_with_timeout(PRIVATE_DATA->http_host, PRIVATE_DATA->http_port, SOCK_STREAM, INDIGO_DELAY(5), INDIGO_LOG_DEBUG);
+			if (handle == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't connect to %s:%d", PRIVATE_DATA->http_host, PRIVATE_DATA->http_port);
+				return false;
+			}
+			bool result = false;
+			char reply[MAX_RESPONSE_SIZE + 1024];
+			long length = 0;
+			if (indigo_uni_printf(handle, "GET /ajax.php?jreq=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", query, PRIVATE_DATA->http_host) > 0) {
+				char *body = NULL;
+				long content_length = -1;
+				// The controller keeps the connection open after the reply, so Content-Length ends the read.
+				while (length < (long)sizeof(reply) - 1 && indigo_uni_wait_for_data(handle, INDIGO_DELAY(5)) > 0) {
+					long count = indigo_uni_read_available(handle, reply + length, sizeof(reply) - 1 - length);
+					if (count <= 0) {
+						break;
+					}
+					length += count;
+					reply[length] = 0;
+					if (body == NULL && (body = strstr(reply, "\r\n\r\n")) != NULL) {
+						char *field = strstr(reply, "\r\nContent-Length:");
+						if (field != NULL && field < body) {
+							content_length = atol(field + 17);
+						}
+					}
+					if (body != NULL && content_length >= 0 && length >= body + 4 - reply + content_length) {
+						break;
+					}
+				}
+				reply[length] = 0;
+				if (strncmp(reply, "HTTP/1.", 7) || strncmp(reply + 8, " 200 ", 5) || body == NULL) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected HTTP response: %.40s", reply);
+				} else if (strlen(body + 4) >= MAX_RESPONSE_SIZE) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "HTTP response too long");
+				} else {
+					strcpy(PRIVATE_DATA->response, body + 4);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", PRIVATE_DATA->response);
+					result = *PRIVATE_DATA->response != 0;
+				}
+			}
+			indigo_uni_close(&handle);
+			return result;
+		}
+
+		static char *get_string(indigo_device *device, char *path[]);
+
 		static bool primaluce_command(indigo_device *device, char *command, ...) {
 			long result;
 			va_list args;
 			va_start(args, command);
-			result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
-			va_end(args);
-			if (result <= 0) {
-				return false;
-			}
-			while (true) {
-				result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
-				if (result < 1) {
+			if (PRIVATE_DATA->is_http) {
+				char request[MAX_RESPONSE_SIZE];
+				vsnprintf(request, sizeof(request), command, args);
+				va_end(args);
+				if (!primaluce_http_exchange(device, request)) {
 					return false;
 				}
-				if (*PRIVATE_DATA->response == '[') {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Ignored");
-					continue;
+			} else {
+				result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+				va_end(args);
+				if (result <= 0) {
+					return false;
 				}
-				break;
+				while (true) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
+					if (result < 1) {
+						return false;
+					}
+					if (*PRIVATE_DATA->response == '[') {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Ignored");
+						continue;
+					}
+					break;
+				}
 			}
 			memset(PRIVATE_DATA->tokens, 0, sizeof(PRIVATE_DATA->tokens));
 			jsmn_init(&PRIVATE_DATA->parser);
@@ -170,6 +245,18 @@ driver primaluce {
 				if (PRIVATE_DATA->tokens[i].type == JSMN_STRING) {
 					PRIVATE_DATA->response[PRIVATE_DATA->tokens[i].end] = 0;
 				}
+			}
+			// A rejected request is answered as an ERROR under the request verb
+			char *error = get_string(device, CMD_ERROR);
+			if (error == NULL) {
+				error = get_string(device, SET_ERROR);
+			}
+			if (error == NULL) {
+				error = get_string(device, GET_ERROR);
+			}
+			if (error != NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Request rejected: %s", error);
+				return false;
 			}
 			return true;
 		}
@@ -238,10 +325,53 @@ driver primaluce {
 			return get_number2(device, path, NULL);
 		}
 
+		// The firmware applies a new LANCFG only after a restart, so a changed mode restarts the controller.
+		static bool primaluce_set_lan_cfg(indigo_device *device, const char *mode) {
+			char *text;
+			if (!primaluce_command(device, "{\"req\":{\"get\":{\"LANCFG\":\"\"}}}") || (text = get_string(device, GET_LANCFG)) == NULL) {
+				return false;
+			}
+			if (!strcmp(text, mode)) {
+				return true;
+			}
+			if (!primaluce_command(device, "{\"req\":{\"set\":{\"LANCFG\":\"%s\"}}}", mode) || !primaluce_command(device, "{\"req\":{\"cmd\":{\"REBOOT\":\"\"}}}")) {
+				return false;
+			}
+			if (PRIVATE_DATA->is_http) {
+				indigo_send_message(device, X_WIFI_PROPERTY, "The controller restarts to apply the WiFi mode and leaves its current network");
+				return true;
+			}
+			// The restart prints a boot log on the serial line before the controller answers again.
+			for (int i = 0; i < 20; i++) {
+				indigo_usleep(INDIGO_DELAY(0.5));
+				indigo_uni_discard(PRIVATE_DATA->handle);
+				if (primaluce_command(device, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}") && get_string(device, GET_MODNAME) != NULL) {
+					return true;
+				}
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No answer after restart");
+			return false;
+		}
+
 		static bool primaluce_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
-			if (PRIVATE_DATA->handle != NULL) {
+			PRIVATE_DATA->is_http = indigo_uni_is_url(name, "http");
+			if (PRIVATE_DATA->is_http) {
+				// http://host[:port] or tcp://host[:port] reaches the controller on a WiFi network
+				char *host = strchr(name, ':') + 3;
+				size_t host_length = strcspn(host, ":/");
+				if (host_length == 0 || host_length >= sizeof(PRIVATE_DATA->http_host)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Malformed URL '%s'", name);
+					PRIVATE_DATA->is_http = false;
+					return false;
+				}
+				memcpy(PRIVATE_DATA->http_host, host, host_length);
+				PRIVATE_DATA->http_host[host_length] = 0;
+				PRIVATE_DATA->http_port = host[host_length] == ':' ? atoi(host + host_length + 1) : 80;
+			} else {
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+			}
+			if (PRIVATE_DATA->is_http || PRIVATE_DATA->handle != NULL) {
 				char *text;
 				if (primaluce_command(device, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}") && (text = get_string(device, GET_MODNAME))) {
 					if (!strncmp(text, "SESTOSENSO", 10) || !strncmp(text, "ESATTO", 6)) {
@@ -260,14 +390,20 @@ driver primaluce {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported device");
 					}
 				}
-				indigo_uni_close(&PRIVATE_DATA->handle);
+				if (PRIVATE_DATA->handle != NULL) {
+					indigo_uni_close(&PRIVATE_DATA->handle);
+				}
+				PRIVATE_DATA->is_http = false;
 			}
 			return false;
 		}
 
 		static void primaluce_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
+			if (PRIVATE_DATA->handle != NULL || PRIVATE_DATA->is_http) {
+				if (PRIVATE_DATA->handle != NULL) {
+					indigo_uni_close(&PRIVATE_DATA->handle);
+				}
+				PRIVATE_DATA->is_http = false;
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "N/A");
 				INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "N/A");
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
@@ -422,8 +558,10 @@ driver primaluce {
 				X_STATE_MOTOR_TEMP_ITEM->number.value = get_number(device, GET_MOT1_NTC_T);
 				X_STATE_VIN_12V_ITEM->number.value = get_number(device, GET_VIN_12V);
 				X_STATE_VIN_USB_ITEM->number.value = get_number(device, GET_VIN_USB);
-				// TBD: STA doesn't work
-				if ((text = get_string(device, GET_WIFIAP_STATUS))) {
+				// LANCFG selects between the access point and a connection to an existing network
+				if ((text = get_string(device, GET_LANCFG)) && !strcmp(text, "sta")) {
+					indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_STA_ITEM, true);
+				} else if ((text = get_string(device, GET_WIFIAP_STATUS))) {
 					if (!strcmp(text, "on")) {
 						indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_AP_ITEM, true);
 					} else {
@@ -618,9 +756,9 @@ driver primaluce {
 				if (X_WIFI_OFF_ITEM->sw.value) {
 					result = primaluce_command(device, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}");
 				} else if (X_WIFI_AP_ITEM->sw.value) {
-					result = primaluce_command(device, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"on\"}}}");
+					result = primaluce_set_lan_cfg(device, "ap") && primaluce_command(device, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"on\"}}}");
 				} else if (X_WIFI_STA_ITEM->sw.value) {
-					result = primaluce_command(device, "{\"req\":{\"cmd\":{\"STA_SET_STATUS\":\"on\"}}}");
+					result = primaluce_set_lan_cfg(device, "sta");
 				}
 				if (!result) {
 					X_WIFI_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -672,7 +810,6 @@ driver primaluce {
 			}
 		}
 		text X_WIFI_STA {
-			hidden = true;
 			on_change {
 				if (!primaluce_command(device, "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
 					X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;

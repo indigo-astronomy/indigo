@@ -45,6 +45,9 @@
 #define X_WIFI_AP_PROPERTY_NAME            "X_WIFI_AP"
 #define X_WIFI_AP_SSID_ITEM_NAME           "AP_SSID"
 #define X_WIFI_AP_PASSWORD_ITEM_NAME       "AP_PASSWORD"
+#define X_WIFI_STA_PROPERTY_NAME           "X_WIFI_STA"
+#define X_WIFI_STA_SSID_ITEM_NAME          "STA_SSID"
+#define X_WIFI_STA_PASSWORD_ITEM_NAME      "STA_PASSWORD"
 #define X_LEDS_PROPERTY_NAME               "X_LEDS"
 #define X_LEDS_OFF_ITEM_NAME               "OFF"
 #define X_LEDS_DIM_ITEM_NAME               "DIM"
@@ -338,6 +341,8 @@ static void property_contract(void) {
 	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME);
 	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_SSID_ITEM_NAME);
 	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_PASSWORD_ITEM_NAME);
+	assert_property_has_item(X_WIFI_STA_PROPERTY_NAME, X_WIFI_STA_SSID_ITEM_NAME);
+	assert_property_has_item(X_WIFI_STA_PROPERTY_NAME, X_WIFI_STA_PASSWORD_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_ON_ITEM_NAME);
@@ -347,8 +352,6 @@ static void property_contract(void) {
 	assert_property_has_item(X_HOLD_CURR_PROPERTY_NAME, X_HOLD_CURR_ON_ITEM_NAME);
 	assert_property_has_item(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME);
 	assert_number_item_in_range(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	// The station WiFi settings are not offered; only the access point is.
-	SERIAL_CHECK_TRUE(!has_defined_property("X_WIFI_STA"));
 	// The configuration read from the controller is reported, never written.
 	SERIAL_CHECK_TRUE(find_cached_property(X_CONFIG_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
 	SERIAL_CHECK_TRUE(find_cached_property(X_STATE_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
@@ -676,6 +679,31 @@ cleanup:
 	driver_stop();
 }
 
+// Station mode is selected through LANCFG; the firmware rejects the
+// STA_SET_STATUS command the driver used to send.
+static void wifi_station_mode(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// The network to join has to be settable before station mode is useful.
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, X_WIFI_STA_SSID_ITEM_NAME, "INDIGO-STA", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"WIFISTA\":{\"SSID\":\"INDIGO-STA\"", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"LANCFG\":\"sta\"", 1));
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"LANCFG\":\"ap\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"AP_SET_STATUS\":\"on\"", 1));
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, true));
+	// A request the firmware rejects must not be reported as done.
+	SERIAL_CHECK_TRUE(fault("\"LANCFG\"", "reject"));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
 // A preset reprograms the run configuration, which the driver reads back.
 static void run_preset(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -904,6 +932,7 @@ int main(void) {
 		{ "external_motion_observed", external_motion_observed, "external-motion" },
 		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
 		{ "controller_settings", controller_settings, "normal" },
+		{ "wifi_station_mode", wifi_station_mode, "normal" },
 		{ "run_preset", run_preset, "normal" },
 		{ "settings_reported_failures", settings_reported_failures, "normal" },
 		{ "focuser_calibration", focuser_calibration, "normal" },

@@ -25,6 +25,10 @@ indigo_server indigo_focuser_primaluce
 
 This driver is tested agains firmware version 3.05!
 
+The controller is reached either on its USB serial port or over WiFi: set the device port to `http://<address>` (for example `http://192.168.4.1` on the controller's own access point), and the driver sends the same requests to the controller's web server.
+
+To join an existing WiFi network, set its name and password in Advanced > STA WiFi settings and select Station mode in Advanced > WiFi mode. The controller restarts to apply the mode; its new address is shown by the network router.
+
 To calibrate Sesto Senso 2 focuser:
 
 * set the focuser to the innermost position manually,
@@ -41,5 +45,7 @@ As PrimaluceLab never answered any email both simulator and driver are based onl
 ## Testing
 
 2026-09-20 19:54 3.0.0.13 mac arm64 SESTO SENSO 2 18/18 OK
-2026-09-27 23:12 3.0.0.15 mac arm64 simulator 36/36 OK
 2026-09-30 18:48 3.0.0.15 linux arm64 SESTOSENSO2 18/18 OK
+2026-10-03 19:43 3.0.0.16 mac arm64 simulator 37/37 OK
+2026-10-03 19:51 3.0.0.16 mac arm64 SESTOSENSO2 (WiFi) 18/18 OK
+2026-10-03 19:51 3.0.0.16 mac arm64 SESTOSENSO2 18/18 OK

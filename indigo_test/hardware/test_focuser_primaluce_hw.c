@@ -616,6 +616,8 @@ static void primaluce_publishes_the_property_contract(void) {
 	ASSERT_TRUE(property_defined(focuser, X_STATE_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(focuser, X_WIFI_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(focuser, X_WIFI_AP_PROPERTY_NAME));
+	// The network station mode joins has to be settable.
+	ASSERT_TRUE(property_defined(focuser, X_WIFI_STA_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(focuser, X_LEDS_PROPERTY_NAME));
 	// The controller has no temperature compensation, no reverse switch, no travel limits of its
 	// own and no coordinate sync, so these stay hidden.
@@ -624,7 +626,6 @@ static void primaluce_publishes_the_property_contract(void) {
 	ASSERT_TRUE(property_hidden(focuser, FOCUSER_REVERSE_MOTION_PROPERTY_NAME));
 	ASSERT_TRUE(property_hidden(focuser, FOCUSER_LIMITS_PROPERTY_NAME));
 	ASSERT_TRUE(property_hidden(focuser, FOCUSER_ON_POSITION_SET_PROPERTY_NAME));
-	ASSERT_TRUE(property_hidden(focuser, X_WIFI_STA_PROPERTY_NAME));
 	char model[INDIGO_VALUE_SIZE] = "";
 	ASSERT_TRUE(text_item(focuser, INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, model, sizeof(model)));
 	// SESTO SENSO exposes the stepper configuration and the run presets, ESATTO does not.
