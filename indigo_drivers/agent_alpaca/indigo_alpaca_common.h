@@ -121,10 +121,12 @@ typedef struct indigo_alpaca_device_struct {
 		} wheel;
 		struct {
 			bool absolute;
+			bool positionwritable;
 			bool ismoving;
 			bool tempcompavailable;
 			bool tempcomp;
 			bool tempcompsuspended;
+			bool movepending;
 			bool temperatureavailable;
 			bool halted;
 			int offset;
@@ -136,6 +138,7 @@ typedef struct indigo_alpaca_device_struct {
 		struct {
 			bool canreverse;
 			bool ismoving;
+			bool hasrawposition;
 			double mechanicalposition;
 			double position;
 			double targetposition;

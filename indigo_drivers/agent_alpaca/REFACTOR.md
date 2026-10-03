@@ -34,7 +34,7 @@ The harness scripts (`start_server.sh`, `run_all.sh`, `compare.py`) are session-
 
 ## 3. Found defects
 
-Every defect listed here was reproduced by ConformU, by the image comparison or by a dedicated reproducer. The exceptions are AGENT-7, AGENT-9 and AGENT-23, which are marked "(source audit)". AGENT-14 to AGENT-16 were found in the macOS simulator run and AGENT-17 to AGENT-20 in the macOS hardware run (section 10). AGENT-21 to AGENT-24 are the residual defects of section 9 and AGENT-25 was found by ConformU in the same work; all are fixed in section 11.
+Every defect listed here was reproduced by ConformU, by the image comparison or by a dedicated reproducer. The exceptions are AGENT-7, AGENT-9 and AGENT-23, which are marked "(source audit)". AGENT-14 to AGENT-16 were found in the macOS simulator run and AGENT-17 to AGENT-20 in the macOS hardware run (section 10). AGENT-21 to AGENT-24 are the residual defects of section 9 and AGENT-25 was found by ConformU in the same work; all are fixed in section 11. AGENT-26 and AGENT-27 were found by ConformU through `system_alpaca` and OmniSim and are fixed in section 12.
 
 | ID | Location | Observable impact | Root cause | Fix | Regression evidence |
 |---|---|---|---|---|---|
@@ -63,6 +63,8 @@ Every defect listed here was reproduced by ConformU, by the image comparison or 
 | AGENT-23 | `indigo_alpaca_ccd.c` (source audit, section 11) | `MaxADU` was 2^bits, one more than the largest value a pixel can hold (65536 for 16-bit data, 256 for 8-bit), and 1 for a camera whose `CCD_INFO` reports 0 bits per pixel (DSLR Simulator). ConformU accepts any value from 1. | `pow(2, bits)` from `CCD_INFO` and `CCD_FRAME`. | `max_adu()` returns 2^bits − 1, limited to `INT_MAX`. A `CCD_INFO` reporting 0 bits leaves the value to `CCD_FRAME`, and a 24 or 48 bit frame counts as RGB with 8 or 16 bits per channel. The first version of the fix returned 0 for the DSLR Simulator; ConformU reported it ("Invalid value below expected minimum (1): 0") and the `CCD_FRAME` fallback was added. | ConformU camera logs: `MaxADU` 65535, 65535, 255, 255 and 65535 for cameras 0 to 4. |
 | AGENT-24 | `indigo_alpaca_switch.c` (section 11) | `GetSwitchName` and `GetSwitchDescription` returned an empty string for a switch without an entry in `AUX_OUTLET_NAMES` / `AUX_SENSOR_NAMES`: both power outlets of the Pocket Powerbox, and every outlet of a driver that does not publish the property. | Only the names properties were used. | The label of the INDIGO item is kept per switch (`sw.switchlabel`) and returned when the name is empty. | `repro_unplug.py`: the test powerbox has no `AUX_OUTLET_NAMES`; 3.0.0.10 returns `''` for both switches, 3.0.0.11 `'Mount power'` and `'Camera power'`. ConformU switch `Pocket Powerbox`: switches 0 and 1 are named "Power outlets" and "DSLR outlet". |
 | AGENT-25 | `indigo_alpaca_focuser.c` (section 11) | `Move` with `TempComp` true never finished: `IsMoving` stayed true and ConformU's "Move - TempComp True V3" ran into its 60 s timeout. Hidden until the focuser simulator could finish a move at all (section 11.4). | An INDIGO focuser in `FOCUSER_MODE` AUTOMATIC has no `FOCUSER_POSITION` and `FOCUSER_STEPS` properties, so the move request went nowhere while the agent had already set `ismoving`. IFocuserV3 requires `Move` to work with temperature compensation on. | `Move` switches `FOCUSER_MODE` to MANUAL first and marks the compensation as suspended; `TempComp` keeps reading true. The first focuser request that finds the move finished switches the mode back to AUTOMATIC; a `TempComp` write ends the suspension. | ConformU focuser `CCD Imager Simulator (focuser)`: "Move - TempComp True V3 OK Absolute move OK" (ISSUE before). |
+| AGENT-26 | `indigo_alpaca_focuser.c` (section 12) | With `TempComp` true, `Position` answered NotImplemented and `Move` sent a relative move to a focuser without `FOCUSER_STEPS`; ConformU reported "Move - TempComp True V3" as NotImplemented. It affects every driver that makes `FOCUSER_POSITION` read-only in AUTOMATIC mode, which is the INDIGO convention (`focuser_asi`, `focuser_astroasis`, `focuser_dsd`, `focuser_lakeside`, `focuser_mypro2`, `focuser_nstep`, `focuser_optec`, `focuser_qhy`, `ccd_touptek`, `system_alpaca`); the focuser of the CCD simulator keeps the property writable and hid it. | `Absolute` was taken from the permission of `FOCUSER_POSITION`, so a read-only position made the focuser relative. AGENT-25 assumed the property is removed in AUTOMATIC mode. | A defined `FOCUSER_POSITION` makes the focuser absolute whatever its permission (a relative focuser does not define it); the permission is kept as `positionwritable`. `Move` switches to MANUAL as before and waits until the position is writable before it sends the target, because a driver may apply the mode asynchronously and a change of a read-only property is ignored; `resume_tempcomp` leaves the mode alone while that move is pending. | ConformU focuser `ALPACA Focuser Simulator - 0` (OmniSim 0.5.0 via `system_alpaca`): "Move - TempComp True V3 OK Absolute move OK" (ISSUE before); `CCD Imager Simulator (focuser)` unchanged, 35/35. |
+| AGENT-27 | `indigo_alpaca_rotator.c` (section 12) | `InterfaceVersion` was 1 although README.md claims IRotatorV3, so ConformU did not test `MechanicalPosition`, `MoveMechanical` and `Sync` (43 results instead of 73). Reporting 3 showed that `Sync` was a relative move (ISSUE "Invalid operation" on every sync after the first), `MechanicalPosition` was the sky position and `MoveMechanical` was `MoveAbsolute`. | `alpaca_sync` was commented out and the request was routed to `alpaca_move_relative`; `ROTATOR_RAW_POSITION` was not used. | `InterfaceVersion` 3. `Sync` sets `ROTATOR_ON_POSITION_SET` to SYNC, writes `ROTATOR_POSITION`, sets GOTO back and waits until `Position` reports the new angle. `MechanicalPosition` is `ROTATOR_RAW_POSITION` when the driver defines it, otherwise the position. `MoveMechanical` goes to the mechanical target plus the current offset (`Position` − `MechanicalPosition`). | ConformU rotator `Field Rotator Simulator` and `ALPACA Rotator Simulator - 0` (OmniSim via `system_alpaca`): 73/73, every `Sync` and `MoveMechanical` OK. |
 
 ImageBytes now transmits 8-bit data as Byte (6) and 16-bit data as UInt16 (8), with `ImageElementType` Int32 (2). This is the narrowing the spec allows, and it reduces a 16-bit image to half the size of the previous Int32 transmission.
 
@@ -299,6 +301,23 @@ The `alpacaprotocol` test of every device ended with no error, issue or informat
 | R7 | Rules set by the user during the run: old results and logs removed, one detailed log per device, tests counted by result line, simulators fixed where ConformU hit a simulator limitation, wider pulse guide tolerance | done | Sections 8, 11.3 and 11.4 |
 | R8 | Fix AGENT-25 (`Move` with temperature compensation), found once the focuser simulator could finish its moves | done | Defect table |
 
+## 12. ConformU through system_alpaca and OmniSim (2026-10-03, 3.0.0.11 → 3.0.0.12)
+
+The agent was tested on devices that `system_alpaca` proxies from ASCOM OmniSim 0.5.0: OmniSim → `system_alpaca` → `agent_alpaca` → ConformU, all on one Mac (arm64). The same ConformU test run directly against OmniSim is the reference, so a difference between the two runs is a loss in the INDIGO path. This first manual run covered the focuser and the rotator.
+
+- `indigo_server` loads `indigo_system_alpaca` and `indigo_agent_alpaca`; `system_alpaca` has discovery disabled and OmniSim as a manual server. Discovery runs once at startup before it can be disabled and proxies any Alpaca server on the LAN; those devices stay disconnected, but they shift the device numbers of the agent. `system_alpaca` ignores the Alpaca server of the agent itself, so the chain has no loop.
+- OmniSim, `indigo_server` and every ConformU process run with a private `HOME` (OmniSim also `CFFIXED_USER_HOME` and `ASCOM_LOGPATH`).
+- ConformU settings: `FocuserTimeout` and `RotatorTimeout` 300 s instead of 60 s. The OmniSim focuser moves about 480 steps/s, so a move from 0 to MaxStep (50000) cannot finish in 60 s; with the default the reference run itself has 9 issues.
+- The agent exports neither ObservingConditions nor SafetyMonitor, so 2 of the 10 OmniSim devices are not reachable through the chain.
+
+Reference (OmniSim directly): focuser and rotator without an issue. Chain on 3.0.0.11: focuser 1 issue (AGENT-26), rotator without an issue but at interface version 1 (AGENT-27). Chain and INDIGO simulators on 3.0.0.12: no issue (README.md, Testing). The focuser chain log was recorded before the AGENT-27 change; the focuser code is the same as in 3.0.0.12.
+
+Differences to the reference that remain:
+
+- `InterfaceVersion` 3 instead of 4 for both: `DeviceState`, `Connect`/`Disconnect` and `Connecting` are not tested.
+- `StepSize` answers NotImplemented for both (an optional member). INDIGO has no step size property; `system_alpaca` publishes it as `X_ALPACA_STEP_SIZE`.
+- README.md claims IDomeV2, the agent reports 1; to be checked by the dome run of this chain.
+
 ## Final test summary
 
 The results of the earlier runs were removed on 2026-10-01 at the user's request (sections 5, 8 and 10.2); this summary covers the run that is recorded now.
@@ -310,3 +329,7 @@ Simulated tests: 2299 run, 2299 passed. A test is a result line of the detailed 
 Hardware tests: 0 run, 0 passed.
 
 Reproducers of section 3, not part of the count: `repro_unplug.py` and `stress_remote.py` under AddressSanitizer fail on 3.0.0.10 and pass on 3.0.0.11.
+
+**macOS arm64, 3.0.0.12, ConformU 4.5.0 (section 12)**
+
+Simulated tests: 216 run, 216 passed: `CCD Imager Simulator (focuser)` 35, `Field Rotator Simulator` 73, and through `system_alpaca` the OmniSim 0.5.0 focuser 35 and rotator 73. The other devices were not rerun; the change is limited to the focuser and the rotator.

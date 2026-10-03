@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0300000B
+#define DRIVER_VERSION 0x0300000C
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>

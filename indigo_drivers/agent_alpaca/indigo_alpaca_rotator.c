@@ -24,12 +24,14 @@
  \file alpaca_rotator.c
  */
 
+#include <math.h>
+
 #include <indigo/indigo_rotator_driver.h>
 
 #include "indigo_alpaca_common.h"
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
-	*value = 1;
+	*value = 3;
 	return indigo_alpaca_error_OK;
 }
 
@@ -171,18 +173,69 @@ static indigo_alpaca_error alpaca_move_relative(indigo_alpaca_device *device, in
 	return indigo_alpaca_error_OK;
 }
 
-//static indigo_alpaca_error alpaca_sync(indigo_alpaca_device *device, int version, double value) {
-//	pthread_mutex_lock(&device->mutex);
-//	if (!device->connected) {
-//		pthread_mutex_unlock(&device->mutex);
-//		return indigo_alpaca_error_NotConnected;
-//	}
-//
-//	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true);
-//	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, value);
-//	pthread_mutex_unlock(&device->mutex);
-//	return indigo_alpaca_error_OK;
-//}
+static indigo_alpaca_error alpaca_get_mechanicalposition(indigo_alpaca_device *device, int version, double *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->rotator.mechanicalposition;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+// MoveMechanical: the mechanical target plus the sync offset (Position - MechanicalPosition) is the sky angle to go to.
+static indigo_alpaca_error alpaca_move_mechanical(indigo_alpaca_device *device, int version, double value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (value < 0 || value >= 360) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidValue;
+	}
+	double target = indigo_range360(value + device->rotator.position - device->rotator.mechanicalposition);
+	if (target > device->rotator.max) {
+		target -= 360;
+	}
+	pthread_mutex_unlock(&device->mutex);
+	return alpaca_move_absolute(device, version, target);
+}
+
+// Sync: ROTATOR_POSITION with ROTATOR_ON_POSITION_SET in SYNC; the request ends when Position reports the new angle.
+static indigo_alpaca_error alpaca_sync(indigo_alpaca_device *device, int version, double value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (device->rotator.ismoving) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidOperation;
+	}
+	if (value < 0 || value >= 360) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidValue;
+	}
+	if (value > device->rotator.max) {
+		value -= 360;
+	}
+	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, value);
+	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
+	pthread_mutex_unlock(&device->mutex);
+	for (int i = 0; i < 30; i++) {
+		pthread_mutex_lock(&device->mutex);
+		bool synced = !device->rotator.ismoving && fabs(device->rotator.position - value) < 0.01;
+		pthread_mutex_unlock(&device->mutex);
+		if (synced) {
+			return indigo_alpaca_error_OK;
+		}
+		indigo_usleep(500000);
+	}
+	return indigo_alpaca_error_ValueNotSet;
+}
 
 static indigo_alpaca_error alpaca_halt(indigo_alpaca_device *device, int version) {
 	pthread_mutex_lock(&device->mutex);
@@ -203,11 +256,22 @@ void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, 
 			if (!strcmp(item->name, ROTATOR_POSITION_ITEM_NAME)) {
 				alpaca_device->rotator.position = item->number.value;
 				alpaca_device->rotator.targetposition = item->number.target;
-				alpaca_device->rotator.mechanicalposition = item->number.value;
+				if (!alpaca_device->rotator.hasrawposition) {
+					alpaca_device->rotator.mechanicalposition = item->number.value;
+				}
 				if (!alpaca_device->rotator.haslimits) {
 					alpaca_device->rotator.min = item->number.min;
 					alpaca_device->rotator.max = item->number.max;
 				}
+			}
+		}
+	}
+	if (!strcmp(property->name, ROTATOR_RAW_POSITION_PROPERTY_NAME)) {
+		alpaca_device->rotator.hasrawposition = true;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, ROTATOR_RAW_POSITION_ITEM_NAME)) {
+				alpaca_device->rotator.mechanicalposition = item->number.value;
 			}
 		}
 	}
@@ -270,7 +334,7 @@ long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int 
 	}
 	if (!strcmp(command, "mechanicalposition")) {
 		double value = 0;
-		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
+		indigo_alpaca_error result = alpaca_get_mechanicalposition(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "stepsize")) {
@@ -291,7 +355,7 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Position=%lf", &value) == 1) {
-			result = alpaca_move_relative(alpaca_device, version, value);
+			result = alpaca_sync(alpaca_device, version, value);
 		} else {
 			result = indigo_alpaca_error_InvalidValue;
 		}
@@ -307,14 +371,21 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
-	if (
-		!strcmp(command, "moveabsolute") ||
-		!strcmp(command, "movemechanical")
-	) {
+	if (!strcmp(command, "moveabsolute")) {
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Position=%lf", &value) == 1) {
 			result = alpaca_move_absolute(alpaca_device, version, value);
+		} else {
+			result = indigo_alpaca_error_InvalidValue;
+		}
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "movemechanical")) {
+		double value = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "Position=%lf", &value) == 1) {
+			result = alpaca_move_mechanical(alpaca_device, version, value);
 		} else {
 			result = indigo_alpaca_error_InvalidValue;
 		}
