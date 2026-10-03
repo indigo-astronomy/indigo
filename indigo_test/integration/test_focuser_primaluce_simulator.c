@@ -53,6 +53,9 @@
 #define X_LEDS_OFF_ITEM_NAME               "OFF"
 #define X_LEDS_DIM_ITEM_NAME               "DIM"
 #define X_LEDS_MIDDLE_ITEM_NAME            "MIDDLE"
+#define X_PRESETS_PROPERTY_NAME            "X_PRESETS"
+#define X_PRESET_NAMES_PROPERTY_NAME       "X_PRESET_NAMES"
+#define X_PRESET_GOTO_PROPERTY_NAME        "X_PRESET_GOTO"
 #define X_LEDS_ON_ITEM_NAME                "ON"
 #define X_RUNPRESET_PROPERTY_NAME          "X_RUNPRESET"
 #define X_RUNPRESET_L_ITEM_NAME            "L"
@@ -439,6 +442,9 @@ static void esatto_profile(void) {
 	SERIAL_CHECK_TRUE(!has_defined_property(X_RUNPRESET_L_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(X_RUNPRESET_1_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(X_HOLD_CURR_PROPERTY_NAME));
+	// An Esatto reports no stored positions.
+	SERIAL_CHECK_TRUE(!has_defined_property(X_PRESETS_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_PRESET_GOTO_PROPERTY_NAME));
 	// The focuser calibration stays available on an Esatto.
 	SERIAL_CHECK_TRUE(has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
@@ -625,6 +631,34 @@ cleanup:
 	driver_stop();
 }
 
+// Stored positions are written to the controller, read back and reached on request.
+static void stored_positions(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(has_defined_property(X_PRESETS_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_is(X_PRESETS_PROPERTY_NAME, "PRESET_3", 0, 0));
+	SERIAL_CHECK_TRUE(number_change(X_PRESETS_PROPERTY_NAME, "PRESET_3", 20000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"PRESET_3\":{\"M1POS\":20000", 1));
+	SERIAL_CHECK_TRUE(text_change(X_PRESET_NAMES_PROPERTY_NAME, "PRESET_3", "Focus", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"PRESET_3\":{\"NAME\":\"Focus\"", 1));
+	// Only the changed preset is written.
+	SERIAL_CHECK_TRUE(requests("\"PRESET_1\"") == 0);
+	// The controller refuses a zero position, and the stored one is kept.
+	SERIAL_CHECK_TRUE(number_change(X_PRESETS_PROPERTY_NAME, "PRESET_3", 0, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_is(X_PRESETS_PROPERTY_NAME, "PRESET_3", 20000, 0));
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(number_is(X_PRESETS_PROPERTY_NAME, "PRESET_3", 20000, 0));
+	SERIAL_CHECK_TRUE(text_is(X_PRESET_NAMES_PROPERTY_NAME, "PRESET_3", "Focus"));
+	SERIAL_CHECK_TRUE(switch_change(X_PRESET_GOTO_PROPERTY_NAME, "PRESET_3", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(20000));
+	SERIAL_CHECK_TRUE(switch_is(X_PRESET_GOTO_PROPERTY_NAME, "PRESET_3", false));
+	// A preset without a stored position is not reached.
+	SERIAL_CHECK_TRUE(switch_change(X_PRESET_GOTO_PROPERTY_NAME, "PRESET_1", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(position_is(20000));
+cleanup:
+	driver_stop();
+}
+
 // The middle LED brightness is set and read back.
 static void led_middle(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -654,7 +688,8 @@ static void abort_motion(void) {
 	SERIAL_CHECK_TRUE(position_in_motion(18075, 90000));
 	unsigned int position_alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT_STOP\"", 1));
+	// The abort stops the motor at once rather than decelerating.
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT_ABORT\"", 1));
 	// An interrupted move is reported as such, not as a completed one.
 	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, position_alerts));
 	indigo_usleep(1500000);
@@ -698,8 +733,10 @@ static void move_command_failures(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(fault("\"MOVE_ABS\"", "garbage"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18350, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(fault("\"MOT_STOP\"", "silent"));
-	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+	// A controller that refuses MOT_ABORT is stopped with MOT_STOP.
+	SERIAL_CHECK_TRUE(fault("\"MOT_ABORT\"", "reject"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT1\":{\"MOT_STOP\"", 1));
 	// The driver stays usable after each rejected transaction.
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(18300));
@@ -1051,6 +1088,7 @@ int main(void) {
 		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
 		{ "controller_settings", controller_settings, "normal" },
 		{ "led_middle", led_middle, "normal" },
+		{ "stored_positions", stored_positions, "normal" },
 		{ "wifi_station_mode", wifi_station_mode, "normal" },
 		{ "run_preset", run_preset, "normal" },
 		{ "settings_reported_failures", settings_reported_failures, "normal" },

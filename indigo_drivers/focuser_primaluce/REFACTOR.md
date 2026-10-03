@@ -305,6 +305,21 @@ simulator has no HTTP transport, so the network path has hardware coverage only.
   `cmd` and completed at once). `X_CALIBRATE_A` now stays busy until `MOT2.CAL_STATUS` reads
   `"stop"`, and `ROTATOR_ABORT_MOTION` ends a running calibration with `CAL_STATUS` `"stop"`.
   Simulator `rotator_calibration`; not verified on hardware.
+- Stored positions: SESTO SENSO keeps nine named focuser positions as `PRESET_1` to `PRESET_9`
+  (`NAME`, `M1POS`). `X_PRESETS` writes a changed position with
+  `{"req":{"set":{"PRESET_<n>":{"M1POS":<steps>}}}}`, `X_PRESET_NAMES` a changed name, and
+  `X_PRESET_GOTO` moves to a stored position through the absolute move. The controller refuses a
+  zero position ("Error: invalid command"), so a stored position cannot be cleared again; the
+  driver keeps the stored value and ends ALERT. A model that reports no `PRESET_1` (ESATTO) hides
+  the three properties. Simulator `stored_positions`; on hardware the readback and the write of a
+  position and a name were checked directly, the hardware suite asserts the properties.
+- `LOGLEVEL`: connect sends `{"req":{"cmd":{"LOGLEVEL":"no output"}}}`, so diagnostic output
+  cannot interleave with replies. Verified on hardware.
+- `FOCUSER_ABORT_MOTION` sends `MOT1` `MOT_ABORT`, which stops the motor at once, and falls back to
+  `MOT_STOP` when the controller refuses it. Simulator `abort_motion`, `move_command_failures`;
+  the hardware suite aborts a move with it.
+- The response buffer grows from 4096 to 8192 bytes: the full state of the attached unit is about
+  3.9 kB over USB.
 - A motor without its 12 V supply answers a move or stop with `"12V_PowerSupply_Error"`; the
   driver now ends the operation ALERT with the message "The motor has no 12 V power supply".
   Simulator `motor_without_power` (fault `nopower`); not reproduced on hardware.

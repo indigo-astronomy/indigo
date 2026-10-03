@@ -44,6 +44,9 @@ static int rotator_position = 0;
 static int rotator_target = 0;
 // POSITION_DEG is the synced angle, ABS_POS_DEG the mechanical one; a sync moves the offset between them.
 static int rotator_offset = 0;
+// Stored focuser positions PRESET_1 to PRESET_9; the controller refuses a zero position.
+static int preset_positions[9];
+static char preset_names[9][32];
 static double rotator_calibration_end = 0;
 static int backlash = 0;
 static int speed = 0;
@@ -162,7 +165,7 @@ static const char *pending_fault(const char *command) {
 }
 
 static bool sim_printf(int handle, const char *format, ...) {
-	char buffer[4096];
+	char buffer[8192];
 	va_list args;
 
 	va_start(args, format);
@@ -259,8 +262,13 @@ static void send_state(int handle) {
 	if (report_speed) {
 		snprintf(mot1_speed, sizeof(mot1_speed), "\"SPEED\":%d,", speed);
 	}
+	char presets[1024] = { 0 };
+	for (int i = 0; i < 9; i++) {
+		size_t used = strlen(presets);
+		snprintf(presets + used, sizeof(presets) - used, "\"PRESET_%d\":{\"NAME\":\"%s\",\"M1POS\":%d},", i + 1, preset_names[i], preset_positions[i]);
+	}
 	sim_printf(handle,
-		"{\"res\":{\"get\":{"
+		"{\"res\":{\"get\":{%s"
 		"\"MODNAME\":\"%s\",\"SN\":\"SESTOSENSO20716\","
 		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"},\"LANCFG\":\"%s\","
 		"\"WIFIAP\":{\"SSID\":\"SESTOSENSO20716\",\"PWD\":\"primalucelab\",\"STATUS\":\"%s\"},"
@@ -274,7 +282,7 @@ static void send_state(int handle) {
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		model, firmware, lan_cfg, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -318,6 +326,35 @@ static void dispatch_command(int handle, const char *command) {
 		sim_printf(handle, "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"}}}}\n", firmware);
 	} else if (strstr(command, "\"get\"") != NULL) {
 		send_state(handle);
+	} else if (strstr(command, "\"set\"") != NULL && strstr(command, "\"PRESET_") != NULL) {
+		int index = extract_int_after(command, "\"PRESET_", 0) - 1;
+		char reply[256] = "";
+		if (index >= 0 && index < 9) {
+			const char *name = strstr(command, "\"NAME\":\"");
+			if (name != NULL) {
+				name += 8;
+				size_t length = strcspn(name, "\"");
+				if (length >= sizeof(preset_names[index])) {
+					length = sizeof(preset_names[index]) - 1;
+				}
+				memcpy(preset_names[index], name, length);
+				preset_names[index][length] = 0;
+				strcat(reply, "\"NAME\":\"done\"");
+			}
+			if (strstr(command, "\"M1POS\":") != NULL) {
+				int position = extract_int_after(command, "\"M1POS\":", 0);
+				if (*reply) {
+					strcat(reply, ",");
+				}
+				if (position > 0) {
+					preset_positions[index] = position;
+					strcat(reply, "\"M1POS\":\"done\"");
+				} else {
+					strcat(reply, "\"M1POS\":\"Error: invalid command\"");
+				}
+			}
+		}
+		sim_printf(handle, "{\"res\":{\"set\":{\"PRESET_%d\":{%s}}}}\n", index + 1, reply);
 	} else if (strstr(command, "\"BKLASH\"") != NULL) {
 		backlash = extract_int_after(command, "\"BKLASH\":", backlash);
 		sim_printf(handle, "{\"res\":{\"set\":{\"MOT1\":{\"BKLASH\":\"done\"}}}}\n");
@@ -352,6 +389,12 @@ static void dispatch_command(int handle, const char *command) {
 		focuser_target = extract_int_after(command, "\"GOTO\":", focuser_target);
 		serial_motion_start(&focus_motion, focuser_target, 1000);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"GOTO\":\"done\"}}}}\n");
+	} else if (strstr(command, "\"MOT_ABORT\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
+		serial_motion_stop(&focus_motion);
+		focuser_target = focuser_position;
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"done\"}}}}\n");
+	} else if (strstr(command, "\"LOGLEVEL\"") != NULL) {
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"LOGLEVEL\":\"done\"}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		serial_motion_stop(&focus_motion);
 		focuser_target = focuser_position;
@@ -385,7 +428,7 @@ static void dispatch_command(int handle, const char *command) {
 
 int main(int argc, char *argv[]) {
 	char port[128];
-	char buffer[4096];
+	char buffer[8192];
 
 	if (!parse_args(argc, argv)) {
 		return 1;

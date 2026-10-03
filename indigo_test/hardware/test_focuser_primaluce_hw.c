@@ -632,6 +632,9 @@ static void primaluce_publishes_the_property_contract(void) {
 	// SESTO SENSO exposes the stepper configuration and the run presets, ESATTO does not.
 	bool sestosenso = !strncmp(model, "SESTOSENSO", 10);
 	ASSERT_TRUE(property_defined(focuser, X_CONFIG_PROPERTY_NAME) == sestosenso);
+	// SESTO SENSO stores named focuser positions, ESATTO does not.
+	ASSERT_TRUE(property_defined(focuser, "X_PRESETS") == sestosenso);
+	ASSERT_TRUE(property_defined(focuser, "X_PRESET_GOTO") == sestosenso);
 	ASSERT_TRUE(property_defined(focuser, X_RUNPRESET_PROPERTY_NAME) == sestosenso);
 	ASSERT_TRUE(property_defined(focuser, X_RUNPRESET_L_PROPERTY_NAME) == sestosenso);
 	ASSERT_TRUE(property_defined(focuser, X_RUNPRESET_1_PROPERTY_NAME) == sestosenso);

@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -52,8 +52,10 @@
 
 //+ define
 
-#define MAX_RESPONSE_SIZE    4096
+#define MAX_RESPONSE_SIZE    8192
 #define MAX_TOKEN_COUT       1024
+// The controller stores named focuser positions as PRESET_1 to PRESET_9 (M1POS).
+#define PRESET_COUNT         9
 
 //- define
 
@@ -249,6 +251,72 @@
 #define X_RUNPRESET_2_ITEM_NAME        "2"
 #define X_RUNPRESET_3_ITEM_NAME        "3"
 
+#define X_PRESETS_PROPERTY             (PRIVATE_DATA->x_presets_property)
+#define X_PRESETS_1_ITEM               (X_PRESETS_PROPERTY->items + 0)
+#define X_PRESETS_2_ITEM               (X_PRESETS_PROPERTY->items + 1)
+#define X_PRESETS_3_ITEM               (X_PRESETS_PROPERTY->items + 2)
+#define X_PRESETS_4_ITEM               (X_PRESETS_PROPERTY->items + 3)
+#define X_PRESETS_5_ITEM               (X_PRESETS_PROPERTY->items + 4)
+#define X_PRESETS_6_ITEM               (X_PRESETS_PROPERTY->items + 5)
+#define X_PRESETS_7_ITEM               (X_PRESETS_PROPERTY->items + 6)
+#define X_PRESETS_8_ITEM               (X_PRESETS_PROPERTY->items + 7)
+#define X_PRESETS_9_ITEM               (X_PRESETS_PROPERTY->items + 8)
+
+#define X_PRESETS_PROPERTY_NAME        "X_PRESETS"
+#define X_PRESETS_1_ITEM_NAME          "PRESET_1"
+#define X_PRESETS_2_ITEM_NAME          "PRESET_2"
+#define X_PRESETS_3_ITEM_NAME          "PRESET_3"
+#define X_PRESETS_4_ITEM_NAME          "PRESET_4"
+#define X_PRESETS_5_ITEM_NAME          "PRESET_5"
+#define X_PRESETS_6_ITEM_NAME          "PRESET_6"
+#define X_PRESETS_7_ITEM_NAME          "PRESET_7"
+#define X_PRESETS_8_ITEM_NAME          "PRESET_8"
+#define X_PRESETS_9_ITEM_NAME          "PRESET_9"
+
+#define X_PRESET_NAMES_PROPERTY        (PRIVATE_DATA->x_preset_names_property)
+#define X_PRESET_NAMES_1_ITEM          (X_PRESET_NAMES_PROPERTY->items + 0)
+#define X_PRESET_NAMES_2_ITEM          (X_PRESET_NAMES_PROPERTY->items + 1)
+#define X_PRESET_NAMES_3_ITEM          (X_PRESET_NAMES_PROPERTY->items + 2)
+#define X_PRESET_NAMES_4_ITEM          (X_PRESET_NAMES_PROPERTY->items + 3)
+#define X_PRESET_NAMES_5_ITEM          (X_PRESET_NAMES_PROPERTY->items + 4)
+#define X_PRESET_NAMES_6_ITEM          (X_PRESET_NAMES_PROPERTY->items + 5)
+#define X_PRESET_NAMES_7_ITEM          (X_PRESET_NAMES_PROPERTY->items + 6)
+#define X_PRESET_NAMES_8_ITEM          (X_PRESET_NAMES_PROPERTY->items + 7)
+#define X_PRESET_NAMES_9_ITEM          (X_PRESET_NAMES_PROPERTY->items + 8)
+
+#define X_PRESET_NAMES_PROPERTY_NAME   "X_PRESET_NAMES"
+#define X_PRESET_NAMES_1_ITEM_NAME     "PRESET_1"
+#define X_PRESET_NAMES_2_ITEM_NAME     "PRESET_2"
+#define X_PRESET_NAMES_3_ITEM_NAME     "PRESET_3"
+#define X_PRESET_NAMES_4_ITEM_NAME     "PRESET_4"
+#define X_PRESET_NAMES_5_ITEM_NAME     "PRESET_5"
+#define X_PRESET_NAMES_6_ITEM_NAME     "PRESET_6"
+#define X_PRESET_NAMES_7_ITEM_NAME     "PRESET_7"
+#define X_PRESET_NAMES_8_ITEM_NAME     "PRESET_8"
+#define X_PRESET_NAMES_9_ITEM_NAME     "PRESET_9"
+
+#define X_PRESET_GOTO_PROPERTY         (PRIVATE_DATA->x_preset_goto_property)
+#define X_PRESET_GOTO_1_ITEM           (X_PRESET_GOTO_PROPERTY->items + 0)
+#define X_PRESET_GOTO_2_ITEM           (X_PRESET_GOTO_PROPERTY->items + 1)
+#define X_PRESET_GOTO_3_ITEM           (X_PRESET_GOTO_PROPERTY->items + 2)
+#define X_PRESET_GOTO_4_ITEM           (X_PRESET_GOTO_PROPERTY->items + 3)
+#define X_PRESET_GOTO_5_ITEM           (X_PRESET_GOTO_PROPERTY->items + 4)
+#define X_PRESET_GOTO_6_ITEM           (X_PRESET_GOTO_PROPERTY->items + 5)
+#define X_PRESET_GOTO_7_ITEM           (X_PRESET_GOTO_PROPERTY->items + 6)
+#define X_PRESET_GOTO_8_ITEM           (X_PRESET_GOTO_PROPERTY->items + 7)
+#define X_PRESET_GOTO_9_ITEM           (X_PRESET_GOTO_PROPERTY->items + 8)
+
+#define X_PRESET_GOTO_PROPERTY_NAME    "X_PRESET_GOTO"
+#define X_PRESET_GOTO_1_ITEM_NAME      "PRESET_1"
+#define X_PRESET_GOTO_2_ITEM_NAME      "PRESET_2"
+#define X_PRESET_GOTO_3_ITEM_NAME      "PRESET_3"
+#define X_PRESET_GOTO_4_ITEM_NAME      "PRESET_4"
+#define X_PRESET_GOTO_5_ITEM_NAME      "PRESET_5"
+#define X_PRESET_GOTO_6_ITEM_NAME      "PRESET_6"
+#define X_PRESET_GOTO_7_ITEM_NAME      "PRESET_7"
+#define X_PRESET_GOTO_8_ITEM_NAME      "PRESET_8"
+#define X_PRESET_GOTO_9_ITEM_NAME      "PRESET_9"
+
 #define X_HOLD_CURR_PROPERTY           (PRIVATE_DATA->x_hold_curr_property)
 #define X_HOLD_CURR_OFF_ITEM           (X_HOLD_CURR_PROPERTY->items + 0)
 #define X_HOLD_CURR_ON_ITEM            (X_HOLD_CURR_PROPERTY->items + 1)
@@ -291,6 +359,9 @@ typedef struct {
 	indigo_property *x_runpreset_2_property;
 	indigo_property *x_runpreset_3_property;
 	indigo_property *x_runpreset_property;
+	indigo_property *x_presets_property;
+	indigo_property *x_preset_names_property;
+	indigo_property *x_preset_goto_property;
 	indigo_property *x_hold_curr_property;
 	indigo_property *x_calibrate_f_property;
 	indigo_property *x_calibrate_r_property;
@@ -301,6 +372,8 @@ typedef struct {
 	bool has_abs_pos;
 	bool rotator_has_abs_pos;
 	bool rotator_has_position_deg;
+	int preset_positions[PRESET_COUNT];
+	char preset_names[PRESET_COUNT][INDIGO_VALUE_SIZE];
 	int rotator_calibration_polls;
 	bool is_sestosenso_3;
 	bool is_http;
@@ -343,6 +416,8 @@ static char *CMD_MOT1_STEP[] = { "res", "cmd", "MOT1", "STEP", NULL };
 static char *CMD_MOT1_GOTO[] = { "res", "cmd", "MOT1", "GOTO", NULL };
 //static char *CMD_MOT1_MOVE_REL[] = { "res", "cmd", "MOT1", "MOVE_REL", NULL };
 static char *CMD_MOT1_MOT_STOP[] = { "res", "cmd", "MOT1", "MOT_STOP", NULL };
+static char *CMD_MOT1_MOT_ABORT[] = { "res", "cmd", "MOT1", "MOT_ABORT", NULL };
+static char *GET_PRESET_1[] = { "res", "get", "PRESET_1", NULL };
 static char *CMD_MOT2_STEP[] = { "res", "cmd", "MOT2", "STEP", NULL };
 static char *CMD_MOT2_MOT_STOP[] = { "res", "cmd", "MOT2", "MOT_STOP", NULL };
 static char *CMD_MOT2_SYNC_POS[] = { "res", "cmd", "MOT2", "SYNC_POS", NULL };
@@ -649,7 +724,8 @@ static bool primaluce_open(indigo_device *device) {
 					if (!PRIVATE_DATA->is_sestosenso_3 && version < 3.05) {
 						indigo_send_message(device, BUSY_PROPERTY, "%s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
 					}
-					//primaluce_command(device, "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}");
+					// Diagnostic output would interleave with the replies on the serial line.
+					primaluce_command(device, "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}");
 					return true;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported version");
@@ -924,6 +1000,20 @@ static void focuser_connection_handler(indigo_device *device) {
 					FOCUSER_SPEED_PROPERTY->hidden = false;
 				}
 				FOCUSER_BACKLASH_ITEM->number.value = get_number(device, GET_MOT1_BKLASH);
+				// Models without stored positions report no PRESET_n.
+				bool has_presets = getToken(device, 0, GET_PRESET_1) != -1;
+				X_PRESETS_PROPERTY->hidden = X_PRESET_NAMES_PROPERTY->hidden = X_PRESET_GOTO_PROPERTY->hidden = !has_presets;
+				for (int i = 0; has_presets && i < PRESET_COUNT; i++) {
+					char key[16];
+					snprintf(key, sizeof(key), "PRESET_%d", i + 1);
+					char *position_path[] = { "res", "get", key, "M1POS", NULL };
+					char *name_path[] = { "res", "get", key, "NAME", NULL };
+					PRIVATE_DATA->preset_positions[i] = (int)get_number(device, position_path);
+					X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = PRIVATE_DATA->preset_positions[i];
+					X_PRESETS_PROPERTY->items[i].number.max = FOCUSER_POSITION_ITEM->number.max;
+					INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], (text = get_string(device, name_path)) ? text : "");
+					INDIGO_COPY_VALUE(X_PRESET_NAMES_PROPERTY->items[i].text.value, PRIVATE_DATA->preset_names[i]);
+				}
 				X_STATE_MOTOR_TEMP_ITEM->number.value = get_number(device, GET_MOT1_NTC_T);
 				X_STATE_VIN_12V_ITEM->number.value = get_number(device, GET_VIN_12V);
 				X_STATE_VIN_USB_ITEM->number.value = get_number(device, GET_VIN_USB);
@@ -1031,6 +1121,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_RUNPRESET_2_PROPERTY, NULL);
 			indigo_define_property(device, X_RUNPRESET_3_PROPERTY, NULL);
 			indigo_define_property(device, X_RUNPRESET_PROPERTY, NULL);
+			indigo_define_property(device, X_PRESETS_PROPERTY, NULL);
+			indigo_define_property(device, X_PRESET_NAMES_PROPERTY, NULL);
+			indigo_define_property(device, X_PRESET_GOTO_PROPERTY, NULL);
 			indigo_define_property(device, X_HOLD_CURR_PROPERTY, NULL);
 			indigo_define_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1060,6 +1153,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			X_RUNPRESET_2_PROPERTY,
 			X_RUNPRESET_3_PROPERTY,
 			X_RUNPRESET_PROPERTY,
+			X_PRESETS_PROPERTY,
+			X_PRESET_NAMES_PROPERTY,
+			X_PRESET_GOTO_PROPERTY,
 			X_HOLD_CURR_PROPERTY,
 			X_CALIBRATE_F_PROPERTY,
 			FOCUSER_TEMPERATURE_PROPERTY,
@@ -1087,6 +1183,9 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, X_RUNPRESET_2_PROPERTY, NULL);
 		indigo_delete_property(device, X_RUNPRESET_3_PROPERTY, NULL);
 		indigo_delete_property(device, X_RUNPRESET_PROPERTY, NULL);
+		indigo_delete_property(device, X_PRESETS_PROPERTY, NULL);
+		indigo_delete_property(device, X_PRESET_NAMES_PROPERTY, NULL);
+		indigo_delete_property(device, X_PRESET_GOTO_PROPERTY, NULL);
 		indigo_delete_property(device, X_HOLD_CURR_PROPERTY, NULL);
 		indigo_delete_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
@@ -1231,6 +1330,84 @@ static void focuser_x_runpreset_handler(indigo_device *device) {
 	indigo_update_property(device, X_CONFIG_PROPERTY, NULL);
 	//- focuser.X_RUNPRESET.on_change
 	indigo_update_property(device, X_RUNPRESET_PROPERTY, NULL);
+}
+
+static void focuser_x_presets_handler(indigo_device *device) {
+	X_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_PRESETS.on_change
+	// The controller refuses a zero position, so only positions that changed to a stored value are written.
+	for (int i = 0; i < PRESET_COUNT; i++) {
+		int position = (int)X_PRESETS_PROPERTY->items[i].number.target;
+		if (position == PRIVATE_DATA->preset_positions[i]) {
+			continue;
+		}
+		char key[16];
+		snprintf(key, sizeof(key), "PRESET_%d", i + 1);
+		char *path[] = { "res", "set", key, "M1POS", NULL };
+		char *state;
+		if (position > 0 && primaluce_command(device, "{\"req\":{\"set\":{\"%s\":{\"M1POS\":%d}}}}", key, position) && (state = get_string(device, path)) != NULL && !strcmp(state, "done")) {
+			PRIVATE_DATA->preset_positions[i] = position;
+		} else {
+			X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = PRIVATE_DATA->preset_positions[i];
+	}
+	//- focuser.X_PRESETS.on_change
+	indigo_update_property(device, X_PRESETS_PROPERTY, NULL);
+}
+
+static void focuser_x_preset_names_handler(indigo_device *device) {
+	X_PRESET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_PRESET_NAMES.on_change
+	for (int i = 0; i < PRESET_COUNT; i++) {
+		char *name = X_PRESET_NAMES_PROPERTY->items[i].text.value;
+		if (!strcmp(name, PRIVATE_DATA->preset_names[i])) {
+			continue;
+		}
+		char key[16];
+		snprintf(key, sizeof(key), "PRESET_%d", i + 1);
+		char *path[] = { "res", "set", key, "NAME", NULL };
+		char *state;
+		if (strchr(name, '"') == NULL && strchr(name, '\\') == NULL && primaluce_command(device, "{\"req\":{\"set\":{\"%s\":{\"NAME\":\"%s\"}}}}", key, name) && (state = get_string(device, path)) != NULL && !strcmp(state, "done")) {
+			INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], name);
+		} else {
+			X_PRESET_NAMES_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_COPY_VALUE(name, PRIVATE_DATA->preset_names[i]);
+		}
+	}
+	//- focuser.X_PRESET_NAMES.on_change
+	indigo_update_property(device, X_PRESET_NAMES_PROPERTY, NULL);
+}
+
+static void focuser_x_preset_goto_handler(indigo_device *device) {
+	X_PRESET_GOTO_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_PRESET_GOTO.on_change
+	int index = -1;
+	for (int i = 0; i < PRESET_COUNT; i++) {
+		if (X_PRESET_GOTO_PROPERTY->items[i].sw.value) {
+			index = i;
+		}
+		X_PRESET_GOTO_PROPERTY->items[i].sw.value = false;
+	}
+	if (index < 0) {
+		// Nothing selected, nothing to do.
+	} else if (PRIVATE_DATA->preset_positions[index] <= 0) {
+		X_PRESET_GOTO_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_PRESET_GOTO_PROPERTY, "Preset #%d has no stored position", index + 1);
+		return;
+	} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		X_PRESET_GOTO_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_PRESET_GOTO_PROPERTY, "Another motion operation is pending");
+		return;
+	} else {
+		// The stored position is reached through the absolute move, which reports the motion.
+		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->preset_positions[index];
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		focuser_position_handler(device);
+	}
+	//- focuser.X_PRESET_GOTO.on_change
+	indigo_update_property(device, X_PRESET_GOTO_PROPERTY, NULL);
 }
 
 static void focuser_x_hold_curr_handler(indigo_device *device) {
@@ -1382,14 +1559,19 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	// so the motion properties are left busy here. That finalizer observes the stop,
 	// reads the position the draw tube actually reached and publishes it as ALERT
 	// because the requested target was not reached.
-	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}")) {
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
-		return;
-	}
-	char *state = get_string(device, CMD_MOT1_MOT_STOP);
-	if (state == NULL || strcmp(state, "done")) {
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, power_message(state));
-		return;
+	// MOT_ABORT stops the motor at once, MOT_STOP decelerates first and is the fallback.
+	char *state = NULL;
+	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"\"}}}}") || (state = get_string(device, CMD_MOT1_MOT_ABORT)) == NULL || strcmp(state, "done")) {
+		state = NULL;
+		if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}")) {
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+			return;
+		}
+		state = get_string(device, CMD_MOT1_MOT_STOP);
+		if (state == NULL || strcmp(state, "done")) {
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, power_message(state));
+			return;
+		}
 	}
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
@@ -1529,6 +1711,45 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(X_RUNPRESET_1_ITEM, X_RUNPRESET_1_ITEM_NAME, "Preset #1", false);
 		indigo_init_switch_item(X_RUNPRESET_2_ITEM, X_RUNPRESET_2_ITEM_NAME, "Preset #2", false);
 		indigo_init_switch_item(X_RUNPRESET_3_ITEM, X_RUNPRESET_3_ITEM_NAME, "Preset #3", false);
+		X_PRESETS_PROPERTY = indigo_init_number_property(NULL, device->name, X_PRESETS_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Stored positions", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
+		if (X_PRESETS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(X_PRESETS_1_ITEM, X_PRESETS_1_ITEM_NAME, "Preset #1", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_2_ITEM, X_PRESETS_2_ITEM_NAME, "Preset #2", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_3_ITEM, X_PRESETS_3_ITEM_NAME, "Preset #3", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_4_ITEM, X_PRESETS_4_ITEM_NAME, "Preset #4", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_5_ITEM, X_PRESETS_5_ITEM_NAME, "Preset #5", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_6_ITEM, X_PRESETS_6_ITEM_NAME, "Preset #6", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_7_ITEM, X_PRESETS_7_ITEM_NAME, "Preset #7", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_8_ITEM, X_PRESETS_8_ITEM_NAME, "Preset #8", 0, 1000000, 1, 0);
+		indigo_init_number_item(X_PRESETS_9_ITEM, X_PRESETS_9_ITEM_NAME, "Preset #9", 0, 1000000, 1, 0);
+		X_PRESET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, X_PRESET_NAMES_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Stored position names", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
+		if (X_PRESET_NAMES_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(X_PRESET_NAMES_1_ITEM, X_PRESET_NAMES_1_ITEM_NAME, "Preset #1", "");
+		indigo_init_text_item(X_PRESET_NAMES_2_ITEM, X_PRESET_NAMES_2_ITEM_NAME, "Preset #2", "");
+		indigo_init_text_item(X_PRESET_NAMES_3_ITEM, X_PRESET_NAMES_3_ITEM_NAME, "Preset #3", "");
+		indigo_init_text_item(X_PRESET_NAMES_4_ITEM, X_PRESET_NAMES_4_ITEM_NAME, "Preset #4", "");
+		indigo_init_text_item(X_PRESET_NAMES_5_ITEM, X_PRESET_NAMES_5_ITEM_NAME, "Preset #5", "");
+		indigo_init_text_item(X_PRESET_NAMES_6_ITEM, X_PRESET_NAMES_6_ITEM_NAME, "Preset #6", "");
+		indigo_init_text_item(X_PRESET_NAMES_7_ITEM, X_PRESET_NAMES_7_ITEM_NAME, "Preset #7", "");
+		indigo_init_text_item(X_PRESET_NAMES_8_ITEM, X_PRESET_NAMES_8_ITEM_NAME, "Preset #8", "");
+		indigo_init_text_item(X_PRESET_NAMES_9_ITEM, X_PRESET_NAMES_9_ITEM_NAME, "Preset #9", "");
+		X_PRESET_GOTO_PROPERTY = indigo_init_switch_property(NULL, device->name, X_PRESET_GOTO_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Go to stored position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
+		if (X_PRESET_GOTO_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_PRESET_GOTO_1_ITEM, X_PRESET_GOTO_1_ITEM_NAME, "Preset #1", false);
+		indigo_init_switch_item(X_PRESET_GOTO_2_ITEM, X_PRESET_GOTO_2_ITEM_NAME, "Preset #2", false);
+		indigo_init_switch_item(X_PRESET_GOTO_3_ITEM, X_PRESET_GOTO_3_ITEM_NAME, "Preset #3", false);
+		indigo_init_switch_item(X_PRESET_GOTO_4_ITEM, X_PRESET_GOTO_4_ITEM_NAME, "Preset #4", false);
+		indigo_init_switch_item(X_PRESET_GOTO_5_ITEM, X_PRESET_GOTO_5_ITEM_NAME, "Preset #5", false);
+		indigo_init_switch_item(X_PRESET_GOTO_6_ITEM, X_PRESET_GOTO_6_ITEM_NAME, "Preset #6", false);
+		indigo_init_switch_item(X_PRESET_GOTO_7_ITEM, X_PRESET_GOTO_7_ITEM_NAME, "Preset #7", false);
+		indigo_init_switch_item(X_PRESET_GOTO_8_ITEM, X_PRESET_GOTO_8_ITEM_NAME, "Preset #8", false);
+		indigo_init_switch_item(X_PRESET_GOTO_9_ITEM, X_PRESET_GOTO_9_ITEM_NAME, "Preset #9", false);
 		X_HOLD_CURR_PROPERTY = indigo_init_switch_property(NULL, device->name, X_HOLD_CURR_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Hold current", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (X_HOLD_CURR_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -1583,6 +1804,9 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_2_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_3_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_PRESETS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_PRESET_NAMES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_PRESET_GOTO_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_HOLD_CURR_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_CALIBRATE_F_PROPERTY);
 	}
@@ -1616,6 +1840,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_RUNPRESET_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_RUNPRESET_PROPERTY, focuser_x_runpreset_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_PRESETS_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_PRESETS_PROPERTY, focuser_x_presets_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_PRESET_NAMES_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_PRESET_NAMES_PROPERTY, focuser_x_preset_names_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_PRESET_GOTO_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_PRESET_GOTO_PROPERTY, focuser_x_preset_goto_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_HOLD_CURR_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_HOLD_CURR_PROPERTY, focuser_x_hold_curr_handler);
@@ -1662,6 +1895,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(X_RUNPRESET_2_PROPERTY);
 	indigo_release_property(X_RUNPRESET_3_PROPERTY);
 	indigo_release_property(X_RUNPRESET_PROPERTY);
+	indigo_release_property(X_PRESETS_PROPERTY);
+	indigo_release_property(X_PRESET_NAMES_PROPERTY);
+	indigo_release_property(X_PRESET_GOTO_PROPERTY);
 	indigo_release_property(X_HOLD_CURR_PROPERTY);
 	indigo_release_property(X_CALIBRATE_F_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
