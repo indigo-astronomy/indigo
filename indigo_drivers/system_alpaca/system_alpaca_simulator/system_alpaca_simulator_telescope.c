@@ -65,9 +65,18 @@
 //   Unpark takes UnparkTime with Slewing and AtPark true (0 = at once).
 // - AbortSlew returns at once; Slewing stays true for StopTime while the
 //   mount stops (0 = stops at once).
+// - Behaviour of the Pegasus NYX-101 Alpaca server (firmware 1.32.1, ITelescopeV2),
+//   off by default: StartDelay > 0 makes Park and FindHome start their slew
+//   StartDelay seconds after the request, and until then Slewing, AtPark and
+//   AtHome are false and the mount does not move; Unpark then clears AtPark at
+//   once. QuietParkSlew=true reports Slewing false while a park or a search for
+//   home moves the mount (the NYX reported Slewing true for a moment and then
+//   false until AtPark became true). A site of 0 / 0 is SiteLatitude=0,
+//   SiteLongitude=0, and the NYX closing the connection after every reply is the
+//   connection-close fault with Count=-1.
 // Simulator settings (control API and --device only):
 //   SlewRate, MaxAxisRate, ParkHourAngle, ParkDeclination, HomeHourAngle,
-//   HomeDeclination, FlipTime, UnparkTime, StopTime,
+//   HomeDeclination, FlipTime, UnparkTime, StopTime, StartDelay, QuietParkSlew,
 //   TrackingRates           supported DriveRates, "0|1|2|3"
 //   AxisRates               rate ranges of both axes as "min:max|min:max"; empty = one range 0..MaxAxisRate
 //   PulseGuideNeedsTracking PulseGuide is an InvalidOperation while Tracking is false (allowed by the standard)
@@ -156,6 +165,10 @@ typedef struct {
 	double flip_time;
 	double unpark_time;
 	double stop_time;
+	double start_delay;
+	bool quiet_park_slew;
+	int pending_goal;
+	double pending_until;
 	bool flip_target;
 	bool pulse_guide_needs_tracking;
 	bool dual_axis_pulse_guide;
@@ -263,6 +276,15 @@ static bool telescope_tracks_rate(const telescope_state *state, int rate) {
 	return false;
 }
 
+// Slewing as the mount reports it: QuietParkSlew hides a park or a search for home.
+static bool telescope_slewing(const telescope_state *state) {
+	bool quiet = state->quiet_park_slew && (state->goal == GOAL_PARK || state->goal == GOAL_HOME);
+	return (state->slew_active && !quiet) || state->axis_rate[0] != 0 || state->axis_rate[1] != 0;
+}
+
+static void telescope_start_slew(alpaca_device *device, double right_ascension, double declination, int goal, bool immediate);
+static double telescope_sidereal_time(const telescope_state *state);
+
 static void telescope_update(alpaca_device *device) {
 	telescope_state *state = device->state;
 	double now = alpaca_now();
@@ -325,7 +347,19 @@ static void telescope_update(alpaca_device *device) {
 		state->goal = GOAL_NONE;
 		alpaca_event("STATE", "telescope/%d slew done ra=%.6f dec=%.6f at_park=%d at_home=%d", device->number, state->right_ascension.position, state->declination.position, state->at_park, state->at_home);
 	}
-	state->slewing = state->slew_active || state->axis_rate[0] != 0 || state->axis_rate[1] != 0;
+	if (state->pending_goal != GOAL_NONE && alpaca_reached(state->pending_until)) {
+		int goal = state->pending_goal;
+		state->pending_goal = GOAL_NONE;
+		state->last_update = now;
+		alpaca_event("STATE", "telescope/%d delayed start goal=%d", device->number, goal);
+		if (goal == GOAL_PARK) {
+			telescope_start_slew(device, telescope_wrap(telescope_sidereal_time(state) - state->park_hour_angle, 24), state->park_declination, GOAL_PARK, false);
+		} else {
+			telescope_start_slew(device, telescope_wrap(telescope_sidereal_time(state) - state->home_hour_angle, 24), state->home_declination, GOAL_HOME, false);
+		}
+		return;
+	}
+	state->slewing = telescope_slewing(state);
 	state->is_pulse_guiding = !alpaca_reached(state->pulse_until[0]) || !alpaca_reached(state->pulse_until[1]);
 	state->last_update = now;
 }
@@ -376,10 +410,11 @@ static void telescope_stop(telescope_state *state) {
 	alpaca_motion_stop(&state->declination);
 	state->slew_active = false;
 	state->goal = GOAL_NONE;
+	state->pending_goal = GOAL_NONE;
 	state->axis_rate[0] = state->axis_rate[1] = 0;
 }
 
-static void telescope_slew(alpaca_device *device, alpaca_request *request, double right_ascension, double declination, int goal, bool immediate) {
+static void telescope_start_slew(alpaca_device *device, double right_ascension, double declination, int goal, bool immediate) {
 	telescope_state *state = device->state;
 	telescope_stop(state);
 	state->pulse_until[0] = state->pulse_until[1] = 0;
@@ -394,7 +429,24 @@ static void telescope_slew(alpaca_device *device, alpaca_request *request, doubl
 	state->slew_until = alpaca_now() + (immediate ? 0 : duration + state->slew_settle_time);
 	alpaca_event("MOVE", "telescope/%d slew ra=%.6f dec=%.6f duration=%.3f settle=%d goal=%d", device->number, right_ascension, declination, duration, state->slew_settle_time, goal);
 	telescope_update(device);
-	state->slewing = state->slew_active;
+	state->slewing = telescope_slewing(state);
+}
+
+static void telescope_slew(alpaca_device *device, alpaca_request *request, double right_ascension, double declination, int goal, bool immediate) {
+	telescope_start_slew(device, right_ascension, declination, goal, immediate);
+	alpaca_reply_void(request);
+}
+
+// StartDelay: Park and FindHome are accepted and start later; until then nothing moves and Slewing, AtPark and AtHome are false.
+static void telescope_delay_start(alpaca_device *device, alpaca_request *request, int goal) {
+	telescope_state *state = device->state;
+	telescope_stop(state);
+	state->pulse_until[0] = state->pulse_until[1] = 0;
+	state->at_home = false;
+	state->pending_goal = goal;
+	state->pending_until = alpaca_now() + state->start_delay;
+	state->slewing = false;
+	alpaca_event("MOVE", "telescope/%d delayed goal=%d delay=%.3f", device->number, goal, state->start_delay);
 	alpaca_reply_void(request);
 }
 
@@ -711,14 +763,19 @@ static void telescope_put_abortslew(alpaca_device *device, alpaca_request *reque
 		state->slew_active = true;
 		state->slew_until = alpaca_now() + state->stop_time;
 	}
-	state->slewing = state->slew_active;
+	state->slewing = telescope_slewing(state);
 	alpaca_event("STATE", "telescope/%d abort ra=%.6f dec=%.6f", device->number, state->right_ascension.position, state->declination.position);
 	alpaca_reply_void(request);
 }
 
 static void telescope_put_findhome(alpaca_device *device, alpaca_request *request) {
 	telescope_state *state = device->state;
-	if (telescope_ready(device, request, state->can_find_home, TRACKING_ANY)) {
+	if (!telescope_ready(device, request, state->can_find_home, TRACKING_ANY)) {
+		return;
+	}
+	if (state->start_delay > 0) {
+		telescope_delay_start(device, request, GOAL_HOME);
+	} else {
 		telescope_slew(device, request, telescope_wrap(telescope_sidereal_time(state) - state->home_hour_angle, 24), state->home_declination, GOAL_HOME, false);
 	}
 }
@@ -732,13 +789,17 @@ static void telescope_put_park(alpaca_device *device, alpaca_request *request) {
 		alpaca_reply_void(request);
 		return;
 	}
-	telescope_slew(device, request, telescope_wrap(telescope_sidereal_time(state) - state->park_hour_angle, 24), state->park_declination, GOAL_PARK, false);
+	if (state->start_delay > 0) {
+		telescope_delay_start(device, request, GOAL_PARK);
+	} else {
+		telescope_slew(device, request, telescope_wrap(telescope_sidereal_time(state) - state->park_hour_angle, 24), state->park_declination, GOAL_PARK, false);
+	}
 }
 
 static void telescope_put_unpark(alpaca_device *device, alpaca_request *request) {
 	telescope_state *state = device->state;
 	if (telescope_can(request, state->can_unpark)) {
-		if (state->at_park && state->unpark_time > 0) {
+		if (state->at_park && state->unpark_time > 0 && state->start_delay <= 0) {
 			state->goal = GOAL_UNPARK;
 			state->slew_active = state->slewing = true;
 			state->slew_until = alpaca_now() + state->unpark_time;
@@ -871,6 +932,7 @@ static void telescope_report(alpaca_device *device, alpaca_buffer *buffer) {
 	alpaca_buffer_field(buffer, "Azimuth", "%.15g", azimuth);
 	alpaca_buffer_field(buffer, "AxisRate0", "%.15g", state->axis_rate[0]);
 	alpaca_buffer_field(buffer, "AxisRate1", "%.15g", state->axis_rate[1]);
+	alpaca_buffer_field(buffer, "PendingGoal", "%d", state->pending_goal);
 }
 
 #define TELESCOPE_CAN(member, field) { .name = member, .kind = ALPACA_BOOL, .offset = offsetof(telescope_state, field), .flags = ALPACA_R }
@@ -953,6 +1015,8 @@ static const alpaca_member telescope_members[] = {
 	TELESCOPE_CONFIG("FlipTime", ALPACA_DOUBLE, flip_time),
 	TELESCOPE_CONFIG("UnparkTime", ALPACA_DOUBLE, unpark_time),
 	TELESCOPE_CONFIG("StopTime", ALPACA_DOUBLE, stop_time),
+	TELESCOPE_CONFIG("StartDelay", ALPACA_DOUBLE, start_delay),
+	TELESCOPE_CONFIG("QuietParkSlew", ALPACA_BOOL, quiet_park_slew),
 	TELESCOPE_CONFIG("TrackingRates", ALPACA_STRING, tracking_rates),
 	TELESCOPE_CONFIG("AxisRates", ALPACA_STRING, axis_rates),
 	TELESCOPE_CONFIG("PulseGuideNeedsTracking", ALPACA_BOOL, pulse_guide_needs_tracking),

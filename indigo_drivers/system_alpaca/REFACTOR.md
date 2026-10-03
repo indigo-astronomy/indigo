@@ -400,10 +400,11 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 3. The archive unpacks into a directory named after the asset (about 130 MB), so the executable ends up as `omnisim/ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators`. Verified for the macOS arm64 zip from its file listing; the Linux archives are expected to follow the same layout, to be confirmed on the first Linux install.
 4. Nothing to check in git: the directory is outside the working tree.
 5. macOS only: the release is a plain executable, not an application bundle. An archive downloaded with a browser carries the quarantine attribute, which may have to be removed before the first start (`xattr -dr com.apple.quarantine omnisim`). A `curl` download is not quarantined.
-6. Smoke test. Start the server in one terminal, with a private `HOME` so that the run leaves nothing in the developer's own ASCOM profile:
+6. Smoke test. Start the server in one terminal with a private home; on macOS `HOME` alone is not enough (see Removal), so `CFFIXED_USER_HOME` and `ASCOM_LOGPATH` point there too:
 
    ```sh
-   HOME="$(mktemp -d)" ./ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators --urls=http://127.0.0.1:32323
+   H="$(mktemp -d)"; mkdir -p "$H/.config" "$H/Library/Application Support"
+   (cd "$H" && HOME="$H" CFFIXED_USER_HOME="$H" ASCOM_LOGPATH="$H/logs" "$OLDPWD/ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators" --urls=http://127.0.0.1:32323)
    ```
 
    `--set-no-browser` is not a run option: it stores the setting and exits (corrected on 2026-10-02 after the first macOS start). Run it once with the same `HOME` before the real start if the browser must stay closed.
@@ -418,7 +419,7 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 
 - **How the tests find it:** the opt-in tier looks for `omnisim/*/ascom.alpaca.simulators` next to the INDIGO working tree (`indigo_test/Makefile` passes the absolute path as `SYSTEM_ALPACA_OMNISIM_DIR`). `INDIGO_TEST_OMNISIM` (the path of the executable) overrides this for an installation kept elsewhere. If neither yields an executable, the tier is skipped and reported as not run.
 - **Update:** delete the content of `omnisim/` and unpack the new version. The version used is recorded with every OmniSim result.
-- **Removal:** delete `omnisim/`. On Linux OmniSim writes its profiles (`.config/ascom/alpaca/...`) and logs under the `HOME` it was started with; on macOS it writes them to `~/Library/Application Support/ascom/alpaca/` and `~/Documents/ascom` of the real user whatever `HOME` is, so remove those too.
+- **Removal:** delete `omnisim/`. OmniSim keeps its profiles in `GetFolderPath(ApplicationData)/ascom/alpaca/` and its logs in `$ASCOM_LOGPATH/logs<date>`, or in `GetFolderPath(Personal)/ascom/logs<date>` without that variable (ASCOM.Tools 2.2.0 `XMLProfile`, `TraceLogger`). On Linux .NET 8 takes these folders from `HOME` (and `XDG_CONFIG_HOME`). On macOS it asks Foundation (`NSFileManager URLsForDirectory`), which ignores `HOME` and follows only `CFFIXED_USER_HOME`, so a start without that variable writes to `~/Library/Application Support/ascom/alpaca/` and `~/Documents/ascom` of the real user; remove those after manual runs. The test tier never writes there (section 7.5).
 - **State of this procedure:** the asset names, sizes, checksums and the macOS arm64 archive layout were read from the release on 2026-10-01, and the `.gitignore` rule was checked with `git check-ignore`. The measurements above come from the linux-x64 research run. The macOS arm64 install was done on 2026-10-02: the checksum matched, `git check-ignore` printed the rule, and the server started with a private `HOME` answered `configureddevices` (all ten device types) about 3 s after the start and reported version `0.5.0+05d607826b39bdee2bcbb09bcaac6f35b3c6dba9`; its focuser has InterfaceVersion 4. The quarantine step was not needed for the `curl` download.
 
 ### 4.2 ConformU v4.5.0 (GPL-3.0, run only as an external tool)
@@ -672,7 +673,7 @@ States: `todo`, `in progress`, `done`, `blocked`. Every step records its evidenc
 | S10 | CCD (+ guider), ImageBytes, JSON fallback | CCD checklist, image contract (dimensions, orientation, Bayer, RGB) | done (2026-10-02, WP8). Evidence in section 7.2. |
 | S11 | Dome, CoverCalibrator, Switch, ObservingConditions, SafetyMonitor | Dome and AUX checklists | done (2026-10-02, WP9 and WP10). Evidence in section 7.2. |
 | S12 | OmniSim opt-in tier (OmniSim installed on the development machine per section 4.1; no ConformU, decision D9) | Record of the OmniSim run | done (2026-10-03, WP11). Evidence in section 7.5. |
-| S13 | `PROPERTIES.md`, README (only with approval), `TEST_SUMMARY.md`, optionally `MIGRATION_STATUS.md` / Windows / `STATIC_DRIVERS` | Final audit per `AGENTS.override.md` checklist | in progress: `PROPERTIES.md`, `README.md` (approved 2026-10-02), `TEST_SUMMARY.md` and the Xcode group references are done; `MIGRATION_STATUS.md` has no row for developed drivers (as `ccd_pentax`); removed from `EXCLUDED_DRIVERS` on 2026-10-03 (the drivers `status` target lists it as built and excluded from install); decisions D11 to D14 recorded; open: D13 and D14 implementation, Windows project and `STATIC_DRIVERS` (optional) |
+| S13 | `PROPERTIES.md`, README (only with approval), `TEST_SUMMARY.md`, optionally `MIGRATION_STATUS.md` / Windows / `STATIC_DRIVERS` | Final audit per `AGENTS.override.md` checklist | done except the Windows build: `PROPERTIES.md`, `README.md`, `TEST_SUMMARY.md`, Xcode targets and `STATIC_DRIVERS` (user, 2026-10-03), removal from `EXCLUDED_DRIVERS`, decisions D11 to D17 implemented, Linux arm64 run (section 7.9), Windows project files (not built, section 7.9) |
 
 ### 7.1 Step evidence
 
@@ -853,10 +854,10 @@ The driver against an independent Alpaca implementation, ASCOM OmniSim 0.5.0 (`0
 
 - **Sources:** `indigo_test/integration/test_system_alpaca_omnisim.c` (20 cases, runner) and `indigo_test/integration/system_alpaca/omnisim_test_common.h` (harness on top of `system_alpaca_test_common.h`). Opt-in target `make -C indigo_test test-system-alpaca-omnisim`; not in `INTEGRATION_TESTS` or `OPT_IN_DRIVER_TESTS`, so the ordinary recorded run does not depend on OmniSim; nothing is downloaded.
 - **Finding OmniSim:** `INDIGO_TEST_OMNISIM`, else `omnisim/*/ascom.alpaca.simulators` next to the working tree (until 2026-10-03 inside `system_alpaca_simulator/`). Without it the tier prints NOT RUN, plans no case and exits 0; the recording script then records nothing.
-- **Isolation:** OmniSim's own reset does not restore everything (the rotator kept interface version 2 and its position, a halted cover stayed Unknown), so every case starts a fresh instance with a private `HOME` and working directory under `/tmp/indigo-system-alpaca-omnisim.*`, on a free loopback port added as a manual server (no broadcast). The private `HOME` does not isolate everything: on macOS OmniSim keeps its device profiles in `~/Library/Application Support/ascom/alpaca/ascom-alpaca-simulator/` and its logs in `~/Documents/ascom` of the real user, whatever `HOME` is (found on 2026-10-03, when a site latitude set by a case survived into the next run). `omnisim_mount_manual_motion` therefore restores SiteLatitude itself, also in its cleanup. OmniSim is single instance per host: a run holds an exclusive `flock()` on the executable, cases run serially with a 300 s watchdog, and a reaper process kills the instance when its case ends or dies.
+- **Isolation:** OmniSim's own reset does not restore everything: the rotator kept interface version 2 and its position, and a halted cover stayed Unknown. So every case starts a fresh instance on a free loopback port, added as a manual server (no broadcast). The instance gets a private home under `/tmp/indigo-system-alpaca-omnisim.*`, which is also its working directory, with `HOME`, `CFFIXED_USER_HOME` and `ASCOM_LOGPATH` inside that home and `XDG_CONFIG_HOME` and `XDG_DATA_HOME` unset. Until 2026-10-03 only `HOME` was set; on macOS the profiles and logs then went to the real user's `~/Library/Application Support/ascom` and `~/Documents/ascom`, because .NET 8 takes those folders from Foundation, which ignores `HOME`. A site latitude set by one case survived into the next run, and `omnisim_mount_manual_motion` had to restore it; that workaround is gone. A run now leaves `~/Library/Application Support/ascom`, `~/Documents/ascom`, `~/.config`, `~/.dotnet` and `~/.aspnet` unchanged, checked by comparing listings and SHA-256 of all files before and after three runs. `TMPDIR` is left alone: OmniSim's single-instance check (a named pipe in `$TMPDIR`, a named mutex in `/tmp/.dotnet`) must still see an instance of the user. OmniSim is single instance per host: a run holds an exclusive `flock()` on the executable, cases run serially with a 300 s watchdog, and a reaper process kills the instance when its case ends or dies.
 - **Recording:** `python3 tools/run_driver_test.py system_alpaca --hw --target test-system-alpaca-omnisim`, without `--type`: the suite writes the device record `OmniSim 0.5.0` from `management/v1/description`, which becomes its own `README.md` line. With `--type` and no OmniSim the script would record "0/0 Failed".
 - **Cases:** `omnisim_discovery` (discovery to 127.0.0.1:32227 finds the instance with all 10 devices), `omnisim_focuser` / `_legacy`, `omnisim_wheel` / `_legacy`, `omnisim_rotator` / `_legacy` (Platform 7 and an older interface set through OmniSim's settings API), `omnisim_mount_goto`, `omnisim_mount_park_home_tracking`, `omnisim_mount_manual_motion`, `omnisim_mount_guider`, `omnisim_camera_image`, `omnisim_camera_abort`, `omnisim_dome` / `_legacy`, `omnisim_lightbox`, `omnisim_switch`, `omnisim_weather`, `omnisim_safety` / `_legacy`. Each one adds the server, selects, attaches, connects, runs the operations on real time, disconnects, detaches and checks that the Alpaca device was disconnected (D5).
-- **Results:** 4 runs of 20 / 20 in a row (one through the script with `--dry-run`, three with `make`), about 236 s each; recorded run of 2026-10-03 02:21: **20 / 20 OK**.
+- **Results:** 4 runs of 20 / 20 in a row (one through the script with `--dry-run`, three with `make`), about 236 s each; recorded run of 2026-10-03 02:21: **20 / 20 OK**. With the private-home isolation of 2026-10-03: three runs of 20 / 20 (16:15, 17:29, 17:34), the real home locations unchanged after each.
 
 Questions settled against OmniSim:
 
@@ -920,6 +921,21 @@ Found by the user: with OmniSim running on the same Mac (`--urls=http://127.0.0.
 - Evidence (subagent): the suite 265 / 265 three times with `INDIGO_TEST_JOBS=4` and once with `=1`; ASan + UBSan and TSan of the whole suite without a report; strict build clean in our files; `test_system_alpaca_http` 43 / 43.
 - **OmniSim moved** at the user's request to `omnisim/` next to the working tree (section 4.1); the `.gitignore` rule is gone.
 - **Recorded runs** (orchestrator, 2026-10-03): simulator at 14:36, **308 / 308 OK** (265 + 43); OmniSim 0.5.0 at 14:37 from the new location, **20 / 20 OK**.
+
+### 7.9 Linux and Windows (2026-10-03)
+
+- **Linux arm64** (indigosky, Raspberry Pi 5, Debian 12, GCC 12.2.0, root on the SSD `/dev/sda2`): the repository pulled at `dfc745362`, `make all` (a full clean build, because framework headers had changed) finished with exit 0 and without a warning or an error in any `system_alpaca` file at the default flags. Recorded run `python3 tools/run_driver_test.py system_alpaca`: **309 / 309 OK** (`test_system_alpaca_simulator` 265, `test_system_alpaca_http` 44, because `connect_timeout` runs on Linux). `test_system_alpaca_json` and `test_uni_io` (with `discover_reaches_loopback_responder`, where both loopback targets reach the responder) pass as well. The run started at 14:16 UTC on the Pi and is recorded as 16:16 in the local time of the Mac, like every other line. Not run on Linux: sanitizers, the OmniSim tier (no OmniSim installed there), x86_64.
+- **Windows:** `indigo_system_alpaca.vcxproj`, `.vcxproj.filters` and `.vcxproj.user` made from the `agent_alpaca` project (15 sources without `_main.c`, 5 headers, x64 and ARM64, linked with `ws2_32`, `pthreadVC3`, `indigo`), and the project added to `indigo_windows.sln`. **Not built**: there is no Windows machine here, so it is not yet a dependency of the `indigo` project (steps 13 and 15 of the Windows procedure in `MIGRATION_STATUS.md`). A scan of the driver for calls MSVC lacks found none (`strcasecmp` is mapped by `indigo_uni_io.h`, `pthreads4w` has recursive mutexes).
+
+### 7.10 NYX-101 hardware fixes (2026-10-03)
+
+The user reported that with a Pegasus NYX-101 the first slew through the mount agent only unparked the mount and the next one moved it, without any message. It was reproduced on the real mount (Alpaca server "NYX101", PegasusAstro v1.1, firmware 1.32.1, ITelescopeV2, at 192.168.111.195:80) through the mount agent and the proxy, 3 times out of 3, while the same mount through USB and `mount_lx200` reached every target on the first slew (3 of 3). Defects NYX-1 to NYX-4 in section 8; the mount agent was fixed at the same time (`agent_mount` 3.0.0.26).
+
+- **Simulator:** the telescope module models the NYX with the options `StartDelay` (park and find home start late; until then Slewing, AtPark and AtHome are false) and `QuietParkSlew` (Slewing false while a park or find home moves), plus the existing `connection-close` fault with `Count=-1` (the NYX closes the connection after every reply). Both options are off by default.
+- **Intentional behaviour change:** park, find home and pier flip no longer make `MOUNT_EQUATORIAL_COORDINATES` BUSY; a coordinates request is never dropped without an answer.
+- **Evidence** (subagent, deterministic): the suite 269 / 269 three times with `INDIGO_TEST_JOBS=4` and once with `=1`; ASan + UBSan and TSan without a report; strict build clean in our files; `test_agent_mount` 72 / 72 three times; OmniSim tier 20 / 20; all four new mount cases and both new agent cases fail against the previous code.
+- **Hardware** (real NYX-101 through Alpaca and the mount agent, private `HOME`): 4 of 4 park → first slew cycles (Vega, Deneb, Altair, Arcturus) reached the target with `MOUNT_PARK` OK every time and no "Park failed"; the slew request reached the NYX only after the unpark had finished. A target below the horizon (Fomalhaut, altitude −13°) ended in agent ALERT "Mount did not reach the target", because the NYX accepts it silently. The site set through the proxy (48.2236 / 16.9844 / 180) persists across a reconnect. The site 0/0 seen earlier was written by the mount agent itself: its own site was 0/0 in the private `HOME` and its site source was HOST, so it pushed 0/0 to the mount when the mount was selected.
+- **NYX firmware observations** (to report to Pegasus, not changed in INDIGO): `SlewToCoordinatesAsync` to a target below the horizon returns success and does nothing; Slewing goes false about 1 s before AtPark becomes true, and in one park it was false for most of the motion; the server closes the connection after every reply; Azimuth sometimes reads as a denormal number (1.5e-312) at the pole; no `devicestate` (ITelescopeV2).
 
 ## 8. Found defects
 
@@ -1040,6 +1056,15 @@ Found by the independent review (2026-10-03, section 7.6). "Confirmed" means the
 | REV-25 | simulator | More lenient than real servers. | — | Stricter content type, `--error-value`, `missing-transaction-id`. | `core_strict_server_replies` |
 | REV-26, REV-27 | core, weather | Alignment with spaces; missing name defines and NULL checks. | — | Fixed. | — |
 | FIX-1 | dome refusal of WP12b | TSan report: the first version of the REV-3 refusal read `hidden` flags written without the lock. | — | Reads only states. | TSan runs |
+
+Found on the NYX-101 (2026-10-03, section 7.10):
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| NYX-1 | mount `mount_motion_start()`, `mount_change_property()` | A goto sent right behind an unpark was dropped without an answer; the mount agent reported a slew that never happened. Reproduced on the NYX-101 3 of 3. | Every motion made the coordinates BUSY, and a request for a BUSY property is dropped. | Only a slew makes the coordinates BUSY. Coordinates are accepted anytime with `mount_coordinates_refusal()` (a message during a slew; ALERT with the reason during park, home, flip or while parked). A goto behind an unpark waits for its end (`goto_waits`). | `mount_goto_behind_unpark`, `mount_goto_refusals` |
+| NYX-2 | `mount_motion_finalizer()`, `mount_apply_state()` | "Park failed" while the NYX parked; `MOUNT_PARK` stayed ALERT after AtPark. Reproduced. | Completion decided by Slewing false; no recovery. | Park and home complete on AtPark / AtHome, unpark on AtPark and Slewing false; failure only after a 10 s stall (no slewing, Alt/Az change below 0.1°); a late arrival ends ALERT in OK with a message. | `mount_park_delayed_start` |
+| NYX-3 | `mount_on_poll()` | A site of 0/0 made the telescope compute LST and RA for Greenwich without a hint. | — | Warning once per connection and whenever the site becomes 0/0; the proxy never writes the site on its own. | `mount_site_unset_warning` |
+| NYX-4 | mount locking | TSan: `mount_set_park()` wrote the `MOUNT_PARK` items without the lock while the new refusal read them. | — | Items written under the device lock. | TSan run |
 
 Observations outside the driver, not changed (D10) and reported to the user:
 
@@ -1211,9 +1236,11 @@ The critical path is W0 → WP2 → WP5 → WP8 (the camera) → WP11/12.
 
 ## Final test summary
 
-State on 2026-10-03 after the decisions D15 to D17; this summary is updated with every recorded run.
+State on 2026-10-03 after the NYX-101 fixes (section 7.10); this summary is updated with every recorded run.
 
-- Simulated tests: **308 run, 308 passed** in the recorded run of 2026-10-03 14:36 (`test_system_alpaca_simulator` 265, `test_system_alpaca_http` 43), plus the unit test `test_system_alpaca_json` 48 run, 48 passed, which the recording script does not count, and the library regression case in `test_uni_io`.
-- OmniSim tests: **20 run, 20 passed** in the recorded run of 2026-10-03 14:37 (OmniSim 0.5.0).
-- Hardware tests: 0 run, 0 passed (decision D6).
+- Simulated tests, macOS arm64: **312 run, 312 passed** in the recorded run of 2026-10-03 19:02 (`test_system_alpaca_simulator` 269, `test_system_alpaca_http` 43).
+- Simulated tests, Linux arm64: **309 run, 309 passed** in the recorded run of 2026-10-03 16:16 (265 + 44), before the NYX-101 fixes.
+- The unit tests `test_system_alpaca_json` (48) and `test_uni_io` pass on both platforms; the recording script does not count them.
+- OmniSim tests, macOS arm64: **20 run, 20 passed** in the recorded run of 2026-10-03 19:04 (OmniSim 0.5.0).
+- Hardware tests: no recorded run (the driver has no hardware suite); the manual NYX-101 cycles of section 7.10 are 5 park → slew cycles, 4 reaching the target and 1 deliberately unreachable target ending in ALERT as intended.
 - The OmniSim and ConformU runs from the research phase (subagent, linux-x64 container, outside the repository) were exploratory tool probes. They are not driver tests and are not counted.

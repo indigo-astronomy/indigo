@@ -29,9 +29,17 @@
 // - It is effectively one instance per host (a global mutex and a named pipe: a second start forwards its arguments to the
 //   running instance and exits). The whole run therefore holds an exclusive flock() on the executable itself, so two runs
 //   of this suite wait for each other, and a start whose process exits at once is reported as "another instance runs".
-// - Every case gets a fresh instance: its own HOME (profiles and logs land there, never in the user's home or the
-//   repository), its own working directory, a free port on 127.0.0.1. OmniSim's per-device reset does not restore everything
-//   (a rotator keeps its interface version and position, a halted cover stays Unknown), so a restart is the only clean state.
+// - Every case gets a fresh instance: a private home that is also its working directory, a free port on 127.0.0.1. OmniSim's
+//   per-device reset does not restore everything (a rotator keeps its interface version and position, a halted cover stays
+//   Unknown), so a restart is the only clean state.
+// - The profiles and logs of the instance stay in that private home, never in the user's home or the repository. OmniSim keeps
+//   its profiles in GetFolderPath(ApplicationData)/ascom/alpaca and its logs in GetFolderPath(Personal)/ascom/logs<date> unless
+//   ASCOM_LOGPATH names another folder (ASCOM.Tools XMLProfile and TraceLogger). On Linux .NET takes both from HOME (and
+//   XDG_CONFIG_HOME, which is unset); on macOS it asks Foundation, which ignores HOME and returns ~/Library/Application Support and
+//   ~/Documents of the real user, but follows CFFIXED_USER_HOME. The instance therefore gets HOME, CFFIXED_USER_HOME and
+//   ASCOM_LOGPATH, all inside the private home, which holds .config (Linux) and Library/Application Support (macOS). The
+//   ASP.NET Core data protection keys (.aspnet) follow HOME on both.
+//   TMPDIR is left alone: the named pipe there and the named mutex in /tmp/.dotnet are what makes OmniSim single instance.
 // - The instance is owned by a reaper process: it starts OmniSim and kills it (SIGTERM, then SIGKILL) as soon as the case
 //   closes its end of a pipe or dies, so no instance survives a failing or killed case. The instance also holds a per run
 //   lock file inherited by OmniSim; the next case waits for it, so two instances never overlap during the shutdown of one.
@@ -179,7 +187,13 @@ static void omni_reaper_main(int pipe_end, int instance_lock, const char *home, 
 		}
 		// OmniSim keeps the instance lock while it lives: the descriptor is inherited, not closed on exec
 		(void)instance_lock;
-		if (chdir(home) != 0 || setenv("HOME", home, 1) != 0) {
+		// HOME for .NET itself and for Linux; CFFIXED_USER_HOME for the folders .NET asks Foundation for on macOS (Application Support and
+		// Documents ignore HOME there); ASCOM_LOGPATH for the logs on every Unix; no XDG folder may point out of the private HOME
+		char logs[PATH_MAX];
+		snprintf(logs, sizeof(logs), "%s/logs", home);
+		unsetenv("XDG_CONFIG_HOME");
+		unsetenv("XDG_DATA_HOME");
+		if (chdir(home) != 0 || setenv("HOME", home, 1) != 0 || setenv("CFFIXED_USER_HOME", home, 1) != 0 || setenv("ASCOM_LOGPATH", logs, 1) != 0) {
 			_exit(126);
 		}
 		execl(omni_executable, omni_executable, urls, (char *)NULL);
@@ -245,15 +259,19 @@ static bool omni_http_get(alpaca_http_connection *connection, const char *path, 
 // Start a fresh instance in directory (created if needed) and wait until it answers. Waits first until the instance of the
 // previous case is gone. The version is read into omni_version on the way.
 static bool omni_start(const char *directory) {
-	char home[PATH_MAX], config[PATH_MAX], log[PATH_MAX];
+	char home[PATH_MAX], folder[PATH_MAX], log[PATH_MAX];
 	snprintf(omni_directory, sizeof(omni_directory), "%s", directory);
 	snprintf(home, sizeof(home), "%s/home", directory);
-	snprintf(config, sizeof(config), "%s/.config", home);
 	snprintf(log, sizeof(log), "%s/omnisim.log", directory);
 	mkdir(directory, 0700);
 	mkdir(home, 0700);
-	// without .config OmniSim writes its profiles into the working directory
-	mkdir(config, 0700);
+	// the folder of the profiles: .NET returns "" for one that does not exist, and OmniSim then writes into the working directory
+	snprintf(folder, sizeof(folder), "%s/.config", home);
+	mkdir(folder, 0700);
+	snprintf(folder, sizeof(folder), "%s/Library", home);
+	mkdir(folder, 0700);
+	snprintf(folder, sizeof(folder), "%s/Library/Application Support", home);
+	mkdir(folder, 0700);
 	int instance_lock = open(omni_instance_lock, O_RDWR | O_CREAT, 0600);
 	if (instance_lock < 0) {
 		perror(omni_instance_lock);

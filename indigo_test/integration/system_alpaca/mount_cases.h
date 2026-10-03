@@ -680,8 +680,11 @@ static void mount_abort(void) {
 	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
 	SA_CHECK(mount_simulated_is("AtPark", "false") && sa_advance(0, 120) && mount_quiet("GET", "slewing") && mount_simulated_is("AtPark", "false") && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_IDLE_STATE);
 	// a search for the home position is aborted
-	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 2));
-	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// (the coordinates are not BUSY during the search, so they keep their state)
+	unsigned home_coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 1, SA_TIMEOUT) && sa_advance(0, 2));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+	SA_CHECK(!sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, home_coordinates) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 	SA_CHECK(sa_advance(0, 120) && mount_quiet("GET", "slewing") && mount_simulated_is("AtHome", "false") && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_IDLE_STATE);
 	// requests that were accepted but did not start yet are dropped by an abort: the queue of the device is held, a goto and a park are
 	// requested, then the abort, which overtakes them. Neither is sent afterwards and both end in ALERT.
@@ -711,21 +714,23 @@ cleanup:
 static void mount_park_and_home(void) {
 	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,ParkHourAngle=-3.5,ParkDeclination=-65.5,HomeHourAngle=2.25,HomeDeclination=-88.5,UnparkTime=4", NULL };
 	SA_CHECK(mount_begin(arguments));
-	// park: started with Park, the coordinates are BUSY like during every motion, completed when Slewing is false and AtPark is true
+	// park: started with Park, completed when AtPark is true; the coordinates follow the telescope but are not BUSY, a park is no slew
 	unsigned revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
-	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "park") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && mount_last("PUT", "park", "ClientID="));
+	unsigned coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "park") == 1, SA_TIMEOUT) && mount_last("PUT", "park", "ClientID="));
 	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_BUSY_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
 	SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_at(mount_simulated("RightAscension"), mount_simulated("Declination"), 1e-9) && mount_simulated("Declination") < 0, SA_TIMEOUT));
 	SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("AtPark", "false") && !sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
-	// while the telescope parks nothing else may move it: a manual motion is refused, and a goto is not accepted without taking the BUSY state of the running motion away
-	unsigned coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME) && mount_request_coordinates(1.5, 2.5) && mount_drain());
-	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates) && mount_count("PUT", "moveaxis") == 0 && mount_count("PUT", "slewtocoordinatesasync") == 0 && mount_simulated_is("Slewing", "true"));
+	SA_CHECK(!sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// while the telescope parks nothing else may move it: a manual motion and a goto are refused with a message, MOUNT_PARK stays BUSY
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SA_CHECK(mount_set_coordinates(1.5, 2.5) == INDIGO_ALERT_STATE && mount_message("Mount is parking!") && mount_drain() && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(mount_count("PUT", "moveaxis") == 0 && mount_count("PUT", "slewtocoordinatesasync") == 0 && mount_simulated_is("Slewing", "true"));
 	SA_CHECK(sa_advance(0, 20) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
 	// the coordinates and the tracking state are settled by the same finalizer right after MOUNT_PARK, so they are waited for
 	SA_CHECK(mount_simulated_is("AtPark", "true") && mount_near(mount_simulated("HourAngle"), -3.5, 1e-9) && mount_simulated("Declination") == -65.5 && SA_WAIT(mount_at(mount_simulated("RightAscension"), -65.5, 1e-9), SA_TIMEOUT));
 	// the telescope stopped tracking when it parked
-	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME), SA_TIMEOUT) && mount_count("PUT", "tracking") == 0 && mount_quiet("GET", "slewing"));
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME), SA_TIMEOUT) && mount_count("PUT", "tracking") == 0 && mount_quiet("GET", "slewing"));
 	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_OK_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
 	// parked: a goto, tracking, a manual motion and a pier flip are refused without a request, and the refused property keeps the state of the telescope
 	double ra = sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), target = sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
@@ -746,7 +751,8 @@ static void mount_park_and_home(void) {
 	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "unpark") == 1 && mount_count("GET", "slewing") >= polls + 4, SA_TIMEOUT) && mount_last("PUT", "unpark", "ClientID="));
 	SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("AtPark", "true") && !sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && mount_simulated_is("AtPark", "false"));
-	SA_CHECK(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+	// an unpark does not touch the coordinates: they keep the ALERT of the goto refused above
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
 	// and everything is accepted again
 	SA_CHECK(mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_last("PUT", "tracking", "Tracking=True&ClientID=") && mount_simulated_is("Tracking", "true"));
 	// SetPark makes the current position the park position
@@ -757,11 +763,14 @@ static void mount_park_and_home(void) {
 	SA_CHECK(mount_set_switch(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Set park failed: invalid operation (No encoder (0x40B))") && !sa_switch(sa_device, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
 	// home: FindHome, completed when Slewing is false and AtHome is true
 	revision = sa_revision(sa_device, MOUNT_HOME_PROPERTY_NAME);
-	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 2 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && mount_last("PUT", "findhome", "ClientID="));
+	coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 2, SA_TIMEOUT) && mount_last("PUT", "findhome", "ClientID="));
+	// a goto during the search is refused with a message
+	SA_CHECK(mount_set_coordinates(1.5, 2.5) == INDIGO_ALERT_STATE && mount_message("Mount is searching for its home position!") && mount_count("PUT", "slewtocoordinatesasync") == 0);
 	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && !sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_at(mount_simulated("RightAscension"), mount_simulated("Declination"), 1e-9) && mount_simulated("Declination") < -50, SA_TIMEOUT) && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("AtHome", "false"));
 	SA_CHECK(sa_advance(0, 30) && SA_WAIT(sa_state_after(sa_device, MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_simulated_is("AtHome", "true") && mount_near(mount_simulated("HourAngle"), 2.25, 1e-9) && mount_simulated("Declination") == -88.5);
-	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(mount_simulated("RightAscension"), -88.5, 1e-9), SA_TIMEOUT) && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && mount_quiet("GET", "slewing"));
+	SA_CHECK(SA_WAIT(mount_at(mount_simulated("RightAscension"), -88.5, 1e-9), SA_TIMEOUT) && !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates) && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && mount_quiet("GET", "slewing"));
 	// a slew away from home
 	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
@@ -1102,11 +1111,13 @@ static void mount_side_of_pier(void) {
 	SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
 	// a pier flip is a motion of 20 s here: the write of SideOfPier starts it, Slewing completes it
 	unsigned revision = sa_revision(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
-	SA_CHECK(mount_start_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && SA_WAIT(mount_count("PUT", "sideofpier") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && mount_last("PUT", "sideofpier", "SideOfPier=0&ClientID="));
+	SA_CHECK(mount_start_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && SA_WAIT(mount_count("PUT", "sideofpier") == 1, SA_TIMEOUT) && mount_last("PUT", "sideofpier", "SideOfPier=0&ClientID="));
+	// a flip is no slew: the coordinates are not BUSY, a goto meanwhile is refused with a message
+	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_set_coordinates(1.5, 2.5) == INDIGO_ALERT_STATE && mount_message("Mount is changing the side of pier!") && mount_count("PUT", "slewtocoordinatesasync") == 0);
 	SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_count("GET", "slewing") >= 6, SA_TIMEOUT) && sa_state(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SA_CHECK(sa_advance(0, 10) && SA_WAIT(sa_state_after(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
 	// the coordinates are settled by the same finalizer right after MOUNT_SIDE_OF_PIER, so they are waited for, not read at once
-	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(6.8512354871491, 30, 1e-9), SA_TIMEOUT) && mount_quiet("GET", "slewing"));
+	SA_CHECK(SA_WAIT(mount_at(6.8512354871491, 30, 1e-9), SA_TIMEOUT) && mount_quiet("GET", "slewing"));
 	// the side the mount is on already: accepted by the telescope without a motion
 	SA_CHECK(mount_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "sideofpier") == 2 && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
 	// and back, aborted on the way: the flip did not happen
@@ -1118,7 +1129,7 @@ static void mount_side_of_pier(void) {
 	// the flip itself
 	revision = sa_revision(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
 	SA_CHECK(mount_start_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && SA_WAIT(mount_count("PUT", "sideofpier") == 5, SA_TIMEOUT) && sa_advance(0, 20) && SA_WAIT(sa_state_after(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
-	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_disconnect(sa_device));
+	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_disconnect(sa_device));
 cleanup:
 	sa_end();
 }
@@ -1418,7 +1429,7 @@ static void mount_lifecycle(void) {
 		SA_CHECK(mount_count("PUT", "connect") == i + 1 && mount_count("PUT", "disconnect") == i + 1 && mount_simulated_is("Connected", "false"));
 	}
 	// a disconnect in the middle of a park: the telescope is left to finish it, nothing is aborted, the finalizer is gone
-	SA_CHECK(sa_connect(sa_device) && mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("GET", "slewing") >= 7, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_connect(sa_device) && mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("GET", "slewing") >= 7, SA_TIMEOUT) && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SA_CHECK(sa_disconnect(sa_device) && mount_count("PUT", "abortslew") == 0 && mount_count("PUT", "moveaxis") == 0 && !sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME));
 	int requests = sa_request_count(0, NULL, "/api/*");
 	indigo_usleep(300000);
@@ -1548,6 +1559,164 @@ cleanup:
 	sa_end();
 }
 
+// ---------------------------------------------------------------------------- NYX-101 (Pegasus Astro Alpaca server, observed 2026-10-03)
+
+// The NYX-101 Alpaca server as observed on the real mount: Park and FindHome start after a delay with Slewing, AtPark and AtHome false, Slewing
+// is false while it parks, Unpark clears AtPark at once, and the server closes the connection after every reply.
+static const char *mount_nyx[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,StartDelay=1,QuietParkSlew=true", NULL };
+
+static bool mount_nyx_faults(void) {
+	return sa_fault(0, NULL, "/api/*", "connection-close", "Count=-1");
+}
+
+// The coordinates were never BUSY (after the given revision) and the property is in the given state.
+static bool mount_coordinates_not_busy(unsigned revision) {
+	return !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision);
+}
+
+// NYX-1: a goto requested right behind an unpark (the mount agent does this, without waiting for MOUNT_PARK) was dropped without an answer,
+// because the unpark had made the coordinates BUSY; the agent took the end of the unpark for the end of the slew. Now the unpark leaves the
+// coordinates alone and the goto waits for the end of the unpark, on a telescope that unparks at once and on one that takes 4 s.
+static void mount_goto_behind_unpark(void) {
+	static const char *slow[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,UnparkTime=4", NULL };
+	for (int variant = 0; variant < 2; variant++) {
+		SA_CHECK(mount_begin(variant == 0 ? mount_nyx : slow));
+		SA_CHECK(variant == 1 || mount_nyx_faults());
+		SA_CHECK(sa_device_state(0, "telescope", 0, "AtPark=true") && SA_WAIT(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME), SA_TIMEOUT));
+		unsigned park = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME), coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		int mark = sa_message_mark();
+		// both requests in a row, as fast as a client can send them
+		SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK && mount_request_coordinates(3.5, -52.25));
+		SA_CHECK(SA_WAIT(mount_count("PUT", "unpark") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && !sa_message_seen_since(mark, "Mount is parked!"));
+		SA_CHECK(!sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates) && sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == 3.5);
+		if (variant == 1) {
+			// the unpark takes 4 s: the goto is not sent before it is over
+			SA_CHECK(SA_WAIT(mount_count("GET", "slewing") >= 4, SA_TIMEOUT) && mount_count("PUT", "slewtocoordinatesasync") == 0 && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_advance(0, 4));
+		}
+		// the unpark ends OK, then the goto reaches the telescope and the telescope moves
+		SA_CHECK(SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, park) && mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT) && mount_sequence("PUT", "unpark") < mount_sequence("PUT", "slewtocoordinatesasync"));
+		SA_CHECK(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && mount_last("PUT", "slewtocoordinatesasync", "RightAscension=3.5&Declination=-52.25&ClientID=") && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+		unsigned slew = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, slew), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9) && mount_simulated_at(3.5, -52.25, 1e-9));
+		SA_CHECK(!sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates) && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE);
+		// an unpark the telescope refuses: the goto behind it is refused with a message, nothing moves
+		SA_CHECK(sa_device_state(0, "telescope", 0, "AtPark=true") && SA_WAIT(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME), SA_TIMEOUT));
+		// (the first matching fault applies, so the refusal is armed before the closing connection of the NYX)
+		SA_CHECK(sa_clear_faults(0) && sa_fault(0, "PUT", MOUNT_API "unpark", "ascom-error", "Value=1279&Message=Motor%20power%20off") && (variant == 1 || mount_nyx_faults()));
+		coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		mark = sa_message_mark();
+		SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK && mount_request_coordinates(9.125, -5.5));
+		SA_CHECK(SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates) && sa_message_seen_since(mark, "Mount is parked!"), SA_TIMEOUT) && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+		SA_CHECK(mount_count("PUT", "slewtocoordinatesasync") == 1 && mount_simulated_is("AtPark", "true"));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// NYX-1: park, find home and a pier flip do not make the coordinates BUSY, and a goto requested meanwhile, or during a slew, is answered with
+// a message instead of being dropped.
+static void mount_goto_refusals(void) {
+	SA_CHECK(mount_begin(mount_south));
+	// during a slew: the slew goes on, the property stays BUSY, the request gets a message and nothing is sent
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	unsigned coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	int mark = sa_message_mark();
+	SA_CHECK(mount_request_coordinates(12, 10) && SA_WAIT(sa_message_seen_since(mark, "Mount is slewing, the new coordinates are ignored!"), SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates) && sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == 3.5);
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9) && mount_count("PUT", "slewtocoordinatesasync") == 1);
+	// during a park, a search for home and a pier flip: ALERT with the reason, the coordinates never BUSY
+	const char *properties[] = { MOUNT_PARK_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_PROPERTY_NAME };
+	const char *items[] = { MOUNT_PARK_PARKED_ITEM_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME };
+	const char *reasons[] = { "Mount is parking!", "Mount is searching for its home position!", "Mount is changing the side of pier!" };
+	for (int i = 0; i < 3; i++) {
+		unsigned revision = sa_revision(sa_device, properties[i]);
+		coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		SA_CHECK(mount_start_switch(properties[i], items[i]) && mount_drain());
+		mark = sa_message_mark();
+		SA_CHECK(mount_set_coordinates(1.5, 2.5) == INDIGO_ALERT_STATE && sa_message_seen_since(mark, reasons[i]) && sa_state(sa_device, properties[i]) == INDIGO_BUSY_STATE && mount_count("PUT", "slewtocoordinatesasync") == 1);
+		SA_CHECK(sa_advance(0, 200) && SA_WAIT(sa_state_after(sa_device, properties[i], INDIGO_OK_STATE, revision), SA_TIMEOUT) && !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates));
+		if (i == 0) {
+			SA_CHECK(mount_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE && mount_coordinates_not_busy(coordinates));
+		}
+	}
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// NYX-2: after Park the NYX reported Slewing true for a moment, then Slewing false and AtPark false while it went on parking; the driver
+// decided "Park failed" 1.4 s after the request and left MOUNT_PARK in ALERT when AtPark became true. Park and find home are complete when
+// AtPark / AtHome is true; they fail only when the telescope stalls for MOUNT_STALL_TIME, and a late arrival ends the property OK.
+static void mount_park_delayed_start(void) {
+	SA_CHECK(mount_begin(mount_nyx) && mount_nyx_faults());
+	unsigned revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME), coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	// the start delay: Slewing and AtPark false, nothing moves, MOUNT_PARK stays BUSY
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "park") == 1, SA_TIMEOUT) && sa_advance(0, 0.5));
+	int polls = mount_count("GET", "atpark");
+	SA_CHECK(SA_WAIT(mount_count("GET", "atpark") >= polls + 5, SA_TIMEOUT) && mount_simulated_is("Slewing", "false") && mount_simulated_is("AtPark", "false") && mount_simulated("PendingGoal") == 1);
+	SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	// every reply closed the connection, as the NYX does
+	SA_CHECK(!strcmp(sa_field(sa_last_request(0, "GET", MOUNT_API "atpark"), "Fault"), "connection-close") && sa_is_connected(sa_device));
+	// the park moves the telescope with Slewing false: still BUSY, the coordinates follow and are not BUSY
+	SA_CHECK(sa_advance(0, 1) && sa_advance(0, 5) && mount_simulated_is("Slewing", "false") && mount_simulated("PendingGoal") == 0);
+	SA_CHECK(SA_WAIT(mount_at(mount_simulated("RightAscension"), mount_simulated("Declination"), 1e-9), SA_TIMEOUT) && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	// AtPark: OK
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SA_CHECK(!sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && mount_coordinates_not_busy(coordinates) && mount_simulated_is("AtPark", "true"));
+	// unpark: AtPark false at once
+	SA_CHECK(mount_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE && mount_simulated_is("AtPark", "false"));
+	// find home, the same way
+	revision = sa_revision(sa_device, MOUNT_HOME_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 1, SA_TIMEOUT) && sa_advance(0, 0.5));
+	polls = mount_count("GET", "athome");
+	SA_CHECK(SA_WAIT(mount_count("GET", "athome") >= polls + 5, SA_TIMEOUT) && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("AtHome", "false"));
+	SA_CHECK(sa_advance(0, 1) && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && !sa_state_after(sa_device, MOUNT_HOME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && mount_simulated_is("AtHome", "true"));
+	// a telescope that does not start at all: ALERT after the stall time with the reason, then OK when it reaches the park position after all
+	SA_CHECK(sa_device_state(0, "telescope", 0, "StartDelay=1000"));
+	revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	int mark = sa_message_mark();
+	double started = indigo_monotonic_time();
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "park") == 2, SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), 3 * SA_TIMEOUT) && indigo_monotonic_time() - started >= 9.5);
+	SA_CHECK(sa_message_seen_since(mark, "Park failed: the telescope stopped and does not report AtPark") && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SA_CHECK(sa_advance(0, 1000) && sa_advance(0, 120) && SA_WAIT(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen_since(mark, "The telescope reached the park position") && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// NYX-3: the NYX reported the site 0 / 0 (written there by a client with an unset site). The telescope then computes its sidereal time and
+// its coordinates for Greenwich; the proxy shows the site as it is and warns, once per connection and again when the site becomes 0 / 0.
+static void mount_site_unset_warning(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=1,Tracking=true,SiteLatitude=0,SiteLongitude=0,SiteElevation=0", NULL };
+	const char *warning = "the Alpaca server reports the site 0° N, 0° E, which is most likely not set";
+	SA_CHECK(sa_begin(arguments) && sa_attach(MOUNT_LABEL));
+	int mark = sa_message_mark();
+	SA_CHECK(sa_connect(sa_device) && SA_WAIT(sa_message_seen_since(mark, warning), SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == 0 && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) == 0);
+	// the site was not written on the device by the proxy itself
+	SA_CHECK(mount_count("PUT", "site*") == 0);
+	// once per connection
+	mark = sa_message_mark();
+	SA_CHECK(SA_WAIT(mount_count("GET", "sitelatitude") >= 3, 3 * SA_TIMEOUT) && !sa_message_seen_since(mark, warning));
+	// the user sets the site: written to the telescope, which keeps it across a reconnect, and no warning any more
+	SA_CHECK(mount_set_numbers(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48.2236, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 16.9844) == INDIGO_OK_STATE);
+	SA_CHECK(mount_last("PUT", "sitelatitude", "SiteLatitude=48.2236&ClientID=") && mount_last("PUT", "sitelongitude", "SiteLongitude=16.9844&ClientID=") && mount_simulated("SiteLatitude") == 48.2236);
+	SA_CHECK(sa_disconnect(sa_device));
+	mark = sa_message_mark();
+	SA_CHECK(sa_connect(sa_device) && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == 48.2236 && mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME), 16.9844, 1e-9));
+	SA_CHECK(mount_pause() && mount_pause() && !sa_message_seen_since(mark, warning));
+	// a client writes 0 / 0 again: warned again
+	SA_CHECK(mount_set_numbers(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 0, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 0) == INDIGO_OK_STATE && SA_WAIT(sa_message_seen_since(mark, warning), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
 #define SYSTEM_ALPACA_MOUNT_CASES \
 	{ "mount_properties", mount_properties }, \
 	{ "mount_legacy_properties", mount_legacy_properties }, \
@@ -1572,6 +1741,10 @@ cleanup:
 	{ "mount_connect_failures", mount_connect_failures }, \
 	{ "mount_lifecycle", mount_lifecycle }, \
 	{ "mount_parked_refusal_keeps_pending_motion", mount_parked_refusal_keeps_pending_motion }, \
-	{ "mount_abort_partial_failures", mount_abort_partial_failures },
+	{ "mount_abort_partial_failures", mount_abort_partial_failures }, \
+	{ "mount_goto_behind_unpark", mount_goto_behind_unpark }, \
+	{ "mount_goto_refusals", mount_goto_refusals }, \
+	{ "mount_park_delayed_start", mount_park_delayed_start }, \
+	{ "mount_site_unset_warning", mount_site_unset_warning },
 
 #endif /* system_alpaca_mount_cases_h */

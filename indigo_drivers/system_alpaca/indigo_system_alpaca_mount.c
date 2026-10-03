@@ -54,11 +54,21 @@
 
  MOTION
 
- A slew, a park, an unpark, a search for the home position and a pier flip are one "motion" of the telescope with one finalizer:
- the standard has one completion member for all of them, Slewing. MOUNT_EQUATORIAL_COORDINATES is BUSY while any of them runs,
- so the framework refuses a goto during a park, and the property of the request (MOUNT_PARK, MOUNT_HOME, MOUNT_SIDE_OF_PIER) is
- settled by reading AtPark and AtHome when Slewing becomes false. A motion started while another one runs replaces it on the
- telescope; the properties of both are settled together when the telescope stops.
+ A slew, a park, an unpark, a search for the home position and a pier flip are one "motion" of the telescope with one finalizer.
+ Only a slew makes MOUNT_EQUATORIAL_COORDINATES BUSY; a park, an unpark, a search for home and a pier flip keep MOUNT_PARK,
+ MOUNT_HOME or MOUNT_SIDE_OF_PIER BUSY and leave the coordinates alone (an unpark does not move the telescope at all). A slew and
+ a pier flip are complete when Slewing is false. A park and a search for home are complete when AtPark / AtHome is true (the
+ completion members of the standard, 2.7 of REFACTOR.md), whatever Slewing says: some telescopes report Slewing false and AtPark
+ false for a moment after Park, or report Slewing false while they park. They fail when the telescope stalls: it neither slews
+ nor moves (Altitude / Azimuth of the polling change by less than MOUNT_PROGRESS) and is not at the goal for MOUNT_STALL_TIME
+ in a row. An unpark is complete when AtPark is false and Slewing is false, and fails the same way. Should the telescope reach
+ the park (home) position after it was reported as failed, the polling ends MOUNT_PARK (MOUNT_HOME) in OK. A motion started while
+ another one runs replaces it on the telescope; the properties of both are settled together when the telescope stops.
+
+ A goto requested while a park, a search for home or a pier flip runs is refused with a message; a goto requested while the
+ coordinates are BUSY with a slew is answered with a message and leaves the slew alone. A goto requested while an unpark runs (or
+ is accepted and waits for its handler) is accepted and sent when the unpark is complete, so a client may ask for the unpark and the
+ goto in a row.
 
  Equatorial slews need Tracking to be on (the telescope answers InvalidOperation otherwise), so tracking is switched on before the
  slew when the telescope can do that. "Slew to target and stop" switches it off again after the arrival.
@@ -67,10 +77,17 @@
 
  PARKED
 
- While the telescope is parked, parks or unparks, MOUNT_EQUATORIAL_COORDINATES, MOUNT_MOTION_DEC, MOUNT_MOTION_RA, MOUNT_TRACKING and
- MOUNT_SIDE_OF_PIER are refused without a request to the telescope, as in the other mount drivers. MOUNT_HOME and MOUNT_ABORT_MOTION are
- sent and answered by the telescope (InvalidWhileParked). A telescope that somebody else parked is recognised by AtPark of the next poll
- or by the first InvalidWhileParked it answers.
+ While the telescope is parked, parks or unparks, MOUNT_MOTION_DEC, MOUNT_MOTION_RA, MOUNT_TRACKING and MOUNT_SIDE_OF_PIER are refused
+ without a request to the telescope, as in the other mount drivers, and so is MOUNT_EQUATORIAL_COORDINATES unless an unpark runs or
+ waits (see MOTION). MOUNT_HOME and MOUNT_ABORT_MOTION are sent and answered by the telescope (InvalidWhileParked). A telescope that
+ somebody else parked is recognised by AtPark of the next poll or by the first InvalidWhileParked it answers.
+
+ SITE
+
+ GEOGRAPHIC_COORDINATES shows the site the telescope reports and setting it writes SiteLatitude, SiteLongitude and SiteElevation; the
+ driver never writes the site on its own. A site of exactly 0° / 0° is almost certainly not set (a new controller, or a client that
+ wrote its own unset site): the telescope then computes SiderealTime and its coordinates for Greenwich, so a warning says so once
+ per connection and again whenever the site becomes 0° / 0°.
 
  MANUAL MOTION
 
@@ -120,6 +137,16 @@
  */
 #define MOUNT_MOTION_TIMEOUT							600
 
+/** A park, an unpark or a search for home has failed when the telescope did not slew, did not move and was not at its goal for this many seconds in a row.
+ Long enough for the delay some telescopes take before they start (NYX-101: about 0.5 s with Slewing and AtPark false), short against the motion timeout.
+ */
+#define MOUNT_STALL_TIME									10
+
+/** Change of Altitude or Azimuth in degrees between two poll ticks that counts as progress of a park or a search for home. Larger than the change
+ the tracking makes in MOUNT_STALL_TIME (at most 0.042°), so a telescope that tracks and does nothing else counts as stalled.
+ */
+#define MOUNT_PROGRESS										0.1
+
 /** The settings another client may change (tracking rate, guide rates, site, offset rates) are read on every n-th poll tick.
  */
 #define MOUNT_SETTINGS_TICKS							10
@@ -152,6 +179,16 @@ typedef struct {
 	// running motion
 	alpaca_operation motion;
 	const char *action;							///< what the running motion is called in messages
+	bool slew_requested;						///< the motion is a slew: MOUNT_EQUATORIAL_COORDINATES is BUSY and is settled when it ends
+	bool goto_waits;								///< an accepted goto waits for the end of the running unpark
+	double stall_since;							///< monotonic time since which a park, an unpark or a search for home shows no progress, 0 if it did not start
+	double stall_altitude;					///< Altitude and Azimuth at stall_since
+	double stall_azimuth;
+	int park_alert;									///< MOUNT_PARK is in ALERT after a park (1) or an unpark (0) that was not confirmed; -1 otherwise
+	bool home_alert;								///< MOUNT_HOME is in ALERT after a search for home that was not confirmed
+	bool park_recovered;						///< the telescope reached the goal of park_alert later: MOUNT_PARK is published with a message
+	bool home_recovered;						///< the same for home_alert
+	bool site_warned;								///< the warning about a site of 0° / 0° was sent
 	bool park_requested;						///< the motion has to end with AtPark
 	bool unpark_requested;					///< the motion has to end without AtPark
 	bool home_requested;						///< the motion has to end with AtHome
@@ -217,6 +254,28 @@ static void mount_set_parked(indigo_device *device, bool parked) {
 // Refusal of a request that would move a parked telescope. Called by system_alpaca_accept() with the lock of the device held.
 static const char *mount_parked_refusal(indigo_device *device) {
 	return MOUNT_DATA->parked ? "Mount is parked!" : NULL;
+}
+
+// Refusal of a goto or a sync, see MOTION. Called by system_alpaca_accept() with the lock of the device held; the request is accepted while the
+// coordinates are BUSY, so that it is answered: a refused request keeps the BUSY state of the running slew and gets the message.
+// A goto behind an unpark (MOUNT_PARK BUSY with UNPARKED, accepted or running) is accepted although the telescope is still parked.
+static const char *mount_coordinates_refusal(indigo_device *device) {
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return "Mount is slewing, the new coordinates are ignored!";
+	}
+	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return MOUNT_PARK_UNPARKED_ITEM->sw.value ? NULL : "Mount is parking!";
+	}
+	if (MOUNT_DATA->parked) {
+		return "Mount is parked!";
+	}
+	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return "Mount is searching for its home position!";
+	}
+	if (MOUNT_SIDE_OF_PIER_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return "Mount is changing the side of pier!";
+	}
+	return NULL;
 }
 
 // The device answered, with a value or with an error of its own. False means that there is no usable answer and the connection has to be given up.
@@ -441,10 +500,13 @@ static void mount_update_coordinates(indigo_device *device) {
 
 // The switches are set item by item: indigo_set_switch() marks a one-of-many property as changed whenever it is called,
 // which would publish MOUNT_PARK and MOUNT_TRACKING on every poll tick although nothing changed.
+// Under the lock of the device (it is recursive): mount_coordinates_refusal() reads the items on a bus thread.
 static void mount_set_park(indigo_device *device) {
+	system_alpaca_lock(device);
 	MOUNT_PARK_PARKED_ITEM->sw.value = MOUNT_DATA->at_park;
 	MOUNT_PARK_UNPARKED_ITEM->sw.value = !MOUNT_DATA->at_park;
-	mount_set_parked(device, MOUNT_DATA->at_park && !MOUNT_PARK_PROPERTY->hidden);
+	MOUNT_DATA->parked = MOUNT_DATA->at_park && !MOUNT_PARK_PROPERTY->hidden;
+	system_alpaca_unlock(device);
 }
 
 static void mount_set_tracking(indigo_device *device) {
@@ -518,6 +580,17 @@ static void mount_apply_state(indigo_device *device) {
 	}
 	if (MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
 		mount_set_park(device);
+		// a park or an unpark that was reported as failed, and the telescope got there after all
+		if (MOUNT_PARK_PROPERTY->state == INDIGO_ALERT_STATE && data->park_alert >= 0 && data->at_park == (data->park_alert == 1) && !data->slewing) {
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			data->park_recovered = true;
+			data->park_alert = -1;
+		}
+	}
+	if (MOUNT_HOME_PROPERTY->state == INDIGO_ALERT_STATE && data->home_alert && data->at_home && !data->slewing) {
+		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		data->home_recovered = true;
+		data->home_alert = false;
 	}
 	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
 		mount_set_tracking(device);
@@ -536,8 +609,18 @@ static void mount_apply_state(indigo_device *device) {
 }
 
 static void mount_update_state(indigo_device *device) {
+	mount_data *data = MOUNT_DATA;
 	mount_update_coordinates(device);
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+	if (data->park_recovered) {
+		data->park_recovered = false;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, data->at_park ? "The telescope reached the park position" : "The telescope is unparked");
+	} else {
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+	}
+	if (data->home_recovered) {
+		data->home_recovered = false;
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, "The telescope reached the home position");
+	}
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 	if (MOUNT_DATA->utc_changed) {
@@ -596,9 +679,9 @@ static void mount_check_parked(indigo_device *device, alpaca_result result) {
 }
 
 // Finish a request whose result has two parts: the result of the requests and whether the telescope ended in the requested state.
-static void mount_finish(indigo_device *device, indigo_property *property, alpaca_result result, bool achieved, const char *action) {
+static void mount_finish(indigo_device *device, indigo_property *property, alpaca_result result, bool achieved, const char *action, const char *missed) {
 	if (result == ALPACA_OK && !achieved) {
-		system_alpaca_update(device, property, INDIGO_ALERT_STATE, "%s failed", action);
+		system_alpaca_update(device, property, INDIGO_ALERT_STATE, "%s failed: %s", action, missed);
 	} else {
 		system_alpaca_finish(device, property, result, action);
 	}
@@ -658,21 +741,48 @@ static alpaca_result mount_put_axis_rate(indigo_device *device, int axis, double
 #pragma mark - High level code (mount)
 
 static void mount_motion_finalizer(indigo_device *device);
+static void mount_equatorial_coordinates_handler(indigo_device *device);
 
-// The telescope accepted a method that makes it slew: watch Slewing. The coordinates are BUSY during every motion.
-static void mount_motion_start(indigo_device *device, const char *action) {
+// The telescope accepted a method that makes it move: watch it. The coordinates are BUSY during a slew only (slew is true), see MOTION.
+static void mount_motion_start(indigo_device *device, const char *action, bool slew) {
 	mount_data *data = MOUNT_DATA;
 	indigo_cancel_pending_handler(device, mount_motion_finalizer);
 	data->action = action;
 	data->external_slew = data->aborted = false;
+	data->stall_since = 0;
+	data->slew_requested = data->slew_requested || slew;
 	system_alpaca_operation_start(device, &data->motion, MOUNT_MOTION_TIMEOUT, mount_motion_finalizer);
-	system_alpaca_lock(device);
-	bool idle = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE;
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	system_alpaca_unlock(device);
-	if (idle) {
-		mount_update_coordinates(device);
+	if (slew) {
+		system_alpaca_lock(device);
+		bool idle = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
+		if (idle) {
+			mount_update_coordinates(device);
+		}
 	}
+}
+
+// A park, an unpark or a search for home that is not at its goal: true once the telescope neither slewed nor moved for MOUNT_STALL_TIME.
+// The position is the one of the last poll tick (the polling runs at the active rhythm meanwhile), from Altitude and Azimuth of the
+// telescope or computed from its equatorial coordinates.
+static bool mount_stalled(indigo_device *device, bool slewing) {
+	mount_data *data = MOUNT_DATA;
+	double now = indigo_monotonic_time();
+	double altitude = MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value;
+	double azimuth = MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value;
+	double azimuth_change = fmod(fabs(azimuth - data->stall_azimuth), 360);
+	if (azimuth_change > 180) {
+		azimuth_change = 360 - azimuth_change;
+	}
+	bool progress = fabs(altitude - data->stall_altitude) > MOUNT_PROGRESS || azimuth_change * cos(altitude * M_PI / 180) > MOUNT_PROGRESS;
+	if (slewing || progress || data->stall_since == 0) {
+		data->stall_since = now;
+		data->stall_altitude = altitude;
+		data->stall_azimuth = azimuth;
+		return false;
+	}
+	return now - data->stall_since >= MOUNT_STALL_TIME;
 }
 
 // The telescope stopped after AbortSlew: every property that waited for the end of a motion ends in ALERT with what the telescope reports now.
@@ -703,7 +813,6 @@ static void mount_settle_aborted(indigo_device *device) {
 // The motion is over, with the given result of watching it: read where the telescope is and settle every property that waited for it.
 static void mount_motion_done(indigo_device *device, alpaca_result result) {
 	mount_data *data = MOUNT_DATA;
-	const char *action = data->action != NULL ? data->action : "Slew";
 	if (data->aborted) {
 		data->aborted = false;
 		mount_read_state(device);
@@ -718,38 +827,67 @@ static void mount_motion_done(indigo_device *device, alpaca_result result) {
 		result = data->coordinates;
 	}
 	if (data->park_requested || data->unpark_requested) {
+		bool achieved = data->at_park == data->park_requested;
 		mount_set_park(device);
-		mount_finish(device, MOUNT_PARK_PROPERTY, result, data->at_park == data->park_requested, data->park_requested ? "Park" : "Unpark");
+		mount_finish(device, MOUNT_PARK_PROPERTY, result, achieved, data->park_requested ? "Park" : "Unpark", data->park_requested ? "the telescope stopped and does not report AtPark" : "the telescope still reports AtPark");
+		// a late arrival at the goal ends MOUNT_PARK in OK, see mount_apply_state()
+		data->park_alert = result == ALPACA_OK && achieved ? -1 : data->park_requested ? 1 : 0;
 	}
 	if (data->home_requested) {
-		mount_finish(device, MOUNT_HOME_PROPERTY, result, data->at_home, "Find home");
+		mount_finish(device, MOUNT_HOME_PROPERTY, result, data->at_home, "Find home", "the telescope stopped and does not report AtHome");
+		data->home_alert = result != ALPACA_OK || !data->at_home;
 	}
 	if (data->flip_requested) {
 		mount_set_side_of_pier(device);
 		system_alpaca_finish(device, MOUNT_SIDE_OF_PIER_PROPERTY, result, "Pier flip");
 	}
-	data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = false;
+	bool slew = data->slew_requested;
+	data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->slew_requested = false;
 	mount_apply_state(device);
-	mount_finish_coordinates(device, result, action);
+	if (slew) {
+		mount_finish_coordinates(device, result, "Slew");
+	}
 	mount_update_state(device);
+	if (data->goto_waits) {
+		// the goto that was requested behind the unpark: its handler finds the telescope unparked, or refuses the goto
+		data->goto_waits = false;
+		indigo_execute_handler(device, mount_equatorial_coordinates_handler);
+	}
 }
 
+// A slew and a pier flip end when Slewing is false. A park and a search for home end when AtPark / AtHome is true and an unpark when AtPark and
+// Slewing are false (the completion members of the standard); without them they end when the telescope stalls, see MOTION.
 static void mount_motion_finalizer(indigo_device *device) {
+	mount_data *data = MOUNT_DATA;
 	bool slewing = false;
 	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_result result = system_alpaca_state_bool(device, "Slewing", &slewing);
-	if (result == ALPACA_OK && slewing && system_alpaca_operation_continue(device, &MOUNT_DATA->motion, mount_motion_finalizer)) {
+	bool waiting = result == ALPACA_OK && slewing;
+	if (result == ALPACA_OK && !data->aborted && (data->park_requested || data->unpark_requested || data->home_requested)) {
+		bool at_goal = false;
+		result = system_alpaca_state_bool(device, data->park_requested || data->unpark_requested ? "AtPark" : "AtHome", &at_goal);
+		if (result == ALPACA_OK) {
+			bool reached = data->unpark_requested && !data->park_requested ? !at_goal && !slewing : at_goal;
+			waiting = !reached && !mount_stalled(device, slewing);
+		}
+	}
+	if (waiting && system_alpaca_operation_continue(device, &data->motion, mount_motion_finalizer)) {
 		return;
 	}
-	system_alpaca_operation_end(device, &MOUNT_DATA->motion);
-	mount_motion_done(device, result == ALPACA_OK && slewing ? ALPACA_TIMED_OUT : result);
+	system_alpaca_operation_end(device, &data->motion);
+	mount_motion_done(device, waiting ? ALPACA_TIMED_OUT : result);
 }
 
 static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
 	if (!system_alpaca_is_active(device)) {
+		return;
+	}
+	if (data->motion.active && data->unpark_requested) {
+		// accepted behind an unpark: mount_motion_done() runs this handler again when the unpark is over; the coordinates stay BUSY meanwhile
+		data->goto_waits = true;
 		return;
 	}
 	if (mount_is_parked(device)) {
@@ -780,7 +918,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		}
 		if (result == ALPACA_OK) {
 			data->stop_tracking = indigo_get_switch(MOUNT_ON_COORDINATES_SET_PROPERTY, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME);
-			mount_motion_start(device, "Slew");
+			mount_motion_start(device, "Slew", true);
 		} else {
 			mount_check_parked(device, result);
 			mount_finish_coordinates(device, result, "Slew");
@@ -801,6 +939,7 @@ static void mount_park_handler(indigo_device *device) {
 		return;
 	}
 	alpaca_result result = mount_started(device, system_alpaca_put(device, park ? "park" : "unpark", NULL, 0, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE));
+	data->park_alert = -1;
 	if (result == ALPACA_OK) {
 		data->park_requested = park;
 		data->unpark_requested = !park;
@@ -809,7 +948,7 @@ static void mount_park_handler(indigo_device *device) {
 			// from here on the telescope moves to its park position; what would move it elsewhere is refused until MOUNT_PARK is settled
 			mount_set_parked(device, true);
 		}
-		mount_motion_start(device, park ? "Park" : "Unpark");
+		mount_motion_start(device, park ? "Park" : "Unpark", false);
 	} else {
 		mount_set_park(device);
 		system_alpaca_finish(device, MOUNT_PARK_PROPERTY, result, park ? "Park" : "Unpark");
@@ -837,11 +976,12 @@ static void mount_home_handler(indigo_device *device) {
 	MOUNT_HOME_ITEM->sw.value = false;
 	if (home) {
 		alpaca_result result = mount_started(device, system_alpaca_put(device, "findhome", NULL, 0, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE));
+		data->home_alert = false;
 		if (result == ALPACA_OK) {
 			data->home_requested = true;
 			data->stop_tracking = false;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
-			mount_motion_start(device, "Find home");
+			mount_motion_start(device, "Find home", false);
 		} else {
 			mount_check_parked(device, result);
 			system_alpaca_finish(device, MOUNT_HOME_PROPERTY, result, "Find home");
@@ -861,7 +1001,7 @@ static void mount_side_of_pier_handler(indigo_device *device) {
 	if (result == ALPACA_OK) {
 		data->flip_requested = true;
 		data->stop_tracking = false;
-		mount_motion_start(device, "Pier flip");
+		mount_motion_start(device, "Pier flip", false);
 	} else {
 		mount_check_parked(device, result);
 		mount_set_side_of_pier(device);
@@ -987,7 +1127,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 			indigo_cancel_pending_handler(device, mount_motion_ra_handler);
 			indigo_cancel_pending_handler(device, mount_motion_finalizer);
 			system_alpaca_operation_end(device, &data->motion);
-			data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->external_slew = false;
+			data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->external_slew = data->slew_requested = data->goto_waits = false;
 		}
 		if (aborted || stop == ALPACA_OK) {
 			system_alpaca_lock(device);
@@ -1226,6 +1366,9 @@ static bool mount_on_connect(indigo_device *device) {
 	memset(&data->motion, 0, sizeof(data->motion));
 	data->action = NULL;
 	data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->external_slew = data->coordinates_failed = data->aborted = false;
+	data->slew_requested = data->goto_waits = data->home_alert = data->park_recovered = data->home_recovered = data->site_warned = false;
+	data->park_alert = -1;
+	data->stall_since = 0;
 	data->axis_moving[0] = data->axis_moving[1] = false;
 	data->utc_changed = false;
 	mount_set_parked(device, false);
@@ -1311,6 +1454,8 @@ static void mount_on_disconnect(indigo_device *device) {
 	}
 	system_alpaca_operation_end(device, &data->motion);
 	data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->external_slew = data->aborted = false;
+	data->slew_requested = data->goto_waits = data->home_alert = false;
+	data->park_alert = -1;
 	// the properties are still defined, so a request may be accepted while they are reset; its handler finds the session closed
 	system_alpaca_lock(device);
 	data->site = false;
@@ -1320,6 +1465,16 @@ static void mount_on_disconnect(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = MOUNT_UTC_TIME_PROPERTY->state = MOUNT_SET_HOST_TIME_PROPERTY->state = MOUNT_SIDE_OF_PIER_PROPERTY->state = X_ALPACA_OFFSET_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	system_alpaca_unlock(device);
 	indigo_delete_property(device, X_ALPACA_OFFSET_RATE_PROPERTY, NULL);
+}
+
+// A site of exactly 0° / 0° reported by the telescope is not set, see SITE: warn once, and again after the site was something else.
+static void mount_warn_site(indigo_device *device) {
+	mount_data *data = MOUNT_DATA;
+	bool unset = mount_has_site(device) && fabs(data->latitude) < 1e-6 && fabs(data->longitude) < 1e-6;
+	if (unset && !data->site_warned) {
+		indigo_send_message(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, "Warning: the Alpaca server reports the site 0° N, 0° E, which is most likely not set; the telescope computes its sidereal time and coordinates for that site until GEOGRAPHIC_COORDINATES is set");
+	}
+	data->site_warned = unset;
 }
 
 static void mount_on_poll(indigo_device *device) {
@@ -1333,6 +1488,7 @@ static void mount_on_poll(indigo_device *device) {
 		mount_apply_settings(device);
 		mount_update_settings(device);
 	}
+	mount_warn_site(device);
 }
 
 #pragma mark - Device API (mount)
@@ -1368,8 +1524,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return indigo_mount_change_property(device, client, property);
 	}
 	if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		// a request while the coordinates are BUSY is dropped before the refusal is asked, so it does not take the state of the running motion away
-		system_alpaca_accept(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, ALPACA_ACCEPT_TARGETS, mount_parked_refusal, mount_equatorial_coordinates_handler);
+		// asked while the coordinates are BUSY as well, so that a request is never dropped without an answer; a refusal keeps the BUSY state of the running slew
+		system_alpaca_accept(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, ALPACA_ACCEPT_TARGETS | ALPACA_ACCEPT_ANYTIME, mount_coordinates_refusal, mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		system_alpaca_accept(device, MOUNT_ABORT_MOTION_PROPERTY, property, ALPACA_ACCEPT_VALUES | ALPACA_ACCEPT_URGENT, NULL, mount_abort_motion_handler);

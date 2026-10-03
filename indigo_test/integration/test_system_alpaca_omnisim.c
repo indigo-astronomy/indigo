@@ -506,36 +506,20 @@ static bool omni_motion_change(const char *property, const char *item, const cha
 	return true;
 }
 
-// Put SiteLatitude of OmniSim back; the telescope is connected for it if the driver disconnected it already.
-static bool omni_restore_latitude(double latitude) {
-	char form[64];
-	bool connected = omni_bool("telescope", "connected");
-	snprintf(form, sizeof(form), "SiteLatitude=%.10g", latitude);
-	bool restored = (connected || omni_put("telescope", "connected", "Connected=true") == 0) && omni_put("telescope", "sitelatitude", form) == 0;
-	if (!connected) {
-		omni_put("telescope", "connected", "Connected=false");
-	}
-	if (!restored) {
-		fprintf(stderr, "    SiteLatitude of OmniSim could not be put back to %.10g\n", latitude);
-	}
-	return restored;
-}
-
 // MOUNT_MOTION_DEC.NORTH moves toward the north celestial pole on both sides of the pier and on a northern and a southern site; OmniSim turns
 // the secondary axis the other way through the pole (pierWest), so the driver inverts the rate there (indigo_system_alpaca_mount.c, MANUAL
 // MOTION). MOUNT_MOTION_RA.WEST makes the right ascension fall everywhere, the primary axis is never inverted.
 static void omnisim_mount_manual_motion(void) {
 	char where[64];
-	double change = 0, latitude = NAN;
+	double change = 0;
 	SA_CHECK(omni_begin());
 	SA_CHECK(omni_attach_connect(TELESCOPE_LABEL));
 	// the rates of MOUNT_SLEW_RATE come from AxisRates [0, 6.67] and [10, 20]
 	SA_CHECK(omni_set_switch(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, true, SA_TIMEOUT) == INDIGO_OK_STATE);
 	for (int site = 0; site < 2; site++) {
 		// OmniSim's site is at 51.07861 N; the southern one is set on the telescope directly. OmniSim saves SiteLatitude in its profile, which
-		// it keeps in the user's Application Support folder whatever HOME is, so the latitude is put back when the case ends, also after a failure
+		// lives in the private home of this instance only (omnisim_test_common.h), so it is not put back
 		if (site) {
-			latitude = omni_double("telescope", "sitelatitude");
 			SA_CHECK(omni_put("telescope", "sitelatitude", "SiteLatitude=-30.2407") == 0 && fabs(omni_double("telescope", "sitelatitude") + 30.2407) < 1e-9);
 		}
 		for (int west = 0; west < 2; west++) {
@@ -549,13 +533,8 @@ static void omnisim_mount_manual_motion(void) {
 			SA_CHECK(omni_motion_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, "rightascension", where, &change) && change < -0.01);
 		}
 	}
-	SA_CHECK(omni_restore_latitude(latitude));
-	latitude = NAN;
 	SA_CHECK(omni_disconnect_detach(TELESCOPE_LABEL));
 cleanup:
-	if (!isnan(latitude)) {
-		omni_restore_latitude(latitude);
-	}
 	omni_end();
 }
 
