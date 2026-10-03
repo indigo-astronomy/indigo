@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -300,6 +300,8 @@ typedef struct {
 	jsmn_parser parser;
 	bool has_abs_pos;
 	bool rotator_has_abs_pos;
+	bool rotator_has_position_deg;
+	int rotator_calibration_polls;
 	bool is_sestosenso_3;
 	bool is_http;
 	char http_host[INDIGO_NAME_SIZE];
@@ -328,6 +330,9 @@ static char *GET_MOT1_ABS_POS_STEP[] = { "res", "get", "MOT1", "ABS_POS_STEP", N
 static char *GET_MOT1_ABS_POS[] = { "res", "get", "MOT1", "ABS_POS", NULL };
 static char *GET_MOT2_ABS_POS_DEG[] = { "res", "get", "MOT2", "ABS_POS_DEG", NULL };
 static char *GET_MOT2_ABS_POS[] = { "res", "get", "MOT2", "ABS_POS", NULL };
+static char *GET_MOT2_POSITION_DEG[] = { "res", "get", "MOT2", "POSITION_DEG", NULL };
+static char *GET_MOT2_CAL_STATUS[] = { "res", "get", "MOT2", "CAL_STATUS", NULL };
+static char *SET_MOT2_CAL_STATUS[] = { "res", "set", "MOT2", "CAL_STATUS", NULL };
 static char *GET_MOT1_BKLASH[] = { "res", "get", "MOT1", "BKLASH", NULL };
 static char *SET_MOT1_BKLASH[] = { "res", "set", "MOT1", "BKLASH", NULL };
 static char *GET_MOT1_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
@@ -343,7 +348,6 @@ static char *CMD_MOT2_MOT_STOP[] = { "res", "cmd", "MOT2", "MOT_STOP", NULL };
 static char *CMD_MOT2_SYNC_POS[] = { "res", "cmd", "MOT2", "SYNC_POS", NULL };
 static char *GET_MOT1_CAL_MINPOS[] = { "res", "get", "MOT1", "CAL_MINPOS", NULL };
 static char *GET_MOT1_CAL_MAXPOS[] = { "res", "get", "MOT1", "CAL_MAXPOS", NULL };
-static char *CMD_MOT2_CAL_STATUS[] = { "res", "cmd", "MOT2", "CAL_STATUS", NULL };
 static char *GET_EXT_T[] = { "res", "get", "EXT_T", NULL };
 static char *GET_DIMLEDS[] = { "res", "get", "DIMLEDS", NULL };
 static char *GET_VIN_12V[] = { "res", "get", "VIN_12V", NULL };
@@ -738,18 +742,54 @@ static void focuser_movement_finalizer(indigo_device *device) {
 
 //+ rotator.code
 
+// POSITION_DEG is the angle after a sync and ABS_POS_DEG the mechanical one, so the
+// synced angle is reported where the firmware has it.
+static bool rotator_read_angle(indigo_device *device) {
+	bool result;
+	if (PRIVATE_DATA->rotator_has_position_deg) {
+		result = primaluce_command(device, "{\"req\":{\"get\":{\"MOT2\":{\"POSITION_DEG\":\"\",\"STATUS\":\"\"}}}}");
+	} else {
+		result = primaluce_command(device, PRIVATE_DATA->rotator_has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"STATUS\":\"\"}}}}");
+	}
+	if (result) {
+		ROTATOR_POSITION_ITEM->number.value = get_number(device, PRIVATE_DATA->rotator_has_position_deg ? GET_MOT2_POSITION_DEG : (PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG));
+	}
+	return result;
+}
+
+// The controller calibrates the ARCO on its own and reports CAL_STATUS "stop" when it is done.
+static void rotator_calibration_poll(indigo_device *device) {
+	char *state;
+	// An abort ends the calibration while a poll may already be queued.
+	if (X_CALIBRATE_R_PROPERTY->state != INDIGO_BUSY_STATE) {
+		return;
+	}
+	if (!primaluce_command(device, "{\"req\":{\"get\":{\"MOT2\":{\"CAL_STATUS\":\"\"}}}}") || (state = get_string(device, GET_MOT2_CAL_STATUS)) == NULL) {
+		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else if (strcmp(state, "stop")) {
+		if (++PRIVATE_DATA->rotator_calibration_polls > 600) {
+			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, "Calibration did not finish");
+		} else {
+			indigo_execute_handler_in(device, 1, rotator_calibration_poll);
+		}
+	} else {
+		if (rotator_read_angle(device)) {
+			ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		}
+		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, NULL);
+	}
+}
+
 static void rotator_movement_finalizer(indigo_device *device) {
-	if (primaluce_command(device, PRIVATE_DATA->rotator_has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"STATUS\":\"\"}}}}")) {
-		ROTATOR_POSITION_ITEM->number.value = get_number(device, PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
+	if (rotator_read_angle(device)) {
 		char *state = get_string(device, GET_MOT2_MST);
 		if (state != NULL && strcmp(state, "stop")) {
 			indigo_execute_handler_in(device, 0.2, rotator_movement_finalizer);
 		} else {
 			for (int i = 0; i < 10; i++) {
 				indigo_usleep(100000);
-				if (primaluce_command(device, PRIVATE_DATA->rotator_has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"STATUS\":\"\"}}}}")) {
-					ROTATOR_POSITION_ITEM->number.value = get_number(device, PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
-				}
+				rotator_read_angle(device);
 				if (ROTATOR_POSITION_ITEM->number.target == ROTATOR_POSITION_ITEM->number.value) {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 					break;
@@ -1652,7 +1692,8 @@ static void rotator_connection_handler(indigo_device *device) {
 					}
 				}
 				PRIVATE_DATA->rotator_has_abs_pos = getToken(device, 0, GET_MOT2_ABS_POS) != -1;
-				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
+				PRIVATE_DATA->rotator_has_position_deg = getToken(device, 0, GET_MOT2_POSITION_DEG) != -1;
+				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->rotator_has_position_deg ? GET_MOT2_POSITION_DEG : (PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG));
 			} else {
 				connection_result = false;
 			}
@@ -1702,17 +1743,14 @@ static void rotator_x_calibrate_r_handler(indigo_device *device) {
 	//+ rotator.X_CALIBRATE_R.on_change
 	if (X_CALIBRATE_R_START_ITEM->sw.value) {
 		X_CALIBRATE_R_START_ITEM->sw.value = false;
-		if (!primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT2\": {\"CAL_STATUS\":\"exec\"}}}}")) {
+		char *state;
+		if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"exec\"}}}}") || (state = get_string(device, SET_MOT2_CAL_STATUS)) == NULL || strcmp(state, "done")) {
 			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		} else {
-			char *state = get_string(device, CMD_MOT2_CAL_STATUS);
-			if (state == NULL || strcmp(state, "done")) {
-				INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, NULL);
-			} else {
-				// The controller runs the calibration on its own and only
-				// acknowledges the request, so the command completes here.
-				INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, NULL);
-			}
+			// The property stays busy until the controller reports the calibration finished.
+			X_CALIBRATE_R_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->rotator_calibration_polls = 0;
+			indigo_execute_handler_in(device, 1, rotator_calibration_poll);
 		}
 	}
 	//- rotator.X_CALIBRATE_R.on_change
@@ -1729,8 +1767,8 @@ static void rotator_position_handler(indigo_device *device) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			// The request already replaced the value, so the angle the rotator keeps is read back.
-			if (primaluce_command(device, PRIVATE_DATA->rotator_has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\"}}}}")) {
-				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
+			if (rotator_read_angle(device)) {
+				ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value;
 			}
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -1754,6 +1792,11 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_ABORT_MOTION.on_change
 	indigo_cancel_pending_handler(device, rotator_position_handler);
+	if (X_CALIBRATE_R_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_cancel_pending_handler(device, rotator_calibration_poll);
+		primaluce_command(device, "{\"req\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"stop\"}}}}");
+		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, "Calibration aborted");
+	}
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}

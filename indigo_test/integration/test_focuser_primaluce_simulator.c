@@ -963,12 +963,22 @@ cleanup:
 	driver_stop();
 }
 
+// The ARCO calibration is started with set and stays busy until the controller reports it stopped.
 static void rotator_calibration(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_rotator());
-	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_STATUS\":\"exec\"", 1));
+	unsigned int completions = property_state_revision(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"set\":{\"MOT2\":{\"CAL_STATUS\":\"exec\"", 1));
+	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_OK_STATE, completions));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, false));
+	// An abort stops a running calibration.
+	unsigned int alerts = property_state_revision(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"set\":{\"MOT2\":{\"CAL_STATUS\":\"exec\"", 2));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_STATUS\":\"stop\"", 1));
+	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
 	SERIAL_CHECK_TRUE(fault("\"CAL_STATUS\":\"exec\"", "silent"));
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_ALERT_STATE));
 cleanup:
@@ -984,10 +994,15 @@ static void rotator_sync(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"SYNC_POS\":{\"DEG\":120", 1));
 	SERIAL_CHECK_TRUE(requests("\"MOVE_ABS\"") == 0);
 	SERIAL_CHECK_TRUE(rotator_position_is(120));
+	// A move after the sync is made in the synced angles.
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 130, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(rotator_position_is(130));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
 	// A refused sync keeps the angle the rotator had.
 	SERIAL_CHECK_TRUE(fault("\"SYNC_POS\"", "reject"));
 	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_is(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 120, 0));
+	SERIAL_CHECK_TRUE(number_is(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 130, 0));
 	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();

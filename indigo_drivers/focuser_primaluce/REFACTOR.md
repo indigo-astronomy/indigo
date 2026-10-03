@@ -296,6 +296,15 @@ simulator has no HTTP transport, so the network path has hardware coverage only.
   move. A refused sync reads the angle back and ends ALERT. Simulator `rotator_sync`; not verified
   on hardware because no ARCO is attached (the controller answers
   `"Error: invalid command; ARCO is not connected"`).
+- Rotator angle: the controller reports the mechanical angle as `MOT2.ABS_POS_DEG` and the synced
+  angle as `MOT2.POSITION_DEG` (`MOVE_ABS` targets the synced angle). The driver reads
+  `POSITION_DEG` where the firmware reports it and falls back to `ABS_POS_DEG`, so a sync is
+  visible in `ROTATOR_POSITION`. Simulator `rotator_sync` (move after a sync); not verified on
+  hardware.
+- ARCO calibration is started with `{"req":{"set":{"MOT2":{"CAL_STATUS":"exec"}}}}` (it was sent as
+  `cmd` and completed at once). `X_CALIBRATE_A` now stays busy until `MOT2.CAL_STATUS` reads
+  `"stop"`, and `ROTATOR_ABORT_MOTION` ends a running calibration with `CAL_STATUS` `"stop"`.
+  Simulator `rotator_calibration`; not verified on hardware.
 - A motor without its 12 V supply answers a move or stop with `"12V_PowerSupply_Error"`; the
   driver now ends the operation ALERT with the message "The motor has no 12 V power supply".
   Simulator `motor_without_power` (fault `nopower`); not reproduced on hardware.

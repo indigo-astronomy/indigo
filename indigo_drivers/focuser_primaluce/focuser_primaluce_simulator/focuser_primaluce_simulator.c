@@ -42,6 +42,9 @@ static int focuser_position = 18075;
 static int focuser_target = 18075;
 static int rotator_position = 0;
 static int rotator_target = 0;
+// POSITION_DEG is the synced angle, ABS_POS_DEG the mechanical one; a sync moves the offset between them.
+static int rotator_offset = 0;
+static double rotator_calibration_end = 0;
 static int backlash = 0;
 static int speed = 0;
 static int hold_current = 1;
@@ -269,9 +272,9 @@ static void send_state(int handle) {
 		"\"HOLDCURR_STATUS\":%d},"
 		"\"RUNPRESET_L\":{\"M1ACC\":10},\"RUNPRESET_M\":{\"M1SPD\":6},\"RUNPRESET_S\":{\"M1DEC\":1},"
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
-		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"stop\"}"
+		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		model, firmware, lan_cfg, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart);
+		model, firmware, lan_cfg, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -360,15 +363,19 @@ static void dispatch_command(int handle, const char *command) {
 		serial_motion_start(&rotate_motion, rotator_target, 90);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"STEP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"SYNC_POS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
-		serial_motion_sync(&rotate_motion, extract_int_after(command, "\"DEG\":", rotator_position));
-		rotator_target = (int)rotate_motion.position;
+		int synced = extract_int_after(command, "\"DEG\":", rotator_position);
+		rotator_offset += synced - rotator_position;
+		serial_motion_sync(&rotate_motion, synced);
+		rotator_position = rotator_target = synced;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"SYNC_POS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		serial_motion_stop(&rotate_motion);
 		rotator_target = rotator_position;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"MOT_STOP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"CAL_STATUS\"") != NULL) {
-		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"CAL_STATUS\":\"done\"}}}}\n");
+		// The ARCO calibration runs for a while after it is started, and "stop" ends it at once.
+		rotator_calibration_end = strstr(command, "\"stop\"") != NULL ? 0 : serial_motion_time() + 2;
+		sim_printf(handle, "{\"res\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL || strstr(command, "\"CAL_DIR\"") != NULL) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"done\"}},\"set\":{\"MOT1\":{\"CAL_DIR\":\"done\"}}}}\n");
 	} else {
