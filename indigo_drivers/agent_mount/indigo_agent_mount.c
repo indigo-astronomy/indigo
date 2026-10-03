@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0300001A
+#define DRIVER_VERSION 0x0300001B
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -212,6 +212,7 @@ typedef struct {
 	double dome_radius, dome_shutter_width, dome_mount_pivot_offset_ew, dome_mount_pivot_offset_ns, dome_mount_pivot_ota_offset, dome_mount_pivot_vertical_offset;
 	int selected_gps_index;
 	double gps_latitude, gps_longitude, gps_elevation;
+	bool site_unset_warned;
 	int selected_rotator_index;
 	indigo_property_state rotator_position_state;
 	double rotator_position;
@@ -1262,33 +1263,44 @@ static void handle_site_change(indigo_device *device) {
 	char sexagesimal[128];
 	static const char *names[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
 	double latitude = 0, longitude = 0, elevation = 0;
+	bool write_mount = false, write_dome = false;
 	// select coordinates source
 	if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value) {
 		latitude = DEVICE_PRIVATE_DATA->mount_latitude;
 		longitude = DEVICE_PRIVATE_DATA->mount_longitude;
 		elevation = DEVICE_PRIVATE_DATA->mount_elevation;
-		double values[] = { latitude, longitude, elevation };
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
+		write_dome = true;
 	} else if (INDIGO_FILTER_DOME_SELECTED && AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value) {
 		latitude = DEVICE_PRIVATE_DATA->dome_latitude;
 		longitude = DEVICE_PRIVATE_DATA->dome_longitude;
 		elevation = DEVICE_PRIVATE_DATA->dome_elevation;
-		double values[] = { latitude, longitude, elevation };
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
+		write_mount = true;
 	} else if (INDIGO_FILTER_GPS_SELECTED && AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value) {
 		latitude = DEVICE_PRIVATE_DATA->gps_latitude;
 		longitude = DEVICE_PRIVATE_DATA->gps_longitude;
 		elevation = DEVICE_PRIVATE_DATA->gps_elevation;
-		double values[] = { latitude, longitude, elevation };
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
+		write_mount = write_dome = true;
 	} else {
 		latitude = AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target;
 		longitude = AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
 		elevation = AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.target;
+		write_mount = write_dome = true;
+	}
+	// A site of 0° N, 0° E is an unset site, writing it would overwrite a valid site of the mount or the dome.
+	if (latitude == 0 && longitude == 0) {
+		if (((write_mount && INDIGO_FILTER_MOUNT_SELECTED) || (write_dome && INDIGO_FILTER_DOME_SELECTED)) && !DEVICE_PRIVATE_DATA->site_unset_warned) {
+			DEVICE_PRIVATE_DATA->site_unset_warned = true;
+			indigo_send_message(device, ALERT_PROPERTY, "The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome");
+		}
+	} else {
+		DEVICE_PRIVATE_DATA->site_unset_warned = false;
 		double values[] = { latitude, longitude, elevation };
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
+		if (write_mount) {
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
+		}
+		if (write_dome) {
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
+		}
 	}
 	// set host time if needed
 	if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value) {

@@ -24,7 +24,7 @@
 | agent_imager | 2026-09-24 12:56 | 3.0.0.61 | linux x64 | simulator | 53 / 53 | ✅ OK |
 |  | 2026-09-28 11:15 | 3.0.0.62 | mac arm64 | simulator | 55 / 55 | ✅ OK |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
-|  | 2026-10-03 19:11 | 3.0.0.26 | mac arm64 | simulator | 72 / 72 | ✅ OK |
+|  | 2026-10-03 19:19 | 3.0.0.27 | mac arm64 | simulator | 73 / 73 | ✅ OK |
 | agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
 |  | 2026-09-28 11:36 | 3.0.0.13 | mac arm64 | simulator | 61 / 61 | ✅ OK |
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |

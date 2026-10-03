@@ -102,9 +102,16 @@ static indigo_result deleted(indigo_client *client, indigo_device *device, indig
 
 // The last message that came with an update of AGENT_START_PROCESS.
 static char start_message[256];
+// The last message the agent sent with any property.
+static char agent_message[256];
 
 static indigo_result message(indigo_client *client, indigo_device *device, indigo_property *property, const char *text) {
 	fprintf(stderr, "  %s: %s\n", device->name, text ? text : "");
+	if (text && *text && !strcmp(device->name, AGENT)) {
+		pthread_mutex_lock(&cache_mutex);
+		snprintf(agent_message, sizeof(agent_message), "%s", text);
+		pthread_mutex_unlock(&cache_mutex);
+	}
 	if (text && property && !strcmp(property->device, AGENT) && !strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 		pthread_mutex_lock(&cache_mutex);
 		snprintf(start_message, sizeof(start_message), "%s", text);
@@ -845,6 +852,39 @@ static void filter_site_configuration(bool deferred, bool adopt) {
 		CHECK(sw(AGENT, lists[index], "NONE", true, INDIGO_OK_STATE));
 		CHECK(sw(AGENT, "AGENT_SITE_DATA_SOURCE", "HOST", true, INDIGO_OK_STATE));
 	}
+}
+
+// An agent site of 0° N, 0° E is an unset site: it is not written to the mount, the agent warns, and a real site is written.
+static void filter_site_unset(void) {
+	const char *items[] = { "LATITUDE", "LONGITUDE", "ELEVATION" };
+	const double host[] = { 48.125, 17.25, 230 };
+	for (int i = 0; i < 3; i++) {
+		CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", items[i], 0));
+	}
+	CHECK(sw(AGENT, "AGENT_SITE_DATA_SOURCE", "HOST", true, INDIGO_OK_STATE));
+	CHECK(attach_peer(0, false, false));
+	pthread_mutex_lock(&cache_mutex);
+	agent_message[0] = 0;
+	pthread_mutex_unlock(&cache_mutex);
+	int before = requests(0, "GEOGRAPHIC_COORDINATES");
+	unsigned rev = revision(AGENT, lists[0]);
+	indigo_change_switch_property_1(&client, AGENT, lists[0], peer_names[0], true);
+	CHECK(wait_state(AGENT, lists[0], rev, INDIGO_OK_STATE));
+	double deadline = indigo_monotonic_time() + 5;
+	bool warned = false;
+	while (!warned && indigo_monotonic_time() < deadline) {
+		pthread_mutex_lock(&cache_mutex);
+		warned = strstr(agent_message, "not written to the mount") != NULL;
+		pthread_mutex_unlock(&cache_mutex);
+		indigo_usleep(1000);
+	}
+	CHECK(warned);
+	CHECK(requests(0, "GEOGRAPHIC_COORDINATES") == before);
+	for (int i = 0; i < 3; i++) {
+		CHECK(num(AGENT, "GEOGRAPHIC_COORDINATES", items[i], host[i]));
+	}
+	CHECK(wait_request(0, "GEOGRAPHIC_COORDINATES", before));
+	CHECK(sw(AGENT, lists[0], "NONE", true, INDIGO_OK_STATE));
 }
 
 static void filter_site_sync(void) {
@@ -2275,6 +2315,7 @@ static const indigo_test_case tests[] = {
 	{ "filter ordered restore", filter_ordered_restore },
 	{ "filter site sync", filter_site_sync },
 	{ "filter site async host", filter_site_async_host },
+	{ "filter site unset", filter_site_unset },
 	{ "filter site async source", filter_site_async_source },
 	{ "filter delayed enumeration", filter_delayed_enumeration },
 	{ "filter restore failure", filter_restore_failure },
