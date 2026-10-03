@@ -755,6 +755,66 @@ static int default_product(void) {
 	return options.product >= 0 ? options.product : products[options.protocol];
 }
 
+typedef struct {
+	int product;
+	bool altaz;
+	bool pec;
+	bool search;
+} product_capabilities;
+
+// Products reporting main-board firmware 210101 or later: alt-azimuth mode, periodic error
+// correction (worm-driven equatorial mounts without encoders) and mechanical zero search.
+static const product_capabilities CURRENT_PRODUCTS[] = {
+	{ 10, false, false, false }, { 11, true, false, false }, { 12, false, false, true }, { 13, true, false, true },
+	{ 14, false, false, true }, { 15, false, false, true }, { 16, false, false, true }, { 17, false, false, true },
+	{ 18, false, false, true }, { 19, true, false, true }, { 20, true, false, true }, { 22, true, false, true },
+	{ 25, false, true, true }, { 26, false, true, false }, { 27, false, false, false }, { 28, false, true, false },
+	{ 29, false, false, false }, { 30, false, false, true }, { 31, false, false, true }, { 32, false, false, true },
+	{ 33, true, false, true }, { 34, true, false, true }, { 35, true, false, false }, { 36, false, false, true },
+	{ 37, false, false, true }, { 38, true, false, true }, { 39, true, false, true }, { 40, false, true, true },
+	{ 41, false, false, true }, { 42, false, false, true }, { 43, false, true, true }, { 44, false, false, true },
+	{ 45, false, false, true }, { 46, false, false, true }, { 47, false, false, true }, { 48, false, false, true },
+	{ 49, false, false, true }, { 50, true, false, true }, { 51, true, false, true }, { 52, true, false, false },
+	{ 53, false, false, true }, { 54, false, false, true }, { 55, true, false, true }, { 56, true, false, true },
+	{ 57, false, false, false }, { 58, false, false, false }, { 59, true, false, false }, { 60, true, false, false },
+	{ 62, false, false, true }, { 63, false, false, true }, { 64, true, false, true }, { 65, true, false, true },
+	{ 66, false, false, true }, { 67, false, false, true }, { 68, true, false, true }, { 69, true, false, true },
+	{ 70, false, true, true }, { 71, false, false, true }, { 72, false, false, true }, { 73, true, false, false },
+	{ 120, false, true, true }, { 121, false, false, true }, { 122, false, false, true }, { 123, true, false, true }
+};
+
+// Firmware 210101 or later on protocol 3.0 (current product codes, :Z guide pulses).
+static bool current_firmware(void) {
+	return is(D0300) && strcmp(default_firmware(), "210101") >= 0;
+}
+
+static const product_capabilities *current_product(void) {
+	if (current_firmware()) {
+		for (size_t i = 0; i < sizeof(CURRENT_PRODUCTS) / sizeof(CURRENT_PRODUCTS[0]); i++) {
+			if (CURRENT_PRODUCTS[i].product == default_product()) {
+				return CURRENT_PRODUCTS + i;
+			}
+		}
+	}
+	return NULL;
+}
+
+// Alt-azimuth mounts have no guide rate, timed pulses or meridian treatment.
+static bool altaz_product(void) {
+	const product_capabilities *product = current_product();
+	return product != NULL && product->altaz;
+}
+
+static bool pec_product(void) {
+	const product_capabilities *product = current_product();
+	return product == NULL || product->pec;
+}
+
+static bool search_product(void) {
+	const product_capabilities *product = current_product();
+	return product == NULL || product->search;
+}
+
 static bool handle_identity(const char *command) {
 	char response[64];
 	if (!strcmp(command, "V")) {
@@ -889,7 +949,7 @@ static bool handle_status(const char *command) {
 		}
 		format_signed(a, sizeof(a), lround(dec / 10.0), 8);
 		snprintf(b, sizeof(b), "%09ld", lround(ra / 10.0) % 129600000L);
-		snprintf(response, sizeof(response), "%s%s%c1#", a, b, hour_angle_hours(ra) >= 0 ? '0' : '1');
+		snprintf(response, sizeof(response), "%s%s%c1#", a, b, altaz_product() ? '2' : hour_angle_hours(ra) >= 0 ? '0' : '1');
 		write_response(response);
 		return true;
 	}
@@ -907,6 +967,10 @@ static bool handle_status(const char *command) {
 		return true;
 	}
 	if (!strcmp(command, "AG")) {
+		if (altaz_product()) {
+			unsupported();
+			return true;
+		}
 		if (is(D8407 | D0100)) {
 			snprintf(response, sizeof(response), "%d.%02d#", state.guide_ra / 100, state.guide_ra % 100);
 		} else if (is(D0200)) {
@@ -932,7 +996,7 @@ static bool handle_status(const char *command) {
 		return true;
 	}
 	if (!strcmp(command, "GMT")) {
-		if (is(D0205 | D0300)) {
+		if (is(D0205 | D0300) && !altaz_product()) {
 			snprintf(response, sizeof(response), "%d%02d#", state.meridian_flip, state.meridian_limit);
 			write_response(response);
 		} else {
@@ -941,7 +1005,7 @@ static bool handle_status(const char *command) {
 		return true;
 	}
 	if (!strcmp(command, "GPE") || !strcmp(command, "GPR")) {
-		if (is(D0300)) {
+		if (is(D0300) && pec_product()) {
 			write_response(command[2] == 'E' ? "1" : state.pec_recording ? "1" : "0");
 		} else {
 			unsupported();
@@ -1118,6 +1182,10 @@ static bool handle_motion(const char *command) {
 			}
 			return true;
 		}
+		if (altaz_product()) {
+			unsupported();
+			return true;
+		}
 		long limit = is(D8407 | D0100) ? 32767 : 99999;
 		if (!parse_digits(command + 2, 5, &value) || value > limit) {
 			malformed_silent();
@@ -1128,6 +1196,22 @@ static bool handle_motion(const char *command) {
 			rate = state.guide_ra / 100.0;
 		}
 		state.pulse_rate[axis] = sign * SIDEREAL_MAS_PER_S * rate;
+		state.pulse_end[axis] = serial_motion_time() + value / 1000.0;
+		return true;
+	}
+	if (command[0] == 'Z' && command[1] && strchr("SQEC", command[1])) {
+		// Timed pulses of firmware 210101 and later: ZS east (RA+), ZQ west (RA-), ZE north (Dec+), ZC south (Dec-).
+		if (!current_firmware() || altaz_product()) {
+			unsupported();
+			return true;
+		}
+		if (!parse_digits(command + 2, 5, &value)) {
+			malformed_silent();
+			return true;
+		}
+		int axis = command[1] == 'E' || command[1] == 'C' ? 1 : 0;
+		int sign = command[1] == 'S' || command[1] == 'E' ? 1 : -1;
+		state.pulse_rate[axis] = sign * SIDEREAL_MAS_PER_S * (axis ? state.guide_dec : state.guide_ra) / 100.0;
 		state.pulse_end[axis] = serial_motion_time() + value / 1000.0;
 		return true;
 	}
@@ -1184,7 +1268,7 @@ static bool handle_park_home(const char *command) {
 		return true;
 	}
 	if (!strcmp(command, "MH") || !strcmp(command, "MSH")) {
-		bool supported = command[1] == 'S' ? is(D0200 | D0205 | D0300) : is(D8407 | D0100 | D0200 | D0205 | D0300);
+		bool supported = command[1] == 'S' ? is(D0200 | D0205 | D0300) && search_product() : is(D8407 | D0100 | D0200 | D0205 | D0300);
 		if (!supported) {
 			unsupported();
 			return true;
@@ -1299,7 +1383,7 @@ static bool handle_rates(const char *command) {
 				state.guide_ra = state.guide_dec = (int)value;
 			}
 			ack(valid);
-		} else if (is(D0205 | D0300)) {
+		} else if (is(D0205 | D0300) && !altaz_product()) {
 			bool valid = parse_digits(command + 2, 4, &value) && value / 100 >= 1 && value / 100 <= 90 && value % 100 >= 10;
 			if (valid) {
 				state.guide_ra = (int)(value / 100);
@@ -1342,7 +1426,7 @@ static bool handle_rates(const char *command) {
 		return true;
 	}
 	if (!strncmp(command, "SMT", 3)) {
-		if (!is(D0205 | D0300)) {
+		if (!is(D0205 | D0300) || altaz_product()) {
 			unsupported();
 			return true;
 		}
@@ -1355,7 +1439,7 @@ static bool handle_rates(const char *command) {
 		return true;
 	}
 	if (!strncmp(command, "SPP", 3) || !strncmp(command, "SPR", 3)) {
-		if (!is(D0300)) {
+		if (!is(D0300) || !pec_product()) {
 			unsupported();
 			return true;
 		}

@@ -556,7 +556,7 @@ static const ioptron_dialect dialects[] = {
 		"SRA035100000", "Sd-04410000", "CM", "RT0", "SRA045900000", "Sd+07200000", "MS1",
 		"mn", "me", "mw", "qD", "qR", "SR1", "SR3", "SR5", "SR9", NULL,
 		NULL, NULL, "SG+120", true, "SLA-12060000", "SLO+54450000", "SLO-06210000",
-		"RG4060", "Mn00150", "Ms00150", "Me00150", "Mw00150", "MP1", "MP0" }
+		"RG4060", "ZE00150", "ZC00150", "ZS00150", "ZQ00150", "MP1", "MP0" }
 };
 
 static void check_profile(int index) {
@@ -715,7 +715,14 @@ static const detection_row detection_rows[] = {
 	{ "0300", "0099", "201231", "N/A", "GEP", true, false, 2, 90, true, 2, 2, true, true, true },
 	{ "0200", "0099", "201231", NULL, NULL, false, false, 0, 0, false, 0, 0, false, false, false },
 	{ "0300", "0120", "210605", "N/A", "GEP", true, true, 2, 90, true, 2, 2, true, true, true },
-	{ "0300", "0060", "190716", "CEM60", "GEP", true, false, 2, 90, true, 2, 3, true, true, true }
+	{ "0300", "0060", "190716", "CEM60", "GEP", true, false, 2, 90, true, 2, 3, true, true, true },
+	{ "0300", "0045", "230101", "HEM44EC", "GEP", true, false, 2, 90, true, 2, 3, true, true, false },
+	{ "0300", "0045", "171001", "iEQ45Pro", "GEP", true, false, 2, 90, true, 2, 2, true, true, true },
+	{ "0300", "0026", "210605", "CEM26", "GEP", true, false, 2, 90, true, 2, 2, true, true, true },
+	{ "0205", "0026", "170410", "CEM25EC", "GLS", true, false, 2, 90, false, 0, 2, false, false, false },
+	{ "0300", "0042", "230601", "HEM44", "GEP", true, false, 2, 90, true, 2, 3, true, true, false },
+	{ "0300", "0033", "230601", "HAE29AA", "GEP", true, false, 0, 0, true, 2, 3, false, false, false },
+	{ "0300", "0035", "230601", "HAZ31", "GEP", true, false, 0, 0, true, 2, 2, false, false, false }
 };
 
 static void check_detection(int index) {
@@ -742,7 +749,9 @@ static void check_detection(int index) {
 	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, row->model));
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, row->poll, 0));
 	SERIAL_CHECK_EQ_INT(row->guide_count, property_count(MOUNT_GUIDE_RATE_PROPERTY_NAME));
-	assert_number_item_range(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, row->guide_count == 2 ? 1 : 10, row->guide_max, 1);
+	if (row->guide_count > 0) {
+		assert_number_item_range(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, row->guide_count == 2 ? 1 : 10, row->guide_max, 1);
+	}
 	SERIAL_CHECK_EQ_INT(row->park, has_defined_property(MOUNT_PARK_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(row->park_set_count, property_count(MOUNT_PARK_SET_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(row->home_count, property_count(MOUNT_HOME_PROPERTY_NAME));
@@ -773,6 +782,13 @@ static void ioptron_detect_unknown_fw161101_uses_25_by_status(void) { check_dete
 static void ioptron_detect_unknown_new_firmware_uses_3_by_status(void) { check_detection(9); }
 static void ioptron_detect_unknown_without_status_fails(void) { check_detection(10); }
 static void ioptron_detect_firmware_query_failure_uses_status(void) { check_detection(11); }
+static void ioptron_detect_hem44ec_current_firmware_shares_ieq45pro_code(void) { check_detection(13); }
+static void ioptron_detect_ieq45pro_30_older_firmware_keeps_code(void) { check_detection(14); }
+static void ioptron_detect_cem26_has_pec_without_home_search(void) { check_detection(15); }
+static void ioptron_detect_cem25ec_older_firmware_shares_cem26_code(void) { check_detection(16); }
+static void ioptron_detect_strain_wave_hem44_without_pec(void) { check_detection(17); }
+static void ioptron_detect_hae29_aa_mode_is_altaz(void) { check_detection(18); }
+static void ioptron_detect_haz31_altaz_without_home_search(void) { check_detection(19); }
 
 // ------------------------------------------------------------------ connection lifecycle
 
@@ -1682,18 +1698,18 @@ static void ioptron_guider_zero_requests_and_pulse_mechanics(void) {
 	external_serial_simulator *simulator = &fixture.simulator;
 	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", TRACKING_ARGS));
 	SERIAL_CHECK_TRUE(io_numbers(&ioptron_guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 90, GUIDER_DEC_RATE_ITEM_NAME, 90, INDIGO_OK_STATE));
-	int pulses = prefix_count(simulator, "M");
+	int pulses = prefix_count(simulator, "Z");
 	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 0, INDIGO_OK_STATE));
 	indigo_usleep(200000);
-	SERIAL_CHECK_EQ_INT(pulses, prefix_count(simulator, "M"));
+	SERIAL_CHECK_EQ_INT(pulses, prefix_count(simulator, "Z"));
 	fixture.mount = connect_serial_device(&ioptron_mount, NULL);
 	SERIAL_CHECK_TRUE(fixture.mount);
 	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(io_sync(6.0, 10.0, INDIGO_OK_STATE));
 	indigo_usleep(1200000);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 3000));
-	SERIAL_CHECK_TRUE(wait_event(simulator, "Mn03000", 0));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "ZE03000", 0));
 	// 3 s at 0.9x sidereal = 40.6 arcsec.
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10.0 + 3 * 0.9 * 15.041067 / 3600, 0.001));
 	fixture.guider = true;
@@ -1706,7 +1722,7 @@ static void ioptron_guider_directions_overlap_and_timing(void) {
 	external_serial_simulator *simulator = &fixture.simulator;
 	static const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
 	static const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
-	static const char letters[] = { 'n', 's', 'e', 'w' };
+	static const char letters[] = { 'E', 'C', 'S', 'Q' };
 	static const int durations[] = { 20, 100, 500 };
 	double errors[48], percentages[48];
 	int samples = 0;
@@ -1726,7 +1742,7 @@ static void ioptron_guider_directions_overlap_and_timing(void) {
 			for (int sample = -1; sample < 6; sample++) {
 				int duration = sample < 0 ? 20 : durations[sample % 3];
 				char command[32];
-				snprintf(command, sizeof(command), "M%c%05d", letters[direction], duration);
+				snprintf(command, sizeof(command), "Z%c%05d", letters[direction], duration);
 				int before = event_count(simulator, command);
 				int axis = direction < 2 ? 1 : 0;
 				unsigned int revision = property_revision(properties[direction]);
@@ -1757,13 +1773,13 @@ static void ioptron_guider_directions_overlap_and_timing(void) {
 	}
 	// A same-axis request while BUSY replaces the running pulse and reaches the mount; the other
 	// axis stays independent. Before overlapping pulses were accepted this block asserted the
-	// opposite, that Ms00100 was never sent, which recorded the request being discarded.
+	// opposite, that the south pulse was never sent, which recorded the request being discarded.
 	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 500, INDIGO_BUSY_STATE));
-	int before = event_count(simulator, "Ms00100");
+	int before = event_count(simulator, "ZC00100");
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(event_count(simulator, "Ms00100") > before);
+	SERIAL_CHECK_TRUE(event_count(simulator, "ZC00100") > before);
 
 	// The elapsed time has to follow the second request. Measuring the duration is the point of
 	// these two cases: waiting only for the property to leave BUSY passes even when the second
@@ -1949,11 +1965,50 @@ cleanup:
 	io_close(&fixture);
 }
 
+// Protocol 3.0 firmware older than 210101 still takes the :Mn/:Ms/:Me/:Mw pulses.
+static void ioptron_guider_older_firmware_uses_m_pulses(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *arguments[] = { "--firmware", "201231", "--tracking", NULL };
+	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", arguments));
+	static const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
+	static const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	static const char *commands[] = { "Mn00150", "Ms00150", "Me00150", "Mw00150" };
+	for (int i = 0; i < 4; i++) {
+		int before = event_count(simulator, commands[i]);
+		SERIAL_CHECK_TRUE(guide(properties[i], items[i], 150, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_event(simulator, commands[i], before));
+		SERIAL_CHECK_TRUE(wait_for_property_state(properties[i], INDIGO_OK_STATE));
+	}
+	SERIAL_CHECK_EQ_INT(0, prefix_count(simulator, "Z"));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+// An alt-azimuth mount has no guide rate and takes no timed pulses: the guider hides the rate and
+// reports a pulse as ALERT without sending anything.
+static void ioptron_guider_altaz_mount_rejects_pulses(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *arguments[] = { "--product", "0033", "--firmware", "230601", "--tracking", NULL };
+	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", arguments));
+	SERIAL_CHECK_TRUE(!has_defined_property(GUIDER_RATE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 150, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 150, INDIGO_ALERT_STATE));
+	indigo_usleep(200000);
+	SERIAL_CHECK_EQ_INT(0, prefix_count(simulator, "Z"));
+	SERIAL_CHECK_EQ_INT(0, prefix_count(simulator, "Mn") + prefix_count(simulator, "Mw"));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
 static void ioptron_guider_disconnect_cancels_pulse_and_reconnects(void) {
 	io_fixture fixture = { 0 };
 	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", TRACKING_ARGS));
 	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 700, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "Me00700", 0));
+	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "ZS00700", 0));
 	disconnect_serial_device(&ioptron_guider);
 	fixture.guider = false;
 	unsigned int revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
@@ -1990,9 +2045,9 @@ static void ioptron_shared_connection_orders_and_last_close(void) {
 		fixture.mount = false;
 		reset_simulator_context(&ioptron_guider);
 		enumerate_simulator_device();
-		int before = event_count(&fixture.simulator, "Mn00050");
+		int before = event_count(&fixture.simulator, "ZE00050");
 		SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 50, INDIGO_BUSY_STATE));
-		SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "Mn00050", before));
+		SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "ZE00050", before));
 		SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
 		// The guider alone does not poll the mount.
 		int polls = event_count(&fixture.simulator, "GEP");
@@ -2187,6 +2242,13 @@ int main(int argc, char **argv) {
 		{ "ioptron_detect_unknown_new_firmware_uses_3_by_status", ioptron_detect_unknown_new_firmware_uses_3_by_status },
 		{ "ioptron_detect_unknown_without_status_fails", ioptron_detect_unknown_without_status_fails },
 		{ "ioptron_detect_firmware_query_failure_uses_status", ioptron_detect_firmware_query_failure_uses_status },
+		{ "ioptron_detect_hem44ec_current_firmware_shares_ieq45pro_code", ioptron_detect_hem44ec_current_firmware_shares_ieq45pro_code },
+		{ "ioptron_detect_ieq45pro_30_older_firmware_keeps_code", ioptron_detect_ieq45pro_30_older_firmware_keeps_code },
+		{ "ioptron_detect_cem26_has_pec_without_home_search", ioptron_detect_cem26_has_pec_without_home_search },
+		{ "ioptron_detect_cem25ec_older_firmware_shares_cem26_code", ioptron_detect_cem25ec_older_firmware_shares_cem26_code },
+		{ "ioptron_detect_strain_wave_hem44_without_pec", ioptron_detect_strain_wave_hem44_without_pec },
+		{ "ioptron_detect_hae29_aa_mode_is_altaz", ioptron_detect_hae29_aa_mode_is_altaz },
+		{ "ioptron_detect_haz31_altaz_without_home_search", ioptron_detect_haz31_altaz_without_home_search },
 		{ "ioptron_initialization_rollback_and_reconnect", ioptron_initialization_rollback_and_reconnect },
 		{ "ioptron_configured_baudrate_requires_product_reply", ioptron_configured_baudrate_requires_product_reply },
 		{ "ioptron_initial_state_8407", ioptron_initial_state_8407 },
@@ -2264,6 +2326,8 @@ int main(int argc, char **argv) {
 		{ "ioptron_guider_directions_overlap_and_timing", ioptron_guider_directions_overlap_and_timing },
 		{ "ioptron_guider_pulse_survives_previous_finalizer", ioptron_guider_pulse_survives_previous_finalizer },
 		{ "ioptron_guider_transport_failure_and_recovery", ioptron_guider_transport_failure_and_recovery },
+		{ "ioptron_guider_older_firmware_uses_m_pulses", ioptron_guider_older_firmware_uses_m_pulses },
+		{ "ioptron_guider_altaz_mount_rejects_pulses", ioptron_guider_altaz_mount_rejects_pulses },
 		{ "ioptron_guider_disconnect_cancels_pulse_and_reconnects", ioptron_guider_disconnect_cancels_pulse_and_reconnects },
 		{ "ioptron_shared_connection_orders_and_last_close", ioptron_shared_connection_orders_and_last_close },
 		{ "ioptron_guider_only_detection_8406", ioptron_guider_only_detection_8406 },

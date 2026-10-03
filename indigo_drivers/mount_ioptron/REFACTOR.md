@@ -853,3 +853,109 @@ Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_ioptro
 ### Final test summary for this change
 
 Simulated tests: **106 run, 106 passed** (recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Current product codes, alt-azimuth mode and `:Z` guide pulses (2026-10-03, 3.0.0.62)
+
+### Baseline
+
+Driver version 61 (`DRIVER_VERSION 0x0300003D`), last recorded run `python3 tools/run_driver_test.py
+mount_ioptron` on macOS arm64: 106/106 OK (2026-09-27 22:38). No iOptron hardware is available, so no
+hardware testing is planned or claimed for this change.
+
+### Protocol facts used
+
+Mounts with main-board firmware 210101 or later answer `:MountInfo#` with these product codes:
+
+| Code | Model | Code | Model | Code | Model |
+| ---: | --- | ---: | --- | ---: | --- |
+| 10 | SkyHunter (EQ mode) | 31 | HAE29 (EQ mode) | 52 | HAZ46 |
+| 11 | SkyHunter (AA mode) | 32 | HAE29-EC (EQ mode) | 53 | HAE43 B/C (EQ mode) |
+| 12 | HAE16 (EQ mode) | 33 | HAE29 (AA mode) | 54 | HAE43 B/C-EC (EQ mode) |
+| 13 | HAE16 (AA mode) | 34 | HAE29-EC (AA mode) | 55 | HAE43 B/C (AA mode) |
+| 14 | HAE18 (EQ mode) | 35 | HAZ31 | 56 | HAE43 B/C-EC (AA mode) |
+| 15 | HEM15 | 36 | HAE29 B/C (EQ mode) | 57 | HAE44 B/C (EQ mode) |
+| 16 | HEM15-EC | 37 | HAE29 B/C-EC (EQ mode) | 58 | HAE44 B/C-EC (EQ mode) |
+| 17 | HAE27 B/C (EQ mode) | 38 | HAE29 B/C (AA mode) | 59 | HAE44 B/C (AA mode) |
+| 18 | HAE27 B/C-EC (EQ mode) | 39 | HAE29 B/C-EC (AA mode) | 60 | HAE44 B/C-EC (AA mode) |
+| 19 | HAE27 B/C (AA mode) | 40 | CEM40(G) | 62-69 | HAE69 variants, same order as 31-34 then 36-39 |
+| 20 | HAE27 B/C-EC (AA mode) | 41 | CEM40(G)-EC | 70 | CEM70(G) |
+| 22 | HAE18 (AA mode) | 42 | HEM44 | 71 | CEM70(G)-EC |
+| 25 | HEM27 | 43 | GEM45(G) | 72 | CEM70(G)-EC2 |
+| 26 | CEM26 | 44 | GEM45(G)-EC | 73 | HAZ71 |
+| 27 | CEM26-EC | 45 | HEM44-EC | 120 | CEM120 |
+| 28 | GEM28 | 46 | HEM44A | 121 | CEM120-EC |
+| 29 | GEM28-EC | 47 | HEM44A-EC | 122 | CEM120-EC2 |
+| 30 | HEM27-EC | 48-51 | HAE43 variants, same order as 31-34 | 123 | HAZ130 |
+
+- Alt-azimuth (AA mode and HAZ) mounts report RA/Dec, but side of pier and pointing state in `:GEP#` are
+  meaningless, and `:AG#`, `:RG#`, `:SMT#`, `:GMT#`, `:MS2#`, `:QAP#` and timed guide pulses are not
+  available. In AA mode an `-EC` mount does not use its encoder.
+- Periodic error correction (`:GPE#`, `:GPR#`, `:SPP#`, `:SPR#`) exists only on worm-driven equatorial
+  mounts without encoders: HEM27, CEM26, GEM28, CEM40, GEM45, CEM70 and CEM120. Strain-wave mounts
+  (HEM15, HEM44, HAE, SkyHunter) have none.
+- `:MSH#` (search mechanical zero) exists on every current model except SkyHunter, CEM26, GEM28, HAZ31,
+  HAZ46, HAZ71 and the HAE44 B/C variants.
+- Main-board firmware 210101 and later takes timed guide pulses as `:ZSnnnnn#` (east, RA+),
+  `:ZQnnnnn#` (west, RA-), `:ZEnnnnn#` (north, Dec+) and `:ZCnnnnn#` (south, Dec-); `:Mn/Ms/Me/Mw` are
+  deprecated there.
+- The codes 10, 11, 25, 26, 30, 45, 46 and 60 were used by older products (Cube II, SmartEQ Pro+, CEM25,
+  CEM25-EC, iEQ30 Pro, iEQ45 Pro and its AA variant, CEM60) with firmware older than 210101, so the firmware
+  date decides between the two meanings.
+
+### Audit of version 61
+
+1. The code 26 entry `{ 26, NULL, "CEM25EC", V2_5, ... }` precedes `{ 26, NULL, "CEM26", V3_0, ... }`, so a
+   CEM26 is detected as a CEM25-EC with protocol 2.5 (source audit).
+2. `CEM26` is marked `has_encoders = true`, so its PEC controls are hidden (source audit).
+3. Codes 12, 33, 34, 38, 50 and 51 carry wrong names (`HEM26`, `HAE29`, `HAE29AA`, `HAE29C`, `HAE43`,
+   `HAE43AA`), the HEM27, HEM44, HAE16/18/27/69, SkyHunter, CEM70-EC2, HAZ71 and HAZ130 codes are
+   missing, and a HEM27-EC or HEM44-EC/HEM44A is detected as an iEQ30 Pro or iEQ45 Pro (source audit).
+4. PEC is offered on every V3 mount without encoders, including strain-wave mounts that have none.
+5. Alt-azimuth mounts get side of pier, meridian handling and guide rate controls and the guider sends
+   timed pulses they do not accept.
+6. The driver sends the deprecated `:Mn/Ms/Me/Mw` pulses to current firmware.
+
+### Atomic plan
+
+1. Simulator: per-product capabilities for the current codes (alt-azimuth, encoders, PEC, zero search),
+   reject commands the product does not have, report pier side 2 for alt-azimuth, and accept `:Z`
+   pulses on protocol 3.0 with firmware 210101 or later.
+2. Driver (`.driver`, version 62): product table with `has_pec` and `altaz`, firmware gating of the
+   shared codes, PEC/home/pier/meridian/guide-rate visibility from the table, `:Z` pulses for current
+   firmware; regenerate.
+3. Tests: detection rows for the shared codes, CEM26, strain-wave PEC, alt-azimuth mounts and
+   the `:Z` pulses; update the protocol 3.0 profile and guider cases to the `:Z` pulses.
+4. Build, recorded run with `tools/run_driver_test.py`, commit.
+
+### Results
+
+1. Simulator: done. `CURRENT_PRODUCTS` capabilities apply on protocol 3.0 with firmware 210101 or later;
+   alt-azimuth products reject `:AG#`, `:RG#`, `:GMT#`, `:SMT#` and timed pulses and report pier side 2,
+   products without PEC reject `:GPE#`, `:GPR#`, `:SPP#`, `:SPR#`, products without zero search reject
+   `:MSH#`; `:ZS/:ZQ/:ZE/:ZC` move the axes at the guide rate like the `:M` pulses.
+2. Driver version 62 (`DRIVER_VERSION 0x0300003E`): done, regenerated, builds without warnings.
+3. Tests (106 -> 115 cases): new detection rows `ioptron_detect_hem44ec_current_firmware_shares_ieq45pro_code`,
+   `ioptron_detect_ieq45pro_30_older_firmware_keeps_code`, `ioptron_detect_cem26_has_pec_without_home_search`,
+   `ioptron_detect_cem25ec_older_firmware_shares_cem26_code`, `ioptron_detect_strain_wave_hem44_without_pec`,
+   `ioptron_detect_hae29_aa_mode_is_altaz`, `ioptron_detect_haz31_altaz_without_home_search`; new guider
+   cases `ioptron_guider_older_firmware_uses_m_pulses` and `ioptron_guider_altaz_mount_rejects_pulses`;
+   the protocol 3.0 profile, pulse mechanics, timing, overlap, disconnect and shared-connection cases
+   now expect `:Z` pulses (default simulator firmware 210605).
+4. First recorded run (2026-10-03 21:58): 115/93 Failed. Code 60 is also used by the CEM60, and the new
+   `{ 60, NULL, "HAE44BCECAA", ... }` entry preceded the CEM60 entries, so every CEM60 (protocol 1.0, 2.0,
+   2.5 and 3.0 profiles and detection rows) was detected as an alt-azimuth HAE44. Fixed by gating code 60
+   with firmware 210101 like the other shared codes. Second recorded run (2026-10-03 22:08): 115/115 OK.
+
+Found defects fixed by this change: audit items 1-6 above (source audit, each now covered by the
+detection and guider cases listed in step 3), plus the code 60 collision introduced and caught within
+this change (reproduced by the first recorded run).
+
+Guider pulse timing: `ioptron_guider_directions_overlap_and_timing` now measures `:Z` pulses; it passed
+within its existing bounds (simulator software timing, not hardware).
+
+MIGRATION_STATUS.md hardware-free count 109 -> 118 (115 serial cases and the 3 opt-in TCP cases).
+
+### Final test summary for this change
+
+Simulated tests: **115 run, 115 passed** (second recorded run; the first recorded run had 22 failures,
+fixed as described in step 4). Hardware tests: **0 run, 0 passed**.

@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003D
+#define DRIVER_VERSION       0x0300003E
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -64,80 +64,126 @@ typedef struct {
 	bool has_encoders;
 	bool can_park;
 	bool can_search_home;
+	bool has_pec;
+	bool altaz;
 } mount_type;
 
 static mount_type PRODUCTS[] = {
+	// firmware 210101+ -> 3.0, codes 10, 11, 25, 26, 30, 45, 46 and 60 meant other products before
+	{   10, "210101", "SkyHunter", V3_0, false, true, false, false, false },
+	{   11, "210101", "SkyHunterAA", V3_0, false, true, false, false, true },
+	{   12, NULL, "HAE16", V3_0, false, true, true, false, false },
+	{   13, NULL, "HAE16AA", V3_0, false, true, true, false, true },
+	{   14, NULL, "HAE18", V3_0, false, true, true, false, false },
+	{   22, NULL, "HAE18AA", V3_0, false, true, true, false, true },
+	{   15, NULL, "HEM15", V3_0, false, true, true, false, false },
+	{   16, NULL, "HEM15EC", V3_0, true, true, true, false, false },
+	{   17, NULL, "HAE27BC", V3_0, false, true, true, false, false },
+	{   18, NULL, "HAE27BCEC", V3_0, true, true, true, false, false },
+	{   19, NULL, "HAE27BCAA", V3_0, false, true, true, false, true },
+	{   20, NULL, "HAE27BCECAA", V3_0, false, true, true, false, true },
+	{   25, "210101", "HEM27", V3_0, false, true, true, true, false },
+	{   30, "210101", "HEM27EC", V3_0, true, true, true, false, false },
+	{   26, "210101", "CEM26", V3_0, false, true, false, true, false },
+	{   27, NULL, "CEM26EC", V3_0, true, true, false, false, false },
+	{   28, NULL, "GEM28", V3_0, false, true, false, true, false },
+	{   29, NULL, "GEM28EC", V3_0, true, true, false, false, false },
+	{   31, NULL, "HAE29", V3_0, false, true, true, false, false },
+	{   32, NULL, "HAE29EC", V3_0, true, true, true, false, false },
+	{   33, NULL, "HAE29AA", V3_0, false, true, true, false, true },
+	{   34, NULL, "HAE29ECAA", V3_0, false, true, true, false, true },
+	{   36, NULL, "HAE29BC", V3_0, false, true, true, false, false },
+	{   37, NULL, "HAE29BCEC", V3_0, true, true, true, false, false },
+	{   38, NULL, "HAE29BCAA", V3_0, false, true, true, false, true },
+	{   39, NULL, "HAE29BCECAA", V3_0, false, true, true, false, true },
+	{   35, NULL, "HAZ31", V3_0, false, true, false, false, true },
+	{   40, "210101", "CEM40", V3_0, false, true, true, true, false },
+	{   41, "210101", "CEM40EC", V3_0, true, true, true, false, false },
+	{   42, NULL, "HEM44", V3_0, false, true, true, false, false },
+	{   45, "210101", "HEM44EC", V3_0, true, true, true, false, false },
+	{   46, "210101", "HEM44A", V3_0, false, true, true, false, false },
+	{   47, NULL, "HEM44AEC", V3_0, true, true, true, false, false },
+	{   43, NULL, "GEM45", V3_0, false, true, true, true, false },
+	{   44, NULL, "GEM45EC", V3_0, true, true, true, false, false },
+	{   48, NULL, "HAE43", V3_0, false, true, true, false, false },
+	{   49, NULL, "HAE43EC", V3_0, true, true, true, false, false },
+	{   50, NULL, "HAE43AA", V3_0, false, true, true, false, true },
+	{   51, NULL, "HAE43ECAA", V3_0, false, true, true, false, true },
+	{   53, NULL, "HAE43BC", V3_0, false, true, true, false, false },
+	{   54, NULL, "HAE43BCEC", V3_0, true, true, true, false, false },
+	{   55, NULL, "HAE43BCAA", V3_0, false, true, true, false, true },
+	{   56, NULL, "HAE43BCECAA", V3_0, false, true, true, false, true },
+	{   57, NULL, "HAE44BC", V3_0, false, true, false, false, false },
+	{   58, NULL, "HAE44BCEC", V3_0, true, true, false, false, false },
+	{   59, NULL, "HAE44BCAA", V3_0, false, true, false, false, true },
+	{   60, "210101", "HAE44BCECAA", V3_0, false, true, false, false, true },
+	{   52, NULL, "HAZ46", V3_0, false, true, false, false, true },
+	{   62, NULL, "HAE69", V3_0, false, true, true, false, false },
+	{   63, NULL, "HAE69EC", V3_0, true, true, true, false, false },
+	{   64, NULL, "HAE69AA", V3_0, false, true, true, false, true },
+	{   65, NULL, "HAE69ECAA", V3_0, false, true, true, false, true },
+	{   66, NULL, "HAE69BC", V3_0, false, true, true, false, false },
+	{   67, NULL, "HAE69BCEC", V3_0, true, true, true, false, false },
+	{   68, NULL, "HAE69BCAA", V3_0, false, true, true, false, true },
+	{   69, NULL, "HAE69BCECAA", V3_0, false, true, true, false, true },
+	{   70, NULL, "CEM70", V3_0, false, true, true, true, false },
+	{   71, NULL, "CEM70EC", V3_0, true, true, true, false, false },
+	{   72, NULL, "CEM70EC2", V3_0, true, true, true, false, false },
+	{   73, NULL, "HAZ71", V3_0, false, true, false, false, true },
+	{  120, NULL, "CEM120", V3_0, false, true, true, true, false },
+	{  121, NULL, "CEM120EC", V3_0, true, true, true, false, false },
+	{  122, NULL, "CEM120EC2", V3_0, true, true, true, false, false },
+	{  123, NULL, "HAZ130", V3_0, false, true, true, false, true },
+
 	// firmware 171001+ -> 3.0
-	{   45, "171001", "iEQ45Pro", V3_0, false, true, false },
-	{   46, "171001", "iEQ45ProAA", V3_0, false, true, false },
-	{   60, "171001", "CEM60", V3_0, false, true, true },
-	{   61, "171001", "CEM60EC", V3_0, true, true, true },
-	{   40, "210101", "CEM40", V3_0, false, true, true },
-	{   41, "210101", "CEM40EC", V3_0, true, true, true },
+	{   45, "171001", "iEQ45Pro", V3_0, false, true, false, true, false },
+	{   46, "171001", "iEQ45ProAA", V3_0, false, true, false, false, true },
+	{   60, "171001", "CEM60", V3_0, false, true, true, true, false },
+	{   61, "171001", "CEM60EC", V3_0, true, true, true, false, false },
 
 	// firmware 161101+ -> 2.5
-	{   45, "161101", "iEQ45Pro", V2_5, false, true, false },
-	{   46, "161101", "iEQ45ProAA", V2_5, false, true, false },
-	{   60, "161101", "CEM60", V2_5, false, true, true },
-	{   61, "161101", "CEM60EC", V2_5, true, true, true },
-	
+	{   45, "161101", "iEQ45Pro", V2_5, false, true, false, true, false },
+	{   46, "161101", "iEQ45ProAA", V2_5, false, true, false, false, true },
+	{   60, "161101", "CEM60", V2_5, false, true, true, true, false },
+	{   61, "161101", "CEM60EC", V2_5, true, true, true, false, false },
+
 	// fallback -> 2.5
-	{   40, NULL, "CEM40", V2_5, false, true, true },
-	{   41, NULL, "CEM40EC", V2_5, true, true, true },
-	{   30, NULL, "iEQ30Pro", V2_5, false, true, false },
-	{   25, NULL, "CEM25", V2_5, false, false, false  },
-	{   26, NULL, "CEM25EC", V2_5, false, false, false  },
-	{   11, NULL, "SmartEQPro+", V2_5, false, false, false  },
-	{ 5035, NULL, "AZMountPro", V2_5, false, false, false  },
-	{   10, NULL, "CubeII", V2_5, false, false, false  },
-	{ 5010, NULL, "CubeIIAA", V2_5, false, false, false  },
+	{   40, NULL, "CEM40", V2_5, false, true, true, true, false },
+	{   41, NULL, "CEM40EC", V2_5, true, true, true, false, false },
+	{   30, NULL, "iEQ30Pro", V2_5, false, true, false, true, false },
+	{   25, NULL, "CEM25", V2_5, false, false, false, true, false },
+	{   26, NULL, "CEM25EC", V2_5, false, false, false, true, false },
+	{   11, NULL, "SmartEQPro+", V2_5, false, false, false, true, false },
+	{ 5035, NULL, "AZMountPro", V2_5, false, false, false, false, true },
+	{   10, NULL, "CubeII", V2_5, false, false, false, true, false },
+	{ 5010, NULL, "CubeIIAA", V2_5, false, false, false, false, true },
 
 	// firmware 140807 -> 2.0
-	{   45, "140807", "iEQ45Pro", V2_0, false, true, false },
-	{   46, "140807", "iEQ45ProAA", V2_0, false, true, false },
-	{   60, "140807", "CEM60", V2_0, false, true, true },
-	{   61, "140807", "CEM60EC", V2_0, true, true, true },
-	
+	{   45, "140807", "iEQ45Pro", V2_0, false, true, false, true, false },
+	{   46, "140807", "iEQ45ProAA", V2_0, false, true, false, false, true },
+	{   60, "140807", "CEM60", V2_0, false, true, true, true, false },
+	{   61, "140807", "CEM60EC", V2_0, true, true, true, false, false },
+
 	// fallback -> 1.0
-	{   45, NULL, "iEQ45Pro", V1_0, false, true, false },
-	{   46, NULL, "iEQ45ProAA", V1_0, false, true, false },
-	{   60, NULL, "CEM60", V1_0, false, true, false },
-	{   61, NULL, "CEM60EC", V1_0, true, true, false },
-	
+	{   45, NULL, "iEQ45Pro", V1_0, false, true, false, true, false },
+	{   46, NULL, "iEQ45ProAA", V1_0, false, true, false, false, true },
+	{   60, NULL, "CEM60", V1_0, false, true, false, true, false },
+	{   61, NULL, "CEM60EC", V1_0, true, true, false, false, false },
+
 	// firmware independent
-	{   26, NULL, "CEM26", V3_0, true, true, false  },
-	{   27, NULL, "CEM26EC", V3_0, true, true, false  },
-	{ 8407, NULL, "iEQ45/iEQ30", HC_8407, false, true, false },
-	{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false },
-	{ 8408, NULL, "ZEQ25", HC_8407, false, true, false },
-	{ 8498, NULL, "SmartEQ", HC_8407, false, true, false },
-	{   70, NULL, "CEM70", V3_0, false, true, true  },
-	{   71, NULL, "CEM70EC", V3_0, true, true, true  },
-	{  120, NULL, "CEM120", V3_0, false, true, true },
-	{  121, NULL, "CEM120EC", V3_0, true, true, true },
-	{  122, NULL, "CEM120EC2", V3_0, false, true, true },
-	{ 9035, NULL, "AZMountProSM", V3_0, false, false, false },
-	{   28, NULL, "GEM28", V3_0, false, true, false },
-	{   29, NULL, "GEM28EC", V3_0, true, true, false },
-	{ 5045, NULL, "iEQ45ProAA", V3_0, false, true, false },
-	{   43, NULL, "GEM45", V3_0, false, true, true },
-	{   44, NULL, "GEM45EC", V3_0, true, true, true },
-	{   12, NULL, "HEM26", V3_0, false, true, false },
-	{   15, NULL, "HEM15", V3_0, false, true, false },
-	{   35, NULL, "HAZ31", V3_0, false, true, false },
-	{ 8035, NULL, "HAZ31SM", V3_0, false, true, false },
-	{   52, NULL, "HAZ46", V3_0, false, true, false },
-	{ 8052, NULL, "HAZ46SM", V3_0, false, true, false },
-	{   33, NULL, "HAE29", V3_0, false, true, false },
-	{   34, NULL, "HAE29AA", V3_0, false, true, false },
-	{   38, NULL, "HAE29C", V3_0, false, true, false },
-	{ 8033, NULL, "HAE29SM", V3_0, false, true, false },
-	{ 8034, NULL, "HAE29AASM", V3_0, false, true, false },
-	{   50, NULL, "HAE43", V3_0, false, true, false },
-	{   51, NULL, "HAE43AA", V3_0, false, true, false },
-	{ 8050, NULL, "HAE43SM", V3_0, false, true, false },
-	{ 8051, NULL, "HAE43AASM", V3_0, false, true, false },
-	{    0, NULL, "", V3_0, false, false, false },
+	{ 8407, NULL, "iEQ45/iEQ30", HC_8407, false, true, false, false, false },
+	{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false, false, true },
+	{ 8408, NULL, "ZEQ25", HC_8407, false, true, false, false, false },
+	{ 8498, NULL, "SmartEQ", HC_8407, false, true, false, false, false },
+	{ 9035, NULL, "AZMountProSM", V3_0, false, false, false, false, true },
+	{ 5045, NULL, "iEQ45ProAA", V3_0, false, true, false, false, true },
+	{ 8035, NULL, "HAZ31SM", V3_0, false, true, false, false, true },
+	{ 8052, NULL, "HAZ46SM", V3_0, false, true, false, false, true },
+	{ 8033, NULL, "HAE29AASM", V3_0, false, true, false, false, true },
+	{ 8034, NULL, "HAE29ECAASM", V3_0, false, true, false, false, true },
+	{ 8050, NULL, "HAE43AASM", V3_0, false, true, false, false, true },
+	{ 8051, NULL, "HAE43ECAASM", V3_0, false, true, false, false, true },
+	{    0, NULL, "", V3_0, false, false, false, false, false },
 };
 
 //- define
@@ -195,6 +241,9 @@ typedef struct {
 	bool has_encoders;
 	bool can_park;
 	bool can_search_home;
+	bool has_pec;
+	bool altaz;
+	bool z_pulses;
 	char response[128];
 	long time_difference;
 	int utc_offset;
@@ -214,6 +263,7 @@ static void mount_motion_ra_handler(indigo_device *device);
 static void mount_park_handler(indigo_device *device);
 
 static bool ioptron_validate_handle(indigo_device *device);
+static bool ioptron_digits(const char *text, int count);
 
 static bool ioptron_no_reply_command(indigo_device *device, char *command, ...) {
 	if (!ioptron_validate_handle(device)) {
@@ -338,6 +388,8 @@ static bool ioptron_detect_mount(indigo_device *device) {
 	PRIVATE_DATA->product = 0;
 	PRIVATE_DATA->has_encoders = false;
 	PRIVATE_DATA->can_park = true;
+	PRIVATE_DATA->has_pec = true;
+	PRIVATE_DATA->altaz = false;
 	indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "N/A");
 	indigo_set_text_item_value(INFO_DEVICE_FW_REVISION_ITEM, "N/A");
 	if (PROTOCOL_8406_ITEM->sw.value) {
@@ -382,6 +434,8 @@ static bool ioptron_detect_mount(indigo_device *device) {
 						PRIVATE_DATA->has_encoders = type->has_encoders;
 						PRIVATE_DATA->can_park = type->can_park;
 						PRIVATE_DATA->can_search_home = type->can_search_home;
+						PRIVATE_DATA->has_pec = type->has_pec;
+						PRIVATE_DATA->altaz = type->altaz;
 						break;
 					}
 				}
@@ -414,8 +468,10 @@ static bool ioptron_detect_mount(indigo_device *device) {
 			}
 		}
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %s (%04d, %s, %s)", INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->can_park ? "can park" : "can't park", PRIVATE_DATA->has_encoders ? "has encoders" : "no encoders");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %s (%04d, %s, %s, %s, %s)", INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->can_park ? "can park" : "can't park", PRIVATE_DATA->has_encoders ? "has encoders" : "no encoders", PRIVATE_DATA->has_pec ? "has PEC" : "no PEC", PRIVATE_DATA->altaz ? "alt-azimuth" : "equatorial");
 	}
+	// Firmware 210101 and later takes timed guide pulses as :ZS/:ZQ/:ZE/:ZC, :Mn/:Ms/:Me/:Mw are deprecated there.
+	PRIVATE_DATA->z_pulses = PRIVATE_DATA->protocol == V3_0 && ioptron_digits(INFO_DEVICE_FW_REVISION_ITEM->text.value, 6) && strncmp(INFO_DEVICE_FW_REVISION_ITEM->text.value, "210101", 6) >= 0;
 	if (PRIVATE_DATA->protocol != UNKNOWN) {
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		indigo_set_text_item_value(MOUNT_INFO_VENDOR_ITEM, "iOptron");
@@ -813,7 +869,9 @@ static bool ioptron_get_coordinates(indigo_device *device, double *ra, double *d
 		if (ioptron_command(device, ":GEP#") && strlen(PRIVATE_DATA->response) == 20 && ioptron_signed_digits(PRIVATE_DATA->response, 8) && ioptron_digits(PRIVATE_DATA->response + 9, 11) && sscanf(PRIVATE_DATA->response, "%9ld%9ld%c%c", &dec_raw, &ra_raw, &side_of_pier, &pointing_state) == 4) {
 			*ra = ra_raw / 100.0 / 60.0 / 60.0 / 15;
 			*dec = dec_raw / 100.0 / 60.0 / 60.0;
-			if (side_of_pier == '0') {
+			if (PRIVATE_DATA->altaz) {
+				// Side of pier is meaningless for an alt-azimuth mount.
+			} else if (side_of_pier == '0') {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 			} else if (side_of_pier == '1') {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
@@ -1003,7 +1061,7 @@ static bool ioptron_set_guide_rate(indigo_device *device, int ra, int dec) {
 
 static bool ioptron_set_pec(indigo_device *device, bool on) {
 	bool result = false;
-	if (PRIVATE_DATA->protocol == V3_0 && !PRIVATE_DATA->has_encoders) {
+	if (PRIVATE_DATA->protocol == V3_0 && !PRIVATE_DATA->has_encoders && PRIVATE_DATA->has_pec) {
 		result = ioptron_simple_reply_command(device, ":SPP%c#",on ? '1' : '0') && *PRIVATE_DATA->response == '1';
 	}
 	return result;
@@ -1011,7 +1069,7 @@ static bool ioptron_set_pec(indigo_device *device, bool on) {
 
 static bool ioptron_set_pec_training(indigo_device *device, bool on) {
 	bool result = false;
-	if (PRIVATE_DATA->protocol == V3_0 && !PRIVATE_DATA->has_encoders) {
+	if (PRIVATE_DATA->protocol == V3_0 && !PRIVATE_DATA->has_encoders && PRIVATE_DATA->has_pec) {
 		result = ioptron_simple_reply_command(device, ":SPR%c#",on ? '1' : '0') && *PRIVATE_DATA->response == '1';
 	}
 	return result;
@@ -1031,10 +1089,13 @@ static bool ioptron_guide_dec(indigo_device *device, int north, int south) {
 		PRIVATE_DATA->last_slew_rate = -1;
 		return ioptron_no_reply_command(device, ":RG#") && ioptron_no_reply_command(device, north > 0 ? ":Mn#" : ":Ms#");
 	}
+	if (PRIVATE_DATA->protocol == V3_0 && PRIVATE_DATA->altaz) {
+		return false;
+	}
 	if (north > 0) {
-		return ioptron_no_reply_command(device, ":Mn%05d#", north);
+		return ioptron_no_reply_command(device, PRIVATE_DATA->z_pulses ? ":ZE%05d#" : ":Mn%05d#", north);
 	} else if (south > 0) {
-		return ioptron_no_reply_command(device, ":Ms%05d#", south);
+		return ioptron_no_reply_command(device, PRIVATE_DATA->z_pulses ? ":ZC%05d#" : ":Ms%05d#", south);
 	}
 	return false;
 }
@@ -1044,10 +1105,13 @@ static bool ioptron_guide_ra(indigo_device *device, int west, int east) {
 		PRIVATE_DATA->last_slew_rate = -1;
 		return ioptron_no_reply_command(device, ":RG#") && ioptron_no_reply_command(device, west > 0 ? ":Mw#" : ":Me#");
 	}
+	if (PRIVATE_DATA->protocol == V3_0 && PRIVATE_DATA->altaz) {
+		return false;
+	}
 	if (west > 0) {
-		return ioptron_no_reply_command(device, ":Mw%05d#", west);
+		return ioptron_no_reply_command(device, PRIVATE_DATA->z_pulses ? ":ZQ%05d#" : ":Mw%05d#", west);
 	} else if (east > 0) {
-		return ioptron_no_reply_command(device, ":Me%05d#", east);
+		return ioptron_no_reply_command(device, PRIVATE_DATA->z_pulses ? ":ZS%05d#" : ":Me%05d#", east);
 	}
 	return false;
 }
@@ -1320,19 +1384,22 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_HOME_PROPERTY->count = PRIVATE_DATA->can_search_home ? 3 : 2;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;
-			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-			MOUNT_PEC_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
-			MOUNT_PEC_TRAINING_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
+			// Alt-azimuth mounts have no side of pier, guide rate or meridian treatment, PEC exists only on worm-driven mounts without encoders.
+			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = PRIVATE_DATA->altaz;
+			MOUNT_PEC_PROPERTY->hidden = PRIVATE_DATA->has_encoders || !PRIVATE_DATA->has_pec;
+			MOUNT_PEC_TRAINING_PROPERTY->hidden = PRIVATE_DATA->has_encoders || !PRIVATE_DATA->has_pec;
 			if (!ioptron_command(device, ":GLS#") || strlen(PRIVATE_DATA->response) != 23 || !ioptron_apply_track_rate(device, PRIVATE_DATA->response[19])) {
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
-			MOUNT_GUIDE_RATE_PROPERTY->count = 2;
-			if (ioptron_get_guide_rate(device, &guide_ra, &guide_dec)) {
-				MOUNT_GUIDE_RATE_RA_ITEM->number.value = guide_ra;
-				MOUNT_GUIDE_RATE_DEC_ITEM->number.value = guide_dec;
-			} else {
-				MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			if (!PRIVATE_DATA->altaz) {
+				MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
+				MOUNT_GUIDE_RATE_PROPERTY->count = 2;
+				if (ioptron_get_guide_rate(device, &guide_ra, &guide_dec)) {
+					MOUNT_GUIDE_RATE_RA_ITEM->number.value = guide_ra;
+					MOUNT_GUIDE_RATE_DEC_ITEM->number.value = guide_dec;
+				} else {
+					MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
@@ -1344,8 +1411,8 @@ static bool ioptron_init_mount(indigo_device *device) {
 				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
-			MOUNT_MERIDIAN_HANDLING_PROPERTY->hidden = false;
-			MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = false;
+			MOUNT_MERIDIAN_HANDLING_PROPERTY->hidden = PRIVATE_DATA->altaz;
+			MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = PRIVATE_DATA->altaz;
 		}
 	} else {
 		return false;
@@ -1419,6 +1486,9 @@ static bool ioptron_init_guider(indigo_device *device) {
 			} else {
 				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+		} else if (PRIVATE_DATA->protocol == V3_0 && PRIVATE_DATA->altaz) {
+			// Alt-azimuth mounts take neither a guide rate nor timed pulses.
+			GUIDER_RATE_PROPERTY->hidden = true;
 		} else if (PRIVATE_DATA->protocol == V2_5 || PRIVATE_DATA->protocol == V3_0) {
 			GUIDER_RATE_ITEM->number.min = 1;
 			GUIDER_RATE_ITEM->number.max = 90;
