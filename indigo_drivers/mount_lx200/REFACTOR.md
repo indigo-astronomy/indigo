@@ -2363,3 +2363,73 @@ Validation on macOS arm64: recorded run `python3 tools/run_driver_test.py mount_
 ### Final test summary for this change
 
 Simulated tests: **103 run, 103 passed** (recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Astro-Physics GTO: recalibration, detection, side of pier and centering rates (2026-10-03, 3.0.0.70)
+
+Baseline: version 69, last recorded run on macOS arm64 103/103 (2026-10-01). No Astro-Physics hardware is
+available; no hardware test is planned or claimed. Sources: `AstroPhysics-GTOCP4.pdf` (GTOCP3/GTOCP4
+command language) and the Astro-Physics V2 ASCOM driver manual 5.70.
+
+### Audit of version 69 (source audit)
+
+1. `meade_sync()` sends `:CM#` to an Astro-Physics controller. `:CM#` redefines which side of the pier the
+   telescope is on and assumes the user placed it on the correct side; a sync on the wrong side of the
+   meridian leaves the controller disoriented and later slews can drive the telescope into the pier. The
+   documented recalibration `:CMR#` keeps the known side of the pier and is what Astro-Physics recommends
+   for every sync after the initial calibration.
+2. The profile cannot be detected: a GTO controller does not answer `:GVP#`, so detection fails and the type
+   has to be selected by hand. A GTOCP4 or later answers `:V#` with its version (e.g. `VCP4-P02-15`), which
+   the driver did not read at all; `MOUNT_INFO` showed only the vendor.
+3. `MOUNT_SIDE_OF_PIER` stayed hidden although the controller reports the side with `:pS#` (`East#`/`West#`).
+4. Manual motion rates fell through to the generic `:RG#`/`:RC#`/`:RM#`/`:RS#`. `:RM#` is not an Astro-Physics
+   command and `:RS#` only sets the GOTO speed, so FIND and MAX left the N-S-E-W rate unchanged.
+
+### Changes
+
+- Sync sends `:CMR#` by default. The persistent `X_AP_SYNC_MODE` switch (`RCAL`/`SYNC`), shown only for the
+  Astro-Physics profile, selects `:CM#` for an initial calibration.
+- Detection: when `:GVP#` gets no answer, a `:V#` reply starting with `VCP` selects the Astro-Physics profile.
+  The connection reads `:V#` for every Astro-Physics controller: `MOUNT_INFO` firmware is the reply and the
+  model is `GTOCPn` for a `VCPn-...` reply (earlier boxes answer with a chip revision and keep the model
+  `Unknown`). `MOUNT_INFO` now has three items for this profile.
+- Status poll: `meade_update_ap_state()` reads `:pS#` into `MOUNT_SIDE_OF_PIER`, which is now defined.
+- Rates: GUIDE `:RG#`, CENTERING `:RC1#` (64x), FIND `:RC2#` (600x), MAX `:RC3#` (1200x).
+- Simulator (`--model ap`): no `:GVP#` reply, `:V#` answers `VCP4-P02-15#`, `:pS#` from the hour angle,
+  `:CM#` and `:CMR#` answer the documented 32 character `Coordinates     matched.        #`, `:RC0#`-`:RC3#`
+  select the centering rate, timed `:Mnxxx#` pulses move the axes at the guide rate. The other models,
+  including the one `mount_asi` uses, are unchanged.
+
+### Tests (103 -> 106 cases)
+
+- `lx200_ap_profile`: the sync is `:CMR#`, the rates are `:RC1#`/`:RC2#`/`:RC3#`, `MOUNT_INFO` has 3 items.
+- `lx200_ap_detected_by_version` (new): detection through `:V#`, model `GTOCP4`, firmware `VCP4-P02-15`.
+- `lx200_ap_side_of_pier` (new): `MOUNT_SIDE_OF_PIER` follows injected `West#` and `East#` replies.
+- `lx200_ap_sync_mode` (new): `RCAL` sends `:CMR#` and no `:CM#`, `SYNC` sends `:CM#` and no `:CMR#`, both
+  move the reported coordinates.
+
+First recorded run (2026-10-03 23:13): 106/104 Failed.
+
+- `lx200_ap_detected_by_version`: `meade_command()` reports a timeout as a successful exchange with an empty
+  reply, so an unanswered `:GVP#` reached the "unknown product" branch and the mount was detected as
+  GENERIC. The `:V#` check now runs there, for an empty product only, before the generic detection.
+- `lx200_ap_sync_mode`: the second sync was never sent. Without a status query the AP profile infers a slew
+  from a coordinate jump larger than 2', so the poll after a sync shows `MOUNT_EQUATORIAL_COORDINATES` BUSY
+  for one cycle and a request made then is dropped by the framework's BUSY guard. This is the existing
+  behaviour of the profile; the case now waits for the poll to settle before the second sync. A status query
+  would remove the false slew and is left for a follow-up.
+
+Second recorded run (2026-10-03 23:27): 106/104 Failed. `lx200_initialization_rollback_and_reconnect`
+detects a GENERIC mount whose `:GVP#` is dropped; the extra `:V#` waited the full 3 s reply timeout and the
+connection missed the 5 s limit of the case, and `lx200_manual_abort_completes_both_axes` failed because the
+driver was still attached. `meade_detect_ap_mount()` now probes `:V#` with a 0.5 s timeout; a GTO controller
+answers within milliseconds, so autodetection of other mounts without `:GVP#` is only 0.5 s slower.
+
+MIGRATION_STATUS.md hardware-free count 107 -> 110.
+
+Third recorded run (2026-10-03 23:39) on macOS arm64: 106/106 OK. `mount_asi`, which shares the simulator,
+uses none of the changed `--model ap` paths and was not rerun.
+
+### Final test summary for this change
+
+Simulated tests: **106 run, 106 passed** (third recorded run; the first two recorded runs failed as described
+above). Hardware tests: **0 run, 0 passed**.

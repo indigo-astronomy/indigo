@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000045
+#define DRIVER_VERSION       0x03000046
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -147,6 +147,14 @@ typedef enum {
 #define MOUNT_MODE_PROPERTY_NAME       "X_MOUNT_MODE"
 #define EQUATORIAL_ITEM_NAME           "EQUATORIAL"
 #define ALTAZ_MODE_ITEM_NAME           "ALTAZ"
+
+#define AP_SYNC_MODE_PROPERTY          (PRIVATE_DATA->ap_sync_mode_property)
+#define AP_SYNC_MODE_RCAL_ITEM         (AP_SYNC_MODE_PROPERTY->items + 0)
+#define AP_SYNC_MODE_SYNC_ITEM         (AP_SYNC_MODE_PROPERTY->items + 1)
+
+#define AP_SYNC_MODE_PROPERTY_NAME     "X_AP_SYNC_MODE"
+#define AP_SYNC_MODE_RCAL_ITEM_NAME    "RCAL"
+#define AP_SYNC_MODE_SYNC_ITEM_NAME    "SYNC"
 
 #define ZWO_BUZZER_PROPERTY            (PRIVATE_DATA->zwo_buzzer_property)
 #define ZWO_BUZZER_OFF_ITEM            (ZWO_BUZZER_PROPERTY->items + 0)
@@ -260,6 +268,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	indigo_property *mount_type_property;
 	indigo_property *alignment_mode_property;
+	indigo_property *ap_sync_mode_property;
 	indigo_property *zwo_buzzer_property;
 	indigo_property *nyx_wifi_ap_property;
 	indigo_property *nyx_wifi_cl_property;
@@ -949,7 +958,9 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
-	if (!meade_command(device, ":CM#") || *PRIVATE_DATA->response == 0) {
+	// A GTO servo controller recalibrates with :CMR#, which keeps the side of the pier it already knows. :CM#
+	// redefines it, and a sync from the wrong side makes the following slews run into the pier.
+	if (!meade_command(device, MOUNT_TYPE_AP_ITEM->sw.value && AP_SYNC_MODE_RCAL_ITEM->sw.value ? ":CMR#" : ":CM#") || *PRIVATE_DATA->response == 0) {
 		return false;
 	}
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value && !strncmp(PRIVATE_DATA->response, "No object!", 10)) {
@@ -1218,6 +1229,22 @@ static bool meade_set_slew_rate(indigo_device *device) {
 		} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
 			PRIVATE_DATA->lastSlewRate = 'm';
 			return meade_no_reply_command(device, ":RC1#");
+		} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
+			PRIVATE_DATA->lastSlewRate = 's';
+			return meade_no_reply_command(device, ":RC3#");
+		}
+	} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
+		// :RS# only sets the GOTO speed of a GTO servo controller, the N-S-E-W rate is the centering rate,
+		// :RC1# 64x, :RC2# 600x and :RC3# 1200x.
+		if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
+			PRIVATE_DATA->lastSlewRate = 'g';
+			return meade_no_reply_command(device, ":RG#");
+		} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
+			PRIVATE_DATA->lastSlewRate = 'c';
+			return meade_no_reply_command(device, ":RC1#");
+		} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
+			PRIVATE_DATA->lastSlewRate = 'm';
+			return meade_no_reply_command(device, ":RC2#");
 		} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
 			PRIVATE_DATA->lastSlewRate = 's';
 			return meade_no_reply_command(device, ":RC3#");
@@ -1599,6 +1626,19 @@ static bool meade_detect_generic_mount(indigo_device *device) {
 	return true;
 }
 
+// A GTO servo controller leaves :GVP# unanswered. A GTOCP4 or later identifies itself with its :V# version, e.g.
+// VCP4-P02-15, and answers at once, so the probe waits only briefly and costs a mount that answers neither little.
+static bool meade_detect_ap_mount(indigo_device *device) {
+	double timeout = PRIVATE_DATA->timeout;
+	PRIVATE_DATA->timeout = 0.5;
+	bool result = meade_command(device, ":V#") && !strncmp(PRIVATE_DATA->response, "VCP", 3);
+	PRIVATE_DATA->timeout = timeout;
+	if (result) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", PRIVATE_DATA->response);
+	}
+	return result;
+}
+
 static bool meade_detect_mount(indigo_device *device) {
 	bool result = true;
 	if (meade_command(device, ":GVP#")) {
@@ -1628,6 +1668,8 @@ static bool meade_detect_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AGOTINO_ITEM, true);
 		} else if (!strncasecmp(PRIVATE_DATA->product, "esp32go", 7)) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ESP32GO_ITEM, true);
+		} else if (*PRIVATE_DATA->product == 0 && meade_detect_ap_mount(device)) {
+			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AP_ITEM, true);
 		} else {
 			// The classic LX200 and some of the LX200-compatible mounts doesn't implement ":GVP#"
 			if (meade_detect_generic_mount(device)) {
@@ -1869,16 +1911,39 @@ static void meade_init_stargo2_mount(indigo_device *device) {
 	strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Avalon StarGO2");
 }
 
+static void meade_update_generic_state(indigo_device *device);
+
 static void meade_init_ap_mount(indigo_device *device) {
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = false;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-	MOUNT_INFO_PROPERTY->count = 1;
+	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+	AP_SYNC_MODE_PROPERTY->hidden = false;
+	MOUNT_INFO_PROPERTY->count = 3;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "AstroPhysics");
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	meade_no_reply_command(device, "#");
 	meade_no_reply_command(device, ":U#");
 	meade_no_reply_command(device, ":Br 00:00:00#");
+	// The servo controller version, VCP4-P02-15 on a GTOCP4 and a chip revision letter on earlier boxes.
+	if (meade_command(device, ":V#") && *PRIVATE_DATA->response) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", PRIVATE_DATA->response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
+		if (!strncmp(PRIVATE_DATA->response, "VCP", 3) && isdigit((unsigned char)PRIVATE_DATA->response[3])) {
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "GTOCP%c", PRIVATE_DATA->response[3]);
+		}
+	}
+}
+
+static void meade_update_ap_state(indigo_device *device) {
+	meade_update_generic_state(device);
+	if (meade_command(device, ":pS#")) {
+		if (!strcmp(PRIVATE_DATA->response, "West") && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+		} else if (!strcmp(PRIVATE_DATA->response, "East") && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+		}
+	}
 }
 
 static void meade_init_onstep_mount(indigo_device *device) {
@@ -2486,6 +2551,7 @@ static void meade_init_mount(indigo_device *device) {
 	ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden = true;
 	ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
 	ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
+	AP_SYNC_MODE_PROPERTY->hidden = true;
 	PRIVATE_DATA->use_dst_commands = false;
 	PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
 	PRIVATE_DATA->goto_issued = false;
@@ -2642,6 +2708,8 @@ static void meade_update_mount_state(indigo_device *device) {
 		meade_update_teenastro_state(device);
 	} else if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
 		meade_update_esp32go_state(device);
+	} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
+		meade_update_ap_state(device);
 	} else {
 		meade_update_generic_state(device);
 	}
@@ -2929,6 +2997,7 @@ static void mount_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			indigo_define_property(device, MOUNT_MODE_PROPERTY, NULL);
+			indigo_define_property(device, AP_SYNC_MODE_PROPERTY, NULL);
 			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
@@ -2960,6 +3029,7 @@ static void mount_connection_handler(indigo_device *device) {
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			MOUNT_MODE_PROPERTY,
+			AP_SYNC_MODE_PROPERTY,
 			ZWO_BUZZER_PROPERTY,
 			NYX_WIFI_AP_PROPERTY,
 			NYX_WIFI_CL_PROPERTY,
@@ -2995,6 +3065,7 @@ static void mount_connection_handler(indigo_device *device) {
 			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_TYPE_PROPERTY, INDIGO_OK_STATE, NULL);
 		}
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
+		indigo_delete_property(device, AP_SYNC_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
@@ -3586,6 +3657,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(EQUATORIAL_ITEM, EQUATORIAL_ITEM_NAME, "Equatorial mode", false);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		MOUNT_MODE_PROPERTY->hidden = true;
+		AP_SYNC_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AP_SYNC_MODE_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Sync mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AP_SYNC_MODE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(AP_SYNC_MODE_RCAL_ITEM, AP_SYNC_MODE_RCAL_ITEM_NAME, "Recalibrate (keeps side of pier)", true);
+		indigo_init_switch_item(AP_SYNC_MODE_SYNC_ITEM, AP_SYNC_MODE_SYNC_ITEM_NAME, "Sync (redefines side of pier)", false);
+		AP_SYNC_MODE_PROPERTY->hidden = true;
 		ZWO_BUZZER_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_BUZZER_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Buzzer volume", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (ZWO_BUZZER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -3677,6 +3755,7 @@ static indigo_result mount_attach(indigo_device *device) {
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AP_SYNC_MODE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_BUZZER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
@@ -3697,6 +3776,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TYPE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(MOUNT_TYPE_PROPERTY, mount_type_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(AP_SYNC_MODE_PROPERTY, property)) {
+		indigo_property_copy_values(AP_SYNC_MODE_PROPERTY, property, false);
+		AP_SYNC_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AP_SYNC_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ZWO_BUZZER_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ZWO_BUZZER_PROPERTY, mount_zwo_buzzer_handler);
@@ -3789,6 +3873,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, MOUNT_TYPE_PROPERTY);
+			indigo_save_property(device, NULL, AP_SYNC_MODE_PROPERTY);
 		}
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -3801,6 +3886,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	}
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	indigo_release_property(MOUNT_MODE_PROPERTY);
+	indigo_release_property(AP_SYNC_MODE_PROPERTY);
 	indigo_release_property(ZWO_BUZZER_PROPERTY);
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
 	indigo_release_property(NYX_WIFI_CL_PROPERTY);

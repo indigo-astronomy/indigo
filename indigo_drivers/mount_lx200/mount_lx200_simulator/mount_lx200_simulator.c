@@ -549,6 +549,49 @@ static bool agotino_dispatch(const char *command) {
 	return *command == 'Q';
 }
 
+// The requests a GTO servo controller (GTOCP3/GTOCP4) answers differently from the shared implementation.
+// It has no :GVP# and leaves it unanswered, identifies itself with :V#, reports the side of the pier with
+// :pS#, answers both the sync (:CM#) and the recalibration (:CMR#) with the fixed 32 character string,
+// selects the centering rate with :RC0# to :RC3# and takes timed pulses as :Mnxxx#. Answers true when the
+// request was handled.
+static bool ap_dispatch(const char *command) {
+	char response[64];
+	if (!strcmp(command, "GVP")) {
+		return true;
+	}
+	if (!strcmp(command, "V")) {
+		write_response("VCP4-P02-15#");
+		return true;
+	}
+	if (!strcmp(command, "pS")) {
+		write_response(pier_side() == 'E' ? "East#" : "West#");
+		return true;
+	}
+	if (!strcmp(command, "CM") || !strcmp(command, "CMR")) {
+		serial_motion_sync(&ra_motion, state.target_ra_cs);
+		serial_motion_sync(&dec_motion, state.target_dec_as);
+		state.parked = false;
+		snprintf(response, sizeof(response), "Coordinates     matched.        #");
+		write_response(response);
+		return true;
+	}
+	if (!strncmp(command, "RC", 2) && command[2] >= '0' && command[2] <= '3' && command[3] == 0) {
+		state.slew_rate = command[2] == '3' ? 'S' : command[2] == '2' ? 'M' : 'C';
+		return true;
+	}
+	if (command[0] == 'M' && command[1] && strchr("nsew", command[1]) && isdigit((unsigned char)command[2])) {
+		guide_pulse_until = serial_motion_time() + atoi(command + 2) / 1000.0;
+		guide_ra_rate = guide_dec_rate = 0;
+		if (command[1] == 'n' || command[1] == 's') {
+			guide_dec_rate = (command[1] == 'n' ? 1 : -1) * GUIDE_RATE * SIDEREAL_ARCSEC_PER_SECOND;
+		} else {
+			guide_ra_rate = (command[1] == 'e' ? 1 : -1) * GUIDE_RATE * 100;
+		}
+		return true;
+	}
+	return false;
+}
+
 static void handle_command(const char *command) {
 	char response[128] = { 0 };
 	update_motion();
@@ -579,6 +622,9 @@ static void handle_command(const char *command) {
 	}
 	if (options.trace) {
 		fprintf(stderr, "-> :%s#\n", command);
+	}
+	if (options.model == MODEL_AP && ap_dispatch(command)) {
+		return;
 	}
 	if (!strncmp(command, "192", 3)) {
 		state.tracking = true;

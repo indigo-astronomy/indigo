@@ -347,7 +347,7 @@ static const lx_profile profiles[] = {
 	{ "gemini", "GEMINI", "Losmandy", "RG", NULL, true, true, false, true, false, 1 },
 	{ "stargo", "STARGO", "Avalon", "RG2", "X122", true, true, true, true, true, 2 },
 	{ "stargo2", "STARGO2", "Avalon", "RG", NULL, false, true, false, false, false, 2 },
-	{ "ap", "AP", "AstroPhysics", "RG", "RT2", true, true, false, true, false, 1 },
+	{ "ap", "AP", "AstroPhysics", "RG", "RT2", true, true, false, true, false, 3 },
 	{ "agotino", "AGOTINO", "aGotino", NULL, NULL, false, false, false, false, false, 3 },
 	{ "zwo", "ZWO_AM", "ZWO", "R1", "Te", true, true, true, false, true, 3 },
 	{ "nyx", "NYX", "PegasusAstro", "R1", "Te", true, true, true, true, false, 3 },
@@ -376,10 +376,12 @@ static void check_profile(int index) {
 	assert_defined_properties(common, ARRAY_SIZE(common));
 	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
-	int sync_before = event_count(&simulator, "CM", NULL);
+	// A GTO servo controller recalibrates (:CMR#) by default, every other profile syncs with :CM#.
+	const char *sync_command = index == 6 ? "CMR" : "CM";
+	int sync_before = event_count(&simulator, sync_command, NULL);
 	int slew_before = event_count(&simulator, "MS", NULL);
 	SERIAL_CHECK_TRUE(lx_coordinates(23.5, -0.5, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_event(&simulator, "CM", sync_before));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, sync_command, sync_before));
 	SERIAL_CHECK_EQ_INT(slew_before, event_count(&simulator, "MS", NULL));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sr23:30:00", 0));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sd-00*30:00", 0));
@@ -412,11 +414,12 @@ static void check_profile(int index) {
 		const char *classic_rates[] = { "RC", "RM", "RS" };
 		const char *onstep_rates[] = { "R4", "R7", "R9" };
 		const char *stargo_rates[] = { "RC0", "RC1", "RC3" };
+		const char *ap_rates[] = { "RC1", "RC2", "RC3" };
 		for (int rate = 0; rate < 3; rate++) {
 			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
 			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, rate_items[rate], true, INDIGO_OK_STATE));
 			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
-			const char *command = !strcmp(profile->guide_command, "R1") ? onstep_rates[rate] : !strcmp(profile->model, "stargo") ? stargo_rates[rate] : classic_rates[rate];
+			const char *command = !strcmp(profile->guide_command, "R1") ? onstep_rates[rate] : !strcmp(profile->model, "stargo") ? stargo_rates[rate] : !strcmp(profile->model, "ap") ? ap_rates[rate] : classic_rates[rate];
 			SERIAL_CHECK_TRUE(wait_event(&simulator, command, 0));
 		}
 		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
@@ -460,6 +463,81 @@ static void lx200_stargo2_profile(void) {
 
 static void lx200_ap_profile(void) {
 	check_profile(6);
+}
+
+// A GTO servo controller has no :GVP#; a GTOCP4 or later is recognised by its :V# version, which also
+// names the controller and its firmware.
+static void lx200_ap_detected_by_version(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "ap", NULL));
+	online = true;
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "AP", true);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "V", 0));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME)->text.value, "AstroPhysics"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "GTOCP4"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "VCP4-P02-15"));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool wait_ap_switch(const char *property, const char *item) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *cached = find_cached_item(property, item);
+		if (cached != NULL && cached->sw.value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// The side of the pier is the one the controller reports with :pS#.
+static void lx200_ap_side_of_pier(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "ap", "AP"));
+	online = true;
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "pS", 0));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "pS", "West#"));
+	SERIAL_CHECK_TRUE(wait_ap_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "pS", "East#"));
+	SERIAL_CHECK_TRUE(wait_ap_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A sync recalibrates (:CMR#) unless X_AP_SYNC_MODE asks for the full sync (:CM#) that redefines the side
+// of the pier.
+static void lx200_ap_sync_mode(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "ap", "AP"));
+	online = true;
+	assert_switch_item_value("X_AP_SYNC_MODE", "RCAL", true);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(5.5, 20.0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CMR", 0));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "CM", NULL));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 5.5, 0.001));
+	// Without a status query the poll that follows reads the jump of the sync as a slew and shows BUSY for a
+	// cycle, and a request made meanwhile is dropped by the BUSY guard.
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_AP_SYNC_MODE", "SYNC", true, INDIGO_OK_STATE));
+	int recalibrations = event_count(&simulator, "CMR", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(6.5, 25.0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CM", 0));
+	SERIAL_CHECK_EQ_INT(recalibrations, event_count(&simulator, "CMR", NULL));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 25.0, 0.001));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_AP_SYNC_MODE", "RCAL", true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
 }
 
 static void lx200_agotino_profile(void) {
@@ -3035,6 +3113,9 @@ int main(int argc, char **argv) {
 		{ "lx200_stargo_profile", lx200_stargo_profile },
 		{ "lx200_stargo2_profile", lx200_stargo2_profile },
 		{ "lx200_ap_profile", lx200_ap_profile },
+		{ "lx200_ap_detected_by_version", lx200_ap_detected_by_version },
+		{ "lx200_ap_side_of_pier", lx200_ap_side_of_pier },
+		{ "lx200_ap_sync_mode", lx200_ap_sync_mode },
 		{ "lx200_agotino_profile", lx200_agotino_profile },
 		{ "lx200_agotino_holds_the_goto_until_the_slew_ends", lx200_agotino_holds_the_goto_until_the_slew_ends },
 		{ "lx200_agotino_abort_reports_the_unreached_target", lx200_agotino_abort_reports_the_unreached_target },

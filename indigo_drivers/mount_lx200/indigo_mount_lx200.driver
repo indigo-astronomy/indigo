@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 69;
+	version = 70;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -760,7 +760,9 @@ driver lx200 {
 		if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 			return false;
 		}
-		if (!meade_command(device, ":CM#") || *PRIVATE_DATA->response == 0) {
+		// A GTO servo controller recalibrates with :CMR#, which keeps the side of the pier it already knows. :CM#
+		// redefines it, and a sync from the wrong side makes the following slews run into the pier.
+		if (!meade_command(device, MOUNT_TYPE_AP_ITEM->sw.value && AP_SYNC_MODE_RCAL_ITEM->sw.value ? ":CMR#" : ":CM#") || *PRIVATE_DATA->response == 0) {
 			return false;
 		}
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value && !strncmp(PRIVATE_DATA->response, "No object!", 10)) {
@@ -1029,6 +1031,22 @@ driver lx200 {
 			} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
 				PRIVATE_DATA->lastSlewRate = 'm';
 				return meade_no_reply_command(device, ":RC1#");
+			} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
+				PRIVATE_DATA->lastSlewRate = 's';
+				return meade_no_reply_command(device, ":RC3#");
+			}
+		} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
+			// :RS# only sets the GOTO speed of a GTO servo controller, the N-S-E-W rate is the centering rate,
+			// :RC1# 64x, :RC2# 600x and :RC3# 1200x.
+			if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
+				PRIVATE_DATA->lastSlewRate = 'g';
+				return meade_no_reply_command(device, ":RG#");
+			} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
+				PRIVATE_DATA->lastSlewRate = 'c';
+				return meade_no_reply_command(device, ":RC1#");
+			} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
+				PRIVATE_DATA->lastSlewRate = 'm';
+				return meade_no_reply_command(device, ":RC2#");
 			} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
 				PRIVATE_DATA->lastSlewRate = 's';
 				return meade_no_reply_command(device, ":RC3#");
@@ -1410,6 +1428,19 @@ driver lx200 {
 		return true;
 	}
 
+	// A GTO servo controller leaves :GVP# unanswered. A GTOCP4 or later identifies itself with its :V# version, e.g.
+	// VCP4-P02-15, and answers at once, so the probe waits only briefly and costs a mount that answers neither little.
+	static bool meade_detect_ap_mount(indigo_device *device) {
+		double timeout = PRIVATE_DATA->timeout;
+		PRIVATE_DATA->timeout = 0.5;
+		bool result = meade_command(device, ":V#") && !strncmp(PRIVATE_DATA->response, "VCP", 3);
+		PRIVATE_DATA->timeout = timeout;
+		if (result) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", PRIVATE_DATA->response);
+		}
+		return result;
+	}
+
 	static bool meade_detect_mount(indigo_device *device) {
 		bool result = true;
 		if (meade_command(device, ":GVP#")) {
@@ -1439,6 +1470,8 @@ driver lx200 {
 				indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AGOTINO_ITEM, true);
 			} else if (!strncasecmp(PRIVATE_DATA->product, "esp32go", 7)) {
 				indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ESP32GO_ITEM, true);
+			} else if (*PRIVATE_DATA->product == 0 && meade_detect_ap_mount(device)) {
+				indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AP_ITEM, true);
 			} else {
 				// The classic LX200 and some of the LX200-compatible mounts doesn't implement ":GVP#"
 				if (meade_detect_generic_mount(device)) {
@@ -1680,16 +1713,39 @@ driver lx200 {
 		strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Avalon StarGO2");
 	}
 
+	static void meade_update_generic_state(indigo_device *device);
+
 	static void meade_init_ap_mount(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-		MOUNT_INFO_PROPERTY->count = 1;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+		AP_SYNC_MODE_PROPERTY->hidden = false;
+		MOUNT_INFO_PROPERTY->count = 3;
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "AstroPhysics");
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 		meade_no_reply_command(device, "#");
 		meade_no_reply_command(device, ":U#");
 		meade_no_reply_command(device, ":Br 00:00:00#");
+		// The servo controller version, VCP4-P02-15 on a GTOCP4 and a chip revision letter on earlier boxes.
+		if (meade_command(device, ":V#") && *PRIVATE_DATA->response) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", PRIVATE_DATA->response);
+			INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
+			if (!strncmp(PRIVATE_DATA->response, "VCP", 3) && isdigit((unsigned char)PRIVATE_DATA->response[3])) {
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "GTOCP%c", PRIVATE_DATA->response[3]);
+			}
+		}
+	}
+
+	static void meade_update_ap_state(indigo_device *device) {
+		meade_update_generic_state(device);
+		if (meade_command(device, ":pS#")) {
+			if (!strcmp(PRIVATE_DATA->response, "West") && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			} else if (!strcmp(PRIVATE_DATA->response, "East") && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+			}
+		}
 	}
 
 	static void meade_init_onstep_mount(indigo_device *device) {
@@ -2297,6 +2353,7 @@ driver lx200 {
 		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden = true;
 		ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
 		ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
+		AP_SYNC_MODE_PROPERTY->hidden = true;
 		PRIVATE_DATA->use_dst_commands = false;
 		PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
 		PRIVATE_DATA->goto_issued = false;
@@ -2453,6 +2510,8 @@ driver lx200 {
 			meade_update_teenastro_state(device);
 		} else if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
 			meade_update_esp32go_state(device);
+		} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
+			meade_update_ap_state(device);
 		} else {
 			meade_update_generic_state(device);
 		}
@@ -2693,6 +2752,25 @@ driver lx200 {
 			item ALTAZ_MODE {
 				name = "ALTAZ";
 				label = "Alt/Az mode";
+				value = false;
+			}
+		}
+		switch AP_SYNC_MODE {
+			name = "X_AP_SYNC_MODE";
+			group = MOUNT_ADVANCED_GROUP;
+			label = "Sync mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			hidden = true;
+			persistent = true;
+			on_change { }
+			item AP_SYNC_MODE_RCAL {
+				name = "RCAL";
+				label = "Recalibrate (keeps side of pier)";
+				value = true;
+			}
+			item AP_SYNC_MODE_SYNC {
+				name = "SYNC";
+				label = "Sync (redefines side of pier)";
 				value = false;
 			}
 		}
