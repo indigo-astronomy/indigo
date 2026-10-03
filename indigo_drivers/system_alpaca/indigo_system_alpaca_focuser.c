@@ -35,7 +35,11 @@
    which sign is inward, so FOCUSER_REVERSE_MOTION, a setting of the driver that is never sent to the device, swaps the two.
    MaxIncrement is the upper limit of FOCUSER_STEPS.
  - IsMoving: completion of a move (focuser_move_finalizer), for no longer than FOCUSER_MOVE_TIMEOUT_FACTOR times the long request
-   timeout. Motion the driver did not start (a hand controller, temperature compensation, another client) shows as FOCUSER_POSITION
+   timeout. Some focusers report IsMoving false before Position has reached the target (the Askar-WAF focuser, Alpaca server
+   1.0.7, is at 986 when IsMoving turns false and at 984, the target, a moment later). So when IsMoving turns false at the end of a
+   move of an absolute focuser at a Position other than the target, the move is watched on while Position settles, until it is the
+   target, IsMoving is true again (the move goes on) or FOCUSER_MOVE_SETTLE_TIME seconds have passed; the move then ends as before,
+   OK with the Position that was read last (HW-5). Motion the driver did not start (a hand controller, temperature compensation, another client) shows as FOCUSER_POSITION
    in the BUSY state. While IsMoving or Position can not be read (the device answers with an error) FOCUSER_POSITION is in ALERT
    with the last position; it is OK again with the first position that is read.
  - Halt: FOCUSER_ABORT_MOTION. A focuser without Halt answers NotImplemented to the first request; the property is removed then.
@@ -80,6 +84,10 @@
  */
 #define FOCUSER_HALT_SETTLE_TIME							3
 
+/** Longest time in seconds Position may still change after IsMoving turned false at the end of a move started by the driver (HW-5).
+ */
+#define FOCUSER_MOVE_SETTLE_TIME							3
+
 #pragma mark - Property definitions
 
 #define X_ALPACA_STEP_SIZE_PROPERTY						(FOCUSER_DATA->x_alpaca_step_size_property)
@@ -107,6 +115,9 @@ typedef struct {
 	int halt_position;					///< Position read right after Halt
 	double halt_time;						///< time of the Halt
 	bool unreadable;						///< FOCUSER_POSITION is in ALERT because the polling can not read the position
+	int target;									///< target of the move of an absolute focuser in progress
+	bool settling;							///< IsMoving turned false short of target at settle_time and Position may still change (HW-5)
+	double settle_time;					///< time IsMoving was first seen false short of target
 	int max_step;
 	int max_increment;
 	int position;
@@ -161,10 +172,11 @@ static void focuser_finish(indigo_device *device, alpaca_result result, const ch
 	}
 }
 
-// Completion of a move: IsMoving is polled until it is false, Position is published on the way.
+// Completion of a move: IsMoving is polled until it is false, Position is published on the way. An absolute focuser whose IsMoving
+// is false short of the target is watched on while its Position settles, for at most FOCUSER_MOVE_SETTLE_TIME seconds (HW-5).
 static void focuser_move_finalizer(indigo_device *device) {
 	focuser_data *data = FOCUSER_DATA;
-	bool moving = false;
+	bool moving = false, settling = false;
 	int position = 0;
 	if (!system_alpaca_is_active(device)) {
 		return;
@@ -176,10 +188,22 @@ static void focuser_move_finalizer(indigo_device *device) {
 			FOCUSER_POSITION_ITEM->number.value = position;
 		}
 	}
-	if (result == ALPACA_OK && moving && system_alpaca_operation_continue(device, &data->move, focuser_move_finalizer)) {
+	if (result == ALPACA_OK && !moving && data->absolute && position != data->target) {
+		double now = indigo_monotonic_time();
+		if (!data->settling) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' IsMoving is false at %d, the target is %d: the position may still settle", device->name, position, data->target);
+			data->settling = true;
+			data->settle_time = now;
+		}
+		settling = now - data->settle_time < FOCUSER_MOVE_SETTLE_TIME;
+	} else {
+		data->settling = false;
+	}
+	if (result == ALPACA_OK && (moving || settling) && system_alpaca_operation_continue(device, &data->move, focuser_move_finalizer)) {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		return;
 	}
+	data->settling = false;
 	system_alpaca_operation_end(device, &data->move);
 	focuser_finish(device, result == ALPACA_OK && moving ? ALPACA_TIMED_OUT : result, "Move", NULL);
 }
@@ -198,7 +222,8 @@ static void focuser_start(indigo_device *device, int position) {
 		result = ALPACA_OK;
 	}
 	if (result == ALPACA_OK) {
-		data->external = data->halted = false;
+		data->external = data->halted = data->settling = false;
+		data->target = position;
 		system_alpaca_lock(device);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		if (data->absolute) {
@@ -265,7 +290,7 @@ static void focuser_give_up(indigo_device *device) {
 
 static bool focuser_on_probe(indigo_device *device) {
 	focuser_data *data = FOCUSER_DATA;
-	data->absolute = data->has_temperature = data->temperature_valid = data->has_temp_comp = data->has_step_size = data->automatic = data->moving = data->external = data->unreadable = data->halted = false;
+	data->absolute = data->has_temperature = data->temperature_valid = data->has_temp_comp = data->has_step_size = data->automatic = data->moving = data->external = data->unreadable = data->halted = data->settling = false;
 	data->max_step = data->max_increment = data->position = 0;
 	data->temperature = data->step_size = 0;
 	if (system_alpaca_probe_bool(device, "absolute", &data->absolute) != ALPACA_OK) {
@@ -370,7 +395,7 @@ static bool focuser_on_connect(indigo_device *device) {
 static void focuser_on_disconnect(indigo_device *device) {
 	focuser_data *data = FOCUSER_DATA;
 	system_alpaca_operation_end(device, &data->move);
-	data->external = data->unreadable = data->halted = false;
+	data->external = data->unreadable = data->halted = data->settling = false;
 	// The properties are still defined, so a request may be accepted while they are reset; its handler finds the session closed.
 	// A change of the mode that was requested and not carried out must not decide what the base class deletes.
 	system_alpaca_lock(device);

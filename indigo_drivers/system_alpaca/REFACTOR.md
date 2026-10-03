@@ -948,9 +948,10 @@ The user reported that with a Pegasus NYX-101 the first slew through the mount a
 - **No permission gates** (user's decision): sync, set park, the dome shutter and switch writes are always tested and restored; a telescope is left as found; a device another client had connected gets `Connected=True` again.
 - **Recording one line per device** (user's decision): each case is tagged with its device (`case_device` record, `hw_record_case_device()` in `hardware_device_record.h`), and `tools/run_driver_test.py` writes one `README.md` line per device model with that device's own counts. Suites without tags record as before. Documented in `indigo_test/AGENTS.md`.
 - **Mount settings instead of model names** (user's decision, no model name in the driver): `X_ALPACA_MOUNT_AXES` (`MECHANICAL` default, `SKY`) and `X_ALPACA_SETTLE_TIME` (s, default 0), saved by CONFIG. The suite measures both: OmniSim needs `MECHANICAL` and 0 s, the NYX-101 needs `SKY`. Its settle time measured 0 s in the recorded run, but direct measurements ignored a goto 0 s and 1 s after a slew and executed it after 2 s, so the NYX's behaviour is intermittent and 2 s is the setting to use.
-- **Defects** HW-1 to HW-4 in section 8, each with a regression case that fails against the previous module; simulator options `SplitAxisRates`, `LateSlewing`, `SkyAxes`, `IgnoreAfterSlew` (all off by default).
+- **Defects** HW-1 to HW-5 in section 8, each with a regression case that fails against the previous module; simulator options `SplitAxisRates`, `LateSlewing`, `SkyAxes`, `IgnoreAfterSlew`, `LateSettle` / `LateOvershoot` (all off by default).
 - **NYX-101 firmware observations:** Connected=False is accepted but Connected stays true; CanSetGuideRates is true but the setter answers HTTP 400 / 0x400; the azimuth at the pole is arbitrary; the first MoveAxis after a slew is sometimes ignored.
 - **Recorded runs:** OmniSim 0.5.0 through the suite, 10 devices, 81 / 81 OK (2026-10-03 21:31, one line per device); PegasusAstro NYX-101 20 / 20 OK (21:36), after failed recorded runs at 20:33, 20:41 and 20:53 while the suite and HW-3 / HW-4 were being fixed; deterministic suite 317 / 317 OK (21:44). The model names of the OmniSim devices are their Alpaca Descriptions, which OmniSim fills with long sentences.
+- **Askar-WAF focuser** (Alpaca server 1.0.7, IFocuserV2, absolute, MaxStep 1000000), a run by another user on Linux x64 (2026-10-03 23:35, recorded in that user's checkout): everything passed except `focuser_..._absolute_move` (a move to 984 ended at 986), HW-5; deterministic suite 318 / 318 OK after the fix (22:44).
 - **Not covered on hardware:** every class except the telescope (no such Alpaca device available), camera gain, offset, readout modes and guiding (the OmniSim camera has none), dome slaving, a relative focuser, broadcast discovery, Linux.
 
 ## 8. Found defects
@@ -1090,6 +1091,7 @@ Found by the hardware suite (2026-10-03, section 7.11):
 | HW-2 | `mount_motion_start()` | After find home and park the coordinates stayed BUSY for good; every goto was refused. Found on OmniSim. | AtHome reported while Slewing was still true marked an external slew, which a following park did not settle. | Any motion other than a slew ends the external-slew BUSY state. | `mount_external_slew_ended_by_motion` |
 | HW-3 | `mount_move_axis()` | On the NYX-101 NORTH moved south and WEST moved east. | The NYX's MoveAxis works in sky directions (positive primary east, positive secondary south, both pier sides). | `X_ALPACA_MOUNT_AXES` = `SKY`; no model name in the driver. | `mount_manual_motion_sky_axes`, `mount_axes_and_settle_defaults` |
 | HW-4 | goto, park, home, flip and MoveAxis handlers | On the NYX-101 a command right after a slew was accepted, ignored and reported as done. | The NYX ignores motion commands for about 1.5 s after a slew. | `X_ALPACA_SETTLE_TIME`: the command waits, BUSY and abortable, until that time has passed. | `mount_nyx_settle_after_slew` |
+| HW-5 | `focuser_move_finalizer()` | On the Askar-WAF focuser (Alpaca server 1.0.7) a move to 984 ended OK at 986; the next poll showed 984. Found by a user's hardware run on Linux x64. | The Askar reports IsMoving false before Position has settled at the target, and the move ended with the Position read together with that IsMoving. | When IsMoving turns false at a Position other than the target, an absolute move stays BUSY until Position is the target, IsMoving is true again, or `FOCUSER_MOVE_SETTLE_TIME` (3 s) has passed; it then ends OK at the Position read last, as before. | `focuser_position_settles_after_ismoving` |
 
 Observations outside the driver, not changed (D10) and reported to the user:
 
@@ -1263,7 +1265,7 @@ The critical path is W0 → WP2 → WP5 → WP8 (the camera) → WP11/12.
 
 State on 2026-10-03 after the hardware suite (section 7.11); this summary is updated with every recorded run.
 
-- Simulated tests, macOS arm64: **317 run, 317 passed** in the recorded run of 2026-10-03 21:44 (`test_system_alpaca_simulator` 274, `test_system_alpaca_http` 43).
+- Simulated tests, macOS arm64: **318 run, 318 passed** in the recorded run of 2026-10-03 22:44 (`test_system_alpaca_simulator` 275, `test_system_alpaca_http` 43).
 - Simulated tests, Linux arm64: **309 run, 309 passed** in the recorded run of 2026-10-03 16:16 (265 + 44), before the NYX-101 fixes.
 - The unit tests `test_system_alpaca_json` (48) and `test_uni_io` pass on both platforms; the recording script does not count them.
 - OmniSim tests, macOS arm64: **20 run, 20 passed** in the recorded run of the OmniSim tier, 2026-10-03 19:04 (OmniSim 0.5.0); through the hardware suite **81 run, 81 passed** on its 10 devices, 2026-10-03 21:31.

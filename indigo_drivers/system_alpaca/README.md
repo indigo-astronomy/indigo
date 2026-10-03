@@ -61,11 +61,6 @@ Driver is developed and tested with simulators only:
 
 2026-10-03 16:16 3.0.0.1 linux arm64 simulator 309/309 OK
 2026-10-03 19:04 3.0.0.1 mac arm64 OmniSim 0.5.0 20/20 OK
-2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX auxiliary features, firmware 10.28x 4/4 OK
-2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX environmental sensors, firmware 10.28x 5/3 Failed
-2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX focuser 1, firmware 10.28x 8/7 Failed
-2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX mount, firmware 10.28x 20/15 Failed
-2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX rotator, firmware 10.28x 9/6 Failed
 2026-10-03 21:31 3.0.0.1 mac arm64 A simulator for the ASCOM FilterWheel API usable with Alpaca and COM 4/4 OK
 2026-10-03 21:31 3.0.0.1 mac arm64 A simulator for the ASCOM Focuser API usable with Alpaca and COM 9/9 OK
 2026-10-03 21:31 3.0.0.1 mac arm64 Alpaca CoverCalibrator Simulator 7/7 OK
@@ -77,4 +72,9 @@ Driver is developed and tested with simulators only:
 2026-10-03 21:31 3.0.0.1 mac arm64 Simulated Monochrome camera 8/8 OK
 2026-10-03 21:31 3.0.0.1 mac arm64 Software Telescope Simulator for ASCOM 20/20 OK
 2026-10-03 21:36 3.0.0.1 mac arm64 PegasusAstro NYX-101 20/20 OK
-2026-10-03 21:44 3.0.0.1 mac arm64 simulator 317/317 OK
+2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX auxiliary features, firmware 10.28x 4/4 OK
+2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX environmental sensors, firmware 10.28x 5/3 Failed
+2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX focuser 1, firmware 10.28x 8/7 Failed
+2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX mount, firmware 10.28x 20/15 Failed
+2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX rotator, firmware 10.28x 9/6 Failed
+2026-10-03 22:44 3.0.0.1 mac arm64 simulator 318/318 OK

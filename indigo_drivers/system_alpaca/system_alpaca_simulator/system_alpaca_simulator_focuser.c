@@ -38,6 +38,12 @@
 // - StepSizeAvailable=false: StepSize is NotImplemented (a focuser that does
 //   not know its step size, IFocuser.StepSize; OmniSim CanStepSize).
 // - TemperatureAvailable=false: Temperature is NotImplemented.
+// - LateSettle=<seconds> (default 0, off): an absolute Move ends LateOvershoot
+//   steps (default 2) beyond its target with IsMoving false, and Position
+//   reaches the target only LateSettle seconds later, without IsMoving being
+//   true again. The Askar-WAF focuser (Alpaca server 1.0.7) does this: IsMoving
+//   is false at 986 and Position is 984, the target, a moment later (HW-5).
+//   Halt and a new Move cancel the pending correction.
 // Temperature compensation follows the OmniSim model: while TempComp is true
 // and the focuser is idle, a change of Temperature moves the focuser by
 // (int)((Temperature - reference) * TempSteps) steps, the reference being the
@@ -70,6 +76,11 @@ typedef struct {
 	double temp_steps;
 	double compensated_temperature;
 	bool compensation_valid;
+	double late_settle;
+	int late_overshoot;
+	bool late_pending;					// Position goes to late_target at late_until
+	double late_target;
+	double late_until;
 } focuser_state;
 
 static void focuser_reset(alpaca_device *device) {
@@ -86,11 +97,13 @@ static void focuser_reset(alpaca_device *device) {
 	state->can_halt = true;
 	state->step_size_available = true;
 	state->temp_steps = 10;
+	state->late_overshoot = 2;
 }
 
 // Starts a move of the motor to target and keeps IsMoving true for the settle time after it.
 static void focuser_start(alpaca_device *device, double target) {
 	focuser_state *state = device->state;
+	state->late_pending = false;
 	alpaca_motion_start(&state->position, target, state->steps_per_second);
 	state->settle_until = state->position.started + state->position.duration + state->settle_time;
 	state->is_moving = state->position.moving || state->settle_time > 0;
@@ -100,6 +113,12 @@ static void focuser_start(alpaca_device *device, double target) {
 static void focuser_update(alpaca_device *device) {
 	focuser_state *state = device->state;
 	alpaca_motion_update(&state->position);
+	if (state->late_pending && !state->position.moving && alpaca_reached(state->late_until)) {
+		// the late correction of LateSettle: the position changes while IsMoving stays false
+		state->late_pending = false;
+		alpaca_motion_set(&state->position, state->late_target);
+		alpaca_event("STATE", "focuser/%d late settle position=%ld", device->number, lround(state->late_target));
+	}
 	state->is_moving = state->position.moving || !alpaca_reached(state->settle_until);
 	if (!state->temp_comp) {
 		state->compensation_valid = false;
@@ -167,6 +186,7 @@ static void focuser_put_halt(alpaca_device *device, alpaca_request *request) {
 		alpaca_reply_error(request, ALPACA_ERROR_NOT_IMPLEMENTED, "Halt is not implemented");
 		return;
 	}
+	state->late_pending = false;
 	alpaca_motion_stop(&state->position);
 	// the motor stops at once and settles like after a move: OmniSim 0.5.0 reports IsMoving for its settle time after Halt as well
 	state->settle_until = state->settle_time > 0 ? alpaca_now() + state->settle_time : 0;
@@ -202,7 +222,21 @@ static void focuser_put_move(alpaca_device *device, alpaca_request *request) {
 	if (!state->absolute) {
 		target = alpaca_motion_update(&state->position) + position;
 	}
-	focuser_start(device, target);
+	double current = alpaca_motion_update(&state->position);
+	if (state->absolute && state->late_settle > 0 && target != current) {
+		// LateSettle: the motor stops beyond the target in the direction of the move (or short of it at the end of the range)
+		double overshoot = target > current ? state->late_overshoot : -state->late_overshoot;
+		double stop = target + overshoot;
+		if (stop < 0 || stop > state->max_step) {
+			stop = target - overshoot;
+		}
+		focuser_start(device, stop);
+		state->late_pending = true;
+		state->late_target = target;
+		state->late_until = state->position.started + state->position.duration + state->late_settle;
+	} else {
+		focuser_start(device, target);
+	}
 	alpaca_reply_void(request);
 }
 
@@ -224,7 +258,9 @@ static const alpaca_member focuser_members[] = {
 	{ .name = "ClampMoves", .kind = ALPACA_BOOL, .offset = offsetof(focuser_state, clamp_moves), .flags = ALPACA_CONFIG },
 	{ .name = "CanHalt", .kind = ALPACA_BOOL, .offset = offsetof(focuser_state, can_halt), .flags = ALPACA_CONFIG },
 	{ .name = "StepSizeAvailable", .kind = ALPACA_BOOL, .offset = offsetof(focuser_state, step_size_available), .flags = ALPACA_CONFIG },
-	{ .name = "TempSteps", .kind = ALPACA_DOUBLE, .offset = offsetof(focuser_state, temp_steps), .flags = ALPACA_CONFIG }
+	{ .name = "TempSteps", .kind = ALPACA_DOUBLE, .offset = offsetof(focuser_state, temp_steps), .flags = ALPACA_CONFIG },
+	{ .name = "LateSettle", .kind = ALPACA_DOUBLE, .offset = offsetof(focuser_state, late_settle), .flags = ALPACA_CONFIG },
+	{ .name = "LateOvershoot", .kind = ALPACA_INT, .offset = offsetof(focuser_state, late_overshoot), .flags = ALPACA_CONFIG }
 };
 
 const alpaca_type alpaca_focuser_type = {

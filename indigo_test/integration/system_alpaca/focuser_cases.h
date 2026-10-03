@@ -425,6 +425,34 @@ cleanup:
 	sa_end();
 }
 
+// IsMoving turns false before Position has reached the target (HW-5: the Askar-WAF focuser reports IsMoving false at 986, then
+// Position 984, the target). The move is watched on while Position settles and ends OK exactly at the target; a Position that does not
+// settle ends the move as before, OK at the position read last, after FOCUSER_MOVE_SETTLE_TIME (3 s) at most.
+static void focuser_position_settles_after_ismoving(void) {
+	static const char *arguments[] = { "--device", "focuser:LateSettle=5", NULL };
+	SA_CHECK(focuser_begin(arguments));
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50984));
+	// the motor stops 2 steps beyond the target and IsMoving is false
+	SA_CHECK(sa_advance(0, 1) && focuser_simulated_is("IsMoving", "false") && focuser_simulated("Position") == 50986);
+	SA_CHECK(SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50986, SA_TIMEOUT));
+	SA_CHECK(focuser_wait_polls("position", 2) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// Position settles at the target: OK there, never at the overshoot
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50984 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50984 && focuser_simulated("Position") == 50984);
+	// a Position that does not settle in time: the move ends OK where the focuser is, after the settle limit, and the polling shows the later correction
+	SA_CHECK(sa_device_state(0, "focuser", 0, "LateSettle=100"));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50000) && sa_advance(0, 2));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(indigo_monotonic_time() - started > 2 && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 49998 && focuser_simulated("Position") == 49998);
+	SA_CHECK(sa_advance(0, 100) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000, SA_TIMEOUT) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
 // ---------------------------------------------------------------------------- temperature compensation
 
 static void focuser_temperature_compensation(void) {
@@ -852,6 +880,7 @@ cleanup:
 	{ "focuser_relative_focuser", focuser_relative_focuser }, \
 	{ "focuser_abort", focuser_abort }, \
 	{ "focuser_halt_settles", focuser_halt_settles }, \
+	{ "focuser_position_settles_after_ismoving", focuser_position_settles_after_ismoving }, \
 	{ "focuser_temperature_compensation", focuser_temperature_compensation }, \
 	{ "focuser_large_relative_move", focuser_large_relative_move }, \
 	{ "focuser_enumeration_during_mode_change", focuser_enumeration_during_mode_change }, \
