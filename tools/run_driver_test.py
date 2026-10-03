@@ -26,6 +26,17 @@
 # keep separate records. Passing HW_HOTPLUG=1 to make makes a run a hot-plug
 # run too.
 #
+# Per-device records: a hardware suite that tests several devices in one run tags
+# each of its cases with the device it tests ('case_device <suite> <case> <driver>
+# <device name>', written by hw_record_case_device() of
+# indigo_test/hardware/hardware_device_record.h). When the run has such tags for
+# the driver, one line is recorded per tagged device instead of one per run: the
+# type is the model of the device (from its 'device' record, the device name
+# without one; --type replaces it), the counts are the device's own cases (tagged
+# cases planned, their pass records passed), and the line is OK only when all of
+# them passed. Devices of the same model share one line. A run without tags is
+# recorded exactly as before.
+#
 # Every test writes its results into the file named by INDIGO_TEST_RESULTS (see
 # indigo_test/AGENTS.md), so the recorded counts do not depend on the text a
 # suite prints. A run passes when every test binary or target exits with 0 and
@@ -241,10 +252,16 @@ def hardware_free_type(tests):
 
 
 def read_results(path):
-	"""Return (planned, passed, filtered, devices) from an INDIGO_TEST_RESULTS file."""
+	"""Return (planned, passed, filtered, devices, tags, passes) from an INDIGO_TEST_RESULTS file.
+
+	tags maps (suite, case) to (driver, device name) for the cases a suite tagged with
+	'case_device'; passes is the set of (suite, case) that passed.
+	"""
 	planned = passed = 0
 	filtered = False
 	devices = {}
+	tags = {}
+	passes = set()
 	try:
 		with open(path, "r", encoding="utf-8", errors="replace") as file:
 			lines = file.read().splitlines()
@@ -256,12 +273,16 @@ def read_results(path):
 			planned += int(fields[1])
 		elif fields[0] == "pass":
 			passed += 1
+			if len(fields) >= 3:
+				passes.add((fields[1], fields[2]))
+		elif fields[0] == "case_device" and len(fields) >= 5:
+			tags[(fields[1], fields[2])] = (fields[3], fields[4])
 		elif fields[0] == "filter":
 			filtered = True
 		elif fields[0] == "device" and len(fields) >= 5:
 			# The last record of a device wins.
 			devices[fields[3]] = { "driver": fields[1], "interface": int(fields[2] or 0), "model": fields[4] }
-	return planned, passed, filtered, devices
+	return planned, passed, filtered, devices, tags, passes
 
 
 def hardware_type(driver, devices):
@@ -274,6 +295,19 @@ def hardware_type(driver, devices):
 	# first, and the next run of the same hardware replaces this one.
 	models = sorted({device["model"] for device in own}, key=str.lower)
 	return " and ".join(models) if models else None
+
+
+def device_results(driver, devices, tags, passes):
+	"""Return {model: (planned, passed)} of the cases tagged with devices of the driver, empty without tags."""
+	results = {}
+	for key, (tag_driver, name) in tags.items():
+		if tag_driver != "indigo_" + driver:
+			continue
+		device = devices.get(name)
+		model = (device["model"] if device is not None else name).strip()
+		planned, passed = results.get(model, (0, 0))
+		results[model] = (planned + 1, passed + (1 if key in passes else 0))
+	return results
 
 
 def update_readme(readme, record):
@@ -389,11 +423,13 @@ def main():
 				if run(["./" + test], TEST_DIR, env) != 0:
 					failures.append(os.path.basename(test))
 			test_type = args.type or hardware_free_type(tests)
-		planned, passed, filtered, devices = read_results(results)
+		planned, passed, filtered, devices, tags, passes = read_results(results)
 	finally:
 		os.unlink(results)
 
-	if hardware and test_type is None:
+	# a hardware run whose cases are tagged with their devices is recorded per device, see the top of this file
+	per_device = device_results(driver, devices, tags, passes) if hardware else {}
+	if hardware and test_type is None and not per_device:
 		test_type = hardware_type(driver, devices)
 	if hot_plug and test_type is not None and not test_type.endswith(HOT_PLUG_SUFFIX):
 		test_type += HOT_PLUG_SUFFIX
@@ -409,7 +445,27 @@ def main():
 	if hardware and planned == 0:
 		print("run_driver_test: the hardware suite ran no case. It usually has to be told which device or port to use:"
 			" pass --port <port> or --device <name>, or the variables its message above asks for after '--'", file=sys.stderr)
-	if test_type is None:
+	if per_device:
+		lines = []
+		for model in sorted(per_device, key=str.lower):
+			device_planned, device_passed = per_device[model]
+			device_type = args.type or model
+			if hot_plug and not device_type.endswith(HOT_PLUG_SUFFIX):
+				device_type += HOT_PLUG_SUFFIX
+			device_ok = device_planned > 0 and device_passed == device_planned
+			print("%s: %s %d/%d %s" % (driver, device_type, device_planned, device_passed, "OK" if device_ok else "Failed"))
+			lines.append("%s %s %s %s %s %d/%d %s" % (timestamp, driver_version(driver_dir, driver), host_os(), host_architecture(), device_type, device_planned, device_passed, "OK" if device_ok else "Failed"))
+		for line in lines:
+			if make_test_summary.RECORD.match(line) is None:
+				fail("cannot record '%s', the type does not fit the record format" % line)
+		if args.dry_run:
+			print("would record in %s:\n%s" % (os.path.relpath(readme, ROOT), "\n".join(lines)))
+		elif record:
+			for line in lines:
+				update_readme(readme, line)
+			print("recorded in %s:\n%s" % (os.path.relpath(readme, ROOT), "\n".join(lines)))
+			subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_test_summary.py")], check=True)
+	elif test_type is None:
 		if record or args.dry_run:
 			print("run_driver_test: no device of %s was connected, the run cannot be recorded without --type" % driver, file=sys.stderr)
 		record = False

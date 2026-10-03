@@ -150,6 +150,18 @@ static const char *hw_port(const char *variable) {
 	return port != NULL && *port ? port : NULL;
 }
 
+// Tags a case with the device it tests, for a hardware suite that tests several devices in one run:
+//
+//   case_device  <suite>  <case>  <driver>  <device name>
+//
+// <suite> and <case> are the names the case is run and reported under by indigo_run_tests(). Call it for every
+// case before the cases run, so a case that crashes still counts as planned for its device. When a run of the
+// driver has such tags, tools/run_driver_test.py records one line per tagged device instead of one per run: the
+// model of the device (from its device record, the device name without one) with the counts of its own cases.
+static void hw_record_case_device(const char *suite, const char *test_case, const char *driver, const char *device) {
+	indigo_test_record("case_device\t%s\t%s\t%s\t%s", suite, test_case, driver, device);
+}
+
 // Starts the bus like indigo_start() and, when the run is being recorded,
 // attaches the device recorder to it.
 static indigo_result hw_start(void) {
