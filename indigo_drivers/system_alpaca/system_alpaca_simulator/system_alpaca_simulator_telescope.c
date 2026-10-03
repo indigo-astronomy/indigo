@@ -73,10 +73,21 @@
 //   home moves the mount (the NYX reported Slewing true for a moment and then
 //   false until AtPark became true). A site of 0 / 0 is SiteLatitude=0,
 //   SiteLongitude=0, and the NYX closing the connection after every reply is the
-//   connection-close fault with Count=-1.
+//   connection-close fault with Count=-1. SplitAxisRates=true answers AxisRates
+//   as the NYX does, every range split into two objects, the first with only
+//   Maximum and the next with only Minimum: [{"Maximum":4.5},{"Minimum":0}].
+// - SkyAxes=true: MoveAxis as the NYX-101 (firmware 1.32.1) does it, in sky
+//   directions on both sides of the pier: a positive primary rate moves east
+//   (the right ascension grows), a positive secondary rate moves south.
+// - IgnoreAfterSlew > 0: a slew, park, search for home or non-zero MoveAxis that
+//   arrives less than IgnoreAfterSlew seconds after the end of a slew is answered
+//   with success and does nothing, as the NYX-101 does (about 1.5 s).
+// - LateSlewing > 0: Slewing stays true for LateSlewing seconds after a park or a
+//   search for home reached its position, while AtPark / AtHome is true already
+//   (seen through the proxy against OmniSim 0.5.0: AtHome true with Slewing true).
 // Simulator settings (control API and --device only):
 //   SlewRate, MaxAxisRate, ParkHourAngle, ParkDeclination, HomeHourAngle,
-//   HomeDeclination, FlipTime, UnparkTime, StopTime, StartDelay, QuietParkSlew,
+//   HomeDeclination, FlipTime, UnparkTime, StopTime, StartDelay, QuietParkSlew, SplitAxisRates, LateSlewing, SkyAxes, IgnoreAfterSlew,
 //   TrackingRates           supported DriveRates, "0|1|2|3"
 //   AxisRates               rate ranges of both axes as "min:max|min:max"; empty = one range 0..MaxAxisRate
 //   PulseGuideNeedsTracking PulseGuide is an InvalidOperation while Tracking is false (allowed by the standard)
@@ -167,6 +178,12 @@ typedef struct {
 	double stop_time;
 	double start_delay;
 	bool quiet_park_slew;
+	bool split_axis_rates;
+	double late_slewing;
+	bool sky_axes;
+	double ignore_after_slew;
+	double slew_ended;
+	double slewing_until;
 	int pending_goal;
 	double pending_until;
 	bool flip_target;
@@ -279,7 +296,8 @@ static bool telescope_tracks_rate(const telescope_state *state, int rate) {
 // Slewing as the mount reports it: QuietParkSlew hides a park or a search for home.
 static bool telescope_slewing(const telescope_state *state) {
 	bool quiet = state->quiet_park_slew && (state->goal == GOAL_PARK || state->goal == GOAL_HOME);
-	return (state->slew_active && !quiet) || state->axis_rate[0] != 0 || state->axis_rate[1] != 0;
+	bool late = state->late_slewing > 0 && !alpaca_reached(state->slewing_until);
+	return (state->slew_active && !quiet) || late || state->axis_rate[0] != 0 || state->axis_rate[1] != 0;
 }
 
 static void telescope_start_slew(alpaca_device *device, double right_ascension, double declination, int goal, bool immediate);
@@ -296,7 +314,7 @@ static void telescope_update(alpaca_device *device) {
 		double declination = state->declination.position;
 		bool offsets = state->tracking && !state->at_park && state->tracking_rate == 0;
 		if (state->axis_rate[0] != 0) {
-			right_ascension += elapsed * SIDEREAL_RATIO / 3600 - state->axis_rate[0] * elapsed / 15;
+			right_ascension += elapsed * SIDEREAL_RATIO / 3600 + (state->sky_axes ? 1 : -1) * state->axis_rate[0] * elapsed / 15;
 		} else if (!state->tracking) {
 			right_ascension += elapsed * SIDEREAL_RATIO / 3600;
 		} else if (offsets) {
@@ -305,7 +323,11 @@ static void telescope_update(alpaca_device *device) {
 			right_ascension += (telescope_drive_rates[0] - telescope_drive_rates[state->tracking_rate]) / 15 * elapsed / 3600;
 		}
 		if (state->axis_rate[1] != 0) {
-			declination += ((telescope_side_of_pier(state, state->right_ascension.position) ^ (state->pier_flip ? 1 : 0)) ? -1 : 1) * state->axis_rate[1] * elapsed;
+			if (state->sky_axes) {
+				declination -= state->axis_rate[1] * elapsed;
+			} else {
+				declination += ((telescope_side_of_pier(state, state->right_ascension.position) ^ (state->pier_flip ? 1 : 0)) ? -1 : 1) * state->axis_rate[1] * elapsed;
+			}
 		} else if (offsets) {
 			declination += state->declination_rate * elapsed / 3600;
 		}
@@ -322,15 +344,18 @@ static void telescope_update(alpaca_device *device) {
 	}
 	if (state->slew_active && alpaca_reached(state->slew_until)) {
 		state->slew_active = false;
+		state->slew_ended = state->slew_until;
 		switch (state->goal) {
 			case GOAL_PARK:
 				state->at_park = true;
+				state->slewing_until = state->slew_until + state->late_slewing;
 				state->tracking = false;
 				alpaca_motion_set(&state->right_ascension, telescope_wrap(telescope_sidereal_time(state) - state->park_hour_angle, 24));
 				state->pier_flip = false;
 				break;
 			case GOAL_HOME:
 				state->at_home = true;
+				state->slewing_until = state->slew_until + state->late_slewing;
 				alpaca_motion_set(&state->right_ascension, telescope_wrap(telescope_sidereal_time(state) - state->home_hour_angle, 24));
 				state->pier_flip = false;
 				break;
@@ -432,7 +457,21 @@ static void telescope_start_slew(alpaca_device *device, double right_ascension, 
 	state->slewing = telescope_slewing(state);
 }
 
+// IgnoreAfterSlew: a motion command that comes too soon after the end of a slew is accepted and ignored. True when it was.
+static bool telescope_ignored(alpaca_device *device, alpaca_request *request) {
+	telescope_state *state = device->state;
+	if (state->ignore_after_slew <= 0 || state->slew_ended <= 0 || alpaca_reached(state->slew_ended + state->ignore_after_slew)) {
+		return false;
+	}
+	alpaca_event("STATE", "telescope/%d motion command ignored %.3f s after the end of a slew", device->number, alpaca_now() - state->slew_ended);
+	alpaca_reply_void(request);
+	return true;
+}
+
 static void telescope_slew(alpaca_device *device, alpaca_request *request, double right_ascension, double declination, int goal, bool immediate) {
+	if (telescope_ignored(device, request)) {
+		return;
+	}
 	telescope_start_slew(device, right_ascension, declination, goal, immediate);
 	alpaca_reply_void(request);
 }
@@ -440,6 +479,9 @@ static void telescope_slew(alpaca_device *device, alpaca_request *request, doubl
 // StartDelay: Park and FindHome are accepted and start later; until then nothing moves and Slewing, AtPark and AtHome are false.
 static void telescope_delay_start(alpaca_device *device, alpaca_request *request, int goal) {
 	telescope_state *state = device->state;
+	if (telescope_ignored(device, request)) {
+		return;
+	}
 	telescope_stop(state);
 	state->pulse_until[0] = state->pulse_until[1] = 0;
 	state->at_home = false;
@@ -677,7 +719,11 @@ static void telescope_get_axisrates(alpaca_device *device, alpaca_request *reque
 		int count = telescope_rate_ranges(state, minimum, maximum);
 		alpaca_buffer_printf(&request->value, "[");
 		for (int i = 0; i < count; i++) {
-			alpaca_buffer_printf(&request->value, "%s{\"Maximum\":%.15g,\"Minimum\":%.15g}", i > 0 ? "," : "", maximum[i], minimum[i]);
+			if (state->split_axis_rates) {
+				alpaca_buffer_printf(&request->value, "%s{\"Maximum\":%.15g},{\"Minimum\":%.15g}", i > 0 ? "," : "", maximum[i], minimum[i]);
+			} else {
+				alpaca_buffer_printf(&request->value, "%s{\"Maximum\":%.15g,\"Minimum\":%.15g}", i > 0 ? "," : "", maximum[i], minimum[i]);
+			}
 		}
 		alpaca_buffer_printf(&request->value, "]");
 		alpaca_reply_void(request);
@@ -708,6 +754,9 @@ static void telescope_put_moveaxis(alpaca_device *device, alpaca_request *reques
 	}
 	if (!valid) {
 		alpaca_reply_error(request, ALPACA_ERROR_INVALID_VALUE, "Rate %g is not in AxisRates", rate);
+		return;
+	}
+	if (rate != 0 && telescope_ignored(device, request)) {
 		return;
 	}
 	if (state->slew_active) {
@@ -1017,6 +1066,10 @@ static const alpaca_member telescope_members[] = {
 	TELESCOPE_CONFIG("StopTime", ALPACA_DOUBLE, stop_time),
 	TELESCOPE_CONFIG("StartDelay", ALPACA_DOUBLE, start_delay),
 	TELESCOPE_CONFIG("QuietParkSlew", ALPACA_BOOL, quiet_park_slew),
+	TELESCOPE_CONFIG("SplitAxisRates", ALPACA_BOOL, split_axis_rates),
+	TELESCOPE_CONFIG("LateSlewing", ALPACA_DOUBLE, late_slewing),
+	TELESCOPE_CONFIG("SkyAxes", ALPACA_BOOL, sky_axes),
+	TELESCOPE_CONFIG("IgnoreAfterSlew", ALPACA_DOUBLE, ignore_after_slew),
 	TELESCOPE_CONFIG("TrackingRates", ALPACA_STRING, tracking_rates),
 	TELESCOPE_CONFIG("AxisRates", ALPACA_STRING, axis_rates),
 	TELESCOPE_CONFIG("PulseGuideNeedsTracking", ALPACA_BOOL, pulse_guide_needs_tracking),

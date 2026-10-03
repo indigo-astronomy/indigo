@@ -5721,6 +5721,7 @@
 		C0DE20260922120000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = powerbox_hotplug_test_common.h; sourceTree = "<group>"; };
 		C0DE20260922220000000001 /* test_mount_lx200_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_hw.c; sourceTree = "<group>"; };
+		C0DE20261003A10000000003 /* test_system_alpaca_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_hw.c; sourceTree = "<group>"; };
 		C0DE20260923132000000001 /* run_mountsim.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_mountsim.py; sourceTree = "<group>"; };
 		C0DE20260923132000000002 /* mountsim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mountsim_test_common.h; sourceTree = "<group>"; };
 		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
@@ -14815,6 +14816,7 @@
 				C0DE20260924224800000001 /* test_polaralign_mlastro_hw.c */,
 				C0DE20260922120000000002 /* test_gps_nmea_hw.c */,
 				C0DE20260922220000000001 /* test_mount_lx200_hw.c */,
+				C0DE20261003A10000000003 /* test_system_alpaca_hw.c */,
 				C0DE20260924200000000001 /* test_mount_nexstar_hw.c */,
 				C0DE20260923200000000001 /* test_mount_nexstaraux_hw.c */,
 				C0DE20260924233000000001 /* test_mount_pmc8_hw.c */,

@@ -38,6 +38,8 @@
  MOUNT_TRACKING                 Tracking
  MOUNT_TRACK_RATE               TrackingRates, TrackingRate
  X_ALPACA_OFFSET_RATE           RightAscensionRate, DeclinationRate
+ X_ALPACA_MOUNT_AXES            sense of MoveAxis (driver setting)
+ X_ALPACA_SETTLE_TIME           pause after a motion (driver setting)
  MOUNT_GUIDE_RATE               GuideRateRightAscension, GuideRateDeclination
  MOUNT_SLEW_RATE                rates chosen from AxisRates
  MOUNT_MOTION_DEC, _RA          MoveAxis
@@ -64,6 +66,10 @@
  in a row. An unpark is complete when AtPark is false and Slewing is false, and fails the same way. Should the telescope reach
  the park (home) position after it was reported as failed, the polling ends MOUNT_PARK (MOUNT_HOME) in OK. A motion started while
  another one runs replaces it on the telescope; the properties of both are settled together when the telescope stops.
+
+ Some telescopes ignore a motion command that arrives too soon after the end of a slew (HW-4; the Pegasus NYX-101 for about 1.5 s): a
+ goto, park, search for home, pier flip or MoveAxis is sent no earlier than X_ALPACA_SETTLE_TIME (0 by default) after the end of the last
+ motion; the property stays BUSY meanwhile and MOUNT_ABORT_MOTION cancels it.
 
  A goto requested while a park, a search for home or a pier flip runs is refused with a message; a goto requested while the
  coordinates are BUSY with a slew is answered with a message and leaves the slew alone. A goto requested while an unpark runs (or
@@ -100,6 +106,9 @@
    mount points through the pole (pierWest), in both hemispheres. NORTH always moves toward the north celestial pole and SOUTH away from
    it: the driver sends a positive rate for NORTH on pierEast and a negative one on pierWest. On a southern site NORTH moves away from
    the visible (south) pole as well; the declination grows.
+ - HW-3: some telescopes move their axes in sky directions instead (the Pegasus NYX-101, firmware 1.32.1, measured on 2026-10-03): a
+   positive primary rate moves east and a positive secondary rate moves south, on both sides of the pier. X_ALPACA_MOUNT_AXES selects the
+   convention: MECHANICAL (the default, as described above) or SKY, with which both rates are negated and the pier side is not read.
  - The side is read with SideOfPier when the motion starts (the value of the last poll tick if that read fails). A telescope that does
    not implement SideOfPier, or reports pierUnknown, gets a positive rate for NORTH, which is right for a fork or any mount that never
    points through the pole.
@@ -147,6 +156,18 @@
  */
 #define MOUNT_PROGRESS										0.1
 
+#define X_ALPACA_MOUNT_AXES_PROPERTY				(MOUNT_DATA->x_alpaca_mount_axes_property)
+#define X_ALPACA_MOUNT_AXES_MECHANICAL_ITEM	(X_ALPACA_MOUNT_AXES_PROPERTY->items + 0)
+#define X_ALPACA_MOUNT_AXES_SKY_ITEM				(X_ALPACA_MOUNT_AXES_PROPERTY->items + 1)
+#define X_ALPACA_MOUNT_AXES_PROPERTY_NAME		"X_ALPACA_MOUNT_AXES"
+#define X_ALPACA_MOUNT_AXES_MECHANICAL_ITEM_NAME	"MECHANICAL"
+#define X_ALPACA_MOUNT_AXES_SKY_ITEM_NAME		"SKY"
+
+#define X_ALPACA_SETTLE_TIME_PROPERTY				(MOUNT_DATA->x_alpaca_settle_time_property)
+#define X_ALPACA_SETTLE_TIME_ITEM						(X_ALPACA_SETTLE_TIME_PROPERTY->items + 0)
+#define X_ALPACA_SETTLE_TIME_PROPERTY_NAME	"X_ALPACA_SETTLE_TIME"
+#define X_ALPACA_SETTLE_TIME_ITEM_NAME			"TIME"
+
 /** The settings another client may change (tracking rate, guide rates, site, offset rates) are read on every n-th poll tick.
  */
 #define MOUNT_SETTINGS_TICKS							10
@@ -176,11 +197,15 @@
 
 typedef struct {
 	indigo_property *x_alpaca_offset_rate_property;
+	indigo_property *x_alpaca_mount_axes_property;
+	indigo_property *x_alpaca_settle_time_property;
 	// running motion
 	alpaca_operation motion;
 	const char *action;							///< what the running motion is called in messages
 	bool slew_requested;						///< the motion is a slew: MOUNT_EQUATORIAL_COORDINATES is BUSY and is settled when it ends
 	bool goto_waits;								///< an accepted goto waits for the end of the running unpark
+	double motion_ended;						///< monotonic time at which a motion of the telescope was last seen to end, 0 if none (HW-4)
+	bool was_slewing;								///< Slewing of the previous mount_apply_state() (HW-4)
 	double stall_since;							///< monotonic time since which a park, an unpark or a search for home shows no progress, 0 if it did not start
 	double stall_altitude;					///< Altitude and Azimuth at stall_since
 	double stall_azimuth;
@@ -325,9 +350,34 @@ static bool mount_probe_axis(indigo_device *device, int axis) {
 	if (result != ALPACA_OK) {
 		return mount_usable(result);
 	}
+	// A range is one object with Minimum and Maximum. The NYX-101 (firmware 1.32.1) splits every range into two objects, the first with
+	// only Maximum and the next with only Minimum ([{"Maximum":4.5},{"Minimum":0}]); such halves are paired in the order they come.
+	double half_minimum = NAN;
+	double half_maximum = NAN;
 	for (const alpaca_json_value *range = value != NULL ? alpaca_json_first(value) : NULL; range != NULL && count < MOUNT_MAX_RATE_RANGES; range = alpaca_json_next(range)) {
-		if (alpaca_json_get_double(alpaca_json_get(range, "Minimum"), minimum + count) && alpaca_json_get_double(alpaca_json_get(range, "Maximum"), maximum + count) && maximum[count] > 0 && maximum[count] >= minimum[count]) {
-			fastest = fmax(fastest, maximum[count]);
+		double low = NAN;
+		double high = NAN;
+		bool has_low = alpaca_json_get_double(alpaca_json_get(range, "Minimum"), &low);
+		bool has_high = alpaca_json_get_double(alpaca_json_get(range, "Maximum"), &high);
+		if (has_low != has_high) {
+			if (has_low) {
+				half_minimum = low;
+			} else {
+				half_maximum = high;
+			}
+			if (isnan(half_minimum) || isnan(half_maximum)) {
+				continue;
+			}
+			low = half_minimum;
+			high = half_maximum;
+			half_minimum = half_maximum = NAN;
+		} else if (!has_low) {
+			continue;
+		}
+		if (high > 0 && high >= low) {
+			minimum[count] = low;
+			maximum[count] = high;
+			fastest = fmax(fastest, high);
 			count++;
 		}
 	}
@@ -558,6 +608,10 @@ static void mount_set_offset_rates(indigo_device *device) {
 // device, so a request that is accepted meanwhile either finds its property untouched or is seen as BUSY here.
 static void mount_apply_state(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
+	if (data->was_slewing && !data->slewing) {
+		data->motion_ended = indigo_monotonic_time();
+	}
+	data->was_slewing = data->slewing;
 	system_alpaca_lock(device);
 	mount_set_coordinates(device);
 	if (!data->motion.active) {
@@ -742,13 +796,53 @@ static alpaca_result mount_put_axis_rate(indigo_device *device, int axis, double
 
 static void mount_motion_finalizer(indigo_device *device);
 static void mount_equatorial_coordinates_handler(indigo_device *device);
+static void mount_park_handler(indigo_device *device);
+static void mount_home_handler(indigo_device *device);
+static void mount_side_of_pier_handler(indigo_device *device);
+static void mount_motion_ra_handler(indigo_device *device);
+static void mount_motion_dec_handler(indigo_device *device);
+
+// HW-4: some telescopes accept a slew, a park, a search for home or a MoveAxis that arrives too soon after the end of a slew, answer
+// success and do nothing (the NYX-101, firmware 1.32.1, measured on 2026-10-03: ignored 0 and 1 s after the end, executed 2 s after it).
+// A handler is therefore run again once X_ALPACA_SETTLE_TIME has passed since the end of the last motion; the property stays BUSY
+// meanwhile and MOUNT_ABORT_MOTION cancels the waiting handler. True when the handler was postponed.
+static bool mount_postponed(indigo_device *device, indigo_timer_callback handler) {
+	mount_data *data = MOUNT_DATA;
+	system_alpaca_lock(device);
+	double settle = X_ALPACA_SETTLE_TIME_ITEM->number.value;
+	system_alpaca_unlock(device);
+	if (settle <= 0 || data->motion_ended == 0) {
+		return false;
+	}
+	double remaining = data->motion_ended + settle - indigo_monotonic_time();
+	if (remaining <= 0) {
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' the last motion ended %.2f s ago, the request waits %.2f s", device->name, settle - remaining, remaining);
+	indigo_execute_handler_in(device, remaining, handler);
+	return true;
+}
 
 // The telescope accepted a method that makes it move: watch it. The coordinates are BUSY during a slew only (slew is true), see MOTION.
 static void mount_motion_start(indigo_device *device, const char *action, bool slew) {
 	mount_data *data = MOUNT_DATA;
 	indigo_cancel_pending_handler(device, mount_motion_finalizer);
+	// HW-2: the coordinates may be BUSY for a slew of the telescope this driver did not request (mount_apply_state()); a slew takes the BUSY
+	// state over, any other motion ends it, because only the polling that is now suspended for the motion would have ended it
+	bool external = data->external_slew;
 	data->action = action;
 	data->external_slew = data->aborted = false;
+	if (external && !slew) {
+		system_alpaca_lock(device);
+		bool busy = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
+		if (busy) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		system_alpaca_unlock(device);
+		if (busy) {
+			mount_update_coordinates(device);
+		}
+	}
 	data->stall_since = 0;
 	data->slew_requested = data->slew_requested || slew;
 	system_alpaca_operation_start(device, &data->motion, MOUNT_MOTION_TIMEOUT, mount_motion_finalizer);
@@ -813,6 +907,7 @@ static void mount_settle_aborted(indigo_device *device) {
 // The motion is over, with the given result of watching it: read where the telescope is and settle every property that waited for it.
 static void mount_motion_done(indigo_device *device, alpaca_result result) {
 	mount_data *data = MOUNT_DATA;
+	data->motion_ended = indigo_monotonic_time();
 	if (data->aborted) {
 		data->aborted = false;
 		mount_read_state(device);
@@ -895,6 +990,9 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		system_alpaca_update(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
+	if (!indigo_get_switch(MOUNT_ON_COORDINATES_SET_PROPERTY, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && mount_postponed(device, mount_equatorial_coordinates_handler)) {
+		return;
+	}
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
@@ -932,6 +1030,9 @@ static void mount_park_handler(indigo_device *device) {
 		return;
 	}
 	bool park = indigo_get_switch_target(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM_NAME);
+	if (park && mount_postponed(device, mount_park_handler)) {
+		return;
+	}
 	if (!system_alpaca_can(device, park ? "canpark" : "canunpark")) {
 		// MOUNT_PARK exists if the telescope can do one of the two; nothing is sent for the other one
 		mount_set_park(device);
@@ -973,6 +1074,9 @@ static void mount_home_handler(indigo_device *device) {
 		return;
 	}
 	bool home = indigo_get_switch_target(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM_NAME);
+	if (home && mount_postponed(device, mount_home_handler)) {
+		return;
+	}
 	MOUNT_HOME_ITEM->sw.value = false;
 	if (home) {
 		alpaca_result result = mount_started(device, system_alpaca_put(device, "findhome", NULL, 0, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE));
@@ -994,6 +1098,9 @@ static void mount_home_handler(indigo_device *device) {
 static void mount_side_of_pier_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
 	if (!system_alpaca_is_active(device)) {
+		return;
+	}
+	if (mount_postponed(device, mount_side_of_pier_handler)) {
 		return;
 	}
 	alpaca_param params[] = { ALPACA_INT_PARAM("SideOfPier", indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) ? 1 : 0) };
@@ -1054,7 +1161,15 @@ static void mount_move_axis(indigo_device *device, int axis, indigo_property *pr
 	} else if (!indigo_get_switch_target(property, positive)) {
 		rate = 0;
 	}
-	if (axis == 1 && rate != 0 && mount_motion_side_of_pier(device) == 1) {
+	if (rate != 0 && mount_postponed(device, axis == 0 ? mount_motion_ra_handler : mount_motion_dec_handler)) {
+		return;
+	}
+	system_alpaca_lock(device);
+	bool sky = X_ALPACA_MOUNT_AXES_SKY_ITEM->sw.value;
+	system_alpaca_unlock(device);
+	if (sky) {
+		rate = -rate;
+	} else if (axis == 1 && rate != 0 && mount_motion_side_of_pier(device) == 1) {
 		rate = -rate;
 	}
 	char reason[INDIGO_VALUE_SIZE];
@@ -1378,6 +1493,8 @@ static bool mount_on_connect(indigo_device *device) {
 	INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, *data->name ? data->name : PRIVATE_DATA->device_name);
 	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, INFO_DEVICE_MODEL_ITEM->text.value);
 	INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+	data->motion_ended = 0;
+	data->was_slewing = false;
 	if (data->equatorial_system >= 1 && data->equatorial_system <= 4) {
 		MOUNT_EPOCH_ITEM->number.value = MOUNT_EPOCH_ITEM->number.target = epochs[data->equatorial_system];
 		MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
@@ -1440,6 +1557,8 @@ static bool mount_on_connect(indigo_device *device) {
 		system_alpaca_attach_secondary(device, &system_alpaca_guider_class);
 	}
 	indigo_define_property(device, X_ALPACA_OFFSET_RATE_PROPERTY, NULL);
+	indigo_define_property(device, X_ALPACA_MOUNT_AXES_PROPERTY, NULL);
+	indigo_define_property(device, X_ALPACA_SETTLE_TIME_PROPERTY, NULL);
 	return true;
 }
 
@@ -1465,6 +1584,8 @@ static void mount_on_disconnect(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = MOUNT_UTC_TIME_PROPERTY->state = MOUNT_SET_HOST_TIME_PROPERTY->state = MOUNT_SIDE_OF_PIER_PROPERTY->state = X_ALPACA_OFFSET_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	system_alpaca_unlock(device);
 	indigo_delete_property(device, X_ALPACA_OFFSET_RATE_PROPERTY, NULL);
+	indigo_delete_property(device, X_ALPACA_MOUNT_AXES_PROPERTY, NULL);
+	indigo_delete_property(device, X_ALPACA_SETTLE_TIME_PROPERTY, NULL);
 }
 
 // A site of exactly 0° / 0° reported by the telescope is not set, see SITE: warn once, and again after the site was something else.
@@ -1504,6 +1625,14 @@ static indigo_result mount_attach(indigo_device *device) {
 		}
 		indigo_init_number_item(X_ALPACA_OFFSET_RATE_RA_ITEM, X_ALPACA_OFFSET_RATE_RA_ITEM_NAME, "RA offset (s of RA / sidereal s)", -100, 100, 0, 0);
 		indigo_init_number_item(X_ALPACA_OFFSET_RATE_DEC_ITEM, X_ALPACA_OFFSET_RATE_DEC_ITEM_NAME, "Dec offset (\" / s)", -1000, 1000, 0, 0);
+		X_ALPACA_MOUNT_AXES_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ALPACA_MOUNT_AXES_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Manual motion axes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		X_ALPACA_SETTLE_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, X_ALPACA_SETTLE_TIME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Pause after a motion", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_ALPACA_MOUNT_AXES_PROPERTY == NULL || X_ALPACA_SETTLE_TIME_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_ALPACA_MOUNT_AXES_MECHANICAL_ITEM, X_ALPACA_MOUNT_AXES_MECHANICAL_ITEM_NAME, "Mechanical axes (ASCOM)", true);
+		indigo_init_switch_item(X_ALPACA_MOUNT_AXES_SKY_ITEM, X_ALPACA_MOUNT_AXES_SKY_ITEM_NAME, "Sky directions (+ east, + south)", false);
+		indigo_init_number_item(X_ALPACA_SETTLE_TIME_ITEM, X_ALPACA_SETTLE_TIME_ITEM_NAME, "Time (s)", 0, 10, 0.1, 0);
 		return system_alpaca_attach(device) == INDIGO_OK ? mount_enumerate_properties(device, NULL, NULL) : INDIGO_FAILED;
 	}
 	return INDIGO_FAILED;
@@ -1512,6 +1641,8 @@ static indigo_result mount_attach(indigo_device *device) {
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (system_alpaca_is_active(device)) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_OFFSET_RATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_MOUNT_AXES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_SETTLE_TIME_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
@@ -1520,10 +1651,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	if (system_alpaca_change_property(device, property)) {
 		return INDIGO_OK;
 	}
+	if (indigo_property_match(CONFIG_PROPERTY, property) && indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+		indigo_save_property(device, NULL, X_ALPACA_MOUNT_AXES_PROPERTY);
+		indigo_save_property(device, NULL, X_ALPACA_SETTLE_TIME_PROPERTY);
+	}
 	if (!system_alpaca_is_active(device)) {
 		return indigo_mount_change_property(device, client, property);
 	}
-	if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	if (indigo_property_match_changeable(X_ALPACA_MOUNT_AXES_PROPERTY, property) || indigo_property_match_changeable(X_ALPACA_SETTLE_TIME_PROPERTY, property)) {
+		// settings of the driver, nothing is sent to the telescope; the handlers read them under the same lock
+		indigo_property *own = indigo_property_match_changeable(X_ALPACA_MOUNT_AXES_PROPERTY, property) ? X_ALPACA_MOUNT_AXES_PROPERTY : X_ALPACA_SETTLE_TIME_PROPERTY;
+		system_alpaca_lock(device);
+		indigo_property_copy_values(own, property, false);
+		own->state = INDIGO_OK_STATE;
+		system_alpaca_unlock(device);
+		indigo_update_property(device, own, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// asked while the coordinates are BUSY as well, so that a request is never dropped without an answer; a refusal keeps the BUSY state of the running slew
 		system_alpaca_accept(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, ALPACA_ACCEPT_TARGETS | ALPACA_ACCEPT_ANYTIME, mount_coordinates_refusal, mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
@@ -1596,6 +1740,8 @@ static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
 	system_alpaca_detach(device);
 	indigo_release_property(X_ALPACA_OFFSET_RATE_PROPERTY);
+	indigo_release_property(X_ALPACA_MOUNT_AXES_PROPERTY);
+	indigo_release_property(X_ALPACA_SETTLE_TIME_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }

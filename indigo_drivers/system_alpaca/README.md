@@ -54,9 +54,22 @@ Driver is developed and tested with simulators only:
 * Disconnecting an INDIGO device disconnects the Alpaca device on its server for all other clients of that server as well.
 * Image is downloaded in ImageBytes format if the server supports it, in JSON format otherwise. JSON transfer of large images is very slow.
 * HTTPS, authentication and IPv6 are not supported.
+* A mount whose Alpaca driver moves the axes in sky directions (e.g. Pegasus NYX-101) needs X_ALPACA_MOUNT_AXES = SKY; a mount that ignores commands right after a slew needs X_ALPACA_SETTLE_TIME (2 s for the NYX-101).
+* Hardware test: "python3 tools/run_driver_test.py system_alpaca --hw --port host:port[,host:port]" tests every function of every Alpaca device on those servers (without --port, of every device found by discovery) and restores what it changes; SYSTEM_ALPACA_HW_DEVICES=<text>[,<text>] after "--" restricts it to devices whose name or UniqueID contains one of the texts. Every tested device gets its own line below.
 
 ## Testing
 
 2026-10-03 16:16 3.0.0.1 linux arm64 simulator 309/309 OK
 2026-10-03 19:04 3.0.0.1 mac arm64 OmniSim 0.5.0 20/20 OK
-2026-10-03 19:20 3.0.0.1 mac arm64 simulator 312/312 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 A simulator for the ASCOM FilterWheel API usable with Alpaca and COM 4/4 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 A simulator for the ASCOM Focuser API usable with Alpaca and COM 9/9 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 Alpaca CoverCalibrator Simulator 7/7 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 Alpaca Observing Conditions Simulator 5/5 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 ASCOM Dome Simulator .NET 12/12 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 ASCOM Rotator Driver for RotatorSimulator 9/9 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 ASCOM SafetyMonitor Simulator Driver 3/3 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 ASCOM SwitchV2 Simulator Driver. 4/4 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 Simulated Monochrome camera 8/8 OK
+2026-10-03 21:31 3.0.0.1 mac arm64 Software Telescope Simulator for ASCOM 20/20 OK
+2026-10-03 21:36 3.0.0.1 mac arm64 PegasusAstro NYX-101 20/20 OK
+2026-10-03 21:44 3.0.0.1 mac arm64 simulator 317/317 OK

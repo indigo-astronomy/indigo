@@ -1717,6 +1717,151 @@ cleanup:
 	sa_end();
 }
 
+// HW-1, found on the NYX-101 (firmware 1.32.1): its AxisRates splits every range into two objects, [{"Maximum":4.5},{"Minimum":0}].
+// The halves are paired, so manual motion exists and the rates come from the range; before the fix MOUNT_MOTION_RA, MOUNT_MOTION_DEC and
+// MOUNT_SLEW_RATE were hidden although CanMoveAxis was true.
+static void mount_axis_rates_split(void) {
+	static const char *split[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,AxisRates=0:4.5,SplitAxisRates=true", NULL };
+	static const char *two[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,AxisRates=0.5:0.5|2:2,SplitAxisRates=true", NULL };
+	SA_CHECK(mount_begin(split));
+	SA_CHECK(sa_defined(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) && sa_defined(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) && sa_defined(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME));
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=4.5&ClientID=") && mount_simulated("AxisRate1") == 4.5);
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE && mount_simulated("AxisRate1") == 0);
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), 32 * MOUNT_SIDEREAL, 1e-15));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE && sa_disconnect(sa_device));
+	sa_end();
+	// two split ranges are two ranges: every rate is one of them
+	SA_CHECK(mount_begin(two));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=0.5&ClientID="));
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=2&ClientID="));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// HW-2, found by the hardware suite against OmniSim 0.5.0: a telescope that reports AtHome (or AtPark) while Slewing is still true. The search
+// for home ends on AtHome, the next poll sees Slewing and takes it for a slew of another client (the coordinates are BUSY until Slewing is
+// false). A park started meanwhile cleared that mark, so the coordinates stayed BUSY for good and every later goto was answered "Mount is
+// slewing, the new coordinates are ignored!".
+static void mount_external_slew_ended_by_motion(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,LateSlewing=100", NULL };
+	SA_CHECK(mount_begin(arguments));
+	unsigned home = sa_revision(sa_device, MOUNT_HOME_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 1, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, home), SA_TIMEOUT) && mount_simulated_is("AtHome", "true") && mount_simulated_is("Slewing", "true"));
+	// the telescope still slews: an external slew for the driver
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	// a park ends the mark of the external slew: the coordinates are not BUSY when it is over
+	unsigned park = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "park") == 1, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, park), SA_TIMEOUT) && sa_advance(0, 200));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) != INDIGO_BUSY_STATE && mount_simulated_is("Slewing", "false"), SA_TIMEOUT));
+	// after the unpark the next goto is sent and completes
+	SA_CHECK(mount_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE);
+	int mark = sa_message_mark();
+	unsigned coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT) && !sa_message_seen_since(mark, "Mount is slewing"));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// HW-3, measured on the NYX-101 (firmware 1.32.1): MoveAxis in sky directions, a positive primary rate moves east and a positive secondary
+// rate moves south, on both sides of the pier. With X_ALPACA_MOUNT_AXES set to SKY the driver negates both rates and does not invert the
+// secondary one on pierWest, so WEST and NORTH move west and north; without the setting (before the fix there was none) NORTH moved south
+// on pierEast and WEST moved east.
+static void mount_manual_motion_sky_axes(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,SkyAxes=true", NULL };
+	const double centering = 32 * MOUNT_SIDEREAL;
+	SA_CHECK(mount_begin(arguments));
+	SA_CHECK(sa_switch(sa_device, "X_ALPACA_MOUNT_AXES", "MECHANICAL") && mount_select("X_ALPACA_MOUNT_AXES", "SKY"));
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+	for (int side = 0; side < 2; side++) {
+		// 1.2 h west of the meridian the telescope is on pierEast, 4 h east of it on pierWest; the position is set by a sync
+		double ra = fmod(sa_number(sa_device, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME) - (side == 0 ? 1.2 : -4) + 24, 24);
+		SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && mount_set_coordinates(ra, -42.5) == INDIGO_OK_STATE && mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+		SA_CHECK(SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, side == 0 ? MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME : MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME), SA_TIMEOUT));
+		double dec = mount_simulated("Declination");
+		SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15));
+		SA_CHECK(sa_advance(0, 10) && mount_near(mount_simulated("Declination"), dec + 10 * centering, 1e-9));
+		SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE);
+		dec = mount_simulated("Declination");
+		SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15));
+		SA_CHECK(sa_advance(0, 10) && mount_near(mount_simulated("Declination"), dec - 10 * centering, 1e-9));
+		SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false) == INDIGO_OK_STATE);
+		// west: the right ascension falls (the drift of the sidereal time while the axis moves is added)
+		double start = mount_simulated("RightAscension");
+		SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15));
+		SA_CHECK(sa_advance(0, 10) && mount_near(mount_simulated("RightAscension"), fmod(start + 10 * 1.00273790935 / 3600 - 10 * centering / 15 + 24, 24), 1e-9));
+		SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE);
+	}
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// HW-4, measured on the NYX-101 (firmware 1.32.1): a slew, park, search for home or MoveAxis that arrives less than about 1.5 s after the end
+// of a slew is answered with success and ignored. With X_ALPACA_SETTLE_TIME 2 s the driver sends the next motion command no earlier than 2 s
+// after the end of the last motion; without it (before the fix there was none) the second goto went out at once, was ignored and the proxy
+// reported the arrival at a target the telescope never moved to.
+static void mount_nyx_settle_after_slew(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,IgnoreAfterSlew=1.5", NULL };
+	SA_CHECK(mount_begin(arguments));
+	SA_CHECK(sa_number(sa_device, "X_ALPACA_SETTLE_TIME", "TIME") == 0 && mount_set_number("X_ALPACA_SETTLE_TIME", "TIME", 2) == INDIGO_OK_STATE);
+	unsigned coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9));
+	// the next goto right after the arrival waits: nothing is sent while the device time stands still, it goes out once the telescope can take it
+	coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(5.5, -40) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(!SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 2, 1.0));
+	SA_CHECK(sa_advance(0, 1.6) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 2, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && mount_at(5.5, -40, 1e-9) && mount_simulated_at(5.5, -40, 1e-9));
+	// a park right after the slew waits the same way and the telescope parks
+	unsigned park = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && !SA_WAIT(mount_count("PUT", "park") == 1, 1.0));
+	SA_CHECK(sa_advance(0, 1.6) && SA_WAIT(mount_count("PUT", "park") == 1, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, park), SA_TIMEOUT) && mount_simulated_is("AtPark", "true"));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// The defaults of X_ALPACA_MOUNT_AXES (MECHANICAL) and X_ALPACA_SETTLE_TIME (0) change nothing for other telescopes: against a simulator
+// with the NYX behaviour the mechanical sense is sent and a goto right after a slew goes out at once (and is ignored by such a telescope).
+// Both settings are saved by CONFIG SAVE and restored by CONFIG LOAD.
+static void mount_axes_and_settle_defaults(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,SkyAxes=true,IgnoreAfterSlew=1.5", NULL };
+	const double centering = 32 * MOUNT_SIDEREAL;
+	SA_CHECK(mount_begin(arguments));
+	SA_CHECK(sa_switch(sa_device, "X_ALPACA_MOUNT_AXES", "MECHANICAL") && !sa_switch(sa_device, "X_ALPACA_MOUNT_AXES", "SKY") && sa_number(sa_device, "X_ALPACA_SETTLE_TIME", "TIME") == 0);
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+	// 1.2 h west of the meridian (pierEast): NORTH is the positive rate of the ASCOM convention
+	double ra = fmod(sa_number(sa_device, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME) - 1.2 + 24, 24);
+	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && mount_set_coordinates(ra, -42.5) == INDIGO_OK_STATE && mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE);
+	// a goto right after a slew is sent at once
+	unsigned coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT));
+	SA_CHECK(mount_request_coordinates(5.5, -40) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 2, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) != INDIGO_BUSY_STATE, SA_TIMEOUT));
+	// CONFIG: save SKY and 2 s, change both, load
+	SA_CHECK(mount_select("X_ALPACA_MOUNT_AXES", "SKY") && mount_set_number("X_ALPACA_SETTLE_TIME", "TIME", 2) == INDIGO_OK_STATE);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_has_item(sa_device, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME) && !sa_switch(sa_device, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME) && sa_state(sa_device, CONFIG_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(mount_select("X_ALPACA_MOUNT_AXES", "MECHANICAL") && mount_set_number("X_ALPACA_SETTLE_TIME", "TIME", 0.5) == INDIGO_OK_STATE);
+	unsigned revision = sa_revision(sa_device, CONFIG_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, CONFIG_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && sa_state(sa_device, CONFIG_PROPERTY_NAME) != INDIGO_BUSY_STATE, 3 * SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, CONFIG_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, "X_ALPACA_MOUNT_AXES", "SKY") && sa_number(sa_device, "X_ALPACA_SETTLE_TIME", "TIME") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
 #define SYSTEM_ALPACA_MOUNT_CASES \
 	{ "mount_properties", mount_properties }, \
 	{ "mount_legacy_properties", mount_legacy_properties }, \
@@ -1745,6 +1890,11 @@ cleanup:
 	{ "mount_goto_behind_unpark", mount_goto_behind_unpark }, \
 	{ "mount_goto_refusals", mount_goto_refusals }, \
 	{ "mount_park_delayed_start", mount_park_delayed_start }, \
-	{ "mount_site_unset_warning", mount_site_unset_warning },
+	{ "mount_site_unset_warning", mount_site_unset_warning }, \
+	{ "mount_axis_rates_split", mount_axis_rates_split }, \
+	{ "mount_external_slew_ended_by_motion", mount_external_slew_ended_by_motion }, \
+	{ "mount_manual_motion_sky_axes", mount_manual_motion_sky_axes }, \
+	{ "mount_nyx_settle_after_slew", mount_nyx_settle_after_slew }, \
+	{ "mount_axes_and_settle_defaults", mount_axes_and_settle_defaults },
 
 #endif /* system_alpaca_mount_cases_h */

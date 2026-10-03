@@ -899,6 +899,18 @@ $(INTEGRATION_BUILD)/test_system_alpaca_omnisim: integration/test_system_alpaca_
 test-system-alpaca-omnisim: $(INTEGRATION_BUILD)/test_system_alpaca_omnisim
 	./$(INTEGRATION_BUILD)/test_system_alpaca_omnisim
 
+# Real Alpaca devices through the system_alpaca driver, opt-in and excluded from normal integration tests. Every device found by
+# broadcast discovery, or on the servers SYSTEM_ALPACA_HW_PORT (or run_driver_test.py --port) names as host:port[,host:port...], is
+# tested with every function it advertises, and SYSTEM_ALPACA_HW_DEVICES restricts the run to the devices whose name or UniqueID
+# contains one of its comma separated texts. A TELESCOPE MOVES, and so do domes, covers, focusers, rotators and filter wheels; sync,
+# set park, the dome shutter and switch writes are tested too, and everything changed is restored.
+.PHONY: test-system-alpaca-hw
+test-system-alpaca-hw: check-lib $(TEST_BUILD)/hardware/test_system_alpaca_hw
+	$(TEST_BUILD)/hardware/test_system_alpaca_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+$(TEST_BUILD)/hardware/test_system_alpaca_hw: hardware/test_system_alpaca_hw.c hardware/hardware_device_record.h $(SYSTEM_ALPACA_SIMULATOR_TEST_HEADERS) integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(wildcard $(SYSTEM_ALPACA_DIR)/*.h) $(BUILD_DRIVERS)/indigo_system_alpaca.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(SYSTEM_ALPACA_SIMULATOR_TEST_LDFLAGS)
+
 $(INTEGRATION_BUILD)/mount_temma_simulator: ../indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 

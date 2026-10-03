@@ -939,6 +939,20 @@ The user reported that with a Pegasus NYX-101 the first slew through the mount a
 - **Mount agent and an unset site** (decided by the user, `agent_mount` 3.0.0.27): the agent no longer writes a site of 0° N, 0° E to the mount or the dome; it warns once while a mount or dome is selected ("The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome"). Case `filter site unset`; recorded run 73 / 73 OK.
 - **NYX firmware observations** (to report to Pegasus, not changed in INDIGO): `SlewToCoordinatesAsync` to a target below the horizon returns success and does nothing; Slewing goes false about 1 s before AtPark becomes true, and in one park it was false for most of the motion; the server closes the connection after every reply; Azimuth sometimes reads as a denormal number (1.5e-312) at the pole; no `devicestate` (ITelescopeV2).
 
+### 7.11 Hardware suite (2026-10-03)
+
+`indigo_test/hardware/test_system_alpaca_hw.c`, target `make -C indigo_test test-system-alpaca-hw`, recorded with `python3 tools/run_driver_test.py system_alpaca --hw --port <host:port>[,…]`.
+
+- **Selection:** the servers named by `SYSTEM_ALPACA_HW_PORT` / `--port` (several separated by commas; nothing is broadcast), otherwise one broadcast discovery. `SYSTEM_ALPACA_HW_DEVICES` keeps the devices whose DeviceName or UniqueID contains one of its texts; the others are switched off in `X_ALPACA_DEVICES`.
+- **Coverage:** every function a device advertises (Can* flags, interface version, implemented members) is a case `<alpaca type>_<proxy>_<function>`, driven through the proxy properties and read back through the proxy and directly over Alpaca HTTP. A function the device does not advertise is printed as SKIP with the reason. Per class: telescope (connect and D5, site, time, unpark followed at once by a goto, tracking and rates, guide rates, slews on both sides of the meridian with arrival checked, side of pier, abort, measured axis convention and settle time, manual motion on both pier sides, pulse guiding in four directions with a duration check, sync and sync back, find home, set park and restore, park with a refused goto, restore); camera (geometry, exposure with an image check, binning and subframe, abort, cooler and set point, gain, offset, readout modes, fast readout, guider); focuser; filter wheel; rotator; dome (including shutter, set park and sync); cover calibrator; switch (every writable switch written and restored); observing conditions (plausibility of every sensor, average period, refresh); safety monitor.
+- **No permission gates** (user's decision): sync, set park, the dome shutter and switch writes are always tested and restored; a telescope is left as found; a device another client had connected gets `Connected=True` again.
+- **Recording one line per device** (user's decision): each case is tagged with its device (`case_device` record, `hw_record_case_device()` in `hardware_device_record.h`), and `tools/run_driver_test.py` writes one `README.md` line per device model with that device's own counts. Suites without tags record as before. Documented in `indigo_test/AGENTS.md`.
+- **Mount settings instead of model names** (user's decision, no model name in the driver): `X_ALPACA_MOUNT_AXES` (`MECHANICAL` default, `SKY`) and `X_ALPACA_SETTLE_TIME` (s, default 0), saved by CONFIG. The suite measures both: OmniSim needs `MECHANICAL` and 0 s, the NYX-101 needs `SKY`. Its settle time measured 0 s in the recorded run, but direct measurements ignored a goto 0 s and 1 s after a slew and executed it after 2 s, so the NYX's behaviour is intermittent and 2 s is the setting to use.
+- **Defects** HW-1 to HW-4 in section 8, each with a regression case that fails against the previous module; simulator options `SplitAxisRates`, `LateSlewing`, `SkyAxes`, `IgnoreAfterSlew` (all off by default).
+- **NYX-101 firmware observations:** Connected=False is accepted but Connected stays true; CanSetGuideRates is true but the setter answers HTTP 400 / 0x400; the azimuth at the pole is arbitrary; the first MoveAxis after a slew is sometimes ignored.
+- **Recorded runs:** OmniSim 0.5.0 through the suite, 10 devices, 81 / 81 OK (2026-10-03 21:31, one line per device); PegasusAstro NYX-101 20 / 20 OK (21:36), after failed recorded runs at 20:33, 20:41 and 20:53 while the suite and HW-3 / HW-4 were being fixed; deterministic suite 317 / 317 OK (21:44). The model names of the OmniSim devices are their Alpaca Descriptions, which OmniSim fills with long sentences.
+- **Not covered on hardware:** every class except the telescope (no such Alpaca device available), camera gain, offset, readout modes and guiding (the OmniSim camera has none), dome slaving, a relative focuser, broadcast discovery, Linux.
+
 ## 8. Found defects
 
 All were originally found **by source audit only**. Under decision D8 they were fixed on 2026-09-24 and verified:
@@ -1067,6 +1081,15 @@ Found on the NYX-101 (2026-10-03, section 7.10):
 | NYX-2 | `mount_motion_finalizer()`, `mount_apply_state()` | "Park failed" while the NYX parked; `MOUNT_PARK` stayed ALERT after AtPark. Reproduced. | Completion decided by Slewing false; no recovery. | Park and home complete on AtPark / AtHome, unpark on AtPark and Slewing false; failure only after a 10 s stall (no slewing, Alt/Az change below 0.1°); a late arrival ends ALERT in OK with a message. | `mount_park_delayed_start` |
 | NYX-3 | `mount_on_poll()` | A site of 0/0 made the telescope compute LST and RA for Greenwich without a hint. | — | Warning once per connection and whenever the site becomes 0/0; the proxy never writes the site on its own. | `mount_site_unset_warning` |
 | NYX-4 | mount locking | TSan: `mount_set_park()` wrote the `MOUNT_PARK` items without the lock while the new refusal read them. | — | Items written under the device lock. | TSan run |
+
+Found by the hardware suite (2026-10-03, section 7.11):
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| HW-1 | `mount_probe_axis()` | On the NYX-101 manual motion and slew rates were hidden although CanMoveAxis is true. | The NYX answers AxisRates as `[{"Maximum":4.5},{"Minimum":0}]`, one range split in two objects. | The halves are paired in order. | `mount_axis_rates_split` |
+| HW-2 | `mount_motion_start()` | After find home and park the coordinates stayed BUSY for good; every goto was refused. Found on OmniSim. | AtHome reported while Slewing was still true marked an external slew, which a following park did not settle. | Any motion other than a slew ends the external-slew BUSY state. | `mount_external_slew_ended_by_motion` |
+| HW-3 | `mount_move_axis()` | On the NYX-101 NORTH moved south and WEST moved east. | The NYX's MoveAxis works in sky directions (positive primary east, positive secondary south, both pier sides). | `X_ALPACA_MOUNT_AXES` = `SKY`; no model name in the driver. | `mount_manual_motion_sky_axes`, `mount_axes_and_settle_defaults` |
+| HW-4 | goto, park, home, flip and MoveAxis handlers | On the NYX-101 a command right after a slew was accepted, ignored and reported as done. | The NYX ignores motion commands for about 1.5 s after a slew. | `X_ALPACA_SETTLE_TIME`: the command waits, BUSY and abortable, until that time has passed. | `mount_nyx_settle_after_slew` |
 
 Observations outside the driver, not changed (D10) and reported to the user:
 
@@ -1238,11 +1261,11 @@ The critical path is W0 → WP2 → WP5 → WP8 (the camera) → WP11/12.
 
 ## Final test summary
 
-State on 2026-10-03 after the NYX-101 fixes (section 7.10); this summary is updated with every recorded run.
+State on 2026-10-03 after the hardware suite (section 7.11); this summary is updated with every recorded run.
 
-- Simulated tests, macOS arm64: **312 run, 312 passed** in the recorded run of 2026-10-03 19:20 (`test_system_alpaca_simulator` 269, `test_system_alpaca_http` 43).
+- Simulated tests, macOS arm64: **317 run, 317 passed** in the recorded run of 2026-10-03 21:44 (`test_system_alpaca_simulator` 274, `test_system_alpaca_http` 43).
 - Simulated tests, Linux arm64: **309 run, 309 passed** in the recorded run of 2026-10-03 16:16 (265 + 44), before the NYX-101 fixes.
 - The unit tests `test_system_alpaca_json` (48) and `test_uni_io` pass on both platforms; the recording script does not count them.
-- OmniSim tests, macOS arm64: **20 run, 20 passed** in the recorded run of 2026-10-03 19:04 (OmniSim 0.5.0).
-- Hardware tests: no recorded run (the driver has no hardware suite); the manual NYX-101 cycles of section 7.10 are 5 park → slew cycles, 4 reaching the target and 1 deliberately unreachable target ending in ALERT as intended.
+- OmniSim tests, macOS arm64: **20 run, 20 passed** in the recorded run of the OmniSim tier, 2026-10-03 19:04 (OmniSim 0.5.0); through the hardware suite **81 run, 81 passed** on its 10 devices, 2026-10-03 21:31.
+- Hardware tests, macOS arm64: **20 run, 20 passed** on the PegasusAstro NYX-101 through Alpaca, 2026-10-03 21:36.
 - The OmniSim and ConformU runs from the research phase (subagent, linux-x64 container, outside the repository) were exploratory tool probes. They are not driver tests and are not counted.
