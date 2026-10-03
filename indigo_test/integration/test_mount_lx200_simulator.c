@@ -1620,6 +1620,203 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static bool cached_switch_value(const char *property_name, const char *item_name) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	return item != NULL && item->sw.value;
+}
+
+static bool wait_for_switch_item_value(const char *property_name, const char *item_name, bool value) {
+	for (int i = 0; i < 100; i++) {
+		if (cached_switch_value(property_name, item_name) == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// A Meade simulator with extra options, detected automatically, and the given device connected to it.
+static bool start_meade_device(external_serial_simulator *simulator, const simulator_driver_case *device, const char **options) {
+	const char *arguments[16] = { "--model", "meade" };
+	int count = 2;
+	for (int i = 0; options != NULL && options[i] != NULL && count < 15; i++) {
+		arguments[count++] = options[i];
+	}
+	arguments[count] = NULL;
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(device)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	// The secondary devices share the port of the mount device.
+	if (device != &lx200_mount && indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator->port) != INDIGO_OK) {
+		tear_down_serial_driver(device);
+		return false;
+	}
+	if (connect_serial_device(device, device == &lx200_mount ? simulator->port : NULL)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	disconnect_serial_device(device);
+	tear_down_serial_driver(device);
+	return false;
+}
+
+// An Autostar answers :GT# with one decimal, 60.1 on the sidereal rate. That is not the king rate,
+// which a Meade does not have and the property does not show.
+static void lx200_meade_tracking_rate_has_one_decimal(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_meade_device(&simulator, &lx200_mount, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
+	const char *items[] = { MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, items[i], true, INDIGO_OK_STATE));
+		disconnect_serial_device(&lx200_mount);
+		SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+		SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, items[i]));
+	}
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Audiostar, RCX400 and LXD600 are Meade controllers. An LXD600 answers :GVP# with 6.12S and can
+// not park; the Autostar II models LX200GPS (LX2001) and RCX400 take one guide rate with :Rg.
+static void lx200_meade_products_are_detected(void) {
+	static const char *products[] = { "Audiostar", "RCX400", "6.12S", "LX2001" };
+	for (int i = 0; i < 4; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		const char *options[] = { "--meade-product", products[i], NULL };
+		SERIAL_CHECK_TRUE(start_meade_device(&simulator, &lx200_mount, options));
+		online = true;
+		assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "MEADE", true);
+		bool lxd600 = i == 2, autostar_ii = i == 1 || i == 3;
+		SERIAL_CHECK_EQ_INT(!lxd600, has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(autostar_ii, has_defined_property(MOUNT_GUIDE_RATE_PROPERTY_NAME));
+		if (lxd600) {
+			SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "LXD600"));
+		}
+		if (autostar_ii) {
+			// 50 % of the sidereal 15.0417 arc seconds per second.
+			SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(wait_event(&simulator, "Rg07.5", 0));
+		}
+	cleanup:
+		if (online) {
+			stop_serial_driver(&lx200_mount);
+		}
+		stop_external_serial_simulator(&simulator);
+		if (!online) {
+			return;
+		}
+	}
+}
+
+// An older Autostar synchronises, but sends the reply to :CM# only after the next command.
+static void lx200_meade_late_sync_reply_is_accepted(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--meade-late-sync", NULL };
+	SERIAL_CHECK_TRUE(start_meade_device(&simulator, &lx200_mount, options));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(5, 20, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "CM", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 5, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 20, 0.001));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Firmware that does not answer :GW# is asked it once, at connect. The ACK byte gives the alignment
+// and the tracking, L for a mount that does not track, and tracking is started in the alignment the
+// mount reported, never with :AP#, which would make an alt-az mount polar.
+static void lx200_meade_without_gw_uses_the_ack(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--meade-no-gw", NULL };
+	SERIAL_CHECK_TRUE(start_meade_device(&simulator, &lx200_mount, options));
+	online = true;
+	assert_switch_item_value("X_MOUNT_MODE", "ALTAZ", true);
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "AA", 0));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "AP", NULL));
+	// Three polls later the mount is still read as tracking, and :GW# was not asked again.
+	indigo_usleep(3000000);
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "GW", NULL));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "AL", 0));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Autostar firmware before 31Ee ignores :Mg, so its guider pulses are :RG# and a slow motion the
+// driver stops itself, as on the classic LX200. The guider reads the firmware without the mount.
+static void lx200_meade_old_autostar_guides_host_timed(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--meade-firmware", "30Ec", NULL };
+	SERIAL_CHECK_TRUE(start_meade_device(&simulator, &lx200_guider, options));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qn", 0));
+	double began = 0, ended = 0;
+	SERIAL_CHECK_TRUE(event_count(&simulator, "RG", NULL) > 0);
+	event_count(&simulator, "Mn", &began);
+	event_count(&simulator, "Qn", &ended);
+	SERIAL_CHECK_TRUE(ended - began >= .09 && ended - began < 1);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Mgn0100", NULL));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An Autostar sent to its park position stops answering anything until it is switched off. The
+// silence is the end of the park, and nothing is sent to the mount from then on.
+static void lx200_meade_silent_park_is_parked(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--meade-silent-park", NULL };
+	SERIAL_CHECK_TRUE(start_meade_device(&simulator, &lx200_mount, options));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", 0));
+	// The next poll asks :GR# and :D#, which the mount no longer answers; the park ends when the
+	// :D# timeout does, and the poll after it publishes the position again without asking.
+	int asked = event_count(&simulator, "D", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "D", asked));
+	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	// The :GR# the mount left unanswered put the position in ALERT, the poll after the park restores it.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	int coordinate_polls = settled_event_count(&simulator, "GR");
+	int status_polls = settled_event_count(&simulator, "D");
+	indigo_usleep(3000000);
+	SERIAL_CHECK_EQ_INT(coordinate_polls, event_count(&simulator, "GR", NULL));
+	SERIAL_CHECK_EQ_INT(status_polls, event_count(&simulator, "D", NULL));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_guider_directions_overlap_and_timing(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -3277,6 +3474,12 @@ int main(int argc, char **argv) {
 		{ "lx200_onstep_options_and_partial_failures", lx200_onstep_options_and_partial_failures },
 		{ "lx200_park_rejects_motion_and_unpark_recovers", lx200_park_rejects_motion_and_unpark_recovers },
 		{ "lx200_meade_profile", lx200_meade_profile },
+		{ "lx200_meade_tracking_rate_has_one_decimal", lx200_meade_tracking_rate_has_one_decimal },
+		{ "lx200_meade_products_are_detected", lx200_meade_products_are_detected },
+		{ "lx200_meade_late_sync_reply_is_accepted", lx200_meade_late_sync_reply_is_accepted },
+		{ "lx200_meade_without_gw_uses_the_ack", lx200_meade_without_gw_uses_the_ack },
+		{ "lx200_meade_old_autostar_guides_host_timed", lx200_meade_old_autostar_guides_host_timed },
+		{ "lx200_meade_silent_park_is_parked", lx200_meade_silent_park_is_parked },
 		{ "lx200_onstep_profile", lx200_onstep_profile },
 		{ "lx200_10mic_profile", lx200_10mic_profile },
 		{ "lx200_gemini_profile", lx200_gemini_profile },

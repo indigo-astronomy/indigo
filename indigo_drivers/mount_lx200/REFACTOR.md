@@ -2480,3 +2480,50 @@ uses none of the changed `--model ap` paths and was not rerun.
 
 Simulated tests: **112 run, 112 passed** (second recorded run; the first recorded run failed as described
 above). Hardware tests: **0 run, 0 passed**.
+
+## Meade: tracking rate, products, late sync, missing :GW#, old Autostar guiding and silent park (2026-10-04, 3.0.0.72)
+
+Found by a comparison with an independent Meade-only ASCOM driver and its documented firmware workarounds.
+No Meade mount is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX048 | FIXED | An Autostar answers `:GT#` with one decimal, `60.1` on the sidereal rate. The shared threshold read 60.1 as the king rate (`<= 60.14`), which is the fourth item of a property that shows three, so no visible rate was selected after connect. | The Meade branch of `meade_get_tracking_rate()` reads below 59 as lunar, below 60.05 as solar and anything above as sidereal; an empty reply is not decoded. The 10micron and TeenAstro thresholds are unchanged. |
+| LX049 | FIXED | Detection accepted only a `:GVP#` starting with `LX` or `Autostar`. `Audiostar`, `RCX400` and the LXD600, which answers `:GVP#` and `:GVN#` with `6.12S`, fell into GENERIC without tracking switch, park, focuser or the distance bar. | `meade_is_meade_product()` adds them. An LXD600 has no long format and no park: the park is hidden and `:P#` is not sent on every poll; its model is shown as LXD600. |
+| LX050 | FIXED | An older Autostar synchronises but sends the reply to `:CM#` only after the next command, so nothing came back in time and the sync was reported as failed. | For Meade the reply is read with `meade_counted_command()`, which tells no reply (0) from a bare `#` (1). On no reply the ACK byte is sent and any answer is the sync; a bare `#` stays a failure as before. |
+| LX051 | FIXED | Firmware that does not answer `:GW#` (Autostar before 43Eg, LX200GPS 4G0m) cost the 3 s timeout on every poll, was published as alt-az and read as not tracking, and tracking on sent `:AP#` on the empty reply, which switches an alt-az ETX or LX90 to polar. | `:GW#` is asked once at connect. Without a reply the ACK byte gives the alignment (`A`, `P`, `G`, or `L` for an alt-az mount that does not track) and the polls read the tracking from it. Tracking on sends `:AA#` or `:AP#` for the alignment read at connect and is refused when it is not known. |
+| LX052 | FIXED | `:Mg` was sent to every Meade. Autostar firmware before 31Ee ignores it, so every pulse was reported as done while the mount stood still. The Autostar II models (LX200GPS, LX800, RCX400) take a guide rate with `:RgSS.S#`, which the driver never sent and hid. | `meade_read_meade_firmware()` (also called by the guider connection, which can come up without the mount) decides from `:GVP#` and `:GVN#`. Old Autostar firmware is guided host-timed with `:RG#` and `:M?#`/`:Q?#` like the classic LX200, through `meade_host_timed_guiding()`, which replaces the classic-only gates. The Autostar II models show `MOUNT_GUIDE_RATE`, one rate for both axes, sent as arc seconds per second. |
+| LX053 | FIXED | An Autostar sent to its park position stops answering anything until it is switched off. The poll then ran into the 3 s timeout on every command and the position stayed in ALERT. | When `:D#` gets no reply at all while the park is busy, the mount is parked (`meade_park_silent`): nothing is sent to it until the next connection, the last position stands, guide pulses are refused, and the client is told to switch the mount off. A bare `#` keeps the previous completion. |
+
+Simulator (`--model meade`): `:GT#` answers with one decimal; `:AA#` starts tracking. New options: `--meade-product`,
+`--meade-firmware` (before 31Ee `:Mg` is ignored), `--meade-no-gw` (the ACK answers `L` while not tracking),
+`--meade-late-sync` and `--meade-silent-park`. The changes are limited to the Meade model except `:AA#`, which
+`mount_asi` does not send.
+
+Tests: `lx200_meade_tracking_rate_has_one_decimal`, `lx200_meade_products_are_detected`,
+`lx200_meade_late_sync_reply_is_accepted`, `lx200_meade_without_gw_uses_the_ack`,
+`lx200_meade_old_autostar_guides_host_timed` and `lx200_meade_silent_park_is_parked`.
+
+The first recorded run (2026-10-04 00:28) failed 118/115:
+
+- `lx200_coordinate_command_failures_recover` injects a bare `#` as the `:CM#` reply and expects the sync to fail;
+  the first version of LX050 sent the ACK on any empty reply and accepted it. Fixed by counting the `#`.
+- `lx200_meade_old_autostar_guides_host_timed` connected the guider with a port of its own; the secondary
+  devices share the port of the mount device. Test fixture fixed.
+- `lx200_meade_silent_park_is_parked` took the park state from the cache before the driver had asked the `:D#`
+  that goes unanswered. The case now waits for that `:D#` and a park publication after it.
+
+Not covered: no Meade hardware. The firmware facts above (`60.1`, the late `:CM#`, no `:GW#` before 43Eg and on
+4G0m, no `:Mg` before 31Ee, the silent Autostar after `:hP#`, `6.12S`) come from that driver's documented field
+reports and are not measured here. Whether the Autostar II `:Rg` takes `SS.S` with a leading zero is taken from
+the protocol description.
+
+MIGRATION_STATUS.md hardware-free count 116 -> 122.
+
+Second recorded run (2026-10-04 00:44) on macOS arm64: 118/118 OK. `mount_asi`, which shares the simulator, uses
+none of the changed Meade paths and was not rerun.
+
+### Final test summary for this change
+
+Simulated tests: **118 run, 118 passed** (second recorded run; the first recorded run failed as described above).
+Hardware tests: **0 run, 0 passed**.

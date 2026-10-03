@@ -24,6 +24,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <ctype.h>
+#include <strings.h>
 #include <errno.h>
 #include <math.h>
 #include <signal.h>
@@ -72,6 +73,15 @@ typedef struct {
 	// letter on a GTOCP3. It decides the coordinate precision, the King rate, the firmware park positions
 	// and the longest timed pulse.
 	const char *ap_version;
+	// Meade controllers: the :GVP# product (Autostar by default; LX2001 is the LX200GPS, and an
+	// LXD600 answers 6.12S) and the :GVN# firmware (43Eg). Autostar firmware before 31Ee ignores
+	// :Mg. Firmware that does not answer :GW# at all, an Autostar that sends the reply to :CM#
+	// only after the next command arrives, and one that stops answering anything after :hP#.
+	const char *meade_product;
+	const char *meade_firmware;
+	bool meade_no_gw;
+	bool meade_late_sync;
+	bool meade_silent_park;
 	simulator_model model;
 } simulator_options;
 
@@ -183,6 +193,11 @@ static void usage(const char *name) {
 	printf("  --double-precision      Answer Gemini coordinates as decimals and :GG# extended\n");
 	printf("  --model <name>          a supported LX200 profile\n");
 	printf("  --ap-version <version>  Astro-Physics :V# answer, VCP4-P02-15 by default\n");
+	printf("  --meade-product <name>  Meade :GVP# answer, Autostar by default\n");
+	printf("  --meade-firmware <ver>  Meade :GVN# answer, 43Eg by default; before 31Ee :Mg is ignored\n");
+	printf("  --meade-no-gw           Meade firmware that does not answer :GW#\n");
+	printf("  --meade-late-sync       Meade: send the :CM# reply only after the next command\n");
+	printf("  --meade-silent-park     Meade: answer nothing at all after :hP#\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -267,6 +282,22 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ap_version = argv[i];
+		} else if (!strcmp(argv[i], "--meade-product") || !strcmp(argv[i], "--meade-firmware")) {
+			if (i + 1 == argc) {
+				fprintf(stderr, "%s requires a value\n", argv[i]);
+				return false;
+			}
+			if (!strcmp(argv[i], "--meade-product")) {
+				options.meade_product = argv[++i];
+			} else {
+				options.meade_firmware = argv[++i];
+			}
+		} else if (!strcmp(argv[i], "--meade-no-gw")) {
+			options.meade_no_gw = true;
+		} else if (!strcmp(argv[i], "--meade-late-sync")) {
+			options.meade_late_sync = true;
+		} else if (!strcmp(argv[i], "--meade-silent-park")) {
+			options.meade_silent_park = true;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -370,6 +401,10 @@ static void set_target_dec(const char *text) {
 static serial_motion ra_motion, dec_motion, focus_motion;
 static int manual_ra, manual_dec;
 static bool parking_requested, homing_requested;
+// The :CM# reply of a --meade-late-sync Autostar waiting for the next command, and a
+// --meade-silent-park Autostar that stopped answering after :hP#.
+static char meade_pending_reply[64];
+static bool meade_silent;
 // When the pulse a :Mg[d][n]# command started ends. A NYX-101 counts a running pulse as motion
 // and refuses :MS# with error 8 until it is over; observed on firmware 1.32.1, see
 // indigo_drivers/mount_lx200/REFACTOR.md.
@@ -656,6 +691,23 @@ static bool ap_dispatch(const char *command) {
 	return false;
 }
 
+// Autostar firmware before 31Ee has no :Mg pulse and ignores it.
+static bool meade_has_pulse_guiding(void) {
+	const char *firmware = options.meade_firmware;
+	if (firmware == NULL || !isdigit((unsigned char)firmware[0]) || !isdigit((unsigned char)firmware[1])) {
+		return true;
+	}
+	int major = (firmware[0] - '0') * 10 + firmware[1] - '0';
+	return major > 31 || (major == 31 && strcasecmp(firmware + 2, "Ee") >= 0);
+}
+
+static void meade_flush_pending_reply(void) {
+	if (*meade_pending_reply) {
+		write_response(meade_pending_reply);
+		*meade_pending_reply = 0;
+	}
+}
+
 static void handle_command(const char *command) {
 	char response[128] = { 0 };
 	update_motion();
@@ -663,6 +715,15 @@ static void handle_command(const char *command) {
 	if (events != NULL) {
 		fprintf(events, "%.9f\t%s\n", serial_motion_time(), command);
 		fflush(events);
+	}
+	if (options.model == MODEL_MEADE) {
+		if (meade_silent) {
+			return;
+		}
+		meade_flush_pending_reply();
+		if ((!strncmp(command, "Mg", 2) && !meade_has_pulse_guiding()) || (!strcmp(command, "GW") && options.meade_no_gw)) {
+			return;
+		}
 	}
 	if (*fault_command && !strcmp(command, fault_command)) {
 		*fault_command = 0;
@@ -835,7 +896,7 @@ static void handle_command(const char *command) {
 		}
 		if (!strcmp(command, "X361")) { write_response("pA#"); }
 	} else if (!strcmp(command, "GVP")) {
-		snprintf(response, sizeof(response), "%s#", products[options.model]);
+		snprintf(response, sizeof(response), "%s#", options.model == MODEL_MEADE && options.meade_product != NULL ? options.meade_product : products[options.model]);
 		write_response(response);
 	} else if (!strcmp(command, "GV")) {
 		write_response(options.model == MODEL_ASI ? "1.2.4#" : "1.0.0#");
@@ -868,7 +929,12 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GVF")) {
 		write_response(options.model == MODEL_ONSTEP ? "OnStep 4.24j#" : "ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
 	} else if (!strcmp(command, "GVN")) {
-		write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : model_is_oat() ? "v1.13.20#" : model_is_esp32go() ? "06.9#" : "43Eg#");
+		if (options.model == MODEL_MEADE && options.meade_firmware != NULL) {
+			snprintf(response, sizeof(response), "%s#", options.meade_firmware);
+			write_response(response);
+		} else {
+			write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : model_is_oat() ? "v1.13.20#" : model_is_esp32go() ? "06.9#" : "43Eg#");
+		}
 	} else if (!strcmp(command, "GVD")) {
 		write_response("Apr 03 2007#");
 	} else if (!strcmp(command, "GVT")) {
@@ -944,6 +1010,9 @@ static void handle_command(const char *command) {
 			write_response(response);
 		} else if (model_is_zwo()) {
 			write_response(state.tracking_rate == 'L' ? "1#" : state.tracking_rate == 'S' ? "2#" : "0#");
+		} else if (options.model == MODEL_MEADE) {
+			// An Autostar answers with one decimal, 60.1 on the sidereal rate.
+			write_response(state.tracking_rate == 'L' ? "57.9#" : state.tracking_rate == 'S' ? "60.0#" : "60.1#");
 		} else if ((options.model == MODEL_NYX || options.model == MODEL_ONSTEP) && !state.tracking) {
 			write_response("0#");
 		} else if (state.tracking_rate == 'L') {
@@ -1040,6 +1109,10 @@ static void handle_command(const char *command) {
 		serial_motion_sync(&ra_motion, state.target_ra_cs);
 		serial_motion_sync(&dec_motion, state.target_dec_as);
 		state.parked = false;
+		if (options.model == MODEL_MEADE && options.meade_late_sync) {
+			snprintf(meade_pending_reply, sizeof(meade_pending_reply), "M31 EX GAL MAG 3.5 SZ178.0'#");
+			return;
+		}
 		write_response("M31 EX GAL MAG 3.5 SZ178.0'#");
 	} else if (!strcmp(command, "MS")) {
 		// A NYX-101 answers a goto issued while one of its pulses is still running with the
@@ -1087,7 +1160,7 @@ static void handle_command(const char *command) {
 		// :AP# and :AL# reach telescope->track alone. The tracking loop recomputes the motor
 		// speed from track_speed on its next pass, so neither command starts or stops the
 		// tracking motor and :GU# keeps reporting what it reported before.
-	} else if (!strcmp(command, "AP") || !strcmp(command, "X122")) {
+	} else if (!strcmp(command, "AP") || !strcmp(command, "AA") || !strcmp(command, "X122")) {
 		state.tracking = true;
 	} else if (!strcmp(command, "AL") || !strcmp(command, "X120")) {
 		state.tracking = false;
@@ -1117,6 +1190,9 @@ static void handle_command(const char *command) {
 			return;
 		}
 		start_reference_motion(strcmp(command, "hC") != 0 || options.model == MODEL_GEMINI);
+		if (options.model == MODEL_MEADE && options.meade_silent_park && !strcmp(command, "hP")) {
+			meade_silent = true;
+		}
 		// OnStepX documents :hP# with a 0/1 reply and :hC# with none, and the NYX firmware that
 		// derives from it does the same. A simulator that answers the home command anyway hides
 		// a driver that waits for a reply the mount never sends.
@@ -1213,7 +1289,12 @@ static void handle_command(const char *command) {
 
 static void handle_byte(char ch, char *buffer, size_t *length) {
 	if ((unsigned char)ch == 6) {
-		write_response("P");
+		if (options.model == MODEL_MEADE && meade_silent) {
+			return;
+		}
+		meade_flush_pending_reply();
+		// Firmware without :GW# reports the alignment only here, L while it is not tracking.
+		write_response(options.model == MODEL_MEADE && options.meade_no_gw && !state.tracking ? "L" : "P");
 		return;
 	}
 	if ((ch == ':' && *length == 0) || ch == '>') {
