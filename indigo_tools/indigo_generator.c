@@ -244,15 +244,45 @@ bool get_token(void) {
 		}
 		int depth = 0;
 		begin = current;
-		bool in_string = false;
+		// Braces count only in code, never inside string or character literals or comments.
+		enum { IN_CODE, IN_STRING, IN_CHARACTER, IN_LINE_COMMENT, IN_BLOCK_COMMENT } state = IN_CODE;
 		while (true) {
 			if (*current == 0) {
 				return false;
 			}
-			if (*current == '\\') {
+			if (state == IN_STRING || state == IN_CHARACTER) {
+				if (*current == '\\') {
+					FORWARD(1);
+					if (*current == 0) {
+						return false;
+					}
+				} else if (*current == (state == IN_STRING ? '"' : '\'')) {
+					state = IN_CODE;
+				}
+			} else if (state == IN_LINE_COMMENT) {
+				if (*current == '\n') {
+					state = IN_CODE;
+				}
+			} else if (state == IN_BLOCK_COMMENT) {
+				if (*current == '*' && *(current + 1) == '/') {
+					FORWARD(1);
+					state = IN_CODE;
+				}
+			} else if (*current == '\\') {
 				FORWARD(1);
+				if (*current == 0) {
+					return false;
+				}
 			} else if (*current == '"') {
-				in_string = !in_string;
+				state = IN_STRING;
+			} else if (*current == '\'') {
+				state = IN_CHARACTER;
+			} else if (*current == '/' && *(current + 1) == '/') {
+				FORWARD(1);
+				state = IN_LINE_COMMENT;
+			} else if (*current == '/' && *(current + 1) == '*') {
+				FORWARD(1);
+				state = IN_BLOCK_COMMENT;
 			} else if (*current == '{') {
 				depth++;
 			} else if (*current == '}') {
