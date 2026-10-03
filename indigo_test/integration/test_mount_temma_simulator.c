@@ -145,6 +145,41 @@ static int trace_count(const char *path) {
 	return load_trace(path, events, ARRAY_SIZE(events));
 }
 
+// A pattern ending with '*' matches every command that starts with the rest of it.
+static bool event_matches_pattern(const temma_trace_event *event, const char *pattern) {
+	size_t length = strlen(pattern);
+	if (length > 0 && pattern[length - 1] == '*') {
+		return event->length >= length - 1 && !memcmp(event->bytes, pattern, length - 1);
+	}
+	return event_matches(event, pattern);
+}
+
+// Requires the commands to reach the mount one right after the other, after the mark, and copies
+// the last one of the first such run into last when it is not NULL.
+static bool trace_sequence_after(const char *path, int after, const char **patterns, int pattern_count, char *last, size_t last_size) {
+	temma_trace_event events[MAX_TRACE_EVENTS];
+	for (int attempt = 0; attempt < 50; attempt++) {
+		int count = load_trace(path, events, ARRAY_SIZE(events));
+		for (int i = after; i + pattern_count <= count; i++) {
+			int matched = 0;
+			while (matched < pattern_count && event_matches_pattern(events + i + matched, patterns[matched])) {
+				matched++;
+			}
+			if (matched == pattern_count) {
+				if (last != NULL) {
+					const temma_trace_event *event = events + i + pattern_count - 1;
+					size_t length = event->length < last_size ? event->length : last_size - 1;
+					memcpy(last, event->bytes, length);
+					last[length] = 0;
+				}
+				return true;
+			}
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
 static bool change_switch_and_wait(const simulator_driver_case *device_case, const char *property_name, const char *item_name, bool value, indigo_property_state state) {
 	unsigned int revision = property_revision(property_name);
 	return indigo_change_switch_property_1(&simulator_test_client, device_case->device_name, property_name, item_name, value) == INDIGO_OK && wait_for_property_state_after(property_name, state, revision);
@@ -178,6 +213,17 @@ static bool pulse_and_wait(const char *property_name, const char *item_name, dou
 static bool cached_switch_value(const char *property_name, const char *item_name) {
 	indigo_item *item = find_cached_item(property_name, item_name);
 	return item != NULL && item->sw.value;
+}
+
+static bool wait_for_switch_item_value(const char *property_name, const char *item_name, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
 }
 
 static void select_context(const simulator_driver_case *device_case) {
@@ -316,7 +362,8 @@ static void temma_mount_controls_emit_exact_commands(void) {
 	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "v1", mark));
 	mark = trace_count(trace_path);
 	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, X_TEMMA_ZENITH_PROPERTY_NAME, X_TEMMA_ZENITH_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "Z", mark));
+	static const char *zenith_commands[] = { "PT", "T*", "Z", "T*", "D*" };
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, zenith_commands, ARRAY_SIZE(zenith_commands), NULL, 0));
 	indigo_property *zenith = find_cached_property(X_TEMMA_ZENITH_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(zenith != NULL && zenith->count == 2 && !strcmp(zenith->items[0].name, X_TEMMA_ZENITH_EAST_ITEM_NAME) && !zenith->items[0].sw.value);
 	mark = trace_count(trace_path);
@@ -357,12 +404,15 @@ static void temma_sync_goto_overlap_abort_and_recovery(void) {
 	SERIAL_CHECK_TRUE(change_coordinates_and_wait(3, -0.5, INDIGO_BUSY_STATE));
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
-	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "D030000-00300", mark));
+	static const char *sync_commands[] = { "STN-OFF", "T*", "D030000-00300" };
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, sync_commands, ARRAY_SIZE(sync_commands), NULL, 0));
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 3) < 0.01);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 0.5) < 0.01);
 	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
 	mark = trace_count(trace_path);
 	SERIAL_CHECK_TRUE(change_coordinates_and_wait(23.9, 40, INDIGO_BUSY_STATE));
+	static const char *goto_commands[] = { "STN-OFF", "T*", "P235400+40000" };
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, goto_commands, ARRAY_SIZE(goto_commands), NULL, 0));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(9, 41));
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
 	unsigned int coordinates_revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
@@ -569,6 +619,71 @@ cleanup:
 		stop_serial_driver(&temma_mount);
 	}
 	stop_external_serial_simulator(&simulator);
+}
+
+// The mount keeps nothing over a power cycle and computes a GOTO and a sync from the sidereal
+// time it was last given, so the connection sends T and I, and every D and P follows STN-OFF and
+// T: a GOTO in standby is refused with R5. The zenith reference moves the side the mount assumes
+// to the selected one with PT and sets the position with T, Z, T and D at the sidereal time and
+// the latitude. P carries at most 89 degrees 59.9 minutes, so the default park position at the
+// pole has to be sent as that.
+static void temma_reference_commands_follow_the_protocol(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	char command[64] = "";
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	static const char *connect_commands[] = { "v1", "T*", "I*" };
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, 0, connect_commands, ARRAY_SIZE(connect_commands), NULL, 0));
+	// A GOTO from standby leaves standby first and reports the tracking that follows.
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	int mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(8, 30, INDIGO_BUSY_STATE));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	static const char *goto_commands[] = { "STN-OFF", "T*", "P080000+30000" };
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, goto_commands, ARRAY_SIZE(goto_commands), NULL, 0));
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	static const char *location_items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	static const double location_values[] = { -33.5, 289.75 };
+	revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, temma_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(location_items), location_items, location_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// The simulator reports the telescope on the west side: the west zenith needs no PT, the
+	// east one does, and the side the mount then reports is published.
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	static const char *zenith_commands[] = { "T*", "Z", "T*", "D*" };
+	mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, X_TEMMA_ZENITH_PROPERTY_NAME, X_TEMMA_ZENITH_WEST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, zenith_commands, ARRAY_SIZE(zenith_commands), command, sizeof(command)));
+	SERIAL_CHECK_TRUE(strlen(command) == 13 && !strcmp(command + 7, "-33300"));
+	SERIAL_CHECK_TRUE(!trace_contains_after(trace_path, "PT", mark));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -33.5, 0.01));
+	static const char *east_zenith_commands[] = { "PT", "T*", "Z", "T*", "D*" };
+	mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, X_TEMMA_ZENITH_PROPERTY_NAME, X_TEMMA_ZENITH_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, east_zenith_commands, ARRAY_SIZE(east_zenith_commands), NULL, 0));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true));
+	// The default park position is the pole, which P cannot carry as 90 degrees.
+	mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	static const char *park_commands[] = { "STN-OFF", "T*", "P*" };
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, park_commands, ARRAY_SIZE(park_commands), command, sizeof(command)));
+	SERIAL_CHECK_TRUE(strlen(command) == 13 && !strcmp(command + 7, "+89599"));
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // Changes the side flag of the simulated mount the way the hand controller does, through the
@@ -1161,6 +1276,7 @@ int main(void) {
 		{ "temma_protocol_failures_recover", temma_protocol_failures_recover },
 		{ "temma_position_units_are_hundredths_of_a_minute", temma_position_units_are_hundredths_of_a_minute },
 		{ "temma_position_reply_codes_and_trailer", temma_position_reply_codes_and_trailer },
+		{ "temma_reference_commands_follow_the_protocol", temma_reference_commands_follow_the_protocol },
 		{ "temma_side_of_pier_change_is_published", temma_side_of_pier_change_is_published },
 #ifndef __linux__
 		{ "temma_timeout_and_open_failures_recover", temma_timeout_and_open_failures_recover },

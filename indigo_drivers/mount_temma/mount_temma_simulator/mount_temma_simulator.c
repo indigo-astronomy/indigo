@@ -418,10 +418,16 @@ static void handle_ascii_command(const char *command) {
 	} else if ((command[0] == 'D' || command[0] == 'P') && strlen(command) >= 13) {
 		// D and P answer R0 when the position is accepted. R1 is an RA error, R2 a Dec error
 		// and R3 too many digits, so a driver that takes R1 for success takes an error for one.
+		// The declination degrees of P end at 89 and a GOTO is refused with R5 in standby; the
+		// motors are not switched on by either command, that is what STN-OFF is for.
 		if (strlen(command) > 13) {
 			reply_position_error("R3");
 		} else if (!parse_radec(command + 1, &state.target_ra, &state.target_dec)) {
 			reply_position_error("R1");
+		} else if (command[0] == 'P' && fabs(state.target_dec) >= 90.0) {
+			reply_position_error("R2");
+		} else if (command[0] == 'P' && !state.motors_on) {
+			reply_position_error("R5");
 		} else {
 			state.slewing = command[0] == 'P';
 			state.slew_deadline = monotonic_time() + 0.75;
@@ -431,7 +437,6 @@ static void handle_ascii_command(const char *command) {
 			} else {
 				state.introduction_readings = options.introduction_readings;
 			}
-			state.motors_on = true;
 			reply_position_ok();
 		}
 	} else {

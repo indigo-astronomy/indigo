@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -293,11 +293,12 @@ static bool temma_set_lst(indigo_device *device) {
 
 // I carries the latitude as sDDMMt, where t is tenths of an arc minute. Rounding to whole
 // tenths first keeps a value such as 48.99997 from being sent as 48 degrees 59.9 minutes
-// in one field and 0 in the next.
+// in one field and 0 in the next. The degrees field ends at 89, so a pole is sent as
+// 89 degrees 59.9 minutes.
 static bool temma_set_latitude(indigo_device *device) {
 	long tenths = llround(fabs(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 600.0);
-	if (tenths > 54000L) {
-		tenths = 54000L;
+	if (tenths > 53999L) {
+		tenths = 53999L;
 	}
 	return temma_no_reply_command(device, "I%c%02d%02d%d", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0 ? '-' : '+', (int)(tenths / 600), (int)(tenths / 10 % 60), (int)(tenths % 10));
 }
@@ -306,14 +307,30 @@ static bool temma_set_latitude(indigo_device *device) {
 // the declination as sDDMMt, where t is tenths of an arc minute. Both are rounded to the
 // unit the mount reads before they are split into fields, so a value that rounds up
 // carries into the next minute, the next hour and across 24 hours instead of being sent
-// as 60 minutes or 24 hours.
+// as 60 minutes or 24 hours. The declination degrees of P end at 89, so a pole, which is
+// also the default park position, is sent as 89 degrees 59.9 minutes.
 static void temma_format_position(char *buffer, size_t size, char command, double ra, double dec) {
 	long hundredths = ((long)llround(ra * 6000.0) % 144000L + 144000L) % 144000L;
 	long tenths = llround(fabs(dec) * 600.0);
-	if (tenths > 54000L) {
-		tenths = 54000L;
+	if (tenths > 53999L) {
+		tenths = 53999L;
 	}
 	snprintf(buffer, size, "%c%02d%02d%02d%c%02d%02d%d", command, (int)(hundredths / 6000), (int)(hundredths / 100 % 60), (int)(hundredths % 100), dec < 0 ? '-' : '+', (int)(tenths / 600), (int)(tenths / 10 % 60), (int)(tenths % 10));
+}
+
+// The mount computes a GOTO and a sync from the sidereal time it was last given and
+// refuses a GOTO in standby, so every D and P is preceded by STN-OFF and T. The motors
+// track from here on, which the tracking property reports.
+static bool temma_prepare_position(indigo_device *device) {
+	if (!temma_set_standby(device, false) || !temma_set_lst(device)) {
+		return false;
+	}
+	if (!MOUNT_TRACKING_ON_ITEM->sw.value) {
+		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+	}
+	return true;
 }
 
 static void mount_goto_finalizer(indigo_device *device) {
@@ -434,7 +451,8 @@ static void mount_connection_handler(indigo_device *device) {
 				INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
 				INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->response + 1);
 				INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-				connection_result = temma_set_high_speed(device, false);
+				// The mount keeps neither the sidereal time nor the latitude over a power cycle.
+				connection_result = temma_set_high_speed(device, false) && temma_set_lst(device) && temma_set_latitude(device);
 				if (connection_result) {
 					PRIVATE_DATA->mount_motion_mask = PRIVATE_DATA->guider_motion_mask = 0;
 					PRIVATE_DATA->mount_high_speed = false;
@@ -538,9 +556,23 @@ static void mount_high_speed_handler(indigo_device *device) {
 static void mount_zenith_handler(indigo_device *device) {
 	ZENITH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.ZENITH.on_change
-	bool ok = temma_no_reply_command(device, "Z");
+	// The telescope points at the zenith on the selected side of the mount. PT moves the
+	// side the mount assumes to that one, and T, Z, T and D with the sidereal time and
+	// the latitude set the position.
+	bool east = ZENITH_EAST_ITEM->sw.value;
+	bool ok = east != ZENITH_WEST_ITEM->sw.value && temma_update_position(device);
 	ZENITH_EAST_ITEM->sw.value = false;
 	ZENITH_WEST_ITEM->sw.value = false;
+	if (ok && PRIVATE_DATA->telescope_side != (east ? 'E' : 'W')) {
+		ok = temma_no_reply_command(device, "PT");
+	}
+	ok = ok && temma_set_lst(device) && temma_no_reply_command(device, "Z") && temma_set_lst(device);
+	if (ok) {
+		time_t utc = indigo_get_mount_utc(device);
+		char command[32];
+		temma_format_position(command, sizeof(command), 'D', indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
+		ok = temma_position_command(device, "%s", command);
+	}
 	ZENITH_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	//- mount.ZENITH.on_change
 	indigo_update_property(device, ZENITH_PROPERTY, NULL);
@@ -558,7 +590,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	char command[32];
 	temma_format_position(command, sizeof(command), MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? 'D' : 'P', ra, dec);
-	if (temma_position_command(device, "%s", command)) {
+	if (temma_prepare_position(device) && temma_position_command(device, "%s", command)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		PRIVATE_DATA->start_tracking = MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value;
 		PRIVATE_DATA->stop_tracking = MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value;
@@ -685,7 +717,7 @@ static void mount_park_handler(indigo_device *device) {
 		double ra = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_PARK_POSITION_HA_ITEM->number.value;
 		char command[32];
 		temma_format_position(command, sizeof(command), 'P', ra, MOUNT_PARK_POSITION_DEC_ITEM->number.value);
-		if (temma_set_lst(device) && temma_position_command(device, "%s", command)) {
+		if (temma_prepare_position(device) && temma_position_command(device, "%s", command)) {
 			PRIVATE_DATA->park_deadline = indigo_monotonic_time() + 600;
 			MOUNT_PARK_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_coordinates(device, NULL);
