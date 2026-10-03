@@ -68,7 +68,7 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_PRIMALUCE_EVENTS names a file receiving every accepted request.\n");
-	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|close>' which is\n");
+	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close>' which is\n");
 	printf("applied once to the next request containing that key and then removed.\n");
 }
 
@@ -264,7 +264,7 @@ static void send_state(int handle) {
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
 		"\"EXT_T\":\"22.50\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
 		"\"MOT1\":{%s\"ABS_POS_STEP\":%d,%s\"BKLASH\":%d,"
-		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,"
+		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,\"CAL_MINPOS\":0,\"CAL_MAXPOS\":100000,"
 		"\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,"
 		"\"HOLDCURR_STATUS\":%d},"
 		"\"RUNPRESET_L\":{\"M1ACC\":10},\"RUNPRESET_M\":{\"M1SPD\":6},\"RUNPRESET_S\":{\"M1DEC\":1},"
@@ -295,6 +295,12 @@ static void dispatch_command(int handle, const char *command) {
 		}
 		if (!strcmp(fault, "garbage")) {
 			sim_printf(handle, "\"Error: invalid cmd\"\n");
+			return;
+		}
+		// The way a SESTO SENSO 2 refuses to drive the motor without its 12 V supply.
+		if (!strcmp(fault, "nopower")) {
+			const char *verb = strstr(command, "\"GOTO\"") != NULL ? "GOTO" : (strstr(command, "\"MOT_STOP\"") != NULL ? "MOT_STOP" : "STEP");
+			sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"%s\":\"12V_PowerSupply_Error\"}}}}\n", verb);
 			return;
 		}
 		// The way a SESTO SENSO 2 answers a request its firmware does not know.
@@ -331,7 +337,7 @@ static void dispatch_command(int handle, const char *command) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"REBOOT\":\"done\"}}}\n");
 		sim_printf(handle, "ets Jun  8 2016 00:22:57\n\nrst:0xc (SW_CPU_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)\nentry 0x400806a4\nUnable to find DS18B20\n________ shell start __\n");
 	} else if (strstr(command, "DIMLEDS") != NULL) {
-		led_status = strstr(command, "\"low\"") != NULL ? "low" : (strstr(command, "\"off\"") != NULL ? "off" : "on");
+		led_status = strstr(command, "\"low\"") != NULL ? "low" : (strstr(command, "\"middle\"") != NULL ? "middle" : (strstr(command, "\"off\"") != NULL ? "off" : "on"));
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"DIMLEDS\":\"done\"}}}\n");
 	} else if (strstr(command, "RUNPRESET") != NULL) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"RUNPRESET\":\"done\"},\"get\":{\"MOT1\":{\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,\"HOLDCURR_STATUS\":%d}}}}\n", hold_current);
@@ -353,6 +359,10 @@ static void dispatch_command(int handle, const char *command) {
 		rotator_target = extract_int_after(command, "\"DEG\":", rotator_target);
 		serial_motion_start(&rotate_motion, rotator_target, 90);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"STEP\":\"done\"}}}}\n");
+	} else if (strstr(command, "\"SYNC_POS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
+		serial_motion_sync(&rotate_motion, extract_int_after(command, "\"DEG\":", rotator_position));
+		rotator_target = (int)rotate_motion.position;
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"SYNC_POS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		serial_motion_stop(&rotate_motion);
 		rotator_target = rotator_position;

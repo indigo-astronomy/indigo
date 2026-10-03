@@ -85,6 +85,7 @@
 #define X_LEDS_PROPERTY_NAME "X_LEDS"
 #define X_LEDS_OFF_ITEM_NAME "OFF"
 #define X_LEDS_DIM_ITEM_NAME "DIM"
+#define X_LEDS_MIDDLE_ITEM_NAME "MIDDLE"
 #define X_LEDS_ON_ITEM_NAME "ON"
 #define X_RUNPRESET_PROPERTY_NAME "X_RUNPRESET"
 #define X_RUNPRESET_L_ITEM_NAME "L"
@@ -848,7 +849,7 @@ static void primaluce_applies_a_run_preset(void) {
 }
 
 static void primaluce_sets_led_modes(void) {
-	static const char *modes[] = { X_LEDS_OFF_ITEM_NAME, X_LEDS_DIM_ITEM_NAME, X_LEDS_ON_ITEM_NAME };
+	static const char *modes[] = { X_LEDS_OFF_ITEM_NAME, X_LEDS_DIM_ITEM_NAME, X_LEDS_MIDDLE_ITEM_NAME, X_LEDS_ON_ITEM_NAME };
 	for (unsigned i = 0; i < ARRAY_SIZE(modes); i++) {
 		bool on = false;
 		ASSERT_TRUE(set_switch(focuser, X_LEDS_PROPERTY_NAME, modes[i], INDIGO_OK_STATE, SHORT_TIMEOUT));
@@ -891,7 +892,7 @@ static void primaluce_connects_the_rotator(void) {
 	ASSERT_TRUE(property_defined(rotator, ROTATOR_POSITION_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(rotator, ROTATOR_ABORT_MOTION_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(rotator, X_CALIBRATE_R_PROPERTY_NAME));
-	ASSERT_TRUE(property_hidden(rotator, ROTATOR_ON_POSITION_SET_PROPERTY_NAME));
+	ASSERT_TRUE(property_defined(rotator, ROTATOR_ON_POSITION_SET_PROPERTY_NAME));
 	ASSERT_TRUE(number_item(rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, &position));
 	printf("    rotator reports %.2f degrees\n", position);
 	ASSERT_TRUE(disconnect_device(rotator));

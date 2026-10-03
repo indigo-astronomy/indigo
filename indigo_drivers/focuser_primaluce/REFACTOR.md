@@ -124,8 +124,7 @@ standard needs and nothing else:
 
 ### Notes and gaps
 
-- `ROTATOR_ON_POSITION_SET` is hidden on purpose, so the shared rotator class completeness assertion
-  does not apply; `rotator_metadata` asserts the concrete properties and the absence of that one.
+- `ROTATOR_ON_POSITION_SET` is published since the sync support (see "Controller features").
 - `FOCUSER_MODE`, `FOCUSER_COMPENSATION` and `FOCUSER_REVERSE_MOTION` stay hidden; the controller has
   no temperature compensation and no reverse switch of its own.
 - `FOCUSER_STEPS.on_change` contained the statement
@@ -281,9 +280,25 @@ length rather than on end of file. A device port of `http://host[:port]` (or `tc
 transport. Verified against the attached SESTO SENSO 2 in station mode: connect, readback of model,
 firmware, serial number, position, temperature, voltage and WiFi mode, and a 100-step move out and
 back, with each request taking about 20 ms. The full hardware suite passes over WiFi
-(`--port http://192.168.111.152`, 18/18) as well as over USB (18/18). The web interface itself sends no WiFi commands (its
-WiFi page is disabled), so `LANCFG` and `REBOOT` come from probing the serial protocol. The
+(`--port http://<address>`, 18/18) as well as over USB (18/18). The
 simulator has no HTTP transport, so the network path has hardware coverage only.
+
+## Controller features (2026-10-03)
+
+- Travel range: connect reads `MOT1.CAL_MINPOS` and `CAL_MAXPOS` and uses them as the range of
+  `FOCUSER_POSITION` and `FOCUSER_STEPS`, and a relative move longer than the remaining travel
+  stops at either calibrated end, not only at zero. Simulator `calibrated_travel`; on hardware the
+  range reads 0 to 40973.
+- `X_LEDS` gains `MIDDLE`, sent and read back as `DIMLEDS` `"middle"`. Simulator `led_middle`;
+  verified on hardware.
+- Rotator sync: `ROTATOR_ON_POSITION_SET` is published, and `SYNC` sends
+  `{"req":{"cmd":{"MOT2":{"SYNC_POS":{"DEG":<angle>}}}}}`, which redefines the angle without a
+  move. A refused sync reads the angle back and ends ALERT. Simulator `rotator_sync`; not verified
+  on hardware because no ARCO is attached (the controller answers
+  `"Error: invalid command; ARCO is not connected"`).
+- A motor without its 12 V supply answers a move or stop with `"12V_PowerSupply_Error"`; the
+  driver now ends the operation ALERT with the message "The motor has no 12 V power supply".
+  Simulator `motor_without_power` (fault `nopower`); not reproduced on hardware.
 
 ## Generator fix (2026-10-03)
 
@@ -303,11 +318,9 @@ lexer now tracks strings, character literals, line and block comments. Regenerat
 
 ## Notes and gaps
 
-- `FOCUSER_POSITION` advertises the range 0 to 1000000 while the attached controller reports
-  `CAL_MINPOS` 0 and `CAL_MAXPOS` 40973. The driver does not read the calibrated travel, so a client
-  can request a position the controller cannot reach and gets ALERT about a second later. This was
-  left unchanged: verifying a travel-limit readback needs the simulator to report `CAL_MINPOS` and
-  `CAL_MAXPOS`, which it does not, and the only hardware check would be a move onto an end stop.
+- `FOCUSER_POSITION` and `FOCUSER_STEPS` take their range from the calibrated travel
+  (`MOT1.CAL_MINPOS` and `CAL_MAXPOS`, 0 to 40973 on the attached unit); an uncalibrated controller
+  keeps the range 0 to 1000000. See "Controller features" above.
 - `X_STATE` has two items on SESTO SENSO and three on ESATTO. The attached unit answers
   `"Error: invalid command"` to `VIN_USB`, which confirms the model-dependent item count.
 - `EXT_T` reads -127 on the attached unit because no external probe is fitted, so

@@ -23,6 +23,7 @@
 #include "serial_simulator_test_common.h"
 #include <errno.h>
 #include <sys/wait.h>
+#include <pthread.h>
 
 #ifndef FOCUSER_PRIMALUCE_SIMULATOR_EXECUTABLE
 #define FOCUSER_PRIMALUCE_SIMULATOR_EXECUTABLE "build/integration/focuser_primaluce_simulator"
@@ -51,6 +52,7 @@
 #define X_LEDS_PROPERTY_NAME               "X_LEDS"
 #define X_LEDS_OFF_ITEM_NAME               "OFF"
 #define X_LEDS_DIM_ITEM_NAME               "DIM"
+#define X_LEDS_MIDDLE_ITEM_NAME            "MIDDLE"
 #define X_LEDS_ON_ITEM_NAME                "ON"
 #define X_RUNPRESET_PROPERTY_NAME          "X_RUNPRESET"
 #define X_RUNPRESET_L_ITEM_NAME            "L"
@@ -157,6 +159,48 @@ static bool wait_for_requests(const char *fragment, int expected) {
 
 static const char *device_name(void) {
 	return context.driver_case == NULL ? PRIMALUCE_FOCUSER_NAME : context.driver_case->device_name;
+}
+
+// The bus delivers the message of an update through send_message, which the common test
+// client does not set, so the messages of this driver are recorded here.
+static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char messages[4096];
+
+static indigo_result record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (message != NULL && *message) {
+		pthread_mutex_lock(&message_mutex);
+		if (strlen(messages) + strlen(message) + 2 < sizeof(messages)) {
+			strcat(messages, message);
+			strcat(messages, "\n");
+		}
+		pthread_mutex_unlock(&message_mutex);
+	}
+	return INDIGO_OK;
+}
+
+static void clear_messages(void) {
+	pthread_mutex_lock(&message_mutex);
+	messages[0] = 0;
+	pthread_mutex_unlock(&message_mutex);
+}
+
+static bool message_seen(const char *fragment) {
+	for (int i = 0; i < 200; i++) {
+		pthread_mutex_lock(&message_mutex);
+		bool found = strstr(messages, fragment) != NULL;
+		pthread_mutex_unlock(&message_mutex);
+		if (found) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	fprintf(stderr, "No message containing '%s'\n", fragment);
+	return false;
+}
+
+static double number_max(const char *property, const char *item) {
+	indigo_item *cached = find_cached_item(property, item);
+	return cached == NULL ? -1 : cached->number.max;
 }
 
 static bool state_seen(const char *property, indigo_property_state state, unsigned int revision) {
@@ -345,6 +389,7 @@ static void property_contract(void) {
 	assert_property_has_item(X_WIFI_STA_PROPERTY_NAME, X_WIFI_STA_PASSWORD_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME);
+	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_MIDDLE_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_ON_ITEM_NAME);
 	assert_property_has_item(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_L_ITEM_NAME);
 	assert_property_has_item(X_RUNPRESET_PROPERTY_NAME, X_RUNPRESET_M_ITEM_NAME);
@@ -550,6 +595,44 @@ static void relative_move(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"STEP\":18200", 1));
 	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+// The calibrated travel the controller reports bounds the positions a client can request.
+static void calibrated_travel(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 100000);
+	SERIAL_CHECK_TRUE(number_max(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == 100000);
+	// An outward move longer than the remaining travel stops at the calibrated end.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"STEP\":100000", 1));
+cleanup:
+	driver_stop();
+}
+
+// A motor without its 12 V supply refuses to move, and the client is told why.
+static void motor_without_power(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	clear_messages();
+	SERIAL_CHECK_TRUE(fault("\"MOVE_ABS\"", "nopower"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("12 V"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
+cleanup:
+	driver_stop();
+}
+
+// The middle LED brightness is set and read back.
+static void led_middle(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_LEDS_PROPERTY_NAME, X_LEDS_MIDDLE_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"DIMLEDS\":\"middle\"", 1));
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(switch_is(X_LEDS_PROPERTY_NAME, X_LEDS_MIDDLE_ITEM_NAME, true));
 cleanup:
 	driver_stop();
 }
@@ -805,8 +888,8 @@ static void rotator_metadata(void) {
 	assert_property_has_item(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_item(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME);
 	assert_number_item_in_range(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
-	// The rotator has no coordinate reset of its own.
-	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_ON_POSITION_SET_PROPERTY_NAME) == NULL);
+	// A position can be synced as well as reached.
+	assert_property_has_item(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME);
 	// Connecting the rotator switches the ARCO port on.
 	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":1", 1));
 	SERIAL_CHECK_TRUE(number_is(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, 0));
@@ -892,6 +975,24 @@ cleanup:
 	driver_stop();
 }
 
+// A sync redefines the angle without moving the rotator.
+static void rotator_sync(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 120, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"SYNC_POS\":{\"DEG\":120", 1));
+	SERIAL_CHECK_TRUE(requests("\"MOVE_ABS\"") == 0);
+	SERIAL_CHECK_TRUE(rotator_position_is(120));
+	// A refused sync keeps the angle the rotator had.
+	SERIAL_CHECK_TRUE(fault("\"SYNC_POS\"", "reject"));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_is(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 120, 0));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void rotator_move_failure(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_rotator());
@@ -925,6 +1026,8 @@ int main(void) {
 		{ "absolute_move", absolute_move, "normal" },
 		{ "relative_move", relative_move, "normal" },
 		{ "relative_move_clamped", relative_move_clamped, "normal" },
+		{ "calibrated_travel", calibrated_travel, "normal" },
+		{ "motor_without_power", motor_without_power, "normal" },
 		{ "abort_motion", abort_motion, "normal" },
 		{ "abort_while_idle", abort_while_idle, "normal" },
 		{ "overlap_rejected", overlap_rejected, "normal" },
@@ -932,6 +1035,7 @@ int main(void) {
 		{ "external_motion_observed", external_motion_observed, "external-motion" },
 		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
 		{ "controller_settings", controller_settings, "normal" },
+		{ "led_middle", led_middle, "normal" },
 		{ "wifi_station_mode", wifi_station_mode, "normal" },
 		{ "run_preset", run_preset, "normal" },
 		{ "settings_reported_failures", settings_reported_failures, "normal" },
@@ -944,9 +1048,11 @@ int main(void) {
 		{ "rotator_move", rotator_move, "normal" },
 		{ "rotator_abort", rotator_abort, "normal" },
 		{ "rotator_calibration", rotator_calibration, "normal" },
+		{ "rotator_sync", rotator_sync, "normal" },
 		{ "rotator_move_failure", rotator_move_failure, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
+	simulator_test_client.send_message = record_message;
 	if (mkdtemp(fixture_directory) == NULL) {
 		fprintf(stderr, "Cannot create fixture directory\n");
 		return 1;
