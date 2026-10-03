@@ -33,7 +33,10 @@
  - bus callbacks (bridge_change_property, change_property of a proxy) only copy the request and queue a handler;
  - the driver queue runs discovery, the management requests and every attach and detach, so the lists of servers
    and devices are touched by one thread only;
- - the handler queue of a proxy device runs its connection, polling and everything of its device class.
+ - the handler queue of a proxy device runs its connection, polling and everything of its device class;
+ - what a bus thread and the handler queue of a proxy device share (CONNECTION, the session flags, the state and the requested
+   values of the properties a client can change) is written under the lock of the device, system_alpaca_lock(), which is never
+   held across a request or a call of the bus. The header indigo_system_alpaca_private.h describes the rules for a class module.
  */
 
 #pragma mark - Includes
@@ -41,8 +44,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <math.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
@@ -53,104 +58,105 @@
 
 #pragma mark - Common definitions
 
-#define BRIDGE_DEVICE_NAME                        "Alpaca"
-#define MAX_DEVICES                               32
-#define MAX_SERVERS                               16
-#define MAX_RECORDS                               128
-#define MAX_LISTED_DEVICES                        64
-#define MAX_TARGETS                               16
-#define KEY_SIZE                                  64
-#define BRIDGE_DATA                               ((bridge_private_data *)bridge->private_data)
+#define BRIDGE_DEVICE_NAME												"Alpaca"
+#define MAX_DEVICES																32
+#define MAX_SERVERS																16
+#define MAX_RECORDS																128
+#define MAX_LISTED_DEVICES												64
+#define MAX_TARGETS																16
+#define KEY_SIZE																	64
+#define BRIDGE_DATA																((bridge_private_data *)bridge->private_data)
 
-#define DISCOVERY_GROUP                           "Discovery"
-#define SERVERS_GROUP                             "Servers"
-#define DEVICES_GROUP                             "Devices"
+#define DISCOVERY_GROUP														"Discovery"
+#define SERVERS_GROUP															"Servers"
+#define DEVICES_GROUP															"Devices"
 
-#define INDIGO_BRIDGE_SERVER_NAME                 "INDIGO-Alpaca Bridge"
-#define INDIGO_BRIDGE_MANUFACTURER                "The INDIGO Initiative"
+#define INDIGO_BRIDGE_SERVER_NAME									"INDIGO-Alpaca Bridge"
+#define INDIGO_BRIDGE_MANUFACTURER								"The INDIGO Initiative"
 
-#define CONFIG_WAIT_INTERVAL                      0.1
-#define CONNECTING_POLL_INTERVAL                  0.1
-#define TRANSPORT_ERROR_LIMIT                     2
-#define SHUTDOWN_WAIT                             5.0
-#define DEVICE_NAME_PART_SIZE                     60
-#define SERVER_NAME_PART_SIZE                     40
+#define CONFIG_WAIT_INTERVAL											0.1
+#define CONNECTING_POLL_INTERVAL									0.1
+#define TRANSPORT_ERROR_LIMIT											2
+#define DEVICE_STATE_FAILURE_LIMIT								5
+#define SHUTDOWN_WAIT															5.0
+#define DEVICE_NAME_PART_SIZE											60
+#define SERVER_NAME_PART_SIZE											40
 
 #pragma mark - Property definitions
 
-#define X_ALPACA_DISCOVERY_PROPERTY               (BRIDGE_DATA->x_alpaca_discovery_property)
-#define X_ALPACA_DISCOVERY_ENABLED_ITEM           (X_ALPACA_DISCOVERY_PROPERTY->items + 0)
-#define X_ALPACA_DISCOVERY_DISABLED_ITEM          (X_ALPACA_DISCOVERY_PROPERTY->items + 1)
+#define X_ALPACA_DISCOVERY_PROPERTY								(BRIDGE_DATA->x_alpaca_discovery_property)
+#define X_ALPACA_DISCOVERY_ENABLED_ITEM						(X_ALPACA_DISCOVERY_PROPERTY->items + 0)
+#define X_ALPACA_DISCOVERY_DISABLED_ITEM					(X_ALPACA_DISCOVERY_PROPERTY->items + 1)
 
-#define X_ALPACA_DISCOVERY_PROPERTY_NAME          "X_ALPACA_DISCOVERY"
-#define X_ALPACA_DISCOVERY_ENABLED_ITEM_NAME      "ENABLED"
-#define X_ALPACA_DISCOVERY_DISABLED_ITEM_NAME     "DISABLED"
+#define X_ALPACA_DISCOVERY_PROPERTY_NAME					"X_ALPACA_DISCOVERY"
+#define X_ALPACA_DISCOVERY_ENABLED_ITEM_NAME			"ENABLED"
+#define X_ALPACA_DISCOVERY_DISABLED_ITEM_NAME			"DISABLED"
 
-#define X_ALPACA_DISCOVERY_SETTINGS_PROPERTY      (BRIDGE_DATA->x_alpaca_discovery_settings_property)
-#define X_ALPACA_DISCOVERY_SETTINGS_PORT_ITEM     (X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 0)
-#define X_ALPACA_DISCOVERY_SETTINGS_INTERVAL_ITEM (X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 1)
-#define X_ALPACA_DISCOVERY_SETTINGS_TIMEOUT_ITEM  (X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 2)
-#define X_ALPACA_DISCOVERY_SETTINGS_POLLS_ITEM    (X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 3)
-#define X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM (X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 4)
+#define X_ALPACA_DISCOVERY_SETTINGS_PROPERTY			(BRIDGE_DATA->x_alpaca_discovery_settings_property)
+#define X_ALPACA_DISCOVERY_SETTINGS_PORT_ITEM			(X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 0)
+#define X_ALPACA_DISCOVERY_SETTINGS_INTERVAL_ITEM	(X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 1)
+#define X_ALPACA_DISCOVERY_SETTINGS_TIMEOUT_ITEM	(X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 2)
+#define X_ALPACA_DISCOVERY_SETTINGS_POLLS_ITEM		(X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 3)
+#define X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM	(X_ALPACA_DISCOVERY_SETTINGS_PROPERTY->items + 4)
 
-#define X_ALPACA_DISCOVERY_SETTINGS_PROPERTY_NAME "X_ALPACA_DISCOVERY_SETTINGS"
-#define X_ALPACA_DISCOVERY_SETTINGS_PORT_ITEM_NAME "PORT"
-#define X_ALPACA_DISCOVERY_SETTINGS_INTERVAL_ITEM_NAME "INTERVAL"
-#define X_ALPACA_DISCOVERY_SETTINGS_TIMEOUT_ITEM_NAME "TIMEOUT"
-#define X_ALPACA_DISCOVERY_SETTINGS_POLLS_ITEM_NAME "POLLS"
-#define X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM_NAME "RETENTION"
+#define X_ALPACA_DISCOVERY_SETTINGS_PROPERTY_NAME	"X_ALPACA_DISCOVERY_SETTINGS"
+#define X_ALPACA_DISCOVERY_SETTINGS_PORT_ITEM_NAME	"PORT"
+#define X_ALPACA_DISCOVERY_SETTINGS_INTERVAL_ITEM_NAME	"INTERVAL"
+#define X_ALPACA_DISCOVERY_SETTINGS_TIMEOUT_ITEM_NAME	"TIMEOUT"
+#define X_ALPACA_DISCOVERY_SETTINGS_POLLS_ITEM_NAME	"POLLS"
+#define X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM_NAME	"RETENTION"
 
-#define X_ALPACA_DISCOVERY_TARGETS_PROPERTY       (BRIDGE_DATA->x_alpaca_discovery_targets_property)
-#define X_ALPACA_DISCOVERY_TARGETS_ITEM           (X_ALPACA_DISCOVERY_TARGETS_PROPERTY->items + 0)
+#define X_ALPACA_DISCOVERY_TARGETS_PROPERTY				(BRIDGE_DATA->x_alpaca_discovery_targets_property)
+#define X_ALPACA_DISCOVERY_TARGETS_ITEM						(X_ALPACA_DISCOVERY_TARGETS_PROPERTY->items + 0)
 
-#define X_ALPACA_DISCOVERY_TARGETS_PROPERTY_NAME  "X_ALPACA_DISCOVERY_TARGETS"
-#define X_ALPACA_DISCOVERY_TARGETS_ITEM_NAME      "TARGETS"
+#define X_ALPACA_DISCOVERY_TARGETS_PROPERTY_NAME	"X_ALPACA_DISCOVERY_TARGETS"
+#define X_ALPACA_DISCOVERY_TARGETS_ITEM_NAME			"TARGETS"
 
-#define X_ALPACA_DISCOVER_PROPERTY                (BRIDGE_DATA->x_alpaca_discover_property)
-#define X_ALPACA_DISCOVER_ITEM                    (X_ALPACA_DISCOVER_PROPERTY->items + 0)
+#define X_ALPACA_DISCOVER_PROPERTY								(BRIDGE_DATA->x_alpaca_discover_property)
+#define X_ALPACA_DISCOVER_ITEM										(X_ALPACA_DISCOVER_PROPERTY->items + 0)
 
-#define X_ALPACA_DISCOVER_PROPERTY_NAME           "X_ALPACA_DISCOVER"
-#define X_ALPACA_DISCOVER_ITEM_NAME               "DISCOVER"
+#define X_ALPACA_DISCOVER_PROPERTY_NAME						"X_ALPACA_DISCOVER"
+#define X_ALPACA_DISCOVER_ITEM_NAME								"DISCOVER"
 
-#define X_ALPACA_SERVERS_PROPERTY                 (BRIDGE_DATA->x_alpaca_servers_property)
-#define X_ALPACA_SERVERS_LIST_ITEM                (X_ALPACA_SERVERS_PROPERTY->items + 0)
-#define X_ALPACA_SERVERS_ADD_ITEM                 (X_ALPACA_SERVERS_PROPERTY->items + 1)
-#define X_ALPACA_SERVERS_REMOVE_ITEM              (X_ALPACA_SERVERS_PROPERTY->items + 2)
+#define X_ALPACA_SERVERS_PROPERTY									(BRIDGE_DATA->x_alpaca_servers_property)
+#define X_ALPACA_SERVERS_LIST_ITEM								(X_ALPACA_SERVERS_PROPERTY->items + 0)
+#define X_ALPACA_SERVERS_ADD_ITEM									(X_ALPACA_SERVERS_PROPERTY->items + 1)
+#define X_ALPACA_SERVERS_REMOVE_ITEM							(X_ALPACA_SERVERS_PROPERTY->items + 2)
 
-#define X_ALPACA_SERVERS_PROPERTY_NAME            "X_ALPACA_SERVERS"
-#define X_ALPACA_SERVERS_LIST_ITEM_NAME           "LIST"
-#define X_ALPACA_SERVERS_ADD_ITEM_NAME            "ADD"
-#define X_ALPACA_SERVERS_REMOVE_ITEM_NAME         "REMOVE"
+#define X_ALPACA_SERVERS_PROPERTY_NAME						"X_ALPACA_SERVERS"
+#define X_ALPACA_SERVERS_LIST_ITEM_NAME						"LIST"
+#define X_ALPACA_SERVERS_ADD_ITEM_NAME						"ADD"
+#define X_ALPACA_SERVERS_REMOVE_ITEM_NAME					"REMOVE"
 
-#define X_ALPACA_SERVER_STATUS_PROPERTY           (BRIDGE_DATA->x_alpaca_server_status_property)
+#define X_ALPACA_SERVER_STATUS_PROPERTY						(BRIDGE_DATA->x_alpaca_server_status_property)
 
-#define X_ALPACA_SERVER_STATUS_PROPERTY_NAME      "X_ALPACA_SERVER_STATUS"
+#define X_ALPACA_SERVER_STATUS_PROPERTY_NAME			"X_ALPACA_SERVER_STATUS"
 
-#define X_ALPACA_DEVICES_PROPERTY                 (BRIDGE_DATA->x_alpaca_devices_property)
+#define X_ALPACA_DEVICES_PROPERTY									(BRIDGE_DATA->x_alpaca_devices_property)
 
-#define X_ALPACA_DEVICES_PROPERTY_NAME            "X_ALPACA_DEVICES"
+#define X_ALPACA_DEVICES_PROPERTY_NAME						"X_ALPACA_DEVICES"
 
-#define X_ALPACA_DEVICE_STATUS_PROPERTY           (BRIDGE_DATA->x_alpaca_device_status_property)
+#define X_ALPACA_DEVICE_STATUS_PROPERTY						(BRIDGE_DATA->x_alpaca_device_status_property)
 
-#define X_ALPACA_DEVICE_STATUS_PROPERTY_NAME      "X_ALPACA_DEVICE_STATUS"
+#define X_ALPACA_DEVICE_STATUS_PROPERTY_NAME			"X_ALPACA_DEVICE_STATUS"
 
-#define X_ALPACA_TIMEOUTS_PROPERTY                (BRIDGE_DATA->x_alpaca_timeouts_property)
-#define X_ALPACA_TIMEOUTS_ESTABLISH_ITEM          (X_ALPACA_TIMEOUTS_PROPERTY->items + 0)
-#define X_ALPACA_TIMEOUTS_STANDARD_ITEM           (X_ALPACA_TIMEOUTS_PROPERTY->items + 1)
-#define X_ALPACA_TIMEOUTS_LONG_ITEM               (X_ALPACA_TIMEOUTS_PROPERTY->items + 2)
+#define X_ALPACA_TIMEOUTS_PROPERTY								(BRIDGE_DATA->x_alpaca_timeouts_property)
+#define X_ALPACA_TIMEOUTS_ESTABLISH_ITEM					(X_ALPACA_TIMEOUTS_PROPERTY->items + 0)
+#define X_ALPACA_TIMEOUTS_STANDARD_ITEM						(X_ALPACA_TIMEOUTS_PROPERTY->items + 1)
+#define X_ALPACA_TIMEOUTS_LONG_ITEM								(X_ALPACA_TIMEOUTS_PROPERTY->items + 2)
 
-#define X_ALPACA_TIMEOUTS_PROPERTY_NAME           "X_ALPACA_TIMEOUTS"
-#define X_ALPACA_TIMEOUTS_ESTABLISH_ITEM_NAME     "ESTABLISH"
-#define X_ALPACA_TIMEOUTS_STANDARD_ITEM_NAME      "STANDARD"
-#define X_ALPACA_TIMEOUTS_LONG_ITEM_NAME          "LONG"
+#define X_ALPACA_TIMEOUTS_PROPERTY_NAME						"X_ALPACA_TIMEOUTS"
+#define X_ALPACA_TIMEOUTS_ESTABLISH_ITEM_NAME			"ESTABLISH"
+#define X_ALPACA_TIMEOUTS_STANDARD_ITEM_NAME			"STANDARD"
+#define X_ALPACA_TIMEOUTS_LONG_ITEM_NAME					"LONG"
 
-#define X_ALPACA_POLLING_PROPERTY                 (BRIDGE_DATA->x_alpaca_polling_property)
-#define X_ALPACA_POLLING_IDLE_ITEM                (X_ALPACA_POLLING_PROPERTY->items + 0)
-#define X_ALPACA_POLLING_ACTIVE_ITEM              (X_ALPACA_POLLING_PROPERTY->items + 1)
+#define X_ALPACA_POLLING_PROPERTY									(BRIDGE_DATA->x_alpaca_polling_property)
+#define X_ALPACA_POLLING_IDLE_ITEM								(X_ALPACA_POLLING_PROPERTY->items + 0)
+#define X_ALPACA_POLLING_ACTIVE_ITEM							(X_ALPACA_POLLING_PROPERTY->items + 1)
 
-#define X_ALPACA_POLLING_PROPERTY_NAME            "X_ALPACA_POLLING"
-#define X_ALPACA_POLLING_IDLE_ITEM_NAME           "IDLE"
-#define X_ALPACA_POLLING_ACTIVE_ITEM_NAME         "ACTIVE"
+#define X_ALPACA_POLLING_PROPERTY_NAME						"X_ALPACA_POLLING"
+#define X_ALPACA_POLLING_IDLE_ITEM_NAME						"IDLE"
+#define X_ALPACA_POLLING_ACTIVE_ITEM_NAME					"ACTIVE"
 
 #pragma mark - Private data definition
 
@@ -170,38 +176,38 @@ typedef struct {
 // One Alpaca server, known from discovery or from the manual list.
 typedef struct {
 	bool used;
-	alpaca_server *transport;                       // shared by the proxy devices of the server
-	alpaca_channel *channel;                        // management API
-	bool manual;                                    // listed in X_ALPACA_SERVERS
-	bool discovered;                                // answered a discovery request
-	bool described;                                 // apiversions and description are known
-	bool online;                                    // answered configureddevices and did not stay silent for RETENTION cycles since
-	bool bridge;                                    // INDIGO agent_alpaca, its devices are never imported
-	bool unsupported;                               // no Alpaca API version 1
-	int missed;                                     // consecutive cycles without an answer
+	alpaca_server *transport;												// shared by the proxy devices of the server
+	alpaca_channel *channel;												// management API
+	bool manual;																		// listed in X_ALPACA_SERVERS
+	bool discovered;																// answered a discovery request
+	bool described;																	// apiversions and description are known
+	bool online;																		// answered configureddevices and did not stay silent for RETENTION cycles since
+	bool bridge;																		// INDIGO agent_alpaca, its devices are never imported
+	bool unsupported;																// no Alpaca API version 1
+	int missed;																			// consecutive cycles without an answer
 	int device_count;
 	int duplicate_count;
 	alpaca_description description;
-	char name[INDIGO_NAME_SIZE];                    // ServerName, cut to the size of a label
-	char maker[INDIGO_NAME_SIZE];                   // Manufacturer and ManufacturerVersion
+	char name[INDIGO_NAME_SIZE];										// ServerName, cut to the size of a label
+	char maker[INDIGO_NAME_SIZE];										// Manufacturer and ManufacturerVersion
 	char error[INDIGO_NAME_SIZE];
 } server_record;
 
 // One Alpaca device, known from configureddevices of a server or from the saved selection.
 typedef struct {
 	bool used;
-	char key[KEY_SIZE];                             // UniqueID in lower case with unsafe characters replaced, the item name in X_ALPACA_DEVICES
+	char key[KEY_SIZE];															// UniqueID in lower case with unsafe characters replaced, the item name in X_ALPACA_DEVICES
 	char unique_id[INDIGO_NAME_SIZE];
 	char name[INDIGO_NAME_SIZE];
 	char type[ALPACA_TYPE_SIZE];
 	int number;
-	server_record *server;                          // server that lists the device, NULL if no server does
-	bool present;                                   // listed by its server
-	bool listed;                                    // seen in the listing that is being processed
-	bool selected;                                  // the user wants a proxy device (decision D4)
-	bool reattach;                                  // the device type changed, the proxy has to be created again
-	indigo_device *device;                          // attached proxy device
-	char message[INDIGO_NAME_SIZE];                 // why the selected device has no proxy
+	server_record *server;													// server that lists the device, NULL if no server does
+	bool present;																		// listed by its server
+	bool listed;																		// seen in the listing that is being processed
+	bool selected;																	// the user wants a proxy device (decision D4)
+	bool reattach;																	// the device type changed, the proxy has to be created again
+	indigo_device *device;													// attached proxy device
+	char message[INDIGO_NAME_SIZE];									// why the selected device has no proxy
 } device_record;
 
 typedef struct {
@@ -229,7 +235,8 @@ typedef struct {
 static indigo_queue *driver_queue = NULL;
 static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// bridge_mutex guards the items of the bridge properties that are rebuilt at run time and the selection requests;
+// bridge_mutex guards what bus threads and the driver queue share of the bridge device: the items of the properties that are rebuilt
+// at run time, the states and the settings of its properties (bridge_finish(), bridge_setting()) and the selection requests;
 // settings_mutex guards the scalar settings read by the handler queues of the proxy devices.
 // Lock order: a bus callback runs with the lock of the bus held and takes bridge_mutex inside it. The driver queue therefore
 // never calls the bus (define, update, delete of a property) while it holds bridge_mutex: it only edits items under it.
@@ -321,19 +328,25 @@ static void single_line(char *text) {
 }
 
 // Key of a device: its UniqueID in lower case (UniqueIDs are compared without regard to case) with everything that is not safe in an
-// item name replaced by '_'. A UniqueID that is too long keeps its beginning and gets a hash of the whole text, so it stays unique.
+// item name replaced by '_'. A UniqueID that had a character replaced or is too long gets a hash of the whole text (after its beginning),
+// so it stays unique: "cam:1" and "cam/1" are two devices.
 static void make_key(const char *unique_id, char *key) {
 	size_t length = strlen(unique_id);
 	uint32_t hash = 2166136261u;
+	bool replaced = false;
 	for (size_t i = 0; i < length; i++) {
 		char c = lower_case(unique_id[i]);
+		bool safe = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_';
 		hash = (hash ^ (unsigned char)c) * 16777619u;
+		replaced = replaced || !safe;
 		if (i < KEY_SIZE - 1) {
-			key[i] = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' ? c : '_';
+			key[i] = safe ? c : '_';
 		}
 	}
-	if (length >= KEY_SIZE) {
+	if (length >= KEY_SIZE - 10 && (replaced || length >= KEY_SIZE)) {
 		snprintf(key + KEY_SIZE - 10, 10, "_%08x", (unsigned)hash);
+	} else if (replaced) {
+		snprintf(key + length, 10, "_%08x", (unsigned)hash);
 	} else {
 		key[length] = 0;
 	}
@@ -381,7 +394,7 @@ static void get_timeouts(int *establish, int *standard, int *longest) {
 
 static void proxy_connection_finalizer(indigo_device *device);
 static void proxy_poll_handler(indigo_device *device);
-static void proxy_close_session(indigo_device *device);
+static bool proxy_close_session(indigo_device *device, bool wait);
 
 static alpaca_capability *capability_find(indigo_device *device, const char *member) {
 	for (int i = 0; i < PRIVATE_DATA->capability_count; i++) {
@@ -455,6 +468,109 @@ alpaca_result system_alpaca_put(indigo_device *device, const char *member, const
 
 const char *system_alpaca_error(indigo_device *device) {
 	return PRIVATE_DATA->offline ? "connection lost" : alpaca_last_error_message(PRIVATE_DATA->channel);
+}
+
+double system_alpaca_long_timeout(indigo_device *device) {
+	alpaca_server *server = PRIVATE_DATA->server;
+	pthread_mutex_lock(&server->mutex);
+	double timeout = server->long_timeout / 1000.0;
+	pthread_mutex_unlock(&server->mutex);
+	return timeout;
+}
+
+void system_alpaca_reason(indigo_device *device, alpaca_result result, char *reason, size_t size) {
+	copy_text(reason, size, result == ALPACA_OK || result == ALPACA_FAILED || alpaca_is_transport_error(result) ? "" : system_alpaca_error(device));
+}
+
+bool system_alpaca_not_implemented(alpaca_result result, int parameter_count) {
+	return result == ALPACA_UNSUPPORTED || (result == ALPACA_REJECTED && parameter_count == 0);
+}
+
+bool system_alpaca_is_active(indigo_device *device) {
+	if (DEVICE_CONTEXT == NULL) {
+		return false;
+	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	bool active = device == PRIVATE_DATA->device ? PRIVATE_DATA->session : PRIVATE_DATA->secondary_session;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	return active;
+}
+
+void system_alpaca_lock(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+}
+
+void system_alpaca_unlock(indigo_device *device) {
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+// Bus thread, with the lock of the device held: what indigo_reject_change() does to the property, without its write of the state outside
+// the lock. A property that is BUSY belongs to a request that waits for its handler (ALPACA_ACCEPT_ANYTIME): it keeps its state, the
+// refusal is only told.
+static void system_alpaca_refuse_locked(indigo_property *property) {
+	for (int i = 0; i < property->count; i++) {
+		property->items[i].do_update = true;
+	}
+	if (property->state != INDIGO_BUSY_STATE) {
+		property->state = INDIGO_ALERT_STATE;
+	}
+}
+
+void system_alpaca_reject(indigo_device *device, indigo_property *property, const char *message) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	system_alpaca_refuse_locked(property);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_update_property(device, property, "%s", message);
+}
+
+bool system_alpaca_accept(indigo_device *device, indigo_property *property, indigo_property *request, int options, alpaca_refusal refusal, indigo_timer_callback handler) {
+	const char *refused = NULL;
+	bool accepted = false;
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if ((options & ALPACA_ACCEPT_ANYTIME) || property->state != INDIGO_BUSY_STATE) {
+		refused = refusal != NULL ? refusal(device) : NULL;
+		if (refused != NULL) {
+			system_alpaca_refuse_locked(property);
+		} else {
+			if (options & ALPACA_ACCEPT_TARGETS) {
+				indigo_property_copy_targets(property, request, false);
+			} else {
+				indigo_property_copy_values(property, request, false);
+			}
+			property->state = INDIGO_BUSY_STATE;
+			accepted = true;
+		}
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	if (accepted) {
+		indigo_update_property(device, property, NULL);
+		if (handler != NULL) {
+			indigo_execute_priority_handler_in(device, (options & ALPACA_ACCEPT_URGENT) ? INDIGO_TASK_PRIORITY_URGENT : INDIGO_TASK_PRIORITY_NORMAL, 0, handler);
+		}
+	} else if (refused != NULL) {
+		indigo_update_property(device, property, "%s", refused);
+	}
+	return accepted;
+}
+
+void system_alpaca_set_state(indigo_device *device, indigo_property *property, indigo_property_state state) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	property->state = state;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+void system_alpaca_update(indigo_device *device, indigo_property *property, indigo_property_state state, const char *format, ...) {
+	char message[INDIGO_VALUE_SIZE];
+	system_alpaca_set_state(device, property, state);
+	if (format == NULL) {
+		indigo_update_property(device, property, NULL);
+		return;
+	}
+	va_list args;
+	va_start(args, format);
+	vsnprintf(message, sizeof(message), format, args);
+	va_end(args);
+	indigo_update_property(device, property, "%s", message);
 }
 
 alpaca_result system_alpaca_state_bool(indigo_device *device, const char *name, bool *value) {
@@ -580,7 +696,7 @@ void system_alpaca_operation_start(indigo_device *device, alpaca_operation *oper
 	if (!operation->active) {
 		operation->active = true;
 		// the first operation moves the next poll tick from the idle rhythm to the active one, unless the tick is running right now
-		if (PRIVATE_DATA->operations++ == 0 && PRIVATE_DATA->session && !PRIVATE_DATA->polling) {
+		if (PRIVATE_DATA->operations++ == 0 && system_alpaca_is_active(PRIVATE_DATA->device) && !PRIVATE_DATA->polling) {
 			indigo_cancel_pending_handler(PRIVATE_DATA->device, proxy_poll_handler);
 			indigo_execute_handler_in(PRIVATE_DATA->device, system_alpaca_poll_interval(true), proxy_poll_handler);
 		}
@@ -610,14 +726,26 @@ indigo_property_state system_alpaca_property_state(alpaca_result result) {
 	return result == ALPACA_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 }
 
-void system_alpaca_finish(indigo_device *device, indigo_property *property, alpaca_result result, const char *action) {
-	const char *detail = alpaca_is_transport_error(result) || result == ALPACA_FAILED ? "" : system_alpaca_error(device);
-	property->state = system_alpaca_property_state(result);
+void system_alpaca_report(indigo_device *device, indigo_property *property, alpaca_result result, const char *action, const char *reason) {
+	char text[INDIGO_VALUE_SIZE];
 	if (result == ALPACA_OK) {
 		indigo_update_property(device, property, NULL);
-	} else {
-		indigo_update_property(device, property, "%s failed: %s%s%s%s", action != NULL ? action : "Request", alpaca_result_text(result), *detail ? " (" : "", detail, *detail ? ")" : "");
+		return;
 	}
+	if (reason == NULL) {
+		system_alpaca_reason(device, result, text, sizeof(text));
+		reason = text;
+	}
+	indigo_update_property(device, property, "%s failed: %s%s%s%s", action != NULL ? action : "Request", alpaca_result_text(result), *reason ? " (" : "", reason, *reason ? ")" : "");
+}
+
+void system_alpaca_finish_with(indigo_device *device, indigo_property *property, alpaca_result result, const char *action, const char *reason) {
+	system_alpaca_set_state(device, property, system_alpaca_property_state(result));
+	system_alpaca_report(device, property, result, action, reason);
+}
+
+void system_alpaca_finish(indigo_device *device, indigo_property *property, alpaca_result result, const char *action) {
+	system_alpaca_finish_with(device, property, result, action, NULL);
 }
 
 // Connect the Alpaca device: read InterfaceVersion to learn which members exist and send connect (Platform 7) or Connected=True.
@@ -631,6 +759,7 @@ static bool system_alpaca_open(indigo_device *device) {
 	PRIVATE_DATA->capability_count = 0;
 	PRIVATE_DATA->operations = 0;
 	PRIVATE_DATA->state.count = 0;
+	PRIVATE_DATA->state_failures = 0;
 	alpaca_result result = system_alpaca_check(device, alpaca_get_int(PRIVATE_DATA->channel, "interfaceversion", NULL, 0, ALPACA_WAIT_ESTABLISH, &version));
 	if (result == ALPACA_OK) {
 		PRIVATE_DATA->interface_version = version;
@@ -656,17 +785,26 @@ static bool system_alpaca_open(indigo_device *device) {
 
 // Decision D5: an INDIGO disconnect disconnects the Alpaca device. Nothing is sent when the transport is known to be lost
 // or when the device reported that it is not connected any more. One failed request is no reason not to try.
-static void system_alpaca_close(indigo_device *device) {
+// A Platform 7 disconnect is asynchronous, its completion is Connecting false (REFACTOR.md 2.4, 2.7). With wait the device is asked
+// once right away; if it is still disconnecting, true is returned and the channel stays open for proxy_disconnection_finalizer().
+static bool system_alpaca_close(indigo_device *device, bool wait) {
+	bool disconnecting = false;
 	if (!PRIVATE_DATA->offline && !PRIVATE_DATA->not_connected) {
 		alpaca_result result = PRIVATE_DATA->platform7 ? alpaca_put_disconnect(PRIVATE_DATA->channel) : alpaca_put_connected(PRIVATE_DATA->channel, false);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' close (%s) -> %s", device->name, PRIVATE_DATA->platform7 ? "disconnect" : "Connected=False", alpaca_result_text(result));
+		if (wait && PRIVATE_DATA->platform7 && result == ALPACA_OK && alpaca_get_bool(PRIVATE_DATA->channel, "connecting", NULL, 0, ALPACA_WAIT_ESTABLISH, &disconnecting) != ALPACA_OK) {
+			disconnecting = false;
+		}
 	}
-	alpaca_channel_close(PRIVATE_DATA->channel);
+	if (!disconnecting) {
+		alpaca_channel_close(PRIVATE_DATA->channel);
+	}
 	alpaca_channel_free(PRIVATE_DATA->transfer);
 	PRIVATE_DATA->transfer = NULL;
 	PRIVATE_DATA->capability_count = 0;
 	PRIVATE_DATA->operations = 0;
 	PRIVATE_DATA->state.count = 0;
+	return disconnecting;
 }
 
 // Detach the secondary device from the bus. It is returned and has to be released with proxy_free_secondary() once no handler of it can be pending.
@@ -674,11 +812,10 @@ static indigo_device *proxy_detach_secondary(indigo_device *device) {
 	indigo_device *secondary = PRIVATE_DATA->secondary;
 	if (secondary != NULL) {
 		// on_disconnect of the secondary class runs while the properties of the device are still defined
-		proxy_close_session(secondary);
+		proxy_close_session(secondary, false);
 		indigo_detach_device(secondary);
 		PRIVATE_DATA->secondary = NULL;
 		PRIVATE_DATA->secondary_class = NULL;
-		PRIVATE_DATA->secondary_session = false;
 		indigo_safe_free(PRIVATE_DATA->secondary_data);
 		PRIVATE_DATA->secondary_data = NULL;
 	}
@@ -694,19 +831,42 @@ static void proxy_free_secondary(indigo_device *secondary) {
 
 // End the session of one logical device: call on_disconnect if on_connect succeeded and give up the reference to the open Alpaca device.
 // The primary device holds the first reference and the secondary one the second, because it exists only while the primary one is connected.
-static void proxy_close_session(indigo_device *device) {
+// The count is kept under the lock of the device, because SHUTDOWN reads it on another thread. Returns the result of system_alpaca_close():
+// true if the Alpaca device is still disconnecting (only with wait).
+static bool proxy_close_session(indigo_device *device, bool wait) {
 	bool is_secondary = device == PRIVATE_DATA->secondary;
 	const alpaca_class *device_class = is_secondary ? PRIVATE_DATA->secondary_class : PRIVATE_DATA->device_class;
 	bool *session = is_secondary ? &PRIVATE_DATA->secondary_session : &PRIVATE_DATA->session;
-	if (*session) {
-		*session = false;
-		if (device_class->on_disconnect != NULL) {
-			device_class->on_disconnect(device);
-		}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	bool open = *session;
+	*session = false;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	if (open && device_class->on_disconnect != NULL) {
+		device_class->on_disconnect(device);
 	}
-	if (PRIVATE_DATA->count >= (is_secondary ? 2 : 1) && --PRIVATE_DATA->count == 0) {
-		system_alpaca_close(device);
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	bool last = PRIVATE_DATA->count >= (is_secondary ? 2 : 1) && --PRIVATE_DATA->count == 0;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	return last && system_alpaca_close(device, wait);
+}
+
+// Number of logical devices that hold the connection to the Alpaca device open.
+static int proxy_count(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	int count = PRIVATE_DATA->count;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	return count;
+}
+
+// CONNECTION is changed by a bus thread when a request for it is accepted, so the handler queue sets it under the lock of the device.
+// With disconnected set the switch goes to DISCONNECTED as well.
+static void proxy_set_connection(indigo_device *device, indigo_property_state state, bool disconnected) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (disconnected) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 	}
+	CONNECTION_PROPERTY->state = state;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void proxy_connection_failed(indigo_device *device, const char *reason) {
@@ -717,9 +877,8 @@ static void proxy_connection_failed(indigo_device *device, const char *reason) {
 	if (!is_secondary) {
 		proxy_free_secondary(proxy_detach_secondary(device));
 	}
-	proxy_close_session(device);
-	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-	CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	proxy_close_session(device, false);
+	proxy_set_connection(device, INDIGO_ALERT_STATE, true);
 	indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s%s%s", device->name, *message ? ": " : "", message);
 	device_class->base_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -773,6 +932,7 @@ static void proxy_connection_complete(indigo_device *device) {
 			return;
 		}
 		PRIVATE_DATA->has_device_state = PRIVATE_DATA->platform7;
+		PRIVATE_DATA->state_failures = 0;
 	}
 	if (device_class->on_probe != NULL && !device_class->on_probe(device)) {
 		proxy_connection_failed(device, system_alpaca_error(device));
@@ -782,12 +942,14 @@ static void proxy_connection_complete(indigo_device *device) {
 		proxy_connection_failed(device, system_alpaca_error(device));
 		return;
 	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (is_secondary) {
 		PRIVATE_DATA->secondary_session = true;
 	} else {
 		PRIVATE_DATA->session = true;
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	device_class->base_change_property(device, NULL, CONNECTION_PROPERTY);
 	if (!is_secondary) {
@@ -813,19 +975,57 @@ static void proxy_connection_finalizer(indigo_device *device) {
 	}
 }
 
+// The device is disconnected: the message, CONNECTION and the base class. reason is NULL for a disconnect that completed.
+static void proxy_disconnected(indigo_device *device, const char *reason) {
+	const alpaca_class *device_class = device == PRIVATE_DATA->secondary ? PRIVATE_DATA->secondary_class : PRIVATE_DATA->device_class;
+	if (reason == NULL) {
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+	} else {
+		indigo_send_message(device, ALERT_PROPERTY, "Disconnected from %s: %s", device->name, reason);
+	}
+	proxy_set_connection(device, reason == NULL ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, false);
+	device_class->base_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+// Completion of a Platform 7 disconnect: "connecting" is polled until it is false, for no longer than the establish timeout. CONNECTION
+// stays BUSY meanwhile, so a request to connect again is not accepted before the device has finished disconnecting. A detach of the device
+// takes over (it empties the queue and closes the channel), and so does a lost transport: the answer is not waited for then.
+static void proxy_disconnection_finalizer(indigo_device *device) {
+	bool connecting = false;
+	if (DEVICE_CONTEXT == NULL || PRIVATE_DATA->detaching) {
+		return;
+	}
+	alpaca_result result = system_alpaca_check(device, alpaca_get_bool(PRIVATE_DATA->channel, "connecting", NULL, 0, ALPACA_WAIT_ESTABLISH, &connecting));
+	if (result == ALPACA_OK && connecting && indigo_monotonic_time() < PRIVATE_DATA->connect_deadline) {
+		indigo_execute_handler_in(device, CONNECTING_POLL_INTERVAL, proxy_disconnection_finalizer);
+		return;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' connecting -> %s, %s", device->name, alpaca_result_text(result), connecting ? "true" : "false");
+	alpaca_channel_close(PRIVATE_DATA->channel);
+	proxy_disconnected(device, result == ALPACA_OK && connecting ? "the device did not finish disconnecting in time" : NULL);
+}
+
 static void proxy_connection_handler(indigo_device *device) {
 	if (DEVICE_CONTEXT == NULL || PRIVATE_DATA->detaching) {
 		return;
 	}
 	bool is_secondary = device == PRIVATE_DATA->secondary;
-	const alpaca_class *device_class = is_secondary ? PRIVATE_DATA->secondary_class : PRIVATE_DATA->device_class;
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	// the switch was written by the bus thread that accepted the request
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	bool connect = CONNECTION_CONNECTED_ITEM->sw.value;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	if (connect) {
 		bool connection_result = true;
 		char reason[ALPACA_TEXT_SIZE] = { 0 };
-		if (PRIVATE_DATA->count++ == 0) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		bool first = PRIVATE_DATA->count++ == 0;
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		if (first) {
 			connection_result = system_alpaca_open(device);
 			if (!connection_result) {
+				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				PRIVATE_DATA->count--;
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 				copy_text(reason, sizeof(reason), alpaca_last_error_message(PRIVATE_DATA->channel));
 			} else if (PRIVATE_DATA->platform7) {
 				int establish = 0, standard = 0, longest = 0;
@@ -845,10 +1045,14 @@ static void proxy_connection_handler(indigo_device *device) {
 		if (!is_secondary) {
 			proxy_free_secondary(proxy_detach_secondary(device));
 		}
-		proxy_close_session(device);
-		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		device_class->base_change_property(device, NULL, CONNECTION_PROPERTY);
+		if (proxy_close_session(device, true)) {
+			int establish = 0, standard = 0, longest = 0;
+			get_timeouts(&establish, &standard, &longest);
+			PRIVATE_DATA->connect_deadline = indigo_monotonic_time() + establish / 1000.0;
+			indigo_execute_handler_in(device, CONNECTING_POLL_INTERVAL, proxy_disconnection_finalizer);
+			return;
+		}
+		proxy_disconnected(device, NULL);
 	}
 }
 
@@ -858,26 +1062,50 @@ static void proxy_connection_lost(indigo_device *device, const char *reason) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "'%s': %s", device->name, reason);
 	indigo_cancel_pending_handlers(device);
 	proxy_free_secondary(proxy_detach_secondary(device));
-	proxy_close_session(device);
-	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-	CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	proxy_close_session(device, false);
+	proxy_set_connection(device, INDIGO_ALERT_STATE, true);
 	indigo_send_message(device, ALERT_PROPERTY, "%s: %s", device->name, reason);
 	PRIVATE_DATA->device_class->base_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+// devicestate got an answer that is no snapshot (HTTP 500, a reply that can not be read, an error of the device). The tick goes on
+// without a snapshot, so the class reads the members it needs one by one and nothing it publishes freezes. A device whose devicestate
+// fails DEVICE_STATE_FAILURE_LIMIT ticks in a row is polled without it for the rest of the connection.
+static void proxy_device_state_failed(indigo_device *device, alpaca_result result) {
+	char reason[INDIGO_VALUE_SIZE];
+	system_alpaca_reason(device, result, reason, sizeof(reason));
+	PRIVATE_DATA->state.count = 0;
+	if (++PRIVATE_DATA->state_failures < DEVICE_STATE_FAILURE_LIMIT) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' devicestate -> %s%s%s, polling the members one by one in this tick", device->name, alpaca_result_text(result), *reason ? ": " : "", reason);
+		return;
+	}
+	PRIVATE_DATA->has_device_state = false;
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "'%s' devicestate failed %d times in a row (%s%s%s), it is not used any more", device->name, PRIVATE_DATA->state_failures, alpaca_result_text(result), *reason ? ": " : "", reason);
+	indigo_send_message(device, ALERT_PROPERTY, "%s: DeviceState can not be read (%s%s%s), the state is read member by member", device->name, alpaca_result_text(result), *reason ? ": " : "", reason);
+}
+
 // Poll tick of a connected primary device. Platform 7: one devicestate request, served to on_poll through system_alpaca_state_*().
 // Older devices: "connected" is read as the sign of life and the class reads what it needs with requests of its own.
+// on_poll is called on every tick the server answered, also when the answer was an error: only a request without an answer
+// (a transport error, counted by system_alpaca_check()) skips it, because every further request of the tick would wait for its timeout.
 static void proxy_poll_handler(indigo_device *device) {
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED || PRIVATE_DATA->detaching) {
+	// the session is tested, not CONNECTION: a bus thread changes CONNECTION when a disconnect is requested
+	if (!system_alpaca_is_active(device) || PRIVATE_DATA->detaching) {
 		return;
 	}
 	if (!PRIVATE_DATA->offline && !PRIVATE_DATA->not_connected) {
 		if (PRIVATE_DATA->has_device_state) {
 			result = system_alpaca_check(device, alpaca_get_device_state(PRIVATE_DATA->channel, &PRIVATE_DATA->state));
-			if (alpaca_is_unsupported(result)) {
+			if (result == ALPACA_OK) {
+				PRIVATE_DATA->state_failures = 0;
+			} else if (alpaca_is_unsupported(result)) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' has no devicestate, polling the members one by one", device->name);
 				PRIVATE_DATA->has_device_state = false;
+				PRIVATE_DATA->state.count = 0;
+			} else if (!alpaca_is_transport_error(result) && result != ALPACA_NOT_CONNECTED) {
+				proxy_device_state_failed(device, result);
+				result = ALPACA_OK;
 			}
 		}
 		if (!PRIVATE_DATA->has_device_state) {
@@ -885,6 +1113,9 @@ static void proxy_poll_handler(indigo_device *device) {
 			result = system_alpaca_get_bool(device, "connected", &connected);
 			if (result == ALPACA_OK && !connected) {
 				PRIVATE_DATA->not_connected = true;
+			} else if (!alpaca_is_transport_error(result)) {
+				// any answer of the server is a sign of life; what the device can still tell is up to its members
+				result = ALPACA_OK;
 			}
 		}
 	}
@@ -893,7 +1124,7 @@ static void proxy_poll_handler(indigo_device *device) {
 		if (PRIVATE_DATA->device_class->on_poll != NULL) {
 			PRIVATE_DATA->device_class->on_poll(device);
 		}
-		if (PRIVATE_DATA->secondary != NULL && PRIVATE_DATA->secondary_session && PRIVATE_DATA->secondary_class->on_poll != NULL) {
+		if (PRIVATE_DATA->secondary != NULL && system_alpaca_is_active(PRIVATE_DATA->secondary) && PRIVATE_DATA->secondary_class->on_poll != NULL) {
 			PRIVATE_DATA->secondary_class->on_poll(PRIVATE_DATA->secondary);
 		}
 		PRIVATE_DATA->polling = false;
@@ -941,7 +1172,18 @@ bool system_alpaca_change_property(indigo_device *device, indigo_property *prope
 	assert(device != NULL);
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		INDIGO_PROCESS_CONNECT(proxy_connection_handler);
+		// the steps of INDIGO_PROCESS_CONNECT under the lock of the device: the handler queue sets CONNECTION as well (a failed connect, a lost transport)
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		bool accepted = !indigo_ignore_connection_change(device, property);
+		if (accepted) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		if (accepted) {
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_execute_handler(device, proxy_connection_handler);
+		}
 		return true;
 	}
 	return false;
@@ -950,7 +1192,7 @@ bool system_alpaca_change_property(indigo_device *device, indigo_property *prope
 void system_alpaca_detach(indigo_device *device) {
 	// The core disconnects a primary device before it detaches it and cancels the pending handlers; a secondary device is detached by
 	// its primary one. What is left here is to end a session that is still open, on the thread that already has the device for itself.
-	proxy_close_session(device);
+	proxy_close_session(device, false);
 }
 
 bool system_alpaca_attach_secondary(indigo_device *device, const alpaca_class *secondary_class) {
@@ -968,7 +1210,6 @@ bool system_alpaca_attach_secondary(indigo_device *device, const alpaca_class *s
 	secondary->detach = secondary_class->detach;
 	PRIVATE_DATA->secondary_data = secondary_class->data_size > 0 ? indigo_safe_malloc(secondary_class->data_size) : NULL;
 	PRIVATE_DATA->secondary_class = secondary_class;
-	PRIVATE_DATA->secondary_session = false;
 	PRIVATE_DATA->secondary = secondary;
 	if (indigo_attach_device(secondary) != INDIGO_OK || secondary->last_result != INDIGO_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to attach '%s'", secondary->name);
@@ -986,6 +1227,29 @@ bool system_alpaca_attach_secondary(indigo_device *device, const alpaca_class *s
 static void bridge_discovery_handler(indigo_device *device, void *data);
 static void bridge_lists_handler(indigo_device *device);
 
+// Value of a number item of a setting of the bridge. A bus thread writes the settings under bridge_mutex when a client changes them.
+static double bridge_setting(indigo_item *item) {
+	pthread_mutex_lock(&bridge_mutex);
+	double value = item->number.value;
+	pthread_mutex_unlock(&bridge_mutex);
+	return value;
+}
+
+// Driver queue: end a request for a property of the bridge. The state is set under bridge_mutex, because a bus thread accepts the
+// next request and enumerates the properties under it; the property is published without it. reset is a switch item to clear, or NULL.
+static void bridge_finish(indigo_device *device, indigo_property *property, indigo_item *reset) {
+	pthread_mutex_lock(&bridge_mutex);
+	if (reset != NULL) {
+		reset->sw.value = false;
+	}
+	property->state = INDIGO_OK_STATE;
+	pthread_mutex_unlock(&bridge_mutex);
+	indigo_update_property(device, property, NULL);
+}
+
+// CONFIG of the bridge is written by the framework (the bus thread that starts a restore, the background handler of the restore that
+// ends it) without any lock this driver could take as well, so the read can not be ordered against those writes from here. A stale
+// value only defers the work by one CONFIG_WAIT_INTERVAL or lets one list update through before the restore has set BUSY.
 static bool bridge_config_busy(void) {
 	indigo_device *device = bridge;
 	return CONFIG_PROPERTY->state == INDIGO_BUSY_STATE;
@@ -1071,6 +1335,7 @@ static device_record *record_add(const char *key) {
 
 static void proxy_free(indigo_device *device) {
 	alpaca_private_data *private_data = PRIVATE_DATA;
+	pthread_mutex_destroy(&private_data->mutex);
 	alpaca_channel_free(private_data->channel);
 	alpaca_channel_free(private_data->transfer);
 	indigo_safe_free(private_data->class_data);
@@ -1131,6 +1396,11 @@ static bool proxy_attach(device_record *record, const alpaca_class *device_class
 	}
 	alpaca_private_data *private_data = indigo_safe_malloc(sizeof(alpaca_private_data));
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), (void *)&proxy_template);
+	pthread_mutexattr_t attributes;
+	pthread_mutexattr_init(&attributes);
+	pthread_mutexattr_settype(&attributes, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&private_data->mutex, &attributes);
+	pthread_mutexattr_destroy(&attributes);
 	private_data->server = record->server->transport;
 	private_data->device_class = device_class;
 	private_data->device_number = record->number;
@@ -1176,22 +1446,31 @@ static bool proxy_attach(device_record *record, const alpaca_class *device_class
 }
 
 // Disconnect (decision D5) and detach the proxy device of a record. The handler queue of the device is emptied first and the lock of
-// the device is taken, so no handler of the device runs while its session is closed; handlers that are queued afterwards see the
-// detaching flag or a device that is not connected and do nothing.
+// the device of the framework is taken, so no handler of the device runs while its session is closed; handlers that are queued
+// afterwards see the detaching flag or a session that is closed and do nothing.
+// Nothing may empty the queue (indigo_cancel_pending_handler(s)) while that lock is held: the worker of the queue marks a task as running
+// before it takes the lock, and the cancel waits for a running task that matches, which waits for the lock. So the queue is emptied
+// before the lock is taken, every handler and finalizer that runs after the detaching flag is set returns without queuing anything,
+// and on_disconnect of a class does not cancel anything while the device is being detached.
 static void proxy_detach(device_record *record) {
 	indigo_device *device = record->device;
 	indigo_device *secondary = NULL;
-	PRIVATE_DATA->detaching = true;
 	indigo_cancel_pending_handlers(device);
-	if (PRIVATE_DATA->secondary != NULL) {
-		indigo_cancel_pending_handlers(PRIVATE_DATA->secondary);
+	// The handlers of the device run with this lock held, so the flag is written while none of them runs and is read by them without
+	// a race. From here on no handler attaches or detaches the secondary device, so its pointer stays valid without the lock.
+	indigo_lock_master_device(device);
+	PRIVATE_DATA->detaching = true;
+	indigo_device *guider = PRIVATE_DATA->secondary;
+	indigo_unlock_master_device(device);
+	// the queue is not emptied with the lock held: it waits for a handler that is running, and that one may wait for the lock
+	if (guider != NULL) {
+		indigo_cancel_pending_handlers(guider);
 	}
 	indigo_lock_master_device(device);
-	if (PRIVATE_DATA->count > 0 || PRIVATE_DATA->session) {
+	if (proxy_count(device) > 0 || system_alpaca_is_active(device)) {
 		secondary = proxy_detach_secondary(device);
-		proxy_close_session(device);
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		proxy_close_session(device, false);
+		proxy_set_connection(device, INDIGO_OK_STATE, true);
 		PRIVATE_DATA->device_class->base_change_property(device, NULL, CONNECTION_PROPERTY);
 	}
 	indigo_unlock_master_device(device);
@@ -1221,7 +1500,7 @@ static void proxy_rebind(device_record *record) {
 }
 
 static void server_missed(server_record *server, const char *error) {
-	int retention = (int)X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM->number.value;
+	int retention = (int)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM);
 	copy_text(server->error, sizeof(server->error), error);
 	server->missed++;
 	if (server->missed >= retention) {
@@ -1465,7 +1744,7 @@ static void bridge_update_lists(void) {
 
 // Bring the proxy devices in line with the lists: attach what is selected and present, detach what is not, forget what is neither.
 static void bridge_reconcile(void) {
-	int retention = (int)X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM->number.value;
+	int retention = (int)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM);
 	bool stopping = is_shutting_down();
 	for (int i = 0; i < MAX_RECORDS; i++) {
 		device_record *record = records + i;
@@ -1523,9 +1802,9 @@ static bool discovery_callback(const char *responder, int responder_port, const 
 // Send the discovery request: to the targets of X_ALPACA_DISCOVERY_TARGETS if there are any, otherwise as a broadcast on every
 // interface and on the loopback network, and collect the endpoints (address of the responder and AlpacaPort) that answered.
 static void bridge_discover(void) {
-	int port = (int)X_ALPACA_DISCOVERY_SETTINGS_PORT_ITEM->number.value;
-	int polls = (int)X_ALPACA_DISCOVERY_SETTINGS_POLLS_ITEM->number.value;
-	long timeout = (long)X_ALPACA_DISCOVERY_SETTINGS_TIMEOUT_ITEM->number.value * 1000;
+	int port = (int)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_PORT_ITEM);
+	int polls = (int)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_POLLS_ITEM);
+	long timeout = (long)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_TIMEOUT_ITEM) * 1000;
 	char targets[INDIGO_VALUE_SIZE];
 	char host[ALPACA_HOST_SIZE];
 	int target_count = 0;
@@ -1594,9 +1873,12 @@ static void bridge_discovery_handler(indigo_device *device, void *data) {
 		indigo_queue_add_with_data(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, CONFIG_WAIT_INTERVAL, bridge_discovery_handler, data, &driver_queue_mutex);
 		return;
 	}
-	bridge_cycle(X_ALPACA_DISCOVERY_ENABLED_ITEM->sw.value);
+	pthread_mutex_lock(&bridge_mutex);
+	bool enabled = X_ALPACA_DISCOVERY_ENABLED_ITEM->sw.value;
+	pthread_mutex_unlock(&bridge_mutex);
+	bridge_cycle(enabled);
 	if (!is_shutting_down() && generation == current_discovery_generation()) {
-		indigo_queue_add_with_data(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, X_ALPACA_DISCOVERY_SETTINGS_INTERVAL_ITEM->number.value, bridge_discovery_handler, data, &driver_queue_mutex);
+		indigo_queue_add_with_data(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_INTERVAL_ITEM), bridge_discovery_handler, data, &driver_queue_mutex);
 	}
 }
 
@@ -1617,9 +1899,7 @@ static void bridge_x_alpaca_discover_handler(indigo_device *device) {
 		return;
 	}
 	bridge_cycle(true);
-	X_ALPACA_DISCOVER_ITEM->sw.value = false;
-	X_ALPACA_DISCOVER_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_ALPACA_DISCOVER_PROPERTY, NULL);
+	bridge_finish(device, X_ALPACA_DISCOVER_PROPERTY, X_ALPACA_DISCOVER_ITEM);
 }
 
 // Apply X_ALPACA_SERVERS: servers that are new in the list are added and asked for their devices at once,
@@ -1664,8 +1944,7 @@ static void bridge_x_alpaca_servers_handler(indigo_device *device) {
 		}
 	}
 	bridge_reconcile();
-	X_ALPACA_SERVERS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_ALPACA_SERVERS_PROPERTY, NULL);
+	bridge_finish(device, X_ALPACA_SERVERS_PROPERTY, NULL);
 }
 
 // Apply the selection requests collected by bridge_change_property(). A device that is selected before any server listed it
@@ -1699,9 +1978,9 @@ static void bridge_x_alpaca_timeouts_handler(indigo_device *device) {
 	if (is_shutting_down()) {
 		return;
 	}
-	int establish = (int)round(X_ALPACA_TIMEOUTS_ESTABLISH_ITEM->number.value * 1000);
-	int standard = (int)round(X_ALPACA_TIMEOUTS_STANDARD_ITEM->number.value * 1000);
-	int longest = (int)round(X_ALPACA_TIMEOUTS_LONG_ITEM->number.value * 1000);
+	int establish = (int)round(bridge_setting(X_ALPACA_TIMEOUTS_ESTABLISH_ITEM) * 1000);
+	int standard = (int)round(bridge_setting(X_ALPACA_TIMEOUTS_STANDARD_ITEM) * 1000);
+	int longest = (int)round(bridge_setting(X_ALPACA_TIMEOUTS_LONG_ITEM) * 1000);
 	pthread_mutex_lock(&settings_mutex);
 	establish_timeout = establish;
 	standard_timeout = standard;
@@ -1712,8 +1991,7 @@ static void bridge_x_alpaca_timeouts_handler(indigo_device *device) {
 			alpaca_server_set_timeouts(servers[i].transport, establish, standard, longest);
 		}
 	}
-	X_ALPACA_TIMEOUTS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_ALPACA_TIMEOUTS_PROPERTY, NULL);
+	bridge_finish(device, X_ALPACA_TIMEOUTS_PROPERTY, NULL);
 }
 
 static void bridge_lists_handler(indigo_device *device) {
@@ -1878,18 +2156,19 @@ static indigo_result bridge_attach(indigo_device *device) {
 }
 
 static indigo_result bridge_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	// the driver queue edits the items of the lists and the states of the properties under bridge_mutex
+	pthread_mutex_lock(&bridge_mutex);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DISCOVERY_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DISCOVERY_SETTINGS_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DISCOVERY_TARGETS_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DISCOVER_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_SERVERS_PROPERTY);
-	pthread_mutex_lock(&bridge_mutex);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_SERVER_STATUS_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DEVICES_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DEVICE_STATUS_PROPERTY);
-	pthread_mutex_unlock(&bridge_mutex);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_TIMEOUTS_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_POLLING_PROPERTY);
+	pthread_mutex_unlock(&bridge_mutex);
 	return indigo_aux_enumerate_properties(device, client, property);
 }
 
@@ -2073,11 +2352,19 @@ static indigo_device bridge_template = INDIGO_DEVICE_INITIALIZER(BRIDGE_DEVICE_N
 #pragma mark - Hot-plug code
 
 // A proxy device that is connected, or still connecting, keeps the driver loaded, as a connected device of a hot-plug driver does.
+// It runs on the thread of SHUTDOWN with the driver queue locked, so devices[] does not change; CONNECTION and the count of the
+// logical devices that hold the Alpaca device open are read under the lock of the device, which the bus thread and the handler queue
+// write them under.
 static indigo_result verify_devices_disconnected(void) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device != NULL && (!IS_DISCONNECTED || PRIVATE_DATA->count > 0)) {
-			return INDIGO_BUSY;
+		if (device != NULL) {
+			pthread_mutex_lock(&PRIVATE_DATA->mutex);
+			bool busy = !IS_DISCONNECTED || PRIVATE_DATA->count > 0;
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			if (busy) {
+				return INDIGO_BUSY;
+			}
 		}
 	}
 	return INDIGO_OK;

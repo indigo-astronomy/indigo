@@ -972,20 +972,16 @@ static alpaca_http_result timed_connect(const char *host, int port, int timeout,
 	return result;
 }
 
-// A peer that never completes the handshake. On Linux a listener whose accept queue is full drops further SYNs, which is hermetic.
-// macOS completes or resets such connections, so there the case needs ALPACA_HTTP_TEST_BLACKHOLE and is skipped without it.
-static void connect_timeout(void) {
-	const char *blackhole = getenv("ALPACA_HTTP_TEST_BLACKHOLE");
-	int fillers[32];
-	int filler_count = 0;
-	int port = 0;
-	bool hangs = false;
-	int listener = open_listener(AF_INET, 0, &port);
-	ASSERT_TRUE(listener >= 0);
-	while (!hangs && filler_count < ARRAY_SIZE(fillers)) {
+// Fill the accept queue of a loopback listener until a connection attempt hangs. Returns the listener (-1 on failure); fillers and
+// *hangs tell what was opened and whether an attempt hangs, i.e. whether this system drops SYNs to a full accept queue.
+static int fill_accept_queue(int *fillers, int max_fillers, int *filler_count, int *port, bool *hangs) {
+	int listener = open_listener(AF_INET, 0, port);
+	*filler_count = 0;
+	*hangs = false;
+	while (listener >= 0 && !*hangs && *filler_count < max_fillers) {
 		struct sockaddr_in address = { 0 };
 		address.sin_family = AF_INET;
-		address.sin_port = htons((uint16_t)port);
+		address.sin_port = htons((uint16_t)*port);
 		address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 		int fd = socket(AF_INET, SOCK_STREAM, 0);
 		if (fd < 0) {
@@ -994,9 +990,46 @@ static void connect_timeout(void) {
 		fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 		connect(fd, (struct sockaddr *)&address, sizeof(address));
 		struct pollfd descriptor = { fd, POLLOUT, 0 };
-		hangs = poll(&descriptor, 1, 200) == 0;
-		fillers[filler_count++] = fd;
+		*hangs = poll(&descriptor, 1, 200) == 0;
+		fillers[(*filler_count)++] = fd;
 	}
+	return listener;
+}
+
+static void close_accept_queue(int listener, int *fillers, int filler_count) {
+	for (int i = 0; i < filler_count; i++) {
+		close(fillers[i]);
+	}
+	if (listener >= 0) {
+		close(listener);
+	}
+}
+
+// The case needs a peer that never completes the handshake. On Linux a listener whose accept queue is full drops further SYNs, which
+// is hermetic. macOS completes or resets such connections, so there the case needs ALPACA_HTTP_TEST_BLACKHOLE (an address that drops
+// SYNs); without it the case is not registered and is reported as skipped, it never counts as passed.
+static bool connect_timeout_runnable(void) {
+	const char *blackhole = getenv("ALPACA_HTTP_TEST_BLACKHOLE");
+	int fillers[32];
+	int filler_count = 0;
+	int port = 0;
+	bool hangs = false;
+	if (blackhole != NULL && *blackhole) {
+		return true;
+	}
+	int listener = fill_accept_queue(fillers, ARRAY_SIZE(fillers), &filler_count, &port, &hangs);
+	close_accept_queue(listener, fillers, filler_count);
+	return hangs;
+}
+
+static void connect_timeout(void) {
+	const char *blackhole = getenv("ALPACA_HTTP_TEST_BLACKHOLE");
+	int fillers[32];
+	int filler_count = 0;
+	int port = 0;
+	bool hangs = false;
+	int listener = fill_accept_queue(fillers, ARRAY_SIZE(fillers), &filler_count, &port, &hangs);
+	ASSERT_TRUE(listener >= 0);
 	double elapsed = 0;
 	alpaca_http_result result = ALPACA_HTTP_CONNECT_TIMEOUT;
 	if (hangs) {
@@ -1006,13 +1039,11 @@ static void connect_timeout(void) {
 		result = timed_connect(blackhole, 32323, 300, &elapsed);
 		printf("    connect timeout against %s: %.3f s\n", blackhole, elapsed);
 	} else {
-		printf("    SKIPPED connect_timeout: this system does not drop connections to a full accept queue, set ALPACA_HTTP_TEST_BLACKHOLE to run it\n");
-		elapsed = 0.3;
+		// connect_timeout_runnable() said otherwise when the case was registered
+		printf("    connect_timeout can not run: no full accept queue that drops connections and no ALPACA_HTTP_TEST_BLACKHOLE\n");
+		result = ALPACA_HTTP_OK;
 	}
-	for (int i = 0; i < filler_count; i++) {
-		close(fillers[i]);
-	}
-	close(listener);
+	close_accept_queue(listener, fillers, filler_count);
 	ASSERT_EQ_INT(ALPACA_HTTP_CONNECT_TIMEOUT, result);
 	ASSERT_TRUE(elapsed >= 0.29 && elapsed < 1.5);
 }
@@ -1198,7 +1229,10 @@ static const char *replies_header_case[] = {
 	"HTTP/1.1 200 OK\nContent-Length: 5\nContent-Type: text/plain\n\nhello",
 	"HTTP/1.1 200 OK\r\nX-Folded: first\r\n second part\r\n\tthird part\r\nContent-Length : 5\r\nConnection: Upgrade, CLOSE\r\n\r\nhello",
 	"HTTP/1.0 200 OK\r\nConnection: Keep-Alive\r\nContent-Length: 5\r\n\r\nhello",
-	"HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\nContent-Length: 999\r\n\r\n5\r\nhello\r\n0\r\n\r\n"
+	"HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\nContent-Length: 999\r\n\r\n5\r\nhello\r\n0\r\n\r\n",
+	"HTTP/1.1 200 OK\r\nTransfer-Encoding: GZIP\r\nContent-Type: application/json\r\n\r\nhello",
+	"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nTransfer-Encoding: deflate\r\n\r\n5\r\nhello\r\n0\r\n\r\n",
+	"HTTP/1.1 200 OK\r\nTransfer-Encoding: , chunked ;ext=1\r\n\r\n5\r\nhello\r\n0\r\n\r\n"
 };
 
 HTTP_TEST(headers_are_case_insensitive, script_raw, replies_header_case, DEFAULT_MAX_BODY) {
@@ -1223,7 +1257,15 @@ HTTP_TEST(headers_are_case_insensitive, script_raw, replies_header_case, DEFAULT
 	ASSERT_STREQ("hello", f->response.body.data);
 	ASSERT_EQ_INT(5, (int)alpaca_http_connection_connects(f->connection));
 	alpaca_http_connection_close(f->connection);
-	ASSERT_EQ_INT(ALPACA_HTTP_OK, alpaca_http_get(f->connection, "/chunked-wins", NULL, &options, &f->response));
+	// a transfer coding other than chunked is never asked for and never decoded: the coded body is not handed over as if it were plain
+	ASSERT_EQ_INT(ALPACA_HTTP_MALFORMED, alpaca_http_get(f->connection, "/gzip-chunked", NULL, &options, &f->response));
+	ASSERT_FALSE(alpaca_http_connection_is_open(f->connection));
+	ASSERT_EQ_INT(ALPACA_HTTP_MALFORMED, alpaca_http_get(f->connection, "/gzip-to-eof", NULL, &options, &f->response));
+	ASSERT_FALSE(alpaca_http_connection_is_open(f->connection));
+	ASSERT_EQ_INT(ALPACA_HTTP_MALFORMED, alpaca_http_get(f->connection, "/two-codings", NULL, &options, &f->response));
+	ASSERT_FALSE(alpaca_http_connection_is_open(f->connection));
+	// an empty element of the list and a parameter of chunked are no other coding
+	ASSERT_EQ_INT(ALPACA_HTTP_OK, alpaca_http_get(f->connection, "/chunked-parameter", NULL, &options, &f->response));
 	ASSERT_STREQ("hello", f->response.body.data);
 }
 
@@ -1605,7 +1647,7 @@ static void result_texts(void) {
 }
 
 int main(void) {
-	const indigo_test_case tests[] = {
+	const indigo_test_case all_tests[] = {
 		{ "get_with_content_length", get_with_content_length },
 		{ "get_without_query_and_options", get_without_query_and_options },
 		{ "put_with_form_body", put_with_form_body },
@@ -1651,10 +1693,20 @@ int main(void) {
 		{ "double_formatting_ignores_locale", double_formatting_ignores_locale },
 		{ "result_texts", result_texts }
 	};
+	indigo_test_case tests[ARRAY_SIZE(all_tests)];
+	int count = 0;
 	signal(SIGPIPE, SIG_IGN);
 	const char *trace = getenv("ALPACA_HTTP_TEST_TRACE");
 	if (trace != NULL && *trace == '1') {
 		indigo_set_log_level(INDIGO_LOG_TRACE);
 	}
-	return indigo_run_tests("system_alpaca HTTP client tests", tests, ARRAY_SIZE(tests));
+	bool connect_timeout_runs = connect_timeout_runnable();
+	for (int i = 0; i < ARRAY_SIZE(all_tests); i++) {
+		if (all_tests[i].function == connect_timeout && !connect_timeout_runs) {
+			printf("SKIPPED connect_timeout: this system does not drop connections to a full accept queue, set ALPACA_HTTP_TEST_BLACKHOLE to run it\n");
+		} else {
+			tests[count++] = all_tests[i];
+		}
+	}
+	return indigo_run_tests("system_alpaca HTTP client tests", tests, count);
 }

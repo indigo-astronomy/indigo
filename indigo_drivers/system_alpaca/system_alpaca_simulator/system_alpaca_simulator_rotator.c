@@ -26,7 +26,8 @@
 // MoveMechanical and Sync exist from IRotatorV3, so InterfaceVersion=2 hides them.
 // Position = MechanicalPosition + sync offset, both in 0 <= angle < 360.
 // Simulator assumptions: the rotator turns at DegreesPerSecond and takes the
-// shorter way round for absolute moves.
+// shorter way round for absolute moves; an absolute angle outside
+// 0 <= angle < 360 and a relative move of a full turn or more are InvalidValue.
 // Reverse is stored and reported, it changes neither the reported angles nor
 // the moves: this is what the ASCOM OmniSim rotator does, and the standard
 // defines the effect of Reverse on the hardware only. Reverse is
@@ -34,6 +35,19 @@
 // IRotatorV3 requires CanReverse to be true).
 // StepSizeAvailable=false: StepSize is NotImplemented (a rotator that does not
 // know its step size, IRotator.StepSize).
+// TargetPosition is "the destination position angle for Move and MoveAbsolute",
+// "retained until a subsequent call to Move or MoveAbsolute" (IRotatorV3). The
+// standard does not say what MoveMechanical and Sync do to it:
+// - TargetTracksMechanical=true (default): TargetPosition is the mechanical
+//   target plus the sync offset, so MoveMechanical and Sync change it, as in a
+//   device that keeps one target for its hardware.
+// - TargetTracksMechanical=false: the literal reading, only Move and
+//   MoveAbsolute change it.
+// - TargetIsMechanical=true: TargetPosition is the mechanical target, without
+//   the sync offset, and Halt sets it to the mechanical position where the
+//   rotator stopped. That is what the ASCOM OmniSim 0.5.0 rotator reports
+//   (measured 2026-10-03: after Sync to 100 at mechanical 40 a MoveAbsolute 130
+//   reads TargetPosition 70); the standard wants the sky angle.
 
 #include <math.h>
 
@@ -49,6 +63,8 @@ typedef struct {
 	double target_position;
 	double degrees_per_second;
 	bool step_size_available;
+	bool target_tracks_mechanical;
+	bool target_is_mechanical;
 } rotator_state;
 
 static double rotator_wrap(double angle) {
@@ -62,6 +78,7 @@ static void rotator_reset(alpaca_device *device) {
 	state->step_size = 0.01;
 	state->degrees_per_second = 10;
 	state->step_size_available = true;
+	state->target_tracks_mechanical = true;
 }
 
 static void rotator_update(alpaca_device *device) {
@@ -119,15 +136,20 @@ static void rotator_put_halt(alpaca_device *device, alpaca_request *request) {
 	rotator_state *state = device->state;
 	alpaca_motion_stop(&state->mechanical);
 	state->is_moving = false;
+	if (state->target_is_mechanical) {
+		state->target_position = rotator_wrap(state->mechanical.position);
+	}
 	alpaca_event("STATE", "rotator/%d halt mechanical=%.3f", device->number, rotator_wrap(state->mechanical.position));
 	alpaca_reply_void(request);
 }
 
 // Starts a move of delta degrees from the current mechanical position.
-static void rotator_start(alpaca_device *device, alpaca_request *request, double delta) {
+static void rotator_start(alpaca_device *device, alpaca_request *request, double delta, bool sets_target) {
 	rotator_state *state = device->state;
 	double origin = alpaca_motion_update(&state->mechanical);
-	state->target_position = rotator_wrap(origin + delta + state->sync_offset);
+	if (sets_target || state->target_tracks_mechanical) {
+		state->target_position = rotator_wrap(origin + delta + (state->target_is_mechanical ? 0 : state->sync_offset));
+	}
 	alpaca_motion_start(&state->mechanical, origin + delta, state->degrees_per_second);
 	state->is_moving = state->mechanical.moving;
 	alpaca_event("MOVE", "rotator/%d from=%.3f by=%.3f duration=%.3f", device->number, rotator_wrap(origin), delta, state->mechanical.duration);
@@ -159,14 +181,14 @@ static void rotator_put_move(alpaca_device *device, alpaca_request *request) {
 		alpaca_reply_error(request, ALPACA_ERROR_INVALID_VALUE, "Relative move of %g is out of range -360 < angle < 360", position);
 		return;
 	}
-	rotator_start(device, request, position);
+	rotator_start(device, request, position, true);
 }
 
 static void rotator_put_moveabsolute(alpaca_device *device, alpaca_request *request) {
 	rotator_state *state = device->state;
 	double position = 0;
 	if (rotator_angle(request, &position)) {
-		rotator_start(device, request, rotator_shortest(position - state->sync_offset - state->mechanical.position));
+		rotator_start(device, request, rotator_shortest(position - state->sync_offset - state->mechanical.position), true);
 	}
 }
 
@@ -174,7 +196,7 @@ static void rotator_put_movemechanical(alpaca_device *device, alpaca_request *re
 	rotator_state *state = device->state;
 	double position = 0;
 	if (rotator_angle(request, &position)) {
-		rotator_start(device, request, rotator_shortest(position - state->mechanical.position));
+		rotator_start(device, request, rotator_shortest(position - state->mechanical.position), false);
 	}
 }
 
@@ -185,7 +207,9 @@ static void rotator_put_sync(alpaca_device *device, alpaca_request *request) {
 		return;
 	}
 	state->sync_offset = rotator_shortest(position - state->mechanical.position);
-	state->target_position = position;
+	if (state->target_tracks_mechanical) {
+		state->target_position = state->target_is_mechanical ? rotator_wrap(state->mechanical.position) : position;
+	}
 	alpaca_event("STATE", "rotator/%d sync position=%.3f offset=%.3f", device->number, position, state->sync_offset);
 	alpaca_reply_void(request);
 }
@@ -205,7 +229,9 @@ static const alpaca_member rotator_members[] = {
 	{ .name = "Sync", .since = 3, .put = rotator_put_sync },
 	{ .name = "SyncOffset", .kind = ALPACA_DOUBLE, .offset = offsetof(rotator_state, sync_offset), .flags = ALPACA_CONFIG },
 	{ .name = "DegreesPerSecond", .kind = ALPACA_DOUBLE, .offset = offsetof(rotator_state, degrees_per_second), .flags = ALPACA_CONFIG },
-	{ .name = "StepSizeAvailable", .kind = ALPACA_BOOL, .offset = offsetof(rotator_state, step_size_available), .flags = ALPACA_CONFIG }
+	{ .name = "StepSizeAvailable", .kind = ALPACA_BOOL, .offset = offsetof(rotator_state, step_size_available), .flags = ALPACA_CONFIG },
+	{ .name = "TargetTracksMechanical", .kind = ALPACA_BOOL, .offset = offsetof(rotator_state, target_tracks_mechanical), .flags = ALPACA_CONFIG },
+	{ .name = "TargetIsMechanical", .kind = ALPACA_BOOL, .offset = offsetof(rotator_state, target_is_mechanical), .flags = ALPACA_CONFIG }
 };
 
 const alpaca_type alpaca_rotator_type = {

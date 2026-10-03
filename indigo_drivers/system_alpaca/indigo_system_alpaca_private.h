@@ -37,6 +37,44 @@
  devices of one physical device in a generated driver. The record of the server (alpaca_server) is shared by all
  devices of that server.
 
+ THREADS
+
+ Three kinds of threads run the code of a proxy device:
+
+ - A bus thread calls enumerate_properties and change_property. It never sends a request to the device; it accepts the
+   request of the client and queues a handler.
+ - The handler queue of the device runs everything else, one task at a time: the connection, the hooks, the poll ticks,
+   the handlers and the finalizers. A secondary device uses the queue of its primary device.
+ - The driver queue attaches and detaches the devices. When it detaches a connected device it calls on_disconnect itself,
+   with the lock of the device of the framework held, so no handler of the device runs at the same time.
+
+ A bus thread and the handler queue meet in the properties a client can change: the bus thread writes the requested values
+ and the BUSY state, the handler queue writes the values and the state of the device. Both do it under the lock of the
+ device, system_alpaca_lock(), and the handler queue follows two rules:
+
+ - A property that is BUSY because a request for it was accepted belongs to that request. Whoever else wants to write it
+   (a poll tick, the finalizer of another operation, the handler of another property) tests the state and writes the
+   property in one step under the lock, and leaves a BUSY property alone. Asking the device comes first, without the lock:
+
+        alpaca_result result = system_alpaca_state_int(device, "Position", &position);
+        system_alpaca_lock(device);
+        bool publish = result == ALPACA_OK && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE;
+        if (publish) {
+          FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+        }
+        system_alpaca_unlock(device);
+        if (publish) {
+          indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+        }
+
+ - The state of such a property is never assigned directly: system_alpaca_finish(), system_alpaca_finish_with(),
+   system_alpaca_update() and system_alpaca_set_state() set it under the lock. The handler of a request may read and
+   write the items of its own BUSY property without the lock, nobody else touches them.
+
+ The lock is never held across a request to the device or a call of the bus. Class data that change_property reads
+ (a "parked" flag, a count of requests that wait) is kept under the same lock. CONNECTION is changed by a bus thread, too,
+ so the handler queue does not read IS_CONNECTED; it asks system_alpaca_is_active().
+
  HOW A CLASS MODULE IS WRITTEN
 
  1. Class data. Declare a struct with the property pointers and the state of the class and name its size in the
@@ -59,51 +97,82 @@
           return INDIGO_FAILED;
         }
 
- 3. enumerate_properties and change_property (bus thread: never send a request from here, only queue a handler).
+ 3. enumerate_properties and change_property (bus thread: never send a request from here).
+    enumerate_properties defines the X_ properties of the class while system_alpaca_is_active(device). change_property
+    passes CONNECTION to the core and every property of the class to system_alpaca_accept(), which does the steps of
+    INDIGO_COPY_VALUES_PROCESS_CHANGE under the lock of the device and queues the handler:
+
+        static const char *focuser_motion_refusal(indigo_device *device) {      // called with the lock held
+          return FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE ? "Another motion operation is pending" : NULL;
+        }
 
         static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
           if (system_alpaca_change_property(device, property)) {     // CONNECTION
             return INDIGO_OK;
           }
           if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-            INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
+            system_alpaca_accept(device, FOCUSER_POSITION_PROPERTY, property, ALPACA_ACCEPT_TARGETS, focuser_motion_refusal, focuser_position_handler);
+            return INDIGO_OK;
+          }
+          if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+            system_alpaca_accept(device, FOCUSER_ABORT_MOTION_PROPERTY, property, ALPACA_ACCEPT_VALUES | ALPACA_ACCEPT_URGENT, NULL, focuser_abort_motion_handler);
             return INDIGO_OK;
           }
           return indigo_focuser_change_property(device, client, property);
         }
 
+    Use ALPACA_ACCEPT_TARGETS for a number property whose value is what the device measures. A request for a property that
+    is BUSY is dropped, like INDIGO_COPY_VALUES_PROCESS_CHANGE does; a condition that depends on other properties or on class
+    data is a refusal function. A property that has to be accepted while it is BUSY (a guiding pulse, a shutter that can
+    be closed while it opens) is either accepted with ALPACA_ACCEPT_ANYTIME or, if the handler has to know how many requests
+    wait, with the same steps written out under system_alpaca_lock(): count the request, copy its values, set BUSY, unlock,
+    publish, queue the handler (indigo_system_alpaca_guider.c, the shutter in indigo_system_alpaca_dome.c). Whoever ends
+    such a property then looks at the count and writes the property in one step under the lock.
+
  4. detach (driver queue; for a secondary device the handler queue of its primary device, or the driver queue with the
-    device lock held when the primary device is detached).
+    lock of the device of the framework held when the primary device is detached).
 
         static indigo_result focuser_detach(indigo_device *device) {
-          system_alpaca_detach(device);              // disconnects the device if it is still connected
+          system_alpaca_detach(device);              // ends a session that is still open
           ... indigo_release_property() for the X_ properties of the class
           INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
           return indigo_focuser_detach(device);
         }
 
- 5. Hooks. All of them run on the handler queue of the device, one at a time, so the code of one device needs no
-    locking. The only exception is on_disconnect when a connected device is detached: it then runs on the driver
-    queue, with the device lock held, so still no handler of the device runs at the same time.
+ 5. Hooks. All of them run on the handler queue of the device, one at a time, so the handlers, finalizers and hooks of
+    one device need no locking among each other; what they share with the bus thread is guarded as THREADS says. The only
+    exception to the queue is on_disconnect when a connected device is detached, see THREADS.
 
     on_probe       After the Alpaca device is connected and before anything is defined. Read the Can* flags and probe
                    the optional members with system_alpaca_probe_bool() / system_alpaca_probe_member(), read the static
                    values. Return false to fail the connection (e.g. after a transport error).
     on_connect     Set up the properties from what on_probe read: hidden flags, item counts, limits, initial values
-                   of the base class properties (they are defined by the base class right after the hook) and, as the
-                   last step, indigo_define_property() for the X_ properties of the class. Attach a guider with
-                   system_alpaca_attach_secondary() here. Return false to fail the connection; nothing may stay
-                   defined then.
+                   and states of the base class properties (they are defined by the base class right after the hook)
+                   and, as the last step, indigo_define_property() for the X_ properties of the class. Attach a guider
+                   with system_alpaca_attach_secondary() here. Return false to fail the connection; nothing may stay
+                   defined then. system_alpaca_is_active() is false until the hook has returned true.
     on_disconnect  Called exactly once for a connection whose on_connect returned true, before the Alpaca device is
                    disconnected: on a user disconnect, on detach and after the transport was lost. The core has
-                   cancelled the pending handlers and finalizers of the device by then. Stop what has to be stopped,
-                   call system_alpaca_operation_end() for the operations of the class, reset the properties that a
-                   cancelled handler left BUSY and indigo_delete_property() the X_ properties of the class.
+                   cancelled the pending handlers and finalizers of the device by then and system_alpaca_is_active()
+                   is false already. Stop what has to be stopped, call system_alpaca_operation_end() for the
+                   operations of the class, reset the properties that a cancelled handler left BUSY (under the lock:
+                   the properties are still defined, a request may be accepted meanwhile; its handler finds the
+                   session closed) and indigo_delete_property() the X_ properties of the class.
                    Requests still work unless the transport was lost; then they fail at once with
                    ALPACA_UNREACHABLE. (For a secondary device the pending handlers are cancelled right after.)
-    on_poll        Called on every poll tick while connected. Read the state with system_alpaca_state_*() and
-                   publish changed properties. Do not touch a property that is BUSY because of a running operation
-                   unless the finalizer of the operation relies on it.
+                   While PRIVATE_DATA->detaching is true the hook runs on the driver queue with the lock of the device
+                   of the framework held: it must not call indigo_cancel_pending_handler(s)() then, because a task the
+                   queue has taken already waits for that lock and the cancel would wait for the task. The core has
+                   emptied the queue before, and a handler or finalizer that runs while detaching is set returns at once.
+    on_poll        Called on every poll tick the server answered while the device is connected. Read the state with
+                   system_alpaca_state_*() and publish what changed, the way THREADS shows: ask first, then write
+                   under the lock what no request owns, then publish. Publish only what changed: a number or a
+                   light that is set to the value it has is not sent again, but indigo_set_switch() marks a
+                   one-of-many property as changed whenever it is called, so call it only when the selected item
+                   really changes (or assign the sw.value of the items), and set a text item only when its text
+                   differs. A value that can not be read (the device answers with an error) puts its property in
+                   ALERT once, with system_alpaca_report(), until it can be read again; a transport error is left
+                   to the core. While an operation runs its properties belong to its finalizer.
 
  6. Requests. Use system_alpaca_get_*() and system_alpaca_put() for the ordinary cases. For everything else call the
     transport layer directly with the channel of the device and pass the result through system_alpaca_check():
@@ -119,12 +188,15 @@
     Parameter names of a PUT are case sensitive: write them exactly as in the Alpaca specification ("Position").
     Mark every idempotent PUT with ALPACA_REPLAYABLE and leave every other one without it; after a failure for which
     alpaca_may_have_executed() is true, read the state of the device instead of sending the request again.
+    A method or a setter the device does not implement is recognised with system_alpaca_not_implemented(result,
+    <number of parameters>): NotImplemented always, HTTP 400 only if the request had no parameters. The class then calls
+    system_alpaca_set_unsupported() and takes the property or the item away until the next connection.
 
  7. Long operations use the handler + finalizer pattern, never a waiting loop:
 
         static void focuser_position_finalizer(indigo_device *device) {
           bool moving = false;
-          if (!IS_CONNECTED) {
+          if (!system_alpaca_is_active(device)) {
             return;
           }
           alpaca_result result = system_alpaca_get_bool(device, "ismoving", &moving);
@@ -136,26 +208,39 @@
         }
 
         static void focuser_position_handler(indigo_device *device) {
+          char reason[INDIGO_VALUE_SIZE];
+          bool moving = false;
+          if (!system_alpaca_is_active(device)) {
+            return;
+          }
           alpaca_param params[] = { ALPACA_INT_PARAM("Position", (int)FOCUSER_POSITION_ITEM->number.target) };
           alpaca_result result = system_alpaca_put(device, "move", params, 1, ALPACA_WAIT_LONG);
+          system_alpaca_reason(device, result, reason, sizeof(reason));      // before the next request replaces it
+          if (result != ALPACA_OK && alpaca_may_have_executed(result) && system_alpaca_get_bool(device, "ismoving", &moving) == ALPACA_OK && moving) {
+            result = ALPACA_OK;                              // the reply was lost, the device took the request
+          }
           if (result == ALPACA_OK) {
-            system_alpaca_operation_start(device, &FOCUSER_DATA->move, 600, focuser_position_finalizer);
+            system_alpaca_operation_start(device, &FOCUSER_DATA->move, 6 * system_alpaca_long_timeout(device), focuser_position_finalizer);
           } else {
-            system_alpaca_finish(device, FOCUSER_POSITION_PROPERTY, result, "Move");
+            system_alpaca_finish_with(device, FOCUSER_POSITION_PROPERTY, result, "Move", reason);
           }
         }
 
     Completion is decided by the completion member of the Alpaca specification (IsMoving, Slewing, ImageReady, ...),
     never by comparing positions. An error while reading it means that the operation failed. Every handler and
-    finalizer starts with "if (!IS_CONNECTED) return;" because it may have been queued just before a disconnect.
+    finalizer starts with "if (!system_alpaca_is_active(device)) return;" because it may have been queued just before a
+    disconnect. system_alpaca_finish() reports the reason of the last request of the channel; whenever another request
+    was made between the one that failed and the end of the property, take the reason with system_alpaca_reason() right
+    after the failing request and finish with system_alpaca_finish_with(). A handler that ends several properties at once
+    sets their states under the lock and publishes each with indigo_update_property() or system_alpaca_report().
 
  8. Secondary devices. A class with a name_suffix and without a device_type is the class of a secondary device: the
     guider of a camera or a telescope (system_alpaca_guider_class). The primary class attaches it from on_connect with
     system_alpaca_attach_secondary(); the core detaches it when the primary device disconnects. Both devices talk to
-    the same Alpaca device through the same channel and share alpaca_private_data, so system_alpaca_*() works the same
-    way for both. A secondary class gets the same callbacks and hooks; its connect and disconnect send nothing to the
-    Alpaca device, because the primary device holds the connection. Code that has to know which one it runs for
-    compares device with PRIVATE_DATA->secondary.
+    the same Alpaca device through the same channel and share alpaca_private_data and the lock of the device, so
+    system_alpaca_*() works the same way for both. A secondary class gets the same callbacks and hooks; its connect and
+    disconnect send nothing to the Alpaca device, because the primary device holds the connection. Code that has to know
+    which one it runs for compares device with PRIVATE_DATA->device, which never changes.
 
  9. Register the class: the descriptor is declared at the end of this header and listed in system_alpaca_classes[]
     in the core. Both lines exist for all classes of the first version, so a module only fills its own file.
@@ -165,22 +250,31 @@
 
  11. Tests. The cases of a class live in indigo_test/integration/system_alpaca/<class>_cases.h and run against
      system_alpaca_simulator; system_alpaca_test_common.h in the same directory describes how a case is written.
+     The whole suite has to stay free of ThreadSanitizer reports without suppressions.
 
  WHAT THE CORE DOES FOR EVERY CLASS
 
  - CONNECTION: connect, disconnect, the secondary device, the messages, the call of the base class at the end.
  - INFO: DEVICE_MODEL (Description of the device), the driver behind the Alpaca device, the interface version and the UniqueID.
  - Polling: one tick per device every X_ALPACA_POLLING.IDLE seconds, every X_ALPACA_POLLING.ACTIVE seconds while an
-   operation started with system_alpaca_operation_start() runs. A tick reads devicestate (Platform 7) or "connected".
+   operation started with system_alpaca_operation_start() runs. A tick reads devicestate (Platform 7) or "connected" and
+   calls on_poll if the server answered, whatever it answered. A devicestate that is answered with an error (HTTP 500,
+   a reply that can not be read, an error of the device) is no snapshot: system_alpaca_state_*() then reads the members
+   one by one in that tick, so nothing a class polls freezes, and after five such ticks in a row devicestate is not
+   used any more for the rest of the connection (a message says so). Only a tick whose request got no answer at all
+   skips on_poll; the transport-loss detection takes care of it.
  - Transport loss: two requests in a row that fail with a transport error, or one answer NotConnected, take the device
    to the disconnected state with CONNECTION in ALERT at the next tick; on_disconnect is called on the way. The user
    (or an agent) connects again. A class never has to detect this itself; it only reports the failed request.
- - A property that is changed without INDIGO_COPY_VALUES_PROCESS_CHANGE has to be answered all the same: the bus drops
-   an update that changes neither a value nor the state, unless property->do_update is set before indigo_update_property().
+ - A request that is answered without system_alpaca_accept(), i.e. without BUSY in between, has to be answered all the same:
+   the bus drops an update that changes neither a value nor the state, unless property->do_update is set before
+   indigo_update_property().
  */
 
 #ifndef system_alpaca_private_h
 #define system_alpaca_private_h
+
+#include <pthread.h>
 
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_timer.h>
@@ -201,7 +295,7 @@ extern "C" {
 
 /** Class data of the device the code runs for (the primary or the secondary one).
  */
-#define CLASS_DATA												(device == PRIVATE_DATA->secondary ? PRIVATE_DATA->secondary_data : PRIVATE_DATA->class_data)
+#define CLASS_DATA												(device == PRIVATE_DATA->device ? PRIVATE_DATA->class_data : PRIVATE_DATA->secondary_data)
 
 /** Largest number of cached capabilities of one device.
  */
@@ -240,6 +334,18 @@ typedef struct {
 	bool value;					///< value of a boolean capability, false if it is not supported
 } alpaca_capability;
 
+/** Options of system_alpaca_accept().
+ */
+#define ALPACA_ACCEPT_VALUES							0x00		///< copy the values of the request (INDIGO_COPY_VALUES_PROCESS_CHANGE)
+#define ALPACA_ACCEPT_TARGETS							0x01		///< copy the targets of the request (INDIGO_COPY_TARGETS_PROCESS_CHANGE)
+#define ALPACA_ACCEPT_ANYTIME							0x02		///< accept the request while the property is BUSY as well
+#define ALPACA_ACCEPT_URGENT							0x04		///< run the handler before the other handlers of the device (an abort)
+
+/** Condition under which system_alpaca_accept() refuses a request: returns the message of the refusal, NULL to accept it.
+ Called on the bus thread with the lock of the device held, so it may only read properties and class data.
+ */
+typedef const char *(*alpaca_refusal)(indigo_device *device);
+
 /** State of one long operation of a class, see system_alpaca_operation_start().
  */
 typedef struct {
@@ -266,13 +372,15 @@ typedef struct {
 	int interface_version;										///< InterfaceVersion, read when the device is attached and again on every connect
 	bool platform7;														///< the device has connect, disconnect, connecting and devicestate
 	// owned by the core
+	pthread_mutex_t mutex;										///< lock of the device, use system_alpaca_lock()
 	alpaca_channel *channel;									///< connection used for all ordinary requests, use system_alpaca_channel()
 	alpaca_channel *transfer;									///< connection for long transfers, use system_alpaca_transfer_channel()
-	int count;																///< logical devices (primary, secondary) that hold the connection to the Alpaca device open
-	bool session;															///< on_connect of the primary class succeeded and on_disconnect was not called yet
+	int count;																///< logical devices (primary, secondary) that hold the connection to the Alpaca device open; guarded by mutex
+	bool session;															///< on_connect of the primary class succeeded and on_disconnect was not called yet; guarded by mutex, use system_alpaca_is_active()
 	bool secondary_session;										///< the same for the secondary class
 	bool offline;															///< the transport is lost: requests fail at once until the next connect
-	bool detaching;														///< the device is being detached, no handler may start anything
+	bool detaching;														///< the device is being detached, no handler may start or queue anything; written with the lock of the device of the framework held, which every handler and finalizer runs with
+	int state_failures;												///< consecutive poll ticks whose devicestate got an answer that is no snapshot
 	int transport_errors;											///< consecutive requests that failed with a transport error
 	bool not_connected;												///< the device answered NotConnected
 	double connect_deadline;									///< end of the time a Platform 7 connect may take
@@ -310,6 +418,48 @@ extern void system_alpaca_detach(indigo_device *device);
  */
 extern bool system_alpaca_attach_secondary(indigo_device *device, const alpaca_class *secondary_class);
 
+#pragma mark - threads
+
+/** True while the session of the device (the primary or the secondary one) is open: from the end of a successful on_connect until
+ on_disconnect is called. Every handler and finalizer starts with "if (!system_alpaca_is_active(device)) return;", because it may
+ have been queued just before a disconnect, and enumerate_properties uses it to tell whether the X_ properties of the class are defined.
+ Unlike IS_CONNECTED it reads nothing a bus thread writes (INDIGO_PROCESS_CONNECT changes CONNECTION on the bus thread), and it may be
+ called from any thread.
+ */
+extern bool system_alpaca_is_active(indigo_device *device);
+
+/** Lock of the device, shared by the primary and the secondary device. It guards what a bus thread (change_property) and the handler
+ queue of the device both touch: the state and the requested values of the properties a client can change, and the class data a
+ bus callback reads or writes. It is recursive. It is never held across a request to the device or a call of the bus
+ (indigo_update_property(), indigo_define_property(), indigo_delete_property()...): set the properties under the lock and publish
+ them after it is released.
+ */
+extern void system_alpaca_lock(indigo_device *device);
+extern void system_alpaca_unlock(indigo_device *device);
+
+/** change_property (bus thread): the steps of INDIGO_COPY_VALUES_PROCESS_CHANGE / INDIGO_COPY_TARGETS_PROCESS_CHANGE with the BUSY
+ guard, the copy of the requested values and the BUSY state under the lock of the device, so that a poll tick that publishes the
+ state of the device under the same lock never replaces a request that was just accepted.
+ A request for a property that is BUSY is dropped unless ALPACA_ACCEPT_ANYTIME is given. Otherwise refusal (may be NULL) is asked:
+ if it returns a message the request is rejected with it (system_alpaca_reject(): the property goes to ALERT unless it is BUSY). An accepted request
+ is published as BUSY and handler (may be NULL) is queued on the handler queue of the device. Returns true if the request was accepted.
+ */
+extern bool system_alpaca_accept(indigo_device *device, indigo_property *property, indigo_property *request, int options, alpaca_refusal refusal, indigo_timer_callback handler);
+
+/** change_property (bus thread): refuse a request with a message, like indigo_reject_change(), but with the state written under the lock of
+ the device. A property that is BUSY because an earlier request waits for its handler keeps its state; the refusal is only told.
+ */
+extern void system_alpaca_reject(indigo_device *device, indigo_property *property, const char *message);
+
+/** Handler queue: set the state of a property a client can change, under the lock of the device, without publishing it.
+ */
+extern void system_alpaca_set_state(indigo_device *device, indigo_property *property, indigo_property_state state);
+
+/** Handler queue: system_alpaca_set_state() and indigo_update_property() with an optional message (format may be NULL).
+ It takes the place of INDIGO_UPDATE_PROPERTY_STATE.
+ */
+extern void system_alpaca_update(indigo_device *device, indigo_property *property, indigo_property_state state, const char *format, ...);
+
 #pragma mark - requests
 
 /** Channel for the ordinary requests to the Alpaca device, for direct calls of the transport layer. NULL while the transport is lost;
@@ -341,6 +491,24 @@ extern alpaca_result system_alpaca_put(indigo_device *device, const char *member
 /** Text of the failure of the last request on the ordinary channel: the ErrorMessage of the device or a description of the transport failure.
  */
 extern const char *system_alpaca_error(indigo_device *device);
+
+/** Timeout of the long requests of the server of the device in seconds (X_ALPACA_TIMEOUTS.LONG of the bridge device). A class derives
+ the time an operation may take from it.
+ */
+extern double system_alpaca_long_timeout(indigo_device *device);
+
+/** Copy the reason of the failure of the request that was just made, as system_alpaca_finish() reports it: the ErrorMessage of the
+ device or the description of the failure, empty for ALPACA_OK, ALPACA_FAILED and a transport error (the name of the result says it all).
+ Take it right after the request whenever another request (a read back of IsMoving, Slewing, a position...) follows before the
+ property is finished, because the channel only keeps the text of its last request; pass it to system_alpaca_finish_with().
+ */
+extern void system_alpaca_reason(indigo_device *device, alpaca_result result, char *reason, size_t size);
+
+/** The device does not implement the member: it answered NotImplemented (ALPACA_UNSUPPORTED), or HTTP 400 (ALPACA_REJECTED) to a
+ request without parameters. HTTP 400 to a request with parameters may as well mean that the server did not like a value, so it
+ is an ordinary failure then. Use it for the result of a method or a setter; alpaca_is_unsupported() is for probing a member with a GET.
+ */
+extern bool system_alpaca_not_implemented(alpaca_result result, int parameter_count);
 
 #pragma mark - state
 
@@ -402,10 +570,21 @@ extern void system_alpaca_operation_end(indigo_device *device, alpaca_operation 
  */
 extern indigo_property_state system_alpaca_property_state(alpaca_result result);
 
-/** Finish a request of a client: set the state of the property from the result and publish it, on failure with the message
- "<action> failed: <reason>" where the reason is the ErrorMessage of the device or the transport failure. action may be NULL.
+/** Finish a request of a client: set the state of the property from the result (under the lock of the device) and publish it, on
+ failure with the message "<action> failed: <result> (<reason>)" where the reason is the one of the last request on the ordinary
+ channel. action may be NULL. If another request was made since the one that failed, use system_alpaca_finish_with().
  */
 extern void system_alpaca_finish(indigo_device *device, indigo_property *property, alpaca_result result, const char *action);
+
+/** system_alpaca_finish() with the reason taken by system_alpaca_reason() right after the request that failed.
+ reason may be NULL, then it is taken from the last request like in system_alpaca_finish().
+ */
+extern void system_alpaca_finish_with(indigo_device *device, indigo_property *property, alpaca_result result, const char *action, const char *reason);
+
+/** Publish a property whose state the caller has set already (under the lock, together with its other properties), on failure with
+ the message of system_alpaca_finish_with(). reason may be NULL.
+ */
+extern void system_alpaca_report(indigo_device *device, indigo_property *property, alpaca_result result, const char *action, const char *reason);
 
 /** Poll interval in seconds: the idle one, or the one used while an operation runs (X_ALPACA_POLLING of the bridge device).
  */

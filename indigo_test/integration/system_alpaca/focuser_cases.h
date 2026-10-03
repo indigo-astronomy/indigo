@@ -20,16 +20,846 @@
 
 // Cases of the Focuser device class of the system_alpaca driver (indigo_system_alpaca_focuser.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them focuser_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated Focuser is absolute by default: Position = 50000 of MaxStep = 100000, MaxIncrement = 10000, 1000 steps per second of
+// device time, Temperature = 11.4, StepSize = 1.5, temperature compensation available and off (10 steps per degree).
+// Device time only moves with sa_advance(), so a move stays in progress until the case lets it end.
 
 #ifndef system_alpaca_focuser_cases_h
 #define system_alpaca_focuser_cases_h
 
+#include <indigo/indigo_focuser_driver.h>
+
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_FOCUSER_CASES
+#define FOCUSER_API "/api/v1/focuser/0/"
+#define FOCUSER_STATE "/simulator/v1/focuser/0/state"
+#define FOCUSER_ERROR "/simulator/v1/focuser/0/error"
+#define FOCUSER_STEP_SIZE "X_ALPACA_STEP_SIZE"
+
+static const char *focuser_default[] = { "--device", "focuser", NULL };
+static const char *focuser_legacy[] = { "--device", "focuser:interface=legacy", NULL };
+static const char *focuser_relative[] = { "--device", "focuser:Absolute=false", NULL };
+
+// Number of recorded requests for a member.
+static int focuser_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), FOCUSER_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The parameters of the last request for a member start with the given text (the transaction IDs follow).
+static bool focuser_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), FOCUSER_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL && !strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters));
+}
+
+// State of the simulated device, e.g. focuser_simulated("Position").
+static double focuser_simulated(const char *key) {
+	return atof(sa_status(0, FOCUSER_STATE, key));
+}
+
+static bool focuser_simulated_is(const char *key, const char *value) {
+	return !strcmp(sa_status(0, FOCUSER_STATE, key), value);
+}
+
+// Wait for the answer to a request made after the given revision: a state that is not BUSY. Returns it, -1 if there was none.
+static int focuser_answer(const char *property, unsigned revision) {
+	if (!SA_WAIT(sa_revision(sa_device, property) > revision && sa_state(sa_device, property) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static int focuser_set_number(const char *property, const char *item, double value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? focuser_answer(property, revision) : -1;
+}
+
+static int focuser_set_switch(const char *property, const char *item) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, true) == INDIGO_OK ? focuser_answer(property, revision) : -1;
+}
+
+// The driver has published a move: both motion properties are BUSY (a relative focuser has FOCUSER_STEPS only).
+static bool focuser_move_published(void) {
+	int position = sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	return sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE && (position == INDIGO_BUSY_STATE || position == -1);
+}
+
+// Start a move that is expected to stay in progress. The property is BUSY as soon as the request is accepted, before anything is sent,
+// so the start is over when the device has got Move and the driver has published the move: only then the clock of the device may be advanced.
+static bool focuser_start_move(const char *property, const char *item, double value) {
+	int moves = focuser_count("PUT", "move");
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK && SA_WAIT(focuser_count("PUT", "move") > moves && focuser_move_published(), SA_TIMEOUT);
+}
+
+// A move started after the given revision is over: its property left BUSY, and so did the other motion property. FOCUSER_POSITION,
+// which carries the measured position, is published as the last of the two.
+static bool focuser_move_ended(const char *property, unsigned revision) {
+	return (sa_state_after(sa_device, property, INDIGO_OK_STATE, revision) || sa_state_after(sa_device, property, INDIGO_ALERT_STATE, revision)) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_BUSY_STATE;
+}
+
+// A whole move: start it, let the device time pass and wait for the end. Returns the final state of the property, -1 on failure.
+static int focuser_move(const char *property, const char *item, double value, double seconds) {
+	unsigned revision = sa_revision(sa_device, property);
+	if (!focuser_start_move(property, item, value) || !sa_advance(0, seconds) || !SA_WAIT(focuser_move_ended(property, revision), SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static bool focuser_item_is(const char *property, const char *item, double min, double max) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	indigo_item *cached = sa_cache_item(sa_device, property, item);
+	bool result = cached != NULL && cached->number.min == min && cached->number.max == max;
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+// The device is polled at least the given number of times from now on, so what the driver could learn from a poll it has learnt.
+static bool focuser_wait_polls(const char *member, int count) {
+	int polls = focuser_count("GET", member);
+	return SA_WAIT(focuser_count("GET", member) >= polls + count, SA_TIMEOUT);
+}
+
+// A poll tick is held up in the device for the given time: wait until the device has got its request, so that everything the case
+// does next happens while the tick waits for the reply and the hook of the class has not run yet.
+static bool focuser_hold_poll(const char *member, int milliseconds) {
+	char path[128], extra[64];
+	snprintf(path, sizeof(path), FOCUSER_API "%s", member);
+	snprintf(extra, sizeof(extra), "Delay=%d", milliseconds);
+	if (!sa_fault(0, "GET", path, "stall-before", extra)) {
+		return false;
+	}
+	return SA_WAIT(!strcmp(sa_field(sa_last_request(0, "GET", path), "Fault"), "stall-before"), SA_TIMEOUT);
+}
+
+static bool focuser_begin(const char * const *arguments) {
+	return sa_begin(arguments) && sa_attach("Focuser Simulator") && sa_connect(sa_device);
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void focuser_properties(void) {
+	SA_CHECK(sa_begin(focuser_default) && sa_attach("Focuser Simulator"));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_FOCUSER) == INDIGO_INTERFACE_FOCUSER);
+	// nothing of the class is defined and nothing was asked before the device is connected
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEP_SIZE));
+	SA_CHECK(focuser_count("GET", "absolute") == 0 && focuser_count("GET", "position") == 0);
+	SA_CHECK(sa_connect(sa_device));
+	// an absolute focuser: the position within 0 ... MaxStep, the limits read-only
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(focuser_item_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 100000) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000);
+	SA_CHECK(sa_perm(sa_device, FOCUSER_LIMITS_PROPERTY_NAME) == INDIGO_RO_PERM && sa_number(sa_device, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME) == 0 && sa_number(sa_device, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME) == 100000);
+	// relative moves of at most MaxIncrement steps
+	SA_CHECK(sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE && focuser_item_is(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, 10000) && sa_number(sa_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == 0);
+	SA_CHECK(sa_item_count(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME) == 2 && sa_item_count(sa_device, FOCUSER_REVERSE_MOTION_PROPERTY_NAME) == 2 && sa_switch(sa_device, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME));
+	SA_CHECK(sa_item_count(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) == 1 && !sa_switch(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
+	// temperature, compensation mode and step size
+	SA_CHECK(sa_state(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_perm(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_RO_PERM && sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == 11.4);
+	SA_CHECK(sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME) && !sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) && sa_perm(sa_device, FOCUSER_MODE_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(sa_perm(sa_device, FOCUSER_STEP_SIZE) == INDIGO_RO_PERM && sa_item_count(sa_device, FOCUSER_STEP_SIZE) == 1 && sa_number(sa_device, FOCUSER_STEP_SIZE, "STEP_SIZE") == 1.5);
+	// what Alpaca has no member for stays hidden
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_SPEED_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_BACKLASH_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_COMPENSATION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_ON_POSITION_SET_PROPERTY_NAME));
+	// what it took: every member once, nothing was written but connect
+	SA_CHECK(focuser_count("GET", "absolute") == 1 && focuser_count("GET", "maxstep") == 1 && focuser_count("GET", "maxincrement") == 1 && focuser_count("GET", "position") == 1 && focuser_count("GET", "ismoving") == 1);
+	SA_CHECK(focuser_count("GET", "temperature") == 1 && focuser_count("GET", "tempcompavailable") == 1 && focuser_count("GET", "stepsize") == 1 && focuser_count("PUT", "*") == 1);
+	// Platform 7: the state comes with devicestate, the members that are in it are not asked for again
+	SA_CHECK(focuser_wait_polls("devicestate", 3) && focuser_count("GET", "position") == 1 && focuser_count("GET", "ismoving") == 1 && focuser_count("GET", "temperature") == 1);
+	SA_CHECK(focuser_count("GET", "absolute") == 1 && focuser_count("GET", "maxstep") == 1 && focuser_count("GET", "stepsize") == 1 && focuser_count("GET", "tempcompavailable") == 1);
+	// a disconnect removes the properties, the next connection builds them again
+	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_LIMITS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_MODE_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEP_SIZE) && !sa_defined(sa_device, FOCUSER_REVERSE_MOTION_PROPERTY_NAME));
+	SA_CHECK(sa_connect(sa_device));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000 && sa_number(sa_device, FOCUSER_STEP_SIZE, "STEP_SIZE") == 1.5 && focuser_count("GET", "absolute") == 2 && focuser_count("GET", "maxstep") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void focuser_legacy_properties(void) {
+	SA_CHECK(focuser_begin(focuser_legacy));
+	// IFocuserV3: the same properties, connected with Connected=True, and no devicestate
+	SA_CHECK(!strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME), "3") && focuser_count("PUT", "connected") == 1 && focuser_count("PUT", "connect") == 0);
+	SA_CHECK(focuser_item_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 100000) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000 && focuser_item_is(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, 10000));
+	SA_CHECK(sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == 11.4 && sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME) && sa_number(sa_device, FOCUSER_STEP_SIZE, "STEP_SIZE") == 1.5);
+	SA_CHECK(sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_LIMITS_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME));
+	// the state is read member by member on every poll tick
+	int positions = focuser_count("GET", "position"), temperatures = focuser_count("GET", "temperature");
+	SA_CHECK(focuser_wait_polls("ismoving", 4) && focuser_count("GET", "position") >= positions + 3 && focuser_count("GET", "temperature") >= temperatures + 3 && focuser_count("GET", "devicestate") == 0);
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=43210&Temperature=-3.5"));
+	SA_CHECK(SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 43210 && sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == -3.5, SA_TIMEOUT));
+	// a move works the same way
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 44321, 2) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=44321&ClientID=") && focuser_simulated("Position") == 44321);
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 44321 && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device) && focuser_count("PUT", "connected") == 2 && focuser_last("PUT", "connected", "Connected=False&ClientID="));
+cleanup:
+	sa_end();
+}
+
+static void focuser_capability_variants(void) {
+	static const char *bare[] = { "--device", "focuser:Absolute=false,TemperatureAvailable=false,TempCompAvailable=false,StepSizeAvailable=false,MaxIncrement=3000", NULL };
+	static const char *no_halt[] = { "--device", "focuser:CanHalt=false", NULL };
+	static const char *no_limits[] = { "--device", "focuser:interface=legacy", NULL };
+	// a relative focuser without a thermometer: no position, no limits, no temperature, no mode, no step size
+	SA_CHECK(focuser_begin(bare));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_LIMITS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_MODE_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEP_SIZE));
+	SA_CHECK(focuser_item_is(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, 3000) && sa_defined(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_REVERSE_MOTION_PROPERTY_NAME));
+	// the members the device does not have are asked for once and never again; Position of a relative focuser is not asked for at all
+	SA_CHECK(focuser_wait_polls("devicestate", 4));
+	SA_CHECK(focuser_count("GET", "position") == 0 && focuser_count("GET", "temperature") == 1 && focuser_count("GET", "tempcompavailable") == 1 && focuser_count("GET", "tempcomp") == 0 && focuser_count("GET", "stepsize") == 1);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a focuser without Halt: the first abort finds out, the property goes away and nothing is sent for it any more
+	SA_CHECK(focuser_begin(no_halt));
+	SA_CHECK(sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(!sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME), SA_TIMEOUT) && sa_message_seen("Abort failed: not implemented by the device") && focuser_count("PUT", "halt") == 1);
+	// the move it could not stop goes on and ends as usual
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 52000 && focuser_count("PUT", "halt") == 1);
+	// the next connection asks again
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "focuser", 0, "CanHalt=true") && sa_connect(sa_device) && sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME));
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && focuser_count("PUT", "halt") == 2 && sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a focuser that does not tell its limits gets the widest range, one whose compensation switch can not be read has no mode
+	SA_CHECK(sa_begin(no_limits) && sa_attach("Focuser Simulator"));
+	SA_CHECK(sa_put(0, FOCUSER_ERROR, "Member=maxstep&ErrorNumber=1024") && sa_put(0, FOCUSER_ERROR, "Member=maxincrement&ErrorNumber=1024") && sa_put(0, FOCUSER_ERROR, "Member=tempcomp&ErrorNumber=1024"));
+	SA_CHECK(sa_connect(sa_device));
+	SA_CHECK(focuser_item_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 9999999) && focuser_item_is(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, 9999999) && !sa_defined(sa_device, FOCUSER_MODE_PROPERTY_NAME));
+	SA_CHECK(focuser_wait_polls("ismoving", 3) && focuser_count("GET", "tempcomp") == 1);
+	// a server that answers HTTP 400 for a member the device does not have says the same as NotImplemented
+	SA_CHECK(sa_disconnect(sa_device) && sa_put(0, FOCUSER_ERROR, "Member=tempcomp&ErrorNumber=0") && sa_fault(0, "GET", FOCUSER_API "temperature", "http-status", "Value=400") && sa_fault(0, "GET", FOCUSER_API "stepsize", "http-status", "Value=400"));
+	SA_CHECK(sa_connect(sa_device) && !sa_defined(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEP_SIZE) && sa_defined(sa_device, FOCUSER_MODE_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME));
+	int temperatures = focuser_count("GET", "temperature");
+	SA_CHECK(focuser_wait_polls("ismoving", 3) && focuser_count("GET", "temperature") == temperatures);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- moves
+
+static void focuser_absolute_move(void) {
+	SA_CHECK(focuser_begin(focuser_default));
+	// GOTO: Move with the target as it is; both motion properties are BUSY, the target is the requested position and the value the measured one
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 62345));
+	SA_CHECK(focuser_count("PUT", "move") == 1 && focuser_last("PUT", "move", "Position=62345&ClientID="));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 62345 && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000);
+	// the move is watched with IsMoving, the position is published on the way
+	SA_CHECK(focuser_wait_polls("ismoving", 3) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 55000, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 62345);
+	// a request for a motion property that is BUSY is not accepted, one for the other motion property is refused
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 70000) == INDIGO_OK);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100) == INDIGO_OK);
+	SA_CHECK(focuser_wait_polls("ismoving", 3) && focuser_count("PUT", "move") == 1 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 62345);
+	// the device arrives: OK, the measured position, and IsMoving is not asked for any more
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 7.345) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 62345 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 62345 && focuser_simulated("Position") == 62345);
+	int polls = focuser_count("GET", "ismoving");
+	SA_CHECK(focuser_wait_polls("devicestate", 3) && focuser_count("GET", "ismoving") == polls);
+	// both ends of the range
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 100) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=0&ClientID=") && focuser_simulated("Position") == 0 && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 0);
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100000, 100) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=100000&ClientID=") && focuser_simulated("Position") == 100000 && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 100000);
+	// the position the focuser is at: the request goes to the device, which has nothing to do
+	SA_CHECK(focuser_set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100000) == INDIGO_OK_STATE && focuser_count("PUT", "move") == 4 && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// the end of a move is what IsMoving says, not the position: a focuser that settles is BUSY at its target
+	SA_CHECK(sa_device_state(0, "focuser", 0, "SettleTime=3") && focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 99000));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 99000, SA_TIMEOUT) && focuser_wait_polls("ismoving", 3));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 99000);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void focuser_steps_of_absolute_focuser(void) {
+	SA_CHECK(focuser_begin(focuser_default));
+	// outward is towards larger positions: the target is computed from a fresh Position and sent as an absolute one
+	int positions = focuser_count("GET", "position");
+	SA_CHECK(focuser_set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_start_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 700));
+	SA_CHECK(focuser_count("GET", "position") == positions + 1 && focuser_count("PUT", "move") == 1 && focuser_last("PUT", "move", "Position=50700&ClientID="));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50700 && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000);
+	unsigned revision = sa_revision(sa_device, FOCUSER_STEPS_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50700 && focuser_simulated("Position") == 50700);
+	// inward is towards smaller positions
+	SA_CHECK(focuser_set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1200, 2) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=49500&ClientID=") && focuser_simulated("Position") == 49500);
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 49500);
+	// FOCUSER_REVERSE_MOTION swaps the two, and it is a setting of the driver: nothing is sent for it
+	int puts = focuser_count("PUT", "*");
+	SA_CHECK(focuser_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME) == INDIGO_OK_STATE && focuser_count("PUT", "*") == puts);
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400, 1) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=49900&ClientID=") && focuser_simulated("Position") == 49900);
+	SA_CHECK(focuser_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME) == INDIGO_OK_STATE);
+	// no steps: no request to the device at all
+	int moves = focuser_count("PUT", "move");
+	SA_CHECK(focuser_set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0) == INDIGO_OK_STATE && focuser_count("PUT", "move") == moves && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// a move over the lower limit ends at the limit
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=300") && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 300, SA_TIMEOUT));
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1000, 1) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=0&ClientID=") && focuser_simulated("Position") == 0);
+	// at the limit there is nowhere to go: OK without a request
+	moves = focuser_count("PUT", "move");
+	SA_CHECK(focuser_set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500) == INDIGO_OK_STATE && focuser_count("PUT", "move") == moves && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 0);
+	// and over the upper limit
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=99800") && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 99800, SA_TIMEOUT));
+	SA_CHECK(focuser_set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 700, 1) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=100000&ClientID=") && focuser_simulated("Position") == 100000);
+	// the position the device moved to by itself since the last poll is what the steps are added to
+	SA_CHECK(sa_disconnect(sa_device) && sa_set_number("X_ALPACA_POLLING", "IDLE", 5) == INDIGO_OK_STATE && sa_connect(sa_device) && sa_device_state(0, "focuser", 0, "Position=20000"));
+	SA_CHECK(focuser_set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 250, 1) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=19750&ClientID=") && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 19750);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void focuser_relative_focuser(void) {
+	SA_CHECK(focuser_begin(focuser_relative));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_LIMITS_PROPERTY_NAME) && focuser_item_is(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, 10000));
+	// Move of a relative focuser takes the signed number of steps: outward is positive
+	SA_CHECK(focuser_set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_start_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 2500));
+	SA_CHECK(focuser_count("PUT", "move") == 1 && focuser_last("PUT", "move", "Position=2500&ClientID=") && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// in progress as long as IsMoving says so
+	SA_CHECK(sa_advance(0, 1.5) && focuser_wait_polls("ismoving", 3) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE && focuser_simulated("Position") == 51500);
+	unsigned revision = sa_revision(sa_device, FOCUSER_STEPS_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && focuser_simulated("Position") == 52500);
+	// inward is negative
+	SA_CHECK(focuser_set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400, 1) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=-400&ClientID=") && focuser_simulated("Position") == 52100);
+	// the largest move the device takes
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10000, 10) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=-10000&ClientID=") && focuser_simulated("Position") == 42100);
+	// reversed
+	SA_CHECK(focuser_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 150, 1) == INDIGO_OK_STATE && focuser_last("PUT", "move", "Position=150&ClientID=") && focuser_simulated("Position") == 42250);
+	// no steps: no request
+	int moves = focuser_count("PUT", "move");
+	SA_CHECK(focuser_set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0) == INDIGO_OK_STATE && focuser_count("PUT", "move") == moves);
+	// abort: Halt, the request ends in ALERT, the focuser stays where it stopped and takes a new move
+	SA_CHECK(focuser_start_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 3000) && sa_advance(0, 1) && focuser_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, FOCUSER_STEPS_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && focuser_count("PUT", "halt") == 1);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && focuser_simulated("Position") == 43250 && focuser_simulated_is("IsMoving", "false"));
+	SA_CHECK(focuser_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50, 1) == INDIGO_OK_STATE && focuser_simulated("Position") == 43300);
+	// Position was never asked for
+	SA_CHECK(focuser_count("GET", "position") == 0 && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void focuser_abort(void) {
+	SA_CHECK(focuser_begin(focuser_default));
+	// while idle: Halt is sent, nothing else changes
+	unsigned position_revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && !sa_switch(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
+	SA_CHECK(focuser_count("PUT", "halt") == 1 && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && !sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, position_revision));
+	// during a move: Halt, both motion properties end in ALERT with the position the focuser stopped at
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 70000));
+	SA_CHECK(sa_advance(0, 3.21) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 53210, SA_TIMEOUT));
+	position_revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && !sa_switch(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) && focuser_count("PUT", "halt") == 2);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, position_revision) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 53210 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 53210);
+	SA_CHECK(focuser_simulated("Position") == 53210 && focuser_simulated_is("IsMoving", "false"));
+	// the aborted move is not watched any more and does not go on later
+	int polls = focuser_count("GET", "ismoving");
+	SA_CHECK(sa_advance(0, 30) && focuser_wait_polls("devicestate", 3) && focuser_count("GET", "ismoving") == polls && focuser_simulated("Position") == 53210);
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 53210);
+	// a fresh move works
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 53000, 1) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 53000 && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// a Halt the device refuses: the abort fails, the move goes on and is watched to its end
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 55000));
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "halt", "ascom-error", "Value=1279&Message=Motor%20fault"));
+	position_revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_ALERT_STATE && sa_message_seen("Abort failed: device error (Motor fault (0x4FF))"));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, position_revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 55000);
+	// a Halt whose reply is lost is sent again: stopping twice is stopping once
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) && sa_advance(0, 1.5));
+	int halts = focuser_count("PUT", "halt");
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "halt", "drop", NULL));
+	position_revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && focuser_count("PUT", "halt") == halts + 2);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, position_revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 56500 && sa_is_connected(sa_device));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// OMNI-1: a focuser that reports IsMoving for its settle time after Halt, as the ASCOM OmniSim 0.5.0 focuser does. The stopped move
+// ends in ALERT at once and stays there while the device settles: the settling is not shown as a new motion of the device.
+static void focuser_halt_settles(void) {
+	static const char *arguments[] = { "--device", "focuser:SettleTime=2", NULL };
+	SA_CHECK(focuser_begin(arguments));
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 70000));
+	SA_CHECK(sa_advance(0, 1.5) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51500, SA_TIMEOUT));
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT));
+	SA_CHECK(focuser_simulated_is("IsMoving", "true") && focuser_simulated("Position") == 51500);
+	// the device settles and is polled: FOCUSER_POSITION stays in ALERT
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_wait_polls("devicestate", 5) && focuser_simulated_is("IsMoving", "true"));
+	SA_CHECK(!sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_advance(0, 2) && focuser_simulated_is("IsMoving", "false") && focuser_wait_polls("devicestate", 3));
+	SA_CHECK(!sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51500);
+	// a motion of the device afterwards is shown as one again
+	SA_CHECK(sa_put(0, FOCUSER_API "move", "Position=52000&ClientID=77&ClientTransactionID=1"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 52000);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- temperature compensation
+
+static void focuser_temperature_compensation(void) {
+	static const char *old[] = { "--device", "focuser:interface=2,TempComp=true", NULL };
+	SA_CHECK(focuser_begin(focuser_default));
+	// AUTOMATIC is TempComp=True; the motion properties go away and the position can only be read
+	SA_CHECK(focuser_set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME));
+	SA_CHECK(focuser_count("PUT", "tempcomp") == 1 && focuser_last("PUT", "tempcomp", "TempComp=True&ClientID=") && focuser_simulated_is("TempComp", "true"));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_REVERSE_MOTION_PROPERTY_NAME));
+	SA_CHECK(sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RO_PERM && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000);
+	SA_CHECK(sa_defined(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_LIMITS_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_STEP_SIZE));
+	// a move is not requested while the device compensates
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000) == INDIGO_OK);
+	SA_CHECK(focuser_wait_polls("devicestate", 3) && focuser_count("PUT", "move") == 0 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000);
+	// the device compensates a change of the temperature: the position is BUSY while it moves and follows it
+	SA_CHECK(sa_device_state(0, "focuser", 0, "StepsPerSecond=10&Temperature=8.2"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == 8.2, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 49990, SA_TIMEOUT) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 49968 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 49968 && focuser_count("PUT", "move") == 0);
+	// MANUAL is TempComp=False: the motion properties are back and the position can be set
+	SA_CHECK(focuser_set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME) == INDIGO_OK_STATE && focuser_count("PUT", "tempcomp") == 2 && focuser_last("PUT", "tempcomp", "TempComp=False&ClientID=") && focuser_simulated_is("TempComp", "false"));
+	SA_CHECK(sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_REVERSE_MOTION_PROPERTY_NAME));
+	SA_CHECK(sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RW_PERM && sa_device_state(0, "focuser", 0, "StepsPerSecond=1000"));
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50500, 1) == INDIGO_OK_STATE && focuser_simulated("Position") == 50500);
+	// the mode is not changed during a move of the driver
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000));
+	SA_CHECK(focuser_set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) == INDIGO_ALERT_STATE && sa_message_seen("Focuser is moving: request can not be completed"));
+	SA_CHECK(sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME) && focuser_count("PUT", "tempcomp") == 2 && sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	// a change the device refuses: ALERT with the message of the device, the mode and the properties stay
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "tempcomp", "ascom-error", "Value=1279&Message=No%20probe"));
+	SA_CHECK(focuser_set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) == INDIGO_ALERT_STATE && sa_message_seen("Temperature compensation change failed: device error (No probe (0x4FF))"));
+	SA_CHECK(sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME) && sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RW_PERM && focuser_simulated_is("TempComp", "false"));
+	// the compensation is switched on at the device (its own application, another client): the mode follows
+	SA_CHECK(sa_device_state(0, "focuser", 0, "TempComp=true"));
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RO_PERM, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, FOCUSER_MODE_PROPERTY_NAME) == INDIGO_OK_STATE && focuser_count("PUT", "tempcomp") == 3);
+	// a disconnect in the automatic mode removes the position, too, and the next connection starts in the mode of the device
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_MODE_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME));
+	SA_CHECK(sa_connect(sa_device) && sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) && sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RO_PERM && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 52000);
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && sa_device_state(0, "focuser", 0, "TempComp=false"));
+	SA_CHECK(sa_connect(sa_device) && sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME) && sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RW_PERM && sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME));
+	SA_CHECK(sa_define_count(sa_device, FOCUSER_POSITION_PROPERTY_NAME) >= 1 && sa_disconnect(sa_device));
+	sa_end();
+	// IFocuserV2 refuses Move while it compensates: the driver never sends one in the automatic mode, whatever the version is
+	SA_CHECK(focuser_begin(old));
+	SA_CHECK(sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) && sa_perm(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_RO_PERM && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000) == INDIGO_OK && focuser_wait_polls("ismoving", 3) && focuser_count("PUT", "move") == 0);
+	SA_CHECK(focuser_set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME) == INDIGO_OK_STATE && focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, 1) == INDIGO_OK_STATE && focuser_simulated("Position") == 51000);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- polling
+
+static void focuser_polling(void) {
+	SA_CHECK(focuser_begin(focuser_default));
+	// the position and the temperature follow the device
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=43210&Temperature=-3.5"));
+	SA_CHECK(SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 43210 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 43210, SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == -3.5, SA_TIMEOUT) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// values that do not change are not published again
+	unsigned position_revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME), temperature_revision = sa_revision(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME), mode_revision = sa_revision(sa_device, FOCUSER_MODE_PROPERTY_NAME);
+	SA_CHECK(focuser_wait_polls("devicestate", 4) && sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == position_revision && sa_revision(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == temperature_revision && sa_revision(sa_device, FOCUSER_MODE_PROPERTY_NAME) == mode_revision);
+	// a move the driver did not start (another client of the device): the position is BUSY, follows the device and ends OK where it stops
+	SA_CHECK(sa_put(0, FOCUSER_API "move", "Position=45000&ClientID=77&ClientTransactionID=1"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 44210, SA_TIMEOUT) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// a relative move is refused meanwhile, with a message
+	unsigned steps_revision = sa_revision(sa_device, FOCUSER_STEPS_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100) == INDIGO_OK && SA_WAIT(sa_message_seen("Another motion operation is pending"), SA_TIMEOUT));
+	SA_CHECK(!sa_state_after(sa_device, FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE, steps_revision) && focuser_count("PUT", "move") == 1);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 45000 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 45000);
+	// such a move can be aborted: Halt, ALERT at the position it stopped
+	SA_CHECK(sa_put(0, FOCUSER_API "move", "Position=48000&ClientID=77&ClientTransactionID=2") && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1.234) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 46234, SA_TIMEOUT));
+	position_revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && focuser_count("PUT", "halt") == 1);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, position_revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 46234 && focuser_simulated("Position") == 46234);
+	// a move of the device itself whose Halt fails: the abort fails with the reason, the position stays BUSY and follows the device
+	SA_CHECK(sa_put(0, FOCUSER_API "move", "Position=47234&ClientID=77&ClientTransactionID=3") && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "halt", "ascom-error", "Value=1279&Message=Motor%20fault"));
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_ALERT_STATE && sa_message_seen("Abort failed: device error (Motor fault (0x4FF))") && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 47234, SA_TIMEOUT));
+	// a temperature that can not be read: ALERT with the last value, and OK again with the next good one
+	temperature_revision = sa_revision(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME);
+	SA_CHECK(sa_put(0, FOCUSER_ERROR, "Member=temperature&ErrorNumber=1279&ErrorMessage=Probe%20unplugged"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE, temperature_revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == -3.5 && sa_is_connected(sa_device));
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Temperature=2.25") && sa_put(0, FOCUSER_ERROR, "Member=temperature&ErrorNumber=0"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == 2.25, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void focuser_pending_change_survives_poll(void) {
+	// A request is pending from the moment the bus accepted it until its handler runs. A poll tick that is under way at that moment
+	// must leave the property alone. The tick is held in the device while the request arrives: once in the request the core makes
+	// before it calls the class (devicestate, connected) and once in a request the class makes itself (TempComp, Position), which
+	// is when the class has already looked at the properties and is about to publish what the device says.
+	static const char *holds[2][2] = { { "devicestate", "tempcomp" }, { "connected", "position" } };
+	for (int variant = 0; variant < 4; variant++) {
+		const char *hold = holds[variant / 2][variant % 2];
+		SA_CHECK(focuser_begin(variant / 2 ? focuser_legacy : focuser_default));
+		// the target of FOCUSER_POSITION
+		SA_CHECK(focuser_hold_poll(hold, 700));
+		unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+		SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 61000) == INDIGO_OK);
+		SA_CHECK(SA_WAIT(focuser_count("PUT", "move") == 1, SA_TIMEOUT) && focuser_last("PUT", "move", "Position=61000&ClientID=") && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 61000);
+		SA_CHECK(sa_advance(0, 11) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 61000);
+		// the steps of FOCUSER_STEPS
+		SA_CHECK(focuser_hold_poll(hold, 700));
+		revision = sa_revision(sa_device, FOCUSER_STEPS_PROPERTY_NAME);
+		SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 300) == INDIGO_OK);
+		SA_CHECK(SA_WAIT(focuser_count("PUT", "move") == 2, SA_TIMEOUT) && focuser_last("PUT", "move", "Position=60700&ClientID="));
+		SA_CHECK(sa_advance(0, 1) && SA_WAIT(focuser_move_ended(FOCUSER_STEPS_PROPERTY_NAME, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 60700);
+		// the switch of FOCUSER_MODE: the tick reads TempComp=False of the device while AUTOMATIC is requested
+		SA_CHECK(focuser_hold_poll(hold, 700));
+		revision = sa_revision(sa_device, FOCUSER_MODE_PROPERTY_NAME);
+		SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true) == INDIGO_OK);
+		SA_CHECK(SA_WAIT(focuser_count("PUT", "tempcomp") == 1, SA_TIMEOUT) && focuser_last("PUT", "tempcomp", "TempComp=True&ClientID=") && focuser_answer(FOCUSER_MODE_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+		SA_CHECK(sa_switch(sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME) && focuser_simulated_is("TempComp", "true") && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+static void focuser_request_failures(void) {
+	SA_CHECK(sa_begin(focuser_default) && sa_set_number("X_ALPACA_TIMEOUTS", "LONG", 1) == INDIGO_OK_STATE && sa_attach("Focuser Simulator") && sa_connect(sa_device));
+	// the device refuses the move: it did not start, both motion properties are in ALERT and the target is back at the position
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "move", "ascom-error", "Value=1025&Message=Too%20far"));
+	SA_CHECK(focuser_set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: invalid value (Too far (0x401))"));
+	SA_CHECK(sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000 && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000 && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(focuser_count("PUT", "move") == 1 && focuser_count("GET", "ismoving") == 1 && focuser_simulated("Position") == 50000 && sa_is_connected(sa_device));
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "move", "ascom-error", "Value=1035&Message=Locked"));
+	SA_CHECK(focuser_set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100) == INDIGO_ALERT_STATE && SA_WAIT(sa_message_seen("Move failed: invalid operation (Locked (0x40B))") && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "move", "ascom-error", "Value=1279&Message=Motor%20fault"));
+	SA_CHECK(focuser_set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: device error (Motor fault (0x4FF))"));
+	// the next good request is OK again, for both properties
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50500, 1) == INDIGO_OK_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50500);
+	// HTTP 500: the request may have reached the device, so IsMoving is asked; it did not, and the move is not sent again
+	int moves = focuser_count("PUT", "move"), polls = focuser_count("GET", "ismoving");
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "move", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(focuser_set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: server error (HTTP 500: Kaboom)"));
+	SA_CHECK(focuser_count("PUT", "move") == moves + 1 && focuser_count("GET", "ismoving") == polls + 1 && focuser_simulated("Position") == 50500);
+	// a reply that can not be read after the device started to move: the move is watched as usual and not sent again
+	moves = focuser_count("PUT", "move");
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "move", "malformed-json", NULL));
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000) && focuser_count("PUT", "move") == moves + 1);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 52000 && focuser_count("PUT", "move") == moves + 1);
+	// a device that takes the move and answers after the long timeout (1 s here): the same
+	moves = focuser_count("PUT", "move");
+	polls = focuser_count("GET", "ismoving");
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "move", "stall-before", "Delay=1500"));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 53000) == INDIGO_OK && SA_WAIT(focuser_count("GET", "ismoving") >= polls + 2 && focuser_count("PUT", "move") == moves + 1, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 53000 && focuser_count("PUT", "move") == moves + 1);
+	// a device that does not take the move and does not answer in time: the move failed with a timeout, the device stays connected
+	moves = focuser_count("PUT", "move");
+	SA_CHECK(sa_fault(0, "PUT", FOCUSER_API "move", "stall-before", "Delay=1500&Dispatch=false"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(focuser_set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 54000) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: timeout"));
+	SA_CHECK(indigo_monotonic_time() - started > 0.8 && indigo_monotonic_time() - started < 4 && focuser_count("PUT", "move") == moves + 1 && focuser_simulated("Position") == 53000);
+	SA_CHECK(sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 53000 && focuser_wait_polls("devicestate", 2) && sa_is_connected(sa_device));
+	// an error of IsMoving during the move: the move failed after it started
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 58000) && focuser_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "ismoving", "ascom-error", "Value=1280&Message=Encoder%20lost"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Move failed: device error (Encoder lost (0x500))") && sa_is_connected(sa_device));
+	// the device still moves, which the poll shows; the properties settle when it stops
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 58000, SA_TIMEOUT));
+	// a reply of IsMoving that is no reply
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 58500) && focuser_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "ismoving", "malformed-json", NULL));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Move failed: invalid reply"));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 58500, SA_TIMEOUT));
+	// a Position that can not be read during the move
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 59000) && focuser_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	int step_mark = sa_message_mark();
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "position", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen_since(step_mark, "Move failed: server error (HTTP 500: Kaboom)"));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 59000, SA_TIMEOUT));
+	// IsMoving that is not answered within the standard timeout (2 s here) fails the move as well; one lost reply does not disconnect the device
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 59500) && focuser_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	step_mark = sa_message_mark();
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "ismoving", "stall-before", "Delay=2500"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen_since(step_mark, "Move failed: timeout") && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 59000);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 59500, SA_TIMEOUT) && sa_is_connected(sa_device));
+	// a relative move whose fresh Position can not be read does not start
+	moves = focuser_count("PUT", "move");
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "position", "ascom-error", "Value=1279&Message=Encoder%20fault"));
+	SA_CHECK(focuser_set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100) == INDIGO_ALERT_STATE && SA_WAIT(sa_message_seen("Move failed: device error (Encoder fault (0x4FF))"), SA_TIMEOUT) && focuser_count("PUT", "move") == moves);
+	// a move that does not end within six times the long timeout is given up; the device goes on by itself
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	step_mark = sa_message_mark();
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 90000));
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), 2 * SA_TIMEOUT) && sa_message_seen_since(step_mark, "Move failed: timeout"));
+	SA_CHECK(indigo_monotonic_time() - started > 5 && indigo_monotonic_time() - started < 9 && sa_is_connected(sa_device));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 40) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 90000, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void focuser_transport_loss(void) {
+	SA_CHECK(focuser_begin(focuser_default));
+	// the server goes away while the focuser is idle: the proxy is disconnected with CONNECTION in ALERT and its properties are gone
+	SA_CHECK(focuser_wait_polls("devicestate", 2) && sa_fault(0, NULL, FOCUSER_API "*", "reset", "Count=-1"));
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEP_SIZE));
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the server is back: a new connection, a working focuser
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50400, 1) == INDIGO_OK_STATE && focuser_simulated("Position") == 50400);
+	// the server goes away in the middle of a move: the move ends in ALERT, the device is disconnected, nothing hangs
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 70000) && focuser_wait_polls("ismoving", 2));
+	SA_CHECK(sa_fault(0, NULL, FOCUSER_API "*", "reset", "Count=-1"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
+	SA_CHECK(sa_message_seen("Move failed: connection lost") && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the next connection finds the focuser where the device took it meanwhile: still moving, then at the target
+	SA_CHECK(sa_clear_faults(0) && sa_advance(0, 5) && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 55400);
+	SA_CHECK(sa_advance(0, 20) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 70000, SA_TIMEOUT));
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 69000, 1) == INDIGO_OK_STATE && focuser_simulated("Position") == 69000);
+	// the device is disconnected on the server by someone else during a move
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) && focuser_wait_polls("ismoving", 2));
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Connected=false") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("the device was disconnected on the Alpaca server") && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME));
+	SA_CHECK(sa_advance(0, 20) && sa_connect(sa_device) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void focuser_connect_failures(void) {
+	SA_CHECK(sa_begin(focuser_default) && sa_attach("Focuser Simulator"));
+	// a device that does not tell whether it is absolute does not connect; nothing stays defined and the device is disconnected again
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "absolute", "malformed-json", NULL));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEP_SIZE) && focuser_simulated_is("Connected", "false"));
+	// an absolute focuser whose position can not be read
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "position", "ascom-error", "Value=1279&Message=Encoder%20fault"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Encoder fault") && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && focuser_simulated_is("Connected", "false"));
+	// the transport breaks while the capabilities are read
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "temperature", "reset", "Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) && focuser_count("GET", "tempcompavailable") == 0 && sa_clear_faults(0));
+	// replies that say nothing fail the connection wherever they come
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "stepsize", "http-status", "Value=500"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, FOCUSER_STEP_SIZE) && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME));
+	// a thermometer that fails with an error of its own is there: the temperature starts in ALERT and recovers with the first good value
+	SA_CHECK(sa_put(0, FOCUSER_ERROR, "Member=temperature&ErrorNumber=1279&ErrorMessage=Probe%20unplugged") && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50000);
+	SA_CHECK(sa_put(0, FOCUSER_ERROR, "Member=temperature&ErrorNumber=0") && SA_WAIT(sa_state(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == 11.4, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- lifecycle
+
+static void focuser_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(focuser_default));
+	snprintf(key, sizeof(key), "%s", sa_device_key("Focuser Simulator"));
+	SA_CHECK(sa_attach("Focuser Simulator"));
+	// connect and disconnect, several times: the same properties every time, CONNECTION ends in OK
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_connect(sa_device) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE && sa_defined(sa_device, FOCUSER_STEP_SIZE));
+		SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_STEP_SIZE));
+	}
+	// a disconnect while already disconnected is harmless
+	SA_CHECK(sa_disconnect(sa_device) && sa_connect(sa_device));
+	// a disconnect in the middle of a move: nothing is sent to stop it, the finalizer is cancelled, nothing is asked any more
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) && focuser_wait_polls("ismoving", 2));
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && focuser_count("PUT", "halt") == 0);
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the device went on: the next connection finds it moving and follows it to the end
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Connected=true") && sa_advance(0, 4) && sa_device_state(0, "focuser", 0, "Connected=false") && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 54000);
+	SA_CHECK(sa_advance(0, 6) && SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 60000, SA_TIMEOUT));
+	// a disconnect right after a request
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60500) == INDIGO_OK && sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME));
+	// the device changes while the proxy is disconnected: another range, a relative focuser, no step size. The next connection shows it.
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Connected=true") && sa_advance(0, 5) && sa_device_state(0, "focuser", 0, "MaxStep=20000&MaxIncrement=500&Position=1234&StepSizeAvailable=false&Connected=false"));
+	SA_CHECK(sa_connect(sa_device) && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && focuser_item_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 20000) && focuser_item_is(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, 500));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1234 && sa_number(sa_device, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME) == 20000 && !sa_defined(sa_device, FOCUSER_STEP_SIZE));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "focuser", 0, "Absolute=false") && sa_connect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_LIMITS_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "focuser", 0, "Absolute=true&MaxStep=100000&MaxIncrement=10000&StepSizeAvailable=true") && sa_connect(sa_device));
+	SA_CHECK(sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && focuser_item_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 100000) && sa_defined(sa_device, FOCUSER_STEP_SIZE));
+	// the device is detached in the middle of a move: it goes away without a hang, the Alpaca device is disconnected
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 9000) && focuser_wait_polls("ismoving", 2));
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 3);
+	SA_CHECK(focuser_simulated_is("Connected", "false") && focuser_count("PUT", "halt") == 0);
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// and attached again it is a working focuser
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Connected=true") && sa_advance(0, 20) && sa_device_state(0, "focuser", 0, "Connected=false"));
+	SA_CHECK(sa_attach("Focuser Simulator") && sa_connect(sa_device) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 9000);
+	SA_CHECK(focuser_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 9500, 1) == INDIGO_OK_STATE && focuser_simulated("Position") == 9500);
+cleanup:
+	sa_end();
+}
+
+// A focuser that does nothing publishes nothing, however it is polled; a change of the device is published at once.
+static void focuser_steady_state_is_silent(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		const char *poll = legacy ? "connected" : "devicestate";
+		SA_CHECK(sa_begin(legacy ? focuser_legacy : focuser_default) && sa_attach("Focuser Simulator") && sa_connect(sa_device));
+		SA_CHECK(focuser_wait_polls(poll, 3) && sa_steady(0, sa_device, legacy ? FOCUSER_API "connected" : FOCUSER_API "devicestate", 25));
+		SA_CHECK(sa_device_state(0, "focuser", 0, "Position=40123") && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 40123, SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// The device answers the polling and does not tell where it is: FOCUSER_POSITION is in ALERT with the last position and the reason,
+// told once, and is OK again with the first position that is read. On a Platform 7 device devicestate fails as well (for good),
+// so the members are read one by one; before the position fails, the values follow the device as if nothing had happened.
+static void focuser_unreadable_position(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(sa_begin(legacy ? focuser_legacy : focuser_default) && sa_attach("Focuser Simulator") && sa_connect(sa_device));
+		if (!legacy) {
+			SA_CHECK(sa_fault(0, "GET", FOCUSER_API "devicestate", "http-status", "Value=500&Count=-1"));
+			SA_CHECK(sa_device_state(0, "focuser", 0, "Position=41000") && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 41000, SA_TIMEOUT));
+			SA_CHECK(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_is_connected(sa_device));
+		}
+		double shown = sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		SA_CHECK(sa_put(0, FOCUSER_ERROR, "Member=position&ErrorNumber=1279&ErrorMessage=Encoder%20offline"));
+		SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT) && sa_message_seen("Reading the position failed: device error (Encoder offline"));
+		unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+		SA_CHECK(focuser_wait_polls("position", 5) && sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == revision && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == shown && sa_is_connected(sa_device));
+		// a move is still requested and answered by the device
+		SA_CHECK(sa_device_state(0, "focuser", 0, "Position=42000") && sa_put(0, FOCUSER_ERROR, "Member=position&ErrorNumber=0"));
+		SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 42000, SA_TIMEOUT));
+		SA_CHECK(sa_clear_faults(0) && sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// REV-11: a relative move is computed in 64 bits. With MaxStep and MaxIncrement both INT_MAX, Position + steps overflowed an int (undefined
+// behaviour; in practice negative, so the target became 0 and the focuser ran all the way in).
+static void focuser_large_relative_move(void) {
+	static const char *arguments[] = { "--device", "focuser:MaxStep=2147483647,MaxIncrement=2147483647,Position=1000", NULL };
+	SA_CHECK(focuser_begin(arguments));
+	SA_CHECK(SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000, SA_TIMEOUT) && focuser_item_is(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, 2147483647));
+	SA_CHECK(focuser_set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(focuser_start_move(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 2147483647) && focuser_last("PUT", "move", "Position=2147483647&ClientID=") && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 2147483647);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// REV-14: a client that enumerates the properties while a change of the mode waits for its handler gets the motion properties the
+// device has, not the ones of the requested mode: FOCUSER_MODE shows the request already, the device still has the other mode.
+static void focuser_enumeration_during_mode_change(void) {
+	indigo_property all = { 0 };
+	SA_CHECK(focuser_begin(focuser_default));
+	snprintf(all.device, sizeof(all.device), "%s", sa_device);
+	// manual, AUTOMATIC requested: STEPS, DIRECTION and ABORT are still defined and are enumerated
+	unsigned steps = sa_define_count(sa_device, FOCUSER_STEPS_PROPERTY_NAME), mode = sa_define_count(sa_device, FOCUSER_MODE_PROPERTY_NAME);
+	SA_CHECK(steps > 0 && sa_gate_close(sa_device));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state(sa_device, FOCUSER_MODE_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(indigo_enumerate_properties(&sa_client, &all) == INDIGO_OK && SA_WAIT(sa_define_count(sa_device, FOCUSER_MODE_PROPERTY_NAME) == mode + 1, SA_TIMEOUT));
+	SA_CHECK(sa_define_count(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == steps + 1 && sa_defined(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME));
+	sa_gate_open();
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_MODE_PROPERTY_NAME) == INDIGO_OK_STATE && !sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME), SA_TIMEOUT) && focuser_simulated_is("TempComp", "true"));
+	// automatic, MANUAL requested: the motion properties are not defined to the client that enumerates
+	mode = sa_define_count(sa_device, FOCUSER_MODE_PROPERTY_NAME);
+	SA_CHECK(sa_gate_close(sa_device));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state(sa_device, FOCUSER_MODE_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(indigo_enumerate_properties(&sa_client, &all) == INDIGO_OK && SA_WAIT(sa_define_count(sa_device, FOCUSER_MODE_PROPERTY_NAME) == mode + 1, SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_DIRECTION_PROPERTY_NAME) && !sa_defined(sa_device, FOCUSER_ABORT_MOTION_PROPERTY_NAME) && sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME));
+	sa_gate_open();
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_MODE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_defined(sa_device, FOCUSER_STEPS_PROPERTY_NAME), SA_TIMEOUT) && focuser_simulated_is("TempComp", "false"));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_gate_open();
+	sa_end();
+}
+
+#define SYSTEM_ALPACA_FOCUSER_CASES \
+	{ "focuser_steady_state_is_silent", focuser_steady_state_is_silent }, \
+	{ "focuser_unreadable_position", focuser_unreadable_position }, \
+	{ "focuser_properties", focuser_properties }, \
+	{ "focuser_legacy_properties", focuser_legacy_properties }, \
+	{ "focuser_capability_variants", focuser_capability_variants }, \
+	{ "focuser_absolute_move", focuser_absolute_move }, \
+	{ "focuser_steps_of_absolute_focuser", focuser_steps_of_absolute_focuser }, \
+	{ "focuser_relative_focuser", focuser_relative_focuser }, \
+	{ "focuser_abort", focuser_abort }, \
+	{ "focuser_halt_settles", focuser_halt_settles }, \
+	{ "focuser_temperature_compensation", focuser_temperature_compensation }, \
+	{ "focuser_large_relative_move", focuser_large_relative_move }, \
+	{ "focuser_enumeration_during_mode_change", focuser_enumeration_during_mode_change }, \
+	{ "focuser_polling", focuser_polling }, \
+	{ "focuser_pending_change_survives_poll", focuser_pending_change_survives_poll }, \
+	{ "focuser_request_failures", focuser_request_failures }, \
+	{ "focuser_transport_loss", focuser_transport_loss }, \
+	{ "focuser_connect_failures", focuser_connect_failures }, \
+	{ "focuser_lifecycle", focuser_lifecycle },
 
 #endif /* system_alpaca_focuser_cases_h */

@@ -77,6 +77,7 @@ typedef struct {
 	int minor;
 	bool chunked;
 	bool transfer_encoding;
+	bool other_coding;			///< Transfer-Encoding names a coding other than chunked (gzip...), which is never asked for and not decoded
 	bool has_length;
 	size_t length;
 	bool close;
@@ -107,6 +108,21 @@ static bool alpaca_http_has_token(const char *list, const char *token) {
 		}
 		size_t length = strcspn(list, ",; \t");
 		if (length > 0 && alpaca_http_same(list, length, token)) {
+			return true;
+		}
+		list += strcspn(list, ",");
+	}
+	return false;
+}
+
+// True if a list of codings has a coding other than "chunked" (case insensitive, parameters after ';' ignored); empty elements are skipped.
+static bool alpaca_http_has_other_coding(const char *list) {
+	while (*list) {
+		while (*list == ' ' || *list == '\t' || *list == ',') {
+			list++;
+		}
+		size_t length = strcspn(list, ",; \t");
+		if (length > 0 && !alpaca_http_same(list, length, "chunked")) {
 			return true;
 		}
 		list += strcspn(list, ",");
@@ -676,6 +692,9 @@ static bool alpaca_http_parse_header(char *line, alpaca_http_head *head, alpaca_
 		if (alpaca_http_has_token(value, "chunked")) {
 			head->chunked = true;
 		}
+		if (alpaca_http_has_other_coding(value)) {
+			head->other_coding = true;
+		}
 	} else if (alpaca_http_same(line, name_length, "connection")) {
 		if (alpaca_http_has_token(value, "close")) {
 			head->close = true;
@@ -740,6 +759,12 @@ static alpaca_http_result alpaca_http_read_response(alpaca_http_exchange *exchan
 	}
 	if (head.status == 204 || head.status == 304) {
 		result = ALPACA_HTTP_OK;
+	} else if (head.other_coding) {
+		// A transfer coding the client does not decode (gzip, deflate...): handing the coded body over as if it were plain would make it
+		// garbage that may still pass for data (an image). A server may use such a coding only if the client asks for it with TE, which
+		// is never sent. The body is not read, so the connection can not be used again.
+		alpaca_http_connection_close(connection);
+		return ALPACA_HTTP_MALFORMED;
 	} else if (head.chunked) {
 		result = alpaca_http_read_chunked(exchange, &response->body);
 	} else if (head.has_length && !head.transfer_encoding) {

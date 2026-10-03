@@ -27,19 +27,27 @@
  Mapping of the Alpaca members onto the INDIGO properties:
 
  - Names: the number of slots (the length of the array, of FocusOffsets if Names is not usable) and the values of WHEEL_SLOT_NAME.
-   WHEEL_SLOT, WHEEL_SLOT_NAME and WHEEL_SLOT_OFFSET are resized to it on every connection, up to WHEEL_MAX_SLOTS slots.
+   WHEEL_SLOT, WHEEL_SLOT_NAME and WHEEL_SLOT_OFFSET are resized to it on every connection, up to WHEEL_MAX_SLOTS slots (room for that
+   many is made at attach, so the resize never moves the properties).
  - FocusOffsets: the values of WHEEL_SLOT_OFFSET.
  - Position: WHEEL_SLOT. Alpaca counts the slots from 0 and INDIGO from 1. A change of WHEEL_SLOT is "PUT position Position=<slot - 1>";
-   Position is -1 while the wheel turns, so the property stays BUSY until the device reports the requested slot
-   (wheel_slot_finalizer), for no longer than WHEEL_MOVE_TIMEOUT_FACTOR times the long request timeout. A wheel that turns
-   without a request of this driver (another client, start-up of the device) shows as WHEEL_SLOT in the BUSY state.
+   Position is -1 while the wheel turns, so the property stays BUSY as long as the device reports -1 (wheel_slot_finalizer),
+   for no longer than WHEEL_MOVE_TIMEOUT_FACTOR times the long request timeout. The slot the device reports then is the value of
+   WHEEL_SLOT; if it is not the requested one (another client turned the wheel elsewhere) the request ends in ALERT. A wheel that
+   turns without a request of this driver (another client, start-up of the device) shows as WHEEL_SLOT in the BUSY state.
+   While Position can not be read (the device answers with an error) WHEEL_SLOT is in ALERT with the last slot; it is OK again
+   with the first slot that is read.
 
  Names and FocusOffsets can not be written in Alpaca. WHEEL_SLOT_NAME and WHEEL_SLOT_OFFSET stay writable as they are for every INDIGO
  wheel: the values of the device are the defaults set on every connection, a change is a local label or offset that is kept by
  the INDIGO base class (and its CONFIG) and never sent to the device. They are read when the device connects and not polled.
 
- Alpaca has no way to stop a filter wheel, so nothing is sent on disconnect. A request for WHEEL_SLOT while it is BUSY is ignored
- by the guard of INDIGO_COPY_TARGETS_PROCESS_CHANGE.
+ Alpaca has no way to stop a filter wheel, so nothing is sent on disconnect. A request for WHEEL_SLOT while it is BUSY is ignored.
+
+ Threads: change_property runs on a bus thread, everything else on the handler queue of the device. A request is accepted
+ with system_alpaca_accept() and a poll tick publishes the slot of the device under the lock of the device, so a tick never
+ replaces a request that was just accepted with the old slot of the device; for the same reason a tick asks the device first
+ and touches the property afterwards.
  */
 
 #pragma mark - Includes
@@ -65,6 +73,7 @@
 typedef struct {
 	alpaca_operation move;
 	bool external;							///< WHEEL_SLOT is BUSY because the wheel turns without a request of this driver
+	bool unreadable;						///< WHEEL_SLOT is in ALERT because the polling can not read the slot
 	int slot_count;
 	int name_count;
 	int offset_count;
@@ -83,33 +92,65 @@ static bool wheel_answered(alpaca_result result) {
 
 // Time a move may take: a multiple of the timeout of long requests (X_ALPACA_TIMEOUTS of the bridge device).
 static double wheel_move_timeout(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->server->mutex);
-	double timeout = WHEEL_MOVE_TIMEOUT_FACTOR * PRIVATE_DATA->server->long_timeout / 1000.0;
-	pthread_mutex_unlock(&PRIVATE_DATA->server->mutex);
-	return timeout;
+	return WHEEL_MOVE_TIMEOUT_FACTOR * system_alpaca_long_timeout(device);
 }
 
-// Completion of a move: Position is polled until it is the requested slot. -1 means that the wheel still turns.
+// Handler queue: end a request for WHEEL_SLOT. The slot and the state are set under the lock of the device, the property is published without it.
+// slot is the 1-based slot the wheel is in, 0 to leave the value as it is; the target follows the value. A message makes it ALERT.
+static void wheel_finish(indigo_device *device, int slot, const char *message) {
+	wheel_data *data = WHEEL_DATA;
+	data->external = false;
+	system_alpaca_lock(device);
+	if (slot > 0) {
+		WHEEL_SLOT_ITEM->number.value = slot;
+	}
+	WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value;
+	WHEEL_SLOT_PROPERTY->state = message != NULL ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+	system_alpaca_unlock(device);
+	if (message != NULL) {
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+	}
+}
+
+// The message of a failed request, "Move failed: <result> (<reason>)", as system_alpaca_finish() makes it. reason is the text taken
+// with system_alpaca_reason() when the request failed, NULL to take it from the last request.
+static void wheel_failure(indigo_device *device, alpaca_result result, const char *reason, char *message, size_t size) {
+	char text[INDIGO_VALUE_SIZE];
+	if (reason == NULL) {
+		system_alpaca_reason(device, result, text, sizeof(text));
+		reason = text;
+	}
+	snprintf(message, size, "Move failed: %s%s%s%s", alpaca_result_text(result), *reason ? " (" : "", reason, *reason ? ")" : "");
+}
+
+// Completion of a move: Position is -1 while the wheel turns, and that is the only sign of a move in progress. The slot it reports
+// afterwards is where the move ended: the requested one, or another one if something else turned the wheel meanwhile.
 static void wheel_slot_finalizer(indigo_device *device) {
 	wheel_data *data = WHEEL_DATA;
+	char message[INDIGO_VALUE_SIZE];
 	int position = -1;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_result result = system_alpaca_get_int(device, "position", &position);
-	bool valid = result == ALPACA_OK && position >= 0 && position < data->slot_count;
-	bool arrived = valid && (data->target < 0 || position == data->target);
-	if (result == ALPACA_OK && !arrived && system_alpaca_operation_continue(device, &data->move, wheel_slot_finalizer)) {
+	if (result == ALPACA_OK && position == -1 && system_alpaca_operation_continue(device, &data->move, wheel_slot_finalizer)) {
 		return;
 	}
 	system_alpaca_operation_end(device, &data->move);
-	if (valid) {
-		WHEEL_SLOT_ITEM->number.value = position + 1;
+	if (result != ALPACA_OK || position == -1) {
+		wheel_failure(device, result != ALPACA_OK ? result : ALPACA_TIMED_OUT, NULL, message, sizeof(message));
+		wheel_finish(device, 0, message);
+	} else if (position < 0 || position >= data->slot_count) {
+		snprintf(message, sizeof(message), "Move failed: the device reports Position %d of %d slots", position, data->slot_count);
+		wheel_finish(device, 0, message);
+	} else if (data->target >= 0 && position != data->target) {
+		snprintf(message, sizeof(message), "Move failed: the wheel stopped at slot %d instead of slot %d", position + 1, data->target + 1);
+		wheel_finish(device, position + 1, message);
+	} else {
+		wheel_finish(device, position + 1, NULL);
 	}
-	if (!arrived || data->target < 0) {
-		WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value;
-	}
-	system_alpaca_finish(device, WHEEL_SLOT_PROPERTY, result != ALPACA_OK ? result : arrived ? ALPACA_OK : ALPACA_TIMED_OUT, "Move");
 }
 
 #pragma mark - High level code (wheel)
@@ -117,7 +158,7 @@ static void wheel_slot_finalizer(indigo_device *device) {
 static bool wheel_on_probe(indigo_device *device) {
 	wheel_data *data = WHEEL_DATA;
 	alpaca_channel *channel = system_alpaca_channel(device);
-	data->external = false;
+	data->external = data->unreadable = false;
 	data->slot_count = data->name_count = data->offset_count = 0;
 	data->position = data->target = -1;
 	alpaca_result result = system_alpaca_check(device, alpaca_get_string_array(channel, "names", NULL, 0, ALPACA_WAIT_STANDARD, data->names[0], WHEEL_NAME_SIZE, WHEEL_MAX_SLOTS, &data->name_count));
@@ -157,6 +198,7 @@ static bool wheel_on_connect(indigo_device *device) {
 	char name[INDIGO_NAME_SIZE];
 	char label[INDIGO_NAME_SIZE];
 	char value[WHEEL_NAME_SIZE];
+	// within the room made at attach: the properties do not move
 	WHEEL_SLOT_NAME_PROPERTY = indigo_resize_property(WHEEL_SLOT_NAME_PROPERTY, data->slot_count);
 	WHEEL_SLOT_OFFSET_PROPERTY = indigo_resize_property(WHEEL_SLOT_OFFSET_PROPERTY, data->slot_count);
 	for (int i = 0; i < data->slot_count; i++) {
@@ -170,13 +212,12 @@ static bool wheel_on_connect(indigo_device *device) {
 	WHEEL_SLOT_NAME_PROPERTY->state = WHEEL_SLOT_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 	WHEEL_SLOT_ITEM->number.min = 1;
 	WHEEL_SLOT_ITEM->number.max = data->slot_count;
-	if (data->position >= 0) {
-		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = data->position + 1;
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		// the wheel turns: the slot is not known until it stops
-		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 0;
-		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+	system_alpaca_lock(device);
+	// while the wheel turns the slot is not known: the value is 0 until it stops
+	WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = data->position + 1;
+	WHEEL_SLOT_PROPERTY->state = data->position >= 0 ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+	system_alpaca_unlock(device);
+	if (data->position < 0) {
 		data->target = -1;
 		system_alpaca_operation_start(device, &data->move, wheel_move_timeout(device), wheel_slot_finalizer);
 	}
@@ -186,45 +227,77 @@ static bool wheel_on_connect(indigo_device *device) {
 static void wheel_on_disconnect(indigo_device *device) {
 	wheel_data *data = WHEEL_DATA;
 	system_alpaca_operation_end(device, &data->move);
-	data->external = false;
+	data->external = data->unreadable = false;
 }
 
 static void wheel_on_poll(indigo_device *device) {
 	wheel_data *data = WHEEL_DATA;
+	char reason[INDIGO_VALUE_SIZE] = { 0 };
+	bool publish = false, publish_failure = false;
 	int position = -1;
-	// the slot belongs to the finalizer while a move runs, and to the handler while a request waits for it
-	if (data->move.active || (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE && !data->external)) {
+	// the slot belongs to the finalizer while a move runs
+	if (data->move.active) {
 		return;
 	}
-	if (system_alpaca_state_int(device, "Position", &position) != ALPACA_OK) {
+	// The device is asked first and the property is touched afterwards, in one step under the lock of the device: a request of a client that
+	// arrives while the device answers finds the slot as the client knows it, and is not replaced by what the device said.
+	alpaca_result result = system_alpaca_state_int(device, "Position", &position);
+	system_alpaca_reason(device, result, reason, sizeof(reason));
+	if (alpaca_is_transport_error(result)) {
 		return;
 	}
-	if (position == -1 && WHEEL_SLOT_PROPERTY->state != INDIGO_BUSY_STATE) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-		data->external = true;
+	system_alpaca_lock(device);
+	// a request that was accepted and waits for its handler owns the property
+	if (WHEEL_SLOT_PROPERTY->state != INDIGO_BUSY_STATE || data->external) {
+		if (result != ALPACA_OK) {
+			// the device answers and does not tell where the wheel is: the slot that is shown is not the one of the device any more
+			if (WHEEL_SLOT_PROPERTY->state == INDIGO_OK_STATE) {
+				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				data->unreadable = true;
+				publish_failure = true;
+			}
+		} else if (position == -1 && WHEEL_SLOT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			data->external = true;
+			data->unreadable = false;
+			publish = true;
+		} else if (position >= 0 && position < data->slot_count && (data->external || data->unreadable || WHEEL_SLOT_ITEM->number.value != position + 1)) {
+			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = position + 1;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+			data->external = data->unreadable = false;
+			publish = true;
+		}
+	}
+	system_alpaca_unlock(device);
+	if (publish) {
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-	} else if (position >= 0 && position < data->slot_count && (data->external || WHEEL_SLOT_ITEM->number.value != position + 1)) {
-		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = position + 1;
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		data->external = false;
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+	} else if (publish_failure) {
+		system_alpaca_report(device, WHEEL_SLOT_PROPERTY, result, "Reading the slot", reason);
 	}
 }
 
 static void wheel_slot_handler(indigo_device *device) {
 	wheel_data *data = WHEEL_DATA;
-	if (!IS_CONNECTED) {
+	char reason[INDIGO_VALUE_SIZE], message[INDIGO_VALUE_SIZE];
+	int position = -1;
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	data->target = (int)WHEEL_SLOT_ITEM->number.target - 1;
 	alpaca_param params[] = { ALPACA_INT_PARAM("Position", data->target) };
 	alpaca_result result = system_alpaca_put(device, "position", params, 1, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE);
+	// the reason of a failure is taken before Position, which is asked next, replaces it in the channel
+	system_alpaca_reason(device, result, reason, sizeof(reason));
+	if (result != ALPACA_OK && alpaca_may_have_executed(result) && system_alpaca_get_int(device, "position", &position) == ALPACA_OK && (position == -1 || position == data->target)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' gave no valid reply to position (%s) but took the request", device->name, alpaca_result_text(result));
+		result = ALPACA_OK;
+	}
 	if (result == ALPACA_OK) {
 		data->external = false;
 		system_alpaca_operation_start(device, &data->move, wheel_move_timeout(device), wheel_slot_finalizer);
 	} else {
-		WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value;
-		system_alpaca_finish(device, WHEEL_SLOT_PROPERTY, result, "Move");
+		wheel_failure(device, result, reason, message, sizeof(message));
+		wheel_finish(device, 0, message);
 	}
 }
 
@@ -235,6 +308,11 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		// Room for the largest number of slots is made now, before a bus thread can look at the properties: on connect only the count
+		// changes, so the properties never move while indigo_wheel_change_property() may use them on a bus thread.
+		int count = WHEEL_SLOT_NAME_PROPERTY->count;
+		WHEEL_SLOT_NAME_PROPERTY = indigo_resize_property(indigo_resize_property(WHEEL_SLOT_NAME_PROPERTY, WHEEL_MAX_SLOTS), count);
+		WHEEL_SLOT_OFFSET_PROPERTY = indigo_resize_property(indigo_resize_property(WHEEL_SLOT_OFFSET_PROPERTY, WHEEL_MAX_SLOTS), count);
 		return system_alpaca_attach(device) == INDIGO_OK ? wheel_enumerate_properties(device, NULL, NULL) : INDIGO_FAILED;
 	}
 	return INDIGO_FAILED;
@@ -249,7 +327,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
+		system_alpaca_accept(device, WHEEL_SLOT_PROPERTY, property, ALPACA_ACCEPT_TARGETS, NULL, wheel_slot_handler);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);

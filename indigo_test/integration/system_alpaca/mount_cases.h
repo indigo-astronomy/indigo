@@ -20,16 +20,1469 @@
 
 // Cases of the Telescope device class of the system_alpaca driver (indigo_system_alpaca_mount.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them mount_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated Telescope is a German equatorial mount at 48.1486 N, 17.1077 E, 140 m, on 2026-01-01T00:00:00 UTC of the manual clock.
+// It starts one hour west of the meridian at declination 30, not tracking, and reports topocentric coordinates (EquatorialSystem 1).
+// A slew runs at SlewRate (4 degrees per second of device time), a pier flip takes FlipTime (45 s), MoveAxis allows 0 .. 4 degrees per second.
+// Most cases use a device that reports J2000 coordinates, so that the values on the bus are the values of the device, at a site in the
+// southern and western hemisphere and with targets in several quadrants and on both sides of the pier.
 
 #ifndef system_alpaca_mount_cases_h
 #define system_alpaca_mount_cases_h
 
+#include <stdatomic.h>
+
+#include <indigo/indigo_align.h>
+
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_MOUNT_CASES
+#define MOUNT_API "/api/v1/telescope/0/"
+#define MOUNT_SIMULATED "/simulator/v1/telescope/0/state"
+#define MOUNT_ERROR "/simulator/v1/telescope/0/error"
+#define MOUNT_LABEL "Telescope Simulator"
+#define MOUNT_OFFSET_RATE "X_ALPACA_OFFSET_RATE"
+#define MOUNT_SIDEREAL (15.0410686 / 3600)
+
+static const char *mount_default[] = { "--device", "telescope", NULL };
+static const char *mount_legacy[] = { "--device", "telescope:interface=legacy", NULL };
+// J2000, tracking, Cerro Pachon: the sidereal time is 1.9949 h, so the start position (RA 6.8512 h) is 4.86 h east of the meridian
+static const char *mount_south[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,SiteElevation=2722", NULL };
+static const char *mount_south_legacy[] = { "--device", "telescope:interface=legacy,EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,SiteElevation=2722", NULL };
+
+static bool mount_near(double value, double expected, double tolerance) {
+	return fabs(value - expected) <= tolerance;
+}
+
+// Wait for the answer to a request made after the given revision: a state that is not BUSY. Returns it, -1 if there was none.
+static int mount_answer(const char *property, unsigned revision) {
+	if (!SA_WAIT(sa_revision(sa_device, property) > revision && sa_state(sa_device, property) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static int mount_set_switch(const char *property, const char *item, bool value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? mount_answer(property, revision) : -1;
+}
+
+static int mount_set_number(const char *property, const char *item, double value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? mount_answer(property, revision) : -1;
+}
+
+static int mount_set_numbers(const char *property, const char *first, double first_value, const char *second, double second_value) {
+	const char *items[] = { first, second };
+	const double values[] = { first_value, second_value };
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_number_property(&sa_client, sa_device, property, 2, items, values) == INDIGO_OK ? mount_answer(property, revision) : -1;
+}
+
+static int mount_set_text(const char *property, const char *item, const char *value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_text_property_1_raw(&sa_client, sa_device, property, item, value) == INDIGO_OK ? mount_answer(property, revision) : -1;
+}
+
+// Start a change that is expected to stay BUSY: a switch that starts a motion.
+static bool mount_start_switch(const char *property, const char *item) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, true) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, property, INDIGO_BUSY_STATE, revision), SA_TIMEOUT);
+}
+
+// Request MOUNT_EQUATORIAL_COORDINATES without waiting for anything.
+static bool mount_request_coordinates(double ra, double dec) {
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	const double values[] = { ra, dec };
+	return indigo_change_number_property(&sa_client, sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK;
+}
+
+// Request MOUNT_EQUATORIAL_COORDINATES and wait for the answer: a state that is not BUSY.
+static int mount_set_coordinates(double ra, double dec) {
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	return mount_request_coordinates(ra, dec) ? mount_answer(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, revision) : -1;
+}
+
+static bool mount_select(const char *property, const char *item) {
+	return mount_set_switch(property, item, true) == INDIGO_OK_STATE && sa_switch(sa_device, property, item);
+}
+
+// State of the simulated device, e.g. mount_simulated("RightAscension").
+static double mount_simulated(const char *key) {
+	return atof(sa_status(0, MOUNT_SIMULATED, key));
+}
+
+static bool mount_simulated_is(const char *key, const char *value) {
+	return !strcmp(sa_status(0, MOUNT_SIMULATED, key), value);
+}
+
+static int mount_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), MOUNT_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The parameters of the last request of a member start with the given text (the transaction IDs follow).
+static bool mount_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), MOUNT_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	if (line == NULL || strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters))) {
+		fprintf(stderr, "    last %s %s: %s\n", method, member, line != NULL ? sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query") : "none");
+		return false;
+	}
+	return true;
+}
+
+// Value of one parameter of the last request of a member as a number, NAN if there is none.
+static double mount_parameter(const char *method, const char *member, const char *name) {
+	char path[128];
+	char body[SA_TEXT_SIZE];
+	snprintf(path, sizeof(path), MOUNT_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	if (line == NULL) {
+		return NAN;
+	}
+	snprintf(body, sizeof(body), "%s", sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"));
+	const char *value = sa_field(body, name);
+	return *value ? atof(value) : NAN;
+}
+
+// Sequence number of the last request of a member, 0 if there is none; it tells the order of two requests.
+static int mount_sequence(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), MOUNT_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL ? atoi(sa_field(line, "Sequence")) : 0;
+}
+
+// One of the last messages contains the text; the messages are printed if none does.
+static bool mount_message(const char *text) {
+	if (sa_message_seen(text)) {
+		return true;
+	}
+	pthread_mutex_lock(&sa_cache_mutex);
+	fprintf(stderr, "    no message '%s' among:\n", text);
+	for (int i = 0; i < SA_MAX_MESSAGES; i++) {
+		if (*sa_messages[i]) {
+			fprintf(stderr, "      %s\n", sa_messages[i]);
+		}
+	}
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return false;
+}
+
+// Number of requests of a member that arrived before the request with the given sequence number.
+static int mount_count_before(const char *method, const char *member, int sequence) {
+	char path[128];
+	int count = 0;
+	snprintf(path, sizeof(path), MOUNT_API "%s", member);
+	const char *body = sa_requests(0, method, path);
+	while (body != NULL && *body) {
+		count += atoi(sa_field(body, "Sequence")) < sequence;
+		body += strcspn(body, "\n");
+		body += *body == '\n';
+	}
+	return count;
+}
+
+static bool mount_begin(const char * const *arguments) {
+	return sa_begin(arguments) && sa_attach(MOUNT_LABEL) && sa_connect(sa_device);
+}
+
+// The equatorial coordinates on the bus are the given ones.
+static bool mount_at(double ra, double dec, double tolerance) {
+	double delta = fabs(sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra);
+	return fmin(delta, 24 - delta) <= tolerance / 15 && mount_near(sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME), dec, tolerance);
+}
+
+// The simulated telescope is at the given coordinates.
+static bool mount_simulated_at(double ra, double dec, double tolerance) {
+	double delta = fabs(mount_simulated("RightAscension") - ra);
+	return fmin(delta, 24 - delta) <= tolerance / 15 && mount_near(mount_simulated("Declination"), dec, tolerance);
+}
+
+// Give the driver 300 ms to do what it must not do, for checks that something did not happen.
+static bool mount_pause(void) {
+	indigo_usleep(300000);
+	return true;
+}
+
+// The requests of a member stopped: none within 300 ms.
+static bool mount_quiet(const char *method, const char *member) {
+	int count = mount_count(method, member);
+	indigo_usleep(300000);
+	return mount_count(method, member) == count;
+}
+
+// ---------------------------------------------------------------------------- second client, log markers, queue fence and gate
+
+// Owner of a manual motion. It has no callbacks: an owner only sends requests and detaches.
+static indigo_client mount_owner = { "system_alpaca motion owner", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false, false };
+static pthread_mutex_t mount_marker_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char mount_markers[32][INDIGO_VALUE_SIZE];
+static int mount_marker_count = 0;
+static atomic_int mount_fence_passes = 0;
+static atomic_bool mount_gate_entered = false;
+static atomic_bool mount_gate_open = true;
+
+// The bus logs "Aborting '<device>'.<property> started by detached client '<client>'" when it releases a motion of a detached client,
+// the mount base class "Releasing '<device>'.<property>, ..." when it could not register a started motion and released it at once.
+static void mount_capture_log(indigo_log_levels level, const char *message) {
+	if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "    log: %s\n", message);
+	}
+	if (strstr(message, "Aborting '") != NULL || strstr(message, "Releasing '") != NULL || strstr(message, "Forgetting '") != NULL) {
+		pthread_mutex_lock(&mount_marker_mutex);
+		if (mount_marker_count < 32) {
+			snprintf(mount_markers[mount_marker_count++], INDIGO_VALUE_SIZE, "%s", message);
+		}
+		pthread_mutex_unlock(&mount_marker_mutex);
+	}
+}
+
+// Number of log markers of one verb for one property of the device under test; with NULL every marker.
+static int mount_marker(const char *verb, const char *property) {
+	char needle[INDIGO_VALUE_SIZE];
+	int count = 0;
+	snprintf(needle, sizeof(needle), "%s '%s'.%s", verb != NULL ? verb : "", sa_device, property != NULL ? property : "");
+	pthread_mutex_lock(&mount_marker_mutex);
+	for (int i = 0; i < mount_marker_count; i++) {
+		count += verb == NULL || strstr(mount_markers[i], needle) != NULL;
+	}
+	pthread_mutex_unlock(&mount_marker_mutex);
+	return count;
+}
+
+static void mount_fence_handler(indigo_device *device) {
+	(void)device;
+	atomic_fetch_add(&mount_fence_passes, 1);
+}
+
+static void mount_gate_handler(indigo_device *device) {
+	(void)device;
+	atomic_store(&mount_gate_entered, true);
+	double deadline = indigo_monotonic_time() + 30;
+	while (!atomic_load(&mount_gate_open) && indigo_monotonic_time() < deadline) {
+		indigo_usleep(1000);
+	}
+}
+
+// A fence queued behind a request runs only after every handler queued before it has finished: once it passed, the handler of the request and its commit are done.
+static bool mount_drain(void) {
+	indigo_device *device = sa_device_pointer(sa_device);
+	int before = atomic_load(&mount_fence_passes);
+	if (device == NULL) {
+		return false;
+	}
+	indigo_execute_handler(device, mount_fence_handler);
+	return SA_WAIT(atomic_load(&mount_fence_passes) > before, SA_TIMEOUT);
+}
+
+// The gate occupies the queue of the device: requests sent while it is closed are admitted by change_property(), their handlers run after it opens.
+static bool mount_close_gate(void) {
+	indigo_device *device = sa_device_pointer(sa_device);
+	if (device == NULL) {
+		return false;
+	}
+	atomic_store(&mount_gate_open, false);
+	atomic_store(&mount_gate_entered, false);
+	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, 0, mount_gate_handler);
+	return SA_WAIT(atomic_load(&mount_gate_entered), SA_TIMEOUT);
+}
+
+// No release is registered for the property. The probe removes an entry it finds, which only happens when the check fails anyway.
+static bool mount_no_entry(const char *property) {
+	indigo_device *device = sa_device_pointer(sa_device);
+	return device != NULL && indigo_unregister_detach_abort(device, property) == INDIGO_NOT_FOUND;
+}
+
+static bool mount_owner_moves(const char *property, const char *item) {
+	return indigo_change_switch_property_1(&mount_owner, sa_device, property, item, true) == INDIGO_OK && mount_drain() && sa_switch(sa_device, property, item) && sa_state(sa_device, property) == INDIGO_OK_STATE;
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void mount_properties(void) {
+	static const char *visible[] = { MOUNT_INFO_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, MOUNT_LST_TIME_PROPERTY_NAME, UTC_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_STATE_PROPERTY_NAME, MOUNT_OFFSET_RATE };
+	static const char *hidden[] = { MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_POSITION_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_TRAINING_PROPERTY_NAME };
+	static const char *once[] = { "canpulseguide", "canslewasync", "cansync", "canpark", "canunpark", "cansetpark", "canfindhome", "cansettracking", "cansetpierside", "cansetguiderates", "cansetrightascensionrate", "cansetdeclinationrate", "trackingrates", "equatorialsystem", "name", "rightascension", "declination", "altitude", "azimuth", "siderealtime", "slewing", "atpark", "athome", "tracking", "sideofpier", "utcdate" };
+	double ra = 6.8512354871491, dec = 30;
+	SA_CHECK(sa_begin(mount_default) && sa_attach(MOUNT_LABEL));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_MOUNT) == INDIGO_INTERFACE_MOUNT);
+	// nothing of the class is defined and nothing but the interface version was asked before the device is connected
+	SA_CHECK(!sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_OFFSET_RATE));
+	SA_CHECK(mount_count("GET", "can*") == 0 && mount_count("PUT", "*") == 0);
+	SA_CHECK(sa_connect(sa_device));
+	for (int i = 0; i < (int)ARRAY_SIZE(visible); i++) {
+		if (!sa_defined(sa_device, visible[i])) {
+			fprintf(stderr, "    %s is not defined\n", visible[i]);
+		}
+		SA_CHECK(sa_defined(sa_device, visible[i]));
+	}
+	for (int i = 0; i < (int)ARRAY_SIZE(hidden); i++) {
+		if (sa_defined(sa_device, hidden[i])) {
+			fprintf(stderr, "    %s is defined\n", hidden[i]);
+		}
+		SA_CHECK(!sa_defined(sa_device, hidden[i]));
+	}
+	// identity
+	SA_CHECK(!strcmp(sa_text(sa_device, MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME), "Telescope Simulator") && !strcmp(sa_text(sa_device, MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME), "INDIGO Alpaca Telescope simulator"));
+	SA_CHECK(!strcmp(sa_text(sa_device, MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME), "1.0 (system_alpaca_simulator Telescope device)"));
+	// the telescope reports topocentric coordinates: MOUNT_EPOCH says so and the coordinates on the bus are J2000, RA in hours
+	SA_CHECK(sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 0 && sa_perm(sa_device, MOUNT_EPOCH_PROPERTY_NAME) == INDIGO_RO_PERM);
+	indigo_eq_to_j2k(0, &ra, &dec);
+	SA_CHECK(mount_at(ra, dec, 1e-5) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_perm(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(mount_near(6.8512354871491 - ra, 0.0286, 0.003) && mount_near(30 - dec, -0.027, 0.01));
+	SA_CHECK(sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME));
+	SA_CHECK(sa_item_count(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == 3 && sa_switch(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME) && sa_has_item(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && sa_has_item(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME));
+	// horizontal coordinates and sidereal time are the ones of the telescope
+	SA_CHECK(SA_WAIT(mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME), 68.5228041510081, 1e-9) && mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME), 217.748459001954, 1e-9), SA_TIMEOUT));
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME), 7.8512354871491, 1e-9) && sa_perm(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_RO_PERM);
+	// site: latitude, longitude east of Greenwich, elevation
+	SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == 48.1486 && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) == 17.1077 && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME) == 140);
+	// time without an offset item, seconds without a fraction
+	SA_CHECK(sa_item_count(sa_device, UTC_TIME_PROPERTY_NAME) == 1 && !strcmp(sa_text(sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME), "2026-01-01T00:00:00") && sa_item_count(sa_device, MOUNT_SET_HOST_TIME_PROPERTY_NAME) == 1);
+	// park, home
+	SA_CHECK(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_item_count(sa_device, MOUNT_PARK_SET_PROPERTY_NAME) == 1 && sa_has_item(sa_device, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME) && sa_item_count(sa_device, MOUNT_HOME_PROPERTY_NAME) == 1 && !sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+	// tracking and its rates in the INDIGO order, the one of the telescope selected
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && sa_perm(sa_device, MOUNT_TRACKING_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 4 && !strcmp(sa_item_name(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, 0), MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && !strcmp(sa_item_name(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, 1), MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+	SA_CHECK(!strcmp(sa_item_name(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, 2), MOUNT_TRACK_RATE_LUNAR_ITEM_NAME) && !strcmp(sa_item_name(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, 3), MOUNT_TRACK_RATE_KING_ITEM_NAME));
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME));
+	// guide rates in percent of the sidereal rate: 0.00208903 degrees per second is half of it
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 50, 1e-3) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME), 50, 1e-3) && sa_perm(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == 0 && sa_perm(sa_device, MOUNT_OFFSET_RATE) == INDIGO_RW_PERM && sa_item_count(sa_device, MOUNT_OFFSET_RATE) == 2);
+	// manual motion
+	SA_CHECK(sa_item_count(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME) == 4 && sa_switch(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME));
+	SA_CHECK(!sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	// an hour west of the meridian the mount is in the normal pointing state
+	SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && sa_perm(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_IDLE_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_IDLE_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_IDLE_STATE);
+	// what it took: every capability and every static value once, the axes with their parameter
+	for (int i = 0; i < (int)ARRAY_SIZE(once); i++) {
+		if (mount_count("GET", once[i]) != 1) {
+			fprintf(stderr, "    %s was read %d times\n", once[i], mount_count("GET", once[i]));
+		}
+		SA_CHECK(mount_count("GET", once[i]) == 1);
+	}
+	SA_CHECK(mount_count("GET", "canmoveaxis") == 2 && mount_last("GET", "canmoveaxis", "Axis=1&ClientID=") && mount_count("GET", "axisrates") == 2 && mount_last("GET", "axisrates", "Axis=1&ClientID="));
+	SA_CHECK(mount_count("PUT", "*") == 1 && mount_count("PUT", "connect") == 1);
+	// the state is polled with DeviceState only; the settings another client may change are read again from time to time
+	SA_CHECK(SA_WAIT(mount_count("GET", "devicestate") >= 25, SA_TIMEOUT) && mount_count("GET", "rightascension") == 1 && mount_count("GET", "slewing") == 1 && mount_count("GET", "utcdate") == 1);
+	SA_CHECK(mount_count("GET", "sitelatitude") >= 2 && mount_count("GET", "trackingrate") >= 2 && mount_count("GET", "guideratedeclination") >= 2 && mount_count("GET", "declinationrate") >= 2 && mount_count("GET", "sitelatitude") <= 5);
+	// a disconnect removes the properties, the next connection builds them again
+	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_OFFSET_RATE) && !sa_defined(sa_device, MOUNT_STATE_PROPERTY_NAME));
+	SA_CHECK(sa_connect(sa_device) && sa_defined(sa_device, MOUNT_OFFSET_RATE) && sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 4 && mount_count("GET", "canpark") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_legacy_properties(void) {
+	SA_CHECK(mount_begin(mount_south_legacy));
+	// interface version 3 has no DeviceState: every member of the state is read with a request of its own on every tick
+	SA_CHECK(!strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME), "3") && mount_count("PUT", "connected") == 1 && mount_count("PUT", "connect") == 0);
+	SA_CHECK(SA_WAIT(mount_count("GET", "rightascension") >= 4 && mount_count("GET", "slewing") >= 4 && mount_count("GET", "utcdate") >= 4 && mount_count("GET", "sideofpier") >= 4, SA_TIMEOUT) && mount_count("GET", "devicestate") == 0);
+	// a telescope that reports J2000: the coordinates are passed on as they are
+	SA_CHECK(sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 2000 && sa_perm(sa_device, MOUNT_EPOCH_PROPERTY_NAME) == INDIGO_RO_PERM && mount_at(6.8512354871491, 30, 1e-9));
+	// a site in the southern and western hemisphere: the longitude is counted eastwards from 0 to 360
+	SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == -30.2407 && mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME), 289.2634, 1e-9) && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME) == 2722);
+	// 4.86 h east of the meridian the mount points through the pole
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME), mount_simulated("SiderealTime"), 1e-9) && mount_near(mount_simulated("HourAngle"), -4.8563, 1e-3));
+	SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	SA_CHECK(SA_WAIT(mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME), mount_simulated("Altitude"), 1e-9) && mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME), mount_simulated("Azimuth"), 1e-9), SA_TIMEOUT));
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 4 && sa_defined(sa_device, MOUNT_OFFSET_RATE) && sa_defined(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) && sa_defined(sa_device, UTC_TIME_PROPERTY_NAME));
+	// a slew works the same way, completed by Slewing read with a request of its own
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 30) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9));
+	SA_CHECK(sa_disconnect(sa_device) && mount_count("PUT", "connected") == 2 && mount_last("PUT", "connected", "Connected=False&ClientID="));
+cleanup:
+	sa_end();
+}
+
+static void mount_capability_variants(void) {
+	static const char *minimal[] = { "--device", "telescope:interface=legacy,EquatorialSystem=2,Tracking=true,CanSlewAsync=false,CanPark=false,CanUnpark=false,CanSetPark=false,CanFindHome=false,CanSetTracking=false,CanMoveAxis=false,CanSetPierSide=false,CanSetGuideRates=false,CanSetRightAscensionRate=false,CanSetDeclinationRate=false,CanPulseGuide=false,TrackingRates=0|2", NULL };
+	static const char *no_sync[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,CanSync=false,TrackingRates=", NULL };
+	static const char *read_only[] = { "--device", "telescope:EquatorialSystem=2,CanSync=false,CanSlewAsync=false", NULL };
+	static const char *partial[] = { "--device", "telescope:EquatorialSystem=2,CanPark=false,CanSetRightAscensionRate=false,CanSetTracking=false", NULL };
+	static const char *refused[] = { "park", "unpark", "setpark", "findhome", "tracking", "moveaxis", "sideofpier", "guideraterightascension", "guideratedeclination", "rightascensionrate", "declinationrate", "slewtocoordinatesasync", "slewtocoordinates", "pulseguide" };
+	static const char *missing[] = { "sitelatitude", "utcdate", "sideofpier", "guideraterightascension", "altitude", "siderealtime", "trackingrate", "equatorialsystem" };
+	char guider[INDIGO_NAME_SIZE + 16];
+	// a telescope that can only report where it points, be synchronised and track at two rates
+	SA_CHECK(mount_begin(minimal));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	SA_CHECK(sa_item_count(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == 1 && sa_switch(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && sa_perm(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(!sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_PARK_SET_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_HOME_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_OFFSET_RATE));
+	SA_CHECK(!sa_defined(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME) && !sa_device_defined(guider));
+	SA_CHECK(sa_perm(sa_device, MOUNT_TRACKING_PROPERTY_NAME) == INDIGO_RO_PERM && sa_perm(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) == INDIGO_RO_PERM && sa_perm(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME) == INDIGO_RO_PERM);
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME), 50, 1e-3));
+	SA_CHECK(sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 2 && !strcmp(sa_item_name(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, 0), MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && !strcmp(sa_item_name(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, 1), MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+	// AxisRates is not asked for an axis that can not be moved
+	SA_CHECK(mount_count("GET", "canmoveaxis") == 2 && mount_count("GET", "axisrates") == 0);
+	// requests for what the telescope can not do change nothing and reach nobody
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true) == INDIGO_OK && indigo_change_number_property_1(&sa_client, sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75) == INDIGO_OK);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, MOUNT_OFFSET_RATE, "RA", 1) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true) == INDIGO_OK);
+	// the tracking rate and the synchronisation work
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) && mount_last("PUT", "trackingrate", "TrackingRate=2&ClientID=") && mount_simulated("TrackingRate") == 2);
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && mount_count("PUT", "trackingrate") == 2);
+	SA_CHECK(mount_set_coordinates(17.3, -41.6) == INDIGO_OK_STATE && mount_last("PUT", "synctocoordinates", "RightAscension=17.3&Declination=-41.6&ClientID=") && mount_at(17.3, -41.6, 1e-9));
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 50, 1e-3));
+	for (int i = 0; i < (int)ARRAY_SIZE(refused); i++) {
+		if (mount_count("PUT", refused[i]) != 0) {
+			fprintf(stderr, "    PUT %s was sent\n", refused[i]);
+		}
+		SA_CHECK(mount_count("PUT", refused[i]) == 0);
+	}
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// no synchronisation and no tracking rates
+	SA_CHECK(mount_begin(no_sync));
+	SA_CHECK(sa_item_count(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == 2 && sa_switch(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME) && sa_has_item(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME));
+	SA_CHECK(!sa_has_item(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && !sa_defined(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) && sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME) && sa_defined(sa_device, MOUNT_HOME_PROPERTY_NAME));
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(6.9, 31) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT) && sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(mount_count("PUT", "synctocoordinates") == 0 && mount_count("PUT", "trackingrate") == 0 && sa_disconnect(sa_device));
+	sa_end();
+	// neither slews nor synchronisation: the coordinates are read only
+	SA_CHECK(mount_begin(read_only));
+	SA_CHECK(!sa_defined(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) && sa_perm(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_RO_PERM && mount_at(6.8512354871491, 30, 1e-9));
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && sa_advance(0, 3600) && SA_WAIT(mount_at(7.8539733962426, 30, 1e-6), SA_TIMEOUT));
+	SA_CHECK(mount_count("PUT", "slewtocoordinatesasync") == 0 && mount_count("PUT", "synctocoordinates") == 0 && mount_count("PUT", "tracking") == 0 && sa_disconnect(sa_device));
+	sa_end();
+	// half of a pair of capabilities
+	SA_CHECK(mount_begin(partial));
+	SA_CHECK(sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME) && sa_defined(sa_device, MOUNT_OFFSET_RATE) && sa_item_count(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == 2 && !sa_has_item(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("The telescope can not be parked") && mount_count("PUT", "park") == 0);
+	SA_CHECK(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SA_CHECK(mount_set_numbers(MOUNT_OFFSET_RATE, "RA", 0.25, "DEC", -1.5) == INDIGO_OK_STATE && mount_count("PUT", "rightascensionrate") == 0 && mount_last("PUT", "declinationrate", "DeclinationRate=-1.5&ClientID="));
+	SA_CHECK(sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == -1.5 && mount_simulated("DeclinationRate") == -1.5);
+	// a telescope that does not track and can not be told to refuses the slew itself
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: invalid operation (SlewToCoordinatesAsync needs Tracking to be true (0x40B))") && mount_count("PUT", "tracking") == 0 && mount_count("PUT", "slewtocoordinatesasync") == 1);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// members a telescope does not implement, with and without DeviceState: the property is hidden or kept as a setting of INDIGO, and the member is not asked for again
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(sa_begin(legacy ? mount_legacy : mount_default) && sa_attach(MOUNT_LABEL));
+		for (int i = 0; i < (int)ARRAY_SIZE(missing); i++) {
+			char form[128];
+			snprintf(form, sizeof(form), "Member=%s&ErrorNumber=1024", missing[i]);
+			SA_CHECK(sa_put(0, MOUNT_ERROR, form));
+		}
+		SA_CHECK(sa_connect(sa_device));
+		SA_CHECK(!sa_defined(sa_device, UTC_TIME_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_SET_HOST_TIME_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME));
+		SA_CHECK(sa_perm(sa_device, MOUNT_EPOCH_PROPERTY_NAME) == INDIGO_RW_PERM && sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 2000 && mount_at(6.8512354871491, 30, 1e-9));
+		// the site is a setting of INDIGO: changing it is answered without a request, and the computed horizontal coordinates follow it
+		SA_CHECK(mount_set_numbers(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -30.2407, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, -70.7366) == INDIGO_OK_STATE);
+		SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == -30.2407 && mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME), 289.2634, 1e-9));
+		SA_CHECK(mount_count("PUT", "sitelatitude") == 0 && mount_count("PUT", "sitelongitude") == 0 && mount_count("PUT", "siteelevation") == 0);
+		time_t now = time(NULL);
+		double lst = indigo_lst(&now, 289.2634), ra = 6.8512354871491, dec = 30, alt = 0, az = 0;
+		indigo_j2k_to_jnow(&ra, &dec);
+		indigo_radec_to_altaz(ra, dec, &now, -30.2407, 289.2634, 0, &alt, &az);
+		SA_CHECK(SA_WAIT(mount_near(sa_number(sa_device, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME), lst, 0.01) && mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME), alt, 0.2) && mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME), az, 0.5), SA_TIMEOUT));
+		// MOUNT_EPOCH is the user's: with the equinox of date the same coordinates of the telescope are precessed
+		SA_CHECK(mount_set_number(MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 0) == INDIGO_OK_STATE);
+		ra = 6.8512354871491;
+		dec = 30;
+		indigo_eq_to_j2k(0, &ra, &dec);
+		SA_CHECK(SA_WAIT(mount_at(ra, dec, 1e-5), SA_TIMEOUT) && mount_near(6.8512354871491 - ra, 0.0286, 0.003));
+		SA_CHECK(SA_WAIT(mount_count("GET", legacy ? "connected" : "devicestate") >= 25, SA_TIMEOUT));
+		for (int i = 0; i < (int)ARRAY_SIZE(missing); i++) {
+			if (mount_count("GET", missing[i]) != 1) {
+				fprintf(stderr, "    %s was read %d times\n", missing[i], mount_count("GET", missing[i]));
+			}
+			SA_CHECK(mount_count("GET", missing[i]) == 1);
+		}
+		SA_CHECK(mount_count("GET", "sitelongitude") == 0 && mount_count("GET", "siteelevation") == 0 && mount_count("GET", "guideratedeclination") == 0 && mount_count("GET", "rightascensionrate") >= 2 && sa_is_connected(sa_device));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- coordinates
+
+static void mount_equatorial_systems(void) {
+	static const char *b1950[] = { "--device", "telescope:EquatorialSystem=4,Tracking=true,SlewRate=0", NULL };
+	static const char *j2050[] = { "--device", "telescope:EquatorialSystem=3,Tracking=true,SlewRate=0", NULL };
+	static const char *other[] = { "--device", "telescope:EquatorialSystem=0,Tracking=true,SlewRate=0", NULL };
+	static const char *topocentric[] = { "--device", "telescope:Tracking=true,SlewRate=0", NULL };
+	double ra = 10.5, dec = -22.75;
+	// equTopocentric: a J2000 target is sent in the equinox of date. Precession moves this target by +76 s of RA and -8.5' in 26.75 years.
+	SA_CHECK(mount_begin(topocentric));
+	SA_CHECK(sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 0 && mount_set_coordinates(10.5, -22.75) == INDIGO_OK_STATE);
+	indigo_j2k_to_eq(0, &ra, &dec);
+	SA_CHECK(mount_near(mount_parameter("PUT", "slewtocoordinatesasync", "RightAscension"), ra, 1e-6) && mount_near(mount_parameter("PUT", "slewtocoordinatesasync", "Declination"), dec, 1e-5));
+	SA_CHECK(mount_near(ra - 10.5, 0.0212, 0.002) && mount_near(dec + 22.75, -0.142, 0.01) && mount_simulated_at(ra, dec, 1e-5));
+	// and what the telescope reports comes back as the J2000 target
+	SA_CHECK(mount_at(10.5, -22.75, 1e-5) && sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == 10.5);
+	// the same for a synchronisation, with a target whose right ascension of date is beyond 24 h
+	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && mount_set_coordinates(23.995, 61.25) == INDIGO_OK_STATE);
+	ra = 23.995;
+	dec = 61.25;
+	indigo_j2k_to_eq(0, &ra, &dec);
+	ra = fmod(ra + 24, 24);
+	SA_CHECK(ra < 1 && mount_near(mount_parameter("PUT", "synctocoordinates", "RightAscension"), ra, 1e-6) && mount_near(mount_parameter("PUT", "synctocoordinates", "Declination"), dec, 1e-5) && mount_at(23.995, 61.25, 1e-5));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// equB1950: 50 years of precession the other way round
+	SA_CHECK(mount_begin(b1950));
+	ra = 6.8512354871491;
+	dec = 30;
+	indigo_eq_to_j2k(1950, &ra, &dec);
+	SA_CHECK(sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 1950 && sa_perm(sa_device, MOUNT_EPOCH_PROPERTY_NAME) == INDIGO_RO_PERM && mount_at(ra, dec, 1e-6) && mount_near(ra - 6.8512354871491, 0.0531, 0.003));
+	SA_CHECK(mount_set_coordinates(10.5, -22.75) == INDIGO_OK_STATE);
+	ra = 10.5;
+	dec = -22.75;
+	indigo_j2k_to_eq(1950, &ra, &dec);
+	SA_CHECK(mount_near(mount_parameter("PUT", "slewtocoordinatesasync", "RightAscension"), ra, 1e-9) && mount_near(mount_parameter("PUT", "slewtocoordinatesasync", "Declination"), dec, 1e-9) && mount_near(10.5 - ra, 0.0397, 0.003) && mount_at(10.5, -22.75, 1e-7));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// equJ2050
+	SA_CHECK(mount_begin(j2050));
+	ra = 6.8512354871491;
+	dec = 30;
+	indigo_eq_to_j2k(2050, &ra, &dec);
+	SA_CHECK(sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 2050 && sa_perm(sa_device, MOUNT_EPOCH_PROPERTY_NAME) == INDIGO_RO_PERM && mount_at(ra, dec, 1e-6) && mount_near(6.8512354871491 - ra, 0.0531, 0.003));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// equOther: the telescope does not tell, so the equinox is the user's choice, J2000 until it is changed
+	SA_CHECK(mount_begin(other));
+	SA_CHECK(sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 2000 && sa_perm(sa_device, MOUNT_EPOCH_PROPERTY_NAME) == INDIGO_RW_PERM && mount_at(6.8512354871491, 30, 1e-9));
+	SA_CHECK(mount_set_number(MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 1950) == INDIGO_OK_STATE);
+	ra = 6.8512354871491;
+	dec = 30;
+	indigo_eq_to_j2k(1950, &ra, &dec);
+	SA_CHECK(SA_WAIT(mount_at(ra, dec, 1e-6), SA_TIMEOUT) && mount_set_coordinates(10.5, -22.75) == INDIGO_OK_STATE);
+	ra = 10.5;
+	dec = -22.75;
+	indigo_j2k_to_eq(1950, &ra, &dec);
+	SA_CHECK(mount_near(mount_parameter("PUT", "slewtocoordinatesasync", "RightAscension"), ra, 1e-9) && mount_at(10.5, -22.75, 1e-7));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_goto(void) {
+	const double ra0 = 6.8512354871491, duration = 82.25 / 4;
+	SA_CHECK(mount_begin(mount_south));
+	// a slew to the south-east: started with SlewToCoordinatesAsync, RA in hours, no change of the tracking that is already on
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(mount_last("PUT", "slewtocoordinatesasync", "RightAscension=3.5&Declination=-52.25&ClientID=") && mount_count("PUT", "tracking") == 0 && mount_count("PUT", "slewtocoordinates") == 0 && mount_simulated_is("Slewing", "true"));
+	SA_CHECK(sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == 3.5 && sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) == -52.25);
+	// in progress: Slewing is watched, nothing completes, the coordinates are the start position
+	SA_CHECK(SA_WAIT(mount_count("GET", "slewing") >= 6 && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_at(ra0, 30, 1e-9));
+	SA_CHECK(sa_state(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// device time moves on: the coordinates follow the telescope, the property stays BUSY
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_at(ra0 + (3.5 - ra0) * 10 / duration, 30 - 82.25 * 10 / duration, 1e-6), SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// a request while the slew runs is not accepted: nothing is sent, the target stays
+	SA_CHECK(mount_request_coordinates(12, 10) && mount_pause() && mount_count("PUT", "slewtocoordinatesasync") == 1 && sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == 3.5);
+	// arrival: OK, the coordinates the telescope reports, Slewing is not asked for any more
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, duration - 10) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(mount_at(3.5, -52.25, 1e-9) && mount_simulated_at(3.5, -52.25, 1e-9) && sa_state(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_quiet("GET", "slewing"));
+	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT) && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	// 1.5 h east of the meridian: through the pole
+	SA_CHECK(mount_near(mount_simulated("HourAngle"), -1.4994, 1e-3) && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SA_CHECK(SA_WAIT(mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME), mount_simulated("Altitude"), 1e-9) && mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME), mount_simulated("Azimuth"), 1e-9), SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) > 90 && sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) < 180);
+	// across 0 h of right ascension to the north-west: the shorter way, the normal pointing state
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(23.25, 12.5) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 2, SA_TIMEOUT) && mount_last("PUT", "slewtocoordinatesasync", "RightAscension=23.25&Declination=12.5&ClientID="));
+	SA_CHECK(sa_advance(0, 8) && SA_WAIT(mount_at(3.5 - 4.25 * 8 / 16.1875, -52.25 + 64.75 * 8 / 16.1875, 1e-6), SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 9) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_at(23.25, 12.5, 1e-9) && mount_simulated_at(23.25, 12.5, 1e-9));
+	SA_CHECK(mount_simulated("HourAngle") > 2.7 && SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) > 270);
+	// the telescope does not track (somebody stopped it): tracking is switched on before the slew, because the telescope refuses to slew otherwise
+	SA_CHECK(sa_device_state(0, "telescope", 0, "Tracking=false") && SA_WAIT(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME), SA_TIMEOUT));
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(14.75, -71.125) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 3, SA_TIMEOUT) && mount_count("PUT", "tracking") == 1 && mount_last("PUT", "tracking", "Tracking=True&ClientID="));
+	SA_CHECK(mount_sequence("PUT", "tracking") < mount_sequence("PUT", "slewtocoordinatesasync") && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(mount_at(14.75, -71.125, 1e-9) && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_count("PUT", "tracking") == 1 && mount_simulated_is("Tracking", "true"));
+	// "slew to target and stop": tracking is switched off after the arrival
+	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME));
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(9.125, -5.5) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 4, SA_TIMEOUT) && SA_WAIT(mount_count("GET", "slewing") >= 3, SA_TIMEOUT) && mount_count("PUT", "tracking") == 1);
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_count("PUT", "tracking") == 2 && mount_last("PUT", "tracking", "Tracking=False&ClientID="));
+	SA_CHECK(mount_at(9.125, -5.5, 1e-9) && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && mount_simulated_is("Tracking", "false") && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_IDLE_STATE);
+	// a slew to where the telescope already is completes without any device time
+	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_set_coordinates(9.125, -5.5) == INDIGO_OK_STATE && sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && mount_count("PUT", "slewtocoordinatesasync") == 5 && mount_count("PUT", "tracking") == 3);
+	SA_CHECK(mount_at(9.125, -5.5, 1e-9) && SA_WAIT(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_sync(void) {
+	SA_CHECK(mount_begin(mount_south));
+	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && !sa_switch(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	// SyncToCoordinates and no slew: the telescope is at the new coordinates at once, without device time
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_set_coordinates(17.3, -41.6) == INDIGO_OK_STATE && sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SA_CHECK(mount_count("PUT", "synctocoordinates") == 1 && mount_last("PUT", "synctocoordinates", "RightAscension=17.3&Declination=-41.6&ClientID=") && mount_count("PUT", "slewto*") == 0 && mount_count("PUT", "tracking") == 0);
+	SA_CHECK(mount_at(17.3, -41.6, 1e-9) && mount_simulated_at(17.3, -41.6, 1e-9) && mount_simulated_is("Slewing", "false") && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE);
+	SA_CHECK(mount_count("GET", "slewing") == 2);
+	// the pointing state follows the new hour angle (8.7 h west of the meridian)
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME), SA_TIMEOUT));
+	// a telescope that does not track refuses a synchronisation; the coordinates stay the ones of the telescope
+	SA_CHECK(sa_device_state(0, "telescope", 0, "Tracking=false") && SA_WAIT(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(mount_set_coordinates(2.2, 33.3) == INDIGO_ALERT_STATE && mount_message("Sync failed: invalid operation (SyncToCoordinates needs Tracking to be true (0x40B))") && mount_count("PUT", "synctocoordinates") == 2);
+	SA_CHECK(mount_at(17.3, -41.6, 1e-9) && mount_simulated_at(17.3, -41.6, 1e-9) && sa_is_connected(sa_device));
+	// the next good one is OK again
+	SA_CHECK(mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_set_coordinates(2.2, 33.3) == INDIGO_OK_STATE && mount_at(2.2, 33.3, 1e-9) && mount_simulated_at(2.2, 33.3, 1e-9));
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME), SA_TIMEOUT));
+	// a value the telescope refuses
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "synctocoordinates", "ascom-error", "Value=1025&Message=Too%20far%20from%20the%20encoders"));
+	SA_CHECK(mount_set_coordinates(5.5, 5.5) == INDIGO_ALERT_STATE && mount_message("Sync failed: invalid value (Too far from the encoders (0x401))") && mount_at(2.2, 33.3, 1e-9));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- abort
+
+static void mount_abort(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,StopTime=3", NULL };
+	const double ra0 = 6.8512354871491, duration = 82.25 / 4, ra1 = ra0 + (3.5 - ra0) * 5 / duration, dec1 = 30 - 82.25 * 5 / duration;
+	SA_CHECK(mount_begin(arguments));
+	// nothing moves: AbortSlew is sent all the same (the telescope may be moved by somebody else) and nothing changes
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && !sa_switch(sa_device, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SA_CHECK(mount_count("PUT", "abortslew") == 1 && mount_last("PUT", "abortslew", "ClientID=") && mount_count("PUT", "moveaxis") == 0 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(ra0, 30, 1e-9));
+	// a slew is aborted 5 s after its start. AbortSlew returns at once and this telescope needs 3 s to stop: the coordinates stay BUSY while Slewing is true
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(mount_at(ra1, dec1, 1e-6), SA_TIMEOUT));
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_message("Aborted") && mount_count("PUT", "abortslew") == 2 && !sa_switch(sa_device, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	int polls = mount_count("GET", "slewing");
+	SA_CHECK(mount_simulated_is("Slewing", "true") && SA_WAIT(mount_count("GET", "slewing") >= polls + 4, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	// stopped: ALERT, with the coordinates at which the telescope stopped; the target is not reached later
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && mount_simulated_is("Slewing", "false"));
+	SA_CHECK(mount_at(ra1, dec1, 1e-6) && mount_simulated_at(ra1, dec1, 1e-6) && sa_state(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && mount_quiet("GET", "slewing"));
+	SA_CHECK(sa_advance(0, 60) && mount_quiet("GET", "slewing") && mount_at(ra1, dec1, 1e-6) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+	// a fresh slew works
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 2, SA_TIMEOUT) && sa_advance(0, 30) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9));
+	// a telescope that stops at once: the abort settles the slew within the same request
+	SA_CHECK(sa_device_state(0, "telescope", 0, "StopTime=0") && mount_request_coordinates(23.25, 12.5) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 3, SA_TIMEOUT) && sa_advance(0, 4) && SA_WAIT(mount_at(3.5 - 4.25 * 4 / 16.1875, -52.25 + 64.75 * 4 / 16.1875, 1e-6), SA_TIMEOUT));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && mount_at(3.5 - 4.25 * 4 / 16.1875, -52.25 + 64.75 * 4 / 16.1875, 1e-6) && mount_quiet("GET", "slewing"));
+	// a park is aborted: the telescope is not parked
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("GET", "slewing") >= polls + 3, SA_TIMEOUT) && sa_advance(0, 2));
+	revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SA_CHECK(mount_simulated_is("AtPark", "false") && sa_advance(0, 120) && mount_quiet("GET", "slewing") && mount_simulated_is("AtPark", "false") && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_IDLE_STATE);
+	// a search for the home position is aborted
+	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 2));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_advance(0, 120) && mount_quiet("GET", "slewing") && mount_simulated_is("AtHome", "false") && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_IDLE_STATE);
+	// requests that were accepted but did not start yet are dropped by an abort: the queue of the device is held, a goto and a park are
+	// requested, then the abort, which overtakes them. Neither is sent afterwards and both end in ALERT.
+	int slews = mount_count("PUT", "slewtocoordinatesasync"), parks = mount_count("PUT", "park");
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_close_gate() && mount_request_coordinates(9.125, -5.5) && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	unsigned abort_revision = sa_revision(sa_device, MOUNT_ABORT_MOTION_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK);
+	atomic_store(&mount_gate_open, true);
+	SA_CHECK(mount_answer(MOUNT_ABORT_MOTION_PROPERTY_NAME, abort_revision) == INDIGO_OK_STATE && mount_drain() && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(mount_count("PUT", "slewtocoordinatesasync") == slews && mount_count("PUT", "park") == parks && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && mount_simulated_is("Slewing", "false") && mount_simulated_is("AtPark", "false"));
+	// AbortSlew fails: the request ends in ALERT with the reason and the slew goes on to its end
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(14.75, -71.125) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 4 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "abortslew", "http-status", "Value=500&Message=Motor%20controller%20busy"));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Abort failed: server error (HTTP 500: Motor controller busy)") && !sa_switch(sa_device, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_advance(0, 120) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_at(14.75, -71.125, 1e-9));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	atomic_store(&mount_gate_open, true);
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- park and home
+
+static void mount_park_and_home(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,ParkHourAngle=-3.5,ParkDeclination=-65.5,HomeHourAngle=2.25,HomeDeclination=-88.5,UnparkTime=4", NULL };
+	SA_CHECK(mount_begin(arguments));
+	// park: started with Park, the coordinates are BUSY like during every motion, completed when Slewing is false and AtPark is true
+	unsigned revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "park") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && mount_last("PUT", "park", "ClientID="));
+	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_BUSY_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_at(mount_simulated("RightAscension"), mount_simulated("Declination"), 1e-9) && mount_simulated("Declination") < 0, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("AtPark", "false") && !sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// while the telescope parks nothing else may move it: a manual motion is refused, and a goto is not accepted without taking the BUSY state of the running motion away
+	unsigned coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME) && mount_request_coordinates(1.5, 2.5) && mount_drain());
+	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates) && mount_count("PUT", "moveaxis") == 0 && mount_count("PUT", "slewtocoordinatesasync") == 0 && mount_simulated_is("Slewing", "true"));
+	SA_CHECK(sa_advance(0, 20) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	// the coordinates and the tracking state are settled by the same finalizer right after MOUNT_PARK, so they are waited for
+	SA_CHECK(mount_simulated_is("AtPark", "true") && mount_near(mount_simulated("HourAngle"), -3.5, 1e-9) && mount_simulated("Declination") == -65.5 && SA_WAIT(mount_at(mount_simulated("RightAscension"), -65.5, 1e-9), SA_TIMEOUT));
+	// the telescope stopped tracking when it parked
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME), SA_TIMEOUT) && mount_count("PUT", "tracking") == 0 && mount_quiet("GET", "slewing"));
+	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_OK_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+	// parked: a goto, tracking, a manual motion and a pier flip are refused without a request, and the refused property keeps the state of the telescope
+	double ra = sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), target = sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	SA_CHECK(mount_set_coordinates(1.5, 2.5) == INDIGO_ALERT_STATE && mount_message("Mount is parked!") && mount_at(ra, -65.5, 1e-9) && sa_number_target(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == target && target != 1.5);
+	SA_CHECK(mount_set_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_ALERT_STATE && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME));
+	SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && mount_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	SA_CHECK(mount_count("PUT", "slewtocoordinatesasync") == 0 && mount_count("PUT", "tracking") == 0 && mount_count("PUT", "moveaxis") == 0 && mount_count("PUT", "sideofpier") == 0 && mount_simulated_is("AtPark", "true"));
+	// what is not refused by the driver is refused by the telescope, with its reason
+	SA_CHECK(mount_set_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Find home failed: invalid while parked (FindHome is not allowed while the telescope is parked (0x408))") && !sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && mount_count("PUT", "findhome") == 1);
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Abort failed: invalid while parked (AbortSlew is not allowed while the telescope is parked (0x408))") && !sa_switch(sa_device, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	// parking a parked telescope is OK
+	SA_CHECK(mount_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "park") == 2 && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	// unpark takes this telescope 4 s: BUSY while Slewing is true, then AtPark is false; tracking stays off
+	revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	int polls = mount_count("GET", "slewing");
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "unpark") == 1 && mount_count("GET", "slewing") >= polls + 4, SA_TIMEOUT) && mount_last("PUT", "unpark", "ClientID="));
+	SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("AtPark", "true") && !sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && mount_simulated_is("AtPark", "false"));
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+	// and everything is accepted again
+	SA_CHECK(mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_last("PUT", "tracking", "Tracking=True&ClientID=") && mount_simulated_is("Tracking", "true"));
+	// SetPark makes the current position the park position
+	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && mount_set_coordinates(5.5, -20.25) == INDIGO_OK_STATE && mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true) == INDIGO_OK_STATE && !sa_switch(sa_device, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME) && mount_count("PUT", "setpark") == 1 && mount_last("PUT", "setpark", "ClientID="));
+	SA_CHECK(mount_near(mount_simulated("ParkHourAngle"), mount_simulated("HourAngle"), 1e-9) && mount_simulated("ParkDeclination") == -20.25);
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=setpark&ErrorNumber=1035&ErrorMessage=No%20encoder&Count=1"));
+	SA_CHECK(mount_set_switch(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Set park failed: invalid operation (No encoder (0x40B))") && !sa_switch(sa_device, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
+	// home: FindHome, completed when Slewing is false and AtHome is true
+	revision = sa_revision(sa_device, MOUNT_HOME_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && SA_WAIT(mount_count("PUT", "findhome") == 2 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && mount_last("PUT", "findhome", "ClientID="));
+	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && !sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_at(mount_simulated("RightAscension"), mount_simulated("Declination"), 1e-9) && mount_simulated("Declination") < -50, SA_TIMEOUT) && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("AtHome", "false"));
+	SA_CHECK(sa_advance(0, 30) && SA_WAIT(sa_state_after(sa_device, MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_simulated_is("AtHome", "true") && mount_near(mount_simulated("HourAngle"), 2.25, 1e-9) && mount_simulated("Declination") == -88.5);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(mount_simulated("RightAscension"), -88.5, 1e-9), SA_TIMEOUT) && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && mount_quiet("GET", "slewing"));
+	// a slew away from home
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 1, SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT) && sa_state(sa_device, MOUNT_HOME_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// methods the telescope refuses to start
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "findhome", "ascom-error", "Value=1279&Message=Home%20sensor%20not%20found") && mount_set_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Find home failed: device error (Home sensor not found (0x4FF))"));
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "park", "ascom-error", "Value=1280&Message=Clutch%20open") && mount_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Park failed: device error (Clutch open (0x500))"));
+	SA_CHECK(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// park at the position set with SetPark, to the west of the meridian this time
+	revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("PUT", "park") == 4, SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && mount_simulated("Declination") == -20.25 && mount_at(mount_simulated("RightAscension"), -20.25, 1e-9));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// somebody else parks the telescope and the driver did not see it yet (it polls once a minute here): the refusal of the telescope tells
+	SA_CHECK(sa_begin(mount_south) && sa_set_number("X_ALPACA_POLLING", "IDLE", 60) == INDIGO_OK_STATE && sa_attach(MOUNT_LABEL) && sa_connect(sa_device));
+	SA_CHECK(sa_device_state(0, "telescope", 0, "AtPark=true") && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: invalid while parked (SlewToCoordinatesAsync is not allowed while the telescope is parked (0x408))") && mount_count("PUT", "slewtocoordinatesasync") == 1);
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME), SA_TIMEOUT) && mount_at(6.8512354871491, 30, 1e-9));
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_count("PUT", "slewtocoordinatesasync") == 1 && mount_count("PUT", "moveaxis") == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- manual motion
+
+static void mount_manual_motion(void) {
+	static const char *ranges[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,AxisRates=0.5:0.5|2:2", NULL };
+	const double ra0 = 6.8512354871491, centering = 32 * MOUNT_SIDEREAL, drift = 1.00273790935 / 3600;
+	SA_CHECK(mount_begin(mount_south));
+	// the guide rate is the default: MoveAxis of the primary axis with a positive rate moves west
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SA_CHECK(mount_count("PUT", "moveaxis") == 1 && mount_last("PUT", "moveaxis", "Axis=0&Rate=0.0041780746") && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), MOUNT_SIDEREAL, 1e-15) && mount_near(mount_simulated("AxisRate0"), MOUNT_SIDEREAL, 1e-15) && mount_simulated("AxisRate1") == 0);
+	// Slewing is true while an axis moves, but this is no slew: the coordinates are not BUSY
+	int polls = mount_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(mount_count("GET", "devicestate") >= polls + 3 && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_simulated_is("Slewing", "true"));
+	// both items off: a rate of zero
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && mount_count("PUT", "moveaxis") == 2 && mount_last("PUT", "moveaxis", "Axis=0&Rate=0&ClientID=") && mount_simulated("AxisRate0") == 0);
+	SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+	// east at the centering rate: a negative rate, the right ascension grows
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME) && mount_count("PUT", "moveaxis") == 2);
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=-0.1336983") && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15));
+	SA_CHECK(sa_advance(0, 10) && mount_simulated_at(ra0 + 10 * (drift + centering / 15), 30, 1e-9) && SA_WAIT(mount_at(ra0 + 10 * (drift + centering / 15), 30, 1e-9), SA_TIMEOUT));
+	// a reversal is one request with the opposite rate, no stop in between
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SA_CHECK(mount_count("PUT", "moveaxis") == 4 && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15) && sa_advance(0, 20) && mount_simulated_at(ra0 + 30 * drift - 10 * centering / 15, 30, 1e-9));
+	// the secondary axis at the same time. The start position is through the pole (4.86 h east of the meridian), where the declination axis of
+	// a German mount is reversed: the positive rate of MOUNT_MOTION_DEC.NORTH lowers the declination there. The driver leaves that as it is.
+	SA_CHECK(mount_simulated("HourAngle") < 0 && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "moveaxis") == 5 && mount_last("PUT", "moveaxis", "Axis=1&Rate=0.1336983") && mount_near(mount_simulated("AxisRate1"), centering, 1e-15) && mount_near(mount_simulated("AxisRate0"), centering, 1e-15));
+	SA_CHECK(sa_advance(0, 10) && mount_near(mount_simulated("Declination"), 30 - 10 * centering, 1e-9) && SA_WAIT(mount_near(sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME), 30 - 10 * centering, 1e-9), SA_TIMEOUT));
+	// stopping one axis leaves the other one moving
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=0&ClientID=") && mount_simulated("AxisRate0") == 0 && mount_near(mount_simulated("AxisRate1"), centering, 1e-15) && sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15) && mount_last("PUT", "moveaxis", "Axis=1&Rate=-0.1336983") && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_simulated("AxisRate1") == 0 && mount_simulated_is("Slewing", "false"));
+	// in the normal pointing state (1.2 h west of the meridian) the positive rate raises the declination
+	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && mount_set_coordinates(0.8, -42.5) == INDIGO_OK_STATE && SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15) && sa_advance(0, 10) && mount_near(mount_simulated("Declination"), -42.5 + 10 * centering, 1e-9));
+	// the other rates: find is 256 times the sidereal rate, max is the fastest rate of AxisRates. A change of the rate applies to the next request.
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME) && mount_near(mount_simulated("AxisRate1"), centering, 1e-15));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=-4&ClientID=") && mount_simulated("AxisRate1") == -4);
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), 256 * MOUNT_SIDEREAL, 1e-14) && mount_last("PUT", "moveaxis", "Axis=0&Rate=1.06958"));
+	// MOUNT_ABORT_MOTION stops both axes with a rate of zero before AbortSlew
+	int moves = mount_count("PUT", "moveaxis");
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "moveaxis") == moves + 2 && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_count("PUT", "abortslew") == 1 && mount_sequence("PUT", "moveaxis") < mount_sequence("PUT", "abortslew"));
+	SA_CHECK(mount_simulated("AxisRate0") == 0 && mount_simulated("AxisRate1") == 0 && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// an abort without a moving axis sends no MoveAxis
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "moveaxis") == moves + 2 && mount_count("PUT", "abortslew") == 2);
+	// a rate the telescope refuses: ALERT with its reason, the item is off again, and the next request works
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "moveaxis", "ascom-error", "Value=1025&Message=Rate%20not%20allowed"));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Move failed: invalid value (Rate not allowed (0x401))") && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME) && mount_simulated("AxisRate0") == 0);
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME) && mount_simulated("AxisRate0") < 0);
+	// a stop that fails: ALERT, and the axis is still stopped by the abort that follows
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "moveaxis", "http-status", "Value=500&Message=Busy"));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false) == INDIGO_ALERT_STATE && mount_message("Stop failed: server error (HTTP 500: Busy)") && mount_simulated("AxisRate0") < 0);
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=0&ClientID=") && mount_simulated("AxisRate0") == 0);
+	// a manual motion does not outlive the connection: the moving axis is stopped before the device is disconnected
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_simulated("AxisRate1") > 0);
+	moves = mount_count("PUT", "moveaxis");
+	SA_CHECK(sa_disconnect(sa_device) && mount_count("PUT", "moveaxis") == moves + 1 && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_sequence("PUT", "moveaxis") < mount_sequence("PUT", "disconnect"));
+	SA_CHECK(mount_simulated("AxisRate1") == 0 && mount_simulated_is("Connected", "false"));
+	// the next connection starts with both axes at rest
+	SA_CHECK(sa_connect(sa_device) && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME) && sa_state(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) == INDIGO_OK_STATE && sa_disconnect(sa_device) && mount_count("PUT", "moveaxis") == moves + 1);
+	sa_end();
+	// a telescope with two fixed rates: every item of MOUNT_SLEW_RATE gets the allowed rate nearest to the usual one, max the fastest
+	SA_CHECK(mount_begin(ranges));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=0.5&ClientID=") && mount_simulated("AxisRate0") == 0.5);
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=-0.5&ClientID="));
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=2&ClientID=") && mount_simulated("AxisRate1") == 2);
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false) == INDIGO_OK_STATE && mount_simulated_is("Slewing", "false"));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_manual_motion_ownership(void) {
+	indigo_log_levels level = indigo_get_log_level();
+	// the markers are logged on the info level
+	indigo_log_message_handler = mount_capture_log;
+	if (level < INDIGO_LOG_INFO) {
+		indigo_set_log_level(INDIGO_LOG_INFO);
+	}
+	SA_CHECK(mount_begin(mount_south) && mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+	// a client starts a motion and detaches (its connection is lost): the bus releases the motion, the axis is stopped with a rate of zero
+	SA_CHECK(indigo_attach_client(&mount_owner) == INDIGO_OK && mount_owner_moves(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && mount_simulated("AxisRate0") > 0 && mount_marker(NULL, NULL) == 0);
+	SA_CHECK(indigo_detach_client(&mount_owner) == INDIGO_OK && mount_marker("Aborting", MOUNT_MOTION_RA_PROPERTY_NAME) == 1 && mount_drain());
+	SA_CHECK(mount_count("PUT", "moveaxis") == 2 && mount_last("PUT", "moveaxis", "Axis=0&Rate=0&ClientID=") && mount_simulated("AxisRate0") == 0 && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && sa_state(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(mount_no_entry(MOUNT_MOTION_RA_PROPERTY_NAME) && mount_no_entry(MOUNT_MOTION_DEC_PROPERTY_NAME) && mount_marker("Releasing", MOUNT_MOTION_RA_PROPERTY_NAME) == 0);
+	// both axes of the same owner are released
+	SA_CHECK(indigo_attach_client(&mount_owner) == INDIGO_OK && mount_owner_moves(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME) && mount_owner_moves(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SA_CHECK(indigo_detach_client(&mount_owner) == INDIGO_OK && mount_marker("Aborting", MOUNT_MOTION_RA_PROPERTY_NAME) == 2 && mount_marker("Aborting", MOUNT_MOTION_DEC_PROPERTY_NAME) == 1 && mount_drain());
+	SA_CHECK(mount_simulated("AxisRate0") == 0 && mount_simulated("AxisRate1") == 0 && mount_count("PUT", "moveaxis") == 6 && mount_no_entry(MOUNT_MOTION_RA_PROPERTY_NAME) && mount_no_entry(MOUNT_MOTION_DEC_PROPERTY_NAME));
+	// a motion released by its owner is not released again when the owner detaches
+	SA_CHECK(indigo_attach_client(&mount_owner) == INDIGO_OK && mount_owner_moves(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME));
+	SA_CHECK(indigo_change_switch_property_1(&mount_owner, sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false) == INDIGO_OK && mount_drain() && mount_simulated("AxisRate1") == 0 && mount_no_entry(MOUNT_MOTION_DEC_PROPERTY_NAME));
+	SA_CHECK(indigo_detach_client(&mount_owner) == INDIGO_OK && mount_drain() && mount_marker("Aborting", MOUNT_MOTION_DEC_PROPERTY_NAME) == 1 && mount_count("PUT", "moveaxis") == 8);
+	// a motion taken over by another client belongs to that client: the detach of the first owner leaves it running
+	SA_CHECK(indigo_attach_client(&mount_owner) == INDIGO_OK && mount_owner_moves(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_drain() && mount_simulated("AxisRate0") < 0);
+	SA_CHECK(indigo_detach_client(&mount_owner) == INDIGO_OK && mount_drain() && mount_marker("Aborting", MOUNT_MOTION_RA_PROPERTY_NAME) == 2 && mount_simulated("AxisRate0") < 0 && sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false) == INDIGO_OK_STATE && mount_drain() && mount_simulated("AxisRate0") == 0 && mount_no_entry(MOUNT_MOTION_RA_PROPERTY_NAME));
+	// a motion aborted by another client is forgotten
+	SA_CHECK(indigo_attach_client(&mount_owner) == INDIGO_OK && mount_owner_moves(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && mount_owner_moves(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_drain() && mount_simulated("AxisRate0") == 0 && mount_simulated("AxisRate1") == 0);
+	SA_CHECK(mount_no_entry(MOUNT_MOTION_RA_PROPERTY_NAME) && mount_no_entry(MOUNT_MOTION_DEC_PROPERTY_NAME));
+	int moves = mount_count("PUT", "moveaxis");
+	SA_CHECK(indigo_detach_client(&mount_owner) == INDIGO_OK && mount_drain() && mount_marker("Aborting", MOUNT_MOTION_RA_PROPERTY_NAME) == 2 && mount_marker("Aborting", MOUNT_MOTION_DEC_PROPERTY_NAME) == 1 && mount_count("PUT", "moveaxis") == moves);
+	// the owner detaches while the handler of its request has not run yet: the motion is started and released at once, nobody could stop it otherwise
+	SA_CHECK(indigo_attach_client(&mount_owner) == INDIGO_OK && mount_close_gate());
+	SA_CHECK(indigo_change_switch_property_1(&mount_owner, sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK && indigo_detach_client(&mount_owner) == INDIGO_OK);
+	atomic_store(&mount_gate_open, true);
+	SA_CHECK(SA_WAIT(mount_marker("Releasing", MOUNT_MOTION_DEC_PROPERTY_NAME) == 1, SA_TIMEOUT) && mount_drain() && SA_WAIT(!sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME) && sa_state(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && mount_drain());
+	SA_CHECK(mount_simulated("AxisRate1") == 0 && mount_count("PUT", "moveaxis") == moves + 2 && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_no_entry(MOUNT_MOTION_DEC_PROPERTY_NAME) && mount_marker("Aborting", MOUNT_MOTION_DEC_PROPERTY_NAME) == 1);
+	// a disconnect forgets the motion of an owner that is still attached; its detach afterwards sends nothing to a device that is not connected
+	SA_CHECK(indigo_attach_client(&mount_owner) == INDIGO_OK && mount_owner_moves(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SA_CHECK(sa_disconnect(sa_device) && mount_last("PUT", "moveaxis", "Axis=0&Rate=0&ClientID=") && mount_no_entry(MOUNT_MOTION_RA_PROPERTY_NAME));
+	moves = mount_count("PUT", "*");
+	SA_CHECK(indigo_detach_client(&mount_owner) == INDIGO_OK && mount_marker("Aborting", MOUNT_MOTION_RA_PROPERTY_NAME) == 2 && mount_quiet("PUT", "*") && mount_count("PUT", "*") == moves);
+cleanup:
+	atomic_store(&mount_gate_open, true);
+	indigo_detach_client(&mount_owner);
+	sa_end();
+	indigo_log_message_handler = NULL;
+	indigo_set_log_level(level);
+}
+
+// ---------------------------------------------------------------------------- settings
+
+static void mount_tracking_and_rates(void) {
+	SA_CHECK(mount_begin(mount_south));
+	// tracking
+	unsigned revision = sa_revision(sa_device, MOUNT_TRACKING_PROPERTY_NAME);
+	SA_CHECK(mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && sa_state_after(sa_device, MOUNT_TRACKING_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && !sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SA_CHECK(mount_count("PUT", "tracking") == 1 && mount_last("PUT", "tracking", "Tracking=False&ClientID=") && mount_simulated_is("Tracking", "false") && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+	SA_CHECK(mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_last("PUT", "tracking", "Tracking=True&ClientID=") && mount_simulated_is("Tracking", "true") && SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	// a refusal leaves the switch at what the telescope does
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "tracking", "ascom-error", "Value=1035&Message=Below%20the%20horizon%20limit"));
+	SA_CHECK(mount_set_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Tracking failed: invalid operation (Below the horizon limit (0x40B))") && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	SA_CHECK(mount_simulated_is("Tracking", "true") && mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	// tracking rates: the items are in the INDIGO order, the values are the DriveRates of the standard (0 sidereal, 1 lunar, 2 solar, 3 king)
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) && mount_last("PUT", "trackingrate", "TrackingRate=2&ClientID=") && mount_simulated("TrackingRate") == 2 && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME) && mount_last("PUT", "trackingrate", "TrackingRate=1&ClientID=") && mount_simulated("TrackingRate") == 1 && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME) && mount_last("PUT", "trackingrate", "TrackingRate=3&ClientID=") && mount_simulated("TrackingRate") == 3);
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && mount_last("PUT", "trackingrate", "TrackingRate=0&ClientID=") && mount_simulated("TrackingRate") == 0 && mount_count("PUT", "trackingrate") == 4);
+	// a rate the telescope refuses (it lost the lunar rate meanwhile): the selection goes back to the rate of the telescope
+	SA_CHECK(sa_device_state(0, "telescope", 0, "TrackingRates=0%7C2"));
+	SA_CHECK(mount_set_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Tracking rate failed: invalid value (TrackingRate 1 is not supported (0x401))"));
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME) && mount_simulated("TrackingRate") == 0);
+	// guide rates: percent of the sidereal rate on the bus, degrees per second for the telescope
+	SA_CHECK(mount_set_numbers(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 25) == INDIGO_OK_STATE);
+	SA_CHECK(mount_last("PUT", "guideraterightascension", "GuideRateRightAscension=0.003133") && mount_near(mount_parameter("PUT", "guideraterightascension", "GuideRateRightAscension"), 0.75 * MOUNT_SIDEREAL, 1e-15) && mount_last("PUT", "guideratedeclination", "GuideRateDeclination=0.001044") && mount_near(mount_parameter("PUT", "guideratedeclination", "GuideRateDeclination"), 0.25 * MOUNT_SIDEREAL, 1e-15));
+	SA_CHECK(mount_near(mount_simulated("GuideRateRightAscension"), 0.75 * MOUNT_SIDEREAL, 1e-12) && mount_near(mount_simulated("GuideRateDeclination"), 0.25 * MOUNT_SIDEREAL, 1e-12));
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 75, 1e-9) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME), 25, 1e-9));
+	// the second rate is refused: ALERT with the reason of the telescope, the first rate is the accepted one, the second one the old one
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "guideratedeclination", "ascom-error", "Value=1025&Message=Rate%20too%20high"));
+	SA_CHECK(mount_set_numbers(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 90, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 100) == INDIGO_ALERT_STATE && mount_message("Guide rate failed: invalid value (Rate too high (0x401))"));
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 90, 1e-9) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME), 25, 1e-9) && mount_near(mount_simulated("GuideRateRightAscension"), 0.9 * MOUNT_SIDEREAL, 1e-12) && mount_near(mount_simulated("GuideRateDeclination"), 0.25 * MOUNT_SIDEREAL, 1e-12));
+	SA_CHECK(mount_set_numbers(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 40) == INDIGO_OK_STATE && mount_near(mount_simulated("GuideRateDeclination"), 0.4 * MOUNT_SIDEREAL, 1e-12));
+	// a mount with one guide rate for both axes: the rate that was written last is the rate of both, and the property shows what the telescope reports
+	SA_CHECK(sa_device_state(0, "telescope", 0, "LinkedGuideRates=true") && mount_set_numbers(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 80, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 30) == INDIGO_OK_STATE);
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 30, 1e-9) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME), 30, 1e-9) && mount_near(mount_simulated("GuideRateRightAscension"), 0.3 * MOUNT_SIDEREAL, 1e-12));
+	SA_CHECK(sa_device_state(0, "telescope", 0, "LinkedGuideRates=false"));
+	// offsets of the tracking rate: seconds of RA per sidereal second and arc seconds per second, passed on as they are
+	SA_CHECK(mount_set_numbers(MOUNT_OFFSET_RATE, "RA", 0.5, "DEC", -1.25) == INDIGO_OK_STATE && mount_last("PUT", "rightascensionrate", "RightAscensionRate=0.5&ClientID=") && mount_last("PUT", "declinationrate", "DeclinationRate=-1.25&ClientID="));
+	SA_CHECK(mount_simulated("RightAscensionRate") == 0.5 && mount_simulated("DeclinationRate") == -1.25 && sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0.5 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == -1.25);
+	// with another tracking rate the telescope reports no offsets and refuses to set them
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) && SA_WAIT(sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == 0, SA_TIMEOUT));
+	SA_CHECK(mount_set_numbers(MOUNT_OFFSET_RATE, "RA", 0.25, "DEC", 2) == INDIGO_ALERT_STATE && mount_message("Offset rate failed: invalid operation (RightAscensionRate needs TrackingRate to be driveSidereal (0x40B))") && sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == 0);
+	SA_CHECK(mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && SA_WAIT(sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0.5 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == -1.25, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_site_and_time(void) {
+	const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	const double south_west[] = { -30.2407, 289.2634, 2722 }, east[] = { -33.8568, 151.2153, 58 }, west_negative[] = { 19.8207, -155.4681, 4205 }, refused[] = { 28.7606, 342.1184, 2396 };
+	char utc[64] = { 0 };
+	SA_CHECK(mount_begin(mount_default));
+	// the site: SiteLatitude, SiteLongitude (positive east, -180 .. 180), SiteElevation, in this order; the longitude of the bus is 0 .. 360 east
+	unsigned revision = sa_revision(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, items, south_west) == INDIGO_OK && mount_answer(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+	SA_CHECK(mount_last("PUT", "sitelatitude", "SiteLatitude=-30.2407&ClientID=") && mount_last("PUT", "sitelongitude", "SiteLongitude=-70.7366") && mount_near(mount_parameter("PUT", "sitelongitude", "SiteLongitude"), -70.7366, 1e-9) && mount_last("PUT", "siteelevation", "SiteElevation=2722&ClientID="));
+	SA_CHECK(mount_sequence("PUT", "sitelatitude") < mount_sequence("PUT", "sitelongitude") && mount_sequence("PUT", "sitelongitude") < mount_sequence("PUT", "siteelevation"));
+	SA_CHECK(mount_simulated("SiteLatitude") == -30.2407 && mount_near(mount_simulated("SiteLongitude"), -70.7366, 1e-9) && mount_simulated("SiteElevation") == 2722);
+	SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == -30.2407 && mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME), 289.2634, 1e-9) && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME) == 2722);
+	// the sidereal time and the horizontal coordinates of the telescope follow its new site
+	SA_CHECK(SA_WAIT(mount_near(sa_number(sa_device, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME), 1.99495, 1e-4) && mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME), mount_simulated("Altitude"), 1e-9), SA_TIMEOUT));
+	// a longitude east of Greenwich is passed on as it is
+	revision = sa_revision(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, items, east) == INDIGO_OK && mount_answer(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+	SA_CHECK(mount_last("PUT", "sitelongitude", "SiteLongitude=151.2153&ClientID=") && mount_simulated("SiteLongitude") == 151.2153 && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) == 151.2153);
+	// a client that gives a western longitude as a negative number is understood
+	revision = sa_revision(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, items, west_negative) == INDIGO_OK && mount_answer(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+	SA_CHECK(mount_last("PUT", "sitelongitude", "SiteLongitude=-155.4681&ClientID=") && mount_simulated("SiteLongitude") == -155.4681 && mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME), 204.5319, 1e-9) && mount_simulated("SiteLatitude") == 19.8207);
+	// the longitude is refused: ALERT with the reason; the property shows the site the telescope has now, the new latitude and the old rest
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "sitelongitude", "ascom-error", "Value=1025&Message=Site%20is%20locked"));
+	revision = sa_revision(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, items, refused) == INDIGO_OK && mount_answer(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, revision) == INDIGO_ALERT_STATE && mount_message("Location failed: invalid value (Site is locked (0x401))"));
+	SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == 28.7606 && mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME), 204.5319, 1e-9) && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME) == 4205);
+	SA_CHECK(mount_simulated("SiteLatitude") == 28.7606 && mount_simulated("SiteLongitude") == -155.4681 && mount_simulated("SiteElevation") == 4205 && mount_count("PUT", "siteelevation") == 3);
+	// the time of the telescope is set as ISO 8601 with a Z
+	SA_CHECK(mount_set_text(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "2026-03-21T04:05:06") == INDIGO_OK_STATE && mount_count("PUT", "utcdate") == 1 && mount_last("PUT", "utcdate", "UTCDate=2026-03-21T04%3A05%3A06Z&ClientID="));
+	SA_CHECK(!strcmp(sa_text(sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME), "2026-03-21T04:05:06") && sa_advance(0, 3725) && SA_WAIT(!strcmp(sa_text(sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME), "2026-03-21T05:07:11"), SA_TIMEOUT));
+	// what is no date is not sent, and the item shows the time of the telescope again
+	SA_CHECK(mount_set_text(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "next tuesday") == INDIGO_ALERT_STATE && mount_message("The time has to be given as YYYY-MM-DDTHH:MM:SS") && mount_count("PUT", "utcdate") == 1 && !strcmp(sa_text(sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME), "2026-03-21T05:07:11"));
+	// a date the telescope refuses
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "utcdate", "ascom-error", "Value=1025&Message=Clock%20is%20GPS%20disciplined"));
+	SA_CHECK(mount_set_text(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "2031-12-31T23:59:59") == INDIGO_ALERT_STATE && mount_message("Time failed: invalid value (Clock is GPS disciplined (0x401))") && !strcmp(sa_text(sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME), "2026-03-21T05:07:11"));
+	// the time of the host
+	time_t before = time(NULL);
+	SA_CHECK(mount_set_switch(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true) == INDIGO_OK_STATE && !sa_switch(sa_device, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME) && mount_count("PUT", "utcdate") == 3);
+	snprintf(utc, sizeof(utc), "%s", sa_text(sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME));
+	SA_CHECK(indigo_isogmtotime(utc) >= before && indigo_isogmtotime(utc) <= time(NULL) && sa_state(sa_device, UTC_TIME_PROPERTY_NAME) == INDIGO_OK_STATE);
+	const char *line = sa_last_request(0, "PUT", MOUNT_API "utcdate");
+	SA_CHECK(line != NULL && strlen(sa_field(line, "Body")) > 33 && !strncmp(sa_field(line, "Body"), "UTCDate=20", 10) && !strncmp(sa_field(line, "Body") + 21, "%3A", 3) && !strncmp(sa_field(line, "Body") + 26, "%3A", 3) && !strncmp(sa_field(line, "Body") + 31, "Z&ClientID=", 11));
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "utcdate", "http-status", "Value=500&Message=RTC%20failure") && mount_set_switch(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Time failed: server error (HTTP 500: RTC failure)") && !sa_switch(sa_device, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_side_of_pier(void) {
+	static const char *arguments[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366,FlipTime=20", NULL };
+	SA_CHECK(mount_begin(arguments));
+	// 4.86 h east of the meridian the mount points through the pole: SideOfPier is pierWest (1)
+	SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	// a pier flip is a motion of 20 s here: the write of SideOfPier starts it, Slewing completes it
+	unsigned revision = sa_revision(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && SA_WAIT(mount_count("PUT", "sideofpier") == 1 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && mount_last("PUT", "sideofpier", "SideOfPier=0&ClientID="));
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_count("GET", "slewing") >= 6, SA_TIMEOUT) && sa_state(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(sa_state_after(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	// the coordinates are settled by the same finalizer right after MOUNT_SIDE_OF_PIER, so they are waited for, not read at once
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(6.8512354871491, 30, 1e-9), SA_TIMEOUT) && mount_quiet("GET", "slewing"));
+	// the side the mount is on already: accepted by the telescope without a motion
+	SA_CHECK(mount_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "sideofpier") == 2 && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME));
+	// and back, aborted on the way: the flip did not happen
+	SA_CHECK(mount_start_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && SA_WAIT(mount_count("PUT", "sideofpier") == 3, SA_TIMEOUT) && mount_last("PUT", "sideofpier", "SideOfPier=1&ClientID=") && sa_advance(0, 5));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	// a flip the telescope refuses
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "sideofpier", "ascom-error", "Value=1035&Message=Not%20within%20the%20flip%20limits"));
+	SA_CHECK(mount_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true) == INDIGO_ALERT_STATE && mount_message("Pier flip failed: invalid operation (Not within the flip limits (0x40B))") && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	// the flip itself
+	revision = sa_revision(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SA_CHECK(mount_start_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && SA_WAIT(mount_count("PUT", "sideofpier") == 5, SA_TIMEOUT) && sa_advance(0, 20) && SA_WAIT(sa_state_after(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- polling
+
+static void mount_polling(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(mount_begin(legacy ? mount_south_legacy : mount_south));
+		// what somebody else does to the telescope shows up: tracking, park, home
+		SA_CHECK(sa_device_state(0, "telescope", 0, "Tracking=false") && SA_WAIT(sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+		SA_CHECK(sa_device_state(0, "telescope", 0, "AtPark=true&AtHome=true") && SA_WAIT(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_OK_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+		SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE && sa_device_state(0, "telescope", 0, "AtPark=false&AtHome=false&Tracking=true") && SA_WAIT(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME), SA_TIMEOUT));
+		SA_CHECK(SA_WAIT(sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME) == INDIGO_IDLE_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME) == INDIGO_IDLE_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+		// a slew started by another client: BUSY while the telescope slews, the coordinates follow, OK at the end; this driver sends nothing but its polls
+		int requests = mount_count("PUT", "*"), slewing = mount_count("GET", "slewing");
+		SA_CHECK(sa_put(0, MOUNT_API "slewtocoordinatesasync", "RightAscension=3.5&Declination=-52.25&ClientID=7&ClientTransactionID=1"));
+		SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+		SA_CHECK(sa_advance(0, 10) && SA_WAIT(mount_at(mount_simulated("RightAscension"), mount_simulated("Declination"), 1e-9) && mount_simulated("Declination") < 0, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+		SA_CHECK(sa_advance(0, 11) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(3.5, -52.25, 1e-9), SA_TIMEOUT) && sa_state(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+		SA_CHECK(mount_count("PUT", "*") == requests + 1 && (legacy || mount_count("GET", "slewing") == slewing));
+		// time passes: the time and the sidereal time of the telescope, and after 2 h of tracking the other side of the pier
+		SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && sa_advance(0, 7200 - 21) && SA_WAIT(!strcmp(sa_text(sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME), "2026-01-01T02:00:00"), SA_TIMEOUT));
+		SA_CHECK(SA_WAIT(mount_near(sa_number(sa_device, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME), mount_simulated("SiderealTime"), 1e-9) && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME), SA_TIMEOUT));
+		SA_CHECK(mount_near(mount_simulated("SiderealTime"), 4.0004, 1e-3) && mount_at(3.5, -52.25, 1e-9) && SA_WAIT(mount_near(sa_number(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME), mount_simulated("Azimuth"), 1e-9) && mount_simulated("Azimuth") > 180, SA_TIMEOUT));
+		// the settings another client changes are read from time to time
+		SA_CHECK(sa_device_state(0, "telescope", 0, "TrackingRate=2&GuideRateRightAscension=0.00313355595833&GuideRateDeclination=0.00104451865278&SiteLatitude=19.8207&SiteLongitude=-155.4681&SiteElevation=4205&DeclinationRate=0"));
+		SA_CHECK(SA_WAIT(sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME), SA_TIMEOUT));
+		SA_CHECK(SA_WAIT(mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 75, 1e-6) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME), 25, 1e-6), SA_TIMEOUT));
+		SA_CHECK(SA_WAIT(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == 19.8207 && mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME), 204.5319, 1e-9) && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME) == 4205, SA_TIMEOUT));
+		SA_CHECK(sa_state(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+		SA_CHECK(sa_device_state(0, "telescope", 0, "TrackingRate=0&RightAscensionRate=0.125&DeclinationRate=-3.5") && SA_WAIT(sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0.125 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == -3.5 && sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME), SA_TIMEOUT));
+		// a member of the state the telescope stops answering: the coordinates are in ALERT with the last values, and recover with the first good answer
+		SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=declination&ErrorNumber=1279&ErrorMessage=Encoder%20offline") && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9) && sa_is_connected(sa_device));
+		SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=declination&ErrorNumber=0") && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// A telescope that does nothing publishes nothing: the polling goes on (two rounds of the settings included) and no property is updated.
+static void mount_steady_state_is_silent(void) {
+	static const char *properties[] = { MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_LST_TIME_PROPERTY_NAME, UTC_TIME_PROPERTY_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_STATE_PROPERTY_NAME, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, MOUNT_OFFSET_RATE, MOUNT_HOME_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, CONNECTION_PROPERTY_NAME };
+	unsigned revisions[ARRAY_SIZE(properties)];
+	for (int legacy = 0; legacy < 2; legacy++) {
+		const char *poll = legacy ? "connected" : "devicestate";
+		SA_CHECK(mount_begin(legacy ? mount_south_legacy : mount_south) && SA_WAIT(mount_count("GET", poll) >= 3, SA_TIMEOUT));
+		int polls = mount_count("GET", poll), settings = mount_count("GET", "sitelatitude");
+		for (int i = 0; i < (int)ARRAY_SIZE(properties); i++) {
+			revisions[i] = sa_revision(sa_device, properties[i]);
+			SA_CHECK(revisions[i] != 0);
+		}
+		SA_CHECK(SA_WAIT(mount_count("GET", poll) >= polls + 25 && mount_count("GET", "sitelatitude") >= settings + 2, 2 * SA_TIMEOUT));
+		for (int i = 0; i < (int)ARRAY_SIZE(properties); i++) {
+			if (sa_revision(sa_device, properties[i]) != revisions[i]) {
+				fprintf(stderr, "    %s was updated although nothing changed\n", properties[i]);
+			}
+			SA_CHECK(sa_revision(sa_device, properties[i]) == revisions[i]);
+		}
+		// and a change is published at once
+		SA_CHECK(sa_device_state(0, "telescope", 0, "Tracking=false") && SA_WAIT(sa_revision(sa_device, MOUNT_TRACKING_PROPERTY_NAME) != revisions[5] && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME), SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// A request of a client that is accepted while a poll tick is waiting in the queue of the device: the tick runs first, reads another
+// value from the telescope and must leave the pending request alone. The gate holds the queue so that the order is certain.
+static void mount_poll_keeps_pending_change(void) {
+	SA_CHECK(sa_begin(mount_south) && sa_set_number("X_ALPACA_POLLING", "IDLE", 0.3) == INDIGO_OK_STATE && sa_attach(MOUNT_LABEL) && sa_connect(sa_device));
+	// a tick that reads the state: tracking, park, pier side, time
+	SA_CHECK(mount_close_gate() && sa_device_state(0, "telescope", 0, "Tracking=false"));
+	indigo_usleep(600000);
+	unsigned tracking = sa_revision(sa_device, MOUNT_TRACKING_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state(sa_device, MOUNT_TRACKING_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	int polls = mount_count("GET", "devicestate");
+	atomic_store(&mount_gate_open, true);
+	// exactly the tick that waited ran before the request was sent
+	SA_CHECK(mount_answer(MOUNT_TRACKING_PROPERTY_NAME, tracking) == INDIGO_OK_STATE && mount_count_before("GET", "devicestate", mount_sequence("PUT", "tracking")) == polls + 1);
+	SA_CHECK(mount_last("PUT", "tracking", "Tracking=True&ClientID=") && mount_simulated_is("Tracking", "true") && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	// a tick that reads the settings (every tenth one): guide rates, tracking rate, site, offset rates
+	bool held = false;
+	for (int attempt = 0; attempt < 40 && !held; attempt++) {
+		SA_CHECK(SA_WAIT(mount_count("GET", "devicestate") % 10 == 9, 2 * SA_TIMEOUT) && mount_close_gate());
+		held = mount_count("GET", "devicestate") % 10 == 9;
+		if (!held) {
+			atomic_store(&mount_gate_open, true);
+			SA_CHECK(mount_drain());
+		}
+	}
+	SA_CHECK(held && sa_device_state(0, "telescope", 0, "GuideRateRightAscension=0.001&GuideRateDeclination=0.002&TrackingRate=3&SiteLatitude=10&SiteLongitude=20&SiteElevation=30&RightAscensionRate=1&DeclinationRate=2"));
+	indigo_usleep(600000);
+	int settings = mount_count("GET", "guideraterightascension");
+	unsigned guide = sa_revision(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME), rate = sa_revision(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME), site = sa_revision(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME), offset = sa_revision(sa_device, MOUNT_OFFSET_RATE);
+	const char *guide_items[] = { MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME }, *site_items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME }, *offset_items[] = { "RA", "DEC" };
+	const double guide_values[] = { 75, 25 }, site_values[] = { -33.8568, 151.2153, 58 }, offset_values[] = { 0.5, -1.25 };
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, 2, guide_items, guide_values) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, site_items, site_values) == INDIGO_OK && indigo_change_number_property(&sa_client, sa_device, MOUNT_OFFSET_RATE, 2, offset_items, offset_values) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, MOUNT_OFFSET_RATE) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	atomic_store(&mount_gate_open, true);
+	SA_CHECK(mount_answer(MOUNT_GUIDE_RATE_PROPERTY_NAME, guide) == INDIGO_OK_STATE && mount_answer(MOUNT_TRACK_RATE_PROPERTY_NAME, rate) == INDIGO_OK_STATE && mount_answer(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, site) == INDIGO_OK_STATE && mount_answer(MOUNT_OFFSET_RATE, offset) == INDIGO_OK_STATE);
+	// the tick did read the settings before the requests were sent, and the requests carried what the client asked for
+	SA_CHECK(mount_count_before("GET", "guideraterightascension", mount_sequence("PUT", "guideraterightascension")) == settings + 1 && mount_near(mount_parameter("PUT", "guideraterightascension", "GuideRateRightAscension"), 0.75 * MOUNT_SIDEREAL, 1e-15) && mount_near(mount_parameter("PUT", "guideratedeclination", "GuideRateDeclination"), 0.25 * MOUNT_SIDEREAL, 1e-15));
+	SA_CHECK(mount_last("PUT", "trackingrate", "TrackingRate=0&ClientID=") && mount_last("PUT", "sitelatitude", "SiteLatitude=-33.8568&ClientID=") && mount_last("PUT", "sitelongitude", "SiteLongitude=151.2153&ClientID=") && mount_last("PUT", "siteelevation", "SiteElevation=58&ClientID=") && mount_last("PUT", "rightascensionrate", "RightAscensionRate=0.5&ClientID=") && mount_last("PUT", "declinationrate", "DeclinationRate=-1.25&ClientID="));
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 75, 1e-9) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME), 25, 1e-9) && sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME));
+	SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == -33.8568 && sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) == 151.2153 && sa_number(sa_device, MOUNT_OFFSET_RATE, "RA") == 0.5 && sa_number(sa_device, MOUNT_OFFSET_RATE, "DEC") == -1.25);
+	SA_CHECK(mount_simulated("SiteLatitude") == -33.8568 && mount_simulated("TrackingRate") == 0 && mount_simulated("RightAscensionRate") == 0.5 && sa_disconnect(sa_device));
+cleanup:
+	atomic_store(&mount_gate_open, true);
+	sa_end();
+}
+
+// The settings that are saved with the configuration of the device (site, guide rates, tracking rate, slew rate) are sent to the
+// telescope again when the configuration is loaded.
+static void mount_configuration_roundtrip(void) {
+	const char *site_items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
+	const double saved_site[] = { -33.8568, 151.2153, 58 }, other_site[] = { 19.8207, 204.5319, 4205 };
+	SA_CHECK(mount_begin(mount_south));
+	unsigned revision = sa_revision(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, site_items, saved_site) == INDIGO_OK && mount_answer(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+	SA_CHECK(mount_set_numbers(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 25) == INDIGO_OK_STATE && mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) && mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME));
+	// save; the first save of a device adds the LOAD and REMOVE items, so the property is defined again instead of updated
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_has_item(sa_device, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME) && !sa_switch(sa_device, CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME) && sa_state(sa_device, CONFIG_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	// everything is changed, on the bus and with it on the telescope
+	revision = sa_revision(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, site_items, other_site) == INDIGO_OK && mount_answer(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+	SA_CHECK(mount_set_numbers(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 40, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 60) == INDIGO_OK_STATE && mount_select(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME) && mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+	SA_CHECK(mount_simulated("SiteLatitude") == 19.8207 && mount_simulated("TrackingRate") == 3 && mount_near(mount_simulated("GuideRateDeclination"), 0.6 * MOUNT_SIDEREAL, 1e-12));
+	// load: every saved property is accepted and answered (a property that is not costs the restore five seconds and ends it in ALERT), and the telescope has the saved settings again
+	revision = sa_revision(sa_device, CONFIG_PROPERTY_NAME);
+	double started = indigo_monotonic_time();
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, CONFIG_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && sa_state(sa_device, CONFIG_PROPERTY_NAME) != INDIGO_BUSY_STATE, 3 * SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, CONFIG_PROPERTY_NAME) == INDIGO_OK_STATE && indigo_monotonic_time() - started < 4 && !sa_switch(sa_device, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME));
+	SA_CHECK(mount_simulated("SiteLatitude") == -33.8568 && mount_simulated("SiteLongitude") == 151.2153 && mount_simulated("SiteElevation") == 58 && mount_simulated("TrackingRate") == 2);
+	SA_CHECK(mount_near(mount_simulated("GuideRateRightAscension"), 0.75 * MOUNT_SIDEREAL, 1e-12) && mount_near(mount_simulated("GuideRateDeclination"), 0.25 * MOUNT_SIDEREAL, 1e-12));
+	SA_CHECK(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) == -33.8568 && sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) && sa_switch(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME) && mount_near(sa_number(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME), 75, 1e-9));
+	// the restored slew rate is the one MoveAxis is sent with
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), 256 * MOUNT_SIDEREAL, 1e-14) && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+static void mount_request_failures(void) {
+	SA_CHECK(sa_begin(mount_south) && sa_set_number("X_ALPACA_TIMEOUTS", "LONG", 1) == INDIGO_OK_STATE && sa_set_number("X_ALPACA_TIMEOUTS", "STANDARD", 1) == INDIGO_OK_STATE && sa_attach(MOUNT_LABEL) && sa_connect(sa_device));
+	// the start of a slew is refused in the ways a telescope refuses: the slew did not start, the reason is in the message, the coordinates are the ones of the telescope
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "ascom-error", "Value=1025&Message=Below%20the%20horizon"));
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: invalid value (Below the horizon (0x401))") && mount_at(6.8512354871491, 30, 1e-9) && sa_state(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "ascom-error", "Value=1035&Message=Mount%20is%20homing"));
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: invalid operation (Mount is homing (0x40B))"));
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "ascom-error", "Value=1279&Message=Motor%20stalled"));
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: device error (Motor stalled (0x4FF))"));
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "http-status", "Value=500&Message=Driver%20crashed"));
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: server error (HTTP 500: Driver crashed)"));
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "http-status", "Value=400&Message=Bad%20parameter"));
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: request rejected by the server (HTTP 400: Bad parameter)"));
+	SA_CHECK(mount_simulated_is("Slewing", "false") && mount_simulated_at(6.8512354871491, 30, 1e-9) && mount_count("PUT", "slewtocoordinatesasync") == 5 && mount_count("GET", "slewing") == 1 && sa_is_connected(sa_device));
+	// no answer at all and the telescope did not get the request: Slewing is asked once and says so
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "stall-before", "Delay=1500&Dispatch=false"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(mount_set_coordinates(3.5, -52.25) == INDIGO_ALERT_STATE && mount_message("Slew failed: timeout") && indigo_monotonic_time() - started > 0.8 && indigo_monotonic_time() - started < 4 && mount_count("GET", "slewing") == 2 && sa_is_connected(sa_device));
+	// and the next good request is OK again
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("PUT", "slewtocoordinatesasync") == 7, SA_TIMEOUT) && sa_advance(0, 30) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9));
+	// no answer in time, but the telescope got the request and slews: Slewing tells, and the slew is watched to its end like any other
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "stall-before", "Delay=1500"));
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	int polls = mount_count("GET", "slewing");
+	SA_CHECK(mount_request_coordinates(23.25, 12.5) && SA_WAIT(mount_count("GET", "slewing") >= polls + 4, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SA_CHECK(sa_advance(0, 30) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_at(23.25, 12.5, 1e-9) && mount_count("PUT", "slewtocoordinatesasync") == 8);
+	// an answer that is no answer: the request is reported as failed with what the server sent. The telescope slews all the same,
+	// which the polling shows like a slew started by somebody else
+	SA_CHECK(sa_fault(0, "PUT", MOUNT_API "slewtocoordinatesasync", "malformed-json", NULL));
+	revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(14.75, -71.125) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && mount_message("Slew failed: invalid reply"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(14.75, -71.125, 1e-9), SA_TIMEOUT));
+	// the completion member fails while the telescope slews: the slew is reported as failed with the reason, and is not watched any more
+	const char *faults[][3] = { { "ascom-error", "Value=1279&Message=Encoder%20failure", "Slew failed: device error (Encoder failure (0x4FF))" }, { "http-status", "Value=500&Message=Out%20of%20memory", "Slew failed: server error (HTTP 500: Out of memory)" }, { "malformed-json", NULL, "Slew failed: invalid reply" }, { "stall-before", "Delay=1500", "Slew failed: timeout" } };
+	const double targets[][2] = { { 9.125, -5.5 }, { 3.5, -52.25 }, { 23.25, 12.5 }, { 14.75, -71.125 } };
+	for (int i = 0; i < 4; i++) {
+		revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		polls = mount_count("GET", "slewing");
+		SA_CHECK(mount_request_coordinates(targets[i][0], targets[i][1]) && SA_WAIT(mount_count("GET", "slewing") >= polls + 3, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+		SA_CHECK(sa_fault(0, "GET", MOUNT_API "slewing", faults[i][0], faults[i][1]) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && mount_message(faults[i][2]) && sa_is_connected(sa_device));
+		SA_CHECK(mount_quiet("GET", "slewing"));
+		// the telescope did not stop: the polling shows it slewing and arriving
+		SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(targets[i][0], targets[i][1], 1e-9), SA_TIMEOUT));
+	}
+	// a park whose completion can not be read ends in ALERT with the switch at what the telescope last reported
+	revision = sa_revision(sa_device, MOUNT_PARK_PROPERTY_NAME);
+	polls = mount_count("GET", "slewing");
+	SA_CHECK(mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("GET", "slewing") >= polls + 3, SA_TIMEOUT) && sa_fault(0, "GET", MOUNT_API "slewing", "ascom-error", "Value=1279&Message=Encoder%20failure"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && mount_message("Park failed: device error (Encoder failure (0x4FF))") && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	// the telescope parks all the same, and the polling shows it
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 120) && SA_WAIT(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_transport_loss(void) {
+	char guider[INDIGO_NAME_SIZE + 16];
+	SA_CHECK(sa_begin(mount_south) && sa_set_number("X_ALPACA_TIMEOUTS", "LONG", 1) == INDIGO_OK_STATE && sa_attach(MOUNT_LABEL) && sa_connect(sa_device));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	SA_CHECK(SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
+	// the server goes away while the telescope is idle: the device is disconnected with CONNECTION in ALERT, its properties and its guider are gone, nothing is asked any more
+	SA_CHECK(sa_fault(0, NULL, MOUNT_API "*", "reset", "Count=-1"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device) && !sa_device_defined(guider), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
+	SA_CHECK(!sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_OFFSET_RATE) && !sa_defined(sa_device, MOUNT_STATE_PROPERTY_NAME));
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the server is back
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && mount_at(6.8512354871491, 30, 1e-9) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// it goes away in the middle of a slew: the slew ends in ALERT, the device is disconnected, nothing hangs
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_count("GET", "slewing") >= 5, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_fault(0, NULL, MOUNT_API "*", "reset", "Count=-1"));
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5 && mount_message("Slew failed: connection lost") && !sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the telescope went on: connected again half way it is shown slewing, without a state left over from the lost connection, and arrives
+	SA_CHECK(sa_clear_faults(0) && sa_advance(0, 10) && sa_connect(sa_device));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE && sa_advance(0, 30) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && mount_at(3.5, -52.25, 1e-9), SA_TIMEOUT));
+	// it goes away during a manual motion: the axis can not be stopped. After the next connection the telescope is shown moving and MOUNT_ABORT_MOTION stops it.
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(sa_fault(0, NULL, MOUNT_API "*", "reset", "Count=-1") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_clear_faults(0));
+	SA_CHECK(mount_simulated("AxisRate0") < 0 && sa_connect(sa_device));
+	SA_CHECK(!sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME) && sa_state(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) == INDIGO_OK_STATE && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_simulated("AxisRate0") == 0 && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) != INDIGO_BUSY_STATE && sa_light(sa_device, MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE, SA_TIMEOUT));
+	// one request that gets no answer is not a lost connection
+	SA_CHECK(sa_fault(0, "GET", MOUNT_API "devicestate", "drop", NULL) && SA_WAIT(sa_request_count(0, NULL, MOUNT_API "devicestate") > 0, SA_TIMEOUT) && mount_pause() && mount_pause() && sa_is_connected(sa_device));
+	unsigned revision = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(23.25, 12.5) && SA_WAIT(mount_simulated_is("Slewing", "true"), SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && mount_at(23.25, 12.5, 1e-9));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void mount_connect_failures(void) {
+	static const char *no_rates[] = { "--device", "telescope:AxisRates=0:0", NULL };
+	SA_CHECK(sa_begin(mount_default) && sa_attach(MOUNT_LABEL));
+	// a capability that can not be read fails the connection: nothing stays defined and the Alpaca device is disconnected again
+	SA_CHECK(sa_fault(0, "GET", MOUNT_API "canpark", "malformed-json", NULL));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_OFFSET_RATE) && !sa_defined(sa_device, MOUNT_STATE_PROPERTY_NAME) && mount_simulated_is("Connected", "false") && sa_device_count("(guider)") == 0);
+	// so does an error of the server while a static value is read, and a transport that breaks while the axes are probed
+	SA_CHECK(sa_fault(0, "GET", MOUNT_API "equatorialsystem", "http-status", "Value=500"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device) && mount_count("GET", "equatorialsystem") == 1, SA_TIMEOUT) && !sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && mount_simulated_is("Connected", "false"));
+	SA_CHECK(sa_fault(0, "GET", MOUNT_API "axisrates", "reset", "Skip=1&Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device) && mount_count("GET", "axisrates") >= 2, SA_TIMEOUT) && !sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && sa_clear_faults(0));
+	SA_CHECK(sa_fault(0, "GET", MOUNT_API "trackingrates", "truncated-json", NULL));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device) && mount_count("GET", "trackingrates") == 2, SA_TIMEOUT) && !sa_defined(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME));
+	// errors of the telescope itself do not: an axis whose CanMoveAxis fails can not be moved, coordinates that can not be read are in ALERT
+	// until they can, and a tracking rate list that is refused means no tracking rates
+	SA_CHECK(sa_fault(0, "GET", MOUNT_API "canmoveaxis", "ascom-error", "Value=1279") && sa_fault(0, "GET", MOUNT_API "trackingrates", "ascom-error", "Value=1024"));
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=declination&ErrorNumber=1279&ErrorMessage=Encoder%20offline"));
+	SA_CHECK(sa_connect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) && sa_defined(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) && sa_defined(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME));
+	SA_CHECK(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_state(sa_device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=declination&ErrorNumber=0") && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) > 29, SA_TIMEOUT));
+	SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME) && mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=4&ClientID=") && mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE);
+	// the next connection asks for everything again and gets it
+	SA_CHECK(sa_disconnect(sa_device) && sa_connect(sa_device) && sa_defined(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) && sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 4 && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// an axis without a usable rate can not be moved
+	SA_CHECK(mount_begin(no_rates));
+	SA_CHECK(!sa_defined(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME) && mount_count("GET", "axisrates") == 2 && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- lifecycle
+
+static void mount_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	char guider[INDIGO_NAME_SIZE + 16];
+	SA_CHECK(sa_begin(mount_south));
+	snprintf(key, sizeof(key), "%s", sa_device_key(MOUNT_LABEL));
+	SA_CHECK(sa_attach(MOUNT_LABEL));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	// connect and disconnect repeatedly: the same properties every time, one connect and one disconnect each
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == 3 && sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 4 && sa_defined(sa_device, MOUNT_OFFSET_RATE) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+		SA_CHECK(SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT) && sa_disconnect(sa_device) && !sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, MOUNT_OFFSET_RATE) && SA_WAIT(!sa_device_defined(guider), SA_TIMEOUT));
+		SA_CHECK(mount_count("PUT", "connect") == i + 1 && mount_count("PUT", "disconnect") == i + 1 && mount_simulated_is("Connected", "false"));
+	}
+	// a disconnect in the middle of a park: the telescope is left to finish it, nothing is aborted, the finalizer is gone
+	SA_CHECK(sa_connect(sa_device) && mount_start_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && SA_WAIT(mount_count("GET", "slewing") >= 7, SA_TIMEOUT) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_disconnect(sa_device) && mount_count("PUT", "abortslew") == 0 && mount_count("PUT", "moveaxis") == 0 && !sa_defined(sa_device, MOUNT_PARK_PROPERTY_NAME));
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// connected again while the telescope still parks: no state of the old session is left, the motion is shown as one started elsewhere and the park is seen when it is done
+	SA_CHECK(sa_advance(0, 5) && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 120) && SA_WAIT(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// the telescope changes while the proxy is disconnected: the next connection shows what it is then
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "telescope", 0, "AtPark=false&Tracking=true&CanSync=false&CanFindHome=false&CanPulseGuide=false&CanSetTracking=false&EquatorialSystem=1&TrackingRates=0%7C3&TrackingRate=3"));
+	SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == 1 && sa_switch(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME) && !sa_defined(sa_device, MOUNT_HOME_PROPERTY_NAME));
+	SA_CHECK(sa_perm(sa_device, MOUNT_TRACKING_PROPERTY_NAME) == INDIGO_RO_PERM && sa_number(sa_device, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME) == 0 && sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 2 && sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME) && !sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
+	SA_CHECK(sa_switch(sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME) && mount_pause() && !sa_device_defined(guider));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "telescope", 0, "CanSync=true&CanFindHome=true&CanPulseGuide=true&CanSetTracking=true&EquatorialSystem=2&TrackingRates=0%7C1%7C2%7C3&TrackingRate=0"));
+	SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == 3 && sa_defined(sa_device, MOUNT_HOME_PROPERTY_NAME) && sa_perm(sa_device, MOUNT_TRACKING_PROPERTY_NAME) == INDIGO_RW_PERM && sa_item_count(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME) == 4 && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
+	// requests for several properties at once: every one is answered
+	unsigned tracking = sa_revision(sa_device, MOUNT_TRACKING_PROPERTY_NAME), rate = sa_revision(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME), guide = sa_revision(sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME), coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true) == INDIGO_OK && indigo_change_number_property_1(&sa_client, sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 80) == INDIGO_OK && mount_request_coordinates(3.5, -52.25) && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(mount_answer(MOUNT_TRACK_RATE_PROPERTY_NAME, rate) == INDIGO_OK_STATE && mount_answer(MOUNT_GUIDE_RATE_PROPERTY_NAME, guide) == INDIGO_OK_STATE && mount_answer(MOUNT_TRACKING_PROPERTY_NAME, tracking) == INDIGO_OK_STATE && mount_simulated("TrackingRate") == 1 && mount_near(mount_simulated("GuideRateDeclination"), 0.8 * MOUNT_SIDEREAL, 1e-12));
+	SA_CHECK(SA_WAIT(mount_simulated_is("Slewing", "true"), SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && mount_count("PUT", "slewtocoordinatesasync") == 1);
+	// a disconnect right behind requests for most of the properties: whatever was accepted, started or still waiting, nothing is BUSY after the next connection
+	static const char *settled[] = { MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, UTC_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_OFFSET_RATE };
+	SA_CHECK(mount_request_coordinates(23.25, 12.5) && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true) == INDIGO_OK && indigo_change_number_property_1(&sa_client, sa_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 70) == INDIGO_OK);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, 100) == INDIGO_OK && indigo_change_number_property_1(&sa_client, sa_device, MOUNT_OFFSET_RATE, "DEC", 1) == INDIGO_OK && indigo_change_text_property_1_raw(&sa_client, sa_device, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "2026-06-01T01:02:03") == INDIGO_OK);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && mount_simulated("AxisRate1") == 0);
+	SA_CHECK(sa_advance(0, 300) && sa_device_state(0, "telescope", 0, "AtPark=false&Tracking=true&TrackingRate=0") && sa_connect(sa_device) && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
+	for (int i = 0; i < (int)ARRAY_SIZE(settled); i++) {
+		if (sa_state(sa_device, settled[i]) != INDIGO_OK_STATE) {
+			fprintf(stderr, "    %s is in state %d after the connection\n", settled[i], sa_state(sa_device, settled[i]));
+		}
+		SA_CHECK(sa_state(sa_device, settled[i]) == INDIGO_OK_STATE);
+	}
+	SA_CHECK(!sa_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME) && !sa_switch(sa_device, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME) && !sa_switch(sa_device, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME) && !sa_switch(sa_device, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	// the device is detached in the middle of a slew, with its guider connected: both go away without a hang, the Alpaca device is disconnected, nothing is asked afterwards
+	SA_CHECK(sa_connect(guider) && mount_select(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME) && mount_request_coordinates(14.75, -71.125) && SA_WAIT(sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && mount_simulated_is("Slewing", "true"), SA_TIMEOUT));
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device) && !sa_device_defined(guider), SA_TIMEOUT) && indigo_monotonic_time() - started < 3 && mount_simulated_is("Connected", "false"));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// and attached again it is a working device
+	SA_CHECK(sa_advance(0, 120) && sa_attach(MOUNT_LABEL) && sa_connect(sa_device) && mount_simulated_is("Slewing", "false") && mount_at(mount_simulated("RightAscension"), -71.125, 1e-9) && mount_near(mount_simulated("RightAscension"), 14.75, 0.01));
+	SA_CHECK(sa_switch(sa_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME) && mount_simulated("TrackingRate") == 0);
+	coordinates = sa_revision(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(mount_request_coordinates(3.5, -52.25) && SA_WAIT(mount_simulated_is("Slewing", "true"), SA_TIMEOUT) && sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && mount_at(3.5, -52.25, 1e-9));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- refusals and abort (REV-6, REV-8)
+
+static atomic_bool mount_second_gate_open = true;
+static atomic_bool mount_second_gate_entered = false;
+
+static void mount_second_gate_handler(indigo_device *device) {
+	(void)device;
+	atomic_store(&mount_second_gate_entered, true);
+	double deadline = indigo_monotonic_time() + 30;
+	while (!atomic_load(&mount_second_gate_open) && indigo_monotonic_time() < deadline) {
+		indigo_usleep(1000);
+	}
+}
+
+// REV-6: a request for a manual motion that is refused because the telescope is parked does not take the state of an earlier motion
+// request that waits for its handler. The refusal was written on the bus thread without the lock of the device, over the BUSY state
+// that belongs to the waiting request. The queue is held so that the park runs first and the motion request waits behind a second gate.
+static void mount_parked_refusal_keeps_pending_motion(void) {
+	SA_CHECK(mount_begin(mount_south));
+	indigo_device *device = sa_device_pointer(sa_device);
+	SA_CHECK(device != NULL && mount_close_gate());
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state(sa_device, MOUNT_PARK_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	atomic_store(&mount_second_gate_open, false);
+	atomic_store(&mount_second_gate_entered, false);
+	indigo_execute_handler(device, mount_second_gate_handler);
+	unsigned motion = sa_revision(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE, motion), SA_TIMEOUT));
+	// the park runs, the motion request waits behind the second gate
+	atomic_store(&mount_gate_open, true);
+	SA_CHECK(SA_WAIT(atomic_load(&mount_second_gate_entered), SA_TIMEOUT) && mount_count("PUT", "park") == 1);
+	int mark = sa_message_mark();
+	motion = sa_revision(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_message_seen_since(mark, "Mount is parked!"), SA_TIMEOUT) && sa_state(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_ALERT_STATE, motion));
+	// the waiting request is answered by its handler: the telescope is parked by now
+	atomic_store(&mount_second_gate_open, true);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_ALERT_STATE, motion), SA_TIMEOUT) && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME) && mount_count("PUT", "moveaxis") == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	atomic_store(&mount_gate_open, true);
+	atomic_store(&mount_second_gate_open, true);
+	sa_end();
+}
+
+// REV-8: MOUNT_ABORT_MOTION sends MoveAxis(0) for every moving axis and AbortSlew in any case. A telescope that does not implement
+// AbortSlew has nothing to abort but the motion of its axes; an axis that could not be stopped does not keep the other axis moving and
+// does not keep AbortSlew from being sent.
+static void mount_abort_partial_failures(void) {
+	SA_CHECK(mount_begin(mount_south));
+	// AbortSlew not implemented, only the axes move: the abort is done, the motion properties are reset
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=abortslew&ErrorNumber=1024&ErrorMessage=Not%20implemented"));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_simulated("AxisRate1") != 0);
+	int moves = mount_count("PUT", "moveaxis"), aborts = mount_count("PUT", "abortslew");
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "moveaxis") == moves + 1 && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_count("PUT", "abortslew") == aborts + 1);
+	SA_CHECK(mount_simulated("AxisRate1") == 0 && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME) && sa_state(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=abortslew&ErrorNumber=0"));
+	// MoveAxis(0) fails for the first axis: the second one is stopped all the same and AbortSlew is sent, which stops every axis
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(mount_simulated("AxisRate0") != 0 && mount_simulated("AxisRate1") != 0);
+	moves = mount_count("PUT", "moveaxis");
+	aborts = mount_count("PUT", "abortslew");
+	int mark = sa_message_mark();
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=moveaxis&ErrorNumber=1279&ErrorMessage=Axis%20driver%20fault&Count=1"));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_message_seen_since(mark, "MoveAxis(0) failed: device error (Axis driver fault (0x4FF))"));
+	SA_CHECK(mount_count("PUT", "moveaxis") == moves + 2 && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_count("PUT", "abortslew") == aborts + 1 && mount_sequence("PUT", "moveaxis") < mount_sequence("PUT", "abortslew"));
+	SA_CHECK(mount_simulated("AxisRate0") == 0 && mount_simulated("AxisRate1") == 0 && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME));
+	// AbortSlew not implemented and MoveAxis(0) fails: the axis moves on and is shown moving, the abort is ALERT with the reason
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=abortslew&ErrorNumber=1024&ErrorMessage=Not%20implemented") && mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_OK_STATE);
+	mark = sa_message_mark();
+	SA_CHECK(sa_put(0, MOUNT_ERROR, "Member=moveaxis&ErrorNumber=1279&ErrorMessage=Axis%20driver%20fault&Count=1"));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen_since(mark, "Abort failed: device error (Axis driver fault (0x4FF))"));
+	SA_CHECK(mount_simulated("AxisRate0") != 0 && sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && mount_simulated("AxisRate0") == 0 && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+#define SYSTEM_ALPACA_MOUNT_CASES \
+	{ "mount_properties", mount_properties }, \
+	{ "mount_legacy_properties", mount_legacy_properties }, \
+	{ "mount_capability_variants", mount_capability_variants }, \
+	{ "mount_equatorial_systems", mount_equatorial_systems }, \
+	{ "mount_goto", mount_goto }, \
+	{ "mount_sync", mount_sync }, \
+	{ "mount_abort", mount_abort }, \
+	{ "mount_park_and_home", mount_park_and_home }, \
+	{ "mount_manual_motion", mount_manual_motion }, \
+	{ "mount_manual_motion_ownership", mount_manual_motion_ownership }, \
+	{ "mount_tracking_and_rates", mount_tracking_and_rates }, \
+	{ "mount_site_and_time", mount_site_and_time }, \
+	{ "mount_side_of_pier", mount_side_of_pier }, \
+	{ "mount_polling", mount_polling }, \
+	{ "mount_steady_state_is_silent", mount_steady_state_is_silent }, \
+	{ "mount_poll_keeps_pending_change", mount_poll_keeps_pending_change }, \
+	{ "mount_configuration_roundtrip", mount_configuration_roundtrip }, \
+	{ "mount_request_failures", mount_request_failures }, \
+	{ "mount_transport_loss", mount_transport_loss }, \
+	{ "mount_connect_failures", mount_connect_failures }, \
+	{ "mount_lifecycle", mount_lifecycle }, \
+	{ "mount_parked_refusal_keeps_pending_motion", mount_parked_refusal_keeps_pending_motion }, \
+	{ "mount_abort_partial_failures", mount_abort_partial_failures },
 
 #endif /* system_alpaca_mount_cases_h */

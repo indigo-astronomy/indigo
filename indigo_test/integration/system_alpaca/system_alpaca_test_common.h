@@ -49,9 +49,11 @@
 #define system_alpaca_test_common_h
 
 #include <pthread.h>
+#include <stdatomic.h>
 #include <sys/stat.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_timer.h>
 #include <indigo_drivers/system_alpaca/indigo_system_alpaca.h>
@@ -459,6 +461,16 @@ static bool sa_state_after(const char *device, const char *name, indigo_property
 	return result;
 }
 
+// Revision at which the property was last published in the given state, 0 if never. The revisions of all properties come from one
+// counter, so two of them tell which publication came first.
+static unsigned sa_state_revision(const char *device, const char *name, indigo_property_state state) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	sa_cache_entry *entry = sa_cache_find(device, name);
+	unsigned result = entry != NULL ? entry->state_revision[state] : 0;
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
 // How many times the property was defined since the device appeared.
 static unsigned sa_define_count(const char *device, const char *name) {
 	pthread_mutex_lock(&sa_cache_mutex);
@@ -468,12 +480,33 @@ static unsigned sa_define_count(const char *device, const char *name) {
 	return result;
 }
 
-// One of the last messages (of any device) contains the text.
+// One of the last messages (of any device) contains the text. The ring is not cleared between the steps of a case: when the same text
+// may have been published by an earlier step, take a mark before the step and use sa_message_seen_since().
 static bool sa_message_seen(const char *text) {
 	bool result = false;
 	pthread_mutex_lock(&sa_cache_mutex);
 	for (int i = 0; i < SA_MAX_MESSAGES && !result; i++) {
 		result = strstr(sa_messages[i], text) != NULL;
+	}
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+// Mark for sa_message_seen_since(): the number of messages published so far.
+static int sa_message_mark(void) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	int mark = sa_message_count;
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return mark;
+}
+
+// A message published after the mark contains the text (as long as no more than SA_MAX_MESSAGES were published since).
+static bool sa_message_seen_since(int mark, const char *text) {
+	bool result = false;
+	pthread_mutex_lock(&sa_cache_mutex);
+	int first = sa_message_count - SA_MAX_MESSAGES > mark ? sa_message_count - SA_MAX_MESSAGES : mark;
+	for (int i = first; i < sa_message_count && !result; i++) {
+		result = strstr(sa_messages[i % SA_MAX_MESSAGES], text) != NULL;
 	}
 	pthread_mutex_unlock(&sa_cache_mutex);
 	return result;
@@ -576,7 +609,7 @@ static const char *sa_field(const char *line, const char *key) {
 		const char *end = line + strcspn(line, "&\n");
 		if (!strncmp(line, key, key_length) && line[key_length] == '=') {
 			for (const char *c = line + key_length + 1; c < end && length < SA_TEXT_SIZE - 1; c++) {
-				if (*c == '%' && c + 2 < end + 1) {
+				if (*c == '%' && c + 2 < end) {
 					char hex[3] = { c[1], c[2], 0 };
 					buffer[length++] = (char)strtol(hex, NULL, 16);
 					c += 2;
@@ -676,6 +709,145 @@ static const char *sa_last_request(int index, const char *method, const char *pa
 		body += *body == '\n';
 	}
 	return last;
+}
+
+// Sequence number of the last recorded request that matches, 0 if there is none; it tells the order of two requests.
+static int sa_sequence(int index, const char *method, const char *path) {
+	const char *line = sa_last_request(index, method, path);
+	return line != NULL ? atoi(sa_field(line, "Sequence")) : 0;
+}
+
+// Number of recorded requests that match and arrived before the request with the given sequence number, -1 on failure.
+static int sa_count_before(int index, const char *method, const char *path, int sequence) {
+	const char *body = sa_requests(index, method, path);
+	int count = 0;
+	if (body == NULL) {
+		return -1;
+	}
+	while (*body) {
+		count += atoi(sa_field(body, "Sequence")) < sequence;
+		body += strcspn(body, "\n");
+		body += *body == '\n';
+	}
+	return count;
+}
+
+// Number of recorded requests that match and were answered with the given fault ("http-status", "malformed-json"...), -1 on failure.
+static int sa_faulted_count(int index, const char *method, const char *path, const char *fault) {
+	const char *body = sa_requests(index, method, path);
+	int count = 0;
+	if (body == NULL) {
+		return -1;
+	}
+	while (*body) {
+		count += !strcmp(sa_field(body, "Fault"), fault);
+		body += strcspn(body, "\n");
+		body += *body == '\n';
+	}
+	return count;
+}
+
+// A device that does nothing publishes nothing: while the given number of further requests for poll_path arrive at the simulator
+// (the request the driver makes once per poll tick: ".../devicestate" of a Platform 7 device, ".../connected" of an older one),
+// no property of the device is defined, updated or deleted. The properties that were are printed.
+// This is the way to assert that polling does not republish: never count the publications of a device that changes.
+static bool sa_steady(int index, const char *device, const char *poll_path, int ticks) {
+	static char names[256][INDIGO_NAME_SIZE];
+	static unsigned revisions[256];
+	int count = 0;
+	bool steady = true;
+	pthread_mutex_lock(&sa_cache_mutex);
+	for (int i = 0; i < SA_MAX_PROPERTIES && count < 256; i++) {
+		indigo_property *property = sa_cache[i].property;
+		if (property != NULL && !strcmp(property->device, device)) {
+			strcpy(names[count], property->name);
+			revisions[count++] = sa_cache[i].revision;
+		}
+	}
+	pthread_mutex_unlock(&sa_cache_mutex);
+	int polls = sa_request_count(index, "GET", poll_path);
+	if (count == 0 || polls < 0 || !SA_WAIT(sa_request_count(index, "GET", poll_path) >= polls + ticks, 3 * SA_TIMEOUT)) {
+		fprintf(stderr, "    '%s' has %d properties and was not polled %d times with %s\n", device, count, ticks, poll_path);
+		return false;
+	}
+	for (int i = 0; i < count; i++) {
+		if (sa_revision(device, names[i]) != revisions[i]) {
+			fprintf(stderr, "    %s.%s was published although nothing changed\n", device, names[i]);
+			steady = false;
+		}
+	}
+	return steady;
+}
+
+// ---------------------------------------------------------------------------- handler queue of a device
+//
+// A case orders what the driver does by conditions on the handler queue of the device instead of sleeps: whether a task is waiting,
+// running or due. The queue is the one of the framework (indigo_timer.h); it is read under its own mutex. A device is passed by its
+// structure (sa_device_pointer()); the queue is the one of its primary device.
+
+static indigo_queue *sa_queue(indigo_device *device) {
+	indigo_device *master = device != NULL && device->master_device != NULL ? device->master_device : device;
+	return master != NULL && master->device_context != NULL ? ((indigo_device_context *)master->device_context)->queue : NULL;
+}
+
+// A task of the device with the callback waits in the queue (callback NULL: any task of the device).
+static bool sa_queue_has(indigo_device *device, indigo_timer_callback callback) {
+	indigo_queue *queue = sa_queue(device);
+	bool found = false;
+	if (queue != NULL) {
+		pthread_mutex_lock(&queue->mutex);
+		for (indigo_queue_task *task = queue->task; task != NULL && !found; task = task->next) {
+			found = task->device == device && (callback == NULL || task->callback == callback);
+		}
+		pthread_mutex_unlock(&queue->mutex);
+	}
+	return found;
+}
+
+// Number of tasks of the device with the given priority that wait in the queue and whose time has come: poll ticks and finalizers
+// (INDIGO_TASK_PRIORITY_TIME) that are due.
+static int sa_queue_due(indigo_device *device, int priority) {
+	indigo_queue *queue = sa_queue(device);
+	int count = 0;
+	if (queue != NULL) {
+		// the time of the queue (indigo_delay_to_time(0) is 0, the time of a task that is due at once)
+		struct timespec now = indigo_delay_to_time(1e-6);
+		pthread_mutex_lock(&queue->mutex);
+		for (indigo_queue_task *task = queue->task; task != NULL; task = task->next) {
+			count += task->device == device && task->priority == priority && (task->at.tv_sec < now.tv_sec || (task->at.tv_sec == now.tv_sec && task->at.tv_nsec <= now.tv_nsec));
+		}
+		pthread_mutex_unlock(&queue->mutex);
+	}
+	return count;
+}
+
+// A gate on the handler queue of a device: while it is closed no handler, finalizer or poll tick of the device runs, so a case decides
+// what is queued behind it (the queue then runs what is due by priority and time). Only one gate at a time.
+static atomic_bool sa_gate_closed = false;
+static atomic_bool sa_gate_entered = false;
+
+static void sa_gate_handler(indigo_device *device) {
+	(void)device;
+	atomic_store(&sa_gate_entered, true);
+	double deadline = indigo_monotonic_time() + 30;
+	while (atomic_load(&sa_gate_closed) && indigo_monotonic_time() < deadline) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool sa_gate_close(const char *device_name) {
+	indigo_device *device = sa_device_pointer(device_name);
+	if (device == NULL) {
+		return false;
+	}
+	atomic_store(&sa_gate_closed, true);
+	atomic_store(&sa_gate_entered, false);
+	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, 0, sa_gate_handler);
+	return SA_WAIT(atomic_load(&sa_gate_entered), SA_TIMEOUT);
+}
+
+static void sa_gate_open(void) {
+	atomic_store(&sa_gate_closed, false);
 }
 
 // ---------------------------------------------------------------------------- driver
@@ -906,6 +1078,21 @@ static bool sa_connect(const char *device) {
 
 static bool sa_disconnect(const char *device) {
 	if (!sa_request_connection(device, false) || !SA_WAIT(sa_state(device, CONNECTION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(device, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME), SA_TIMEOUT)) {
+		fprintf(stderr, "'%s' did not disconnect, CONNECTION state %d\n", device, sa_state(device, CONNECTION_PROPERTY_NAME));
+		return false;
+	}
+	return true;
+}
+
+// Disconnect a Platform 7 device of simulator 0 whose disconnect takes device time (ConnectDelay): CONNECTION stays BUSY while the
+// device reports Connecting (state_path is its control API state, e.g. "/simulator/v1/focuser/0/state"), the given device time passes,
+// and then the device is disconnected.
+static bool sa_disconnect_after(const char *device, const char *state_path, double seconds) {
+	if (!sa_request_connection(device, false) || !SA_WAIT(!strcmp(sa_status(0, state_path, "Connecting"), "true"), SA_TIMEOUT) || sa_state(device, CONNECTION_PROPERTY_NAME) != INDIGO_BUSY_STATE) {
+		fprintf(stderr, "'%s' is not disconnecting, CONNECTION state %d\n", device, sa_state(device, CONNECTION_PROPERTY_NAME));
+		return false;
+	}
+	if (!sa_advance(0, seconds) || !SA_WAIT(sa_state(device, CONNECTION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(device, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME), SA_TIMEOUT)) {
 		fprintf(stderr, "'%s' did not disconnect, CONNECTION state %d\n", device, sa_state(device, CONNECTION_PROPERTY_NAME));
 		return false;
 	}

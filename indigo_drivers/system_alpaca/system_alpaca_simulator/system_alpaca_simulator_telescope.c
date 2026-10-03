@@ -71,6 +71,7 @@
 //   AxisRates               rate ranges of both axes as "min:max|min:max"; empty = one range 0..MaxAxisRate
 //   PulseGuideNeedsTracking PulseGuide is an InvalidOperation while Tracking is false (allowed by the standard)
 //   DualAxisPulseGuide      false: a pulse while the other axis is pulsing is an InvalidOperation (allowed by the standard)
+//   LinkedGuideRates        true: the mount has one guide rate, writing GuideRateRightAscension or GuideRateDeclination sets both (allowed by the standard)
 // Simulator assumptions: the tracking drift is not applied during the part of
 // a clock step in which a slew was still running, and the deprecated
 // synchronous slews complete at once instead of blocking.
@@ -157,6 +158,7 @@ typedef struct {
 	bool flip_target;
 	bool pulse_guide_needs_tracking;
 	bool dual_axis_pulse_guide;
+	bool linked_guide_rates;
 	char tracking_rates[ALPACA_TEXT_SIZE];
 	char axis_rates[ALPACA_TEXT_SIZE];
 } telescope_state;
@@ -533,6 +535,9 @@ static void telescope_put_rate(alpaca_device *device, alpaca_request *request) {
 		return;
 	}
 	*(double *)((char *)state + offset) = rate;
+	if (!offset_rate && state->linked_guide_rates) {
+		state->guide_rate_declination = state->guide_rate_right_ascension = rate;
+	}
 	alpaca_reply_void(request);
 }
 
@@ -950,7 +955,8 @@ static const alpaca_member telescope_members[] = {
 	TELESCOPE_CONFIG("TrackingRates", ALPACA_STRING, tracking_rates),
 	TELESCOPE_CONFIG("AxisRates", ALPACA_STRING, axis_rates),
 	TELESCOPE_CONFIG("PulseGuideNeedsTracking", ALPACA_BOOL, pulse_guide_needs_tracking),
-	TELESCOPE_CONFIG("DualAxisPulseGuide", ALPACA_BOOL, dual_axis_pulse_guide)
+	TELESCOPE_CONFIG("DualAxisPulseGuide", ALPACA_BOOL, dual_axis_pulse_guide),
+	TELESCOPE_CONFIG("LinkedGuideRates", ALPACA_BOOL, linked_guide_rates)
 };
 
 const alpaca_type alpaca_telescope_type = {

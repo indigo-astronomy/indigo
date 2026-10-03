@@ -34,7 +34,10 @@
 //   sensitive and a wrongly cased or missing one is HTTP 400,
 // - ClientID and ClientTransactionID that are missing, wrongly cased in a
 //   form or not an unsigned 32 bit number are treated as not supplied (0),
-// - ASCOM errors are HTTP 200 with ErrorNumber and ErrorMessage,
+// - the parameters of a PUT are an application/x-www-form-urlencoded body, a body
+//   of another type is HTTP 400 (--any-content-type takes any),
+// - ASCOM errors are HTTP 200 with ErrorNumber and ErrorMessage and without Value
+//   (--error-value adds the default of the type, as the ASCOM .NET servers do),
 // - ServerTransactionID grows by one with every Alpaca response.
 //
 // The control API lives under /simulator/v1 on the same port. It takes
@@ -113,6 +116,8 @@ typedef struct {
 	double connect_delay;
 	bool default_devices;
 	bool parent_watch;
+	bool error_value;						// an error reply of a GET carries Value as well, as the ASCOM .NET servers do
+	bool any_content_type;			// a PUT of the device API is taken whatever its Content-Type is
 } simulator_options;
 
 typedef enum {
@@ -124,6 +129,7 @@ typedef enum {
 	FAULT_MISSING_VALUE,
 	FAULT_NULL_VALUE,
 	FAULT_WRONG_TRANSACTION_ID,
+	FAULT_MISSING_TRANSACTION_ID,
 	FAULT_CHUNKED,
 	FAULT_CONNECTION_CLOSE,
 	FAULT_SILENT_CLOSE,
@@ -271,6 +277,7 @@ static const char *fault_names[FAULT_ACTION_COUNT] = {
 	"missing-value",
 	"null-value",
 	"wrong-transaction-id",
+	"missing-transaction-id",
 	"chunked",
 	"connection-close",
 	"silent-close",
@@ -1375,7 +1382,27 @@ static void append_transaction_ids(http_exchange *exchange, unsigned client_tran
 	if (has_fault(exchange, FAULT_WRONG_TRANSACTION_ID)) {
 		client_transaction_id = exchange->fault.has_value ? (unsigned)exchange->fault.value : client_transaction_id + 1000;
 	}
+	if (has_fault(exchange, FAULT_MISSING_TRANSACTION_ID)) {
+		// a server that does not implement the echo at all
+		alpaca_buffer_printf(&exchange->response, "\"ServerTransactionID\":%u", transaction_id);
+		return;
+	}
 	alpaca_buffer_printf(&exchange->response, "\"ClientTransactionID\":%u,\"ServerTransactionID\":%u", client_transaction_id, transaction_id);
+}
+
+// The value the ASCOM .NET servers put next to a non-zero ErrorNumber: the default of the type of the member.
+static void append_error_value(alpaca_buffer *buffer, const alpaca_member *member) {
+	switch (member != NULL ? member->kind : ALPACA_NONE) {
+		case ALPACA_BOOL:
+			alpaca_buffer_printf(buffer, "\"Value\":false,");
+			break;
+		case ALPACA_STRING:
+			alpaca_buffer_printf(buffer, "\"Value\":\"\",");
+			break;
+		default:
+			alpaca_buffer_printf(buffer, "\"Value\":0,");
+			break;
+	}
 }
 
 static void append_element(alpaca_buffer *buffer, int element_type, int32_t value) {
@@ -1532,6 +1559,8 @@ static void respond_alpaca(http_exchange *exchange, alpaca_request *request, uns
 	}
 	if (has_fault(exchange, FAULT_NULL_VALUE)) {
 		alpaca_buffer_printf(&exchange->response, "\"Value\":null,");
+	} else if (request->error_number != 0 && options.error_value && request->method == ALPACA_GET && !has_fault(exchange, FAULT_MISSING_VALUE)) {
+		append_error_value(&exchange->response, request->member);
 	} else if (request->error_number == 0 && !has_fault(exchange, FAULT_MISSING_VALUE)) {
 		if (has_image) {
 			alpaca_buffer_printf(&exchange->response, "\"Value\":");
@@ -2374,6 +2403,17 @@ static void corrupt_json(http_exchange *exchange) {
 	}
 }
 
+// The Alpaca API reference requires the parameters of a PUT in a form body, application/x-www-form-urlencoded. A body of another type is
+// refused like the ASP.NET servers refuse it; a PUT without a body (a method without parameters, no ClientID) needs no type.
+// --any-content-type turns the check off for servers that read any body as a form.
+static bool put_content_type_accepted(const http_exchange *exchange) {
+	if (strcmp(exchange->method, "PUT") || options.any_content_type || (exchange->body_length == 0 && !*exchange->content_type)) {
+		return true;
+	}
+	size_t length = strcspn(exchange->content_type, "; \t");
+	return length == 33 && !strncasecmp(exchange->content_type, "application/x-www-form-urlencoded", length);
+}
+
 // Runs with the simulator lock held: turns a parsed request into a response and picks the fault to apply to it.
 static void process_exchange(http_exchange *exchange) {
 	char path[1024];
@@ -2393,6 +2433,8 @@ static void process_exchange(http_exchange *exchange) {
 		respond_text(exchange, exchange->fault.has_value ? exchange->fault.value : 500, "%s", *exchange->fault.message ? exchange->fault.message : "Injected HTTP error");
 	} else if (exchange->has_fault && !exchange->fault.dispatch && exchange->fault.action != FAULT_ASCOM_ERROR) {
 		respond_text(exchange, 200, "%s", "");
+	} else if (!strncmp(path, "/api/v1/", 8) && !put_content_type_accepted(exchange)) {
+		respond_text(exchange, 400, "PUT parameters have to be sent as application/x-www-form-urlencoded, not '%s'", exchange->content_type);
 	} else if (!strncmp(path, "/api/v1/", 8)) {
 		handle_device_api(exchange, path + 8);
 	} else if (!strncmp(path, "/api/", 5) || !strcmp(path, "/api")) {
@@ -2891,6 +2933,10 @@ static void usage(const char *name) {
 	printf("                                every key of GET /simulator/v1/<type>/<number>/state\n");
 	printf("  --no-devices                  Start without devices\n");
 	printf("  --no-parent-watch             Keep running when the parent process exits\n");
+	printf("  --error-value                 An error reply of a GET carries Value (the default of its type) next to ErrorNumber,\n");
+	printf("                                as the ASCOM .NET servers do (default: no Value with an error)\n");
+	printf("  --any-content-type            Take the body of a PUT as a form whatever its Content-Type is (default: HTTP 400\n");
+	printf("                                unless it is application/x-www-form-urlencoded)\n");
 	printf("  -h, --help                    Show this help and exit\n");
 	printf("Device types:");
 	for (int i = 0; i < ALPACA_TYPE_COUNT; i++) {
@@ -2965,6 +3011,10 @@ static bool parse_args(int argc, char *argv[], const char **device_options, int 
 			options.default_devices = false;
 		} else if (!strcmp(argv[i], "--no-parent-watch")) {
 			options.parent_watch = false;
+		} else if (!strcmp(argv[i], "--error-value")) {
+			options.error_value = true;
+		} else if (!strcmp(argv[i], "--any-content-type")) {
+			options.any_content_type = true;
 		} else if (option_value(argc, argv, &i, "--ready-file", &value)) {
 			options.ready_file = value;
 		} else if (option_value(argc, argv, &i, "--event-file", &value)) {

@@ -5757,6 +5757,7 @@
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
+		C0DE20261002A10000000001 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		C0DE20261001A10000000001 /* indigo_system_alpaca.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000002 /* indigo_system_alpaca.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000003 /* indigo_system_alpaca_ccd.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_ccd.c; sourceTree = "<group>"; };
@@ -5793,6 +5794,7 @@
 		C0DE20261001A10000000023 /* test_system_alpaca_json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_json.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000024 /* test_system_alpaca_http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_http.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000025 /* test_system_alpaca_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_simulator.c; sourceTree = "<group>"; };
+		C0DE20261003A10000000001 /* test_system_alpaca_omnisim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_omnisim.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000027 /* ccd_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ccd_cases.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000028 /* core_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = core_cases.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000029 /* dome_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dome_cases.h; sourceTree = "<group>"; };
@@ -5804,6 +5806,7 @@
 		C0DE20261001A1000000002F /* safety_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = safety_cases.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000030 /* switch_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = switch_cases.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000031 /* system_alpaca_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = system_alpaca_test_common.h; sourceTree = "<group>"; };
+		C0DE20261003A10000000002 /* omnisim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = omnisim_test_common.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000032 /* weather_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = weather_cases.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000033 /* wheel_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wheel_cases.h; sourceTree = "<group>"; };
 		C0DE20261001A10000000034 /* alpaca_apiversions.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_apiversions.json; sourceTree = "<group>"; };
@@ -14335,6 +14338,7 @@
 				5907ACD6301E84A90009AA99 /* test_wheel_xagyl_simulator.c */,
 				C0DE20261001A10000000024 /* test_system_alpaca_http.c */,
 				C0DE20261001A10000000025 /* test_system_alpaca_simulator.c */,
+				C0DE20261003A10000000001 /* test_system_alpaca_omnisim.c */,
 				C0DE20261001A10000000026 /* system_alpaca */,
 			);
 			path = integration;
@@ -16638,6 +16642,7 @@
 		C0DE20260924000000000002 /* system_alpaca */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20261002A10000000001 /* README.md */,
 				C0DE20260924000000000001 /* REFACTOR.md */,
 				C0DE20261001A10000000001 /* indigo_system_alpaca.c */,
 				C0DE20261001A10000000002 /* indigo_system_alpaca.h */,
@@ -16723,6 +16728,7 @@
 				C0DE20261001A1000000002F /* safety_cases.h */,
 				C0DE20261001A10000000030 /* switch_cases.h */,
 				C0DE20261001A10000000031 /* system_alpaca_test_common.h */,
+				C0DE20261003A10000000002 /* omnisim_test_common.h */,
 				C0DE20261001A10000000032 /* weather_cases.h */,
 				C0DE20261001A10000000033 /* wheel_cases.h */,
 				C0DE20261001A1000000003C /* interface_cases.h */,

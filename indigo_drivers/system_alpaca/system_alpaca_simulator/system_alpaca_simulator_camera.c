@@ -46,11 +46,18 @@
 // ImageElementType selects the element type of the array (1 Int16, 2 Int32,
 // 3 Double). TransmissionElementType selects the type on the wire of
 // ImageBytes; 0 picks the narrowest one that holds MaxADU, like the reference
-// servers do (6 Byte, 8 UInt16, 2 Int32).
+// servers do (6 Byte, 8 UInt16, 2 Int32). ImageBytes=false makes the camera
+// answer ImageArray with JSON whatever the client accepts, like a server
+// that is older than ImageBytes.
 //
 // Gain and Offset: GainMode / OffsetMode 0 = not implemented, 1 = index into
 // the list Gains / Offsets (GainMin and GainMax are then not implemented),
 // 2 = value in GainMin..GainMax (Gains is then not implemented).
+//
+// Readout: a camera has either FastReadout (CanFastReadout=true) or a list of
+// readout modes, never both: ReadoutMode and ReadoutModes are not implemented
+// while CanFastReadout is true (ICameraV2). ReadoutModeCount (1..4) is the
+// length of the list.
 //
 // Simulator assumptions: an exposure takes Duration, then ReadoutTime in state
 // Reading; StopExposure ends the exposure early and keeps the image,
@@ -127,12 +134,14 @@ typedef struct {
 	double pixel_size_x;
 	double pixel_size_y;
 	int readout_mode;
+	int readout_mode_count;
 	char sensor_name[ALPACA_TEXT_SIZE];
 	int sensor_type;
 	int bayer_offset_x;
 	int bayer_offset_y;
 	int image_element_type;
 	int transmission_element_type;
+	bool image_bytes;
 	double readout_time;
 	double exposure_start;
 	double exposure_duration;
@@ -149,9 +158,9 @@ typedef struct {
 
 static const char *camera_gains[LEVEL_LIST_SIZE] = { "Low noise", "Unity gain", "High gain", "Extended" };
 static const char *camera_offsets[LEVEL_LIST_SIZE] = { "Offset 0", "Offset 50", "Offset 100", "Offset 200" };
-static const char *camera_readout_modes[] = { "High quality", "Fast" };
+static const char *camera_readout_modes[] = { "High quality", "Fast", "Low noise", "High dynamic range" };
 
-#define CAMERA_READOUT_MODE_COUNT ((int)(sizeof(camera_readout_modes) / sizeof(camera_readout_modes[0])))
+#define CAMERA_MAX_READOUT_MODES ((int)(sizeof(camera_readout_modes) / sizeof(camera_readout_modes[0])))
 
 static void camera_reset(alpaca_device *device) {
 	camera_state *state = device->state;
@@ -161,7 +170,8 @@ static void camera_reset(alpaca_device *device) {
 	state->max_bin_x = state->max_bin_y = 4;
 	state->num_x = state->camera_x_size;
 	state->num_y = state->camera_y_size;
-	state->can_abort_exposure = state->can_asymmetric_bin = state->can_fast_readout = state->can_get_cooler_power = state->can_pulse_guide = state->can_set_ccd_temperature = state->can_stop_exposure = true;
+	state->can_abort_exposure = state->can_asymmetric_bin = state->can_get_cooler_power = state->can_pulse_guide = state->can_set_ccd_temperature = state->can_stop_exposure = true;
+	state->readout_mode_count = 2;
 	state->heat_sink_temperature = 18.5;
 	alpaca_motion_set(&state->ccd_temperature, state->heat_sink_temperature);
 	state->set_ccd_temperature = -10;
@@ -178,6 +188,7 @@ static void camera_reset(alpaca_device *device) {
 	state->pixel_size_x = state->pixel_size_y = 3.76;
 	snprintf(state->sensor_name, sizeof(state->sensor_name), "SIM571");
 	state->image_element_type = ALPACA_ELEMENT_INT32;
+	state->image_bytes = true;
 }
 
 static void camera_finish_exposure(alpaca_device *device) {
@@ -196,9 +207,25 @@ static void camera_end_exposure(alpaca_device *device, double end) {
 	state->camera_state = CAMERA_READING;
 }
 
+static int camera_readout_mode_count(const camera_state *state);
+
+// A level or a readout mode that is the index of a name never points outside its list, whatever the settings of the simulator were changed to.
+static void camera_limit_indices(camera_state *state) {
+	if (state->gain.mode == LEVEL_LIST && (state->gain.value < 0 || state->gain.value >= LEVEL_LIST_SIZE)) {
+		state->gain.value = 0;
+	}
+	if (state->offset.mode == LEVEL_LIST && (state->offset.value < 0 || state->offset.value >= LEVEL_LIST_SIZE)) {
+		state->offset.value = 0;
+	}
+	if (state->readout_mode < 0 || state->readout_mode >= camera_readout_mode_count(state)) {
+		state->readout_mode = 0;
+	}
+}
+
 static void camera_update(alpaca_device *device) {
 	camera_state *state = device->state;
 	double now = alpaca_now();
+	camera_limit_indices(state);
 	if (state->camera_state == CAMERA_EXPOSING && alpaca_reached(state->exposure_start + state->exposure_duration)) {
 		camera_end_exposure(device, state->exposure_start + state->exposure_duration);
 	} else if (state->camera_state == CAMERA_EXPOSING) {
@@ -371,9 +398,36 @@ static void camera_get_level_list(alpaca_device *device, alpaca_request *request
 	}
 }
 
+static int camera_readout_mode_count(const camera_state *state) {
+	return state->readout_mode_count < 1 ? 1 : state->readout_mode_count > CAMERA_MAX_READOUT_MODES ? CAMERA_MAX_READOUT_MODES : state->readout_mode_count;
+}
+
 static void camera_get_readoutmodes(alpaca_device *device, alpaca_request *request) {
-	(void)device;
-	camera_reply_names(request, camera_readout_modes, CAMERA_READOUT_MODE_COUNT);
+	camera_state *state = device->state;
+	if (camera_can(request, !state->can_fast_readout)) {
+		camera_reply_names(request, camera_readout_modes, camera_readout_mode_count(state));
+	}
+}
+
+static void camera_get_readoutmode(alpaca_device *device, alpaca_request *request) {
+	camera_state *state = device->state;
+	if (camera_can(request, !state->can_fast_readout)) {
+		alpaca_reply_member(device, request);
+	}
+}
+
+static void camera_put_readoutmode(alpaca_device *device, alpaca_request *request) {
+	camera_state *state = device->state;
+	int mode = 0;
+	if (!alpaca_param_int(request, "ReadoutMode", &mode) || !camera_can(request, !state->can_fast_readout)) {
+		return;
+	}
+	if (mode < 0 || mode >= camera_readout_mode_count(state)) {
+		alpaca_reply_error(request, ALPACA_ERROR_INVALID_VALUE, "ReadoutMode %d is out of range 0..%d", mode, camera_readout_mode_count(state) - 1);
+		return;
+	}
+	state->readout_mode = mode;
+	alpaca_reply_void(request);
 }
 
 static void camera_get_ispulseguiding(alpaca_device *device, alpaca_request *request) {
@@ -513,6 +567,9 @@ static void camera_get_imagearray(alpaca_device *device, alpaca_request *request
 	camera_state *state = device->state;
 	int planes = state->sensor_type == SENSOR_COLOR ? 3 : 1;
 	unsigned modulus = (unsigned)state->max_adu + 1;
+	if (!state->image_bytes) {
+		request->accepts_imagebytes = false;
+	}
 	if (!state->image_ready) {
 		alpaca_reply_error(request, ALPACA_ERROR_INVALID_OPERATION, "There is no image, ImageReady is false");
 		return;
@@ -616,7 +673,7 @@ static const alpaca_member camera_members[] = {
 	{ .name = "PercentCompleted", .kind = ALPACA_INT, .offset = offsetof(camera_state, percent_completed), .flags = ALPACA_R | ALPACA_STATE },
 	CAMERA_DOUBLE("PixelSizeX", pixel_size_x),
 	CAMERA_DOUBLE("PixelSizeY", pixel_size_y),
-	{ .name = "ReadoutMode", .kind = ALPACA_INT, .offset = offsetof(camera_state, readout_mode), .flags = ALPACA_RW, .min = 0, .max = CAMERA_READOUT_MODE_COUNT - 1 },
+	{ .name = "ReadoutMode", .kind = ALPACA_INT, .offset = offsetof(camera_state, readout_mode), .get = camera_get_readoutmode, .put = camera_put_readoutmode },
 	{ .name = "ReadoutModes", .get = camera_get_readoutmodes },
 	{ .name = "SensorName", .kind = ALPACA_STRING, .offset = offsetof(camera_state, sensor_name), .flags = ALPACA_R },
 	CAMERA_INT("SensorType", sensor_type),
@@ -632,6 +689,8 @@ static const alpaca_member camera_members[] = {
 	CAMERA_CONFIG("OffsetMode", ALPACA_INT, offset.mode),
 	CAMERA_CONFIG("ImageElementType", ALPACA_INT, image_element_type),
 	CAMERA_CONFIG("TransmissionElementType", ALPACA_INT, transmission_element_type),
+	CAMERA_CONFIG("ImageBytes", ALPACA_BOOL, image_bytes),
+	CAMERA_CONFIG("ReadoutModeCount", ALPACA_INT, readout_mode_count),
 	CAMERA_CONFIG("ReadoutTime", ALPACA_DOUBLE, readout_time),
 	CAMERA_CONFIG("CoolingRate", ALPACA_DOUBLE, cooling_rate)
 };

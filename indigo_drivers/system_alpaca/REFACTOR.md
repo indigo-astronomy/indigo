@@ -1,6 +1,6 @@
 # system_alpaca: ASCOM Alpaca client (discovery and proxy) driver
 
-Status: **research and design proposal, 2026-09-24**. No production code exists yet. Continuing past the decision points in section 9 needs the user's decision.
+Status: **implementation in progress, 2026-10-03**. The core and all device classes are implemented and covered against the deterministic simulator and OmniSim 0.5.0 (section 7). The independent review and its fixes are done (section 7.6); the final audit and the open decisions of the user (REV-7, MoveAxis sense, REV-16) remain. Sections 0 to 6 are the research and design record of 2026-09-24, kept as written apart from dated corrections.
 
 ## 0. Goal and scope
 
@@ -409,8 +409,10 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 6. Smoke test. Start the server in one terminal, with a private `HOME` so that the run leaves nothing in the developer's own ASCOM profile:
 
    ```sh
-   HOME="$(mktemp -d)" ./ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators --urls=http://127.0.0.1:32323 --set-no-browser
+   HOME="$(mktemp -d)" ./ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators --urls=http://127.0.0.1:32323
    ```
+
+   `--set-no-browser` is not a run option: it stores the setting and exits (corrected on 2026-10-02 after the first macOS start). Run it once with the same `HOME` before the real start if the browser must stay closed.
 
    and query it from another one:
 
@@ -423,7 +425,7 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 - **How the tests find it:** the opt-in tier looks for `omnisim/*/ascom.alpaca.simulators` in the directory above. `INDIGO_TEST_OMNISIM` (the path of the executable) overrides this for an installation kept elsewhere. If neither yields an executable, the tier is skipped and reported as not run.
 - **Update:** delete the content of `omnisim/` and unpack the new version. The version used is recorded with every OmniSim result.
 - **Removal:** delete `omnisim/`. Outside it, OmniSim only writes its profiles (`.config/ascom/alpaca/...`) and logs under the `HOME` it was started with.
-- **State of this procedure:** the asset names, sizes, checksums and the macOS arm64 archive layout were read from the release on 2026-10-01, and the `.gitignore` rule was checked with `git check-ignore`. The measurements above come from the linux-x64 research run. The macOS start (steps 5 and 6) has not been run yet and is to be confirmed on the first install.
+- **State of this procedure:** the asset names, sizes, checksums and the macOS arm64 archive layout were read from the release on 2026-10-01, and the `.gitignore` rule was checked with `git check-ignore`. The measurements above come from the linux-x64 research run. The macOS arm64 install was done on 2026-10-02: the checksum matched, `git check-ignore` printed the rule, and the server started with a private `HOME` answered `configureddevices` (all ten device types) about 3 s after the start and reported version `0.5.0+05d607826b39bdee2bcbb09bcaac6f35b3c6dba9`; its focuser has InterfaceVersion 4. The quarantine step was not needed for the `curl` download.
 
 ### 4.2 ConformU v4.5.0 (GPL-3.0, run only as an external tool)
 
@@ -654,7 +656,7 @@ curl "$B/simulator/v1/requests?Method=PUT&Path=*/focuser/*"
 
 **Extending a type.** Add a field to the module's state struct and a row to its `alpaca_member` table; add a handler only for methods and conditional members. See the comment at the top of `system_alpaca_simulator.h`.
 
-**Known limits.** Not built or run on Linux or with GCC yet. No gzip, HTTPS, authentication or IPv6. Hermetic discovery on macOS: `lo0` has no broadcast, so a test probes `127.0.0.1` with one discovery port per simulator, or lets one responder announce several servers with `AlpacaPort=<p1>|<p2>`; the shared-port path is implemented but unproven. Simplifications per type (for example synchronous slews completing at once, `reverse` only stored, temperature compensation not moving the focuser) are listed in the module sources and are closed by the class packages of wave 3 where a driver test needs them.
+**Known limits.** Not built or run on Linux or with GCC yet. No gzip, HTTPS, authentication or IPv6. Hermetic discovery on macOS: `lo0` has no broadcast, so a test probes `127.0.0.1` with one discovery port per simulator, or lets one responder announce several servers with `AlpacaPort=<p1>|<p2>`; the shared-port path is implemented but unproven. Simplifications per type (for example the deprecated synchronous slews completing at once and `reverse` of the rotator only stored) are listed in the module sources; section 7.2 names the ones left after wave 3.
 
 ## 7. Atomic plan
 
@@ -671,12 +673,12 @@ States: `todo`, `in progress`, `done`, `blocked`. Every step records its evidenc
 | S5 | HTTP/1.1 client, driver-local per D10: `indigo_system_alpaca_http.c/.h` + Alpaca transport layer in the driver (envelope, errors, IDs, encoding) + tests | `test_system_alpaca_http` against a loopback HTTP server; transport tests on fixtures | done (2026-10-01, WP2 + WP5). Evidence in section 7.1. |
 | S6 | Deterministic simulator: management API, discovery, fault injection, ready file | Smoke test of the simulator; cross-check with alpyca as the reference client | done (2026-10-01, WP4). Evidence in section 7.1, usage in section 6.1. alpyca is not installed, so there was no cross-check with a reference client. |
 | S7 | Discovery + management + attach/detach of proxies, proxy-loop filter | Integration: dynamic devices, duplicates, removal, SHUTDOWN | done (2026-10-01, WP5). Evidence in section 7.1. |
-| S8 | Focuser, Wheel, Rotator (simplest classes, validate the pattern) | Class checklists | in progress (wave 3, started 2026-10-01) |
-| S9 | Mount + guider | Mount/guider checklist, guider timing measurement | in progress (wave 3, started 2026-10-01) |
-| S10 | CCD (+ guider), ImageBytes, JSON fallback | CCD checklist, image contract (dimensions, orientation, Bayer, RGB) | in progress (wave 3, started 2026-10-01) |
-| S11 | Dome, CoverCalibrator, Switch, ObservingConditions, SafetyMonitor | Dome and AUX checklists | in progress (wave 3, started 2026-10-01) |
-| S12 | OmniSim opt-in tier (OmniSim installed on the development machine per section 4.1; no ConformU, decision D9) | Record of the OmniSim run | todo |
-| S13 | `PROPERTIES.md`, README (only with approval), `TEST_SUMMARY.md`, optionally `MIGRATION_STATUS.md` / Windows / `STATIC_DRIVERS` | Final audit per `AGENTS.override.md` checklist | todo |
+| S8 | Focuser, Wheel, Rotator (simplest classes, validate the pattern) | Class checklists | done (2026-10-02, WP6). Evidence in section 7.2. |
+| S9 | Mount + guider | Mount/guider checklist, guider timing measurement | done (2026-10-02, WP7). Evidence in sections 7.2 and 7.3. |
+| S10 | CCD (+ guider), ImageBytes, JSON fallback | CCD checklist, image contract (dimensions, orientation, Bayer, RGB) | done (2026-10-02, WP8). Evidence in section 7.2. |
+| S11 | Dome, CoverCalibrator, Switch, ObservingConditions, SafetyMonitor | Dome and AUX checklists | done (2026-10-02, WP9 and WP10). Evidence in section 7.2. |
+| S12 | OmniSim opt-in tier (OmniSim installed on the development machine per section 4.1; no ConformU, decision D9) | Record of the OmniSim run | done (2026-10-03, WP11). Evidence in section 7.5. |
+| S13 | `PROPERTIES.md`, README (only with approval), `TEST_SUMMARY.md`, optionally `MIGRATION_STATUS.md` / Windows / `STATIC_DRIVERS` | Final audit per `AGENTS.override.md` checklist | in progress: `PROPERTIES.md`, `README.md` (approved 2026-10-02), `TEST_SUMMARY.md` and the Xcode group references are done; `MIGRATION_STATUS.md` has no row for developed drivers (as `ccd_pentax`); open: the decisions REV-7, MoveAxis sense and REV-16, removal from `EXCLUDED_DRIVERS`, Windows project and `STATIC_DRIVERS` (optional) |
 
 ### 7.1 Step evidence
 
@@ -729,6 +731,182 @@ All runs on macOS arm64 (Apple clang), 2026-10-01. Nothing here was built or run
 
 **Xcode.** Every new file is registered in `indigo.xcodeproj` as a group reference as soon as it exists (user's instruction, 2026-10-01). Membership in the Sources and Headers phases of the `indigo` and `indigo_m1` targets follows when the driver is complete.
 
+### 7.2 Wave 3: device classes (2026-10-02)
+
+All runs on macOS arm64 (Apple clang). Nothing here was built or run on Linux, Windows or with GCC, against OmniSim or against hardware.
+
+**How the wave ran.** The class modules and simulator type modules of the WIP checkpoint (commit `62007fc2d`) had no cases of their own except Switch. The baseline of the suite on that commit was **70 run, 66 passed, 4 failed** (`interface_capability_cache`, `switch_async_abort`, `switch_async_failures`, `switch_lifecycle`); all four turned out to be defects of the cases (TEST-1, T1, T2 in section 8). Five subagents (WP6 to WP10) then worked in parallel in the one working tree, each on the files of its classes only, and each built a private tree outside the repository: a snapshot of the sources in which its own files were links to the live ones. For every class the driver module and the simulator module were audited against section 2, the cases were written, and every defect a case found was fixed in the driver module.
+
+**Result after the merge** (orchestrator, live tree): `make -C indigo_drivers/system_alpaca -f ../../Makefile.drv all` and `make -C indigo_test build/integration/test_system_alpaca_simulator` without a warning, then `INDIGO_TEST_JOBS=4 ./build/integration/test_system_alpaca_simulator` from `indigo_test`: **222 run, 222 passed, 0 failed**.
+
+| Cases file | Cases | Package | What the package verified in its private tree |
+|---|---|---|---|
+| `core_cases.h` | 47 | WP5 (wave 2) | unchanged |
+| `interface_cases.h` | 9 | WP5, one case corrected by WP6 | 5 runs of the 9 cases |
+| `focuser_cases.h` | 14 | WP6 | plain, ASan + UBSan and TSan without a report; 10 repetitions (5 with `INDIGO_TEST_JOBS=4`, 5 with `=1`) |
+| `wheel_cases.h` | 10 | WP6 | same |
+| `rotator_cases.h` | 15 | WP6 | same |
+| `mount_cases.h` | 21 | WP7 | plain, strict, ASan + UBSan clean; TSan: 2 of 6 runs with one report each (see below); 10 repetitions |
+| `guider_cases.h` | 9 | WP7 | same; the cases with a camera as primary ran against the camera module of the checkpoint and passed again after the merge |
+| `ccd_cases.h` | 26 | WP8 | plain and ASan + UBSan clean; TSan clean only with the core change described below; 10 repetitions; `leaks`: only LIB-3 |
+| `dome_cases.h` | 20 | WP9 | plain and ASan clean; TSan: one report in one case (see below); 10 repetitions |
+| `lightbox_cases.h` | 15 | WP9 | same |
+| `switch_cases.h` | 19 | WP10 | plain, ASan + UBSan and TSan (2 runs) without a report; 10 repetitions |
+| `weather_cases.h` | 10 | WP10 | same |
+| `safety_cases.h` | 7 | WP10 | same; 20 repetitions |
+
+- **Strict build** (`-Wall -Wextra -Wshadow`): no warning in a driver, simulator or case file of any package. The 27 or 28 warnings left are `-Wunused-function` in the shared harness headers `test_runner.h`, `serial_simulator_test_common.h` and `simulator_test_common.h`, which every test of the repository includes.
+- **Regression evidence.** WP6 and WP9 built a second private tree with the class modules of the checkpoint and the new cases: 13 focuser / wheel / rotator cases and 13 dome / light box cases fail there, each at the check of the defect it is named for in section 8. WP10 and WP8 verified their regression cases by breaking the fixed code again in the private tree (mutation).
+- **TSan reports left after the wave**, all of one kind and none in class code: the bus thread writes the state of `CONNECTION` (`INDIGO_PROCESS_CONNECT`) or of a property a client changes (`INDIGO_COPY_*_PROCESS_CHANGE`) while a handler or the poll hook on the device queue reads it (`IS_CONNECTED`, the BUSY guard). The recipe in `indigo_system_alpaca_private.h` prescribed exactly that. WP6 and WP10 moved their modules to a class mutex and the session flag of the core; the other modules and the core followed in the core-hardening step (section 7.4), after which the whole suite is clean under TSan.
+- **Whole suite under ASan and TSan** was not run by the class packages (own cases only); see section 7.4.
+
+**Scenario-to-test mapping.** The class checklists of `indigo_test/DRIVER_TESTING_RULES.md` map onto the cases as follows. Every class also has `<class>_properties` and `<class>_legacy_properties` (Platform 7 and older interface), `<class>_capability_variants`, `<class>_request_failures`, `<class>_connect_failures`, `<class>_transport_loss` and `<class>_lifecycle`, which cover identity, capability gating, device and transport failures at connect, at a request, at readback and during an operation, loss of the server while idle and during an operation, and disconnect / detach during an operation.
+
+| Class | Checklist area → cases | Not applicable / not covered |
+|---|---|---|
+| Focuser | motion: `focuser_absolute_move`, `focuser_steps_of_absolute_focuser`, `focuser_relative_focuser`; stop: `focuser_abort`; modes: `focuser_temperature_compensation`; polling and pending change: `focuser_polling`, `focuser_pending_change_survives_poll` | sync, speed, backlash, compensation coefficients: no Alpaca member (properties hidden, asserted). Not covered: CONFIG of `FOCUSER_REVERSE_MOTION` |
+| Wheel | slots and names: `wheel_slot_variants`; positioning: `wheel_move_to_slot`, `wheel_move_ends_elsewhere`; `wheel_polling` | calibration, direction, speed: no Alpaca member. Not covered: a Position outside the slots, more than 32 slots (simulator limit) |
+| Rotator | `rotator_absolute_move`, `rotator_relative_move`, `rotator_mechanical_move`, `rotator_sync`, `rotator_reverse`, `rotator_abort`, `rotator_polling`, `rotator_pending_change_survives_poll` | backlash, limits, offset property: hidden, the sync offset lives in the device |
+| Mount | identity and coordinates: `mount_equatorial_systems`; `mount_goto`, `mount_sync`, `mount_abort`, `mount_park_and_home`, `mount_manual_motion`, `mount_manual_motion_ownership`, `mount_tracking_and_rates`, `mount_site_and_time`, `mount_side_of_pier`, `mount_polling`, `mount_steady_state_is_silent`, `mount_poll_keeps_pending_change`, `mount_configuration_roundtrip` | custom tracking rate, park / home position, PEC, alignment: no Alpaca member (hidden). Not covered: the 600 s motion timeout, slews to alt-az (not mapped) |
+| Guider | `guider_directions_and_units`, `guider_completion`, `guider_replacement_and_axes`, `guider_shared_lifetime`, `guider_camera_primary`, `guider_timing_telescope`, `guider_timing_camera` | a guider connected alone: it exists only while its primary is connected |
+| CCD | acquisition: `ccd_exposure`, `ccd_legacy_exposure`, `ccd_exposure_countdown`, `ccd_frame_types`, `ccd_exposure_start_failures`, `ccd_exposure_progress_failures`, `ccd_abort_exposure`, `ccd_abort_variants`, `ccd_disconnect_during_exposure`; geometry: `ccd_geometry`, `ccd_symmetric_binning`; image contract: `ccd_image_element_types`, `ccd_image_bayer`, `ccd_image_color`, `ccd_image_json`, `ccd_image_faults`, `ccd_image_transfer_channel`, `ccd_large_frame`; `ccd_controls`, `ccd_cooling`, `ccd_guider` | streaming: Alpaca has none (`CCD_STREAMING` hidden, asserted). By reading only: image data above MaxADU, negative Int16, DataStart beyond the reply, more than 64 gain names or 32 readout modes, CCD-6 |
+| Dome | `dome_slew_azimuth`, `dome_slew_altitude`, `dome_relative_move`, `dome_sync`, `dome_shutter`, `dome_park_home`, `dome_abort`, `dome_slaved`, `dome_slewing_includes_shutter`, `dome_polling`, `dome_pending_requests`, `dome_completion_during_pending_request`, `dome_disconnect_after_request` | speed, flap, park position, UTC: hidden. Not covered: the 600 s operation deadline |
+| AUX light box | `lightbox_cover`, `lightbox_cover_halt`, `lightbox_calibrator`, `lightbox_unknown_and_error`, `lightbox_polling`, `lightbox_pending_requests`, `lightbox_failure_during_pending_request`, `lightbox_disconnect_after_request` | Not covered: the 300 s operation deadline |
+| AUX GPIO (Switch) | `switch_set_outlets`, `switch_set_values`, `switch_names`, `switch_async_change`, `switch_async_abort`, `switch_async_abort_all`, `switch_async_failures`, `switch_async_start_failures`, `switch_polling`, `switch_many_switches`, `switch_limit`, `switch_pending_change_survives_poll` | config persistence: names live in the device |
+| AUX weather | `weather_optional_sensors`, `weather_polling`, `weather_average_period`, `weather_refresh_values`, `weather_sensor_failures` | — |
+| AUX (SafetyMonitor) | `safety_read_failures`, `safety_stale_value` | no writable property |
+
+**Image contract.** `ccd_image_element_types` checks every pixel of a 22×21 subframe at binned origin 10003,9005 with binning 2×1 on a 30000×20000 sensor, for the transmission types Byte, UInt16, Int16, Int32, UInt32, Single, Double, Int64 and UInt64, 8 and 16 bpp and a 20-bit camera, with `DataStart=67`. `ccd_image_bayer` and `ccd_image_color` do the same for Bayer offsets (BAYERPAT follows the frame origin) and for rank 3 (RGB24 and RGB48), `ccd_image_json` for the JSON path, `ccd_large_frame` for frames up to 3000×2000 at 20 bits (24 MB). The simulator pattern of section 6.1 makes a transpose, a flip, a wrong subframe or binning and a swapped plane visible. The orientation against OmniSim is still to be confirmed in the OmniSim tier.
+
+**Mapping decisions taken in the wave** (they refine section 5.2):
+
+- SafetyMonitor is `X_ALPACA_SAFETY`, a light property with the single item `SAFE`, not a `SAFE` / `UNSAFE` pair. A value older than 4 idle poll intervals + 1 s is taken back to ALERT by a timer of its own, so that a server which stops answering can not leave SAFE published (D6).
+- ObservingConditions sensors without a standard item are `X_` items of `AUX_WEATHER` (`X_WIND_GUST`, `X_RAIN_RATE`, `X_CLOUD_COVER`, `X_SKY_ILLUMINANCE`, `X_STAR_FWHM`); Alpaca SkyQuality is `SKY_BRIGHTNESS`.
+- Alpaca `Slaved` of a dome is `X_ALPACA_DOME_SLAVED`. The removed SNOOP / `DOME_SLAVING` behaviour (commit `2c79d79b0`) is not brought back; synchronisation stays with the mount agent.
+- A filter wheel move is complete when `Position` is no longer −1 (user's decision, 2026-10-02); a move that ends in another slot than the requested one is ALERT with the real slot (WHL-1).
+- Manual motion: the driver sends a positive secondary rate for `MOUNT_MOTION_DEC.NORTH` on both pier sides and does not invert by SideOfPier; the standard leaves the sense undefined. `mount_manual_motion` asserts this on both sides.
+- A sync while the telescope does not track is refused by the telescope and reported as ALERT with its message; the driver switches tracking on for a slew, not for a sync.
+- The camera keeps `ImageReady` as the only completion signal of an exposure; a running image transfer can not be interrupted, so abort, disconnect and detach wait for it within the long timeout.
+- `PROPERTIES.md` lists every custom property and the capability-dependent use of the standard ones.
+
+**Simulator changes of the wave.** Camera: `CanFastReadout` and readout modes are mutually exclusive, new settings `ReadoutModeCount` and `ImageBytes=false` (SIM-1, SIM-2). Rotator: `TargetTracksMechanical`. Telescope: `LinkedGuideRates`. Switch: `cancelasync` of a switch without CanAsync is NotImplemented, `devicestate` leaves out members with an armed error, 160 switches (S1 to S3). Simplifications left: camera CameraState never Waiting or Download, binned pixels are the pattern at the top-left pixel; telescope: the deprecated synchronous slews complete at once, AbortSlew does not end a pulse; rotator: `Reverse` only stored; ObservingConditions: no averaging; dome and cover: an Error end state is produced through the control API only. The SIM-1 rule and the rotator and telescope defaults were chosen from the specification and are not checked against OmniSim yet.
+
+**Not established by this wave.** Linux, Windows, GCC, x86_64 execution; OmniSim; hardware (D6); the points listed as "not covered" above.
+
+### 7.3 Guider timing measurement (2026-10-02)
+
+Required by `indigo_drivers/AGENTS.override.md` for every guider interface. **This is simulator software timing only**: there is no relay and no motor, and nothing here says anything about the pulse accuracy of a real device.
+
+- Alpaca `PulseGuide` takes a duration and the device ends the pulse itself, so the direction and duration are asserted at the entry of the device and the latency from that entry to the public completion is measured.
+- Endpoints: arrival of `PUT pulseguide` in the simulator (its `RealTime`, CLOCK_MONOTONIC) → update of `GUIDER_GUIDE_DEC` / `GUIDER_GUIDE_RA` with a state other than BUSY, stamped in a bus client callback with the same clock.
+- Simulator with `--clock real`, `-O2` build, macOS arm64, load average about 3 (four other packages were testing), 2026-10-02 20:31 UTC.
+- Directions N, S, E, W × 20, 100, 500 ms × 12 samples after one discarded warm-up = 576 samples, all completed OK.
+- Workloads: telescope idle (Platform 7, polling 1 s / 0.2 s); telescope with a busy queue (interface 3, polled every 50 ms with 12 requests per tick); camera idle; camera during a 600 s exposure.
+- Repeat with `make -C indigo_test benchmark-system-alpaca-guide`.
+
+Signed error = (entry → published completion) − requested, in ms, over the four directions (48 samples per row):
+
+| Primary | Workload | Requested | min | mean | max | max abs | mean % |
+|---|---|---|---|---|---|---|---|
+| telescope | idle | 20 | +1.004 | +6.303 | +10.996 | 10.996 | +31.52 |
+| telescope | idle | 100 | +1.287 | +7.446 | +11.040 | 11.040 | +7.45 |
+| telescope | idle | 500 | +1.633 | +7.840 | +11.372 | 11.372 | +1.57 |
+| telescope | polled at 20 Hz | 20 | +0.686 | +4.969 | +10.356 | 10.356 | +24.84 |
+| telescope | polled at 20 Hz | 100 | +0.749 | +6.812 | +12.489 | 12.489 | +6.81 |
+| telescope | polled at 20 Hz | 500 | +0.832 | +5.892 | +11.646 | 11.646 | +1.18 |
+| camera | idle | 20 | +1.058 | +6.604 | +10.881 | 10.881 | +33.02 |
+| camera | idle | 100 | +1.127 | +7.252 | +10.796 | 10.796 | +7.25 |
+| camera | idle | 500 | +1.290 | +7.357 | +11.414 | 11.414 | +1.47 |
+| camera | exposing | 20 | +0.639 | +5.137 | +10.644 | 10.644 | +25.68 |
+| camera | exposing | 100 | +0.785 | +6.579 | +11.154 | 11.154 | +6.58 |
+| camera | exposing | 500 | +0.402 | +5.842 | +11.024 | 11.024 | +1.17 |
+
+Overall: min +0.402, mean +6.503, max +12.489 ms; every sample is late, none early. The standard deviation per row is 2.3 to 3.6 ms; with 12 samples per direction p95 and p99 equal the maximum.
+
+The error is the lateness of the timed wake-up, not of the driver: the driver looks at `IsPulseGuiding` for the first time one duration after `PulseGuide` returned, and a bare `pthread_cond_timedwait_relative_np` loop on the same host at the same time was late by 0.65 to 10.16 ms (mean 5.1 to 7.2 ms). The share of the driver is request → device entry 0.08 to 0.24 ms mean (max 1.6 ms) and check → published completion 0.15 to 0.36 ms mean (max 1.0 ms). The workload made no visible difference.
+
+### 7.4 Core hardening after wave 3 (2026-10-02/03, WP5b)
+
+All five class packages reported the same weaknesses of the core and of the recipe in `indigo_system_alpaca_private.h`. One subagent fixed them in the core and moved every class module onto one pattern.
+
+- **One lock per Alpaca device.** `alpaca_private_data.mutex` (recursive, shared by the primary and the secondary device) replaces the seven class mutexes of wave 3. It is never held across a request to the device or a call into the bus. `system_alpaca_accept()` does what `INDIGO_COPY_*_PROCESS_CHANGE` did (BUSY guard, refusal callback, copy, BUSY, publish, queue the handler) under that lock; `on_poll` and the finalizers ask the device first and then check and write a property in one step under the lock. `CONNECTION` and the session flags are written under it too.
+- **`system_alpaca_is_active()`** replaces `IS_CONNECTED` in the core and in every handler, finalizer and enumeration of every module.
+- **DeviceState failures.** An error answer to `devicestate` that is neither a transport error nor NotConnected no longer skips `on_poll`: the members are read one by one in that tick. After 5 such ticks in a row `devicestate` is not used for the rest of the connection, with an ALERT message; a new connection tries it again. 5 rather than 3, so that a short burst of HTTP 500 does not downgrade the polling for good. On older devices an error answer to `connected` no longer skips `on_poll` either. Focuser, rotator, wheel, dome and light box now show ALERT on the main polled property while it can not be read, keep the last value and return to OK on the next good read, as mount, camera, switch, weather and safety already did.
+- **Failure reason.** `system_alpaca_reason()` captures the text right after the failing request, `system_alpaca_finish_with()` and `system_alpaca_report()` publish it; the per-module workarounds of FOC-1, ROT-1, DOME-5, LB-6 and MOUNT-1 are gone.
+- **HTTP 400.** `system_alpaca_not_implemented()` takes HTTP 400 as "not implemented" only for a request without parameters; for a method with parameters it is a rejected value (CORE-8).
+- **Recipe.** The header comment of `indigo_system_alpaca_private.h` describes this pattern, with a section on threads.
+- **Behaviour changes** besides the defects of section 8: a camera request for an exposure setting whose own property is still BUSY is dropped like any request to a BUSY property, instead of being rejected with "Exposure in progress"; switch requests for class properties while disconnected go to the base class; when a guide pulse fails while a newer request waits, only the message is published and the property stays BUSY; a mount UTC request dropped while busy no longer replaces the pending time.
+- **14 new cases**: `interface_device_state_failures`; `<class>_steady_state_is_silent` for focuser, wheel, rotator, switch, weather, safety and camera, each with a Platform 7 and an older device (no property published over 25 poll ticks, a change on the device is); `focuser_unreadable_position`, `wheel_unreadable_position`, `rotator_unreadable_position`; `rotator_rejected_parameter`, `switch_rejected_name`; `ccd_requests_in_a_row`. The harness got `sa_steady()`. Each regression case was shown to fail with its defect put back in a private copy.
+
+Evidence (subagent; live tree unless noted):
+
+| Run | Result |
+|---|---|
+| `INDIGO_TEST_JOBS=4 ./build/integration/test_system_alpaca_simulator`, 7 runs | 236 run, 236 passed each |
+| the same with `INDIGO_TEST_JOBS=1` | 236 / 236 |
+| strict build (private tree) | no warning in driver or `integration/system_alpaca/` files; 27 `-Wunused-function` in the shared harness headers |
+| ASan + UBSan, whole suite (private tree) | 236 / 236, no report |
+| TSan, whole suite, 4 runs (private tree) | 236 / 236, no report, no suppression. Before the change: 4 reports, 218 / 222 |
+| `test_system_alpaca_http`, `test_system_alpaca_json` | 44 / 44, 48 / 48 |
+
+TSan does not see accesses inside the uninstrumented `libindigo` (for example `indigo_ccd_*_cleanup`, `copy_values`); those were checked by reading. Small edge cases left as they are: a CONNECTION request accepted between the publication of a failed or lost connection and the call of the base class; a failing mount MoveAxis handler clears the items of a newer waiting motion request; a dome coordinates request is accepted while `DOME_STEPS` is BUSY; the recovery of an unreadable focuser position also clears an ALERT left by an earlier failed move. The recursive mutex attribute is POSIX; the Windows build uses pthreads4w, which has it (`agent_scripting` uses it too); not built on Windows.
+
+**Recorded run** (orchestrator, 2026-10-03 01:18): `python3 tools/run_driver_test.py system_alpaca`, **280 / 280 OK** (`test_system_alpaca_simulator` 236 and `test_system_alpaca_http` 44; the script does not count the unit test `test_system_alpaca_json`). Recorded in `README.md` and `TEST_SUMMARY.md`.
+
+### 7.5 OmniSim tier (2026-10-03, WP11)
+
+The driver against an independent Alpaca implementation, ASCOM OmniSim 0.5.0 (`0.5.0+05d607826b39bdee2bcbb09bcaac6f35b3c6dba9`), installed on the development Mac as section 4.1 describes.
+
+- **Sources:** `indigo_test/integration/test_system_alpaca_omnisim.c` (20 cases, runner) and `indigo_test/integration/system_alpaca/omnisim_test_common.h` (harness on top of `system_alpaca_test_common.h`). Opt-in target `make -C indigo_test test-system-alpaca-omnisim`; not in `INTEGRATION_TESTS` or `OPT_IN_DRIVER_TESTS`, so the ordinary recorded run does not depend on OmniSim; nothing is downloaded.
+- **Finding OmniSim:** `INDIGO_TEST_OMNISIM`, else `system_alpaca_simulator/omnisim/*/ascom.alpaca.simulators`. Without it the tier prints NOT RUN, plans no case and exits 0; the recording script then records nothing.
+- **Isolation:** OmniSim's own reset does not restore everything (the rotator kept interface version 2 and its position, a halted cover stayed Unknown), so every case starts a fresh instance with a private `HOME` and working directory under `/tmp/indigo-system-alpaca-omnisim.*`, on a free loopback port added as a manual server (no broadcast). OmniSim is single instance per host: a run holds an exclusive `flock()` on the executable, cases run serially with a 300 s watchdog, and a reaper process kills the instance when its case ends or dies.
+- **Recording:** `python3 tools/run_driver_test.py system_alpaca --hw --target test-system-alpaca-omnisim`, without `--type`: the suite writes the device record `OmniSim 0.5.0` from `management/v1/description`, which becomes its own `README.md` line. With `--type` and no OmniSim the script would record "0/0 Failed".
+- **Cases:** `omnisim_discovery` (discovery to 127.0.0.1:32227 finds the instance with all 10 devices), `omnisim_focuser` / `_legacy`, `omnisim_wheel` / `_legacy`, `omnisim_rotator` / `_legacy` (Platform 7 and an older interface set through OmniSim's settings API), `omnisim_mount_goto`, `omnisim_mount_park_home_tracking`, `omnisim_mount_manual_motion`, `omnisim_mount_guider`, `omnisim_camera_image`, `omnisim_camera_abort`, `omnisim_dome` / `_legacy`, `omnisim_lightbox`, `omnisim_switch`, `omnisim_weather`, `omnisim_safety` / `_legacy`. Each one adds the server, selects, attaches, connects, runs the operations on real time, disconnects, detaches and checks that the Alpaca device was disconnected (D5).
+- **Results:** 4 runs of 20 / 20 in a row (one through the script with `--dry-run`, three with `make`), about 236 s each; recorded run of 2026-10-03 02:21: **20 / 20 OK**.
+
+Questions settled against OmniSim:
+
+- **Image orientation:** OmniSim's `Value[x][y]` has its origin top left, and the image the driver publishes equals it pixel by pixel at row y, column x. The correlation with OmniSim's source picture `m42-800x600.jpg` is 0.9995 as published, against 0.861 flipped vertically, 0.691 horizontally and 0.648 both. Plane order could not be checked: OmniSim's camera is mono and can not be configured.
+- **CanFastReadout and ReadoutModes** are mutually exclusive in OmniSim too (default camera: CanFastReadout false, ReadoutModes `["Default"]`); this confirms SIM-1.
+- **Rotator TargetPosition:** OmniSim reports the mechanical target, without the sync offset, also for Move and MoveAbsolute; the standard defines it as the sky angle, so that is an OmniSim defect, which OMNI-2 makes the driver independent of.
+- **Dome AbortSlew while the shutter moves** leaves ShutterStatus Error; **HaltCover** leaves CoverState Unknown; both as our simulator models them.
+- **PulseGuide Duration=0** is accepted and ends a running pulse of the same axis only; negative durations are 0x401.
+- **MoveAxis** acts on the mechanical axes: a positive secondary rate raises the declination on pierEast and lowers it on pierWest, as our simulator models it and as the driver documents (open user decision, section 7.2).
+- **Members of a later interface version** are answered with HTTP 200 and ErrorNumber 0x4FF ("requires Interface Version N"), not 400 or 0x400; the driver gates those members by interface version and never sends them.
+- **devicestate** content per type matches what the class modules read; the camera of OmniSim is ICameraV3 and has none.
+- **SafetyMonitor** answers IsSafe of a disconnected device with 0x407 (OMNI-3).
+
+Not exercised by OmniSim: fault injection of any kind; a colour or Bayer camera, a camera that can pulse guide, CanFastReadout true, gain, offset, set point, a Platform 7 camera; older interfaces of Telescope, Switch, CoverCalibrator, ObservingConditions and Camera (no settings API); broadcast discovery (deliberately not used). Possible through the settings API but not done yet: relative focuser, CanHalt false, wheel without names, roll-off dome, dome slaving.
+
+Simulator changes from this tier: the focuser keeps IsMoving for SettleTime after Halt (default 0), the rotator option `TargetIsMechanical` models OmniSim's TargetPosition, and SafetyMonitor answers IsSafe of a disconnected device with NotConnected by default (`NotConnectedError=false` keeps the old behaviour). The deterministic suite has 238 cases after it.
+
+### 7.6 Independent review and its fixes (2026-10-03, WP12 and WP12b)
+
+**Review (WP12).** A subagent that wrote none of the code read the whole driver, its tests and its registration against `AGENTS.md`, `indigo_drivers/AGENTS.override.md`, `indigo_test/AGENTS.md`, `DRIVER_TESTING_RULES.md` and the Alpaca specification: 3 major, 22 minor and 3 style findings (REV-1 to REV-28), all by reading. Found sound: the HTTP client, the transport (casing, encoding, transaction ID, ErrorNumber before Value, no replay of non-idempotent PUTs), locale-independent numbers, the JSON parser (non-recursive, depth limit, bounded allocation, UTF-8), discovery and the proxy-loop filter, the lock order and that the device lock is never held across a request or a bus call, the ImageBytes path, the guider units, the formatting rules, `static` symbols (`nm`: no collision with `agent_alpaca` or other archives), the `PROPERTIES.md` names, the Xcode registration, and no OS-specific code in the driver. Nothing in section 2 was found to misread the specification.
+
+**Fixes (WP12b).** Every finding was first tried by a test. The sources before the fixes were frozen, and every regression case was run against the old driver with the new case headers, where it fails at the check of its defect (logs kept in the session scratchpad). Results per finding are in section 8. REV-7 (Sync does not switch tracking on) and the `MOUNT_MOTION_DEC` sense on pier side West are open decisions of the user and were not changed; REV-16 (the `" @ "` in proxy names) was examined but not changed (below).
+
+- **Platform 7 disconnect** (from the OmniSim tier): a user disconnect now waits, by a finalizer bounded by the establish timeout, until `Connecting` is false; `CONNECTION` stays BUSY meanwhile, a connect request is ignored and SHUTDOWN is refused. A timeout ends disconnected with ALERT. Transport loss, a failed connect and detach do not wait. Covered by `core_connect_disconnect_platform7` and `core_shutdown_with_connected_device`; against OmniSim the disconnect took 1.11 s.
+- **Simulator made stricter** (REV-25): a device-API PUT whose body is not `application/x-www-form-urlencoded` is HTTP 400 (`--any-content-type` restores the lenient behaviour), `--error-value` adds a Value to error replies as the ASCOM .NET servers do, and the fault `missing-transaction-id` exists. The whole suite runs against the strict content-type check.
+- **Harness:** queue introspection and gates, sequence helpers, message marks so that a message check can not match an older identical message, `sa_disconnect_after()`; the poll-versus-pending-request cases are ordered by conditions and sequence numbers instead of sleeps. About 70 `indigo_usleep` calls remain in negative checks ("nothing happens within 300 ms") that the review did not cite.
+- **Behaviour changes:** a switch named in a request is always sent, also when the cached value already equals it (REV-10; three assertions that encoded the defect were changed); a UniqueID in which a character was replaced gets a hash in its `X_ALPACA_DEVICES` key (REV-18), so a saved selection of such a device is lost once; the HTTP client rejects any transfer coding other than chunked (REV-17).
+- **`connect_timeout`** of `test_system_alpaca_http` is registered only where it can run, so the HTTP suite counts 43 on macOS instead of 44.
+- **REV-16:** `indigo_trim_local_service()` has no caller in the repository. A concrete problem exists in the routing of the bus (`indigo_bus.c`, `indigo_use_host_suffix` on by default): a request for the proxy "Focuser @ OmniSim" was also delivered to a device of a remote service named "Omni", because the match is a substring search, and would be forwarded as "Focuser". It needs `indigo_server` with a remote connection whose service name is a prefix of the Alpaca ServerName. Proposed fix: a separator without `@`, e.g. "Focuser [OmniSim]". Waiting for the user's decision.
+- **REV-15, CONFIG part:** the CONFIG state is written by the restore handler of the framework without a lock the driver could share; a stale read only defers work by 0.1 s. Not fixable in the driver (D10).
+
+Evidence (subagent, final sources):
+
+| Run | Result |
+|---|---|
+| `INDIGO_TEST_JOBS=4 ./build/integration/test_system_alpaca_simulator`, 5 runs; `INDIGO_TEST_JOBS=1`, 1 run | 254 / 254 each |
+| ASan + UBSan, whole suite (private tree) | 254 / 254, no report |
+| TSan, whole suite, 3 runs (private tree) | 254 / 254, no report, no suppression |
+| strict build | no warning in driver, simulator or `integration/system_alpaca/` files; 27 `-Wunused-function` in the shared harness headers |
+| `test_system_alpaca_http`, `test_system_alpaca_json` | 43 / 43 (`connect_timeout` skipped on macOS), 48 / 48 |
+| `make -C indigo_test test-system-alpaca-omnisim` | 20 / 20, OmniSim 0.5.0 |
+
+**Recorded runs** (orchestrator, 2026-10-03): `python3 tools/run_driver_test.py system_alpaca` at 04:17, **297 / 297 OK** (254 + 43); `python3 tools/run_driver_test.py system_alpaca --hw --target test-system-alpaca-omnisim` at 04:18, **OmniSim 0.5.0 20 / 20 OK**. Both in `README.md` and `TEST_SUMMARY.md`.
+
 ## 8. Found defects
 
 All were originally found **by source audit only**. Under decision D8 they were fixed on 2026-09-24 and verified:
@@ -752,6 +930,110 @@ Found during the implementation (2026-10-01):
 | CORE-3 | same | A restored `X_ALPACA_DEVICES` selection took 5 s and ended in ALERT. | The restore request was not answered. | Answered at once; the harness requires a prompt OK restore on every driver start. | every case, through the harness |
 
 Further corrections of the first version of the core, each covered by a core case: coalescing of selection and server requests, the transaction-ID tolerance (`core_transaction_id_policy`), a lost reattach on a second refresh pass, D5 skipped after a single transport error, and text truncation splitting a UTF-8 character (`core_unusual_identifiers`).
+
+Found in wave 3 (2026-10-02). "Reproduced" means a case failed before the fix and passes after it; the others were found by reading. All fixes are in the class module of the same name unless a simulator or case file is named. Each ID is the one used in section 7.2.
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| TEST-1 | `interface_cases.h` `interface_capability_cache` | Baseline failure. | The case connected with the real focuser class, which reads `position` and `temperature` itself, so the request counts no longer matched. | The case installs the test class before connecting, like its neighbours; the count assertions are unchanged. | the case |
+| T1 | `switch_cases.h` `switch_start_number` | Baseline failures of `switch_async_abort` and `switch_async_failures`. | The case advanced the simulator clock before the PUT had arrived. | Wait for the request. | the two cases |
+| T2 | `switch_cases.h` `switch_lifecycle` | Baseline failure. | The expectation ignored a state change made earlier in the case. | Corrected and made stricter. | the case |
+| FOC-1, ROT-1, DOME-5, LB-6, MOUNT-1 | focuser, rotator, dome, light box, mount: start of an operation | After a failed request that may have executed, the ALERT message lost the reason of the device ("Move failed: server error" without the HTTP text). Reproduced. | `system_alpaca_finish()` prints the text of the last request of the channel, and a read of the completion member had replaced it. | The reason is kept right after the failing request. | `focuser_request_failures`, `rotator_request_failures`, `dome_request_failures`, `lightbox_request_failures`, `mount_sync`, `mount_request_failures` |
+| FOC-2 | `focuser_start` / `focuser_finish` | A relative focuser accepted one move per connection; every later one was refused with "Another motion operation is pending". Reproduced. | The hidden `FOCUSER_POSITION` was set BUSY and never reset. | Its state is touched for absolute focusers only. | `focuser_relative_focuser` |
+| FOC-3 | focuser `on_poll` | `FOCUSER_MODE` stayed in ALERT after a failed mode change although the poll followed the device. Reproduced. | State not set when the poll applies the mode. | Set OK. | `focuser_temperature_compensation` |
+| FOC-4, ROT-4, WHL-3, D2, D5, CCD-2 | `on_poll` of focuser, rotator, wheel, switch, weather, camera | A request of a client accepted while the poll hook waited for a reply was overwritten by the polled value: the handler sent the old position or value, the request was lost and published OK. Reproduced (TSan also reported the race). | The guard was checked before the requests of the hook and the assignment came after them; nothing was atomic against the bus thread. | Ask the device first, then check and assign under a class mutex; requests are accepted under the same mutex. Camera: a counter of pending set-point requests. | `focuser_pending_change_survives_poll`, `rotator_pending_change_survives_poll`, `wheel_polling`, `switch_pending_change_survives_poll`, `ccd_cooling` |
+| FOC-5, ROT-5 | abort handlers | When Halt failed during a move the driver had not started, the property went to ALERT although the device was still moving. Reproduced. | Settled whatever Halt answered. | Stays BUSY and follows the device. | `focuser_polling`, `rotator_polling` |
+| WHL-1 | `wheel_slot_finalizer` | A move that ended in another slot stayed BUSY until the long timeout. Reproduced. | Completion was "Position equals the requested slot", not the specified "Position is not −1". | Completion is Position ≠ −1; another valid slot ends in ALERT with the real slot. | `wheel_move_ends_elsewhere` |
+| WHL-2 | `wheel_slot_handler` | A PUT `position` with an unreadable or late reply ended in ALERT although the wheel was turning. Reproduced for HTTP 500. | No check whether the request executed. | Position is read after such a failure. | `wheel_request_failures` |
+| ROT-2 | `rotator_start` | During a MoveMechanical on a device that leaves TargetPosition alone, `ROTATOR_POSITION` showed a stale target. Reproduced. | TargetPosition was read after every move. | Not read for `movemechanical`. | `rotator_mechanical_move` |
+| ROT-3 | rotator sync | A Sync whose reply was lost ended in ALERT. Reproduced. | The PUT was not marked replayable. | `ALPACA_REPLAYABLE`. | `rotator_sync` |
+| MOUNT-2, DOME-6, LB-4 | mount, dome, light box `on_poll` | `MOUNT_PARK`, `MOUNT_TRACKING`, `UTC_TIME`, `DOME_SHUTTER`, `AUX_COVER` and `AUX_LIGHT_SWITCH` were published on every poll tick although nothing changed. Reproduced. | `indigo_set_switch()` marks a one-of-many property changed on every call; text properties are always published. | Assign only on a change. | `mount_steady_state_is_silent`, `dome_polling`, `lightbox_polling` |
+| MOUNT-3 | goto, sync, coordinate read | RA 17.3 was sent as 17.299999999999997. Reproduced. | `fmod(ra + 24, 24)`. | A value in range is left untouched. | `mount_sync`, `mount_goto` |
+| MOUNT-4 | `mount_set_host_time_handler` | `UTC_TIME` stayed in ALERT after a later successful set. Reproduced. | State not reset. | Set OK. | `mount_site_and_time` |
+| MOUNT-5 | `mount_change_property` and handlers | Data race on the parked check (TSan, reproduced); a goto requested during a park turned the BUSY coordinates to ALERT (by reading). | The check read property items on the bus thread. | A `parked` flag under a mutex; reject only when not BUSY. | `mount_park_and_home` |
+| MOUNT-6 | `mount_park_handler` | Park on a telescope with only CanUnpark could quote the error of an unrelated request. By reading. | A local "unsupported" passed to the common finish helper. | Own message. | `mount_capability_variants` |
+| MOUNT-7 | `mount_read_site`, `mount_read_guide_rates` | Members of an unusable pair were read on every settings tick. Reproduced. | No skip. | Skip. | `mount_capability_variants` |
+| MOUNT-8 | `mount_move_axis` | A parked refusal inside the handler left the direction item on. By reading. | Items not cleared. | Cleared. | none |
+| MOUNT-9 | `mount_utc_time_handler` | A text that is no date was answered "Time failed: request failed". | Generic text. | Explicit message, nothing sent. | `mount_site_and_time` |
+| GUIDER-1 | `guider_change_property` / `guider_guide` | A handler could read the items while the bus thread wrote the next request, send nothing and publish OK. By reading. | Targets read on the device queue. | Durations of each request stored under a mutex. | indirectly `guider_replacement_and_axes` |
+| CCD-1 | `ccd_bin_handler`, `ccd_mode_handler` | `CCD_FRAME` stayed ALERT after a binning change made it valid again. Reproduced. | Republished without a state. | Publish OK. | `ccd_geometry` |
+| CCD-3 | `ccd_exposure_finalizer` | After a failure during an exposure the camera kept exposing and refused the next `startexposure` (0x40B). Reproduced. | No cleanup on those paths. | Abort, else stop, on all failure paths. | `ccd_exposure_progress_failures` |
+| CCD-4 | `ccd_abort_exposure_handler` | No way to make a camera idle that is busy with an exposure this connection does not know. Reproduced. | Abort sent nothing without an exposure of its own. | `abortexposure` is passed on when the camera can abort. | `ccd_abort_exposure`, `ccd_transport_loss` |
+| CCD-5 | `ccd_normalize_frame` | The frame lost pixels when the binning changed twice, and CONFIG LOAD did not restore a binned subframe (9,6,99,60 came back as 6,6,96,60). Reproduced. | Every normalisation started from the already normalised frame. | The requested frame is kept in the class data. | `ccd_lifecycle` |
+| CCD-6 | `ccd_on_poll` | On a camera without CCDTemperature, `CCD_COOLER_POWER` was never polled. By reading. | Early return. | Each property polled on its own. | none |
+| CCD-7 | `CCD_FRAME.BITS_PER_PIXEL` | Any value of a client was accepted until the next image. Reproduced. | Never restored. | Restored on normalisation. | `ccd_geometry` |
+| DOME-1 | `dome_is_parked()` | A slew accepted before a park request was refused with "Dome is parked". Reproduced. | The guard read the item the bus thread sets on acceptance. | The state of the device is used. | `dome_pending_requests` |
+| DOME-2 | `dome_apply_status()` | On devices whose `Slewing` is true while the shutter moves, every shutter move showed an azimuth slew, also on a roll-off roof. Reproduced. | `Slewing` always attributed to the azimuth. | Attributed to the shutter unless the azimuth or altitude is seen to change. | `dome_slewing_includes_shutter` |
+| DOME-3, LB-5 | shutter, cover and calibrator finalizers | A move ending before the handler of the next request ran published OK with the old direction, so a client saw its request completed before it started. Reproduced. | Published whatever was waiting. | No publication while a request waits. | `dome_completion_during_pending_request`, `lightbox_pending_requests` |
+| DOME-4, LB-1 | dome and light box methods without a parameter | HTTP 400 was not taken as "not implemented"; the request was sent again every time. Reproduced. | Only 0x400 was tested. | HTTP 400 too, for members without a parameter. | `dome_capability_variants`, `lightbox_capability_variants` |
+| LB-2 | `lightbox_apply_calibrator()` | The next ON sent a stale brightness target. Reproduced. | Only the value followed the device. | The target follows too when no request waits. | `lightbox_calibrator` |
+| LB-3 | `lightbox_calibrator_finalizer()` | The message named the wrong request. Reproduced. | Direction overwritten before the message. | Captured first. | `lightbox_unknown_and_error` |
+| LB-7 | `lightbox_calibrator_start()` | A failed CalibratorOn rolled the target back over a waiting request. Reproduced. | Unconditional rollback. | Only when nothing waits. | `lightbox_failure_during_pending_request` |
+| D1, D4 | `switch_abort_handler`, `weather_refresh_handler` | `ABORT=Off` cancelled the running changes, `REFRESH=Off` sent Refresh. Reproduced. | Item value not checked. | Checked. | `switch_async_abort_all`, `weather_refresh_values` |
+| D3 | switch, weather, safety handlers | TSan: `IS_CONNECTED` read against `INDIGO_PROCESS_CONNECT`. Reproduced. | The recipe of `_private.h`. | The session flag of the core. | TSan runs of the classes |
+| D6 | safety | **`SAFE` stayed published while the server did not answer**, up to two timeouts (20 s with the defaults). Reproduced. | Everything ran on the device queue, which the hanging request blocks. | A staleness timer on a timer thread: a value older than 4 idle poll intervals + 1 s goes to ALERT. | `safety_stale_value` |
+| D7 | `safety_on_disconnect` | Detaching a connected device published "connection was lost". Reproduced. | "Lost" derived from `CONNECTION` only. | `detaching` checked. | `safety_lifecycle` |
+| D8, D9 | safety watchdog and message | IsSafe read twice per tick while failing; the reason not published when already in ALERT. By reading (D9 weakly covered). | — | Keyed on the last attempt; a `reported` flag. | `safety_stale_value` (D9) |
+| SIM-1, SIM-2 | simulator camera | The default camera had both CanFastReadout and readout modes; an index-mode Gain could point outside its list. | — | Mutually exclusive; indices limited. | `ccd_properties`, `ccd_capability_variants` |
+| S1, S2, S3 | simulator switch | `cancelasync` OK without CanAsync; `devicestate` carried members with an armed error; 32 switches at most. | — | NotImplemented; left out; 160. | `switch_limit` (S3) |
+
+Found in the core hardening (2026-10-02/03, section 7.4):
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| CORE-4 | core `CONNECTION` and session, all modules | TSan reports (`ccd_large_frame`, `dome_disconnect_after_request`, `lightbox_disconnect_after_request`). Reproduced. | `CONNECTION` and the session read on the device queue while a bus thread writes them. | `system_alpaca_is_active()`, the device lock around `CONNECTION` and the session, `detaching` written under the framework lock. | TSan run of the suite |
+| CORE-5 | all modules (dome, light box, camera, mount and guider had no protection) | TSan report (`dome_apply_status` against `dome_change_property`); a pending change could be overwritten by a poll or a finalizer. Reproduced. | Accept and the writes of the poll were not mutually exclusive. | `system_alpaca_accept()` and the device lock. | TSan run; the pending-request cases of every class |
+| CORE-6 | `proxy_poll_handler` | Polled values froze without a message while `devicestate` kept failing with an error answer. Reproduced. | `on_poll` skipped on any failure of the tick request. | Member-by-member fallback, `devicestate` disabled after 5 ticks with a message. | `interface_device_state_failures` |
+| CORE-7 | `system_alpaca_finish()` | Wrong or lost failure reason (FOC-1 and the others). | It printed the last error of the channel. | `system_alpaca_reason()`, `_finish_with()`, `_report()`. | the request-failure cases of the classes |
+| CORE-8 | rotator `sync` / `movemechanical`, switch `setswitchname` | HTTP 400 to a bad value removed the property or fixed the name for the connection. Reproduced. | `alpaca_is_unsupported()` used for methods with parameters. | `system_alpaca_not_implemented()`. | `rotator_rejected_parameter`, `switch_rejected_name` |
+| CORE-9 | camera bin and mode handlers | `CCD_BIN` followed at once by `CCD_FRAME` lost the frame; a binning mode followed by `CCD_BIN` lost the binning. Reproduced. | The first handler overwrote the items of the waiting request. | BUSY properties are skipped under the lock. | `ccd_requests_in_a_row` |
+| CORE-10 | focuser, wheel, rotator, dome, light box `on_poll` | A value that could not be read stayed OK. Reproduced. | Read failures ignored. | ALERT until it is read again. | `*_unreadable_position`, `dome_polling`, `lightbox_polling` |
+| CORE-11 | guider | The end of a pulse could replace the BUSY state of a request just accepted; one mutex was shared by all guiders. | Check and finish were not atomic. | `guider_complete()` under the device lock. | TSan run |
+| CORE-12 | core bridge | TSan report: `bridge_x_alpaca_discover_handler` against the enumeration. Reproduced. | Bridge property states and settings used on the driver queue without `bridge_mutex`. | `bridge_finish()`, `bridge_setting()`, enumeration under `bridge_mutex`. | `core_bus_requests_during_list_changes` under TSan |
+| CORE-13 | mount, switch | The bus thread read the capability cache; switch property pointers were read while disconnected; a UTC request dropped while busy overwrote the pending target. By reading. | Data of the device queue used by the bus thread. | Under the lock; inactive guard; target set only when idle. | TSan run; by reading |
+| TEST-2 | `mount_cases.h` (side of pier, park, home) | One failure under ASan. | Coordinates read right after the request property, which is published before them. | `SA_WAIT` around those reads. | 5 ASan runs of the mount cases |
+
+Found against OmniSim (2026-10-03, section 7.5):
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| OMNI-1 | focuser `on_poll`, abort handler | After a confirmed Halt `FOCUSER_POSITION` went ALERT, then BUSY as a phantom motion, then OK, so the ALERT of the abort was lost. Reproduced against OmniSim, which reports IsMoving for about 1 s after Halt at the stopped position. | IsMoving true without a move of the driver was taken as an external motion. | While IsMoving is true at the halt position, for at most 3 s, the device counts as settling. The simulator models the settle. | `focuser_halt_settles`, `omnisim_focuser` |
+| OMNI-2 | rotator `rotator_start` | While synced, `ROTATOR_POSITION` showed OmniSim's mechanical target as the target of a move (105 instead of 160). Reproduced. | The target was read back from TargetPosition, which OmniSim reports without the sync offset. | The driver keeps the target it computed; TargetPosition is used only for moves started by others and at connect. The simulator option `TargetIsMechanical` models OmniSim. | `rotator_target_is_mechanical`, `omnisim_rotator` |
+| OMNI-3 | `system_alpaca_simulator_safetymonitor.c` | Our simulator answered IsSafe of a disconnected device with false and no error; OmniSim answers 0x407. | Modelled on older ASCOM simulators. | NotConnected by default, the old behaviour selectable. No driver change. | `safety_transport_loss` (both variants) |
+
+Found by the independent review (2026-10-03, section 7.6). "Confirmed" means the regression case fails against the driver before the fix.
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| REV-1 | `proxy_detach`, guider `on_disconnect` | **Deadlock of the driver queue**: detaching a camera or telescope while a guide request was pending stopped discovery, attach and detach for good and refused SHUTDOWN. Confirmed, the case hung 7 of 7 runs against the old driver. | `proxy_detach` held the framework lock of the primary device while the guider cancelled its finalizers, and the queue worker waited for that lock. | Guider handlers and finalizers return while the device is detaching; the guider does not cancel then. No timeout. | `guider_detach_with_pulse_requested` |
+| REV-2 | `ccd_read_progress` | One failed `devicestate` read failed a running exposure; with a permanent HTTP 500 every exposure failed. Confirmed. | The error of `devicestate` was returned as the result of the exposure. | Member reads in the same call; `devicestate` given up after 5 failures in a row. | `ccd_device_state_failures` |
+| REV-3 | dome coordinates refusal | A slew queued behind a relative move was sent with the target of the relative move (180° sent as 20°). Confirmed. | Coordinates accepted while `DOME_STEPS` was BUSY. | Refused while steps, park or home run. | `dome_slew_during_relative_move` |
+| REV-4 | guider | Durations above 10000 ms and non-finite values reached the device (60000 sent). Confirmed. | Raw request values used. | Values taken after the copy into the property, limited. | `guider_duration_limits` |
+| REV-5 | camera abort cleanup | Exposure states written without the lock. By reading (inside `libindigo`, invisible to TSan). | Framework cleanup used. | Local cleanup under the lock. | TSan run |
+| REV-6 | mount parked refusal | A refused manual motion turned a waiting motion request to ALERT. Confirmed. | State written on the bus thread without the lock. | `system_alpaca_reject()` leaves a BUSY property BUSY. | `mount_parked_refusal_keeps_pending_motion` |
+| REV-8 | mount abort | A failed MoveAxis(0) skipped AbortSlew, and the motion items stayed selected. Confirmed. | Early return. | Every axis stopped and AbortSlew always sent; its success resets the motion. | `mount_abort_partial_failures` |
+| REV-9 | dome shutter, cover and calibrator finalizers | A failure published ALERT over a newer pending request. Confirmed. | — | Only the message while a request waits. | `dome_shutter_failure_during_pending_request`, `lightbox_completion_failure_during_pending_request` |
+| REV-10 | switch | A request equal to a stale cached value was never sent and published OK. Confirmed. | Comparison with the cache. | Named switches always sent. | `switch_request_after_device_change` |
+| REV-11 | focuser relative move | `position + steps` overflowed `int` (Position=0 sent). Confirmed. | — | 64-bit sum. | `focuser_large_relative_move` |
+| REV-12 | wheel | Slot properties were reallocated on connect while a bus thread could read them. Cause confirmed, the use-after-free not reproduced. | Resize on connect. | Room for 32 slots allocated at attach. | `wheel_slot_properties_do_not_move` |
+| REV-13 | light box intensity handler | `AUX_LIGHT_SWITCH` stayed BUSY after light off until a poll. Confirmed. | — | Ended by the handler. | `lightbox_intensity_after_light_off` |
+| REV-14 | focuser enumeration | A client enumerating during a mode change got the wrong set of properties. Confirmed. | Enumeration followed the property, not the device mode. | Follows the mode under the lock. | `focuser_enumeration_during_mode_change` |
+| REV-15 | core `verify_devices_disconnected`, `bridge_config_busy` | Device count and CONFIG state read without a lock. By reading. | — | Count under the device lock; CONFIG documented (framework). | TSan run |
+| REV-17 | HTTP client | `Transfer-Encoding: gzip, chunked` decoded as plain chunked. Confirmed. | Only "chunked" looked for. | Any other coding is a protocol error. | `headers_are_case_insensitive` |
+| REV-18 | `X_ALPACA_DEVICES` keys | Two UniqueIDs differing only in replaced characters got one key; the second device was never proxied. Confirmed. | — | Hash appended when a character is replaced. | `core_similar_unique_ids` |
+| REV-19 | `PROPERTIES.md` | The fallback of the wheel to FocusOffsets for its slot count was not documented. | — | Documented. | — |
+| REV-20 to REV-24, REV-28 | cases | A check that could not fail (`safety_cases.h`), message checks matching older messages, cases ordered by sleeps, a skipped HTTP case reported as passed, faulty replies without checks of the published values, harness off-by-one. Confirmed. | — | Cases fixed. | `safety_read_timeout_reason` and the changed cases |
+| REV-25 | simulator | More lenient than real servers. | — | Stricter content type, `--error-value`, `missing-transaction-id`. | `core_strict_server_replies` |
+| REV-26, REV-27 | core, weather | Alignment with spaces; missing name defines and NULL checks. | — | Fixed. | — |
+| FIX-1 | dome refusal of WP12b | TSan report: the first version of the REV-3 refusal read `hidden` flags written without the lock. | — | Reads only states. | TSan runs |
+
+Observations outside the driver, not changed (D10) and reported to the user:
+
+- `indigo_libs/indigo_bus.c`, `indigo_set_switch()`: a one-of-many property is marked changed on every call, also when the selected item is selected again (cause of MOUNT-2, DOME-6, LB-4).
+- `indigo_libs/indigo_bus.c`: on macOS the library exports its own `clock_gettime()` that returns `gettimeofday()` for every clock id, so `indigo_monotonic_time()` follows the wall clock there and driver deadlines follow its steps. The timing measurement of section 7.3 reads `clock_gettime_nsec_np()` instead.
+- `INDIGO_COPY_*_PROCESS_CHANGE` drops a request for a property that is BUSY without an answer.
+
+Original audit record of 2026-09-24:
 
 | ID | Location | Impact | Cause | Proposed fix | Regression test |
 |---|---|---|---|---|---|
@@ -903,6 +1185,9 @@ The critical path is W0 → WP2 → WP5 → WP8 (the camera) → WP11/12.
 
 ## Final test summary
 
-- Simulated tests: 0 run, 0 passed.
-- Hardware tests: 0 run, 0 passed.
+State on 2026-10-03 after the fixes of the independent review; this summary is updated with every recorded run.
+
+- Simulated tests: **297 run, 297 passed** in the recorded run of 2026-10-03 04:17 (`test_system_alpaca_simulator` 254, `test_system_alpaca_http` 43), plus the unit test `test_system_alpaca_json` 48 run, 48 passed, which the recording script does not count.
+- OmniSim tests: **20 run, 20 passed** in the recorded run of 2026-10-03 04:18 (OmniSim 0.5.0).
+- Hardware tests: 0 run, 0 passed (decision D6).
 - The OmniSim and ConformU runs from the research phase (subagent, linux-x64 container, outside the repository) were exploratory tool probes. They are not driver tests and are not counted.

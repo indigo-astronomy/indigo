@@ -24,7 +24,8 @@
 // runs in a forked child with a private HOME, so the cases are independent and run several at a time
 // (INDIGO_TEST_JOBS, see parallel_case_runner.h); INDIGO_TEST_CASE_FILTER selects cases by a part of their name.
 // SYSTEM_ALPACA_TEST_NO_FORK=1 runs the selected cases one after another in this process instead, which is what a debugger
-// or a leak checker needs; SYSTEM_ALPACA_TEST_DEBUG=1 turns the debug log of the driver on.
+// or a leak checker needs (the configuration folder is emptied before every case); SYSTEM_ALPACA_TEST_DEBUG=1 turns the debug
+// log of the driver on.
 //
 // The cases live in system_alpaca/: core_cases.h for the driver core, interface_cases.h for the interface the class modules
 // are written against, and one <class>_cases.h for every device class.
@@ -110,13 +111,23 @@ int main(void) {
 	if (getenv("SYSTEM_ALPACA_TEST_DEBUG") != NULL) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
+	case_filter = getenv("INDIGO_TEST_CASE_FILTER");
 	if (getenv("SYSTEM_ALPACA_TEST_NO_FORK") != NULL) {
-		int result = indigo_run_tests(SUITE_NAME, cases, ARRAY_SIZE(cases));
+		// All selected cases in this process. The framework keeps the configuration folder it found first ($HOME/.indigo), so a case can
+		// not get a HOME of its own; the folder is emptied before every case instead, so that no case inherits the configuration of another.
+		char config[PATH_MAX];
+		int result = 0;
+		snprintf(config, sizeof(config), "%s/.indigo", getenv("HOME"));
+		for (int i = 0; i < (int)ARRAY_SIZE(cases); i++) {
+			if (case_selected(i)) {
+				indigo_test_remove_tree(config);
+				result |= indigo_run_tests(SUITE_NAME, cases + i, 1);
+			}
+		}
 		indigo_test_remove_tree(fixture_root);
 		indigo_test_remove_private_home();
 		return result;
 	}
-	case_filter = getenv("INDIGO_TEST_CASE_FILTER");
 	if (case_filter != NULL) {
 		indigo_test_record("filter\t%s", case_filter);
 	}

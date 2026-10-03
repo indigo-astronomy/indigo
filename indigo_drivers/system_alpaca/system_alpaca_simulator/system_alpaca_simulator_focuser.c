@@ -26,7 +26,8 @@
 // Absolute=true: Move takes a target of 0..MaxStep. Absolute=false: Move takes
 // signed steps of at most MaxIncrement and Position is not implemented.
 // The focuser moves at StepsPerSecond and IsMoving stays true for SettleTime
-// after the last step.
+// after the last step, also after Halt (the motor stops at once and settles,
+// as in the ASCOM OmniSim focuser).
 // Behaviour the standard leaves to the device, selectable per device:
 // - ClampMoves=false (default): a target outside 0..MaxStep, or more relative
 //   steps than MaxIncrement, is InvalidValue. ClampMoves=true: the request is
@@ -167,8 +168,9 @@ static void focuser_put_halt(alpaca_device *device, alpaca_request *request) {
 		return;
 	}
 	alpaca_motion_stop(&state->position);
-	state->settle_until = 0;
-	state->is_moving = false;
+	// the motor stops at once and settles like after a move: OmniSim 0.5.0 reports IsMoving for its settle time after Halt as well
+	state->settle_until = state->settle_time > 0 ? alpaca_now() + state->settle_time : 0;
+	state->is_moving = state->settle_time > 0;
 	alpaca_event("STATE", "focuser/%d halt position=%ld", device->number, lround(state->position.position));
 	alpaca_reply_void(request);
 }

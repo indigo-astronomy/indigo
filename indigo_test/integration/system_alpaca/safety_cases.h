@@ -20,16 +20,398 @@
 
 // Cases of the SafetyMonitor device class of the system_alpaca driver (indigo_system_alpaca_safety.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them safety_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated SafetyMonitor has one value, IsSafe (true by default). X_ALPACA_SAFETY is a light property with the item SAFE:
+// OK is safe, ALERT is unsafe or not known while the device is connected, IDLE is not known because the device is not connected.
+// The harness polls every 0.1 s, so a value is taken back by the staleness timer of the class when it is older than 1.4 s.
 
 #ifndef system_alpaca_safety_cases_h
 #define system_alpaca_safety_cases_h
 
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_SAFETY_CASES
+#define SAFETY_API "/api/v1/safetymonitor/0/"
+#define SAFETY_STATE "/simulator/v1/safetymonitor/0/state"
+#define SAFETY "X_ALPACA_SAFETY"
+
+static const char *safety_default[] = { "--device", "safetymonitor", NULL };
+static const char *safety_legacy[] = { "--device", "safetymonitor:interface=legacy", NULL };
+
+static int safety_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), SAFETY_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The property and its light are in the given states.
+static bool safety_is(indigo_property_state state, indigo_property_state light) {
+	return sa_state(sa_device, SAFETY) == (int)state && sa_light(sa_device, SAFETY, "SAFE") == (int)light;
+}
+
+// The device is safe, it says so and the driver has read it.
+static bool safety_is_safe(void) {
+	return safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE);
+}
+
+// A second client that counts how many times the light was published as OK: the property cache only keeps the last value, and
+// "the light was never OK in between" is what the cases about lost and failing devices have to prove.
+static pthread_mutex_t safety_watch_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int safety_watch_count = 0;
+static bool safety_watching = false;
+
+static indigo_result safety_watch_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	(void)client;
+	(void)device;
+	(void)message;
+	if (!strcmp(property->name, SAFETY) && property->type == INDIGO_LIGHT_VECTOR && property->count == 1 && property->items[0].light.value == INDIGO_OK_STATE) {
+		pthread_mutex_lock(&safety_watch_mutex);
+		safety_watch_count++;
+		pthread_mutex_unlock(&safety_watch_mutex);
+	}
+	return INDIGO_OK;
+}
+
+static indigo_client safety_watch_client = {
+	"system_alpaca safety watch",
+	false,
+	NULL,
+	INDIGO_OK,
+	INDIGO_VERSION_CURRENT,
+	NULL,
+	NULL,
+	safety_watch_property,
+	safety_watch_property,
+	NULL,
+	NULL,
+	NULL,
+	false,
+	false
+};
+
+// Number of publications of the light as OK since the case began.
+static int safety_safe_count(void) {
+	pthread_mutex_lock(&safety_watch_mutex);
+	int result = safety_watch_count;
+	pthread_mutex_unlock(&safety_watch_mutex);
+	return result;
+}
+
+// Simulator, driver, the watching client and the proxy device, not connected yet.
+static bool safety_attach(const char * const *arguments) {
+	if (!sa_begin(arguments) || indigo_attach_client(&safety_watch_client) != INDIGO_OK) {
+		return false;
+	}
+	safety_watching = true;
+	return sa_attach("SafetyMonitor Simulator");
+}
+
+static bool safety_begin(const char * const *arguments) {
+	return safety_attach(arguments) && sa_connect(sa_device);
+}
+
+// The end of every case of the class: the watching client leaves the bus before the driver and the bus are stopped.
+static void safety_end(void) {
+	if (safety_watching) {
+		indigo_detach_client(&safety_watch_client);
+		safety_watching = false;
+	}
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void safety_properties(void) {
+	SA_CHECK(safety_attach(safety_default));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_AUX) == INDIGO_INTERFACE_AUX);
+	// the property exists while the device is attached; before the device is connected nothing is known and nothing was asked
+	SA_CHECK(sa_defined(sa_device, SAFETY) && sa_item_count(sa_device, SAFETY) == 1 && sa_perm(sa_device, SAFETY) == INDIGO_RO_PERM && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	SA_CHECK(safety_count("GET", "issafe") == 0 && safety_count("GET", "devicestate") == 0);
+	// connected: IsSafe is read once, before the device counts as connected
+	SA_CHECK(sa_connect(sa_device) && safety_is_safe() && safety_count("GET", "issafe") == 1);
+	// Platform 7: the value comes with devicestate, IsSafe is not asked for again and an unchanged value is not published again
+	unsigned revision = sa_revision(sa_device, SAFETY);
+	int safe = safety_safe_count();
+	SA_CHECK(SA_WAIT(safety_count("GET", "devicestate") >= 20, SA_TIMEOUT) && safety_count("GET", "issafe") == 1 && sa_revision(sa_device, SAFETY) == revision && safety_is_safe());
+	// the device turns unsafe: the light is in ALERT, the property stays OK because the value is known
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=false"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && sa_message_seen("reports unsafe conditions") && sa_is_connected(sa_device));
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	int ticks = safety_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(safety_count("GET", "devicestate") >= ticks + 5, SA_TIMEOUT) && sa_revision(sa_device, SAFETY) == revision);
+	// and safe again
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=true") && SA_WAIT(safety_is_safe(), SA_TIMEOUT) && safety_count("GET", "issafe") == 1);
+	// a disconnect: the property stays defined and says that nothing is known
+	SA_CHECK(sa_disconnect(sa_device) && sa_defined(sa_device, SAFETY) && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	// a device that is unsafe when it is connected is never shown as safe
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=false"));
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	SA_CHECK(sa_connect(sa_device) && safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE) && safety_count("GET", "issafe") == 2);
+	ticks = safety_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(safety_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE) && safety_safe_count() == safe);
+	// the class has nothing a client can change: no request but connect and disconnect was a PUT
+	SA_CHECK(sa_disconnect(sa_device) && safety_count("PUT", "*") == 4 && safety_count("PUT", "connect") == 2 && safety_count("PUT", "disconnect") == 2);
+cleanup:
+	safety_end();
+}
+
+static void safety_legacy_properties(void) {
+	static const char *unsafe[] = { "--device", "safetymonitor:interface=legacy,IsSafe=false", NULL };
+	SA_CHECK(safety_begin(safety_legacy));
+	// an older device has no devicestate: IsSafe is read on every poll tick, after the sign of life
+	SA_CHECK(safety_is_safe() && SA_WAIT(safety_count("GET", "issafe") >= 10, SA_TIMEOUT) && safety_count("GET", "devicestate") == 0 && safety_count("PUT", "connect") == 0);
+	int connected = safety_count("GET", "connected"), reads = safety_count("GET", "issafe");
+	SA_CHECK(reads >= connected - 3 && reads <= connected + 1);
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=false") && SA_WAIT(safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=true") && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device) && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	safety_end();
+	SA_CHECK(safety_attach(unsafe) && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	int safe = safety_safe_count();
+	SA_CHECK(sa_connect(sa_device) && safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE) && safety_safe_count() == safe);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	safety_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+static void safety_read_failures(void) {
+	SA_CHECK(safety_begin(safety_default) && safety_is_safe());
+	// IsSafe answers with an error (and is therefore missing in devicestate): the state is not known. The light leaves OK, the
+	// property is in ALERT with the message of the device, and the device stays connected.
+	unsigned revision = sa_revision(sa_device, SAFETY);
+	int safe = safety_safe_count();
+	SA_CHECK(sa_put(0, "/simulator/v1/safetymonitor/0/error", "Member=issafe&ErrorNumber=1279&ErrorMessage=Sensor%20fault"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && sa_message_seen("Safety state is unknown, reading IsSafe failed: device error (Sensor fault (0x4FF))"));
+	SA_CHECK(sa_is_connected(sa_device) && safety_count("GET", "issafe") >= 2);
+	// it stays like that while the device goes on failing, without a new publication for every failed read
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	int reads = safety_count("GET", "issafe");
+	SA_CHECK(SA_WAIT(safety_count("GET", "issafe") >= reads + 5, SA_TIMEOUT) && sa_revision(sa_device, SAFETY) == revision && safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	// the device answers again
+	SA_CHECK(sa_put(0, "/simulator/v1/safetymonitor/0/error", "Member=issafe&ErrorNumber=0") && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	// ValueNotSet: the device has no value yet
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	SA_CHECK(sa_put(0, "/simulator/v1/safetymonitor/0/error", "Member=issafe&ErrorNumber=1026&ErrorMessage=No%20data%20yet"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && sa_message_seen("reading IsSafe failed: value not set (No data yet (0x402))"));
+	// it comes back as unsafe: the property is OK again, the light is not
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=false") && sa_put(0, "/simulator/v1/safetymonitor/0/error", "Member=issafe&ErrorNumber=0"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && safety_safe_count() == safe);
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=true") && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	// devicestate fails and IsSafe works: the poll hook is not called, the watchdog of the class reads IsSafe itself.
+	// The value stays valid without a publication, and a change of the device is seen.
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	reads = safety_count("GET", "issafe");
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "devicestate", "http-status", "Value=500&Count=-1"));
+	SA_CHECK(SA_WAIT(safety_count("GET", "issafe") >= reads + 4, SA_TIMEOUT) && sa_revision(sa_device, SAFETY) == revision && safety_is_safe() && sa_is_connected(sa_device));
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=false") && SA_WAIT(safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=true") && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	// devicestate fails and IsSafe gives a reply that is no reply: not known
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "issafe", "malformed-json", "Count=-1"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && sa_message_seen("reading IsSafe failed: invalid reply") && sa_is_connected(sa_device));
+	SA_CHECK(sa_clear_faults(0) && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+	safety_end();
+	// an older device: every kind of reply that has no value takes the light away from OK
+	SA_CHECK(safety_begin(safety_legacy) && safety_is_safe());
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "issafe", "http-status", "Value=500&Message=Kaboom&Count=-1"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && sa_message_seen("reading IsSafe failed: server error (HTTP 500: Kaboom)") && sa_is_connected(sa_device));
+	SA_CHECK(sa_clear_faults(0) && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "issafe", "missing-value", "Count=-1"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && sa_message_seen("reading IsSafe failed: invalid reply (Value is missing)"));
+	SA_CHECK(sa_clear_faults(0) && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "issafe", "null-value", "Count=-1"));
+	SA_CHECK(SA_WAIT(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_clear_faults(0) && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	safety_end();
+}
+
+static void safety_connect_failures(void) {
+	SA_CHECK(safety_attach(safety_default));
+	// IsSafe can not be read while the device is connected, with an answer of the device: the device connects and says "not known"
+	int safe = safety_safe_count();
+	SA_CHECK(sa_put(0, "/simulator/v1/safetymonitor/0/error", "Member=issafe&ErrorNumber=1035&ErrorMessage=Warming%20up"));
+	SA_CHECK(sa_connect(sa_device) && safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE) && sa_message_seen("reading IsSafe failed: invalid operation (Warming up (0x40B))") && safety_safe_count() == safe);
+	SA_CHECK(sa_put(0, "/simulator/v1/safetymonitor/0/error", "Member=issafe&ErrorNumber=0") && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device) && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	// the transport breaks while IsSafe is read: the connection fails, nothing is known and nothing is polled
+	safe = safety_safe_count();
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "issafe", "reset", "Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(sa_light(sa_device, SAFETY, "SAFE") == INDIGO_IDLE_STATE && safety_safe_count() == safe && !strcmp(sa_status(0, SAFETY_STATE, "Connected"), "false"));
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests && sa_light(sa_device, SAFETY, "SAFE") == INDIGO_IDLE_STATE);
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && safety_is_safe());
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	safety_end();
+}
+
+// ---------------------------------------------------------------------------- an unreachable device
+
+static void safety_stale_value(void) {
+	// the standard timeout is 5 s here: a request that gets no answer blocks the device for that long
+	SA_CHECK(sa_begin(safety_default) && sa_set_number("X_ALPACA_TIMEOUTS", "STANDARD", 5) == INDIGO_OK_STATE);
+	SA_CHECK(indigo_attach_client(&safety_watch_client) == INDIGO_OK);
+	safety_watching = true;
+	SA_CHECK(sa_attach("SafetyMonitor Simulator") && sa_connect(sa_device) && safety_is_safe());
+	SA_CHECK(SA_WAIT(safety_count("GET", "devicestate") >= 3, SA_TIMEOUT));
+	// the server stops answering. "Safe" is taken back long before the request times out: the value is older than four poll
+	// intervals and a second (1.4 s here), and nobody can tell what the device would say now.
+	unsigned revision = sa_revision(sa_device, SAFETY);
+	int safe = safety_safe_count();
+	int mark = sa_message_mark();
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "*", "stall-before", "Delay=6500"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(sa_light(sa_device, SAFETY, "SAFE") != INDIGO_OK_STATE, SA_TIMEOUT));
+	double elapsed = indigo_monotonic_time() - started;
+	SA_CHECK(elapsed > 0.9 && elapsed < 4 && safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE) && sa_message_seen("Safety state is unknown, IsSafe was not read for"));
+	SA_CHECK(sa_is_connected(sa_device) && safety_safe_count() == safe);
+	// one request without an answer is not the end of the connection: the server answers the next one and the device is safe again
+	// (the request that timed out is the devicestate of a poll tick, which the core leaves to the transport-loss detection)
+	SA_CHECK(SA_WAIT(safety_is_safe(), 2 * SA_TIMEOUT) && sa_is_connected(sa_device) && indigo_monotonic_time() - started > 4.5);
+	SA_CHECK(!sa_message_seen_since(mark, "reading IsSafe failed"));
+	// a device that answers is not taken for a stale one: nothing is published while it keeps answering
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	int ticks = safety_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(safety_count("GET", "devicestate") >= ticks + 25, SA_TIMEOUT) && sa_revision(sa_device, SAFETY) == revision);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	safety_end();
+}
+
+// REV-20: an IsSafe request that times out is told with its reason although the property is in ALERT already (the staleness timer put
+// it there); the device is polled member by member, so the request that gets no answer is IsSafe itself. The check of the earlier
+// version waited for that message or a safe device, and the device is safe again with the next poll, so it could not fail.
+static void safety_read_timeout_reason(void) {
+	SA_CHECK(sa_begin(safety_legacy) && sa_set_number("X_ALPACA_TIMEOUTS", "STANDARD", 5) == INDIGO_OK_STATE);
+	SA_CHECK(indigo_attach_client(&safety_watch_client) == INDIGO_OK);
+	safety_watching = true;
+	SA_CHECK(sa_attach("SafetyMonitor Simulator") && sa_connect(sa_device) && safety_is_safe() && SA_WAIT(safety_count("GET", "issafe") >= 3, SA_TIMEOUT));
+	int mark = sa_message_mark();
+	SA_CHECK(sa_fault(0, "GET", SAFETY_API "issafe", "stall-before", "Delay=6500"));
+	SA_CHECK(SA_WAIT(sa_message_seen_since(mark, "Safety state is unknown, IsSafe was not read for"), SA_TIMEOUT) && safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	SA_CHECK(SA_WAIT(sa_message_seen_since(mark, "Safety state is unknown, reading IsSafe failed: timeout"), 2 * SA_TIMEOUT) && safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	SA_CHECK(SA_WAIT(safety_is_safe(), 2 * SA_TIMEOUT) && sa_is_connected(sa_device) && sa_disconnect(sa_device));
+cleanup:
+	safety_end();
+}
+
+static void safety_transport_loss(void) {
+	SA_CHECK(safety_begin(safety_default) && safety_is_safe());
+	SA_CHECK(SA_WAIT(safety_count("GET", "devicestate") >= 3, SA_TIMEOUT));
+	// the server is gone: the light leaves OK with the first reaction of the driver and never comes back to it; the device ends
+	// disconnected with CONNECTION in ALERT, the property in ALERT and the light IDLE
+	unsigned revision = sa_revision(sa_device, SAFETY);
+	int safe = safety_safe_count();
+	SA_CHECK(sa_fault(0, NULL, SAFETY_API "*", "reset", "Count=-1&Dispatch=false"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
+	SA_CHECK(safety_is(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE) && safety_safe_count() == safe && sa_defined(sa_device, SAFETY));
+	SA_CHECK(sa_message_seen("Safety state is unknown, the connection to SafetyMonitor Simulator") && sa_message_seen("was lost"));
+	// nothing is sent any more, and the staleness timer is gone: the property is not touched
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(2000000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests && sa_revision(sa_device, SAFETY) == revision);
+	// a connect while the server is away fails; the light stays IDLE
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(sa_request_count(0, NULL, "/api/*") > requests && core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(sa_light(sa_device, SAFETY, "SAFE") == INDIGO_IDLE_STATE && safety_safe_count() == safe);
+	// the server is back and the device turned unsafe meanwhile: the new connection shows that, not the value of the old one
+	SA_CHECK(sa_clear_faults(0) && sa_device_state(0, "safetymonitor", 0, "IsSafe=false"));
+	SA_CHECK(sa_connect(sa_device) && safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE) && safety_safe_count() == safe);
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=true") && SA_WAIT(safety_is_safe(), SA_TIMEOUT));
+	// the device is disconnected on the server by someone else, and it is one whose IsSafe is false there without an error (older
+	// ASCOM simulators): the proxy ends disconnected, not "unsafe" and not "safe"
+	revision = sa_revision(sa_device, SAFETY);
+	safe = safety_safe_count();
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "NotConnectedError=false") && sa_device_state(0, "safetymonitor", 0, "Connected=false"));
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && safety_is(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE) && sa_message_seen("the device was disconnected on the Alpaca server"));
+	SA_CHECK(sa_connect(sa_device) && safety_is_safe());
+	SA_CHECK(sa_disconnect(sa_device));
+	safety_end();
+	// the same for an older device, whose IsSafe answers NotConnected when the device is not connected
+	static const char *arguments[] = { "--device", "safetymonitor:interface=legacy,NotConnectedError=true", NULL };
+	SA_CHECK(safety_begin(arguments) && safety_is_safe());
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "Connected=false"));
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && safety_is(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE));
+	SA_CHECK(sa_fault(0, NULL, SAFETY_API "*", "reset", "Count=-1&Dispatch=false") && sa_request_connection(sa_device, true) && SA_WAIT(sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE || core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_light(sa_device, SAFETY, "SAFE") == INDIGO_IDLE_STATE);
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && safety_is_safe() && sa_disconnect(sa_device));
+cleanup:
+	safety_end();
+}
+
+// ---------------------------------------------------------------------------- lifecycle
+
+static void safety_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(safety_default));
+	snprintf(key, sizeof(key), "%s", sa_device_key("SafetyMonitor Simulator"));
+	SA_CHECK(sa_attach("SafetyMonitor Simulator"));
+	// connect and disconnect repeated: every connection reads IsSafe anew and every disconnect ends in "not known"
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_connect(sa_device) && safety_is_safe() && safety_count("GET", "issafe") == i + 1);
+		SA_CHECK(sa_disconnect(sa_device) && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE) && !strcmp(sa_status(0, SAFETY_STATE, "Connected"), "false"));
+	}
+	// after a disconnect nothing is sent and the timers of the class are gone: the property is not touched, for longer than
+	// a value takes to get stale
+	unsigned revision = sa_revision(sa_device, SAFETY);
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(2000000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests && sa_revision(sa_device, SAFETY) == revision && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	// the device is detached while it is connected: it goes away without a hang and without a "connection lost", the Alpaca
+	// device is disconnected and nothing is sent afterwards
+	SA_CHECK(sa_connect(sa_device) && safety_is_safe());
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 3);
+	SA_CHECK(!strcmp(sa_status(0, SAFETY_STATE, "Connected"), "false") && !sa_message_seen("was lost") && !sa_defined(sa_device, SAFETY));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(2000000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests && !sa_defined(sa_device, SAFETY) && sa_stray_updates() == 0);
+	// attached again it starts as "not known" and works
+	SA_CHECK(sa_attach("SafetyMonitor Simulator") && safety_is(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE) && sa_connect(sa_device) && safety_is_safe());
+	SA_CHECK(sa_device_state(0, "safetymonitor", 0, "IsSafe=false") && SA_WAIT(safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT));
+	// the driver is shut down with the device connected (sa_end): no hang, no update of a property that is gone
+cleanup:
+	safety_end();
+}
+
+// A monitor whose state does not change publishes nothing, however it is polled; a change of the device is published at once.
+static void safety_steady_state_is_silent(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(safety_begin(legacy ? safety_legacy : safety_default));
+		SA_CHECK(SA_WAIT(safety_count("GET", legacy ? "connected" : "devicestate") >= 3, SA_TIMEOUT) && sa_steady(0, sa_device, legacy ? SAFETY_API "connected" : SAFETY_API "devicestate", 25));
+		bool safe = safety_is_safe();
+		SA_CHECK(sa_put(0, SAFETY_STATE, safe ? "IsSafe=false" : "IsSafe=true") && SA_WAIT(safety_is_safe() != safe, SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		safety_end();
+	}
+	return;
+cleanup:
+	safety_end();
+}
+
+#define SYSTEM_ALPACA_SAFETY_CASES \
+	{ "safety_steady_state_is_silent", safety_steady_state_is_silent }, \
+	{ "safety_properties", safety_properties }, \
+	{ "safety_legacy_properties", safety_legacy_properties }, \
+	{ "safety_read_failures", safety_read_failures }, \
+	{ "safety_connect_failures", safety_connect_failures }, \
+	{ "safety_stale_value", safety_stale_value }, \
+	{ "safety_read_timeout_reason", safety_read_timeout_reason }, \
+	{ "safety_transport_loss", safety_transport_loss }, \
+	{ "safety_lifecycle", safety_lifecycle },
 
 #endif /* system_alpaca_safety_cases_h */

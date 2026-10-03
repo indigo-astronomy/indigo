@@ -46,10 +46,11 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 #include "system_alpaca_simulator.h"
 
-#define SWITCH_MAX 32
+#define SWITCH_MAX 160
 
 typedef struct {
 	char name[ALPACA_TEXT_SIZE];
@@ -290,6 +291,10 @@ static void switch_put_cancelasync(alpaca_device *device, alpaca_request *reques
 	if (item == NULL) {
 		return;
 	}
+	if (!item->can_async) {
+		alpaca_reply_error(request, ALPACA_ERROR_NOT_IMPLEMENTED, "CancelAsync is not implemented for '%s'", item->name);
+		return;
+	}
 	if (item->pending) {
 		item->pending = false;
 		item->cancelled = true;
@@ -298,14 +303,34 @@ static void switch_put_cancelasync(alpaca_device *device, alpaca_request *reques
 	alpaca_reply_void(request);
 }
 
+// An error is armed for the member through the control API (PUT .../error).
+static bool switch_member_fails(alpaca_device *device, const char *member) {
+	for (int i = 0; i < ALPACA_MAX_OVERRIDES; i++) {
+		if (device->overrides[i].count != 0 && !strcasecmp(device->overrides[i].member, member)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// ISwitchV3: GetSwitch<n>, GetSwitchValue<n> and StateChangeComplete<n> for every switch. DeviceState never fails; a value whose
+// member would answer with an error is left out.
 static void switch_device_state(alpaca_device *device, alpaca_buffer *buffer, bool *first) {
 	switch_state *state = device->state;
+	bool has_state = !switch_member_fails(device, "getswitch"), has_value = !switch_member_fails(device, "getswitchvalue"), has_complete = !switch_member_fails(device, "statechangecomplete");
 	for (int i = 0; i < state->max_switch; i++) {
 		const switch_item *item = state->items + i;
-		alpaca_buffer_printf(buffer, "%s{\"Name\":\"GetSwitch%d\",\"Value\":%s},{\"Name\":\"GetSwitchValue%d\",\"Value\":%.15g}", *first ? "" : ",", i, item->value > item->min ? "true" : "false", i, item->value);
-		*first = false;
-		if (!item->cancelled) {
-			alpaca_buffer_printf(buffer, ",{\"Name\":\"StateChangeComplete%d\",\"Value\":%s}", i, item->pending ? "false" : "true");
+		if (has_state) {
+			alpaca_buffer_printf(buffer, "%s{\"Name\":\"GetSwitch%d\",\"Value\":%s}", *first ? "" : ",", i, item->value > item->min ? "true" : "false");
+			*first = false;
+		}
+		if (has_value) {
+			alpaca_buffer_printf(buffer, "%s{\"Name\":\"GetSwitchValue%d\",\"Value\":%.15g}", *first ? "" : ",", i, item->value);
+			*first = false;
+		}
+		if (has_complete && !item->cancelled) {
+			alpaca_buffer_printf(buffer, "%s{\"Name\":\"StateChangeComplete%d\",\"Value\":%s}", *first ? "" : ",", i, item->pending ? "false" : "true");
+			*first = false;
 		}
 	}
 }

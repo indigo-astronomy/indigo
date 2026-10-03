@@ -46,6 +46,12 @@
  pulses that are still running when the device disconnects.
 
  GUIDER_RATE is not used: a camera has no guide rate, and the guide rates of a telescope are MOUNT_GUIDE_RATE of the mount device.
+
+ Threads: change_property runs on a bus thread, everything else on the handler queue of the primary device. A request is accepted
+ while its property is BUSY as well, so the items and the state of GUIDER_GUIDE_DEC and GUIDER_GUIDE_RA are written by both sides;
+ both do it under the lock of the device, together with the count of the requests that wait for their handler. A finalizer ends
+ a pulse (the items back to zero, the state of the result) in one step under that lock and only if no request waits, so the end
+ of a pulse never takes the place of a request that was just accepted.
  */
 
 #pragma mark - Includes
@@ -54,7 +60,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 
 #include <indigo/indigo_guider_driver.h>
 
@@ -82,7 +87,8 @@ typedef struct {
 	int direction;									///< direction of that pulse
 	double end;											///< time at which that pulse is certainly over
 	double deadline;								///< time until which IsPulseGuiding is watched
-	int waiting;										///< requests whose handler did not run yet, guarded by guider_mutex
+	int waiting;										///< requests whose handler did not run yet, guarded by the lock of the device
+	double requested[2];						///< durations of the two items in the last request, guarded by the lock of the device
 } guider_axis;
 
 typedef struct {
@@ -92,34 +98,50 @@ typedef struct {
 
 #pragma mark - Low level code (guider)
 
-// Guards the count of waiting requests, which change_property writes on a bus thread and the handlers and finalizers read on the queue of the device.
-static pthread_mutex_t guider_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void guider_request(guider_axis *axis) {
-	pthread_mutex_lock(&guider_mutex);
+// Bus thread: a request arrived and is accepted whatever the state of the property is. Its durations are kept for the handler:
+// the items of the property are written by the next request while the handler of this one may still be reading them.
+// The durations are taken from the property after indigo_property_copy_values(), which limits them to the range of the items and skips a
+// value that is not finite; an item the request does not name is 0.
+static void guider_accept(indigo_device *device, guider_axis *axis, indigo_property *property, indigo_property *request, indigo_timer_callback handler) {
+	system_alpaca_lock(device);
 	axis->waiting++;
-	pthread_mutex_unlock(&guider_mutex);
+	property->items[0].number.value = property->items[0].number.target = property->items[1].number.value = property->items[1].number.target = 0;
+	indigo_property_copy_values(property, request, false);
+	axis->requested[0] = property->items[0].number.value;
+	axis->requested[1] = property->items[1].number.value;
+	property->state = INDIGO_BUSY_STATE;
+	system_alpaca_unlock(device);
+	indigo_update_property(device, property, NULL);
+	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0, handler);
 }
 
-// The handler of a request starts. Returns the number of requests that still wait behind it.
-static int guider_take(guider_axis *axis) {
-	pthread_mutex_lock(&guider_mutex);
+// The handler of a request starts. Returns the number of requests that still wait behind it and the durations of the last one.
+// The handler that goes on shows its durations: the finalizer of the previous pulse may have zeroed the items after the request was copied.
+static int guider_take(indigo_device *device, guider_axis *axis, indigo_property *property, double *requested) {
+	system_alpaca_lock(device);
 	int waiting = axis->waiting > 0 ? --axis->waiting : 0;
-	pthread_mutex_unlock(&guider_mutex);
+	requested[0] = axis->requested[0];
+	requested[1] = axis->requested[1];
+	if (waiting == 0) {
+		property->items[0].number.value = requested[0];
+		property->items[1].number.value = requested[1];
+	}
+	system_alpaca_unlock(device);
 	return waiting;
 }
 
-static int guider_waiting(guider_axis *axis) {
-	pthread_mutex_lock(&guider_mutex);
+static int guider_waiting(indigo_device *device, guider_axis *axis) {
+	system_alpaca_lock(device);
 	int waiting = axis->waiting;
-	pthread_mutex_unlock(&guider_mutex);
+	system_alpaca_unlock(device);
 	return waiting;
 }
 
-static void guider_reset(guider_axis *axis) {
-	pthread_mutex_lock(&guider_mutex);
+static void guider_reset(indigo_device *device, guider_axis *axis) {
+	system_alpaca_lock(device);
 	axis->waiting = 0;
-	pthread_mutex_unlock(&guider_mutex);
+	axis->requested[0] = axis->requested[1] = 0;
+	system_alpaca_unlock(device);
 	axis->active = false;
 }
 
@@ -128,18 +150,38 @@ static alpaca_result guider_pulse(indigo_device *device, int direction, int dura
 	return system_alpaca_put(device, "pulseguide", params, 2, ALPACA_WAIT_LONG);
 }
 
+// End the request of an axis: the items go back to zero and the property gets the state of the result, in one step under the lock
+// of the device and only if no newer request waits for its handler: a newer request owns the property, which is BUSY because of it.
+// Returns false if the property was left to a newer request. reason is the text taken with system_alpaca_reason().
+static bool guider_complete(indigo_device *device, guider_axis *axis, indigo_property *property, alpaca_result result, const char *action, const char *reason) {
+	system_alpaca_lock(device);
+	bool completed = axis->waiting == 0;
+	if (completed) {
+		axis->active = false;
+		property->items[0].number.value = property->items[1].number.value = 0;
+		property->state = system_alpaca_property_state(result);
+	}
+	system_alpaca_unlock(device);
+	if (completed) {
+		system_alpaca_report(device, property, result, action, reason);
+	}
+	return completed;
+}
+
 #pragma mark - High level code (guider)
 
 // Completion of the pulse of one axis, see the description at the top of this file.
 static void guider_finalize(indigo_device *device, guider_axis *axis, guider_axis *other, indigo_property *property, indigo_timer_callback finalizer) {
+	char reason[INDIGO_VALUE_SIZE] = { 0 };
 	alpaca_result result = ALPACA_OK;
 	bool guiding = false;
-	if (!axis->active || guider_waiting(axis) > 0) {
+	if (!axis->active || guider_waiting(device, axis) > 0) {
 		return;
 	}
 	double now = indigo_monotonic_time();
 	if (!other->active || other->end <= now) {
 		result = system_alpaca_state_bool(device, "IsPulseGuiding", &guiding);
+		system_alpaca_reason(device, result, reason, sizeof(reason));
 		if (alpaca_is_unsupported(result)) {
 			result = ALPACA_OK;
 			guiding = false;
@@ -148,27 +190,21 @@ static void guider_finalize(indigo_device *device, guider_axis *axis, guider_axi
 			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, system_alpaca_poll_interval(true), finalizer);
 			return;
 		}
-		if (guider_waiting(axis) > 0) {
-			return;
-		}
 	}
-	axis->active = false;
-	property->items[0].number.value = property->items[1].number.value = 0;
-	system_alpaca_finish(device, property, result == ALPACA_OK && guiding ? ALPACA_TIMED_OUT : result, "Guiding");
+	guider_complete(device, axis, property, result == ALPACA_OK && guiding ? ALPACA_TIMED_OUT : result, "Guiding", reason);
 }
 
 // A request for one axis. first and second are the Alpaca directions of the two items of the property.
 static void guider_guide(indigo_device *device, guider_axis *axis, indigo_property *property, int first, int second, indigo_timer_callback finalizer) {
-	if (guider_take(axis) > 0) {
+	char reason[INDIGO_VALUE_SIZE] = { 0 };
+	double requested[2] = { 0, 0 };
+	if (guider_take(device, axis, property, requested) > 0) {
 		return;
 	}
 	indigo_cancel_pending_handler(device, finalizer);
-	// the finalizer of the previous pulse may have zeroed the values after the request was copied, the targets keep it
-	property->items[0].number.value = property->items[0].number.target;
-	property->items[1].number.value = property->items[1].number.target;
-	int duration = (int)lround(property->items[0].number.target > 0 ? property->items[0].number.target : property->items[1].number.target);
+	int duration = (int)lround(requested[0] > 0 ? requested[0] : requested[1]);
 	if (duration > 0) {
-		int direction = property->items[0].number.target > 0 ? first : second;
+		int direction = requested[0] > 0 ? first : second;
 		indigo_update_property(device, property, NULL);
 		double started = indigo_monotonic_time();
 		alpaca_result result = guider_pulse(device, direction, duration);
@@ -181,52 +217,59 @@ static void guider_guide(indigo_device *device, guider_axis *axis, indigo_proper
 			axis->deadline = axis->end + GUIDER_GRACE;
 			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, remaining, finalizer);
 		} else {
+			system_alpaca_reason(device, result, reason, sizeof(reason));
 			axis->active = false;
-			property->items[0].number.value = property->items[1].number.value = 0;
-			system_alpaca_finish(device, property, result, "Guiding");
+			if (!guider_complete(device, axis, property, result, "Guiding", reason)) {
+				// the property stays BUSY for the request that arrived meanwhile, the failure of this one is told all the same
+				system_alpaca_report(device, property, result, "Guiding", reason);
+			}
 		}
 	} else {
 		alpaca_result result = axis->active ? guider_pulse(device, axis->direction, 0) : ALPACA_OK;
+		system_alpaca_reason(device, result, reason, sizeof(reason));
 		axis->active = false;
-		property->items[0].number.value = property->items[1].number.value = 0;
-		system_alpaca_finish(device, property, result, "Guiding stop");
+		if (!guider_complete(device, axis, property, result, "Guiding stop", reason) && result != ALPACA_OK) {
+			system_alpaca_report(device, property, result, "Guiding stop", reason);
+		}
 	}
 }
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device) || PRIVATE_DATA->detaching) {
 		return;
 	}
 	guider_finalize(device, &GUIDER_DATA->dec, &GUIDER_DATA->ra, GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_finalizer);
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device) || PRIVATE_DATA->detaching) {
 		return;
 	}
 	guider_finalize(device, &GUIDER_DATA->ra, &GUIDER_DATA->dec, GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_finalizer);
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device) || PRIVATE_DATA->detaching) {
 		return;
 	}
 	guider_guide(device, &GUIDER_DATA->dec, GUIDER_GUIDE_DEC_PROPERTY, GUIDER_NORTH, GUIDER_SOUTH, guider_guide_dec_finalizer);
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device) || PRIVATE_DATA->detaching) {
 		return;
 	}
 	guider_guide(device, &GUIDER_DATA->ra, GUIDER_GUIDE_RA_PROPERTY, GUIDER_EAST, GUIDER_WEST, guider_guide_ra_finalizer);
 }
 
 static bool guider_on_connect(indigo_device *device) {
-	guider_reset(&GUIDER_DATA->ra);
-	guider_reset(&GUIDER_DATA->dec);
+	guider_reset(device, &GUIDER_DATA->ra);
+	guider_reset(device, &GUIDER_DATA->dec);
+	system_alpaca_lock(device);
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	system_alpaca_unlock(device);
 	return true;
 }
 
@@ -239,12 +282,19 @@ static void guider_on_disconnect(indigo_device *device) {
 	if (data->ra.active) {
 		guider_pulse(device, data->ra.direction, 0);
 	}
-	indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
-	indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
-	guider_reset(&data->dec);
-	guider_reset(&data->ra);
+	// A detach calls this hook with the lock of the device of the framework held and has emptied the queue before (see THREADS in
+	// indigo_system_alpaca_private.h): a cancel here would wait for a finalizer the queue has taken already, which waits for the lock.
+	if (!PRIVATE_DATA->detaching) {
+		indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+		indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+	}
+	guider_reset(device, &data->dec);
+	guider_reset(device, &data->ra);
+	// the properties are still defined, so a request may be accepted while they are reset; its handler finds the session closed
+	system_alpaca_lock(device);
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	system_alpaca_unlock(device);
 }
 
 #pragma mark - Device API (guider)
@@ -268,16 +318,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = 0;
-		GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-		guider_request(&GUIDER_DATA->dec);
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
+		guider_accept(device, &GUIDER_DATA->dec, GUIDER_GUIDE_DEC_PROPERTY, property, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target = 0;
-		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
-		guider_request(&GUIDER_DATA->ra);
-		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
+		guider_accept(device, &GUIDER_DATA->ra, GUIDER_GUIDE_RA_PROPERTY, property, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);

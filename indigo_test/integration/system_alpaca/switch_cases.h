@@ -22,7 +22,7 @@
 //
 // The simulated Switch has eight switches by default: 0 - 3 writable boolean (Power 1, Power 2, Power 3, USB hub; the last two on),
 // 4 and 5 writable 0..100 with asynchronous set on interface version 3 (Dew heater A = 0, Dew heater B = 25), 6 a read-only analog
-// sensor (Input voltage = 12.3) and 7 a read-only boolean (Limit switch = 1). With MaxSwitch up to 32 the others are writable boolean.
+// sensor (Input voltage = 12.3) and 7 a read-only boolean (Limit switch = 1). With MaxSwitch up to 160 the others are writable boolean.
 
 #ifndef system_alpaca_switch_cases_h
 #define system_alpaca_switch_cases_h
@@ -61,10 +61,14 @@ static int switch_set_text(const char *property, const char *item, const char *v
 	return indigo_change_text_property_1_raw(&sa_client, sa_device, property, item, value) == INDIGO_OK ? switch_answer(property, revision) : -1;
 }
 
-// Start a change that is expected to stay BUSY (an asynchronous one).
+static int switch_count(const char *method, const char *member);
+
+// Start a change that is expected to stay BUSY (an asynchronous one). The property is BUSY as soon as the request is accepted, before
+// anything is sent, so the start is over when the device has got the request: only then the clock of the device may be advanced.
 static bool switch_start_number(const char *property, const char *item, double value) {
 	unsigned revision = sa_revision(sa_device, property);
-	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, property, INDIGO_BUSY_STATE, revision), SA_TIMEOUT);
+	int starts = switch_count("PUT", "setasyncvalue");
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, property, INDIGO_BUSY_STATE, revision) && switch_count("PUT", "setasyncvalue") > starts, SA_TIMEOUT);
 }
 
 static bool switch_item_is(const char *property, const char *item, const char *label, double min, double max, double step) {
@@ -226,12 +230,12 @@ static void switch_set_outlets(void) {
 	SA_CHECK(!sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_2") && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_3") && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_4"));
 	SA_CHECK(switch_set_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1", false) == INDIGO_OK_STATE && !sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1") && switch_simulated("Switch0.Value") == 0);
 	SA_CHECK(switch_count("PUT", "setswitch") == 2 && switch_last("PUT", "setswitch", "Id=0&State=False&ClientID="));
-	// a request for the state the outlet is in is answered without a request to the device
-	SA_CHECK(switch_set_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1", false) == INDIGO_OK_STATE && switch_count("PUT", "setswitch") == 2);
-	// several outlets in one request: only the ones that change are sent
+	// a request for the state the outlet had when it was read last is sent all the same: the device may have changed it since (REV-10)
+	SA_CHECK(switch_set_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1", false) == INDIGO_OK_STATE && switch_count("PUT", "setswitch") == 3 && switch_last("PUT", "setswitch", "Id=0&State=False&ClientID="));
+	// several outlets in one request: every outlet the request names is sent, in the order of the switch numbers; the others are not
 	revision = sa_revision(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME);
 	SA_CHECK(indigo_change_switch_property(&sa_client, sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, 3, items, values) == INDIGO_OK && switch_answer(AUX_GPIO_OUTLETS_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
-	SA_CHECK(switch_count("PUT", "setswitch") == 4 && switch_last("PUT", "setswitch", "Id=2&State=False&ClientID="));
+	SA_CHECK(switch_count("PUT", "setswitch") == 6 && switch_last("PUT", "setswitch", "Id=3&State=True&ClientID="));
 	SA_CHECK(sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_2") && !sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_3") && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_4"));
 	SA_CHECK(switch_simulated("Switch1.Value") == 1 && switch_simulated("Switch2.Value") == 0 && switch_simulated("Switch3.Value") == 1);
 	SA_CHECK(sa_disconnect(sa_device));
@@ -248,8 +252,8 @@ static void switch_set_values(void) {
 	// the device only has the values of its steps: the property shows the value the device took, not the requested one
 	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 33.4) == INDIGO_OK_STATE && switch_last("PUT", "setswitchvalue", "Id=4&Value=33.4&ClientID="));
 	SA_CHECK(switch_simulated("Switch4.Value") == 33 && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 33 && sa_number_target(sa_device, SWITCH_VALUES, "VALUE_1") == 33);
-	// the value the switch has is not sent again
-	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 33) == INDIGO_OK_STATE && switch_count("PUT", "setswitchvalue") == 2);
+	// the value the switch had when it was read last is sent all the same: the device may have changed it since (REV-10)
+	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 33) == INDIGO_OK_STATE && switch_count("PUT", "setswitchvalue") == 3 && switch_last("PUT", "setswitchvalue", "Id=4&Value=33&ClientID="));
 	// a value the device refuses: ALERT with the message of the device, and the property is back at the value of the device
 	SA_CHECK(sa_device_state(0, "switch", 0, "Switch4.Max=50"));
 	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 80) == INDIGO_ALERT_STATE && switch_last("PUT", "setswitchvalue", "Id=4&Value=80&ClientID="));
@@ -259,6 +263,34 @@ static void switch_set_values(void) {
 	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 10) == INDIGO_OK_STATE && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 10 && switch_simulated("Switch4.Value") == 10);
 	SA_CHECK(sa_disconnect(sa_device));
 cleanup:
+	sa_end();
+}
+
+// REV-10: a switch the request names is set although the value read last is the requested one. Without devicestate a poll tick reads
+// SWITCH_POLL_BATCH switches, so the value of a switch may be older than a change the device made by itself; and a poll tick never reads
+// the switches of a property that is BUSY. The device turns outlet 3 off while the queue is held (no poll tick can see it), the client
+// asks for it on: before the fix nothing was sent, the property was OK with the outlet on and the outlet stayed off.
+static void switch_request_after_device_change(void) {
+	SA_CHECK(switch_begin(switch_legacy));
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_3"), SA_TIMEOUT) && switch_simulated("Switch2.Value") == 1);
+	SA_CHECK(sa_gate_close(sa_device) && sa_device_state(0, "switch", 0, "Switch2.Value=0"));
+	int sets = switch_count("PUT", "setswitch");
+	unsigned revision = sa_revision(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_3", true) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_BUSY_STATE, revision), SA_TIMEOUT));
+	sa_gate_open();
+	SA_CHECK(switch_answer(AUX_GPIO_OUTLETS_PROPERTY_NAME, revision) == INDIGO_OK_STATE && switch_count("PUT", "setswitch") == sets + 1 && switch_last("PUT", "setswitch", "Id=2&State=True&ClientID="));
+	SA_CHECK(switch_simulated("Switch2.Value") == 1 && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_3"));
+	// the same for a value
+	SA_CHECK(SA_WAIT(sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 25, SA_TIMEOUT) && sa_gate_close(sa_device) && sa_device_state(0, "switch", 0, "Switch5.Value=80"));
+	sets = switch_count("PUT", "setswitchvalue");
+	revision = sa_revision(sa_device, SWITCH_VALUES);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, SWITCH_VALUES, "VALUE_2", 25) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_BUSY_STATE, revision), SA_TIMEOUT));
+	sa_gate_open();
+	SA_CHECK(switch_answer(SWITCH_VALUES, revision) == INDIGO_OK_STATE && switch_count("PUT", "setswitchvalue") == sets + 1 && switch_last("PUT", "setswitchvalue", "Id=5&Value=25&ClientID="));
+	SA_CHECK(switch_simulated("Switch5.Value") == 25 && sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 25);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_gate_open();
 	sa_end();
 }
 
@@ -323,7 +355,7 @@ static void switch_async_abort(void) {
 	// a new change works
 	revision = sa_revision(sa_device, SWITCH_VALUES);
 	SA_CHECK(switch_start_number(SWITCH_VALUES, "VALUE_1", 15));
-	if (!(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_OK_STATE, revision), SA_TIMEOUT))) { fprintf(stderr, "DBG state %d value %g sim %s pending %s\n%s\n", sa_state(sa_device, SWITCH_VALUES), sa_number(sa_device, SWITCH_VALUES, "VALUE_1"), sa_status(0, SWITCH_STATE, "Switch4.Value"), sa_status(0, SWITCH_STATE, "Switch4.Pending"), sa_requests(0, NULL, "/api/v1/switch/0/s*")); }
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_OK_STATE, revision), SA_TIMEOUT));
 	SA_CHECK(sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 15 && switch_count("PUT", "cancelasync") == 1);
 	SA_CHECK(sa_disconnect(sa_device));
 cleanup:
@@ -373,6 +405,68 @@ static void switch_async_failures(void) {
 	SA_CHECK(sa_state(sa_device, SWITCH_VALUES) == INDIGO_OK_STATE && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 90 && sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 75);
 	revision = sa_revision(sa_device, SWITCH_VALUES);
 	SA_CHECK(switch_start_number(SWITCH_VALUES, "VALUE_1", 20) && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 20);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void switch_async_abort_all(void) {
+	static const char *arguments[] = { "--device", "switch:Switch0.CanAsync=true", NULL };
+	static const char *items[] = { "VALUE_1", "VALUE_2" };
+	static const double values[] = { 40, 60 };
+	SA_CHECK(switch_begin(arguments));
+	// three changes of two properties are running
+	unsigned values_revision = sa_revision(sa_device, SWITCH_VALUES), outlets_revision = sa_revision(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, SWITCH_VALUES, 2, items, values) == INDIGO_OK && SA_WAIT(switch_count("PUT", "setasyncvalue") == 2, SA_TIMEOUT));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1", true) == INDIGO_OK && SA_WAIT(switch_count("PUT", "setasync") == 1, SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(switch_last("GET", "statechangecomplete", "Id=0&") || switch_last("GET", "statechangecomplete", "Id=5&"), SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, SWITCH_VALUES) == INDIGO_BUSY_STATE && sa_state(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// a request that does not ask for a cancel sends nothing and the changes go on
+	SA_CHECK(switch_set_switch(SWITCH_ABORT, "ABORT", false) == INDIGO_OK_STATE && switch_count("PUT", "cancelasync") == 0 && sa_state(sa_device, SWITCH_VALUES) == INDIGO_BUSY_STATE);
+	// one cancelasync for each of them, in the order of the Alpaca switch numbers; both properties end in ALERT with the values of the device
+	SA_CHECK(switch_set_switch(SWITCH_ABORT, "ABORT", true) == INDIGO_OK_STATE && !sa_switch(sa_device, SWITCH_ABORT, "ABORT"));
+	SA_CHECK(switch_count("PUT", "cancelasync") == 3 && switch_last("PUT", "cancelasync", "Id=5&ClientID="));
+	const char *requests = sa_requests(0, "PUT", SWITCH_API "cancelasync");
+	SA_CHECK(requests != NULL && !strncmp(sa_field(requests, "Body"), "Id=0&", 5) && strstr(requests, "Body=Id%3D4%26") != NULL);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_ALERT_STATE, values_revision) && sa_state_after(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE, outlets_revision), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Change of 'Dew heater A' failed: operation cancelled") && sa_message_seen("Change of 'Power 1' failed: operation cancelled"));
+	SA_CHECK(sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 0 && sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 25 && !sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1"));
+	SA_CHECK(sa_advance(0, 5) && switch_simulated("Switch0.Value") == 0 && switch_simulated("Switch4.Value") == 0 && switch_simulated("Switch5.Value") == 25);
+	// a cancel the device refuses: X_ALPACA_SWITCH_ABORT in ALERT with the message of the device, the change goes on and ends by itself
+	SA_CHECK(switch_start_number(SWITCH_VALUES, "VALUE_1", 10) && SA_WAIT(switch_last("GET", "statechangecomplete", "Id=4&"), SA_TIMEOUT));
+	values_revision = sa_revision(sa_device, SWITCH_VALUES);
+	SA_CHECK(sa_fault(0, "PUT", SWITCH_API "cancelasync", "ascom-error", "Value=1279&Message=Can%20not%20stop"));
+	SA_CHECK(switch_set_switch(SWITCH_ABORT, "ABORT", true) == INDIGO_ALERT_STATE && sa_message_seen("Cancel of the change of 'Dew heater A' failed: device error (Can not stop (0x4FF))") && !sa_switch(sa_device, SWITCH_ABORT, "ABORT"));
+	SA_CHECK(switch_count("PUT", "cancelasync") == 4 && sa_state(sa_device, SWITCH_VALUES) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_OK_STATE, values_revision), SA_TIMEOUT) && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 10);
+	// and the next cancel is OK again
+	SA_CHECK(switch_set_switch(SWITCH_ABORT, "ABORT", true) == INDIGO_OK_STATE && switch_count("PUT", "cancelasync") == 4);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void switch_async_start_failures(void) {
+	SA_CHECK(sa_begin(switch_default) && sa_set_number("X_ALPACA_TIMEOUTS", "STANDARD", 0.5) == INDIGO_OK_STATE && sa_attach("Switch Simulator") && sa_connect(sa_device));
+	// the server fails the start: nothing is running afterwards, the property shows the value of the device
+	SA_CHECK(sa_fault(0, "PUT", SWITCH_API "setasyncvalue", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 40) == INDIGO_ALERT_STATE && sa_message_seen("Change of 'Dew heater A' failed: server error (HTTP 500: Kaboom)"));
+	SA_CHECK(switch_count("GET", "statechangecomplete") == 0 && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 0 && sa_number_target(sa_device, SWITCH_VALUES, "VALUE_1") == 0 && switch_simulated("Switch4.Value") == 0);
+	SA_CHECK(sa_fault(0, "PUT", SWITCH_API "setasyncvalue", "malformed-json", NULL));
+	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 40) == INDIGO_ALERT_STATE && sa_message_seen("Change of 'Dew heater A' failed: invalid reply") && switch_count("GET", "statechangecomplete") == 0);
+	// that device did start the change; it is not watched, and the value arrives with the polling when the device is done
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 40 && sa_state(sa_device, SWITCH_VALUES) == INDIGO_ALERT_STATE, SA_TIMEOUT));
+	// a start the device does not answer within the standard timeout (0.5 s here): ALERT, one request, the device stays connected
+	int starts = switch_count("PUT", "setasyncvalue");
+	SA_CHECK(sa_fault(0, "PUT", SWITCH_API "setasyncvalue", "stall-before", "Delay=1200"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_2", 70) == INDIGO_ALERT_STATE && sa_message_seen("Change of 'Dew heater B' failed: timeout"));
+	SA_CHECK(indigo_monotonic_time() - started > 0.4 && indigo_monotonic_time() - started < 4 && switch_count("PUT", "setasyncvalue") == starts + 1 && switch_count("GET", "statechangecomplete") == 0);
+	SA_CHECK(sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 25 && sa_number_target(sa_device, SWITCH_VALUES, "VALUE_2") == 25);
+	SA_CHECK(SA_WAIT(!strcmp(sa_status(0, SWITCH_STATE, "Switch5.Pending"), "true"), SA_TIMEOUT) && sa_advance(0, 2) && SA_WAIT(sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 70, SA_TIMEOUT) && sa_is_connected(sa_device));
+	// the next change is a good one
+	unsigned revision = sa_revision(sa_device, SWITCH_VALUES);
+	SA_CHECK(switch_start_number(SWITCH_VALUES, "VALUE_2", 15) && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 15);
 	SA_CHECK(sa_disconnect(sa_device));
 cleanup:
 	sa_end();
@@ -440,8 +534,10 @@ static void switch_polling(void) {
 	unsigned revision = sa_revision(sa_device, AUX_GPIO_SENSORS_PROPERTY_NAME);
 	int ticks = switch_count("GET", "devicestate");
 	SA_CHECK(SA_WAIT(switch_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && sa_revision(sa_device, AUX_GPIO_SENSORS_PROPERTY_NAME) == revision);
-	// a request for the value the device changed to by itself is not sent to the device
-	SA_CHECK(switch_set_number(SWITCH_VALUES, "VALUE_1", 55) == INDIGO_OK_STATE && switch_count("PUT", "setasyncvalue") == 0);
+	// a request for the value the device changed to by itself is sent all the same: a value that was read is no proof of the present one
+	unsigned value_revision = sa_revision(sa_device, SWITCH_VALUES);
+	SA_CHECK(switch_start_number(SWITCH_VALUES, "VALUE_1", 55) && switch_count("PUT", "setasyncvalue") == 1 && switch_last("PUT", "setasyncvalue", "Id=4&Value=55&ClientID="));
+	SA_CHECK(sa_advance(0, 2) && switch_answer(SWITCH_VALUES, value_revision) == INDIGO_OK_STATE && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 55);
 	SA_CHECK(sa_disconnect(sa_device));
 	sa_end();
 	// before Platform 7 every switch is read, with the member of its kind
@@ -505,6 +601,53 @@ cleanup:
 	sa_end();
 }
 
+static void switch_pending_change_survives_poll(void) {
+	SA_CHECK(switch_begin(switch_default));
+	// while a change is running the device is polled, and the device changes the other switch of the same property meanwhile:
+	// the requested value stays the target, nothing of the property is published by the poll
+	SA_CHECK(switch_start_number(SWITCH_VALUES, "VALUE_1", 40) && SA_WAIT(switch_last("GET", "statechangecomplete", "Id=4&"), SA_TIMEOUT));
+	unsigned revision = sa_revision(sa_device, SWITCH_VALUES);
+	int ticks = switch_count("GET", "devicestate");
+	SA_CHECK(sa_device_state(0, "switch", 0, "Switch5.Value=77&Switch6.Value=11.1"));
+	SA_CHECK(SA_WAIT(switch_count("GET", "devicestate") >= ticks + 5 && sa_number(sa_device, AUX_GPIO_SENSORS_PROPERTY_NAME, "SENSOR_1") == 11.1, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, SWITCH_VALUES) == INDIGO_BUSY_STATE && sa_revision(sa_device, SWITCH_VALUES) == revision);
+	SA_CHECK(sa_number_target(sa_device, SWITCH_VALUES, "VALUE_1") == 40 && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 0 && sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 25);
+	// the change ends with the value read back, and the polling shows the other switch again
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, SWITCH_VALUES, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 40 && sa_number_target(sa_device, SWITCH_VALUES, "VALUE_1") == 40 && SA_WAIT(sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 77, SA_TIMEOUT));
+	// a synchronous change that takes its time: the ticks that are due meanwhile do not replace the request with the old state of the device
+	static const char *items[] = { "OUTLET_1", "OUTLET_2" };
+	static const bool values[] = { true, true };
+	SA_CHECK(sa_fault(0, "PUT", SWITCH_API "setswitch", "stall-before", "Delay=400&Count=2"));
+	revision = sa_revision(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property(&sa_client, sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, 2, items, values) == INDIGO_OK && switch_answer(AUX_GPIO_OUTLETS_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+	SA_CHECK(switch_count("PUT", "setswitch") == 2 && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1") && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_2") && switch_simulated("Switch0.Value") == 1 && switch_simulated("Switch1.Value") == 1);
+	ticks = switch_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(switch_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1") && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_2"));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void switch_limit(void) {
+	static const char *arguments[] = { "--device", "switch:MaxSwitch=130", NULL };
+	SA_CHECK(sa_begin(arguments) && sa_attach("Switch Simulator") && sa_connect(sa_device));
+	// a device with more switches than the proxy represents: the first 128 are used, the user is told, the others are never asked for
+	SA_CHECK(sa_message_seen("has 130 switches, only the first 128 are used") && sa_item_count(sa_device, SWITCH_INFO) == 128);
+	SA_CHECK(sa_item_count(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == 124 && sa_item_count(sa_device, SWITCH_VALUES) == 2 && sa_item_count(sa_device, AUX_GPIO_SENSORS_PROPERTY_NAME) == 2 && sa_item_count(sa_device, AUX_OUTLET_NAMES_PROPERTY_NAME) == 126);
+	SA_CHECK(switch_count("GET", "getswitchname") == 128 && switch_last("GET", "getswitchname", "Id=127&ClientID=") && switch_label_is(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_124", "Switch 127"));
+	SA_CHECK(!strcmp(sa_text(sa_device, SWITCH_INFO, "SWITCH_127"), "AUX_GPIO_OUTLETS.OUTLET_124: Spare switch") && !sa_has_item(sa_device, SWITCH_INFO, "SWITCH_128"));
+	// the last one is set and polled like any other
+	SA_CHECK(switch_set_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_124", true) == INDIGO_OK_STATE && switch_last("PUT", "setswitch", "Id=127&State=True&ClientID=") && switch_simulated("Switch127.Value") == 1);
+	SA_CHECK(sa_device_state(0, "switch", 0, "Switch127.Value=0&Switch100.Value=1&Switch129.Value=1"));
+	SA_CHECK(SA_WAIT(!sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_124") && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_97"), 3 * SA_TIMEOUT));
+	const char *reads = sa_requests(0, "GET", SWITCH_API "*");
+	SA_CHECK(reads != NULL && strstr(reads, "Query=Id%3D127%26") != NULL && strstr(reads, "Query=Id%3D128%26") == NULL && strstr(reads, "Query=Id%3D129%26") == NULL);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
 // ---------------------------------------------------------------------------- failures
 
 static void switch_request_failures(void) {
@@ -552,6 +695,45 @@ static void switch_request_failures(void) {
 	// and it works again after a new connect
 	SA_CHECK(sa_connect(sa_device) && sa_state(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1"));
 	SA_CHECK(switch_set_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1", false) == INDIGO_OK_STATE && switch_simulated("Switch0.Value") == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void switch_transport_loss(void) {
+	SA_CHECK(switch_begin(switch_default));
+	// devicestate fails for a while: the device stays connected, nothing is published, and the polling goes on afterwards
+	unsigned revision = sa_revision(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME);
+	int ticks = switch_count("GET", "devicestate");
+	SA_CHECK(sa_fault(0, "GET", SWITCH_API "devicestate", "http-status", "Value=500&Count=3"));
+	SA_CHECK(SA_WAIT(switch_count("GET", "devicestate") >= ticks + 5, SA_TIMEOUT) && sa_is_connected(sa_device) && sa_revision(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == revision);
+	SA_CHECK(sa_device_state(0, "switch", 0, "Switch0.Value=1") && SA_WAIT(sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1"), SA_TIMEOUT));
+	// one request that gets no answer is not the end of the connection
+	SA_CHECK(sa_fault(0, "GET", SWITCH_API "devicestate", "reset", NULL));
+	ticks = switch_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(switch_count("GET", "devicestate") >= ticks + 4, SA_TIMEOUT) && sa_is_connected(sa_device) && sa_defined(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME));
+	// the server goes away while the device is idle: CONNECTION in ALERT, every property of the class is deleted, nothing is sent any more
+	SA_CHECK(sa_fault(0, NULL, SWITCH_API "*", "reset", "Count=-1"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5 && sa_message_seen("connection to the Alpaca server lost"));
+	SA_CHECK(!sa_defined(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) && !sa_defined(sa_device, SWITCH_VALUES) && !sa_defined(sa_device, AUX_GPIO_SENSORS_PROPERTY_NAME) && !sa_defined(sa_device, AUX_OUTLET_NAMES_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, AUX_SENSOR_NAMES_PROPERTY_NAME) && !sa_defined(sa_device, SWITCH_INFO) && !sa_defined(sa_device, SWITCH_ABORT));
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// a connect while the server is still away fails and leaves nothing behind
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(sa_request_count(0, NULL, "/api/*") > requests && core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, SWITCH_INFO));
+	// the server is back with other values: the new connection shows them and takes requests
+	SA_CHECK(sa_clear_faults(0) && sa_device_state(0, "switch", 0, "Switch3.Value=0&Switch5.Value=42") && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == INDIGO_OK_STATE && !sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_4") && sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1") && sa_number(sa_device, SWITCH_VALUES, "VALUE_2") == 42);
+	SA_CHECK(switch_set_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_4", true) == INDIGO_OK_STATE && switch_simulated("Switch3.Value") == 1);
+	// the transport is lost during a synchronous change, before the request reaches the device: the device is disconnected at once,
+	// and the next connection shows that the switch was not changed
+	SA_CHECK(sa_fault(0, NULL, SWITCH_API "*", "reset", "Count=-1&Dispatch=false"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_2", true) == INDIGO_OK);
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5 && !sa_defined(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME));
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && !sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_2") && sa_state(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == INDIGO_OK_STATE);
 	SA_CHECK(sa_disconnect(sa_device));
 cleanup:
 	sa_end();
@@ -628,26 +810,62 @@ static void switch_lifecycle(void) {
 	requests = sa_request_count(0, NULL, "/api/*");
 	indigo_usleep(300000);
 	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
-	// and attached again it is a working device
-	SA_CHECK(sa_advance(0, 5) && sa_attach("Switch Simulator") && sa_connect(sa_device) && sa_item_count(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == 4);
+	// and attached again it is a working device with the switches the device has now: switch 1 can not be written since the change above
+	SA_CHECK(sa_advance(0, 5) && sa_attach("Switch Simulator") && sa_connect(sa_device));
+	SA_CHECK(sa_item_count(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME) == 3 && sa_item_count(sa_device, SWITCH_VALUES) == 2 && sa_item_count(sa_device, AUX_GPIO_SENSORS_PROPERTY_NAME) == 3 && sa_number(sa_device, SWITCH_VALUES, "VALUE_1") == 3);
 	SA_CHECK(switch_set_switch(AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1", true) == INDIGO_OK_STATE && switch_simulated("Switch0.Value") == 1);
 cleanup:
 	sa_end();
 }
 
+// Switches that do nothing publish nothing, however they are polled; a change of the device is published at once.
+static void switch_steady_state_is_silent(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(switch_begin(legacy ? switch_legacy : switch_default));
+		SA_CHECK(SA_WAIT(switch_count("GET", legacy ? "connected" : "devicestate") >= 3, SA_TIMEOUT) && sa_steady(0, sa_device, legacy ? SWITCH_API "connected" : SWITCH_API "devicestate", 25));
+		SA_CHECK(sa_device_state(0, "switch", 0, "Switch0.Value=1") && SA_WAIT(sa_switch(sa_device, AUX_GPIO_OUTLETS_PROPERTY_NAME, "OUTLET_1"), SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// HTTP 400 to SetSwitchName, a method with parameters, is a failed request and not a switch whose name can not be set: the server
+// may not have liked the name. The next name is sent. (NotImplemented fixes the name, see switch_names.)
+static void switch_rejected_name(void) {
+	SA_CHECK(switch_begin(switch_default));
+	SA_CHECK(sa_fault(0, "PUT", SWITCH_API "setswitchname", "http-status", "Value=400&Message=Name%20too%20long"));
+	SA_CHECK(switch_set_text(AUX_OUTLET_NAMES_PROPERTY_NAME, "GPIO_OUTLET_NAME_1", "A name the server does not like") == INDIGO_ALERT_STATE && sa_message_seen("failed: request rejected by the server") && !sa_message_seen("The device does not allow to rename"));
+	SA_CHECK(switch_count("PUT", "setswitchname") == 1 && strcmp(sa_text(sa_device, AUX_OUTLET_NAMES_PROPERTY_NAME, "GPIO_OUTLET_NAME_1"), "A name the server does not like") != 0);
+	SA_CHECK(switch_set_text(AUX_OUTLET_NAMES_PROPERTY_NAME, "GPIO_OUTLET_NAME_1", "Camera") == INDIGO_OK_STATE && switch_count("PUT", "setswitchname") == 2 && !strcmp(sa_status(0, SWITCH_STATE, "Switch0.Name"), "Camera"));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
 #define SYSTEM_ALPACA_SWITCH_CASES \
+	{ "switch_steady_state_is_silent", switch_steady_state_is_silent }, \
+	{ "switch_rejected_name", switch_rejected_name }, \
 	{ "switch_properties", switch_properties }, \
 	{ "switch_legacy_properties", switch_legacy_properties }, \
 	{ "switch_capability_variants", switch_capability_variants }, \
+	{ "switch_request_after_device_change", switch_request_after_device_change }, \
 	{ "switch_set_outlets", switch_set_outlets }, \
 	{ "switch_set_values", switch_set_values }, \
 	{ "switch_async_change", switch_async_change }, \
 	{ "switch_async_abort", switch_async_abort }, \
 	{ "switch_async_failures", switch_async_failures }, \
+	{ "switch_async_abort_all", switch_async_abort_all }, \
+	{ "switch_async_start_failures", switch_async_start_failures }, \
 	{ "switch_names", switch_names }, \
 	{ "switch_polling", switch_polling }, \
 	{ "switch_many_switches", switch_many_switches }, \
+	{ "switch_pending_change_survives_poll", switch_pending_change_survives_poll }, \
+	{ "switch_limit", switch_limit }, \
 	{ "switch_request_failures", switch_request_failures }, \
+	{ "switch_transport_loss", switch_transport_loss }, \
 	{ "switch_connect_failures", switch_connect_failures }, \
 	{ "switch_lifecycle", switch_lifecycle },
 

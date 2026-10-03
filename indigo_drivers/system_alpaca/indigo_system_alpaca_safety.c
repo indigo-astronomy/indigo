@@ -31,20 +31,33 @@
    SAFE = ALERT   the device reports that it is unsafe, or the device is connected and IsSafe can not be read
    SAFE = IDLE    the device is not connected, the state is unknown
 
- The state of the property is OK while IsSafe is read, ALERT when the last read failed or the connection was lost, and IDLE
- while the device is disconnected. The property is defined as long as the device is attached, so that a client always finds a
- defined state. Only SAFE = OK may be taken for "safe"; the driver never publishes it without a value it has just read.
+ The state of the property is OK while IsSafe is read, ALERT when the last read failed, when the value is too old or when the
+ connection was lost, and IDLE while the device is disconnected. The property is defined as long as the device is attached, so
+ that a client always finds a defined state. Only SAFE = OK may be taken for "safe"; the driver never publishes it without a
+ value it has just read and never leaves it standing when the value is not read again.
 
- IsSafe is read on every poll tick (from devicestate on a Platform 7 device). The core does not call the poll hook when its own
- request of the tick fails, so a watchdog reads IsSafe itself as soon as the last value is older than SAFETY_STALE_TICKS poll
- intervals, and publishes the failure if that does not succeed either.
+ IsSafe is read on every poll tick (from devicestate on a Platform 7 device). Two things keep a value from getting old:
+
+ - The core does not call the poll hook when its own request of the tick gets no answer, so a watchdog on the handler queue reads
+   IsSafe itself when nothing has read it for SAFETY_RETRY_TICKS poll intervals, and publishes the failure if that does not succeed.
+ - A request that gets no answer blocks the handler queue for as long as the timeout of the server allows (ten seconds by default,
+   and the retry takes as long again). A timer that does not run on the handler queue therefore takes the value back as soon as
+   it is older than SAFETY_STALE_TICKS poll intervals plus SAFETY_STALE_MARGIN seconds: the property goes to ALERT and SAFE to
+   ALERT whatever the pending request does later. The next value that is read restores the state.
+
+ Threads: X_ALPACA_SAFETY is read-only, so no bus thread writes it and the lock of the device (system_alpaca_lock()) is not needed
+ for it. The property is shared by the handler queue and the staleness timer instead, which run on different threads; the mutex of
+ the class guards it, together with the times of the last reads, and is held while the property is published so that the two
+ publish in the order in which they set it. No bus callback of this class takes any lock, so that can not deadlock with the bus.
  */
 
 #pragma mark - Includes
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include <indigo/indigo_aux_driver.h>
 
@@ -54,14 +67,22 @@
 
 #define SAFETY_GROUP												"Safety"
 
-// Number of idle poll intervals after which a value that was not read again is not trusted any more.
-#define SAFETY_STALE_TICKS									2.5
+// Number of idle poll intervals without a read of IsSafe after which the watchdog reads it itself.
+#define SAFETY_RETRY_TICKS									2.5
+
+// A value older than SAFETY_STALE_TICKS idle poll intervals plus SAFETY_STALE_MARGIN seconds is not published as valid any more.
+#define SAFETY_STALE_TICKS									4
+#define SAFETY_STALE_MARGIN									1.0
 
 typedef struct {
 	indigo_property *safety_property;
+	indigo_timer *stale_timer;
+	pthread_mutex_t mutex;					///< guards the property and read_time: the staleness timer does not run on the handler queue
 	alpaca_result result;						///< result of the read of IsSafe in on_probe
 	bool safe;
+	bool reported;									///< the reason of the failure that is going on was published
 	double read_time;								///< time of the last successful read of IsSafe
+	double attempt_time;						///< time the last read of IsSafe ended, whatever its result
 } safety_data;
 
 #define SAFETY_DATA													((safety_data *)CLASS_DATA)
@@ -80,37 +101,61 @@ typedef struct {
 static void safety_publish(indigo_device *device, alpaca_result result, bool safe) {
 	indigo_property_state light = result == ALPACA_OK && safe ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_property_state state = system_alpaca_property_state(result);
+	char reason[INDIGO_VALUE_SIZE] = { 0 };
+	if (result != ALPACA_OK) {
+		char detail[INDIGO_VALUE_SIZE / 2];
+		system_alpaca_reason(device, result, detail, sizeof(detail));
+		snprintf(reason, sizeof(reason), "%s%s%s%s", alpaca_result_text(result), *detail ? " (" : "", detail, *detail ? ")" : "");
+	}
+	pthread_mutex_lock(&SAFETY_DATA->mutex);
+	bool report_failure = result != ALPACA_OK && !SAFETY_DATA->reported;
+	bool changed = X_ALPACA_SAFETY_SAFE_ITEM->light.value != light || X_ALPACA_SAFETY_PROPERTY->state != state;
+	SAFETY_DATA->attempt_time = indigo_monotonic_time();
+	SAFETY_DATA->reported = result != ALPACA_OK;
 	if (result == ALPACA_OK) {
-		SAFETY_DATA->read_time = indigo_monotonic_time();
+		SAFETY_DATA->read_time = SAFETY_DATA->attempt_time;
 	}
-	if (X_ALPACA_SAFETY_SAFE_ITEM->light.value == light && X_ALPACA_SAFETY_PROPERTY->state == state) {
-		return;
-	}
-	bool was_failed = X_ALPACA_SAFETY_PROPERTY->state == INDIGO_ALERT_STATE;
 	X_ALPACA_SAFETY_SAFE_ITEM->light.value = light;
 	X_ALPACA_SAFETY_PROPERTY->state = state;
-	if (result != ALPACA_OK && !was_failed) {
-		const char *detail = alpaca_is_transport_error(result) || result == ALPACA_FAILED ? "" : system_alpaca_error(device);
-		indigo_update_property(device, X_ALPACA_SAFETY_PROPERTY, "Safety state is unknown, reading IsSafe failed: %s%s%s%s", alpaca_result_text(result), *detail ? " (" : "", detail, *detail ? ")" : "");
-	} else if (result == ALPACA_OK && !safe) {
+	if (report_failure) {
+		// the reason is told once for a row of failures, also when the staleness timer has put the property in ALERT before it
+		indigo_update_property(device, X_ALPACA_SAFETY_PROPERTY, "Safety state is unknown, reading IsSafe failed: %s", reason);
+	} else if (changed && result == ALPACA_OK && !safe) {
 		indigo_update_property(device, X_ALPACA_SAFETY_PROPERTY, "%s reports unsafe conditions", device->name);
-	} else {
+	} else if (changed) {
 		indigo_update_property(device, X_ALPACA_SAFETY_PROPERTY, NULL);
 	}
+	pthread_mutex_unlock(&SAFETY_DATA->mutex);
 }
 
-// Runs once per idle poll interval, whatever happens to the poll ticks of the core.
+// Runs once per idle poll interval on the handler queue, whatever happens to the poll ticks of the core.
 static void safety_watchdog_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	double interval = system_alpaca_poll_interval(false);
-	if (indigo_monotonic_time() - SAFETY_DATA->read_time > SAFETY_STALE_TICKS * interval) {
+	if (indigo_monotonic_time() - SAFETY_DATA->attempt_time > SAFETY_RETRY_TICKS * interval) {
 		bool safe = false;
 		alpaca_result result = system_alpaca_get_bool(device, "issafe", &safe);
 		safety_publish(device, result, safe);
 	}
 	indigo_execute_handler_in(device, interval, safety_watchdog_handler);
+}
+
+// Runs once per idle poll interval on a timer thread, also while a request blocks the handler queue: a value that was not read
+// again in time is not left standing as valid.
+static void safety_stale_timer(indigo_device *device) {
+	double interval = system_alpaca_poll_interval(false);
+	pthread_mutex_lock(&SAFETY_DATA->mutex);
+	double age = indigo_monotonic_time() - SAFETY_DATA->read_time;
+	if (X_ALPACA_SAFETY_PROPERTY->state == INDIGO_OK_STATE && age > SAFETY_STALE_TICKS * interval + SAFETY_STALE_MARGIN) {
+		X_ALPACA_SAFETY_SAFE_ITEM->light.value = INDIGO_ALERT_STATE;
+		X_ALPACA_SAFETY_PROPERTY->state = INDIGO_ALERT_STATE;
+		SAFETY_DATA->reported = false;
+		indigo_update_property(device, X_ALPACA_SAFETY_PROPERTY, "Safety state is unknown, IsSafe was not read for %.1f s", age);
+	}
+	pthread_mutex_unlock(&SAFETY_DATA->mutex);
+	indigo_reschedule_timer(device, interval, &SAFETY_DATA->stale_timer);
 }
 
 // IsSafe is read before the device counts as connected. Only a transport error fails the connection; any other failure is
@@ -122,16 +167,23 @@ static bool safety_on_probe(indigo_device *device) {
 }
 
 static bool safety_on_connect(indigo_device *device) {
-	SAFETY_DATA->read_time = indigo_monotonic_time();
+	double interval = system_alpaca_poll_interval(false);
+	SAFETY_DATA->reported = false;
 	safety_publish(device, SAFETY_DATA->result, SAFETY_DATA->safe);
-	indigo_execute_handler_in(device, system_alpaca_poll_interval(false), safety_watchdog_handler);
+	indigo_execute_handler_in(device, interval, safety_watchdog_handler);
+	indigo_set_timer(device, interval, safety_stale_timer, &SAFETY_DATA->stale_timer);
 	return true;
 }
 
-// The state is unknown from here on. After a disconnect of the user the property is IDLE; when the connection was lost
-// (the device is still marked as connected at this point) it is in ALERT.
+// The state is unknown from here on. After a disconnect of the user (and when the device is detached) the property is IDLE;
+// when the connection was lost (the device is still marked as connected at this point) it is in ALERT.
 static void safety_on_disconnect(indigo_device *device) {
-	bool lost = CONNECTION_CONNECTED_ITEM->sw.value;
+	// CONNECTION is written by the bus thread that accepts a request for it, under the lock of the device
+	system_alpaca_lock(device);
+	bool lost = CONNECTION_CONNECTED_ITEM->sw.value && !PRIVATE_DATA->detaching;
+	system_alpaca_unlock(device);
+	indigo_cancel_timer_sync(device, &SAFETY_DATA->stale_timer);
+	pthread_mutex_lock(&SAFETY_DATA->mutex);
 	X_ALPACA_SAFETY_SAFE_ITEM->light.value = INDIGO_IDLE_STATE;
 	X_ALPACA_SAFETY_PROPERTY->state = lost ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
 	if (lost) {
@@ -139,6 +191,7 @@ static void safety_on_disconnect(indigo_device *device) {
 	} else {
 		indigo_update_property(device, X_ALPACA_SAFETY_PROPERTY, NULL);
 	}
+	pthread_mutex_unlock(&SAFETY_DATA->mutex);
 }
 
 static void safety_on_poll(indigo_device *device) {
@@ -154,6 +207,7 @@ static indigo_result safety_enumerate_properties(indigo_device *device, indigo_c
 static indigo_result safety_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
+		pthread_mutex_init(&SAFETY_DATA->mutex, NULL);
 		X_ALPACA_SAFETY_PROPERTY = indigo_init_light_property(NULL, device->name, X_ALPACA_SAFETY_PROPERTY_NAME, SAFETY_GROUP, "Safety monitor", INDIGO_IDLE_STATE, 1);
 		indigo_init_light_item(X_ALPACA_SAFETY_SAFE_ITEM, X_ALPACA_SAFETY_SAFE_ITEM_NAME, "Safe", INDIGO_IDLE_STATE);
 		return system_alpaca_attach(device) == INDIGO_OK ? safety_enumerate_properties(device, NULL, NULL) : INDIGO_FAILED;
@@ -178,6 +232,7 @@ static indigo_result safety_detach(indigo_device *device) {
 	system_alpaca_detach(device);
 	indigo_delete_property(device, X_ALPACA_SAFETY_PROPERTY, NULL);
 	indigo_release_property(X_ALPACA_SAFETY_PROPERTY);
+	pthread_mutex_destroy(&SAFETY_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }

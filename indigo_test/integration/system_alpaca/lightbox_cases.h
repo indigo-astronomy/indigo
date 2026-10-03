@@ -20,16 +20,857 @@
 
 // Cases of the CoverCalibrator device class of the system_alpaca driver (indigo_system_alpaca_lightbox.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them lightbox_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated CoverCalibrator has a cover that needs CoverTime (4 s of device time) to open or close and a calibrator that
+// needs CalibratorTime (2 s) to stabilise after CalibratorOn and after CalibratorOff. The cover starts closed, the calibrator off.
+// CoverState: 0 NotPresent, 1 Closed, 2 Moving, 3 Open, 4 Unknown, 5 Error.
+// CalibratorState: 0 NotPresent, 1 Off, 2 NotReady, 3 Ready, 4 Unknown, 5 Error.
+// Device time is manual, so a case sees an operation in progress for as long as it likes and ends it with sa_advance().
 
 #ifndef system_alpaca_lightbox_cases_h
 #define system_alpaca_lightbox_cases_h
 
+#include <stdatomic.h>
+
+#include <indigo/indigo_driver.h>
+
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_LIGHTBOX_CASES
+#define LIGHTBOX_API "/api/v1/covercalibrator/0/"
+#define LIGHTBOX_SIMULATOR "/simulator/v1/covercalibrator/0/state"
+#define LIGHTBOX_ABORT "X_ALPACA_COVER_ABORT_MOTION"
+#define LIGHTBOX_ABORT_ITEM "ABORT_MOTION"
+#define LIGHTBOX_LABEL "CoverCalibrator Simulator"
+
+// a calibrator whose range is not the one of any INDIGO light box, so that a brightness is seen to pass unscaled
+static const char *lightbox_default[] = { "--device", "covercalibrator:MaxBrightness=1000", NULL };
+static const char *lightbox_legacy[] = { "--device", "covercalibrator:interface=legacy,MaxBrightness=1000", NULL };
+
+// Wait for the answer to a request made after the given revision: a state that is not BUSY. Returns it, -1 if there was none.
+static int lightbox_answer(const char *property, unsigned revision) {
+	if (!SA_WAIT(sa_revision(sa_device, property) > revision && sa_state(sa_device, property) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static int lightbox_set_switch(const char *property, const char *item, bool value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? lightbox_answer(property, revision) : -1;
+}
+
+static int lightbox_set_number(const char *property, const char *item, double value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? lightbox_answer(property, revision) : -1;
+}
+
+static int lightbox_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), LIGHTBOX_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The parameters of the last request of a member start with the given text (the transaction IDs follow).
+static bool lightbox_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), LIGHTBOX_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL && !strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters));
+}
+
+// Sequence number of the last request of a member, 0 if there is none. Requests are numbered in the order they arrive.
+static int lightbox_sequence(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), LIGHTBOX_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL ? atoi(sa_field(line, "Sequence")) : 0;
+}
+
+// Start an operation that is expected to stay BUSY: the request, then the PUT of the member that starts it on the device.
+static bool lightbox_start_switch(const char *property, const char *item, const char *member) {
+	int puts = lightbox_count("PUT", member);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, true) == INDIGO_OK && SA_WAIT(lightbox_count("PUT", member) == puts + 1 && sa_state(sa_device, property) == INDIGO_BUSY_STATE, SA_TIMEOUT);
+}
+
+static bool lightbox_start_number(const char *property, const char *item, double value, const char *member) {
+	int puts = lightbox_count("PUT", member);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK && SA_WAIT(lightbox_count("PUT", member) == puts + 1 && sa_state(sa_device, property) == INDIGO_BUSY_STATE, SA_TIMEOUT);
+}
+
+// State of the simulated device, e.g. lightbox_simulated("CoverState").
+static int lightbox_simulated(const char *key) {
+	return atoi(sa_status(0, LIGHTBOX_SIMULATOR, key));
+}
+
+// AUX_COVER: open 1 for OPEN, 0 for CLOSE, -1 for neither.
+static bool lightbox_cover_is(int open, indigo_property_state state) {
+	return sa_state(sa_device, AUX_COVER_PROPERTY_NAME) == (int)state && sa_switch(sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME) == (open == 1) && sa_switch(sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME) == (open == 0);
+}
+
+static bool lightbox_light_is(bool on, indigo_property_state state) {
+	return sa_state(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == (int)state && sa_switch(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME) == on && sa_switch(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME) == !on;
+}
+
+static double lightbox_intensity(void) {
+	return sa_number(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
+}
+
+static bool lightbox_intensity_is(double value, indigo_property_state state) {
+	return sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == (int)state && lightbox_intensity() == value;
+}
+
+static bool lightbox_intensity_range(double min, double max, double step) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	indigo_item *cached = sa_cache_item(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
+	bool result = cached != NULL && cached->number.min == min && cached->number.max == max && cached->number.step == step;
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+static bool lightbox_begin(const char * const *arguments) {
+	return sa_begin(arguments) && sa_attach(LIGHTBOX_LABEL) && sa_connect(sa_device);
+}
+
+// Wait for some more poll ticks: "devicestate" of a Platform 7 device, "connected" of an older one.
+static bool lightbox_ticks(const char *member, int count) {
+	int ticks = lightbox_count("GET", member);
+	return SA_WAIT(lightbox_count("GET", member) >= ticks + count, SA_TIMEOUT);
+}
+
+// No request reaches the device for a while (300 ms are three idle and six active poll intervals).
+static bool lightbox_silent(void) {
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	return sa_request_count(0, NULL, "/api/*") == requests;
+}
+
+// A gate on the handler queue of the device: while it is closed no handler, finalizer or poll tick of the device runs, so a case
+// decides what is queued behind it and in which order (the queue runs its tasks in the order of the time they are due).
+static atomic_bool lightbox_gate_closed;
+static atomic_bool lightbox_gate_reached;
+
+static void lightbox_gate_handler(indigo_device *device) {
+	(void)device;
+	lightbox_gate_reached = true;
+	while (lightbox_gate_closed) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool lightbox_gate_close(void) {
+	indigo_device *device = sa_device_pointer(sa_device);
+	if (device == NULL) {
+		return false;
+	}
+	lightbox_gate_closed = true;
+	lightbox_gate_reached = false;
+	indigo_execute_handler(device, lightbox_gate_handler);
+	return SA_WAIT(lightbox_gate_reached, SA_TIMEOUT);
+}
+
+static void lightbox_gate_open(void) {
+	lightbox_gate_closed = false;
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void lightbox_properties(void) {
+	SA_CHECK(sa_begin(lightbox_default) && sa_attach(LIGHTBOX_LABEL));
+	// before the first connection the device is a light box; nothing of the class is defined and nothing was asked
+	SA_CHECK(core_interface(sa_device) == INDIGO_INTERFACE_AUX_LIGHTBOX);
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	SA_CHECK(lightbox_count("GET", "coverstate") == 0 && lightbox_count("GET", "calibratorstate") == 0 && lightbox_count("GET", "maxbrightness") == 0);
+	SA_CHECK(sa_connect(sa_device));
+	// a cover (closed) with a way to stop it
+	SA_CHECK(sa_item_count(sa_device, AUX_COVER_PROPERTY_NAME) == 2 && sa_perm(sa_device, AUX_COVER_PROPERTY_NAME) == INDIGO_RW_PERM && lightbox_cover_is(0, INDIGO_OK_STATE));
+	SA_CHECK(sa_item_count(sa_device, LIGHTBOX_ABORT) == 1 && sa_perm(sa_device, LIGHTBOX_ABORT) == INDIGO_RW_PERM && !sa_switch(sa_device, LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM) && sa_state(sa_device, LIGHTBOX_ABORT) == INDIGO_OK_STATE);
+	// a calibrator (off): the intensity is in the units of the device, 0 to MaxBrightness; a light that is off starts at the maximum
+	SA_CHECK(sa_item_count(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == 2 && sa_perm(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == INDIGO_RW_PERM && lightbox_light_is(false, INDIGO_OK_STATE));
+	SA_CHECK(sa_item_count(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == 1 && sa_perm(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == INDIGO_RW_PERM && lightbox_intensity_range(0, 1000, 1) && lightbox_intensity_is(1000, INDIGO_OK_STATE));
+	// the interface tells that it is both a light box and a dust cap
+	SA_CHECK(core_interface(sa_device) == (INDIGO_INTERFACE_AUX_LIGHTBOX | INDIGO_INTERFACE_AUX_DUSTCAP));
+	// what it took: the states (once to learn what the device has, once for the properties), MaxBrightness and Brightness once
+	SA_CHECK(lightbox_count("GET", "coverstate") == 2 && lightbox_count("GET", "calibratorstate") == 2 && lightbox_count("GET", "maxbrightness") == 1 && lightbox_count("GET", "brightness") == 1);
+	SA_CHECK(lightbox_count("PUT", "*") == 1 && lightbox_count("PUT", "connect") == 1 && lightbox_count("GET", "covermoving") == 0 && lightbox_count("GET", "calibratorchanging") == 0);
+	// Platform 7: the poll is devicestate and nothing else
+	SA_CHECK(lightbox_ticks("devicestate", 4) && lightbox_count("GET", "coverstate") == 2 && lightbox_count("GET", "calibratorstate") == 2 && lightbox_count("GET", "brightness") == 1 && lightbox_count("GET", "maxbrightness") == 1);
+	// a client that enumerates while the device is connected gets the properties of the class
+	indigo_property all = { 0 };
+	snprintf(all.device, sizeof(all.device), "%s", sa_device);
+	unsigned cover_defines = sa_define_count(sa_device, AUX_COVER_PROPERTY_NAME), abort_defines = sa_define_count(sa_device, LIGHTBOX_ABORT), light_defines = sa_define_count(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME), intensity_defines = sa_define_count(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(indigo_enumerate_properties(&sa_client, &all) == INDIGO_OK && SA_WAIT(sa_define_count(sa_device, AUX_COVER_PROPERTY_NAME) == cover_defines + 1 && sa_define_count(sa_device, LIGHTBOX_ABORT) == abort_defines + 1 && sa_define_count(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == light_defines + 1 && sa_define_count(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == intensity_defines + 1, SA_TIMEOUT));
+	// a disconnect removes the properties, and an enumeration does not bring them back; the next connection shows the device as it is then
+	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	SA_CHECK(indigo_enumerate_properties(&sa_client, &all) == INDIGO_OK && !sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && sa_defined(sa_device, CONNECTION_PROPERTY_NAME));
+	SA_CHECK(core_interface(sa_device) == (INDIGO_INTERFACE_AUX_LIGHTBOX | INDIGO_INTERFACE_AUX_DUSTCAP));
+	SA_CHECK(sa_device_state(0, "covercalibrator", 0, "CoverState=3&CalibratorState=3&Brightness=437&MaxBrightness=640") && sa_connect(sa_device));
+	SA_CHECK(lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_range(0, 640, 1) && lightbox_intensity_is(437, INDIGO_OK_STATE) && lightbox_count("GET", "maxbrightness") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void lightbox_legacy_properties(void) {
+	SA_CHECK(lightbox_begin(lightbox_legacy));
+	// interface version 1: Connected instead of connect, no devicestate, no CoverMoving and no CalibratorChanging
+	SA_CHECK(lightbox_count("PUT", "connected") == 1 && lightbox_count("PUT", "connect") == 0);
+	SA_CHECK(lightbox_cover_is(0, INDIGO_OK_STATE) && sa_defined(sa_device, LIGHTBOX_ABORT) && lightbox_light_is(false, INDIGO_OK_STATE) && lightbox_intensity_range(0, 1000, 1) && lightbox_intensity_is(1000, INDIGO_OK_STATE));
+	SA_CHECK(core_interface(sa_device) == (INDIGO_INTERFACE_AUX_LIGHTBOX | INDIGO_INTERFACE_AUX_DUSTCAP));
+	// the state is read member by member on every poll tick
+	SA_CHECK(lightbox_ticks("connected", 4) && lightbox_count("GET", "coverstate") >= 4 && lightbox_count("GET", "calibratorstate") >= 4 && lightbox_count("GET", "brightness") >= 4 && lightbox_count("GET", "maxbrightness") == 1);
+	// a cover move is over when CoverState is not Moving any more
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_ticks("coverstate", 4) && lightbox_cover_is(1, INDIGO_BUSY_STATE) && lightbox_simulated("CoverState") == 2);
+	SA_CHECK(sa_advance(0, 3.9) && lightbox_ticks("coverstate", 4) && lightbox_cover_is(1, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_simulated("CoverState") == 3);
+	// a change of the calibrator is over when CalibratorState is not NotReady any more
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 437) == INDIGO_OK_STATE);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=437&ClientID=") && lightbox_ticks("calibratorstate", 4) && lightbox_light_is(true, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 1.9) && lightbox_ticks("calibratorstate", 4) && lightbox_light_is(true, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(437, INDIGO_OK_STATE));
+	// the members of interface version 2 were never asked for
+	SA_CHECK(lightbox_count("GET", "covermoving") == 0 && lightbox_count("GET", "calibratorchanging") == 0 && lightbox_count("GET", "devicestate") == 0);
+	// what somebody else does with the device is seen
+	SA_CHECK(sa_device_state(0, "covercalibrator", 0, "CoverState=1&CalibratorState=1&Brightness=0") && SA_WAIT(lightbox_cover_is(0, INDIGO_OK_STATE) && lightbox_light_is(false, INDIGO_OK_STATE), SA_TIMEOUT) && lightbox_intensity() == 437);
+	SA_CHECK(sa_disconnect(sa_device) && lightbox_count("PUT", "connected") == 2 && lightbox_last("PUT", "connected", "Connected=False&ClientID="));
+cleanup:
+	sa_end();
+}
+
+static void lightbox_capability_variants(void) {
+	static const char *cover_only[] = { "--device", "covercalibrator:interface=legacy,CalibratorState=0", NULL };
+	static const char *calibrator_only[] = { "--device", "covercalibrator:interface=legacy,CoverState=0", NULL };
+	static const char *nothing[] = { "--device", "covercalibrator:interface=legacy,CoverState=0,CalibratorState=0", NULL };
+	static const char *on_off[] = { "--device", "covercalibrator:MaxBrightness=1", NULL };
+	static const char *no_halt[] = { "--device", "covercalibrator:CanHaltCover=false", NULL };
+	// a dust cap without a light: no property of the calibrator, and its members are never asked for
+	SA_CHECK(lightbox_begin(cover_only));
+	SA_CHECK(lightbox_cover_is(0, INDIGO_OK_STATE) && sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	SA_CHECK(core_interface(sa_device) == INDIGO_INTERFACE_AUX_DUSTCAP);
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE));
+	SA_CHECK(lightbox_ticks("connected", 4) && lightbox_count("GET", "calibratorstate") == 1 && lightbox_count("GET", "brightness") == 0 && lightbox_count("GET", "maxbrightness") == 0 && lightbox_count("GET", "coverstate") >= 4);
+	SA_CHECK(sa_disconnect(sa_device) && core_interface(sa_device) == INDIGO_INTERFACE_AUX_DUSTCAP);
+	sa_end();
+	// a light without a cover
+	SA_CHECK(lightbox_begin(calibrator_only));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && lightbox_light_is(false, INDIGO_OK_STATE) && lightbox_intensity_range(0, 255, 1) && lightbox_intensity_is(255, INDIGO_OK_STATE));
+	SA_CHECK(core_interface(sa_device) == INDIGO_INTERFACE_AUX_LIGHTBOX);
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=255&ClientID=") && sa_advance(0, 2));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE));
+	SA_CHECK(lightbox_ticks("connected", 4) && lightbox_count("GET", "coverstate") == 1 && lightbox_count("GET", "calibratorstate") >= 4 && lightbox_count("PUT", "opencover") + lightbox_count("PUT", "closecover") + lightbox_count("PUT", "haltcover") == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// neither: the device connects, is polled and has no property of the class; it is neither a light box nor a dust cap
+	SA_CHECK(lightbox_begin(nothing));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	SA_CHECK(core_interface(sa_device) == INDIGO_INTERFACE_AUX && lightbox_ticks("connected", 4) && sa_is_connected(sa_device) && lightbox_count("GET", "coverstate") == 1 && lightbox_count("GET", "calibratorstate") == 1 && lightbox_count("GET", "maxbrightness") == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a light that is on or off only (MaxBrightness 1): no intensity, CalibratorOn with Brightness 1
+	SA_CHECK(lightbox_begin(on_off));
+	SA_CHECK(lightbox_light_is(false, INDIGO_OK_STATE) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && sa_defined(sa_device, AUX_COVER_PROPERTY_NAME));
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=1&ClientID=") && sa_advance(0, 2));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_simulated("Brightness") == 1);
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(false, INDIGO_OK_STATE));
+	SA_CHECK(!sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && sa_stray_updates() == 0 && sa_disconnect(sa_device));
+	sa_end();
+	// a cover whose movement can not be interrupted: HaltCover answers NotImplemented, which takes the abort property away; it is not sent again
+	SA_CHECK(lightbox_begin(no_halt));
+	SA_CHECK(sa_defined(sa_device, LIGHTBOX_ABORT) && lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 1));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, LIGHTBOX_ABORT), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Halt cover failed: not implemented by the device") && lightbox_count("PUT", "haltcover") == 1 && lightbox_cover_is(1, INDIGO_BUSY_STATE) && lightbox_simulated("CoverState") == 2);
+	// the other direction in the middle of the move goes to the device without a halt
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && lightbox_count("PUT", "haltcover") == 1 && SA_WAIT(lightbox_cover_is(0, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE) && !sa_defined(sa_device, LIGHTBOX_ABORT));
+	// the next connection asks the device again, this time by a move in the other direction: the abort property goes away the same way
+	SA_CHECK(sa_disconnect(sa_device) && sa_connect(sa_device) && sa_defined(sa_device, LIGHTBOX_ABORT));
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 1) && lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover"));
+	SA_CHECK(SA_WAIT(!sa_defined(sa_device, LIGHTBOX_ABORT), SA_TIMEOUT) && lightbox_count("PUT", "haltcover") == 2 && sa_advance(0, 4) && SA_WAIT(lightbox_cover_is(0, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a device of interface version 2 that does not have CoverMoving and CalibratorChanging all the same: asked once, then the
+	// states are used
+	SA_CHECK(sa_begin(lightbox_default) && sa_attach(LIGHTBOX_LABEL) && sa_connect(sa_device));
+	SA_CHECK(sa_put(0, "/simulator/v1/covercalibrator/0/error", "Member=covermoving&ErrorNumber=1024") && sa_fault(0, "GET", LIGHTBOX_API "calibratorchanging", "http-status", "Value=400&Count=-1"));
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	unsigned light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron"));
+	SA_CHECK(lightbox_ticks("coverstate", 4) && lightbox_ticks("calibratorstate", 4) && lightbox_cover_is(1, INDIGO_BUSY_STATE) && lightbox_light_is(true, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light), SA_TIMEOUT));
+	SA_CHECK(lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_count("GET", "covermoving") == 1 && lightbox_count("GET", "calibratorchanging") == 1);
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_count("GET", "covermoving") == 1);
+	// a part the device announces and methods it does not implement: the first request fails and takes the properties of the part away
+	SA_CHECK(sa_clear_faults(0) && sa_fault(0, "PUT", LIGHTBOX_API "opencover", "ascom-error", "Value=1024&Message=No%20motor&Count=-1") && sa_fault(0, "PUT", LIGHTBOX_API "calibratoroff", "http-status", "Value=400&Message=Unknown%20member&Count=-1"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Open cover failed: not implemented by the device (No motor (0x400))") && lightbox_count("PUT", "opencover") == 2);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Calibrator off failed: request rejected by the server") && lightbox_ticks("devicestate", 4) && sa_is_connected(sa_device) && sa_stray_updates() == 0);
+	// the next connection asks the device again
+	SA_CHECK(sa_disconnect(sa_device) && sa_clear_faults(0) && sa_connect(sa_device) && sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && sa_defined(sa_device, LIGHTBOX_ABORT) && sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- cover
+
+static void lightbox_cover(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	// open: the exact member, BUSY while CoverMoving is true, the end state is read from CoverState
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_last("PUT", "opencover", "ClientID=") && lightbox_count("PUT", "closecover") == 0 && lightbox_count("PUT", "haltcover") == 0);
+	SA_CHECK(lightbox_ticks("covermoving", 3) && lightbox_cover_is(1, INDIGO_BUSY_STATE) && lightbox_simulated("CoverState") == 2 && lightbox_light_is(false, INDIGO_OK_STATE));
+	SA_CHECK(sa_advance(0, 3.9) && lightbox_ticks("covermoving", 3) && lightbox_cover_is(1, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_simulated("CoverState") == 3 && lightbox_count("GET", "coverstate") == 3);
+	// CoverMoving is not asked for any more
+	int looks = lightbox_count("GET", "covermoving");
+	SA_CHECK(lightbox_ticks("devicestate", 3) && lightbox_count("GET", "covermoving") == looks);
+	// close, and the other direction in the middle of the move: accepted while BUSY, the cover is halted and sent back
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && lightbox_last("PUT", "closecover", "ClientID=") && SA_WAIT(lightbox_cover_is(0, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1.5) && lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && SA_WAIT(lightbox_cover_is(1, INDIGO_BUSY_STATE) && lightbox_simulated("CoverState") == 2, SA_TIMEOUT));
+	SA_CHECK(lightbox_count("PUT", "haltcover") == 1 && lightbox_last("PUT", "haltcover", "ClientID=") && lightbox_sequence("PUT", "haltcover") < lightbox_sequence("PUT", "opencover") && lightbox_sequence("PUT", "closecover") < lightbox_sequence("PUT", "haltcover"));
+	SA_CHECK(sa_advance(0, 3.9) && lightbox_ticks("covermoving", 3) && lightbox_cover_is(1, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_count("PUT", "opencover") == 2 && lightbox_count("PUT", "closecover") == 1);
+	// the same direction once more in the middle of the move: nothing is sent, the move goes on
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && sa_advance(0, 1));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, true) == INDIGO_OK && lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 500) == INDIGO_OK_STATE);
+	SA_CHECK(lightbox_count("PUT", "closecover") == 2 && lightbox_count("PUT", "haltcover") == 1 && lightbox_cover_is(0, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE) && lightbox_simulated("CoverState") == 1);
+	// the cover ends in Error: ALERT with a message, neither open nor closed, and it stays so while the device says Error
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 2) && sa_device_state(0, "covercalibrator", 0, "CoverState=5"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Open cover failed: the cover reports an error") && lightbox_cover_is(-1, INDIGO_ALERT_STATE));
+	SA_CHECK(lightbox_ticks("devicestate", 3) && lightbox_cover_is(-1, INDIGO_ALERT_STATE));
+	// closing recovers it
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && SA_WAIT(lightbox_cover_is(0, INDIGO_BUSY_STATE), SA_TIMEOUT) && sa_advance(0, 4));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE));
+	// the cover stops somewhere without an error (Unknown): the move did not get where it was sent
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 2) && sa_put(0, LIGHTBOX_API "haltcover", "ClientID=9&ClientTransactionID=1"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Open cover failed: the cover stopped") && lightbox_cover_is(-1, INDIGO_ALERT_STATE));
+	// a request for the state the cover is in is sent all the same: the device decides what there is to do
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE));
+	int opens = lightbox_count("PUT", "opencover");
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_count("PUT", "opencover") == opens + 1 && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void lightbox_cover_halt(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	// nothing moves: HaltCover is sent all the same (the cover may be moving for another reason), nothing changes
+	SA_CHECK(lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, true) == INDIGO_OK_STATE && !sa_switch(sa_device, LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM) && lightbox_count("PUT", "haltcover") == 1 && lightbox_last("PUT", "haltcover", "ClientID="));
+	SA_CHECK(lightbox_cover_is(0, INDIGO_OK_STATE));
+	// in the middle of a move: the cover stops, it is neither open nor closed (Unknown) and nothing is left BUSY
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 1.5) && lightbox_ticks("covermoving", 2));
+	SA_CHECK(lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, true) == INDIGO_OK_STATE && lightbox_count("PUT", "haltcover") == 2 && lightbox_simulated("CoverState") == 4);
+	SA_CHECK(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && lightbox_cover_is(-1, INDIGO_ALERT_STATE) && !sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// the halted move does not go on later and nothing is asked for it
+	int looks = lightbox_count("GET", "covermoving");
+	SA_CHECK(sa_advance(0, 10) && lightbox_ticks("devicestate", 3) && lightbox_count("GET", "covermoving") == looks && lightbox_cover_is(-1, INDIGO_ALERT_STATE) && lightbox_simulated("CoverState") == 4);
+	// the cover can be moved again
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE));
+	// the halt fails: ALERT with the message of the device, and the move goes on to its end
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_fault(0, "PUT", LIGHTBOX_API "haltcover", "ascom-error", "Value=1279&Message=Clutch%20fault"));
+	SA_CHECK(lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, true) == INDIGO_ALERT_STATE && sa_message_seen("Halt cover failed: device error (Clutch fault (0x4FF))") && !sa_switch(sa_device, LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM) && sa_defined(sa_device, LIGHTBOX_ABORT));
+	SA_CHECK(lightbox_cover_is(1, INDIGO_BUSY_STATE) && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE));
+	SA_CHECK(lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, true) == INDIGO_OK_STATE && lightbox_cover_is(1, INDIGO_OK_STATE));
+	// the light is not touched by any of it
+	SA_CHECK(lightbox_count("PUT", "calibratoron") == 0 && lightbox_count("PUT", "calibratoroff") == 0 && lightbox_light_is(false, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- calibrator
+
+static void lightbox_calibrator(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	// the intensity of a light that is off is only remembered: Alpaca has a brightness only while the calibrator is on
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 437) == INDIGO_OK_STATE && lightbox_intensity_is(437, INDIGO_OK_STATE) && lightbox_count("PUT", "calibratoron") == 0 && lightbox_simulated("Brightness") == 0);
+	// on: the exact member and parameter, in the units of the device; BUSY while CalibratorChanging is true
+	unsigned revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME), intensity = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=437&ClientID=") && lightbox_count("PUT", "calibratoroff") == 0);
+	SA_CHECK(lightbox_ticks("calibratorchanging", 3) && lightbox_light_is(true, INDIGO_BUSY_STATE) && sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == INDIGO_BUSY_STATE && lightbox_simulated("CalibratorState") == 2 && lightbox_simulated("Brightness") == 437);
+	SA_CHECK(sa_advance(0, 1.9) && lightbox_ticks("calibratorchanging", 3) && lightbox_light_is(true, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, intensity), SA_TIMEOUT));
+	SA_CHECK(lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(437, INDIGO_OK_STATE) && lightbox_simulated("CalibratorState") == 3 && lightbox_cover_is(0, INDIGO_OK_STATE));
+	// CalibratorChanging is not asked for any more
+	int looks = lightbox_count("GET", "calibratorchanging");
+	SA_CHECK(lightbox_ticks("devicestate", 3) && lightbox_count("GET", "calibratorchanging") == looks);
+	// a new intensity of a light that is on is CalibratorOn again; Brightness is an integer
+	revision = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 812.4, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=812&ClientID=") && SA_WAIT(lightbox_light_is(true, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_intensity_is(812, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_simulated("Brightness") == 812);
+	// another intensity while the light stabilises: sent at once, the last one stays
+	revision = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 100, "calibratoron") && sa_advance(0, 1) && lightbox_start_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 250, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=250&ClientID="));
+	SA_CHECK(sa_advance(0, 1.9) && lightbox_ticks("calibratorchanging", 3) && !sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_intensity_is(250, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE));
+	// off: BUSY while the calibrator stabilises, the device has Brightness 0 then, the intensity keeps its value for the next time
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && lightbox_last("PUT", "calibratoroff", "ClientID=") && SA_WAIT(lightbox_light_is(false, INDIGO_BUSY_STATE) && sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1.9) && lightbox_ticks("calibratorchanging", 3) && lightbox_light_is(false, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(false, INDIGO_OK_STATE) && lightbox_simulated("Brightness") == 0 && lightbox_simulated("CalibratorState") == 1);
+	SA_CHECK(lightbox_ticks("devicestate", 3) && lightbox_intensity_is(250, INDIGO_OK_STATE));
+	// on again with the intensity that was kept, and off in the middle of it: accepted while BUSY, the light ends off
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=250&ClientID=") && sa_advance(0, 1));
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && SA_WAIT(lightbox_light_is(false, INDIGO_BUSY_STATE), SA_TIMEOUT) && sa_advance(0, 1.9) && lightbox_ticks("calibratorchanging", 3));
+	SA_CHECK(!sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(false, INDIGO_OK_STATE));
+	// and on in the middle of switching off
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && sa_advance(0, 1) && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron"));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(250, INDIGO_OK_STATE) && lightbox_simulated("Brightness") == 250);
+	// the same request once more while it is carried out: nothing is sent
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	int offs = lightbox_count("PUT", "calibratoroff");
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && indigo_change_switch_property_1(&sa_client, sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, true) == INDIGO_OK_STATE && lightbox_count("PUT", "calibratoroff") == offs + 1 && lightbox_light_is(false, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(false, INDIGO_OK_STATE));
+	// brightness 0 of a light that is on is a light that is on
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 0) == INDIGO_OK_STATE && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=0&ClientID="));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(0, INDIGO_OK_STATE) && lightbox_simulated("CalibratorState") == 3);
+	// Somebody else changes the brightness. What is shown then is what the light is switched on with the next time.
+	SA_CHECK(sa_put(0, LIGHTBOX_API "calibratoron", "Brightness=120&ClientID=9&ClientTransactionID=1") && SA_WAIT(lightbox_light_is(true, INDIGO_BUSY_STATE), SA_TIMEOUT) && sa_advance(0, 2));
+	SA_CHECK(SA_WAIT(lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(120, INDIGO_OK_STATE) && sa_number_target(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 120, SA_TIMEOUT));
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_intensity_is(120, INDIGO_OK_STATE));
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=120&ClientID="));
+	// the cover is not touched by any of it
+	SA_CHECK(lightbox_count("PUT", "opencover") == 0 && lightbox_count("PUT", "closecover") == 0 && lightbox_cover_is(0, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- Unknown and Error
+
+static void lightbox_unknown_and_error(void) {
+	static const char *broken[] = { "--device", "covercalibrator:CoverState=4,CalibratorState=5,MaxBrightness=1000", NULL };
+	// a device that connects with a cover in Unknown and a calibrator in Error has both parts; both are in ALERT
+	SA_CHECK(lightbox_begin(broken));
+	SA_CHECK(lightbox_cover_is(-1, INDIGO_ALERT_STATE) && sa_defined(sa_device, LIGHTBOX_ABORT) && sa_state(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	SA_CHECK(core_interface(sa_device) == (INDIGO_INTERFACE_AUX_LIGHTBOX | INDIGO_INTERFACE_AUX_DUSTCAP));
+	// and they stay so while the device says so
+	SA_CHECK(lightbox_ticks("devicestate", 3) && lightbox_cover_is(-1, INDIGO_ALERT_STATE) && sa_state(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// the device recovers by itself: the poll shows it
+	SA_CHECK(sa_device_state(0, "covercalibrator", 0, "CoverState=1&CalibratorState=1") && SA_WAIT(lightbox_cover_is(0, INDIGO_OK_STATE) && lightbox_light_is(false, INDIGO_OK_STATE), SA_TIMEOUT));
+	// every state the device can fall into while nothing is asked of it
+	SA_CHECK(sa_device_state(0, "covercalibrator", 0, "CoverState=5") && SA_WAIT(lightbox_cover_is(-1, INDIGO_ALERT_STATE), SA_TIMEOUT) && sa_device_state(0, "covercalibrator", 0, "CoverState=3") && SA_WAIT(lightbox_cover_is(1, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "covercalibrator", 0, "CoverState=4") && SA_WAIT(lightbox_cover_is(-1, INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "covercalibrator", 0, "CalibratorState=4") && SA_WAIT(sa_state(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT) && sa_device_state(0, "covercalibrator", 0, "CalibratorState=1") && SA_WAIT(lightbox_light_is(false, INDIGO_OK_STATE), SA_TIMEOUT));
+	// a cover in Unknown can be moved
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE));
+	// the calibrator ends in Error instead of Ready: ALERT with a message
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 437) == INDIGO_OK_STATE && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && sa_advance(0, 1) && sa_device_state(0, "covercalibrator", 0, "CalibratorState=5"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Calibrator on failed: the calibrator reports an error") && sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) != INDIGO_BUSY_STATE);
+	SA_CHECK(lightbox_ticks("devicestate", 3) && sa_state(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// switching it off recovers it
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(false, INDIGO_OK_STATE));
+	// the calibrator ends in a state that is not the one it was sent to (somebody else switched it off in the meantime)
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && sa_advance(0, 1) && sa_device_state(0, "covercalibrator", 0, "CalibratorState=1&Brightness=0"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Calibrator on failed: the calibrator is in another state") && lightbox_light_is(false, INDIGO_ALERT_STATE));
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(437, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- polling
+
+static void lightbox_polling(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	// what somebody else does with the device is shown. A cover that is Moving does not tell where it goes: the items stay
+	SA_CHECK(sa_put(0, LIGHTBOX_API "opencover", "ClientID=9&ClientTransactionID=1") && SA_WAIT(lightbox_cover_is(0, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(lightbox_cover_is(1, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_put(0, LIGHTBOX_API "calibratoron", "Brightness=300&ClientID=9&ClientTransactionID=2") && SA_WAIT(lightbox_light_is(true, INDIGO_BUSY_STATE) && lightbox_intensity_is(300, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(300, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_put(0, LIGHTBOX_API "calibratoroff", "ClientID=9&ClientTransactionID=3") && SA_WAIT(sa_state(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(lightbox_light_is(false, INDIGO_OK_STATE), SA_TIMEOUT) && lightbox_intensity_is(300, INDIGO_OK_STATE));
+	// Platform 7: all of it came with devicestate
+	SA_CHECK(lightbox_count("GET", "coverstate") == 2 && lightbox_count("GET", "calibratorstate") == 2 && lightbox_count("GET", "brightness") == 1 && lightbox_count("GET", "covermoving") == 0 && lightbox_count("GET", "calibratorchanging") == 0);
+	// what does not change is not published again
+	unsigned cover = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME), light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME), intensity = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(lightbox_ticks("devicestate", 4) && sa_revision(sa_device, AUX_COVER_PROPERTY_NAME) == cover && sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == light && sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == intensity);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// the same for a light that is on, with an older device that is read member by member
+	SA_CHECK(lightbox_begin(lightbox_legacy) && sa_device_state(0, "covercalibrator", 0, "CoverState=3&CalibratorState=3&Brightness=640"));
+	SA_CHECK(SA_WAIT(lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(640, INDIGO_OK_STATE), SA_TIMEOUT));
+	cover = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	intensity = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(lightbox_ticks("connected", 4) && sa_revision(sa_device, AUX_COVER_PROPERTY_NAME) == cover && sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == light && sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == intensity);
+	// A state that can not be read for a while: the device stays connected and the poll goes on. The cover and the light keep what
+	// they have and are in ALERT meanwhile, with the reason; with the first state that is read they are OK and show the device again.
+	cover = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", LIGHTBOX_API "calibratorstate", "ascom-error", "Value=1279&Message=Controller%20busy&Count=3") && sa_device_state(0, "covercalibrator", 0, "CoverState=1"));
+	SA_CHECK(SA_WAIT(lightbox_cover_is(0, INDIGO_OK_STATE), SA_TIMEOUT) && sa_is_connected(sa_device) && SA_WAIT(lightbox_light_is(true, INDIGO_OK_STATE), SA_TIMEOUT) && lightbox_intensity_is(640, INDIGO_OK_STATE));
+	SA_CHECK(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, cover) && sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_ALERT_STATE, light));
+	SA_CHECK(sa_message_seen("Reading the state of the cover failed: device error (Controller busy") && sa_message_seen("Reading the state of the calibrator failed: device error (Controller busy"));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void lightbox_pending_requests(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	// The handler queue of the device is held while requests arrive, long enough for a poll tick to become due: the tick then runs
+	// between the acceptance of the requests and their handlers. It must not put the state of the device over what the clients asked for.
+	SA_CHECK(lightbox_gate_close() && SA_WAIT(sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) > 0, SA_TIMEOUT));
+	unsigned cover = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME), light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME), intensity = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	int ticks = lightbox_count("GET", "devicestate");
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 640) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && lightbox_count("GET", "devicestate") == ticks);
+	lightbox_gate_open();
+	SA_CHECK(SA_WAIT(lightbox_count("PUT", "calibratoron") == 1 && lightbox_count("PUT", "opencover") == 1, SA_TIMEOUT) && lightbox_last("PUT", "calibratoron", "Brightness=640&ClientID="));
+	// the tick ran before the handlers, and nothing was published as done in between
+	SA_CHECK(lightbox_sequence("GET", "devicestate") > 0 && lightbox_count("GET", "devicestate") > ticks && atoi(sa_field(sa_requests(0, "GET", LIGHTBOX_API "devicestate") + 0, "Sequence")) < lightbox_sequence("PUT", "opencover"));
+	SA_CHECK(lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, false) == INDIGO_OK_STATE);
+	SA_CHECK(!sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, cover) && !sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light) && !sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, intensity));
+	SA_CHECK(lightbox_cover_is(1, INDIGO_BUSY_STATE) && lightbox_light_is(true, INDIGO_BUSY_STATE) && lightbox_count("PUT", "calibratoron") == 1 && sa_number_target(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 640);
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(640, INDIGO_OK_STATE), SA_TIMEOUT));
+	// The same with a cover move that ends while the next request waits for its handler: the end of the move must not be published
+	// as the answer to the request that was accepted in the meantime
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && lightbox_ticks("covermoving", 2));
+	SA_CHECK(lightbox_gate_close() && sa_advance(0, 4) && SA_WAIT(sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) >= 2, SA_TIMEOUT));
+	cover = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(lightbox_cover_is(1, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	lightbox_gate_open();
+	SA_CHECK(SA_WAIT(lightbox_count("PUT", "opencover") == 2 && lightbox_simulated("CoverState") == 2, SA_TIMEOUT) && lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, false) == INDIGO_OK_STATE);
+	SA_CHECK(!sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, cover) && lightbox_cover_is(1, INDIGO_BUSY_STATE) && lightbox_count("PUT", "haltcover") == 0);
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, cover), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE));
+	// and with a change of the calibrator that ends while the next one waits
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && lightbox_ticks("calibratorchanging", 2));
+	SA_CHECK(lightbox_gate_close() && sa_advance(0, 2) && SA_WAIT(sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) >= 2, SA_TIMEOUT));
+	light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 333) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(lightbox_light_is(true, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	lightbox_gate_open();
+	SA_CHECK(SA_WAIT(lightbox_count("PUT", "calibratoron") == 2, SA_TIMEOUT) && lightbox_last("PUT", "calibratoron", "Brightness=333&ClientID=") && lightbox_set_switch(LIGHTBOX_ABORT, LIGHTBOX_ABORT_ITEM, false) == INDIGO_OK_STATE);
+	SA_CHECK(!sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light) && lightbox_light_is(true, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && SA_WAIT(lightbox_intensity_is(333, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	lightbox_gate_open();
+	sa_end();
+}
+
+static void lightbox_failure_during_pending_request(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	unsigned revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 400) == INDIGO_OK_STATE && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && sa_advance(0, 2));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_intensity_is(400, INDIGO_OK_STATE));
+	// A request for a new intensity fails while the next one waits for its handler (the queue is held while both arrive): the
+	// failed one puts the intensity back to what the light has, but not over the request that is waiting
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "calibratoron", "ascom-error", "Value=1279&Message=LED%20driver%20fault") && lightbox_gate_close());
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 500) == INDIGO_OK && indigo_change_number_property_1(&sa_client, sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 600) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_number_target(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 600, SA_TIMEOUT));
+	revision = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	lightbox_gate_open();
+	SA_CHECK(SA_WAIT(lightbox_count("PUT", "calibratoron") == 3, SA_TIMEOUT) && lightbox_last("PUT", "calibratoron", "Brightness=600&ClientID=") && sa_message_seen("Calibrator on failed: device error (LED driver fault (0x4FF))"));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, revision) && lightbox_intensity_is(600, INDIGO_OK_STATE), SA_TIMEOUT) && lightbox_simulated("Brightness") == 600 && sa_number_target(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME) == 600);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	lightbox_gate_open();
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+// REV-9: the completion of a cover move or a change of the calibrator that can not be read fails it, but a request that waits for its
+// handler owns the property: the failure is told and the property stays BUSY with the request. Ordered by conditions on the queue: it is
+// held while the request arrives and the finalizer becomes due, and the finalizer runs before the handler (it is due earlier and has
+// the higher priority).
+static void lightbox_completion_failure_during_pending_request(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	indigo_device *device = sa_device_pointer(sa_device);
+	// the cover
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_ticks("covermoving", 2));
+	unsigned cover = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	int mark = sa_message_mark();
+	SA_CHECK(lightbox_gate_close() && indigo_change_switch_property_1(&sa_client, sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(lightbox_cover_is(0, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", LIGHTBOX_API "covermoving", "ascom-error", "Value=1279&Message=Cover%20sensor%20fault") && SA_WAIT(sa_queue_due(device, INDIGO_TASK_PRIORITY_TIME) >= 2, SA_TIMEOUT));
+	lightbox_gate_open();
+	SA_CHECK(SA_WAIT(lightbox_count("PUT", "closecover") == 1, SA_TIMEOUT) && sa_faulted_count(0, "GET", LIGHTBOX_API "covermoving", "ascom-error") == 1 && sa_message_seen_since(mark, "Open cover failed: device error (Cover sensor fault (0x4FF))"));
+	SA_CHECK(!sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, cover) && lightbox_cover_is(0, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, cover), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE) && lightbox_simulated("CoverState") == 1);
+	// the calibrator
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_ticks("calibratorchanging", 2));
+	unsigned light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	mark = sa_message_mark();
+	SA_CHECK(lightbox_gate_close() && indigo_change_switch_property_1(&sa_client, sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(lightbox_light_is(false, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", LIGHTBOX_API "calibratorchanging", "ascom-error", "Value=1279&Message=LED%20sensor%20fault") && SA_WAIT(sa_queue_due(device, INDIGO_TASK_PRIORITY_TIME) >= 2, SA_TIMEOUT));
+	lightbox_gate_open();
+	SA_CHECK(SA_WAIT(lightbox_count("PUT", "calibratoroff") == 1, SA_TIMEOUT) && sa_faulted_count(0, "GET", LIGHTBOX_API "calibratorchanging", "ascom-error") == 1 && sa_message_seen_since(mark, "Calibrator on failed: device error (LED sensor fault (0x4FF))"));
+	SA_CHECK(!sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_ALERT_STATE, light) && lightbox_light_is(false, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light), SA_TIMEOUT) && lightbox_light_is(false, INDIGO_OK_STATE) && lightbox_simulated("CalibratorState") == 1);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	lightbox_gate_open();
+	sa_end();
+}
+
+// REV-13: the light is switched off, its change of the calibrator is over while a new intensity waits for its handler. The finalizer
+// of the change leaves AUX_LIGHT_SWITCH to that request, and the request (the light is off, so it only keeps the intensity) has to end
+// it: before the fix it stayed BUSY until a later poll tick changed it, with no message. The handler ends AUX_LIGHT_SWITCH before it
+// answers the intensity, so the order of the two publications tells who ended it.
+static void lightbox_intensity_after_light_off(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	unsigned light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light), SA_TIMEOUT));
+	light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	unsigned intensity = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && lightbox_ticks("calibratorchanging", 2));
+	// the calibrator is off on the device, the finalizer is due, the intensity request waits behind it
+	SA_CHECK(lightbox_gate_close() && sa_advance(0, 2) && indigo_change_number_property_1(&sa_client, sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 321) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) >= 1, SA_TIMEOUT));
+	lightbox_gate_open();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light) && sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, intensity), SA_TIMEOUT));
+	SA_CHECK(sa_state_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE) < sa_state_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE));
+	SA_CHECK(lightbox_light_is(false, INDIGO_OK_STATE) && lightbox_intensity_is(321, INDIGO_OK_STATE) && lightbox_simulated("CalibratorState") == 1 && lightbox_count("PUT", "calibratoron") == 1);
+	// the light is on again with the intensity that was kept
+	light = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=321&ClientID="));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, light), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	lightbox_gate_open();
+	sa_end();
+}
+
+static void lightbox_request_failures(void) {
+	SA_CHECK(sa_begin(lightbox_default) && sa_set_number("X_ALPACA_TIMEOUTS", "LONG", 1) == INDIGO_OK_STATE && sa_attach(LIGHTBOX_LABEL) && sa_connect(sa_device));
+	// the device refuses to open the cover: ALERT with its message, the cover is where it was and is not watched
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "opencover", "ascom-error", "Value=1035&Message=Cover%20is%20locked"));
+	SA_CHECK(lightbox_set_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Open cover failed: invalid operation (Cover is locked (0x40B))") && lightbox_cover_is(0, INDIGO_ALERT_STATE));
+	SA_CHECK(lightbox_simulated("CoverState") == 1 && lightbox_count("GET", "covermoving") == 0 && sa_defined(sa_device, LIGHTBOX_ABORT) && lightbox_ticks("devicestate", 3) && lightbox_cover_is(0, INDIGO_ALERT_STATE));
+	// the next request works and clears the ALERT
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(1, INDIGO_OK_STATE));
+	// HTTP 500: the request may have reached the cover, so it is asked what it does; it does not move. The message is the one of the request
+	int reads = lightbox_count("GET", "coverstate");
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "closecover", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(lightbox_set_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Close cover failed: server error (HTTP 500: Kaboom)") && lightbox_cover_is(1, INDIGO_ALERT_STATE) && lightbox_count("GET", "coverstate") == reads + 1);
+	// a reply that can not be read: the cover took the request and moves, so the move is watched to its end; the request is not sent again
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "closecover", "malformed-json", NULL));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, true) == INDIGO_OK && lightbox_ticks("covermoving", 3) && lightbox_cover_is(0, INDIGO_BUSY_STATE) && lightbox_simulated("CoverState") == 2);
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE) && lightbox_count("PUT", "closecover") == 2);
+	// an error of the completion member means that the move failed after it started
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_ticks("covermoving", 2) && sa_fault(0, "GET", LIGHTBOX_API "covermoving", "ascom-error", "Value=1280&Message=Motor%20stalled"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Open cover failed: device error (Motor stalled (0x500))") && sa_is_connected(sa_device));
+	// the cover still moves, whatever went wrong with the question: the poll shows that, and its end
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_COVER_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 4) && SA_WAIT(lightbox_cover_is(1, INDIGO_OK_STATE), SA_TIMEOUT));
+	// a reply of the completion member that is no reply fails the move, too
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && lightbox_ticks("covermoving", 2) && sa_fault(0, "GET", LIGHTBOX_API "covermoving", "malformed-json", NULL));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Close cover failed: invalid reply"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_COVER_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 4) && SA_WAIT(lightbox_cover_is(0, INDIGO_OK_STATE), SA_TIMEOUT));
+	// a brightness the device refuses: ALERT with its message, the light stays off
+	SA_CHECK(sa_device_state(0, "covercalibrator", 0, "MaxBrightness=500") && lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 800) == INDIGO_OK_STATE);
+	SA_CHECK(lightbox_set_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Calibrator on failed: invalid value (Brightness 800 is out of range 0..500 (0x401))"));
+	SA_CHECK(lightbox_light_is(false, INDIGO_ALERT_STATE) && lightbox_simulated("CalibratorState") == 1 && lightbox_count("GET", "calibratorchanging") == 0 && sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 400) == INDIGO_OK_STATE && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && sa_advance(0, 2));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(400, INDIGO_OK_STATE));
+	// a new intensity of the light that is on, refused: ALERT on the intensity, which goes back to what the light has; the light stays on
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "calibratoron", "ascom-error", "Value=1279&Message=LED%20driver%20fault"));
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 450) == INDIGO_ALERT_STATE && sa_message_seen("Calibrator on failed: device error (LED driver fault (0x4FF))"));
+	SA_CHECK(lightbox_intensity_is(400, INDIGO_ALERT_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_simulated("Brightness") == 400);
+	revision = sa_revision(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 450, "calibratoron") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_intensity_is(450, INDIGO_OK_STATE));
+	// CalibratorOff that fails with HTTP 500: ALERT, the light is shown as it is
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "calibratoroff", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(lightbox_set_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Calibrator off failed: server error (HTTP 500: Kaboom)") && lightbox_light_is(true, INDIGO_ALERT_STATE) && sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME));
+	// CalibratorOn and CalibratorOff set a state, so a request whose connection broke before the reply is sent again
+	revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	int offs = lightbox_count("PUT", "calibratoroff");
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "calibratoroff", "drop", NULL));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(lightbox_count("PUT", "calibratoroff") == offs + 2 && lightbox_light_is(false, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	// an error of the completion member of the calibrator
+	SA_CHECK(lightbox_ticks("calibratorchanging", 2) && sa_fault(0, "GET", LIGHTBOX_API "calibratorchanging", "ascom-error", "Value=1279&Message=Sensor%20fault"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Calibrator off failed: device error (Sensor fault (0x4FF))") && sa_is_connected(sa_device));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 2) && SA_WAIT(lightbox_light_is(false, INDIGO_OK_STATE), SA_TIMEOUT));
+	// the cover does not answer the start of a move within the long timeout (1 s here): ALERT, one request, the device stays connected
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "opencover", "stall-before", "Delay=1500&Dispatch=false"));
+	int puts = lightbox_count("PUT", "opencover");
+	double started = indigo_monotonic_time();
+	SA_CHECK(lightbox_set_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Open cover failed: timeout"));
+	SA_CHECK(indigo_monotonic_time() - started > 0.8 && indigo_monotonic_time() - started < 6 && lightbox_count("PUT", "opencover") == puts + 1 && lightbox_simulated("CoverState") == 1 && lightbox_cover_is(0, INDIGO_ALERT_STATE) && sa_is_connected(sa_device));
+	// the device does not answer the question for CoverMoving within the standard timeout (2 s) in the middle of a move: the move
+	// fails, nothing hangs, the device stays connected and the next move works
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	int step_mark = sa_message_mark();
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_ticks("covermoving", 2) && sa_fault(0, "GET", LIGHTBOX_API "covermoving", "stall-before", "Delay=2600"));
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen_since(step_mark, "Open cover failed: timeout") && indigo_monotonic_time() - started > 1.5 && indigo_monotonic_time() - started < 8);
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(lightbox_cover_is(1, INDIGO_OK_STATE), SA_TIMEOUT) && sa_is_connected(sa_device));
+	revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void lightbox_connect_failures(void) {
+	SA_CHECK(sa_begin(lightbox_default) && sa_attach(LIGHTBOX_LABEL));
+	// a state that can not be read fails the connection: nothing stays defined and the Alpaca device is disconnected again
+	SA_CHECK(sa_fault(0, "GET", LIGHTBOX_API "coverstate", "malformed-json", NULL));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && !strcmp(sa_status(0, LIGHTBOX_SIMULATOR, "Connected"), "false"));
+	// the transport breaks while the device is asked what it has
+	SA_CHECK(sa_fault(0, "GET", LIGHTBOX_API "maxbrightness", "reset", "Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && sa_clear_faults(0));
+	// the brightness can not be read when the properties are set up
+	SA_CHECK(sa_fault(0, "GET", LIGHTBOX_API "brightness", "ascom-error", "Value=1279&Message=ADC%20fault"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_message_seen("ADC fault"));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !strcmp(sa_status(0, LIGHTBOX_SIMULATOR, "Connected"), "false") && sa_stray_updates() == 0);
+	// a calibrator without Brightness and MaxBrightness: it is a light that is on or off, switched on with Brightness 1
+	SA_CHECK(sa_put(0, "/simulator/v1/covercalibrator/0/error", "Member=brightness&ErrorNumber=1024") && sa_put(0, "/simulator/v1/covercalibrator/0/error", "Member=maxbrightness&ErrorNumber=1024"));
+	SA_CHECK(sa_connect(sa_device) && lightbox_light_is(false, INDIGO_OK_STATE) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && lightbox_cover_is(0, INDIGO_OK_STATE));
+	unsigned revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	int reads = lightbox_count("GET", "brightness");
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_last("PUT", "calibratoron", "Brightness=1&ClientID=") && sa_advance(0, 2));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_ticks("devicestate", 4) && lightbox_light_is(true, INDIGO_OK_STATE));
+	SA_CHECK(lightbox_count("GET", "brightness") <= reads + 1 && sa_is_connected(sa_device) && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- transport loss and lifecycle
+
+static void lightbox_transport_loss(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	SA_CHECK(lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 437) == INDIGO_OK_STATE);
+	// the transport is lost while the cover opens and the light stabilises: both end in ALERT, the device is disconnected, nothing hangs
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron"));
+	SA_CHECK(lightbox_ticks("covermoving", 2) && lightbox_ticks("calibratorchanging", 2));
+	SA_CHECK(sa_fault(0, NULL, LIGHTBOX_API "*", "reset", "Count=-1"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
+	SA_CHECK(sa_message_seen("failed: connection lost") && sa_message_seen("connection to the Alpaca server lost"));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && sa_stray_updates() == 0);
+	SA_CHECK(lightbox_silent() && lightbox_count("PUT", "haltcover") == 0 && lightbox_count("PUT", "calibratoroff") == 0);
+	// the server is back; the device finished what it was doing: the next connection shows it, nothing is BUSY or in ALERT
+	SA_CHECK(sa_clear_faults(0) && sa_advance(0, 10) && sa_connect(sa_device));
+	SA_CHECK(lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(437, INDIGO_OK_STATE) && sa_state(sa_device, LIGHTBOX_ABORT) == INDIGO_OK_STATE);
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE));
+	// lost while idle: the properties of the class go away with the connection
+	SA_CHECK(sa_fault(0, NULL, LIGHTBOX_API "*", "drop", "Count=-1") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && lightbox_silent());
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && lightbox_cover_is(0, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void lightbox_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(lightbox_default));
+	snprintf(key, sizeof(key), "%s", sa_device_key(LIGHTBOX_LABEL));
+	SA_CHECK(sa_attach(LIGHTBOX_LABEL) && sa_connect(sa_device) && lightbox_set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 437) == INDIGO_OK_STATE);
+	// a disconnect while the cover opens and the light stabilises: nothing is stopped and nothing is switched off, nothing is asked any more
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, "opencover") && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron") && lightbox_ticks("covermoving", 2) && lightbox_ticks("calibratorchanging", 2));
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME));
+	SA_CHECK(lightbox_count("PUT", "haltcover") == 0 && lightbox_count("PUT", "calibratoroff") == 0 && lightbox_count("PUT", "closecover") == 0 && lightbox_count("PUT", "disconnect") == 1 && lightbox_silent());
+	// connected again while the device still does both: both are shown as BUSY and end by themselves
+	SA_CHECK(sa_advance(0, 1) && sa_connect(sa_device) && sa_state(sa_device, AUX_COVER_PROPERTY_NAME) == INDIGO_BUSY_STATE && lightbox_light_is(true, INDIGO_BUSY_STATE) && sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == INDIGO_BUSY_STATE && lightbox_intensity() == 437);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(437, INDIGO_OK_STATE), SA_TIMEOUT) && sa_state(sa_device, AUX_COVER_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(lightbox_cover_is(1, INDIGO_OK_STATE), SA_TIMEOUT) && lightbox_count("GET", "covermoving") + lightbox_count("GET", "calibratorchanging") > 0);
+	// connect and disconnect, repeated: the same properties every time, nothing left over from the operations before
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && sa_connect(sa_device));
+		SA_CHECK(lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE) && lightbox_intensity_is(437, INDIGO_OK_STATE) && sa_state(sa_device, LIGHTBOX_ABORT) == INDIGO_OK_STATE && sa_stray_updates() == 0);
+	}
+	// what failed in one connection is not remembered in the next one
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "closecover", "ascom-error", "Value=1279") && lightbox_set_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, true) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_fault(0, "PUT", LIGHTBOX_API "calibratoroff", "ascom-error", "Value=1279") && lightbox_set_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_disconnect(sa_device) && sa_connect(sa_device) && lightbox_cover_is(1, INDIGO_OK_STATE) && lightbox_light_is(true, INDIGO_OK_STATE));
+	// the device changes while the proxy is disconnected: the next connection shows another device and another interface
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "covercalibrator", 0, "CalibratorState=0&CoverState=1") && sa_connect(sa_device));
+	SA_CHECK(lightbox_cover_is(0, INDIGO_OK_STATE) && !sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && core_interface(sa_device) == INDIGO_INTERFACE_AUX_DUSTCAP);
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "covercalibrator", 0, "CalibratorState=1&CoverState=0&MaxBrightness=64&Brightness=0") && sa_connect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && lightbox_light_is(false, INDIGO_OK_STATE) && lightbox_intensity_range(0, 64, 1) && lightbox_intensity_is(64, INDIGO_OK_STATE) && core_interface(sa_device) == INDIGO_INTERFACE_AUX_LIGHTBOX);
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "covercalibrator", 0, "CoverState=1&MaxBrightness=1000") && sa_connect(sa_device) && lightbox_cover_is(0, INDIGO_OK_STATE) && lightbox_intensity_range(0, 1000, 1));
+	// the device is detached in the middle of a move: it goes away without a hang, the Alpaca device is disconnected and not stopped
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, lightbox_simulated("CoverState") == 3 ? AUX_COVER_CLOSE_ITEM_NAME : AUX_COVER_OPEN_ITEM_NAME, lightbox_simulated("CoverState") == 3 ? "closecover" : "opencover") && lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "calibratoron"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 3);
+	SA_CHECK(!strcmp(sa_status(0, LIGHTBOX_SIMULATOR, "Connected"), "false") && lightbox_count("PUT", "haltcover") == 0 && lightbox_silent());
+	// and attached again it is a working device
+	SA_CHECK(sa_advance(0, 5) && sa_attach(LIGHTBOX_LABEL) && sa_connect(sa_device) && sa_state(sa_device, AUX_COVER_PROPERTY_NAME) == INDIGO_OK_STATE && lightbox_light_is(true, INDIGO_OK_STATE));
+	unsigned revision = sa_revision(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "calibratoroff") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_light_is(false, INDIGO_OK_STATE));
+cleanup:
+	sa_end();
+}
+
+// A request and a disconnect right behind it. The handler of the request runs before the one of the disconnect or finds the device
+// disconnected ("if (!system_alpaca_is_active(device)) return"); either way nothing hangs and the next connection is a working one.
+// Kept apart from the other cases because ThreadSanitizer reports the pattern itself: the bus thread writes CONNECTION
+// (INDIGO_PROCESS_CONNECT) while the handler reads it, as in every INDIGO driver.
+static void lightbox_disconnect_after_request(void) {
+	SA_CHECK(lightbox_begin(lightbox_default));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true) == INDIGO_OK && sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, AUX_COVER_PROPERTY_NAME) && !sa_defined(sa_device, LIGHTBOX_ABORT) && lightbox_count("PUT", "opencover") <= 1 && lightbox_silent());
+	SA_CHECK(sa_advance(0, 5) && sa_connect(sa_device) && lightbox_cover_is(lightbox_count("PUT", "opencover") == 1 ? 1 : 0, INDIGO_OK_STATE));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 437) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true) == INDIGO_OK && sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, AUX_LIGHT_SWITCH_PROPERTY_NAME) && !sa_defined(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) && lightbox_silent() && sa_stray_updates() == 0);
+	SA_CHECK(sa_advance(0, 5) && sa_connect(sa_device) && lightbox_light_is(lightbox_count("PUT", "calibratoron") == 1, INDIGO_OK_STATE) && sa_state(sa_device, AUX_LIGHT_INTENSITY_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// whatever the device did meanwhile, it works
+	unsigned revision = sa_revision(sa_device, AUX_COVER_PROPERTY_NAME);
+	SA_CHECK(lightbox_start_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, "closecover") && sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, AUX_COVER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && lightbox_cover_is(0, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+#define SYSTEM_ALPACA_LIGHTBOX_CASES \
+	{ "lightbox_properties", lightbox_properties }, \
+	{ "lightbox_legacy_properties", lightbox_legacy_properties }, \
+	{ "lightbox_capability_variants", lightbox_capability_variants }, \
+	{ "lightbox_cover", lightbox_cover }, \
+	{ "lightbox_cover_halt", lightbox_cover_halt }, \
+	{ "lightbox_calibrator", lightbox_calibrator }, \
+	{ "lightbox_unknown_and_error", lightbox_unknown_and_error }, \
+	{ "lightbox_polling", lightbox_polling }, \
+	{ "lightbox_pending_requests", lightbox_pending_requests }, \
+	{ "lightbox_failure_during_pending_request", lightbox_failure_during_pending_request }, \
+	{ "lightbox_completion_failure_during_pending_request", lightbox_completion_failure_during_pending_request }, \
+	{ "lightbox_intensity_after_light_off", lightbox_intensity_after_light_off }, \
+	{ "lightbox_request_failures", lightbox_request_failures }, \
+	{ "lightbox_connect_failures", lightbox_connect_failures }, \
+	{ "lightbox_transport_loss", lightbox_transport_loss }, \
+	{ "lightbox_lifecycle", lightbox_lifecycle }, \
+	{ "lightbox_disconnect_after_request", lightbox_disconnect_after_request },
 
 #endif /* system_alpaca_lightbox_cases_h */

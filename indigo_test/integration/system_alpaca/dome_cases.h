@@ -20,16 +20,1078 @@
 
 // Cases of the Dome device class of the system_alpaca driver (indigo_system_alpaca_dome.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them dome_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated Dome turns the shorter way at AzimuthRate (10 degrees per second of device time), moves its altitude at
+// AltitudeRate (10) and needs ShutterTime (5 s) for the shutter. HomeAzimuth is 0, ParkAzimuth 180 unless a case sets them.
+// Device time is manual, so a case sees a motion in progress for as long as it likes and ends it with sa_advance().
 
 #ifndef system_alpaca_dome_cases_h
 #define system_alpaca_dome_cases_h
 
+#include <stdatomic.h>
+
+#include <indigo/indigo_driver.h>
+
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_DOME_CASES
+#define DOME_API "/api/v1/dome/0/"
+#define DOME_SIMULATOR "/simulator/v1/dome/0/state"
+#define DOME_SLAVED "X_ALPACA_DOME_SLAVED"
+#define DOME_PARK_SET "X_ALPACA_DOME_PARK_SET"
+
+// a dome away from the trivial positions: nothing is 0, nothing is symmetric
+static const char *dome_default[] = { "--device", "dome:Azimuth=123.5,Altitude=37.25,AtHome=false,HomeAzimuth=12.5,ParkAzimuth=201.25", NULL };
+static const char *dome_legacy[] = { "--device", "dome:interface=legacy,Azimuth=123.5,Altitude=37.25,AtHome=false,HomeAzimuth=12.5,ParkAzimuth=201.25", NULL };
+
+// Wait for the answer to a request made after the given revision: a state that is not BUSY. Returns it, -1 if there was none.
+static int dome_answer(const char *property, unsigned revision) {
+	if (!SA_WAIT(sa_revision(sa_device, property) > revision && sa_state(sa_device, property) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static int dome_set_switch(const char *property, const char *item, bool value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? dome_answer(property, revision) : -1;
+}
+
+static int dome_set_number(const char *property, const char *item, double value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? dome_answer(property, revision) : -1;
+}
+
+static int dome_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), DOME_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The parameters of the last request of a member start with the given text (the transaction IDs follow).
+static bool dome_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), DOME_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL && !strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters));
+}
+
+// Start an operation that is expected to stay BUSY: the request, then the PUT of the member that starts it on the device.
+static bool dome_start_switch(const char *property, const char *item, const char *member) {
+	int puts = dome_count("PUT", member);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, true) == INDIGO_OK && SA_WAIT(dome_count("PUT", member) == puts + 1 && sa_state(sa_device, property) == INDIGO_BUSY_STATE, SA_TIMEOUT);
+}
+
+static bool dome_start_number(const char *property, const char *item, double value, const char *member) {
+	int puts = dome_count("PUT", member);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK && SA_WAIT(dome_count("PUT", member) == puts + 1 && sa_state(sa_device, property) == INDIGO_BUSY_STATE, SA_TIMEOUT);
+}
+
+// State of the simulated device, e.g. dome_simulated("Azimuth").
+static double dome_simulated(const char *key) {
+	return atof(sa_status(0, DOME_SIMULATOR, key));
+}
+
+static bool dome_simulated_is(const char *key, const char *value) {
+	return !strcmp(sa_status(0, DOME_SIMULATOR, key), value);
+}
+
+static bool dome_near(double value, double expected) {
+	return fabs(value - expected) < 1e-6;
+}
+
+static double dome_azimuth(void) {
+	return sa_number(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
+}
+
+static double dome_altitude(void) {
+	return sa_number(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME);
+}
+
+static bool dome_lights(indigo_property_state slew, indigo_property_state park, indigo_property_state open) {
+	return sa_light(sa_device, DOME_STATE_PROPERTY_NAME, DOME_STATE_SLEW_ITEM_NAME) == (int)slew && sa_light(sa_device, DOME_STATE_PROPERTY_NAME, DOME_STATE_PARK_ITEM_NAME) == (int)park && sa_light(sa_device, DOME_STATE_PROPERTY_NAME, DOME_STATE_OPEN_ITEM_NAME) == (int)open;
+}
+
+static bool dome_shutter_is(bool open, indigo_property_state state) {
+	return sa_state(sa_device, DOME_SHUTTER_PROPERTY_NAME) == (int)state && sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME) == open && sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME) == !open;
+}
+
+static bool dome_park_is(bool parked, indigo_property_state state) {
+	return sa_state(sa_device, DOME_PARK_PROPERTY_NAME) == (int)state && sa_switch(sa_device, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME) == parked && sa_switch(sa_device, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME) == !parked;
+}
+
+static bool dome_range(const char *property, const char *item, double min, double max) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	indigo_item *cached = sa_cache_item(sa_device, property, item);
+	bool result = cached != NULL && cached->number.min == min && cached->number.max == max;
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+static bool dome_begin(const char * const *arguments) {
+	return sa_begin(arguments) && sa_attach("Dome Simulator") && sa_connect(sa_device);
+}
+
+// No request reaches the device for a while (300 ms are three idle and six active poll intervals).
+static bool dome_silent(void) {
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	return sa_request_count(0, NULL, "/api/*") == requests;
+}
+
+// A gate on the handler queue of the device: while it is closed no handler, finalizer or poll tick of the device runs, so a case
+// decides what is queued behind it and in which order (the queue runs its tasks in the order of the time they are due).
+static atomic_bool dome_gate_closed;
+static atomic_bool dome_gate_reached;
+
+static void dome_gate_handler(indigo_device *device) {
+	(void)device;
+	dome_gate_reached = true;
+	while (dome_gate_closed) {
+		indigo_usleep(1000);
+	}
+}
+
+static bool dome_gate_close(void) {
+	indigo_device *device = sa_device_pointer(sa_device);
+	if (device == NULL) {
+		return false;
+	}
+	dome_gate_closed = true;
+	dome_gate_reached = false;
+	indigo_execute_handler(device, dome_gate_handler);
+	return SA_WAIT(dome_gate_reached, SA_TIMEOUT);
+}
+
+static void dome_gate_open(void) {
+	dome_gate_closed = false;
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void dome_properties(void) {
+	static const char *capabilities[] = { "cansetazimuth", "cansetaltitude", "cansyncazimuth", "cansetshutter", "canpark", "cansetpark", "canfindhome", "canslave" };
+	SA_CHECK(sa_begin(dome_default) && sa_attach("Dome Simulator"));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_DOME) == INDIGO_INTERFACE_DOME);
+	// nothing of the class is defined and nothing was asked before the device is connected
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && !sa_defined(sa_device, DOME_STATE_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && dome_count("GET", "can*") == 0 && dome_count("GET", "azimuth") == 0);
+	SA_CHECK(sa_connect(sa_device));
+	// a dome that can do everything: azimuth and altitude, synchronisation, relative moves
+	SA_CHECK(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 2 && sa_perm(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_RW_PERM && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(dome_azimuth() == 123.5 && dome_altitude() == 37.25);
+	SA_CHECK(dome_range(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 0, 360) && dome_range(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, 0, 90) && dome_range(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 0, 180));
+	SA_CHECK(sa_number_target(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) == 123.5 && sa_number_target(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME) == 37.25);
+	SA_CHECK(sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 2 && sa_switch(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME) && sa_has_item(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SA_CHECK(sa_item_count(sa_device, DOME_STEPS_PROPERTY_NAME) == 1 && sa_item_count(sa_device, DOME_DIRECTION_PROPERTY_NAME) == 2 && sa_switch(sa_device, DOME_DIRECTION_PROPERTY_NAME, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME));
+	// shutter (closed), park (not parked), home, abort
+	SA_CHECK(dome_shutter_is(false, INDIGO_OK_STATE) && dome_park_is(false, INDIGO_OK_STATE));
+	SA_CHECK(sa_item_count(sa_device, DOME_HOME_PROPERTY_NAME) == 1 && !sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME) && sa_state(sa_device, DOME_HOME_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_item_count(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME) == 1 && !sa_switch(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME));
+	// the state lights the mount agent reads, and what it needs to synchronise the dome with a mount
+	SA_CHECK(sa_item_count(sa_device, DOME_STATE_PROPERTY_NAME) == 3 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	SA_CHECK(sa_item_count(sa_device, DOME_DIMENSION_PROPERTY_NAME) == 6 && sa_item_count(sa_device, DOME_SLAVING_PARAMETERS_PROPERTY_NAME) == 1 && sa_defined(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME));
+	// the properties of the class
+	SA_CHECK(sa_item_count(sa_device, DOME_SLAVED) == 2 && sa_perm(sa_device, DOME_SLAVED) == INDIGO_RW_PERM && sa_switch(sa_device, DOME_SLAVED, "DISABLED") && !sa_switch(sa_device, DOME_SLAVED, "ENABLED") && sa_state(sa_device, DOME_SLAVED) == INDIGO_OK_STATE);
+	SA_CHECK(sa_item_count(sa_device, DOME_PARK_SET) == 1 && sa_perm(sa_device, DOME_PARK_SET) == INDIGO_RW_PERM && !sa_switch(sa_device, DOME_PARK_SET, "CURRENT"));
+	// what Alpaca does not have is not shown: a speed, a flap, a park position that can be written, a clock
+	SA_CHECK(!sa_defined(sa_device, DOME_SPEED_PROPERTY_NAME) && !sa_defined(sa_device, DOME_FLAP_PROPERTY_NAME) && !sa_defined(sa_device, DOME_PARK_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, UTC_TIME_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SET_HOST_TIME_PROPERTY_NAME));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_DOME) == INDIGO_INTERFACE_DOME);
+	// what it took: every capability once, the state once, nothing written but the connect
+	for (size_t i = 0; i < sizeof(capabilities) / sizeof(capabilities[0]); i++) {
+		SA_CHECK(dome_count("GET", capabilities[i]) == 1);
+	}
+	SA_CHECK(dome_count("GET", "can*") == 8 && dome_count("PUT", "*") == 1 && dome_count("PUT", "connect") == 1);
+	SA_CHECK(dome_count("GET", "slewing") == 1 && dome_count("GET", "azimuth") == 1 && dome_count("GET", "altitude") == 1 && dome_count("GET", "shutterstatus") == 1 && dome_count("GET", "atpark") == 1 && dome_count("GET", "athome") == 1 && dome_count("GET", "slaved") >= 1);
+	// a client that enumerates while the device is connected gets the properties of the class as well
+	indigo_property all = { 0 };
+	snprintf(all.device, sizeof(all.device), "%s", sa_device);
+	unsigned slaved_defines = sa_define_count(sa_device, DOME_SLAVED), park_set_defines = sa_define_count(sa_device, DOME_PARK_SET), state_defines = sa_define_count(sa_device, DOME_STATE_PROPERTY_NAME);
+	SA_CHECK(indigo_enumerate_properties(&sa_client, &all) == INDIGO_OK && SA_WAIT(sa_define_count(sa_device, DOME_SLAVED) == slaved_defines + 1 && sa_define_count(sa_device, DOME_PARK_SET) == park_set_defines + 1 && sa_define_count(sa_device, DOME_STATE_PROPERTY_NAME) == state_defines + 1, SA_TIMEOUT));
+	// a disconnect removes the properties, and an enumeration does not bring them back
+	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && !sa_defined(sa_device, DOME_STATE_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && !sa_defined(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME) && !sa_defined(sa_device, DOME_HOME_PROPERTY_NAME));
+	SA_CHECK(indigo_enumerate_properties(&sa_client, &all) == INDIGO_OK && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && !sa_defined(sa_device, DOME_STATE_PROPERTY_NAME) && sa_defined(sa_device, CONNECTION_PROPERTY_NAME));
+	// the next connection reads the capabilities again
+	SA_CHECK(sa_device_state(0, "dome", 0, "Azimuth=301.75&ShutterStatus=0&AtPark=true"));
+	SA_CHECK(sa_connect(sa_device) && dome_count("GET", "can*") == 16);
+	SA_CHECK(dome_azimuth() == 301.75 && dome_shutter_is(true, INDIGO_OK_STATE) && dome_park_is(true, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_legacy_properties(void) {
+	SA_CHECK(dome_begin(dome_legacy));
+	// interface version 2: Connected instead of connect, no devicestate
+	SA_CHECK(dome_count("PUT", "connected") == 1 && dome_count("PUT", "connect") == 0 && dome_count("GET", "can*") == 8);
+	SA_CHECK(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 2 && dome_azimuth() == 123.5 && dome_altitude() == 37.25 && sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 2);
+	SA_CHECK(dome_shutter_is(false, INDIGO_OK_STATE) && dome_park_is(false, INDIGO_OK_STATE) && sa_defined(sa_device, DOME_HOME_PROPERTY_NAME) && sa_defined(sa_device, DOME_STEPS_PROPERTY_NAME) && sa_defined(sa_device, DOME_SLAVED) && sa_defined(sa_device, DOME_PARK_SET));
+	SA_CHECK(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	// the state is read member by member on every poll tick
+	int ticks = dome_count("GET", "connected");
+	SA_CHECK(SA_WAIT(dome_count("GET", "connected") >= ticks + 4, SA_TIMEOUT));
+	SA_CHECK(dome_count("GET", "devicestate") == 0 && dome_count("GET", "slewing") >= 4 && dome_count("GET", "azimuth") >= 4 && dome_count("GET", "altitude") >= 4 && dome_count("GET", "shutterstatus") >= 4 && dome_count("GET", "atpark") >= 4 && dome_count("GET", "athome") >= 4 && dome_count("GET", "slaved") >= 4);
+	// what somebody else does with the dome is seen
+	SA_CHECK(sa_device_state(0, "dome", 0, "Azimuth=77.125&Altitude=12.5&ShutterStatus=0&AtPark=true"));
+	SA_CHECK(SA_WAIT(dome_azimuth() == 77.125 && dome_altitude() == 12.5 && dome_shutter_is(true, INDIGO_OK_STATE) && dome_park_is(true, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// and an operation works the same way: the slew ends when Slewing says so
+	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE);
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 52.375, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=52.375&ClientID="));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(dome_near(dome_azimuth(), 67.125), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1.475) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 52.375 && dome_simulated("Azimuth") == 52.375);
+	SA_CHECK(SA_WAIT(dome_park_is(false, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device) && dome_count("PUT", "connected") == 2 && dome_last("PUT", "connected", "Connected=False&ClientID="));
+cleanup:
+	sa_end();
+}
+
+static void dome_capability_variants(void) {
+	static const char *roof[] = { "--device", "dome:interface=legacy,CanSetAzimuth=false,CanSetAltitude=false,CanSyncAzimuth=false,CanSlave=false,CanFindHome=false,CanPark=false,CanSetPark=false", NULL };
+	static const char *azimuth_only[] = { "--device", "dome:interface=legacy,Azimuth=123.5,CanSetAltitude=false,CanSyncAzimuth=false,CanSlave=false,CanSetPark=false", NULL };
+	static const char *no_shutter[] = { "--device", "dome:interface=legacy,Azimuth=123.5,CanSetShutter=false,CanPark=false,CanFindHome=false", NULL };
+	// a roll-off roof: no azimuth, a shutter only
+	SA_CHECK(dome_begin(roof));
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_STEPS_PROPERTY_NAME) && !sa_defined(sa_device, DOME_DIRECTION_PROPERTY_NAME) && !sa_defined(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, DOME_DIMENSION_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVING_PARAMETERS_PROPERTY_NAME) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && !sa_defined(sa_device, DOME_HOME_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && !sa_defined(sa_device, DOME_SPEED_PROPERTY_NAME));
+	SA_CHECK(dome_shutter_is(false, INDIGO_OK_STATE) && sa_defined(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_DOME) == INDIGO_INTERFACE_DOME);
+	unsigned revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_shutter_is(true, INDIGO_OK_STATE) && dome_simulated("ShutterStatus") == 0);
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && dome_count("PUT", "abortslew") == 1);
+	// the members of what the roof does not have are never asked for, however long it is polled
+	int ticks = dome_count("GET", "connected");
+	SA_CHECK(SA_WAIT(dome_count("GET", "connected") >= ticks + 4, SA_TIMEOUT));
+	SA_CHECK(dome_count("GET", "azimuth") == 0 && dome_count("GET", "altitude") == 0 && dome_count("GET", "atpark") == 0 && dome_count("GET", "athome") == 0 && dome_count("GET", "slaved") == 0 && dome_count("GET", "shutterstatus") >= 4);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a dome without altitude, synchronisation, hardware slaving and a park position that can be set
+	SA_CHECK(dome_begin(azimuth_only));
+	SA_CHECK(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 1 && !sa_has_item(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME) && dome_azimuth() == 123.5);
+	SA_CHECK(sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 1 && !sa_has_item(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SA_CHECK(!sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && sa_defined(sa_device, DOME_HOME_PROPERTY_NAME) && sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && sa_defined(sa_device, DOME_STEPS_PROPERTY_NAME));
+	// a request that names the altitude all the same moves the azimuth only
+	static const char *items[] = { DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME };
+	static const double values[] = { 130.25, 45 };
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK && SA_WAIT(dome_count("PUT", "slewtoazimuth") == 1, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 130.25);
+	ticks = dome_count("GET", "connected");
+	SA_CHECK(SA_WAIT(dome_count("GET", "connected") >= ticks + 4, SA_TIMEOUT));
+	SA_CHECK(dome_count("GET", "altitude") == 0 && dome_count("GET", "slaved") == 0 && dome_count("PUT", "slewtoaltitude") == 0 && dome_count("PUT", "synctoazimuth") == 0 && dome_count("GET", "azimuth") >= 4);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a dome without a shutter that can neither park nor find its home position
+	SA_CHECK(dome_begin(no_shutter));
+	SA_CHECK(!sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && !sa_defined(sa_device, DOME_HOME_PROPERTY_NAME));
+	SA_CHECK(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 2 && sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 2 && sa_defined(sa_device, DOME_SLAVED) && sa_defined(sa_device, DOME_PARK_SET));
+	SA_CHECK(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	// nothing refuses a slew because of a park state the dome does not have
+	SA_CHECK(sa_device_state(0, "dome", 0, "AtPark=true"));
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 118.25, "slewtoazimuth"));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 118.25);
+	ticks = dome_count("GET", "connected");
+	SA_CHECK(SA_WAIT(dome_count("GET", "connected") >= ticks + 4, SA_TIMEOUT));
+	SA_CHECK(dome_count("GET", "shutterstatus") == 0 && dome_count("GET", "atpark") == 0 && dome_count("GET", "athome") == 0 && dome_count("GET", "slaved") >= 4);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a capability the device announces and a method it does not implement: the first request fails, takes the property (or the item)
+	// away and is not sent again
+	SA_CHECK(sa_begin(dome_default) && sa_attach("Dome Simulator") && sa_connect(sa_device));
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "findhome", "ascom-error", "Value=1024&Message=No%20home%20sensor&Count=-1"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, DOME_HOME_PROPERTY_NAME), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Find home failed: not implemented by the device (No home sensor (0x400))") && dome_count("PUT", "findhome") == 1);
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoaltitude", "ascom-error", "Value=1024&Count=-1"));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, 60) == INDIGO_OK && SA_WAIT(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 1, SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Slew failed: not implemented by the device") && dome_count("PUT", "slewtoaltitude") == 1 && dome_azimuth() == 123.5);
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "synctoazimuth", "ascom-error", "Value=1024&Count=-1"));
+	SA_CHECK(dome_set_switch(DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 99.5) == INDIGO_OK && SA_WAIT(sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 1, SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT) && sa_switch(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME) && dome_count("PUT", "synctoazimuth") == 1 && dome_simulated("Azimuth") == 123.5);
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "setpark", "ascom-error", "Value=1024&Count=-1") && sa_fault(0, "PUT", DOME_API "slaved", "ascom-error", "Value=1024&Count=-1") && sa_fault(0, "PUT", DOME_API "park", "http-status", "Value=400&Message=Unknown%20member&Count=-1") && sa_fault(0, "PUT", DOME_API "openshutter", "ascom-error", "Value=1024&Count=-1"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_PARK_SET, "CURRENT", true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, DOME_PARK_SET), SA_TIMEOUT) && sa_message_seen("Set park position failed: not implemented by the device"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SLAVED, "ENABLED", true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, DOME_SLAVED), SA_TIMEOUT) && sa_message_seen("Slaving failed: not implemented by the device"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, DOME_PARK_PROPERTY_NAME), SA_TIMEOUT) && sa_message_seen("Park failed: request rejected by the server"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME), SA_TIMEOUT) && sa_message_seen("Open shutter failed: not implemented by the device"));
+	// the device stays connected and what is left works: a slew, and the poll does not bring the removed properties back
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_set_switch(DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME, true) == INDIGO_OK_STATE && dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 99.5, "slewtoazimuth"));
+	SA_CHECK(sa_advance(0, 2.4) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 99.5 && sa_is_connected(sa_device));
+	SA_CHECK(!sa_defined(sa_device, DOME_HOME_PROPERTY_NAME) && !sa_defined(sa_device, DOME_PARK_SET) && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && sa_stray_updates() == 0);
+	// the next connection asks the device again
+	SA_CHECK(sa_disconnect(sa_device) && sa_clear_faults(0) && sa_connect(sa_device));
+	SA_CHECK(sa_defined(sa_device, DOME_HOME_PROPERTY_NAME) && sa_defined(sa_device, DOME_PARK_SET) && sa_defined(sa_device, DOME_SLAVED) && sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME));
+	SA_CHECK(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 2 && sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 2 && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_slewing_includes_shutter(void) {
+	static const char *slewing_shutter[] = { "--device", "dome:Azimuth=123.5,SlewingWithShutter=true", NULL };
+	static const char *roof[] = { "--device", "dome:CanSetAzimuth=false,CanSetAltitude=false,CanSyncAzimuth=false,CanSlave=false,CanFindHome=false,CanPark=false,CanSetPark=false,SlewingWithShutter=true", NULL };
+	// a device whose Slewing is true while its shutter moves, as the specification has it ("any part of the dome"): the shutter is
+	// not taken for a motion of the azimuth
+	SA_CHECK(dome_begin(slewing_shutter));
+	unsigned revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	unsigned coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	int ticks_before = dome_count("GET", "devicestate");
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && dome_simulated_is("Slewing", "true"));
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks_before + 4 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && !sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates));
+	// a slew during the shutter move is accepted; it ends when Slewing does, which is when both are over
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 133.5, "slewtoazimuth"));
+	coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	int looks = dome_count("GET", "slewing");
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(dome_azimuth() == 133.5 && dome_count("GET", "slewing") >= looks + 3, SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates) && sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(dome_shutter_is(true, INDIGO_OK_STATE) && SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE), SA_TIMEOUT));
+	// the same when somebody else moves the shutter
+	coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(sa_put(0, DOME_API "closeshutter", "ClientID=9&ClientTransactionID=1") && SA_WAIT(dome_shutter_is(false, INDIGO_BUSY_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(dome_shutter_is(false, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(!sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates) && sa_disconnect(sa_device));
+	sa_end();
+	// a roll-off roof of that kind: the slew light stays off while the roof moves
+	SA_CHECK(dome_begin(roof));
+	revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && dome_simulated_is("Slewing", "true"));
+	ticks_before = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks_before + 4 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE), SA_TIMEOUT) && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- azimuth and altitude
+
+static void dome_slew_azimuth(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// the exact member and parameter, and nothing else is written
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 301.75, "slewtoazimuth"));
+	SA_CHECK(dome_last("PUT", "slewtoazimuth", "Azimuth=301.75&ClientID=") && dome_count("PUT", "slewtoaltitude") == 0 && dome_count("PUT", "synctoazimuth") == 0 && dome_count("PUT", "*") == 2);
+	// in progress: Slewing is asked for, the lights show the slew, the azimuth follows the dome (the shorter way is 178.25 degrees clockwise)
+	SA_CHECK(SA_WAIT(dome_count("GET", "slewing") >= 4 && dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_number_target(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) == 301.75 && dome_azimuth() == 123.5);
+	SA_CHECK(sa_advance(0, 7.5) && SA_WAIT(dome_near(dome_azimuth(), 198.5), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && dome_altitude() == 37.25);
+	// a relative move is refused while the dome moves, another target is not accepted
+	SA_CHECK(dome_set_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10) == INDIGO_ALERT_STATE && sa_message_seen("Dome is moving: request can not be completed"));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 10) == INDIGO_OK);
+	SA_CHECK(dome_set_switch(DOME_PARK_SET, "CURRENT", true) == INDIGO_OK_STATE && dome_count("PUT", "slewtoazimuth") == 1 && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// the end of the slew is the end of Slewing
+	SA_CHECK(sa_advance(0, 10.325) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(dome_azimuth() == 301.75 && dome_simulated("Azimuth") == 301.75 && dome_altitude() == 37.25 && SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// and nobody asks for Slewing any more
+	int looks = dome_count("GET", "slewing"), ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && dome_count("GET", "slewing") == looks);
+	// across north, clockwise: 73.75 degrees, the azimuth wraps from 360 to 0 on the way
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 15.5, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=15.5&ClientID="));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(dome_near(dome_azimuth(), 351.75), SA_TIMEOUT) && sa_advance(0, 1) && SA_WAIT(dome_near(dome_azimuth(), 1.75), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1.375) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 15.5 && dome_simulated("Azimuth") == 15.5);
+	// and back across north, counterclockwise: 35.25 degrees
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 340.25, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=340.25&ClientID="));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(dome_near(dome_azimuth(), 355.5), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1.525) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 340.25);
+	// INDIGO accepts 0 to 360, Alpaca 0 <= azimuth < 360: 360 is sent as 0
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 360, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=0&ClientID="));
+	SA_CHECK(sa_advance(0, 1.975) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 0 && dome_simulated("Azimuth") == 0);
+	// a slew to where the dome is: accepted by the device, over at the first look
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 0) == INDIGO_OK_STATE && dome_count("PUT", "slewtoazimuth") == 5);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_slew_altitude(void) {
+	static const char *items[] = { DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME };
+	static const double values[] = { 150.75, 5.5 };
+	SA_CHECK(dome_begin(dome_default));
+	// a request that names the altitude only moves the altitude only
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, 61.5, "slewtoaltitude"));
+	SA_CHECK(dome_last("PUT", "slewtoaltitude", "Altitude=61.5&ClientID=") && dome_count("PUT", "slewtoazimuth") == 0);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(dome_near(dome_altitude(), 47.25), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && dome_azimuth() == 123.5);
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1.425) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(dome_altitude() == 61.5 && dome_simulated("Altitude") == 61.5 && dome_azimuth() == 123.5 && dome_simulated("Azimuth") == 123.5);
+	// a request that names the azimuth only does not send the altitude again
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 128.25, "slewtoazimuth"));
+	SA_CHECK(sa_advance(0, 0.475) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_count("PUT", "slewtoaltitude") == 1);
+	// both in one request: both are sent, the request ends when the longer one does (the altitude: 5.6 s against 2.25 s)
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK && SA_WAIT(dome_count("PUT", "slewtoaltitude") == 2 && dome_count("PUT", "slewtoazimuth") == 2, SA_TIMEOUT));
+	SA_CHECK(dome_last("PUT", "slewtoazimuth", "Azimuth=150.75&ClientID=") && dome_last("PUT", "slewtoaltitude", "Altitude=5.5&ClientID="));
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(dome_azimuth() == 150.75 && dome_near(dome_altitude(), 31.5), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 2.6) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_altitude() == 5.5 && dome_azimuth() == 150.75);
+	// an altitude the device refuses: ALERT with its message, nothing moves
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoaltitude", "ascom-error", "Value=1025&Message=Altitude%2088%20is%20above%20the%20shutter"));
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, 88) == INDIGO_ALERT_STATE && sa_message_seen("Slew failed: invalid value (Altitude 88 is above the shutter (0x401))"));
+	SA_CHECK(dome_simulated("Altitude") == 5.5 && dome_altitude() == 5.5 && dome_simulated_is("Slewing", "false") && SA_WAIT(dome_lights(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_relative_move(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// Alpaca has no relative move: the target is the azimuth of the device plus the steps, clockwise is towards larger azimuths
+	unsigned revision = sa_revision(sa_device, DOME_STEPS_PROPERTY_NAME), coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	int reads = dome_count("GET", "azimuth");
+	SA_CHECK(dome_start_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 20.25, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=143.75&ClientID=") && dome_count("GET", "azimuth") == reads + 1);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT) && sa_number_target(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) == 143.75);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(dome_near(dome_azimuth(), 133.5), SA_TIMEOUT) && sa_state(sa_device, DOME_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1.025) && SA_WAIT(sa_state_after(sa_device, DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT));
+	SA_CHECK(dome_azimuth() == 143.75 && dome_simulated("Azimuth") == 143.75);
+	// counterclockwise across north: 143.75 - 150 = 353.75
+	SA_CHECK(dome_set_switch(DOME_DIRECTION_PROPERTY_NAME, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME, true) == INDIGO_OK_STATE);
+	revision = sa_revision(sa_device, DOME_STEPS_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 150, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=353.75&ClientID="));
+	SA_CHECK(sa_advance(0, 14.5) && SA_WAIT(dome_near(dome_azimuth(), 358.75), SA_TIMEOUT) && sa_state(sa_device, DOME_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 0.5) && SA_WAIT(sa_state_after(sa_device, DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 353.75 && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// clockwise across north: 353.75 + 30.5 = 24.25
+	SA_CHECK(dome_set_switch(DOME_DIRECTION_PROPERTY_NAME, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME, true) == INDIGO_OK_STATE);
+	revision = sa_revision(sa_device, DOME_STEPS_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 30.5, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=24.25&ClientID="));
+	SA_CHECK(sa_advance(0, 3.05) && SA_WAIT(sa_state_after(sa_device, DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 24.25);
+	// no steps: nothing is sent
+	SA_CHECK(dome_set_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 0) == INDIGO_OK_STATE && dome_count("PUT", "slewtoazimuth") == 3);
+	// the azimuth can not be read: the move does not start
+	SA_CHECK(sa_fault(0, "GET", DOME_API "azimuth", "ascom-error", "Value=1279&Message=Encoder%20fault"));
+	SA_CHECK(dome_set_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: device error (Encoder fault (0x4FF))") && dome_count("PUT", "slewtoazimuth") == 3);
+	// the device refuses the slew
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoazimuth", "ascom-error", "Value=1035&Message=Motor%20power%20is%20off"));
+	SA_CHECK(dome_set_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: invalid operation (Motor power is off (0x40B))") && dome_simulated("Azimuth") == 24.25);
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_defined(sa_device, DOME_STEPS_PROPERTY_NAME));
+	// and the next one works
+	revision = sa_revision(sa_device, DOME_STEPS_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10, "slewtoazimuth") && sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 34.25);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_sync(void) {
+	SA_CHECK(dome_begin(dome_default));
+	SA_CHECK(dome_set_switch(DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME, true) == INDIGO_OK_STATE);
+	// a synchronisation tells the dome where it is: nothing moves, the azimuth is read back
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 222.125) == INDIGO_OK_STATE && sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SA_CHECK(dome_count("PUT", "synctoazimuth") == 1 && dome_last("PUT", "synctoazimuth", "Azimuth=222.125&ClientID=") && dome_count("PUT", "slewtoazimuth") == 0);
+	SA_CHECK(dome_azimuth() == 222.125 && dome_simulated("Azimuth") == 222.125 && dome_simulated_is("Slewing", "false") && dome_altitude() == 37.25);
+	// 360 is 0 for Alpaca
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 360) == INDIGO_OK_STATE && dome_last("PUT", "synctoazimuth", "Azimuth=0&ClientID=") && dome_azimuth() == 0);
+	// the device refuses: ALERT with its message, the azimuth of the device stays
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "synctoazimuth", "ascom-error", "Value=1035&Message=Not%20calibrated"));
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 45.5) == INDIGO_ALERT_STATE && sa_message_seen("Sync failed: invalid operation (Not calibrated (0x40B))"));
+	SA_CHECK(dome_simulated("Azimuth") == 0 && dome_azimuth() == 0 && sa_defined(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) && sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 2);
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 45.5) == INDIGO_OK_STATE && dome_azimuth() == 45.5 && dome_simulated("Azimuth") == 45.5);
+	// back to GOTO: the same request is a slew again
+	SA_CHECK(dome_set_switch(DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME, true) == INDIGO_OK_STATE);
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 65.5, "slewtoazimuth") && dome_count("PUT", "synctoazimuth") == 4);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 65.5);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- shutter
+
+static void dome_shutter(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// open: the exact member, BUSY while ShutterStatus is Opening, OK when it is Open
+	unsigned revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && dome_last("PUT", "openshutter", "ClientID=") && dome_count("PUT", "closeshutter") == 0);
+	SA_CHECK(SA_WAIT(dome_count("GET", "shutterstatus") >= 4 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT) && dome_shutter_is(true, INDIGO_BUSY_STATE) && dome_simulated("ShutterStatus") == 2);
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	int looks = dome_count("GET", "shutterstatus");
+	SA_CHECK(sa_advance(0, 4.5) && SA_WAIT(dome_count("GET", "shutterstatus") >= looks + 3, SA_TIMEOUT) && dome_shutter_is(true, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 0.5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_shutter_is(true, INDIGO_OK_STATE) && dome_simulated("ShutterStatus") == 0);
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE), SA_TIMEOUT));
+	// ShutterStatus is not asked for any more, it comes with DeviceState
+	looks = dome_count("GET", "shutterstatus");
+	int ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && dome_count("GET", "shutterstatus") == looks);
+	// close, and the other direction in the middle of the move: accepted while BUSY, the shutter turns around
+	revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, "closeshutter") && dome_last("PUT", "closeshutter", "ClientID=") && SA_WAIT(dome_shutter_is(false, INDIGO_BUSY_STATE) && dome_simulated("ShutterStatus") == 3, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 2) && dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && SA_WAIT(dome_shutter_is(true, INDIGO_BUSY_STATE) && dome_simulated("ShutterStatus") == 2, SA_TIMEOUT));
+	looks = dome_count("GET", "shutterstatus");
+	SA_CHECK(sa_advance(0, 4.9) && SA_WAIT(dome_count("GET", "shutterstatus") >= looks + 3, SA_TIMEOUT) && dome_shutter_is(true, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_shutter_is(true, INDIGO_OK_STATE) && dome_count("PUT", "openshutter") == 2 && dome_count("PUT", "closeshutter") == 1);
+	// the same direction once more in the middle of the move: nothing is sent, the move goes on
+	revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, "closeshutter") && sa_advance(0, 2));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true) == INDIGO_OK && dome_set_switch(DOME_PARK_SET, "CURRENT", true) == INDIGO_OK_STATE);
+	SA_CHECK(dome_count("PUT", "closeshutter") == 2 && dome_shutter_is(false, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_shutter_is(false, INDIGO_OK_STATE) && dome_simulated("ShutterStatus") == 1);
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// a request for the state the shutter is in: sent, the device has nothing to do, OK at the first look
+	SA_CHECK(dome_set_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true) == INDIGO_OK_STATE && dome_count("PUT", "closeshutter") == 3 && dome_shutter_is(false, INDIGO_OK_STATE));
+	// the shutter ends in Error: ALERT with a message, neither open nor closed
+	revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && sa_advance(0, 2) && sa_device_state(0, "dome", 0, "ShutterStatus=4"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Open shutter failed: the shutter reports an error"));
+	SA_CHECK(!sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME) && !sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME) && SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT));
+	// and stays so while the device says Error
+	ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && sa_state(sa_device, DOME_SHUTTER_PROPERTY_NAME) == INDIGO_ALERT_STATE && !sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	// the device refuses to open a shutter in Error (InvalidOperation): ALERT with its message
+	SA_CHECK(dome_set_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Open shutter failed: invalid operation (Shutter failed to open (0x40B))"));
+	SA_CHECK(!sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME) && !sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME) && sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME));
+	// closing recovers it
+	revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, "closeshutter") && sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(dome_shutter_is(false, INDIGO_OK_STATE) && SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// an error that shows up while nothing is asked of the shutter is seen by the poll, and so is its end
+	SA_CHECK(sa_device_state(0, "dome", 0, "ShutterStatus=4") && SA_WAIT(sa_state(sa_device, DOME_SHUTTER_PROPERTY_NAME) == INDIGO_ALERT_STATE && !sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "dome", 0, "ShutterStatus=0") && SA_WAIT(dome_shutter_is(true, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- park and home
+
+static void dome_park_home(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// park: 77.75 degrees to the park position, Slewing while on the way, AtPark at the end
+	unsigned revision = sa_revision(sa_device, DOME_PARK_PROPERTY_NAME), coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, "park") && dome_last("PUT", "park", "ClientID="));
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_BUSY_STATE, INDIGO_BUSY_STATE, INDIGO_IDLE_STATE) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && dome_park_is(true, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(dome_near(dome_azimuth(), 163.5), SA_TIMEOUT) && dome_park_is(true, INDIGO_BUSY_STATE) && !sa_state_after(sa_device, DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(sa_advance(0, 3.775) && SA_WAIT(sa_state_after(sa_device, DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT));
+	SA_CHECK(dome_park_is(true, INDIGO_OK_STATE) && dome_azimuth() == 201.25 && dome_simulated_is("AtPark", "true") && SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// a parked dome is not moved: nothing is sent
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 250.5) == INDIGO_ALERT_STATE && sa_message_seen("Dome is parked") && dome_count("PUT", "slewtoazimuth") == 0);
+	SA_CHECK(dome_set_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10) == INDIGO_ALERT_STATE && dome_count("PUT", "slewtoazimuth") == 0 && dome_set_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, true) == INDIGO_ALERT_STATE && dome_count("PUT", "findhome") == 0);
+	SA_CHECK(!sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME) && dome_park_is(true, INDIGO_OK_STATE));
+	// parking a parked dome: the device has nothing to do
+	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK_STATE && dome_count("PUT", "park") == 2 && dome_park_is(true, INDIGO_OK_STATE));
+	// Alpaca has no unpark: nothing is sent, the dome accepts motion again, and the poll does not park it again although AtPark is still true
+	int puts = dome_count("PUT", "*");
+	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE && dome_count("PUT", "*") == puts && dome_park_is(false, INDIGO_OK_STATE));
+	int ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 3 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT) && dome_park_is(false, INDIGO_OK_STATE) && dome_simulated_is("AtPark", "true"));
+	coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 250.5, "slewtoazimuth") && sa_advance(0, 4.925));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && dome_azimuth() == 250.5 && dome_simulated_is("AtPark", "false") && dome_park_is(false, INDIGO_OK_STATE));
+	// the park position is set to where the dome is
+	SA_CHECK(dome_set_switch(DOME_PARK_SET, "CURRENT", true) == INDIGO_OK_STATE && dome_count("PUT", "setpark") == 1 && dome_last("PUT", "setpark", "ClientID=") && !sa_switch(sa_device, DOME_PARK_SET, "CURRENT") && dome_simulated("ParkAzimuth") == 250.5);
+	// find home: 122 degrees clockwise across north, AtHome at the end
+	revision = sa_revision(sa_device, DOME_HOME_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, "findhome") && dome_last("PUT", "findhome", "ClientID=") && SA_WAIT(dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 11.5) && SA_WAIT(dome_near(dome_azimuth(), 5.5), SA_TIMEOUT) && sa_state(sa_device, DOME_HOME_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 0.7) && SA_WAIT(sa_state_after(sa_device, DOME_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && !sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME));
+	SA_CHECK(dome_azimuth() == 12.5 && dome_simulated_is("AtHome", "true") && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// at home already: over at the first look
+	SA_CHECK(dome_set_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, true) == INDIGO_OK_STATE && dome_count("PUT", "findhome") == 2);
+	// park goes to the position that was set
+	revision = sa_revision(sa_device, DOME_PARK_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, "park") && sa_advance(0, 12.2) && SA_WAIT(sa_state_after(sa_device, DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(dome_park_is(true, INDIGO_OK_STATE) && dome_azimuth() == 250.5 && dome_simulated_is("AtHome", "false"));
+	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE);
+	// the dome stops on the way (somebody else aborts it): Slewing ends without AtHome / AtPark, which is a failure
+	revision = sa_revision(sa_device, DOME_HOME_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, "findhome") && sa_advance(0, 3) && sa_put(0, DOME_API "abortslew", "ClientID=9&ClientTransactionID=1"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HOME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Find home failed: the dome stopped outside the home position") && !sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME));
+	SA_CHECK(dome_near(dome_azimuth(), 280.5) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	revision = sa_revision(sa_device, DOME_PARK_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, "park") && sa_advance(0, 1) && sa_put(0, DOME_API "abortslew", "ClientID=9&ClientTransactionID=2"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Park failed: the dome stopped outside the park position") && dome_park_is(false, INDIGO_ALERT_STATE));
+	SA_CHECK(dome_near(dome_azimuth(), 270.5) && SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_ALERT_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// the failed park does not refuse motion, and the next park works
+	revision = sa_revision(sa_device, DOME_PARK_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, "park") && sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_park_is(true, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- abort
+
+static void dome_abort(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// nothing moves: AbortSlew is sent all the same (the device may be moving for another reason), nothing changes
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && !sa_switch(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME));
+	SA_CHECK(dome_count("PUT", "abortslew") == 1 && dome_last("PUT", "abortslew", "ClientID=") && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_shutter_is(false, INDIGO_OK_STATE));
+	// during a slew: the dome stops where it is, the slew ends in ALERT and nothing is left BUSY
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 301.75, "slewtoazimuth") && sa_advance(0, 5) && SA_WAIT(dome_near(dome_azimuth(), 173.5), SA_TIMEOUT));
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && dome_count("PUT", "abortslew") == 2);
+	SA_CHECK(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && dome_near(dome_azimuth(), 173.5) && dome_near(dome_simulated("Azimuth"), 173.5));
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT) && dome_simulated_is("Slewing", "false"));
+	// the aborted slew does not go on later and nothing is asked for it
+	int looks = dome_count("GET", "slewing"), ticks = dome_count("GET", "devicestate");
+	SA_CHECK(sa_advance(0, 20) && SA_WAIT(dome_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && dome_count("GET", "slewing") == looks && dome_near(dome_azimuth(), 173.5) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// a relative move, aborted
+	revision = sa_revision(sa_device, DOME_STEPS_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 40, "slewtoazimuth") && sa_advance(0, 1.5) && SA_WAIT(dome_near(dome_azimuth(), 188.5), SA_TIMEOUT));
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, DOME_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && dome_near(dome_simulated("Azimuth"), 188.5));
+	// a slew and a shutter move at the same time: AbortSlew stops both, the shutter is left in Error by the device
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	unsigned shutter = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 100.5, "slewtoazimuth") && dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && sa_advance(0, 2));
+	SA_CHECK(SA_WAIT(dome_near(dome_azimuth(), 168.5) && dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_ALERT_STATE, shutter) && sa_state(sa_device, DOME_SHUTTER_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(dome_simulated("ShutterStatus") == 4 && sa_message_seen("Open shutter failed: the shutter reports an error") && !sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME) && !sa_switch(sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME));
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE, INDIGO_ALERT_STATE), SA_TIMEOUT) && dome_near(dome_simulated("Azimuth"), 168.5));
+	looks = dome_count("GET", "slewing") + dome_count("GET", "shutterstatus");
+	ticks = dome_count("GET", "devicestate");
+	SA_CHECK(sa_advance(0, 20) && SA_WAIT(dome_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && dome_count("GET", "slewing") + dome_count("GET", "shutterstatus") == looks);
+	// the shutter recovers by closing, a new slew works and clears the ALERT
+	shutter = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, "closeshutter") && dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 100.5, "slewtoazimuth") && sa_advance(0, 6.8));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, shutter), SA_TIMEOUT) && dome_azimuth() == 100.5 && dome_shutter_is(false, INDIGO_OK_STATE));
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// park and find home, aborted: ALERT, not parked, no item left on
+	revision = sa_revision(sa_device, DOME_PARK_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, "park") && sa_advance(0, 3) && dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(dome_park_is(false, INDIGO_ALERT_STATE) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_ALERT_STATE && dome_near(dome_simulated("Azimuth"), 130.5) && dome_simulated_is("AtPark", "false"));
+	revision = sa_revision(sa_device, DOME_HOME_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, "findhome") && sa_advance(0, 3) && dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(sa_state(sa_device, DOME_HOME_PROPERTY_NAME) == INDIGO_ALERT_STATE && !sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME) && dome_near(dome_simulated("Azimuth"), 100.5) && dome_simulated_is("AtHome", "false"));
+	// the device can not stop: the abort fails with its message and the slew goes on to its end
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 140.5, "slewtoazimuth") && sa_fault(0, "PUT", DOME_API "abortslew", "ascom-error", "Value=1279&Message=Brake%20fault"));
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Abort failed: device error (Brake fault (0x4FF))") && !sa_switch(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME));
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_defined(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 140.5);
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- slaving by the hardware
+
+static void dome_slaved(void) {
+	SA_CHECK(dome_begin(dome_default));
+	SA_CHECK(sa_device_state(0, "dome", 0, "TelescopeAzimuth=140.75"));
+	// the exact member and parameter, the state is read back
+	unsigned coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_set_switch(DOME_SLAVED, "ENABLED", true) == INDIGO_OK_STATE && dome_count("PUT", "slaved") == 1 && dome_last("PUT", "slaved", "Slaved=True&ClientID=") && dome_simulated_is("Slaved", "true"));
+	SA_CHECK(sa_switch(sa_device, DOME_SLAVED, "ENABLED") && !sa_switch(sa_device, DOME_SLAVED, "DISABLED"));
+	// the dome follows the telescope by itself: its motion is shown, nothing is sent
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates) && dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(dome_near(dome_azimuth(), 133.5), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 0.725) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates) && dome_azimuth() == 140.75 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(dome_count("PUT", "slewtoazimuth") == 0 && dome_count("GET", "slewing") == 1);
+	// a request to move a slaved dome is sent once and refused by the device (InvalidWhileSlaved): ALERT with its message
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 200.5) == INDIGO_ALERT_STATE && sa_message_seen("Slew failed: invalid while slaved (SlewToAzimuth is not allowed while the dome is slaved (0x409))"));
+	SA_CHECK(dome_count("PUT", "slewtoazimuth") == 1 && dome_simulated("Azimuth") == 140.75 && dome_azimuth() == 140.75);
+	SA_CHECK(dome_set_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: invalid while slaved") && sa_defined(sa_device, DOME_STEPS_PROPERTY_NAME));
+	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Park failed: invalid while slaved") && dome_park_is(false, INDIGO_ALERT_STATE));
+	SA_CHECK(dome_set_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Find home failed: invalid while slaved") && !sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME));
+	SA_CHECK(sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && sa_defined(sa_device, DOME_HOME_PROPERTY_NAME) && sa_is_connected(sa_device));
+	// the telescope moves on, the dome follows: BUSY again, then OK at the new azimuth
+	coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(sa_device_state(0, "dome", 0, "TelescopeAzimuth=95.5") && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 4.525) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates) && dome_azimuth() == 95.5, SA_TIMEOUT));
+	// AbortSlew switches the slaving of the device off, as the specification says: the property follows
+	SA_CHECK(sa_device_state(0, "dome", 0, "TelescopeAzimuth=20.5") && SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 2));
+	SA_CHECK(dome_set_switch(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK_STATE && dome_simulated_is("Slaved", "false"));
+	SA_CHECK(SA_WAIT(sa_switch(sa_device, DOME_SLAVED, "DISABLED") && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_near(dome_azimuth(), 75.5), SA_TIMEOUT) && sa_state(sa_device, DOME_SLAVED) == INDIGO_OK_STATE);
+	// and the dome can be moved again
+	coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 20.5, "slewtoazimuth") && sa_advance(0, 5.5) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT));
+	// switched on and off by a request
+	SA_CHECK(dome_set_switch(DOME_SLAVED, "ENABLED", true) == INDIGO_OK_STATE && dome_simulated_is("Slaved", "true") && dome_set_switch(DOME_SLAVED, "DISABLED", true) == INDIGO_OK_STATE && dome_last("PUT", "slaved", "Slaved=False&ClientID=") && dome_simulated_is("Slaved", "false"));
+	SA_CHECK(sa_switch(sa_device, DOME_SLAVED, "DISABLED") && dome_count("PUT", "slaved") == 3);
+	// switched on by somebody else: the poll shows it
+	SA_CHECK(sa_put(0, DOME_API "slaved", "Slaved=True&ClientID=9&ClientTransactionID=1") && SA_WAIT(sa_switch(sa_device, DOME_SLAVED, "ENABLED") && sa_state(sa_device, DOME_SLAVED) == INDIGO_OK_STATE, SA_TIMEOUT));
+	// the device refuses: ALERT with its message, the property shows the state of the device
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slaved", "ascom-error", "Value=1279&Message=Telescope%20link%20is%20down"));
+	SA_CHECK(dome_set_switch(DOME_SLAVED, "DISABLED", true) == INDIGO_ALERT_STATE && sa_message_seen("Slaving failed: device error (Telescope link is down (0x4FF))") && sa_switch(sa_device, DOME_SLAVED, "ENABLED") && dome_simulated_is("Slaved", "true"));
+	SA_CHECK(dome_set_switch(DOME_SLAVED, "DISABLED", true) == INDIGO_OK_STATE && sa_switch(sa_device, DOME_SLAVED, "DISABLED") && dome_simulated_is("Slaved", "false"));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- polling
+
+static void dome_polling(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// Platform 7: the state comes with devicestate; only Slaved, which DeviceState does not have, is read by itself
+	int ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 4, SA_TIMEOUT));
+	SA_CHECK(dome_count("GET", "slewing") == 1 && dome_count("GET", "azimuth") == 1 && dome_count("GET", "altitude") == 1 && dome_count("GET", "shutterstatus") == 1 && dome_count("GET", "atpark") == 1 && dome_count("GET", "athome") == 1 && dome_count("GET", "slaved") >= 4);
+	// what somebody else does with the dome is shown
+	SA_CHECK(sa_device_state(0, "dome", 0, "Azimuth=77.125&Altitude=12.5") && SA_WAIT(dome_azimuth() == 77.125 && dome_altitude() == 12.5, SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_put(0, DOME_API "openshutter", "ClientID=9&ClientTransactionID=1") && SA_WAIT(dome_shutter_is(true, INDIGO_BUSY_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(dome_shutter_is(true, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_put(0, DOME_API "closeshutter", "ClientID=9&ClientTransactionID=2") && SA_WAIT(dome_shutter_is(false, INDIGO_BUSY_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(dome_shutter_is(false, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(dome_count("GET", "shutterstatus") == 1 && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_device_state(0, "dome", 0, "AtPark=true") && SA_WAIT(dome_park_is(true, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "dome", 0, "AtPark=false") && SA_WAIT(dome_park_is(false, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// a dome somebody else slews: BUSY while Slewing, the azimuth follows, OK at the end
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(sa_put(0, DOME_API "slewtoazimuth", "Azimuth=97.125&ClientID=9&ClientTransactionID=3") && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(dome_near(dome_azimuth(), 87.125), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision) && dome_azimuth() == 97.125 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// what does not change is not published again
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	unsigned shutter = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME), lights = sa_revision(sa_device, DOME_STATE_PROPERTY_NAME);
+	ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 4, SA_TIMEOUT));
+	SA_CHECK(sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == revision && sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME) == shutter && sa_revision(sa_device, DOME_STATE_PROPERTY_NAME) == lights);
+	SA_CHECK(dome_count("GET", "azimuth") == 1 && dome_count("GET", "shutterstatus") == 1 && dome_count("GET", "atpark") == 1);
+	// A state that can not be read for a while: the device stays connected and the poll goes on. The coordinates and the shutter keep
+	// what they have and are in ALERT meanwhile, with the reason; with the first state that is read they are OK and show the device again.
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	shutter = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", DOME_API "slaved", "ascom-error", "Value=1279&Message=Controller%20busy&Count=3") && sa_device_state(0, "dome", 0, "Azimuth=44.5"));
+	SA_CHECK(SA_WAIT(dome_azimuth() == 44.5, SA_TIMEOUT) && sa_is_connected(sa_device) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && SA_WAIT(dome_shutter_is(false, INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_ALERT_STATE, shutter));
+	SA_CHECK(sa_message_seen("Reading the state of the dome failed: device error (Controller busy") && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_pending_requests(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// The handler queue of the device is held while requests arrive, long enough for a poll tick to become due: the tick then runs
+	// between the acceptance of the requests and their handlers. It must not put the state of the device over what the clients asked for.
+	SA_CHECK(dome_gate_close() && SA_WAIT(sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) > 0, SA_TIMEOUT));
+	unsigned shutter = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME), park = sa_revision(sa_device, DOME_PARK_PROPERTY_NAME), slaved = sa_revision(sa_device, DOME_SLAVED);
+	int ticks = dome_count("GET", "devicestate");
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 140.5) == INDIGO_OK);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SLAVED, "ENABLED", true) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, DOME_SLAVED) == INDIGO_BUSY_STATE, SA_TIMEOUT) && dome_count("GET", "devicestate") == ticks);
+	dome_gate_open();
+	// the tick that was due ran before the handlers of the requests (the queue runs what is due in the order of its time): it found
+	// the properties of the requests BUSY and left them alone
+	SA_CHECK(SA_WAIT(dome_count("PUT", "slaved") == 1, SA_TIMEOUT) && sa_count_before(0, "GET", DOME_API "devicestate", sa_sequence(0, "PUT", DOME_API "openshutter")) > ticks);
+	// the slew was requested before the park: it is not refused because of a park that has not even started
+	SA_CHECK(dome_count("PUT", "openshutter") == 1 && dome_count("PUT", "slewtoazimuth") == 1 && dome_last("PUT", "slewtoazimuth", "Azimuth=140.5&ClientID=") && dome_count("PUT", "park") == 1 && dome_last("PUT", "slaved", "Slaved=True&ClientID="));
+	SA_CHECK(!sa_message_seen("Dome is parked") && !sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, shutter) && !sa_state_after(sa_device, DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, park));
+	SA_CHECK(dome_shutter_is(true, INDIGO_BUSY_STATE) && dome_park_is(true, INDIGO_BUSY_STATE));
+	// the device refused to be slaved while it parks? No: Slaved was set last, the park was accepted before it
+	SA_CHECK(dome_answer(DOME_SLAVED, slaved) == INDIGO_OK_STATE && sa_switch(sa_device, DOME_SLAVED, "ENABLED"));
+	SA_CHECK(dome_set_switch(DOME_SLAVED, "DISABLED", true) == INDIGO_OK_STATE);
+	SA_CHECK(sa_advance(0, 8) && SA_WAIT(dome_park_is(true, INDIGO_OK_STATE) && dome_shutter_is(true, INDIGO_OK_STATE) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && dome_azimuth() == 201.25);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	dome_gate_open();
+	sa_end();
+}
+
+static void dome_completion_during_pending_request(void) {
+	SA_CHECK(dome_begin(dome_default));
+	unsigned revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	// A shutter move ends while the next request waits for its handler (the queue is held, the device finishes, the request arrives,
+	// the queue goes on with the finalizer first): the end of the move must not be published as the answer to the request that was
+	// accepted in the meantime
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, "closeshutter") && SA_WAIT(dome_count("GET", "shutterstatus") >= 3, SA_TIMEOUT));
+	// both the finalizer of the move and a poll tick are due while the queue is held
+	SA_CHECK(dome_gate_close() && sa_advance(0, 5) && SA_WAIT(sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) >= 2, SA_TIMEOUT));
+	int looks = dome_count("GET", "shutterstatus");
+	unsigned shutter = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(dome_shutter_is(true, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	dome_gate_open();
+	SA_CHECK(SA_WAIT(dome_count("PUT", "openshutter") == 2, SA_TIMEOUT) && dome_simulated("ShutterStatus") == 2);
+	// the finalizer looked at the shutter, which had finished, before the handler of the request sent OpenShutter
+	SA_CHECK(sa_count_before(0, "GET", DOME_API "shutterstatus", sa_sequence(0, "PUT", DOME_API "openshutter")) > looks);
+	SA_CHECK(dome_set_switch(DOME_PARK_SET, "CURRENT", true) == INDIGO_OK_STATE && !sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, shutter) && dome_shutter_is(true, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, shutter), SA_TIMEOUT) && dome_shutter_is(true, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	dome_gate_open();
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+// REV-3: a slew requested while a relative move waits for its handler is refused. The handler of the relative move sends its own target
+// and writes it to DOME_HORIZONTAL_COORDINATES, so an accepted slew lost its target: the relative move ran, the slew then sent the target
+// of the relative move once more, and both ended OK.
+static void dome_slew_during_relative_move(void) {
+	SA_CHECK(dome_begin(dome_default));
+	unsigned coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME), steps = sa_revision(sa_device, DOME_STEPS_PROPERTY_NAME);
+	int mark = sa_message_mark();
+	SA_CHECK(dome_gate_close());
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10) == INDIGO_OK && SA_WAIT(sa_state(sa_device, DOME_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 180) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates) && sa_message_seen_since(mark, "Dome is moving: request can not be completed"), SA_TIMEOUT));
+	dome_gate_open();
+	SA_CHECK(SA_WAIT(dome_count("PUT", "slewtoazimuth") == 1, SA_TIMEOUT) && dome_last("PUT", "slewtoazimuth", "Azimuth=133.5&ClientID="));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, steps) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && dome_azimuth() == 133.5);
+	int ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 3, SA_TIMEOUT) && dome_count("PUT", "slewtoazimuth") == 1);
+	// the same while the relative move runs: the slew is not accepted (the coordinates belong to the move)
+	steps = sa_revision(sa_device, DOME_STEPS_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 10, "slewtoazimuth") && SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 180) == INDIGO_OK);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, steps), SA_TIMEOUT) && dome_azimuth() == 143.5 && dome_count("PUT", "slewtoazimuth") == 2);
+	// after it a slew is accepted and goes where it was asked to
+	coordinates = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 180, "slewtoazimuth") && dome_last("PUT", "slewtoazimuth", "Azimuth=180&ClientID="));
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinates), SA_TIMEOUT) && dome_azimuth() == 180);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	dome_gate_open();
+	sa_end();
+}
+
+// REV-9: a shutter move whose completion can not be read fails, but while the next request waits for its handler that request owns
+// DOME_SHUTTER: the failure is told, the property stays BUSY and goes on with the request.
+static void dome_shutter_failure_during_pending_request(void) {
+	SA_CHECK(dome_begin(dome_default));
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && SA_WAIT(dome_count("GET", "shutterstatus") >= 2, SA_TIMEOUT));
+	unsigned shutter = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	int mark = sa_message_mark();
+	// the queue is held, the request to close arrives, the next look of the finalizer at the shutter fails
+	SA_CHECK(dome_gate_close());
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(dome_shutter_is(false, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", DOME_API "shutterstatus", "ascom-error", "Value=1279&Message=Shutter%20sensor%20fault"));
+	SA_CHECK(SA_WAIT(sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) >= 2, SA_TIMEOUT));
+	int looks = dome_count("GET", "shutterstatus");
+	dome_gate_open();
+	SA_CHECK(SA_WAIT(dome_count("PUT", "closeshutter") == 1, SA_TIMEOUT) && sa_count_before(0, "GET", DOME_API "shutterstatus", sa_sequence(0, "PUT", DOME_API "closeshutter")) > looks);
+	SA_CHECK(sa_faulted_count(0, "GET", DOME_API "shutterstatus", "ascom-error") == 1 && sa_message_seen_since(mark, "Open shutter failed: device error (Shutter sensor fault (0x4FF))"));
+	SA_CHECK(!sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_ALERT_STATE, shutter) && dome_shutter_is(false, INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, shutter), SA_TIMEOUT) && dome_shutter_is(false, INDIGO_OK_STATE) && dome_simulated("ShutterStatus") == 1);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	dome_gate_open();
+	sa_end();
+}
+
+static void dome_request_failures(void) {
+	SA_CHECK(sa_begin(dome_default) && sa_set_number("X_ALPACA_TIMEOUTS", "LONG", 1) == INDIGO_OK_STATE && sa_attach("Dome Simulator") && sa_connect(sa_device));
+	// the device refuses the slew: ALERT with its message, the dome does not move and the device is not asked whether it does
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoazimuth", "ascom-error", "Value=1025&Message=Azimuth%20is%20behind%20the%20cable%20stop"));
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 200.5) == INDIGO_ALERT_STATE && sa_message_seen("Slew failed: invalid value (Azimuth is behind the cable stop (0x401))"));
+	SA_CHECK(dome_simulated("Azimuth") == 123.5 && dome_azimuth() == 123.5 && dome_count("GET", "slewing") == 1 && sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && SA_WAIT(dome_lights(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
+	// HTTP 500: the request may have reached the dome, so it is asked whether it moves; it does not
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoazimuth", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 200.5) == INDIGO_ALERT_STATE && sa_message_seen("Slew failed: server error (HTTP 500: Kaboom)") && dome_count("GET", "slewing") == 2 && dome_count("PUT", "slewtoazimuth") == 2);
+	// a reply that can not be read: the dome took the request and moves, so the slew is watched to its end; the request is not sent again
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoazimuth", "malformed-json", NULL));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 133.5) == INDIGO_OK && SA_WAIT(dome_count("GET", "slewing") >= 5, SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 133.5 && dome_count("PUT", "slewtoazimuth") == 3);
+	// the connection breaks before the reply: the same
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	int looks = dome_count("GET", "slewing");
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoazimuth", "drop", NULL));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 143.5) == INDIGO_OK && SA_WAIT(dome_count("GET", "slewing") >= looks + 3, SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 143.5 && dome_count("PUT", "slewtoazimuth") == 4 && sa_is_connected(sa_device));
+	// park and find home refused
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "park", "ascom-error", "Value=1279&Message=Brake%20engaged"));
+	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Park failed: device error (Brake engaged (0x4FF))") && dome_park_is(false, INDIGO_ALERT_STATE));
+	SA_CHECK(SA_WAIT(dome_lights(INDIGO_IDLE_STATE, INDIGO_ALERT_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_defined(sa_device, DOME_PARK_PROPERTY_NAME));
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "findhome", "http-status", "Value=503&Message=Busy"));
+	SA_CHECK(dome_set_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Find home failed: server error (HTTP 503: Busy)") && !sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME) && sa_defined(sa_device, DOME_HOME_PROPERTY_NAME));
+	// an error of the completion member means that the slew failed after it started
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	looks = dome_count("GET", "slewing");
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 233.5, "slewtoazimuth") && SA_WAIT(dome_count("GET", "slewing") >= looks + 2, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", DOME_API "slewing", "ascom-error", "Value=1280&Message=Motor%20stalled"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Slew failed: device error (Motor stalled (0x500))") && sa_is_connected(sa_device));
+	// the dome still moves, whatever went wrong with the question: the poll shows that, and its end
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 9) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision) && dome_azimuth() == 233.5, SA_TIMEOUT));
+	// a reply of the completion member that is no reply fails the slew, too
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	looks = dome_count("GET", "slewing");
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 243.5, "slewtoazimuth") && SA_WAIT(dome_count("GET", "slewing") >= looks + 2, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", DOME_API "slewing", "malformed-json", NULL));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Slew failed: invalid reply"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_azimuth() == 243.5, SA_TIMEOUT));
+	// the same for the shutter: ShutterStatus can not be read while it opens
+	revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter") && SA_WAIT(dome_count("GET", "shutterstatus") >= 3, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", DOME_API "shutterstatus", "ascom-error", "Value=1279&Message=Limit%20switch%20fault"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Open shutter failed: device error (Limit switch fault (0x4FF))"));
+	SA_CHECK(SA_WAIT(dome_shutter_is(true, INDIGO_BUSY_STATE), SA_TIMEOUT) && sa_advance(0, 5) && SA_WAIT(dome_shutter_is(true, INDIGO_OK_STATE), SA_TIMEOUT));
+	// OpenShutter / CloseShutter whose reply is lost: the shutter does what it was asked for, so the move is watched
+	revision = sa_revision(sa_device, DOME_SHUTTER_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "closeshutter", "truncated-json", NULL));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(dome_simulated("ShutterStatus") == 3 && dome_shutter_is(false, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_shutter_is(false, INDIGO_OK_STATE) && dome_count("PUT", "closeshutter") == 1);
+	// the dome does not answer the start of a slew within the long timeout (1 s here): ALERT, one request, the device stays connected
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoazimuth", "stall-before", "Delay=1500&Dispatch=false"));
+	int puts = dome_count("PUT", "slewtoazimuth");
+	double started = indigo_monotonic_time();
+	SA_CHECK(dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 10.5) == INDIGO_ALERT_STATE && sa_message_seen("Slew failed: timeout"));
+	SA_CHECK(indigo_monotonic_time() - started > 0.8 && indigo_monotonic_time() - started < 6 && dome_count("PUT", "slewtoazimuth") == puts + 1 && dome_simulated("Azimuth") == 243.5 && sa_is_connected(sa_device));
+	// the dome does not answer the question for Slewing within the standard timeout (2 s) in the middle of a slew: the slew fails,
+	// nothing hangs, the device stays connected and the next slew works
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	looks = dome_count("GET", "slewing");
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 253.5, "slewtoazimuth") && SA_WAIT(dome_count("GET", "slewing") >= looks + 2, SA_TIMEOUT));
+	int step_mark = sa_message_mark();
+	SA_CHECK(sa_fault(0, "GET", DOME_API "slewing", "stall-before", "Delay=2600"));
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen_since(step_mark, "Slew failed: timeout") && indigo_monotonic_time() - started > 1.5 && indigo_monotonic_time() - started < 8);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_azimuth() == 253.5, SA_TIMEOUT) && sa_is_connected(sa_device));
+	revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 263.5, "slewtoazimuth") && sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 263.5);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_connect_failures(void) {
+	SA_CHECK(sa_begin(dome_default) && sa_attach("Dome Simulator"));
+	// a capability that can not be read fails the connection: nothing stays defined and the Alpaca device is disconnected again
+	SA_CHECK(sa_fault(0, "GET", DOME_API "cansetshutter", "malformed-json", NULL));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && !sa_defined(sa_device, DOME_STATE_PROPERTY_NAME) && dome_simulated_is("Connected", "false"));
+	// the transport breaks while the capabilities are read
+	SA_CHECK(sa_fault(0, "GET", DOME_API "canpark", "reset", "Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && sa_clear_faults(0));
+	// the state can not be read
+	SA_CHECK(sa_fault(0, "GET", DOME_API "azimuth", "ascom-error", "Value=1279&Message=Encoder%20fault"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_message_seen("Encoder fault"));
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && dome_simulated_is("Connected", "false") && sa_stray_updates() == 0);
+	// a capability the device does not even have (NotImplemented or HTTP 400) is one it can not do, and a state the device does
+	// not have is left out: asked once per connection
+	SA_CHECK(sa_put(0, "/simulator/v1/dome/0/error", "Member=canslave&ErrorNumber=1024") && sa_put(0, "/simulator/v1/dome/0/error", "Member=athome&ErrorNumber=1024") && sa_fault(0, "GET", DOME_API "cansetpark", "http-status", "Value=400"));
+	int reads = dome_count("GET", "athome");
+	SA_CHECK(sa_connect(sa_device) && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && sa_defined(sa_device, DOME_HOME_PROPERTY_NAME) && sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && dome_azimuth() == 123.5);
+	int ticks = dome_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(dome_count("GET", "devicestate") >= ticks + 4, SA_TIMEOUT) && dome_count("GET", "athome") == reads + 1 && dome_count("GET", "slaved") == 0 && sa_is_connected(sa_device));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- transport loss and lifecycle
+
+static void dome_transport_loss(void) {
+	SA_CHECK(dome_begin(dome_default));
+	// the transport is lost in the middle of a slew and a shutter move: both end in ALERT, the device is disconnected, nothing hangs
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 301.75, "slewtoazimuth") && dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter"));
+	SA_CHECK(SA_WAIT(dome_count("GET", "slewing") >= 3 && dome_count("GET", "shutterstatus") >= 3, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, NULL, DOME_API "*", "reset", "Count=-1"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
+	SA_CHECK(sa_message_seen("failed: connection lost") && sa_message_seen("connection to the Alpaca server lost"));
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_STATE_PROPERTY_NAME) && sa_stray_updates() == 0);
+	SA_CHECK(dome_silent() && dome_count("PUT", "abortslew") == 0);
+	// the server is back; the dome finished what it was doing: the next connection shows it, nothing is BUSY or in ALERT
+	SA_CHECK(sa_clear_faults(0) && sa_advance(0, 20) && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_azimuth() == 301.75 && dome_shutter_is(true, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE));
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 311.75, "slewtoazimuth") && sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	// lost while idle: the properties of the class go away with the connection
+	SA_CHECK(sa_fault(0, NULL, DOME_API "*", "reset", "Count=-1") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED) && !sa_defined(sa_device, DOME_PARK_SET) && dome_silent());
+	// lost while the dome parks; it is parked when the server is back
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && dome_start_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, "park") && SA_WAIT(dome_count("GET", "slewing") >= 3, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, NULL, DOME_API "*", "drop", "Count=-1") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME));
+	SA_CHECK(sa_clear_faults(0) && sa_advance(0, 20) && sa_connect(sa_device) && dome_park_is(true, INDIGO_OK_STATE) && dome_azimuth() == 201.25 && dome_lights(INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void dome_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(dome_default));
+	snprintf(key, sizeof(key), "%s", sa_device_key("Dome Simulator"));
+	SA_CHECK(sa_attach("Dome Simulator") && sa_connect(sa_device));
+	// a disconnect in the middle of a slew and a shutter move: nothing is stopped, the dome is left to finish, nothing is asked any more
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 301.75, "slewtoazimuth") && dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter"));
+	SA_CHECK(SA_WAIT(dome_count("GET", "slewing") >= 3 && dome_count("GET", "shutterstatus") >= 3, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED));
+	SA_CHECK(dome_count("PUT", "abortslew") == 0 && dome_count("PUT", "closeshutter") == 0 && dome_count("PUT", "disconnect") == 1 && dome_silent());
+	// connected again while the dome still does both: the shutter is shown as opening, and the azimuth as moving as soon as it is seen to change
+	SA_CHECK(sa_advance(0, 3) && dome_near(dome_simulated("Azimuth"), 153.5) && dome_simulated("ShutterStatus") == 2);
+	SA_CHECK(sa_connect(sa_device) && dome_shutter_is(true, INDIGO_BUSY_STATE) && dome_near(dome_azimuth(), 153.5) && sa_state(sa_device, DOME_PARK_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, DOME_ABORT_MOTION_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && dome_near(dome_azimuth(), 163.5) && dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(dome_shutter_is(true, INDIGO_OK_STATE) && dome_near(dome_azimuth(), 173.5), SA_TIMEOUT) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 13) && SA_WAIT(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_azimuth() == 301.75 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE), SA_TIMEOUT));
+	// connect and disconnect, repeated: the same properties every time, nothing left over from the operations before
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, DOME_STATE_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED) && sa_connect(sa_device));
+		SA_CHECK(sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_azimuth() == 301.75 && dome_shutter_is(true, INDIGO_OK_STATE) && dome_park_is(false, INDIGO_OK_STATE) && sa_state(sa_device, DOME_SLAVED) == INDIGO_OK_STATE);
+		SA_CHECK(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 2 && sa_item_count(sa_device, DOME_ON_COORDINATES_SET_PROPERTY_NAME) == 2 && sa_stray_updates() == 0);
+	}
+	// what failed in one connection is not remembered in the next one
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "park", "ascom-error", "Value=1279") && dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_fault(0, "PUT", DOME_API "slewtoazimuth", "ascom-error", "Value=1279") && dome_set_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 10.5) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_disconnect(sa_device) && sa_connect(sa_device) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_park_is(false, INDIGO_OK_STATE) && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE));
+	// the device changes while the proxy is disconnected: the next connection shows another dome
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "dome", 0, "CanSetAltitude=false&CanSetShutter=false&CanSlave=false&Azimuth=45.5") && sa_connect(sa_device));
+	SA_CHECK(sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 1 && !sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED) && dome_azimuth() == 45.5 && dome_lights(INDIGO_IDLE_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "dome", 0, "CanSetAltitude=true&CanSetShutter=true&CanSlave=true") && sa_connect(sa_device) && sa_item_count(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == 2 && sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && sa_defined(sa_device, DOME_SLAVED));
+	// the device is detached in the middle of a slew: it goes away without a hang, the Alpaca device is disconnected and not stopped
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 170.5, "slewtoazimuth") && dome_start_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, "openshutter"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 3);
+	SA_CHECK(dome_simulated_is("Connected", "false") && dome_count("PUT", "abortslew") == 0 && dome_silent());
+	// and attached again it is a working device
+	SA_CHECK(sa_advance(0, 20) && sa_attach("Dome Simulator") && sa_connect(sa_device) && dome_azimuth() == 170.5 && dome_shutter_is(true, INDIGO_OK_STATE));
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 180.5, "slewtoazimuth") && sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 180.5);
+cleanup:
+	sa_end();
+}
+
+// A request and a disconnect right behind it. The handler of the request runs before the one of the disconnect or finds the device
+// disconnected ("if (!system_alpaca_is_active(device)) return"); either way nothing hangs and the next connection is a working one.
+// Kept apart from the other cases because ThreadSanitizer reports the pattern itself: the bus thread writes CONNECTION
+// (INDIGO_PROCESS_CONNECT) while the handler reads it, as in every INDIGO driver.
+static void dome_disconnect_after_request(void) {
+	SA_CHECK(dome_begin(dome_default));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 150.5) == INDIGO_OK && sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) && !sa_defined(sa_device, DOME_SLAVED) && dome_count("PUT", "slewtoazimuth") <= 1 && dome_silent());
+	SA_CHECK(sa_advance(0, 40) && sa_connect(sa_device) && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && dome_azimuth() == (dome_count("PUT", "slewtoazimuth") == 1 ? 150.5 : 123.5));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true) == INDIGO_OK && sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, DOME_SHUTTER_PROPERTY_NAME) && !sa_defined(sa_device, DOME_PARK_PROPERTY_NAME) && dome_silent() && sa_stray_updates() == 0);
+	SA_CHECK(sa_advance(0, 40) && sa_connect(sa_device) && dome_shutter_is(dome_count("PUT", "openshutter") == 1, INDIGO_OK_STATE) && dome_park_is(dome_count("PUT", "park") == 1, INDIGO_OK_STATE));
+	// whatever the dome did meanwhile, it works
+	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE);
+	unsigned revision = sa_revision(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	SA_CHECK(dome_start_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 33.25, "slewtoazimuth") && sa_advance(0, 40) && SA_WAIT(sa_state_after(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && dome_azimuth() == 33.25);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+#define SYSTEM_ALPACA_DOME_CASES \
+	{ "dome_properties", dome_properties }, \
+	{ "dome_legacy_properties", dome_legacy_properties }, \
+	{ "dome_capability_variants", dome_capability_variants }, \
+	{ "dome_slewing_includes_shutter", dome_slewing_includes_shutter }, \
+	{ "dome_slew_azimuth", dome_slew_azimuth }, \
+	{ "dome_slew_altitude", dome_slew_altitude }, \
+	{ "dome_relative_move", dome_relative_move }, \
+	{ "dome_sync", dome_sync }, \
+	{ "dome_shutter", dome_shutter }, \
+	{ "dome_park_home", dome_park_home }, \
+	{ "dome_abort", dome_abort }, \
+	{ "dome_slaved", dome_slaved }, \
+	{ "dome_polling", dome_polling }, \
+	{ "dome_pending_requests", dome_pending_requests }, \
+	{ "dome_completion_during_pending_request", dome_completion_during_pending_request }, \
+	{ "dome_slew_during_relative_move", dome_slew_during_relative_move }, \
+	{ "dome_shutter_failure_during_pending_request", dome_shutter_failure_during_pending_request }, \
+	{ "dome_request_failures", dome_request_failures }, \
+	{ "dome_connect_failures", dome_connect_failures }, \
+	{ "dome_transport_loss", dome_transport_loss }, \
+	{ "dome_lifecycle", dome_lifecycle }, \
+	{ "dome_disconnect_after_request", dome_disconnect_after_request },
 
 #endif /* system_alpaca_dome_cases_h */

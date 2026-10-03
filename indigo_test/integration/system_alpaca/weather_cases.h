@@ -20,16 +20,503 @@
 
 // Cases of the ObservingConditions device class of the system_alpaca driver (indigo_system_alpaca_weather.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them weather_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated ObservingConditions device has all thirteen sensors by default: CloudCover 12.5 %, DewPoint 6.3 C, Humidity 58 %,
+// Pressure 1013.2 hPa, RainRate 0 mm/h, SkyBrightness 0.02 lux, SkyQuality 20.6 mag/arcsec2, SkyTemperature -18.4 C,
+// StarFWHM 2.3 arcsec, Temperature 14.7 C, WindDirection 245 degrees, WindGust 4.8 m/s, WindSpeed 2.6 m/s. The control key Sensors
+// lists the sensors the device implements. The values that need a request of their own are polled on every tenth poll tick,
+// which is once a second with the poll interval of the harness.
 
 #ifndef system_alpaca_weather_cases_h
 #define system_alpaca_weather_cases_h
 
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_WEATHER_CASES
+#define WEATHER_API "/api/v1/observingconditions/0/"
+#define WEATHER_STATE "/simulator/v1/observingconditions/0/state"
+#define WEATHER_ERROR "/simulator/v1/observingconditions/0/error"
+#define WEATHER_SENSORS "X_ALPACA_WEATHER_SENSORS"
+#define WEATHER_PERIOD "X_ALPACA_WEATHER_AVERAGE_PERIOD"
+#define WEATHER_REFRESH "X_ALPACA_WEATHER_REFRESH"
+#define WEATHER_AGE "X_ALPACA_WEATHER_AGE"
+
+static const char *weather_default[] = { "--device", "observingconditions:RainRate=1.25", NULL };
+static const char *weather_legacy[] = { "--device", "observingconditions:interface=legacy,RainRate=1.25", NULL };
+
+// The thirteen sensor members in the order the driver asks for them.
+static const char *weather_members[] = { "temperature", "humidity", "dewpoint", "pressure", "windspeed", "windgust", "winddirection", "rainrate", "cloudcover", "skytemperature", "skyquality", "skybrightness", "starfwhm" };
+
+static int weather_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), WEATHER_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// Number of requests for the value of a sensor, of all sensors together.
+static int weather_reads(void) {
+	int count = 0;
+	for (int i = 0; i < 13; i++) {
+		count += weather_count("GET", weather_members[i]);
+	}
+	return count;
+}
+
+// The parameters of the last request of a member start with the given text (the transaction IDs follow).
+static bool weather_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), WEATHER_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL && !strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters));
+}
+
+// One of the recorded requests of a member has parameters that start with the given text.
+static bool weather_asked(const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), WEATHER_API "%s", member);
+	const char *line = sa_requests(0, "GET", path);
+	while (line != NULL && *line) {
+		if (!strncmp(sa_field(line, "Query"), parameters, strlen(parameters))) {
+			return true;
+		}
+		line += strcspn(line, "\n");
+		line += *line == '\n';
+	}
+	return false;
+}
+
+static double weather_value(const char *item) {
+	return sa_number(sa_device, AUX_WEATHER_PROPERTY_NAME, item);
+}
+
+static bool weather_item_is(const char *item, const char *label, double min, double max, const char *format) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	indigo_item *cached = sa_cache_item(sa_device, AUX_WEATHER_PROPERTY_NAME, item);
+	bool result = cached != NULL && !strcmp(cached->label, label) && cached->number.min == min && cached->number.max == max && !strcmp(cached->number.format, format);
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+// Wait for the answer to a request made after the given revision: a state that is not BUSY. Returns it, -1 if there was none.
+static int weather_answer(const char *property, unsigned revision) {
+	if (!SA_WAIT(sa_revision(sa_device, property) > revision && sa_state(sa_device, property) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static int weather_set_period(double value) {
+	unsigned revision = sa_revision(sa_device, WEATHER_PERIOD);
+	return indigo_change_number_property_1(&sa_client, sa_device, WEATHER_PERIOD, "PERIOD", value) == INDIGO_OK ? weather_answer(WEATHER_PERIOD, revision) : -1;
+}
+
+static int weather_refresh(void) {
+	unsigned revision = sa_revision(sa_device, WEATHER_REFRESH);
+	return indigo_change_switch_property_1(&sa_client, sa_device, WEATHER_REFRESH, "REFRESH", true) == INDIGO_OK ? weather_answer(WEATHER_REFRESH, revision) : -1;
+}
+
+static bool weather_begin(const char * const *arguments) {
+	return sa_begin(arguments) && sa_attach("ObservingConditions Simulator") && sa_connect(sa_device);
+}
+
+static bool weather_nothing_defined(void) {
+	return !sa_defined(sa_device, AUX_WEATHER_PROPERTY_NAME) && !sa_defined(sa_device, WEATHER_SENSORS) && !sa_defined(sa_device, WEATHER_PERIOD) && !sa_defined(sa_device, WEATHER_REFRESH) && !sa_defined(sa_device, WEATHER_AGE);
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void weather_properties(void) {
+	SA_CHECK(sa_begin(weather_default) && sa_attach("ObservingConditions Simulator"));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_INTERFACE_AUX_WEATHER);
+	// nothing of the class is defined and nothing was asked before the device is connected
+	SA_CHECK(weather_nothing_defined() && weather_reads() == 0 && weather_count("GET", "averageperiod") == 0);
+	SA_CHECK(sa_connect(sa_device));
+	// one item for every sensor, in the units of the device, and the Bortle class derived from the sky quality
+	SA_CHECK(sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 14 && sa_perm(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_RO_PERM && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 14.7 && weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 58 && weather_value(AUX_WEATHER_DEWPOINT_ITEM_NAME) == 6.3 && weather_value(AUX_WEATHER_PRESSURE_ITEM_NAME) == 1013.2);
+	SA_CHECK(weather_value(AUX_WEATHER_WIND_SPEED_ITEM_NAME) == 2.6 && weather_value("X_WIND_GUST") == 4.8 && weather_value(AUX_WEATHER_WIND_DIRECTION_ITEM_NAME) == 245 && weather_value("X_RAIN_RATE") == 1.25);
+	SA_CHECK(weather_value("X_CLOUD_COVER") == 12.5 && weather_value(AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME) == -18.4 && weather_value(AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME) == 20.6 && weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 4.5);
+	SA_CHECK(weather_value("X_SKY_ILLUMINANCE") == 0.02 && weather_value("X_STAR_FWHM") == 2.3 && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_RAIN_ITEM_NAME));
+	SA_CHECK(weather_item_is(AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient temperature [\xC2\xB0""C]", -100, 100, "%.1f") && weather_item_is(AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric pressure [hPa]", 0, 2000, "%.1f"));
+	SA_CHECK(weather_item_is(AUX_WEATHER_WIND_SPEED_ITEM_NAME, "Wind speed [m/s]", 0, 200, "%.1f") && weather_item_is("X_WIND_GUST", "Wind gust [m/s]", 0, 200, "%.1f") && weather_item_is("X_RAIN_RATE", "Rain rate [mm/h]", 0, 1000, "%.2f"));
+	SA_CHECK(weather_item_is("X_CLOUD_COVER", "Cloud cover [%]", 0, 100, "%.1f") && weather_item_is(AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [mag/arcsec\xC2\xB2]", 0, 30, "%.2f") && weather_item_is("X_SKY_ILLUMINANCE", "Sky illuminance [lux]", 0, 200000, "%g"));
+	SA_CHECK(weather_item_is("X_STAR_FWHM", "Star FWHM [arcsec]", 0, 100, "%.2f") && weather_item_is(AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, "Sky temperature [\xC2\xB0""C]", -200, 100, "%.1f") && weather_item_is(AUX_WEATHER_WIND_DIRECTION_ITEM_NAME, "Wind direction [\xC2\xB0]", 0, 360, "%.0f"));
+	// the descriptions of the sensors, under the names of their items
+	SA_CHECK(sa_item_count(sa_device, WEATHER_SENSORS) == 13 && sa_perm(sa_device, WEATHER_SENSORS) == INDIGO_RO_PERM);
+	SA_CHECK(!strcmp(sa_text(sa_device, WEATHER_SENSORS, AUX_WEATHER_TEMPERATURE_ITEM_NAME), "Simulated Temperature sensor") && !strcmp(sa_text(sa_device, WEATHER_SENSORS, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME), "Simulated SkyQuality sensor"));
+	SA_CHECK(!strcmp(sa_text(sa_device, WEATHER_SENSORS, "X_SKY_ILLUMINANCE"), "Simulated SkyBrightness sensor") && !strcmp(sa_text(sa_device, WEATHER_SENSORS, "X_WIND_GUST"), "Simulated WindGust sensor"));
+	// the averaging period in hours, the refresh and the age of the values
+	SA_CHECK(sa_item_count(sa_device, WEATHER_PERIOD) == 1 && sa_perm(sa_device, WEATHER_PERIOD) == INDIGO_RW_PERM && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 0);
+	SA_CHECK(sa_item_count(sa_device, WEATHER_REFRESH) == 1 && sa_perm(sa_device, WEATHER_REFRESH) == INDIGO_RW_PERM && !sa_switch(sa_device, WEATHER_REFRESH, "REFRESH"));
+	SA_CHECK(sa_item_count(sa_device, WEATHER_AGE) == 1 && sa_perm(sa_device, WEATHER_AGE) == INDIGO_RO_PERM && sa_number(sa_device, WEATHER_AGE, "AGE") == 0);
+	// what it took: every sensor and its description once, with the names of the standard
+	for (int i = 0; i < 13; i++) {
+		SA_CHECK(weather_count("GET", weather_members[i]) == 1);
+	}
+	SA_CHECK(weather_count("GET", "sensordescription") == 13 && weather_asked("sensordescription", "SensorName=Temperature&ClientID=") && weather_asked("sensordescription", "SensorName=SkyQuality&ClientID=") && weather_last("GET", "sensordescription", "SensorName=StarFWHM&ClientID="));
+	SA_CHECK(weather_count("GET", "averageperiod") == 1 && weather_count("GET", "timesincelastupdate") == 1 && weather_last("GET", "timesincelastupdate", "SensorName=&ClientID=") && weather_count("PUT", "*") == 1);
+	// a disconnect removes the properties, the next connection builds them again
+	SA_CHECK(sa_disconnect(sa_device) && weather_nothing_defined());
+	SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 14 && sa_item_count(sa_device, WEATHER_SENSORS) == 13 && weather_count("GET", "temperature") == 2 && weather_count("GET", "sensordescription") == 26);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void weather_legacy_properties(void) {
+	SA_CHECK(weather_begin(weather_legacy));
+	// interface version 1 has the same members but no devicestate
+	SA_CHECK(sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 14 && sa_item_count(sa_device, WEATHER_SENSORS) == 13 && sa_defined(sa_device, WEATHER_PERIOD) && sa_defined(sa_device, WEATHER_REFRESH) && sa_defined(sa_device, WEATHER_AGE));
+	SA_CHECK(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 14.7 && weather_value("X_RAIN_RATE") == 1.25 && weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 4.5 && weather_count("PUT", "connected") == 1 && weather_count("PUT", "connect") == 0);
+	// every sensor is read with a request of its own, on every tenth poll tick: the device is asked for its sign of life ten
+	// times as often as for a sensor
+	SA_CHECK(SA_WAIT(weather_count("GET", "temperature") >= 4, 2 * SA_TIMEOUT) && weather_count("GET", "devicestate") == 0);
+	int ticks = weather_count("GET", "connected"), reads = weather_count("GET", "starfwhm");
+	SA_CHECK(ticks >= 10 * (reads - 1) - 2 && ticks <= 10 * (reads - 1) + 14);
+	// a change on the device is seen
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Temperature=-3.5&WindGust=11.2&SkyQuality=21.7"));
+	SA_CHECK(SA_WAIT(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == -3.5 && weather_value("X_WIND_GUST") == 11.2 && weather_value(AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME) == 21.7 && weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 2, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 58);
+	SA_CHECK(sa_disconnect(sa_device) && weather_nothing_defined());
+cleanup:
+	sa_end();
+}
+
+static void weather_optional_sensors(void) {
+	static const char *some[] = { "--device", "observingconditions:Sensors=Temperature|Humidity|SkyQuality|WindGust", NULL };
+	static const char *one[] = { "--device", "observingconditions:Sensors=RainRate,RainRate=3.75,interface=legacy,CanRefresh=false", NULL };
+	static const char *none[] = { "--device", "observingconditions:Sensors=", NULL };
+	// a device with four of the thirteen sensors: an item for each of them (and the Bortle class), nothing for the others
+	SA_CHECK(weather_begin(some));
+	SA_CHECK(sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 5 && sa_item_count(sa_device, WEATHER_SENSORS) == 4);
+	SA_CHECK(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 14.7 && weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 58 && weather_value("X_WIND_GUST") == 4.8 && weather_value(AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME) == 20.6 && weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 4.5);
+	SA_CHECK(!sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_PRESSURE_ITEM_NAME) && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME) && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, "X_RAIN_RATE") && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, "X_CLOUD_COVER"));
+	SA_CHECK(!sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_DEWPOINT_ITEM_NAME) && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_DIRECTION_ITEM_NAME) && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME));
+	SA_CHECK(!sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, "X_SKY_ILLUMINANCE") && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, "X_STAR_FWHM") && !sa_has_item(sa_device, WEATHER_SENSORS, AUX_WEATHER_PRESSURE_ITEM_NAME) && sa_has_item(sa_device, WEATHER_SENSORS, "X_WIND_GUST"));
+	SA_CHECK(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && sa_defined(sa_device, WEATHER_PERIOD) && sa_defined(sa_device, WEATHER_REFRESH) && sa_defined(sa_device, WEATHER_AGE));
+	// every sensor was asked for once; the description is read for the ones the device has
+	SA_CHECK(weather_reads() == 13 && weather_count("GET", "sensordescription") == 4 && !weather_asked("sensordescription", "SensorName=Pressure"));
+	// a sensor the device does not have is never asked for again: not by the polling (two rounds of it) and not by a refresh
+	int rounds = weather_count("GET", "timesincelastupdate");
+	SA_CHECK(SA_WAIT(weather_count("GET", "timesincelastupdate") >= rounds + 2, 2 * SA_TIMEOUT) && weather_refresh() == INDIGO_OK_STATE);
+	SA_CHECK(weather_count("GET", "pressure") == 1 && weather_count("GET", "dewpoint") == 1 && weather_count("GET", "windspeed") == 1 && weather_count("GET", "winddirection") == 1 && weather_count("GET", "rainrate") == 1 && weather_count("GET", "cloudcover") == 1);
+	SA_CHECK(weather_count("GET", "skytemperature") == 1 && weather_count("GET", "skybrightness") == 1 && weather_count("GET", "starfwhm") == 1 && weather_count("GET", "temperature") == 2 && weather_count("GET", "windgust") == 2 && weather_count("GET", "sensordescription") == 4);
+	// the sensors it has are polled
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Humidity=91.5&WindGust=17") && SA_WAIT(weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 91.5 && weather_value("X_WIND_GUST") == 17, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// one sensor, and it is not the sky quality: one item, no Bortle class
+	SA_CHECK(weather_begin(one));
+	SA_CHECK(sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 1 && weather_value("X_RAIN_RATE") == 3.75 && sa_item_count(sa_device, WEATHER_SENSORS) == 1 && !strcmp(sa_text(sa_device, WEATHER_SENSORS, "X_RAIN_RATE"), "Simulated RainRate sensor"));
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "RainRate=0.5") && SA_WAIT(weather_value("X_RAIN_RATE") == 0.5, SA_TIMEOUT) && weather_count("GET", "temperature") == 1 && weather_count("GET", "skyquality") == 1);
+	// this device has no Refresh: the first request tells, and the property is gone for the rest of the connection
+	unsigned revision = sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME);
+	int reads = weather_count("GET", "rainrate");
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, WEATHER_REFRESH, "REFRESH", true) == INDIGO_OK && SA_WAIT(!sa_defined(sa_device, WEATHER_REFRESH), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Refresh is not implemented by the device") && weather_count("PUT", "refresh") == 1 && sa_is_connected(sa_device) && sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME) == revision && weather_count("GET", "rainrate") <= reads + 1);
+	// the next connection asks again
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "observingconditions", 0, "CanRefresh=true") && sa_connect(sa_device) && sa_defined(sa_device, WEATHER_REFRESH) && sa_state(sa_device, WEATHER_REFRESH) == INDIGO_OK_STATE);
+	SA_CHECK(weather_refresh() == INDIGO_OK_STATE && sa_defined(sa_device, WEATHER_REFRESH) && sa_disconnect(sa_device));
+	sa_end();
+	// a device without any sensor connects and is polled; it has the averaging period and nothing else
+	SA_CHECK(weather_begin(none));
+	SA_CHECK(!sa_defined(sa_device, AUX_WEATHER_PROPERTY_NAME) && !sa_defined(sa_device, WEATHER_SENSORS) && !sa_defined(sa_device, WEATHER_REFRESH) && !sa_defined(sa_device, WEATHER_AGE) && sa_defined(sa_device, WEATHER_PERIOD));
+	SA_CHECK(weather_reads() == 13 && weather_count("GET", "sensordescription") == 0 && weather_count("GET", "timesincelastupdate") == 0);
+	SA_CHECK(SA_WAIT(weather_count("GET", "devicestate") >= 25, SA_TIMEOUT) && sa_is_connected(sa_device) && weather_reads() == 13 && weather_count("GET", "timesincelastupdate") == 0 && weather_count("GET", "averageperiod") >= 2);
+	SA_CHECK(weather_set_period(1.5) == INDIGO_OK_STATE && !strcmp(sa_status(0, WEATHER_STATE, "AveragePeriod"), "1.5"));
+	SA_CHECK(sa_disconnect(sa_device) && weather_nothing_defined());
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- polling
+
+static void weather_polling(void) {
+	SA_CHECK(weather_begin(weather_default));
+	// Platform 7: the values come with devicestate; no sensor is asked for its value after the connection was established
+	SA_CHECK(SA_WAIT(weather_count("GET", "devicestate") >= 3, SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Temperature=-7.25&Humidity=83&DewPoint=-9.5&Pressure=987.6&WindSpeed=13.5&WindGust=21&WindDirection=37"));
+	SA_CHECK(SA_WAIT(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == -7.25 && weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 83 && weather_value(AUX_WEATHER_DEWPOINT_ITEM_NAME) == -9.5 && weather_value(AUX_WEATHER_PRESSURE_ITEM_NAME) == 987.6, SA_TIMEOUT));
+	SA_CHECK(weather_value(AUX_WEATHER_WIND_SPEED_ITEM_NAME) == 13.5 && weather_value("X_WIND_GUST") == 21 && weather_value(AUX_WEATHER_WIND_DIRECTION_ITEM_NAME) == 37 && weather_value("X_RAIN_RATE") == 1.25);
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "RainRate=12.5&CloudCover=100&SkyTemperature=-41.5&SkyQuality=17.9&SkyBrightness=1250&StarFWHM=4.75"));
+	SA_CHECK(SA_WAIT(weather_value("X_RAIN_RATE") == 12.5 && weather_value("X_CLOUD_COVER") == 100 && weather_value(AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME) == -41.5 && weather_value(AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME) == 17.9, SA_TIMEOUT));
+	SA_CHECK(weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 8 && weather_value("X_SKY_ILLUMINANCE") == 1250 && weather_value("X_STAR_FWHM") == 4.75 && weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == -7.25);
+	SA_CHECK(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && weather_reads() == 13);
+	// values that do not change are not published again
+	unsigned revision = sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME);
+	int ticks = weather_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(weather_count("GET", "devicestate") >= ticks + 25, SA_TIMEOUT) && sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME) == revision && weather_reads() == 13);
+	// what devicestate does not have is asked for on every tenth tick: the averaging period and the age of the values
+	int ages = weather_count("GET", "timesincelastupdate"), periods = weather_count("GET", "averageperiod");
+	ticks = weather_count("GET", "devicestate");
+	SA_CHECK(ages >= 3 && periods >= 3 && ages <= ticks / 10 + 2 && periods <= ticks / 10 + 2 && weather_last("GET", "timesincelastupdate", "SensorName=&ClientID="));
+	// the device averages over another period now, and its values get older
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "AveragePeriod=0.25") && SA_WAIT(sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 0.25 && sa_number_target(sa_device, WEATHER_PERIOD, "PERIOD") == 0.25, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, WEATHER_PERIOD) == INDIGO_OK_STATE && sa_advance(0, 90) && SA_WAIT(sa_number(sa_device, WEATHER_AGE, "AGE") == 90, SA_TIMEOUT) && sa_state(sa_device, WEATHER_AGE) == INDIGO_OK_STATE);
+	// a new reading of one sensor makes the values young again
+	SA_CHECK(sa_advance(0, 30) && sa_device_state(0, "observingconditions", 0, "Humidity=84") && sa_advance(0, 4.5) && SA_WAIT(sa_number(sa_device, WEATHER_AGE, "AGE") == 4.5 && weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 84, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- changes
+
+static void weather_average_period(void) {
+	SA_CHECK(weather_begin(weather_default));
+	// the period is sent in hours, with the parameter name of the standard, and read back
+	unsigned revision = sa_revision(sa_device, WEATHER_PERIOD);
+	int reads = weather_count("GET", "averageperiod");
+	SA_CHECK(weather_set_period(2.5) == INDIGO_OK_STATE && sa_state_after(sa_device, WEATHER_PERIOD, INDIGO_BUSY_STATE, revision));
+	SA_CHECK(weather_count("PUT", "averageperiod") == 1 && weather_last("PUT", "averageperiod", "AveragePeriod=2.5&ClientID=") && weather_count("GET", "averageperiod") >= reads + 1);
+	SA_CHECK(sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 2.5 && sa_number_target(sa_device, WEATHER_PERIOD, "PERIOD") == 2.5 && !strcmp(sa_status(0, WEATHER_STATE, "AveragePeriod"), "2.5"));
+	// zero is the instantaneous value every device has to accept
+	SA_CHECK(weather_set_period(0) == INDIGO_OK_STATE && weather_last("PUT", "averageperiod", "AveragePeriod=0&ClientID=") && !strcmp(sa_status(0, WEATHER_STATE, "AveragePeriod"), "0"));
+	// the polling does not take a period back that was just set
+	SA_CHECK(weather_set_period(0.75) == INDIGO_OK_STATE);
+	int rounds = weather_count("GET", "averageperiod");
+	SA_CHECK(SA_WAIT(weather_count("GET", "averageperiod") >= rounds + 2, 2 * SA_TIMEOUT) && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 0.75 && sa_state(sa_device, WEATHER_PERIOD) == INDIGO_OK_STATE);
+	// a period the device does not average over: ALERT with the message of the device, the property is back at the period of the device
+	SA_CHECK(weather_set_period(36) == INDIGO_ALERT_STATE && weather_last("PUT", "averageperiod", "AveragePeriod=36&ClientID="));
+	SA_CHECK(sa_message_seen("Setting the averaging period failed: invalid value (AveragePeriod=36 is out of range 0..24 (0x401))"));
+	SA_CHECK(sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 0.75 && sa_number_target(sa_device, WEATHER_PERIOD, "PERIOD") == 0.75 && !strcmp(sa_status(0, WEATHER_STATE, "AveragePeriod"), "0.75") && sa_is_connected(sa_device));
+	// and the next good request is OK again
+	SA_CHECK(weather_set_period(12) == INDIGO_OK_STATE && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 12);
+	// failures of the server
+	SA_CHECK(sa_fault(0, "PUT", WEATHER_API "averageperiod", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(weather_set_period(3) == INDIGO_ALERT_STATE && sa_message_seen("Setting the averaging period failed: server error (HTTP 500: Kaboom)") && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 12 && !strcmp(sa_status(0, WEATHER_STATE, "AveragePeriod"), "12"));
+	// a reply that can not be read: the device took the period, and the read back shows it
+	SA_CHECK(sa_fault(0, "PUT", WEATHER_API "averageperiod", "malformed-json", NULL));
+	SA_CHECK(weather_set_period(4) == INDIGO_ALERT_STATE && sa_message_seen("Setting the averaging period failed: invalid reply") && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 4 && !strcmp(sa_status(0, WEATHER_STATE, "AveragePeriod"), "4"));
+	// the read back fails
+	SA_CHECK(sa_fault(0, "GET", WEATHER_API "averageperiod", "missing-value", NULL));
+	SA_CHECK(weather_set_period(5) == INDIGO_ALERT_STATE && sa_message_seen("Reading the averaging period failed: invalid reply (Value is missing)") && SA_WAIT(sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 5 && sa_state(sa_device, WEATHER_PERIOD) == INDIGO_OK_STATE, SA_TIMEOUT));
+	// a connection that breaks before the reply: setting a period twice has the effect of setting it once, so it is sent again
+	int sets = weather_count("PUT", "averageperiod");
+	SA_CHECK(sa_fault(0, "PUT", WEATHER_API "averageperiod", "drop", NULL));
+	SA_CHECK(weather_set_period(6) == INDIGO_OK_STATE && weather_count("PUT", "averageperiod") == sets + 2 && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 6);
+	// a device that does not answer within the standard timeout (0.5 s here)
+	SA_CHECK(sa_set_number("X_ALPACA_TIMEOUTS", "STANDARD", 0.5) == INDIGO_OK_STATE);
+	sets = weather_count("PUT", "averageperiod");
+	SA_CHECK(sa_fault(0, "PUT", WEATHER_API "averageperiod", "stall-before", "Delay=1200"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(weather_set_period(7) == INDIGO_ALERT_STATE && sa_message_seen("Setting the averaging period failed: timeout") && indigo_monotonic_time() - started > 0.4 && indigo_monotonic_time() - started < 4);
+	SA_CHECK(weather_count("PUT", "averageperiod") == sets + 1 && SA_WAIT(sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 7 && sa_state(sa_device, WEATHER_PERIOD) == INDIGO_OK_STATE, SA_TIMEOUT) && sa_is_connected(sa_device));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a device that does not have the averaging period
+	SA_CHECK(sa_begin(weather_default) && sa_attach("ObservingConditions Simulator") && sa_put(0, WEATHER_ERROR, "Member=averageperiod&ErrorNumber=1024"));
+	SA_CHECK(sa_connect(sa_device) && !sa_defined(sa_device, WEATHER_PERIOD) && sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 14 && sa_defined(sa_device, WEATHER_AGE));
+	SA_CHECK(SA_WAIT(weather_count("GET", "timesincelastupdate") >= 3, 2 * SA_TIMEOUT) && weather_count("GET", "averageperiod") == 1 && sa_is_connected(sa_device));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void weather_refresh_values(void) {
+	SA_CHECK(weather_begin(weather_legacy));
+	// Refresh, then every sensor the device has is read at once, and the age of the values
+	SA_CHECK(sa_advance(0, 120) && SA_WAIT(sa_number(sa_device, WEATHER_AGE, "AGE") == 120, SA_TIMEOUT));
+	SA_CHECK(sa_put(0, WEATHER_STATE, "Pressure=1002.4"));
+	int reads = weather_count("GET", "pressure"), ages = weather_count("GET", "timesincelastupdate");
+	unsigned revision = sa_revision(sa_device, WEATHER_REFRESH);
+	SA_CHECK(weather_refresh() == INDIGO_OK_STATE && sa_state_after(sa_device, WEATHER_REFRESH, INDIGO_BUSY_STATE, revision) && !sa_switch(sa_device, WEATHER_REFRESH, "REFRESH"));
+	SA_CHECK(weather_count("PUT", "refresh") == 1 && weather_last("PUT", "refresh", "ClientID=") && weather_count("GET", "pressure") >= reads + 1 && weather_count("GET", "timesincelastupdate") >= ages + 1);
+	SA_CHECK(weather_value(AUX_WEATHER_PRESSURE_ITEM_NAME) == 1002.4 && sa_number(sa_device, WEATHER_AGE, "AGE") == 0);
+	// the device refuses: ALERT with its message, nothing is read
+	reads = weather_reads();
+	SA_CHECK(sa_fault(0, "PUT", WEATHER_API "refresh", "ascom-error", "Value=1279&Message=Sensor%20bus%20busy"));
+	SA_CHECK(weather_refresh() == INDIGO_ALERT_STATE && sa_message_seen("Refresh failed: device error (Sensor bus busy (0x4FF))") && !sa_switch(sa_device, WEATHER_REFRESH, "REFRESH") && sa_defined(sa_device, WEATHER_REFRESH));
+	SA_CHECK(weather_reads() <= reads + 13 && sa_is_connected(sa_device));
+	SA_CHECK(sa_fault(0, "PUT", WEATHER_API "refresh", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(weather_refresh() == INDIGO_ALERT_STATE && sa_message_seen("Refresh failed: server error (HTTP 500: Kaboom)") && sa_defined(sa_device, WEATHER_REFRESH));
+	// and the next one works
+	SA_CHECK(weather_refresh() == INDIGO_OK_STATE && weather_count("PUT", "refresh") == 4);
+	// a request that does not ask for a refresh sends nothing
+	revision = sa_revision(sa_device, WEATHER_REFRESH);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, WEATHER_REFRESH, "REFRESH", false) == INDIGO_OK && weather_answer(WEATHER_REFRESH, revision) == INDIGO_OK_STATE && weather_count("PUT", "refresh") == 4);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+static void weather_sensor_failures(void) {
+	SA_CHECK(weather_begin(weather_default));
+	SA_CHECK(SA_WAIT(weather_count("GET", "devicestate") >= 3, SA_TIMEOUT) && weather_reads() == 13);
+	// a sensor stops giving a value (ValueNotSet) and is missing in devicestate from then on: it is asked for with a request of its
+	// own on the next slow tick. AUX_WEATHER goes to ALERT with the message of the device and keeps the last value of that sensor;
+	// the other sensors go on, and the device stays connected.
+	unsigned revision = sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME);
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=temperature&ErrorNumber=1026&ErrorMessage=No%20reading%20yet"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), 2 * SA_TIMEOUT) && sa_message_seen("Reading Temperature failed: value not set (No reading yet (0x402))"));
+	SA_CHECK(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 14.7 && sa_is_connected(sa_device) && weather_count("GET", "temperature") >= 2 && weather_count("GET", "humidity") == 1);
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Humidity=66.5") && SA_WAIT(weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 66.5, SA_TIMEOUT) && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// the failure is told once, not on every round
+	revision = sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME);
+	int reads = weather_count("GET", "temperature");
+	SA_CHECK(SA_WAIT(weather_count("GET", "temperature") >= reads + 2, 2 * SA_TIMEOUT) && sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME) == revision);
+	// the sensor is back: OK with its current value
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Temperature=9.25") && sa_put(0, WEATHER_ERROR, "Member=temperature&ErrorNumber=0"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 9.25, SA_TIMEOUT));
+	// two sensors fail, one comes back: ALERT until the last one is back
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=windgust&ErrorNumber=1279&ErrorMessage=Anemometer%20fault") && sa_put(0, WEATHER_ERROR, "Member=pressure&ErrorNumber=1035&ErrorMessage=Warming%20up"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_ALERT_STATE, 2 * SA_TIMEOUT) && sa_message_seen("Reading Pressure failed: invalid operation (Warming up (0x40B))"));
+	reads = weather_count("GET", "pressure");
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=pressure&ErrorNumber=0") && SA_WAIT(weather_count("GET", "windgust") >= 4, 3 * SA_TIMEOUT) && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=windgust&ErrorNumber=0") && SA_WAIT(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	// the age can not be read: its property is in ALERT and recovers
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=timesincelastupdate&ErrorNumber=1279&ErrorMessage=Clock%20fault"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, WEATHER_AGE) == INDIGO_ALERT_STATE, 2 * SA_TIMEOUT) && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=timesincelastupdate&ErrorNumber=0") && SA_WAIT(sa_state(sa_device, WEATHER_AGE) == INDIGO_OK_STATE, 2 * SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// an older device, whose sensors are read one by one: an error of the server and a reply without a value
+	SA_CHECK(weather_begin(weather_legacy));
+	revision = sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", WEATHER_API "skyquality", "http-status", "Value=500&Message=Kaboom&Count=-1"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), 2 * SA_TIMEOUT) && sa_message_seen("Reading SkyQuality failed: server error (HTTP 500: Kaboom)"));
+	SA_CHECK(weather_value(AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME) == 20.6 && weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 4.5 && sa_is_connected(sa_device));
+	SA_CHECK(sa_clear_faults(0) && sa_device_state(0, "observingconditions", 0, "SkyQuality=21.9") && SA_WAIT(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 1, 2 * SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", WEATHER_API "humidity", "malformed-json", "Count=-1"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_ALERT_STATE, 2 * SA_TIMEOUT) && sa_message_seen("Reading Humidity failed: invalid reply") && weather_value(AUX_WEATHER_HUMIDITY_ITEM_NAME) == 58);
+	SA_CHECK(sa_clear_faults(0) && SA_WAIT(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE, 2 * SA_TIMEOUT));
+	// a refresh shows a failing sensor at once
+	SA_CHECK(sa_fault(0, "GET", WEATHER_API "dewpoint", "ascom-error", "Value=1026&Message=No%20data&Count=-1"));
+	revision = sa_revision(sa_device, AUX_WEATHER_PROPERTY_NAME);
+	SA_CHECK(weather_refresh() == INDIGO_OK_STATE && sa_state_after(sa_device, AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_message_seen("Reading DewPoint failed: value not set (No data (0x402))"));
+	SA_CHECK(sa_clear_faults(0) && weather_refresh() == INDIGO_OK_STATE && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void weather_connect_failures(void) {
+	SA_CHECK(sa_begin(weather_default) && sa_attach("ObservingConditions Simulator"));
+	// the transport breaks while the sensors are read: the connection fails, nothing stays defined, the device is disconnected again
+	SA_CHECK(sa_fault(0, "GET", WEATHER_API "pressure", "reset", "Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(weather_nothing_defined() && weather_count("GET", "windspeed") == 0);
+	SA_CHECK(sa_clear_faults(0) && sa_fault(0, "GET", WEATHER_API "sensordescription", "reset", "Skip=2&Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE || weather_count("GET", "dewpoint") >= 1, SA_TIMEOUT) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(weather_nothing_defined() && weather_count("GET", "windspeed") == 0 && !strcmp(sa_status(0, WEATHER_STATE, "Connected"), "false") && sa_clear_faults(0));
+	// a sensor that exists and has no value when the device is connected (ValueNotSet is not NotImplemented): it gets its item,
+	// AUX_WEATHER starts in ALERT and recovers with the first value. A sensor the server rejects with HTTP 400 does not exist.
+	// A sensor without a description gets an empty one.
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=skytemperature&ErrorNumber=1026&ErrorMessage=No%20reading%20yet"));
+	SA_CHECK(sa_fault(0, "GET", WEATHER_API "starfwhm", "http-status", "Value=400&Message=Unknown%20member") && sa_fault(0, "GET", WEATHER_API "sensordescription", "ascom-error", "Value=1279&Skip=1"));
+	SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 13 && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME) && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, "X_STAR_FWHM") && sa_item_count(sa_device, WEATHER_SENSORS) == 12);
+	SA_CHECK(!strcmp(sa_text(sa_device, WEATHER_SENSORS, AUX_WEATHER_TEMPERATURE_ITEM_NAME), "Simulated Temperature sensor") && !strcmp(sa_text(sa_device, WEATHER_SENSORS, AUX_WEATHER_HUMIDITY_ITEM_NAME), "") && !strcmp(sa_text(sa_device, WEATHER_SENSORS, AUX_WEATHER_DEWPOINT_ITEM_NAME), "Simulated DewPoint sensor"));
+	SA_CHECK(sa_put(0, WEATHER_ERROR, "Member=skytemperature&ErrorNumber=0") && SA_WAIT(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && weather_value(AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME) == -18.4, 2 * SA_TIMEOUT));
+	SA_CHECK(weather_count("GET", "starfwhm") == 1);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void weather_transport_loss(void) {
+	SA_CHECK(weather_begin(weather_default));
+	SA_CHECK(SA_WAIT(weather_count("GET", "devicestate") >= 3, SA_TIMEOUT));
+	// devicestate fails for a while: the device stays connected and the polling goes on afterwards
+	SA_CHECK(sa_fault(0, "GET", WEATHER_API "devicestate", "http-status", "Value=500&Count=3"));
+	int ticks = weather_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(weather_count("GET", "devicestate") >= ticks + 5, SA_TIMEOUT) && sa_is_connected(sa_device) && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Temperature=3.5") && SA_WAIT(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 3.5, SA_TIMEOUT));
+	// the server goes away while the device is idle: CONNECTION in ALERT, every property of the class is deleted, nothing is sent any more
+	SA_CHECK(sa_fault(0, NULL, WEATHER_API "*", "reset", "Count=-1&Dispatch=false"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5 && weather_nothing_defined());
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the server is back with other values: the new connection shows them
+	SA_CHECK(sa_clear_faults(0) && sa_device_state(0, "observingconditions", 0, "Temperature=-1.5&WindSpeed=8.25") && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == -1.5 && weather_value(AUX_WEATHER_WIND_SPEED_ITEM_NAME) == 8.25);
+	// the transport is lost while the averaging period is set: the request ends in ALERT and the device is disconnected, nothing hangs
+	SA_CHECK(sa_fault(0, NULL, WEATHER_API "*", "reset", "Count=-1&Dispatch=false"));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WEATHER_PERIOD, "PERIOD", 9) == INDIGO_OK);
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5 && weather_nothing_defined() && sa_message_seen("Setting the averaging period failed: connection lost"));
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 0 && sa_state(sa_device, WEATHER_PERIOD) == INDIGO_OK_STATE);
+	// the device is disconnected on the server by someone else
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Connected=false") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && weather_nothing_defined() && sa_message_seen("the device was disconnected on the Alpaca server"));
+	SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 14 && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- lifecycle
+
+static void weather_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(weather_default));
+	snprintf(key, sizeof(key), "%s", sa_device_key("ObservingConditions Simulator"));
+	SA_CHECK(sa_attach("ObservingConditions Simulator"));
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 14 && sa_state(sa_device, AUX_WEATHER_PROPERTY_NAME) == INDIGO_OK_STATE && weather_count("GET", "temperature") == i + 1);
+		SA_CHECK(sa_disconnect(sa_device) && weather_nothing_defined() && !strcmp(sa_status(0, WEATHER_STATE, "Connected"), "false"));
+	}
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the device changes while the proxy is disconnected: fewer sensors, then other ones, then none. Every connection shows what
+	// the device has now, with the items in the order of the class.
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "Sensors=StarFWHM%7CTemperature&Temperature=21.5") && sa_connect(sa_device));
+	SA_CHECK(sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 2 && !strcmp(sa_item_name(sa_device, AUX_WEATHER_PROPERTY_NAME, 0), AUX_WEATHER_TEMPERATURE_ITEM_NAME) && !strcmp(sa_item_name(sa_device, AUX_WEATHER_PROPERTY_NAME, 1), "X_STAR_FWHM"));
+	SA_CHECK(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 21.5 && weather_value("X_STAR_FWHM") == 2.3 && sa_item_count(sa_device, WEATHER_SENSORS) == 2);
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "observingconditions", 0, "Sensors=SkyQuality%7CHumidity%7CCloudCover%7CWindSpeed&SkyQuality=18.2") && sa_connect(sa_device));
+	SA_CHECK(sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 5 && !strcmp(sa_item_name(sa_device, AUX_WEATHER_PROPERTY_NAME, 0), AUX_WEATHER_HUMIDITY_ITEM_NAME) && !strcmp(sa_item_name(sa_device, AUX_WEATHER_PROPERTY_NAME, 4), AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME));
+	SA_CHECK(weather_value(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME) == 7 && !sa_has_item(sa_device, AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME) && !sa_has_item(sa_device, WEATHER_SENSORS, "X_STAR_FWHM"));
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "WindSpeed=31.5") && SA_WAIT(weather_value(AUX_WEATHER_WIND_SPEED_ITEM_NAME) == 31.5, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "observingconditions", 0, "Sensors=") && sa_connect(sa_device) && !sa_defined(sa_device, AUX_WEATHER_PROPERTY_NAME) && !sa_defined(sa_device, WEATHER_REFRESH) && sa_defined(sa_device, WEATHER_PERIOD));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "observingconditions", 0, "Sensors=Temperature%7CHumidity%7CDewPoint") && sa_connect(sa_device) && sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 3 && sa_defined(sa_device, WEATHER_REFRESH) && sa_defined(sa_device, WEATHER_AGE));
+	// requests that overlap: both are answered
+	unsigned period = sa_revision(sa_device, WEATHER_PERIOD), refresh = sa_revision(sa_device, WEATHER_REFRESH);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WEATHER_PERIOD, "PERIOD", 1.25) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, WEATHER_REFRESH, "REFRESH", true) == INDIGO_OK);
+	SA_CHECK(weather_answer(WEATHER_PERIOD, period) == INDIGO_OK_STATE && weather_answer(WEATHER_REFRESH, refresh) == INDIGO_OK_STATE && sa_number(sa_device, WEATHER_PERIOD, "PERIOD") == 1.25);
+	// a disconnect right after a request, and the next connection is clean
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WEATHER_PERIOD, "PERIOD", 2) == INDIGO_OK && sa_disconnect(sa_device) && weather_nothing_defined());
+	SA_CHECK(sa_connect(sa_device) && sa_state(sa_device, WEATHER_PERIOD) == INDIGO_OK_STATE && sa_state(sa_device, WEATHER_REFRESH) == INDIGO_OK_STATE);
+	// the device is detached while it is connected: it goes away without a hang, the Alpaca device is disconnected, nothing is sent
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 3);
+	SA_CHECK(!strcmp(sa_status(0, WEATHER_STATE, "Connected"), "false"));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// and attached again it is a working device
+	SA_CHECK(sa_attach("ObservingConditions Simulator") && weather_nothing_defined() && sa_connect(sa_device) && sa_item_count(sa_device, AUX_WEATHER_PROPERTY_NAME) == 3);
+	SA_CHECK(sa_device_state(0, "observingconditions", 0, "DewPoint=-2.75") && SA_WAIT(weather_value(AUX_WEATHER_DEWPOINT_ITEM_NAME) == -2.75, SA_TIMEOUT));
+cleanup:
+	sa_end();
+}
+
+// Weather that does not change is not published again, however it is polled (two rounds of the members that are read with a request of
+// their own included); a change of the device is published at once.
+static void weather_steady_state_is_silent(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(weather_begin(legacy ? weather_legacy : weather_default));
+		SA_CHECK(SA_WAIT(weather_count("GET", legacy ? "connected" : "devicestate") >= 3, SA_TIMEOUT) && sa_steady(0, sa_device, legacy ? WEATHER_API "connected" : WEATHER_API "devicestate", 25));
+		SA_CHECK(sa_device_state(0, "observingconditions", 0, "Temperature=3.5") && SA_WAIT(weather_value(AUX_WEATHER_TEMPERATURE_ITEM_NAME) == 3.5, 2 * SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+#define SYSTEM_ALPACA_WEATHER_CASES \
+	{ "weather_steady_state_is_silent", weather_steady_state_is_silent }, \
+	{ "weather_properties", weather_properties }, \
+	{ "weather_legacy_properties", weather_legacy_properties }, \
+	{ "weather_optional_sensors", weather_optional_sensors }, \
+	{ "weather_polling", weather_polling }, \
+	{ "weather_average_period", weather_average_period }, \
+	{ "weather_refresh_values", weather_refresh_values }, \
+	{ "weather_sensor_failures", weather_sensor_failures }, \
+	{ "weather_connect_failures", weather_connect_failures }, \
+	{ "weather_transport_loss", weather_transport_loss }, \
+	{ "weather_lifecycle", weather_lifecycle },
 
 #endif /* system_alpaca_weather_cases_h */

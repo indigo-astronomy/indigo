@@ -43,6 +43,10 @@
  Polling: on a Platform 7 device the values come from the devicestate snapshot of the tick (GetSwitch<n> / GetSwitchValue<n>).
  What the snapshot does not have (older devices, or more switches than the snapshot holds) is read switch by switch, at most
  SWITCH_POLL_BATCH requests per tick, in turns.
+
+ Threads: change_property runs on a bus thread, everything else on the handler queue of the device. A request is accepted
+ with system_alpaca_accept() and the poll publishes the values of the device under the lock of the device, so a poll tick never
+ replaces a request that was just accepted with the old state of the device.
  */
 
 #pragma mark - Includes
@@ -86,6 +90,7 @@ typedef struct {
 	bool name_fixed;			///< setswitchname is not implemented for this switch
 	bool pending;					///< an asynchronous change is running
 	bool read_failed;			///< the last read of the value failed
+	bool named;						///< the item is named by the last accepted request of its property, written under the lock of the device
 	switch_kind kind;
 	int index;						///< index of the item within the property of its kind
 } switch_record;
@@ -185,8 +190,9 @@ static alpaca_result switch_write(indigo_device *device, int id, double value) {
 // Text of a failed request in the form system_alpaca_finish() uses. It is taken right after the request, because the read back
 // that follows replaces the error of the channel.
 static void switch_failure(indigo_device *device, alpaca_result result, const char *action, const char *name, char *message, size_t size) {
-	const char *detail = alpaca_is_transport_error(result) || result == ALPACA_FAILED ? "" : system_alpaca_error(device);
-	snprintf(message, size, "%s '%s' failed: %s%s%s%s", action, name, alpaca_result_text(result), *detail ? " (" : "", detail, *detail ? ")" : "");
+	char reason[INDIGO_VALUE_SIZE];
+	system_alpaca_reason(device, result, reason, sizeof(reason));
+	snprintf(message, size, "%s '%s' failed: %s%s%s%s", action, name, alpaca_result_text(result), *reason ? " (" : "", reason, *reason ? ")" : "");
 }
 
 static indigo_item *switch_name_item(indigo_device *device, const switch_record *record) {
@@ -229,6 +235,16 @@ static void switch_set_interface(indigo_device *device, int interface) {
 static void switch_drop_property(indigo_property **property) {
 	indigo_release_property(*property);
 	*property = NULL;
+}
+
+// Handler queue: end a request. The state is set under the lock, the property is published without it.
+static void switch_finish(indigo_device *device, indigo_property *property, const char *message) {
+	system_alpaca_set_state(device, property, message != NULL && *message ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
+	if (message != NULL && *message) {
+		indigo_update_property(device, property, "%s", message);
+	} else {
+		indigo_update_property(device, property, NULL);
+	}
 }
 
 #pragma mark - High level code (switch)
@@ -285,7 +301,7 @@ static void switch_finalize(indigo_device *device, switch_kind kind, indigo_time
 	}
 	system_alpaca_operation_end(device, operation);
 	switch_copy_values(device, kind);
-	property->state = SWITCH_DATA->failed[kind] ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+	system_alpaca_set_state(device, property, SWITCH_DATA->failed[kind] ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 	SWITCH_DATA->failed[kind] = false;
 	if (*message) {
 		indigo_update_property(device, property, "%s", message);
@@ -295,21 +311,21 @@ static void switch_finalize(indigo_device *device, switch_kind kind, indigo_time
 }
 
 static void switch_outlets_finalizer(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	switch_finalize(device, SWITCH_OUTLET, switch_outlets_finalizer);
 }
 
 static void switch_values_finalizer(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	switch_finalize(device, SWITCH_VALUE, switch_values_finalizer);
 }
 
-// A change of AUX_GPIO_OUTLETS or X_ALPACA_SWITCH_VALUES: every switch whose requested value differs from the value of the device
-// is set, the synchronous ones first. The first failure ends the request; the values of the device are published in any case.
+// A change of AUX_GPIO_OUTLETS or X_ALPACA_SWITCH_VALUES: every switch the request names or whose requested value differs from the value
+// of the device is set, the synchronous ones first. The first failure ends the request; the values of the device are published in any case.
 static void switch_change(indigo_device *device, switch_kind kind, indigo_timer_callback finalizer) {
 	indigo_property *property = SWITCH_DATA->properties[kind];
 	char message[INDIGO_VALUE_SIZE] = { 0 };
@@ -322,7 +338,9 @@ static void switch_change(indigo_device *device, switch_kind kind, indigo_timer_
 			}
 			indigo_item *item = property->items + record->index;
 			double requested = kind == SWITCH_OUTLET ? (item->sw.value ? 1 : 0) : item->number.target;
-			if (requested == record->value) {
+			// a switch the request names is set even if the last value read from it is the requested one: the poll may not have seen
+			// the device change it since (without devicestate a tick reads SWITCH_POLL_BATCH switches), and setting it again does no harm
+			if (requested == record->value && !record->named) {
 				continue;
 			}
 			alpaca_result result = switch_write(device, id, requested);
@@ -351,27 +369,22 @@ static void switch_change(indigo_device *device, switch_kind kind, indigo_timer_
 		if (*message) {
 			indigo_update_property(device, property, "%s", message);
 		}
-		system_alpaca_operation_start(device, SWITCH_DATA->operations + kind, PRIVATE_DATA->server->long_timeout / 1000.0, finalizer);
+		system_alpaca_operation_start(device, SWITCH_DATA->operations + kind, system_alpaca_long_timeout(device), finalizer);
 		return;
 	}
 	switch_copy_values(device, kind);
-	property->state = *message ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-	if (*message) {
-		indigo_update_property(device, property, "%s", message);
-	} else {
-		indigo_update_property(device, property, NULL);
-	}
+	switch_finish(device, property, message);
 }
 
 static void switch_outlets_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	switch_change(device, SWITCH_OUTLET, switch_outlets_finalizer);
 }
 
 static void switch_values_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	switch_change(device, SWITCH_VALUE, switch_values_finalizer);
@@ -391,7 +404,7 @@ static void switch_rename(indigo_device *device, indigo_property *property, bool
 		if (*message == 0 && strcmp(indigo_get_text_item_value(item), record->name)) {
 			alpaca_param params[] = { ALPACA_INT_PARAM("Id", id), ALPACA_STRING_PARAM("Name", indigo_get_text_item_value(item)) };
 			alpaca_result result = record->name_fixed ? ALPACA_UNSUPPORTED : system_alpaca_put(device, "setswitchname", params, 2, ALPACA_REPLAYABLE);
-			if (alpaca_is_unsupported(result)) {
+			if (system_alpaca_not_implemented(result, 2)) {
 				record->name_fixed = true;
 				snprintf(message, sizeof(message), "The device does not allow to rename '%s'", record->name);
 			} else if (result != ALPACA_OK) {
@@ -423,23 +436,18 @@ static void switch_rename(indigo_device *device, indigo_property *property, bool
 			indigo_define_property(device, SWITCH_DATA->properties[kind], NULL);
 		}
 	}
-	property->state = *message ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-	if (*message) {
-		indigo_update_property(device, property, "%s", message);
-	} else {
-		indigo_update_property(device, property, NULL);
-	}
+	switch_finish(device, property, message);
 }
 
 static void switch_outlet_names_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	switch_rename(device, AUX_OUTLET_NAMES_PROPERTY, false);
 }
 
 static void switch_sensor_names_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	switch_rename(device, AUX_SENSOR_NAMES_PROPERTY, true);
@@ -448,21 +456,25 @@ static void switch_sensor_names_handler(indigo_device *device) {
 // X_ALPACA_SWITCH_ABORT: cancelasync for every asynchronous change that is running. The finalizers of the changes see the
 // result (StateChangeComplete answers OperationCancelled) and end the changes.
 static void switch_abort_handler(indigo_device *device) {
+	char message[INDIGO_VALUE_SIZE] = { 0 };
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
-	for (int id = 0; id < SWITCH_DATA->count && !alpaca_is_transport_error(result); id++) {
+	for (int id = 0; id < SWITCH_DATA->count && X_ALPACA_SWITCH_ABORT_ITEM->sw.value && !alpaca_is_transport_error(result); id++) {
 		if (SWITCH_DATA->switches[id].pending) {
 			alpaca_param params[] = { ALPACA_INT_PARAM("Id", id) };
 			alpaca_result cancel_result = system_alpaca_put(device, "cancelasync", params, 1, ALPACA_REPLAYABLE);
 			if (cancel_result != ALPACA_OK) {
 				result = cancel_result;
+				if (*message == 0) {
+					switch_failure(device, result, "Cancel of the change of", SWITCH_DATA->switches[id].name, message, sizeof(message));
+				}
 			}
 		}
 	}
 	X_ALPACA_SWITCH_ABORT_ITEM->sw.value = false;
-	system_alpaca_finish(device, X_ALPACA_SWITCH_ABORT_PROPERTY, result, "Cancel");
+	switch_finish(device, X_ALPACA_SWITCH_ABORT_PROPERTY, message);
 }
 
 // Read the list of switches. Only a transport error and a device without a usable MaxSwitch fail the connection; a switch that does
@@ -624,13 +636,19 @@ static void switch_on_disconnect(indigo_device *device) {
 // Poll tick: the values of the switches whose property is not BUSY. A property is in ALERT while a value of it can not be read.
 static void switch_on_poll(indigo_device *device) {
 	char message[INDIGO_VALUE_SIZE] = { 0 };
+	bool busy[SWITCH_KIND_COUNT] = { false };
 	int budget = SWITCH_POLL_BATCH, last = -1;
 	alpaca_result result = ALPACA_OK;
+	system_alpaca_lock(device);
+	for (int kind = 0; kind < SWITCH_KIND_COUNT; kind++) {
+		busy[kind] = SWITCH_DATA->properties[kind] != NULL && SWITCH_DATA->properties[kind]->state == INDIGO_BUSY_STATE;
+	}
+	system_alpaca_unlock(device);
 	for (int n = 0; n < SWITCH_DATA->count && !alpaca_is_transport_error(result); n++) {
 		int id = (SWITCH_DATA->poll_cursor + n) % SWITCH_DATA->count;
 		switch_record *record = SWITCH_DATA->switches + id;
 		double value = 0;
-		if (SWITCH_DATA->properties[record->kind]->state == INDIGO_BUSY_STATE) {
+		if (busy[record->kind]) {
 			continue;
 		}
 		if (switch_state_value(device, id, &value)) {
@@ -651,24 +669,55 @@ static void switch_on_poll(indigo_device *device) {
 	}
 	for (int kind = 0; kind < SWITCH_KIND_COUNT; kind++) {
 		indigo_property *property = SWITCH_DATA->properties[kind];
-		bool alert = false;
-		if (property == NULL || property->state == INDIGO_BUSY_STATE) {
+		bool alert = false, changed = false;
+		if (property == NULL || busy[kind]) {
 			continue;
 		}
 		for (int id = 0; id < SWITCH_DATA->count; id++) {
 			alert = alert || ((int)SWITCH_DATA->switches[id].kind == kind && SWITCH_DATA->switches[id].read_failed);
 		}
-		bool changed = switch_copy_values(device, kind);
-		if (alert != SWITCH_DATA->poll_alert[kind]) {
-			SWITCH_DATA->poll_alert[kind] = alert;
-			property->state = alert ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-			changed = true;
+		// a request that was accepted since the tick started keeps its values: the property is BUSY then
+		system_alpaca_lock(device);
+		if (property->state != INDIGO_BUSY_STATE) {
+			changed = switch_copy_values(device, kind);
+			if (alert != SWITCH_DATA->poll_alert[kind]) {
+				SWITCH_DATA->poll_alert[kind] = alert;
+				property->state = alert ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+				changed = true;
+			}
 		}
+		system_alpaca_unlock(device);
 		if (changed && alert && *message) {
 			indigo_update_property(device, property, "%s", message);
 		} else if (changed) {
 			indigo_update_property(device, property, NULL);
 		}
+	}
+}
+
+// Bus thread: the steps of system_alpaca_accept() for AUX_GPIO_OUTLETS and X_ALPACA_SWITCH_VALUES, and which switches the request names.
+static void switch_accept(indigo_device *device, switch_kind kind, indigo_property *request, indigo_timer_callback handler) {
+	indigo_property *property = SWITCH_DATA->properties[kind];
+	system_alpaca_lock(device);
+	bool accepted = property->state != INDIGO_BUSY_STATE;
+	if (accepted) {
+		for (int id = 0; id < SWITCH_DATA->count; id++) {
+			switch_record *record = SWITCH_DATA->switches + id;
+			if (record->kind == kind) {
+				record->named = indigo_get_item(request, property->items[record->index].name) != NULL;
+			}
+		}
+		if (kind == SWITCH_OUTLET) {
+			indigo_property_copy_values(property, request, false);
+		} else {
+			indigo_property_copy_targets(property, request, false);
+		}
+		property->state = INDIGO_BUSY_STATE;
+	}
+	system_alpaca_unlock(device);
+	if (accepted) {
+		indigo_update_property(device, property, NULL);
+		indigo_execute_handler(device, handler);
 	}
 }
 
@@ -685,7 +734,7 @@ static indigo_result switch_attach(indigo_device *device) {
 }
 
 static indigo_result switch_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (system_alpaca_is_active(device)) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_OUTLETS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_SWITCH_VALUES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_SENSORS_PROPERTY);
@@ -701,24 +750,28 @@ static indigo_result switch_change_property(indigo_device *device, indigo_client
 	if (system_alpaca_change_property(device, property)) {
 		return INDIGO_OK;
 	}
+	// the properties of the class are built on every connection: they exist, and their pointers are read, only while the session is open
+	if (!system_alpaca_is_active(device)) {
+		return indigo_aux_change_property(device, client, property);
+	}
 	if (indigo_property_match_changeable(AUX_GPIO_OUTLETS_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_GPIO_OUTLETS_PROPERTY, switch_outlets_handler);
+		switch_accept(device, SWITCH_OUTLET, property, switch_outlets_handler);
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(X_ALPACA_SWITCH_VALUES_PROPERTY, property)) {
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_ALPACA_SWITCH_VALUES_PROPERTY, switch_values_handler);
+		switch_accept(device, SWITCH_VALUE, property, switch_values_handler);
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, switch_outlet_names_handler);
+		system_alpaca_accept(device, AUX_OUTLET_NAMES_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, switch_outlet_names_handler);
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(AUX_SENSOR_NAMES_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_SENSOR_NAMES_PROPERTY, switch_sensor_names_handler);
+		system_alpaca_accept(device, AUX_SENSOR_NAMES_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, switch_sensor_names_handler);
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(X_ALPACA_SWITCH_ABORT_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_SWITCH_ABORT_PROPERTY, switch_abort_handler);
+		system_alpaca_accept(device, X_ALPACA_SWITCH_ABORT_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, switch_abort_handler);
 		return INDIGO_OK;
 	}
 	return indigo_aux_change_property(device, client, property);

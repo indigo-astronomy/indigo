@@ -46,6 +46,10 @@
  Polling: on a Platform 7 device the values come with the devicestate snapshot of every tick and cost no request. Everything
  that needs a request of its own (sensors that are not in the snapshot, all sensors of an older device, AveragePeriod and
  TimeSinceLastUpdate) is read on every WEATHER_POLL_DIVIDER-th tick only: weather does not change within a second.
+
+ Threads: change_property runs on a bus thread, everything else on the handler queue of the device. A request is accepted
+ with system_alpaca_accept() and the poll publishes the averaging period of the device under the lock of the device, so a poll
+ tick never replaces a period that was just requested with the one the device still has.
  */
 
 #pragma mark - Includes
@@ -62,6 +66,13 @@
 #pragma mark - Common definitions
 
 #define WEATHER_GROUP												"Weather"
+
+// Items of AUX_WEATHER for the sensors that have no standard item.
+#define X_WIND_GUST_ITEM_NAME								"X_WIND_GUST"
+#define X_RAIN_RATE_ITEM_NAME								"X_RAIN_RATE"
+#define X_CLOUD_COVER_ITEM_NAME							"X_CLOUD_COVER"
+#define X_SKY_ILLUMINANCE_ITEM_NAME					"X_SKY_ILLUMINANCE"
+#define X_STAR_FWHM_ITEM_NAME								"X_STAR_FWHM"
 
 // The members that need a request of their own are read on every WEATHER_POLL_DIVIDER-th poll tick.
 #define WEATHER_POLL_DIVIDER								10
@@ -81,14 +92,14 @@ static const weather_sensor weather_sensors[] = {
 	{ "DewPoint", AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dew point [°C]", "%.1f", -100, 100 },
 	{ "Pressure", AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric pressure [hPa]", "%.1f", 0, 2000 },
 	{ "WindSpeed", AUX_WEATHER_WIND_SPEED_ITEM_NAME, "Wind speed [m/s]", "%.1f", 0, 200 },
-	{ "WindGust", "X_WIND_GUST", "Wind gust [m/s]", "%.1f", 0, 200 },
+	{ "WindGust", X_WIND_GUST_ITEM_NAME, "Wind gust [m/s]", "%.1f", 0, 200 },
 	{ "WindDirection", AUX_WEATHER_WIND_DIRECTION_ITEM_NAME, "Wind direction [°]", "%.0f", 0, 360 },
-	{ "RainRate", "X_RAIN_RATE", "Rain rate [mm/h]", "%.2f", 0, 1000 },
-	{ "CloudCover", "X_CLOUD_COVER", "Cloud cover [%]", "%.1f", 0, 100 },
+	{ "RainRate", X_RAIN_RATE_ITEM_NAME, "Rain rate [mm/h]", "%.2f", 0, 1000 },
+	{ "CloudCover", X_CLOUD_COVER_ITEM_NAME, "Cloud cover [%]", "%.1f", 0, 100 },
 	{ "SkyTemperature", AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, "Sky temperature [°C]", "%.1f", -200, 100 },
 	{ "SkyQuality", AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [mag/arcsec²]", "%.2f", 0, 30 },
-	{ "SkyBrightness", "X_SKY_ILLUMINANCE", "Sky illuminance [lux]", "%g", 0, 200000 },
-	{ "StarFWHM", "X_STAR_FWHM", "Star FWHM [arcsec]", "%.2f", 0, 100 }
+	{ "SkyBrightness", X_SKY_ILLUMINANCE_ITEM_NAME, "Sky illuminance [lux]", "%g", 0, 200000 },
+	{ "StarFWHM", X_STAR_FWHM_ITEM_NAME, "Star FWHM [arcsec]", "%.2f", 0, 100 }
 };
 
 #define WEATHER_SENSOR_COUNT								((int)(sizeof(weather_sensors) / sizeof(weather_sensors[0])))
@@ -118,25 +129,47 @@ typedef struct {
 
 #pragma mark - Property definitions
 
-#define AUX_WEATHER_PROPERTY								(WEATHER_DATA->weather_property)
+#define AUX_WEATHER_PROPERTY														(WEATHER_DATA->weather_property)
 
-#define X_ALPACA_WEATHER_SENSORS_PROPERTY		(WEATHER_DATA->sensors_property)
+#define X_ALPACA_WEATHER_SENSORS_PROPERTY								(WEATHER_DATA->sensors_property)
 
-#define X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY	(WEATHER_DATA->average_period_property)
-#define X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM			(X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY->items + 0)
+#define X_ALPACA_WEATHER_SENSORS_PROPERTY_NAME					"X_ALPACA_WEATHER_SENSORS"
 
-#define X_ALPACA_WEATHER_REFRESH_PROPERTY		(WEATHER_DATA->refresh_property)
-#define X_ALPACA_WEATHER_REFRESH_ITEM				(X_ALPACA_WEATHER_REFRESH_PROPERTY->items + 0)
+#define X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY				(WEATHER_DATA->average_period_property)
+#define X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM						(X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY->items + 0)
 
-#define X_ALPACA_WEATHER_AGE_PROPERTY				(WEATHER_DATA->age_property)
-#define X_ALPACA_WEATHER_AGE_ITEM						(X_ALPACA_WEATHER_AGE_PROPERTY->items + 0)
+#define X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY_NAME		"X_ALPACA_WEATHER_AVERAGE_PERIOD"
+#define X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM_NAME				"PERIOD"
+
+#define X_ALPACA_WEATHER_REFRESH_PROPERTY								(WEATHER_DATA->refresh_property)
+#define X_ALPACA_WEATHER_REFRESH_ITEM										(X_ALPACA_WEATHER_REFRESH_PROPERTY->items + 0)
+
+#define X_ALPACA_WEATHER_REFRESH_PROPERTY_NAME					"X_ALPACA_WEATHER_REFRESH"
+#define X_ALPACA_WEATHER_REFRESH_ITEM_NAME							"REFRESH"
+
+#define X_ALPACA_WEATHER_AGE_PROPERTY										(WEATHER_DATA->age_property)
+#define X_ALPACA_WEATHER_AGE_ITEM												(X_ALPACA_WEATHER_AGE_PROPERTY->items + 0)
+
+#define X_ALPACA_WEATHER_AGE_PROPERTY_NAME							"X_ALPACA_WEATHER_AGE"
+#define X_ALPACA_WEATHER_AGE_ITEM_NAME									"AGE"
 
 #pragma mark - Low level code
 
 // Text of a failed request in the form system_alpaca_finish() uses, taken before a following request replaces the error of the channel.
 static void weather_failure(indigo_device *device, alpaca_result result, const char *action, char *message, size_t size) {
-	const char *detail = alpaca_is_transport_error(result) || result == ALPACA_FAILED ? "" : system_alpaca_error(device);
-	snprintf(message, size, "%s failed: %s%s%s%s", action, alpaca_result_text(result), *detail ? " (" : "", detail, *detail ? ")" : "");
+	char reason[INDIGO_VALUE_SIZE];
+	system_alpaca_reason(device, result, reason, sizeof(reason));
+	snprintf(message, size, "%s failed: %s%s%s%s", action, alpaca_result_text(result), *reason ? " (" : "", reason, *reason ? ")" : "");
+}
+
+// Handler queue: end a request. The state is set under the lock, the property is published without it.
+static void weather_finish(indigo_device *device, indigo_property *property, const char *message) {
+	system_alpaca_set_state(device, property, message != NULL && *message ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
+	if (message != NULL && *message) {
+		indigo_update_property(device, property, "%s", message);
+	} else {
+		indigo_update_property(device, property, NULL);
+	}
 }
 
 // TimeSinceLastUpdate of the sensor that was updated last (an empty SensorName).
@@ -208,11 +241,19 @@ static void weather_read_settings(indigo_device *device) {
 		X_ALPACA_WEATHER_AGE_PROPERTY->state = system_alpaca_property_state(result);
 		indigo_update_property(device, X_ALPACA_WEATHER_AGE_PROPERTY, NULL);
 	}
-	if (WEATHER_DATA->has_average_period && X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY->state != INDIGO_BUSY_STATE && system_alpaca_channel(device) != NULL) {
+	if (WEATHER_DATA->has_average_period && system_alpaca_channel(device) != NULL) {
 		if (system_alpaca_get_double(device, "averageperiod", &value) == ALPACA_OK && value != WEATHER_DATA->average_period) {
-			X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM->number.value = X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM->number.target = WEATHER_DATA->average_period = value;
-			X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, NULL);
+			// a period that was requested since is kept: the property is BUSY then, and its handler reads the period back
+			system_alpaca_lock(device);
+			bool busy = X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY->state == INDIGO_BUSY_STATE;
+			if (!busy) {
+				X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM->number.value = X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM->number.target = WEATHER_DATA->average_period = value;
+				X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			system_alpaca_unlock(device);
+			if (!busy) {
+				indigo_update_property(device, X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, NULL);
+			}
 		}
 	}
 }
@@ -223,7 +264,7 @@ static void weather_read_settings(indigo_device *device) {
 static void weather_average_period_handler(indigo_device *device) {
 	char message[INDIGO_VALUE_SIZE] = { 0 };
 	double value = 0;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_param params[] = { ALPACA_DOUBLE_PARAM("AveragePeriod", X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM->number.target) };
@@ -240,24 +281,24 @@ static void weather_average_period_handler(indigo_device *device) {
 		}
 	}
 	X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM->number.value = X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM->number.target = WEATHER_DATA->average_period;
-	X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY->state = *message ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-	if (*message) {
-		indigo_update_property(device, X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, "%s", message);
-	} else {
-		indigo_update_property(device, X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, NULL);
-	}
+	weather_finish(device, X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, message);
 }
 
 // X_ALPACA_WEATHER_REFRESH: Refresh, then everything is read again. A device without Refresh loses the property for the
 // rest of the connection.
 static void weather_refresh_handler(indigo_device *device) {
 	char message[INDIGO_VALUE_SIZE] = { 0 };
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
+		return;
+	}
+	if (!X_ALPACA_WEATHER_REFRESH_ITEM->sw.value) {
+		// a request that switches the item off asks for nothing
+		weather_finish(device, X_ALPACA_WEATHER_REFRESH_PROPERTY, NULL);
 		return;
 	}
 	alpaca_result result = system_alpaca_put(device, "refresh", NULL, 0, ALPACA_REPLAYABLE);
 	X_ALPACA_WEATHER_REFRESH_ITEM->sw.value = false;
-	if (alpaca_is_unsupported(result)) {
+	if (system_alpaca_not_implemented(result, 0)) {
 		system_alpaca_set_unsupported(device, "refresh");
 		indigo_delete_property(device, X_ALPACA_WEATHER_REFRESH_PROPERTY, "Refresh is not implemented by the device");
 		X_ALPACA_WEATHER_REFRESH_PROPERTY->hidden = true;
@@ -267,8 +308,11 @@ static void weather_refresh_handler(indigo_device *device) {
 		weather_read(device, false, true, message, sizeof(message));
 		weather_publish(device, message);
 		weather_read_settings(device);
+		*message = 0;
+	} else {
+		weather_failure(device, result, "Refresh", message, sizeof(message));
 	}
-	system_alpaca_finish(device, X_ALPACA_WEATHER_REFRESH_PROPERTY, result, "Refresh");
+	weather_finish(device, X_ALPACA_WEATHER_REFRESH_PROPERTY, message);
 }
 
 // Find out which sensors the device has and read everything once. Only a transport error fails the connection.
@@ -390,20 +434,35 @@ static indigo_result weather_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
 		// one item for every sensor and one for the Bortle class derived from the sky quality
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather conditions", INDIGO_OK_STATE, INDIGO_RO_PERM, WEATHER_SENSOR_COUNT + 1);
-		X_ALPACA_WEATHER_SENSORS_PROPERTY = indigo_init_text_property(NULL, device->name, "X_ALPACA_WEATHER_SENSORS", WEATHER_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, WEATHER_SENSOR_COUNT);
-		X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY = indigo_init_number_property(NULL, device->name, "X_ALPACA_WEATHER_AVERAGE_PERIOD", WEATHER_GROUP, "Averaging period", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		indigo_init_number_item(X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM, "PERIOD", "Averaging period [h]", 0, 1000, 0, 0);
-		X_ALPACA_WEATHER_REFRESH_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_ALPACA_WEATHER_REFRESH", WEATHER_GROUP, "Refresh", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		indigo_init_switch_item(X_ALPACA_WEATHER_REFRESH_ITEM, "REFRESH", "Refresh the sensor values", false);
-		X_ALPACA_WEATHER_AGE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_ALPACA_WEATHER_AGE", WEATHER_GROUP, "Age of the values", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
-		indigo_init_number_item(X_ALPACA_WEATHER_AGE_ITEM, "AGE", "Time since the last update [s]", -1, 1e9, 0, 0);
+		if (AUX_WEATHER_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		X_ALPACA_WEATHER_SENSORS_PROPERTY = indigo_init_text_property(NULL, device->name, X_ALPACA_WEATHER_SENSORS_PROPERTY_NAME, WEATHER_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, WEATHER_SENSOR_COUNT);
+		if (X_ALPACA_WEATHER_SENSORS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY = indigo_init_number_property(NULL, device->name, X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY_NAME, WEATHER_GROUP, "Averaging period", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM, X_ALPACA_WEATHER_AVERAGE_PERIOD_ITEM_NAME, "Averaging period [h]", 0, 1000, 0, 0);
+		X_ALPACA_WEATHER_REFRESH_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ALPACA_WEATHER_REFRESH_PROPERTY_NAME, WEATHER_GROUP, "Refresh", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (X_ALPACA_WEATHER_REFRESH_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_ALPACA_WEATHER_REFRESH_ITEM, X_ALPACA_WEATHER_REFRESH_ITEM_NAME, "Refresh the sensor values", false);
+		X_ALPACA_WEATHER_AGE_PROPERTY = indigo_init_number_property(NULL, device->name, X_ALPACA_WEATHER_AGE_PROPERTY_NAME, WEATHER_GROUP, "Age of the values", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+		if (X_ALPACA_WEATHER_AGE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(X_ALPACA_WEATHER_AGE_ITEM, X_ALPACA_WEATHER_AGE_ITEM_NAME, "Time since the last update [s]", -1, 1e9, 0, 0);
 		return system_alpaca_attach(device) == INDIGO_OK ? weather_enumerate_properties(device, NULL, NULL) : INDIGO_FAILED;
 	}
 	return INDIGO_FAILED;
 }
 
 static indigo_result weather_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (system_alpaca_is_active(device)) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_WEATHER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_WEATHER_SENSORS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY);
@@ -418,11 +477,11 @@ static indigo_result weather_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, property)) {
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, weather_average_period_handler);
+		system_alpaca_accept(device, X_ALPACA_WEATHER_AVERAGE_PERIOD_PROPERTY, property, ALPACA_ACCEPT_TARGETS, NULL, weather_average_period_handler);
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(X_ALPACA_WEATHER_REFRESH_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_WEATHER_REFRESH_PROPERTY, weather_refresh_handler);
+		system_alpaca_accept(device, X_ALPACA_WEATHER_REFRESH_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, weather_refresh_handler);
 		return INDIGO_OK;
 	}
 	return indigo_aux_change_property(device, client, property);

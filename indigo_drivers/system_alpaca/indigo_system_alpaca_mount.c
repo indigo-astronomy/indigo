@@ -65,10 +65,26 @@
  Only the asynchronous slew is used. The deprecated synchronous slew would block the queue of the device, and with it the polling
  and MOUNT_ABORT_MOTION, for the whole slew; a telescope that has no SlewToCoordinatesAsync has no goto in this driver.
 
+ PARKED
+
+ While the telescope is parked, parks or unparks, MOUNT_EQUATORIAL_COORDINATES, MOUNT_MOTION_DEC, MOUNT_MOTION_RA, MOUNT_TRACKING and
+ MOUNT_SIDE_OF_PIER are refused without a request to the telescope, as in the other mount drivers. MOUNT_HOME and MOUNT_ABORT_MOTION are
+ sent and answered by the telescope (InvalidWhileParked). A telescope that somebody else parked is recognised by AtPark of the next poll
+ or by the first InvalidWhileParked it answers.
+
  The sense of rotation of MoveAxis is left undefined by the standard. The driver uses the sense of the ASCOM simulators and of the
  common mounts: a positive rate of the primary axis moves west (the hour angle grows), a positive rate of the secondary axis moves north.
+ The axes are the mechanical ones: a German mount that points through the pole (SideOfPier pierWest) moves south with a positive rate of
+ the secondary axis, and the driver does not compensate for that, because a telescope may as well do it itself.
 
  Slews to horizontal coordinates are not mapped: MOUNT_HORIZONTAL_COORDINATES is read only in the INDIGO mount model.
+
+ THREADS
+
+ change_property runs on a bus thread, everything else on the handler queue of the device. A request is accepted with
+ system_alpaca_accept(), and the polling and the finalizers put the state of the telescope into the properties under the lock of
+ the device, so a poll tick never replaces a request that was just accepted with the old state of the telescope. What a bus thread
+ has to know besides the properties (parked, the site is the one of the telescope) is kept in the class data under the same lock.
  */
 
 #pragma mark - Includes
@@ -130,6 +146,9 @@ typedef struct {
 	bool aborted;										///< AbortSlew was accepted and the telescope is still stopping
 	bool external_slew;							///< MOUNT_EQUATORIAL_COORDINATES is BUSY because the telescope slews without a request of this driver
 	bool coordinates_failed;				///< MOUNT_EQUATORIAL_COORDINATES is in ALERT because the coordinates can not be read
+	bool utc_changed;								///< the value of UTC_TIME changed since it was published
+	bool parked;										///< requests that move the telescope are refused, see mount_is_parked(); guarded by the lock of the device
+	bool site;											///< GEOGRAPHIC_COORDINATES is the site of the telescope, see mount_has_site(); guarded by the lock of the device
 	bool axis_moving[2];						///< MoveAxis with a rate that is not zero was sent
 	// read once per connection
 	char name[INDIGO_VALUE_SIZE];
@@ -165,9 +184,39 @@ typedef struct {
 
 #pragma mark - Low level code (mount)
 
+// The telescope is parked, parks or unparks: a goto, a manual motion, a change of tracking and a pier flip are refused.
+// The flag follows AtPark of a telescope that has MOUNT_PARK; change_property does not look at the items of MOUNT_PARK,
+// which the polling writes at the same time.
+static bool mount_is_parked(indigo_device *device) {
+	system_alpaca_lock(device);
+	bool parked = MOUNT_DATA->parked;
+	system_alpaca_unlock(device);
+	return parked;
+}
+
+static void mount_set_parked(indigo_device *device, bool parked) {
+	system_alpaca_lock(device);
+	MOUNT_DATA->parked = parked;
+	system_alpaca_unlock(device);
+}
+
+// Refusal of a request that would move a parked telescope. Called by system_alpaca_accept() with the lock of the device held.
+static const char *mount_parked_refusal(indigo_device *device) {
+	return MOUNT_DATA->parked ? "Mount is parked!" : NULL;
+}
+
 // The device answered, with a value or with an error of its own. False means that there is no usable answer and the connection has to be given up.
 static bool mount_usable(alpaca_result result) {
 	return !alpaca_is_transport_error(result) && result != ALPACA_PROTOCOL_ERROR && result != ALPACA_SERVER_ERROR && result != ALPACA_FAILED;
+}
+
+// Right ascension in hours within 0 <= ra < 24. A value that is in the range already is returned bit by bit, so that a target is sent as it was requested.
+static double mount_wrap_hours(double ra) {
+	if (ra >= 0 && ra < 24) {
+		return ra;
+	}
+	ra = fmod(ra, 24);
+	return ra < 0 ? ra + 24 : ra;
 }
 
 static double mount_nearest_rate(const double *minimum, const double *maximum, int count, double rate) {
@@ -281,25 +330,59 @@ static bool mount_read_tracking_rate(indigo_device *device) {
 	return mount_usable(system_alpaca_state_int(device, "TrackingRate", &MOUNT_DATA->tracking_rate));
 }
 
+// MOUNT_GUIDE_RATE exists if the telescope reports both rates; once one of them is known to be missing the other one is not read any more.
+static bool mount_has_guide_rates(indigo_device *device) {
+	return system_alpaca_supported(device, "GuideRateRightAscension") && system_alpaca_supported(device, "GuideRateDeclination");
+}
+
 static bool mount_read_guide_rates(indigo_device *device) {
+	if (!mount_has_guide_rates(device)) {
+		return true;
+	}
 	bool usable = mount_usable(system_alpaca_state_double(device, "GuideRateRightAscension", &MOUNT_DATA->guide_rate_ra));
+	if (!mount_has_guide_rates(device)) {
+		return usable;
+	}
 	return mount_usable(system_alpaca_state_double(device, "GuideRateDeclination", &MOUNT_DATA->guide_rate_dec)) && usable;
 }
 
+// The site is the one of the telescope if it reports both coordinates; otherwise GEOGRAPHIC_COORDINATES stays a setting of INDIGO and the site is not read any more.
+static bool mount_has_site(indigo_device *device) {
+	return system_alpaca_supported(device, "SiteLatitude") && system_alpaca_supported(device, "SiteLongitude");
+}
+
+// What change_property (a bus thread) has to know about the site: the capability cache belongs to the handler queue.
+static void mount_note_site(indigo_device *device) {
+	system_alpaca_lock(device);
+	MOUNT_DATA->site = mount_has_site(device);
+	system_alpaca_unlock(device);
+}
+
+static bool mount_site_owned(indigo_device *device) {
+	system_alpaca_lock(device);
+	bool site = MOUNT_DATA->site;
+	system_alpaca_unlock(device);
+	return site;
+}
+
 static bool mount_read_site(indigo_device *device) {
+	if (!mount_has_site(device)) {
+		return true;
+	}
 	bool usable = mount_usable(system_alpaca_state_double(device, "SiteLatitude", &MOUNT_DATA->latitude));
+	if (!mount_has_site(device)) {
+		return usable;
+	}
 	usable = mount_usable(system_alpaca_state_double(device, "SiteLongitude", &MOUNT_DATA->longitude)) && usable;
+	if (!mount_has_site(device)) {
+		return usable;
+	}
 	return mount_usable(system_alpaca_state_double(device, "SiteElevation", &MOUNT_DATA->elevation)) && usable;
 }
 
 static bool mount_read_offset_rates(indigo_device *device) {
 	bool usable = mount_usable(system_alpaca_state_double(device, "RightAscensionRate", &MOUNT_DATA->offset_rate_ra));
 	return mount_usable(system_alpaca_state_double(device, "DeclinationRate", &MOUNT_DATA->offset_rate_dec)) && usable;
-}
-
-// The site is the one of the telescope if it reports both coordinates; otherwise GEOGRAPHIC_COORDINATES stays a setting of INDIGO.
-static bool mount_has_site(indigo_device *device) {
-	return system_alpaca_supported(device, "SiteLatitude") && system_alpaca_supported(device, "SiteLongitude");
 }
 
 static bool mount_has_offset_rates(indigo_device *device) {
@@ -314,7 +397,7 @@ static void mount_set_coordinates(indigo_device *device) {
 		double ra = data->right_ascension;
 		double dec = data->declination;
 		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = fmod(ra + 24, 24);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = mount_wrap_hours(ra);
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	}
 	if (system_alpaca_supported(device, "SiderealTime")) {
@@ -334,18 +417,25 @@ static void mount_set_coordinates(indigo_device *device) {
 }
 
 static void mount_update_coordinates(indigo_device *device) {
+	system_alpaca_lock(device);
 	MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	system_alpaca_unlock(device);
 	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 }
 
+// The switches are set item by item: indigo_set_switch() marks a one-of-many property as changed whenever it is called,
+// which would publish MOUNT_PARK and MOUNT_TRACKING on every poll tick although nothing changed.
 static void mount_set_park(indigo_device *device) {
-	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_DATA->at_park ? MOUNT_PARK_PARKED_ITEM : MOUNT_PARK_UNPARKED_ITEM, true);
+	MOUNT_PARK_PARKED_ITEM->sw.value = MOUNT_DATA->at_park;
+	MOUNT_PARK_UNPARKED_ITEM->sw.value = !MOUNT_DATA->at_park;
+	mount_set_parked(device, MOUNT_DATA->at_park && !MOUNT_PARK_PROPERTY->hidden);
 }
 
 static void mount_set_tracking(indigo_device *device) {
-	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_DATA->tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+	MOUNT_TRACKING_ON_ITEM->sw.value = MOUNT_DATA->tracking;
+	MOUNT_TRACKING_OFF_ITEM->sw.value = !MOUNT_DATA->tracking;
 }
 
 static void mount_set_side_of_pier(indigo_device *device) {
@@ -353,9 +443,11 @@ static void mount_set_side_of_pier(indigo_device *device) {
 	MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = MOUNT_DATA->side_of_pier == 1;
 }
 
+// A text property is published by every update, changed or not, so UTC_TIME is updated by the polling only when the time changed.
 static void mount_set_utc(indigo_device *device) {
-	if (*MOUNT_DATA->utc) {
+	if (*MOUNT_DATA->utc && strcmp(MOUNT_UTC_ITEM->text.value, MOUNT_DATA->utc)) {
 		indigo_set_text_item_value(MOUNT_UTC_ITEM, MOUNT_DATA->utc);
+		MOUNT_DATA->utc_changed = true;
 	}
 }
 
@@ -386,9 +478,11 @@ static void mount_set_offset_rates(indigo_device *device) {
 }
 
 // Copy the last state to the properties. A property that is BUSY belongs to its handler or finalizer: its items and its state are left alone,
-// except for the values of the coordinates, which follow the telescope during a slew.
+// except for the values of the coordinates, which follow the telescope during a slew. It is done in one step under the lock of the
+// device, so a request that is accepted meanwhile either finds its property untouched or is seen as BUSY here.
 static void mount_apply_state(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
+	system_alpaca_lock(device);
 	mount_set_coordinates(device);
 	if (!data->motion.active) {
 		if (data->slewing && !data->axis_moving[0] && !data->axis_moving[1] && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -424,6 +518,7 @@ static void mount_apply_state(indigo_device *device) {
 	MOUNT_STATE_PARK_ITEM->light.value = data->at_park ? INDIGO_OK_STATE : data->park_requested ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
 	MOUNT_STATE_HOME_ITEM->light.value = data->at_home ? INDIGO_OK_STATE : data->home_requested ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
 	MOUNT_STATE_TRACKING_ITEM->light.value = data->tracking ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	system_alpaca_unlock(device);
 }
 
 static void mount_update_state(indigo_device *device) {
@@ -431,7 +526,10 @@ static void mount_update_state(indigo_device *device) {
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+	if (MOUNT_DATA->utc_changed) {
+		MOUNT_DATA->utc_changed = false;
+		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+	}
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 }
 
@@ -443,6 +541,8 @@ static bool mount_read_settings(indigo_device *device) {
 }
 
 static void mount_apply_settings(indigo_device *device) {
+	system_alpaca_lock(device);
+	MOUNT_DATA->site = mount_has_site(device);
 	if (MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
 		mount_set_tracking_rate(device);
 	}
@@ -455,6 +555,7 @@ static void mount_apply_settings(indigo_device *device) {
 	if (X_ALPACA_OFFSET_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
 		mount_set_offset_rates(device);
 	}
+	system_alpaca_unlock(device);
 }
 
 static void mount_update_settings(indigo_device *device) {
@@ -468,8 +569,13 @@ static void mount_update_settings(indigo_device *device) {
 static void mount_check_parked(indigo_device *device, alpaca_result result) {
 	if (result == ALPACA_PARKED && !MOUNT_DATA->at_park) {
 		MOUNT_DATA->at_park = true;
-		if (MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
+		system_alpaca_lock(device);
+		bool idle = MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE;
+		if (idle) {
 			mount_set_park(device);
+		}
+		system_alpaca_unlock(device);
+		if (idle) {
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		}
 	}
@@ -478,8 +584,7 @@ static void mount_check_parked(indigo_device *device, alpaca_result result) {
 // Finish a request whose result has two parts: the result of the requests and whether the telescope ended in the requested state.
 static void mount_finish(indigo_device *device, indigo_property *property, alpaca_result result, bool achieved, const char *action) {
 	if (result == ALPACA_OK && !achieved) {
-		property->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, property, "%s failed", action);
+		system_alpaca_update(device, property, INDIGO_ALERT_STATE, "%s failed", action);
 	} else {
 		system_alpaca_finish(device, property, result, action);
 	}
@@ -487,15 +592,19 @@ static void mount_finish(indigo_device *device, indigo_property *property, alpac
 
 static void mount_finish_coordinates(indigo_device *device, alpaca_result result, const char *action) {
 	system_alpaca_finish(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, result, action);
+	system_alpaca_lock(device);
 	MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	system_alpaca_unlock(device);
 	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 }
 
-// A method that starts a motion failed in a way that does not tell whether the telescope executed it: Slewing tells.
+// A method that starts a motion got no answer, which does not tell whether the telescope executed it: Slewing tells.
+// A failure with an answer (an error of the server, a reply that is no reply) is reported as it is, with the reason the server gave;
+// should the telescope slew all the same, the polling shows it as a slew that was started elsewhere.
 static alpaca_result mount_started(indigo_device *device, alpaca_result result) {
 	bool slewing = false;
-	if (result != ALPACA_OK && alpaca_may_have_executed(result) && system_alpaca_get_bool(device, "slewing", &slewing) == ALPACA_OK && slewing) {
+	if (alpaca_is_transport_error(result) && result != ALPACA_UNREACHABLE && system_alpaca_get_bool(device, "slewing", &slewing) == ALPACA_OK && slewing) {
 		return ALPACA_OK;
 	}
 	return result;
@@ -543,26 +652,35 @@ static void mount_motion_start(indigo_device *device, const char *action) {
 	data->action = action;
 	data->external_slew = data->aborted = false;
 	system_alpaca_operation_start(device, &data->motion, MOUNT_MOTION_TIMEOUT, mount_motion_finalizer);
-	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	system_alpaca_lock(device);
+	bool idle = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	system_alpaca_unlock(device);
+	if (idle) {
 		mount_update_coordinates(device);
 	}
 }
 
 // The telescope stopped after AbortSlew: every property that waited for the end of a motion ends in ALERT with what the telescope reports now.
 static void mount_settle_aborted(indigo_device *device) {
+	system_alpaca_lock(device);
+	bool home = MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
 	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (home) {
 		MOUNT_HOME_ITEM->sw.value = false;
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (MOUNT_SIDE_OF_PIER_PROPERTY->state == INDIGO_BUSY_STATE) {
 		MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	system_alpaca_unlock(device);
+	if (home) {
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 	}
 	mount_apply_state(device);
 	mount_update_state(device);
@@ -604,7 +722,7 @@ static void mount_motion_done(indigo_device *device, alpaca_result result) {
 
 static void mount_motion_finalizer(indigo_device *device) {
 	bool slewing = false;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_result result = system_alpaca_state_bool(device, "Slewing", &slewing);
@@ -617,22 +735,23 @@ static void mount_motion_finalizer(indigo_device *device) {
 
 static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
-	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+	if (mount_is_parked(device)) {
 		indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		system_alpaca_update(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-	alpaca_param params[] = { ALPACA_DOUBLE_PARAM("RightAscension", fmod(ra + 24, 24)), ALPACA_DOUBLE_PARAM("Declination", dec) };
+	alpaca_param params[] = { ALPACA_DOUBLE_PARAM("RightAscension", mount_wrap_hours(ra)), ALPACA_DOUBLE_PARAM("Declination", dec) };
 	if (indigo_get_switch(MOUNT_ON_COORDINATES_SET_PROPERTY, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME)) {
 		alpaca_result result = system_alpaca_put(device, "synctocoordinates", params, 2, ALPACA_WAIT_STANDARD);
 		mount_check_parked(device, result);
-		if (mount_usable(result)) {
+		if (result == ALPACA_OK) {
+			// no request between a failed one and its message: the message quotes the last answer of the telescope
 			mount_read_state(device);
 			mount_set_coordinates(device);
 		}
@@ -657,18 +776,25 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 
 static void mount_park_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	bool park = indigo_get_switch_target(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM_NAME);
-	alpaca_result result = system_alpaca_can(device, park ? "canpark" : "canunpark") ? ALPACA_OK : ALPACA_UNSUPPORTED;
-	if (result == ALPACA_OK) {
-		result = mount_started(device, system_alpaca_put(device, park ? "park" : "unpark", NULL, 0, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE));
+	if (!system_alpaca_can(device, park ? "canpark" : "canunpark")) {
+		// MOUNT_PARK exists if the telescope can do one of the two; nothing is sent for the other one
+		mount_set_park(device);
+		system_alpaca_update(device, MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, "The telescope can not be %s", park ? "parked" : "unparked");
+		return;
 	}
+	alpaca_result result = mount_started(device, system_alpaca_put(device, park ? "park" : "unpark", NULL, 0, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE));
 	if (result == ALPACA_OK) {
 		data->park_requested = park;
 		data->unpark_requested = !park;
 		data->stop_tracking = false;
+		if (park) {
+			// from here on the telescope moves to its park position; what would move it elsewhere is refused until MOUNT_PARK is settled
+			mount_set_parked(device, true);
+		}
 		mount_motion_start(device, park ? "Park" : "Unpark");
 	} else {
 		mount_set_park(device);
@@ -678,7 +804,7 @@ static void mount_park_handler(indigo_device *device) {
 
 static void mount_park_set_handler(indigo_device *device) {
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (indigo_get_switch_target(MOUNT_PARK_SET_PROPERTY, MOUNT_PARK_SET_CURRENT_ITEM_NAME)) {
@@ -690,7 +816,7 @@ static void mount_park_set_handler(indigo_device *device) {
 
 static void mount_home_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	bool home = indigo_get_switch_target(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM_NAME);
@@ -707,13 +833,13 @@ static void mount_home_handler(indigo_device *device) {
 			system_alpaca_finish(device, MOUNT_HOME_PROPERTY, result, "Find home");
 		}
 	} else {
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
+		system_alpaca_update(device, MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 }
 
 static void mount_side_of_pier_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_param params[] = { ALPACA_INT_PARAM("SideOfPier", indigo_get_switch_target(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) ? 1 : 0) };
@@ -729,13 +855,25 @@ static void mount_side_of_pier_handler(indigo_device *device) {
 	}
 }
 
+// End a request for MOUNT_MOTION_DEC or MOUNT_MOTION_RA with the given state; after a failure no motion is on. The properties are
+// accepted while they are BUSY, so a bus thread may be writing them: the items and the state are set under the lock of the device.
+static void mount_end_motion(indigo_device *device, indigo_property *property, indigo_property_state state) {
+	system_alpaca_lock(device);
+	if (state != INDIGO_OK_STATE) {
+		property->items[0].sw.value = property->items[1].sw.value = false;
+	}
+	property->state = state;
+	system_alpaca_unlock(device);
+}
+
 // MOUNT_MOTION_DEC and MOUNT_MOTION_RA: MoveAxis with the rate of the selected item of MOUNT_SLEW_RATE, a rate of zero when both items are off.
 static void mount_move_axis(indigo_device *device, int axis, indigo_property *property, const char *positive, const char *negative) {
 	mount_data *data = MOUNT_DATA;
 	double rate = 0;
-	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+	if (mount_is_parked(device)) {
 		indigo_send_message(device, property, "Mount is parked!");
-		INDIGO_UPDATE_PROPERTY_STATE(property, INDIGO_ALERT_STATE, NULL);
+		mount_end_motion(device, property, INDIGO_ALERT_STATE);
+		indigo_update_property(device, property, NULL);
 		indigo_mount_commit_motion_client(device, property);
 		return;
 	}
@@ -749,24 +887,26 @@ static void mount_move_axis(indigo_device *device, int axis, indigo_property *pr
 	} else if (!indigo_get_switch_target(property, positive)) {
 		rate = 0;
 	}
+	char reason[INDIGO_VALUE_SIZE];
 	alpaca_result result = mount_put_axis_rate(device, axis, rate);
+	system_alpaca_reason(device, result, reason, sizeof(reason));
 	if (result != ALPACA_OK) {
 		mount_check_parked(device, result);
-		property->items[0].sw.value = property->items[1].sw.value = false;
 	}
-	system_alpaca_finish(device, property, result, rate != 0 ? "Move" : "Stop");
+	mount_end_motion(device, property, system_alpaca_property_state(result));
+	system_alpaca_report(device, property, result, rate != 0 ? "Move" : "Stop", reason);
 	indigo_mount_commit_motion_client(device, property);
 }
 
 static void mount_motion_dec_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	mount_move_axis(device, 1, MOUNT_MOTION_DEC_PROPERTY, MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME);
 }
 
 static void mount_motion_ra_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	mount_move_axis(device, 0, MOUNT_MOTION_RA_PROPERTY, MOUNT_MOTION_WEST_ITEM_NAME, MOUNT_MOTION_EAST_ITEM_NAME);
@@ -774,22 +914,41 @@ static void mount_motion_ra_handler(indigo_device *device) {
 
 // AbortSlew stops a slew, a park, a search for home and MoveAxis. Requests that did not start yet are dropped, and every property that
 // waited for the end of a motion ends in ALERT with what the telescope reports after the stop.
+// MoveAxis(0) is sent for every axis that moves and AbortSlew always, so the failure to stop one axis neither keeps the other one moving
+// nor keeps a slew from being aborted. AbortSlew stops MoveAxis as well (ITelescopeV3), so once it succeeded nothing moves any more.
+// A telescope that does not implement AbortSlew has nothing to abort but the motion of its axes, unless this driver watches a slew.
 static void mount_abort_motion_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
-	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	alpaca_result result = ALPACA_OK, stop = ALPACA_OK;
+	char reason[INDIGO_VALUE_SIZE] = { 0 };
+	char stop_reason[INDIGO_VALUE_SIZE] = { 0 };
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (indigo_get_switch_target(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_ABORT_MOTION_ITEM_NAME)) {
-		for (int axis = 0; axis < 2 && result == ALPACA_OK; axis++) {
+		for (int axis = 0; axis < 2; axis++) {
 			if (data->axis_moving[axis]) {
-				result = mount_put_axis_rate(device, axis, 0);
+				alpaca_result axis_result = mount_put_axis_rate(device, axis, 0);
+				if (axis_result != ALPACA_OK && stop == ALPACA_OK) {
+					stop = axis_result;
+					system_alpaca_reason(device, stop, stop_reason, sizeof(stop_reason));
+				}
 			}
 		}
-		if (result == ALPACA_OK) {
-			result = system_alpaca_put(device, "abortslew", NULL, 0, ALPACA_REPLAYABLE);
+		alpaca_result abort = system_alpaca_put(device, "abortslew", NULL, 0, ALPACA_REPLAYABLE);
+		system_alpaca_reason(device, abort, reason, sizeof(reason));
+		bool aborted = abort == ALPACA_OK;
+		bool nothing_to_abort = system_alpaca_not_implemented(abort, 0) && !data->motion.active;
+		if (aborted) {
+			data->axis_moving[0] = data->axis_moving[1] = false;
+			result = ALPACA_OK;
+		} else if (nothing_to_abort) {
+			result = stop;
+			strcpy(reason, stop_reason);
+		} else {
+			result = abort;
 		}
-		if (result == ALPACA_OK) {
+		if (aborted || nothing_to_abort) {
 			indigo_cancel_pending_handler(device, mount_equatorial_coordinates_handler);
 			indigo_cancel_pending_handler(device, mount_park_handler);
 			indigo_cancel_pending_handler(device, mount_home_handler);
@@ -799,11 +958,18 @@ static void mount_abort_motion_handler(indigo_device *device) {
 			indigo_cancel_pending_handler(device, mount_motion_finalizer);
 			system_alpaca_operation_end(device, &data->motion);
 			data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->external_slew = false;
+		}
+		if (aborted || stop == ALPACA_OK) {
+			system_alpaca_lock(device);
 			MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
-			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
-			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+			MOUNT_MOTION_DEC_PROPERTY->state = MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+			system_alpaca_unlock(device);
+			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		}
+		if (aborted || nothing_to_abort) {
 			mount_read_state(device);
-			if (data->slewing) {
+			if (data->slewing && aborted) {
 				// AbortSlew returns at once and Slewing stays true until the telescope has stopped
 				data->aborted = true;
 				system_alpaca_operation_start(device, &data->motion, MOUNT_MOTION_TIMEOUT, mount_motion_finalizer);
@@ -813,26 +979,29 @@ static void mount_abort_motion_handler(indigo_device *device) {
 				mount_settle_aborted(device);
 			}
 		} else {
-			mount_check_parked(device, result);
+			mount_check_parked(device, abort);
+		}
+		if (aborted && stop != ALPACA_OK) {
+			indigo_send_message(device, MOUNT_ABORT_MOTION_PROPERTY, "MoveAxis(0) failed: %s%s%s%s, AbortSlew stopped the axis", alpaca_result_text(stop), *stop_reason ? " (" : "", stop_reason, *stop_reason ? ")" : "");
 		}
 	}
 	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 	if (result == ALPACA_OK) {
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, "Aborted");
+		system_alpaca_update(device, MOUNT_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, "Aborted");
 		indigo_mount_commit_motion_client(device, MOUNT_ABORT_MOTION_PROPERTY);
 	} else {
-		system_alpaca_finish(device, MOUNT_ABORT_MOTION_PROPERTY, result, "Abort");
+		system_alpaca_finish_with(device, MOUNT_ABORT_MOTION_PROPERTY, result, "Abort", reason);
 	}
 }
 
 static void mount_tracking_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
-	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
+	if (mount_is_parked(device)) {
 		indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
 		mount_set_tracking(device);
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_TRACKING_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		system_alpaca_update(device, MOUNT_TRACKING_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
 	alpaca_result result = mount_put_tracking(device, indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME));
@@ -846,7 +1015,7 @@ static void mount_tracking_handler(indigo_device *device) {
 static void mount_track_rate_handler(indigo_device *device) {
 	mount_data *data = MOUNT_DATA;
 	int rate = data->tracking_rate;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	for (int i = 0; i < data->track_rate_count; i++) {
@@ -864,25 +1033,35 @@ static void mount_track_rate_handler(indigo_device *device) {
 	if (result == ALPACA_OK && mount_has_offset_rates(device)) {
 		// the offset rates read zero unless the telescope tracks at the sidereal rate
 		mount_read_offset_rates(device);
-		if (X_ALPACA_OFFSET_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
+		system_alpaca_lock(device);
+		bool idle = X_ALPACA_OFFSET_RATE_PROPERTY->state != INDIGO_BUSY_STATE;
+		if (idle) {
 			mount_set_offset_rates(device);
+		}
+		system_alpaca_unlock(device);
+		if (idle) {
 			indigo_update_property(device, X_ALPACA_OFFSET_RATE_PROPERTY, NULL);
 		}
 	}
 }
 
 static void mount_guide_rate_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
-	alpaca_param ra[] = { ALPACA_DOUBLE_PARAM("GuideRateRightAscension", MOUNT_GUIDE_RATE_RA_ITEM->number.target * MOUNT_SIDEREAL_RATE / 100) };
-	alpaca_param dec[] = { ALPACA_DOUBLE_PARAM("GuideRateDeclination", MOUNT_GUIDE_RATE_DEC_ITEM->number.target * MOUNT_SIDEREAL_RATE / 100) };
+	mount_data *data = MOUNT_DATA;
+	double ra_rate = MOUNT_GUIDE_RATE_RA_ITEM->number.target * MOUNT_SIDEREAL_RATE / 100;
+	double dec_rate = MOUNT_GUIDE_RATE_DEC_ITEM->number.target * MOUNT_SIDEREAL_RATE / 100;
+	alpaca_param ra[] = { ALPACA_DOUBLE_PARAM("GuideRateRightAscension", ra_rate) };
+	alpaca_param dec[] = { ALPACA_DOUBLE_PARAM("GuideRateDeclination", dec_rate) };
 	alpaca_result result = system_alpaca_put(device, "guideraterightascension", ra, 1, ALPACA_REPLAYABLE);
 	if (result == ALPACA_OK) {
+		data->guide_rate_ra = ra_rate;
 		result = system_alpaca_put(device, "guideratedeclination", dec, 1, ALPACA_REPLAYABLE);
 	}
-	if (mount_usable(result)) {
-		// a telescope with one guide rate for both axes changes the other one, too
+	if (result == ALPACA_OK) {
+		data->guide_rate_dec = dec_rate;
+		// a telescope with one guide rate for both axes changes the other one, too; after a failure nothing is read, the message quotes the last answer
 		mount_read_guide_rates(device);
 	}
 	mount_set_guide_rates(device);
@@ -891,18 +1070,24 @@ static void mount_guide_rate_handler(indigo_device *device) {
 
 static void mount_offset_rate_handler(indigo_device *device) {
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_param ra[] = { ALPACA_DOUBLE_PARAM("RightAscensionRate", X_ALPACA_OFFSET_RATE_RA_ITEM->number.target) };
 	alpaca_param dec[] = { ALPACA_DOUBLE_PARAM("DeclinationRate", X_ALPACA_OFFSET_RATE_DEC_ITEM->number.target) };
 	if (system_alpaca_can(device, "cansetrightascensionrate")) {
 		result = system_alpaca_put(device, "rightascensionrate", ra, 1, ALPACA_REPLAYABLE);
+		if (result == ALPACA_OK) {
+			MOUNT_DATA->offset_rate_ra = X_ALPACA_OFFSET_RATE_RA_ITEM->number.target;
+		}
 	}
 	if (result == ALPACA_OK && system_alpaca_can(device, "cansetdeclinationrate")) {
 		result = system_alpaca_put(device, "declinationrate", dec, 1, ALPACA_REPLAYABLE);
+		if (result == ALPACA_OK) {
+			MOUNT_DATA->offset_rate_dec = X_ALPACA_OFFSET_RATE_DEC_ITEM->number.target;
+		}
 	}
-	if (mount_usable(result)) {
+	if (result == ALPACA_OK) {
 		mount_read_offset_rates(device);
 	}
 	mount_set_offset_rates(device);
@@ -910,21 +1095,27 @@ static void mount_offset_rate_handler(indigo_device *device) {
 }
 
 static void mount_geographic_coordinates_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
-	double longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
+	mount_data *data = MOUNT_DATA;
+	double longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target > 180 ? MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target - 360 : MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target;
 	alpaca_param latitude_params[] = { ALPACA_DOUBLE_PARAM("SiteLatitude", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target) };
-	alpaca_param longitude_params[] = { ALPACA_DOUBLE_PARAM("SiteLongitude", longitude > 180 ? longitude - 360 : longitude) };
+	alpaca_param longitude_params[] = { ALPACA_DOUBLE_PARAM("SiteLongitude", longitude) };
 	alpaca_param elevation_params[] = { ALPACA_DOUBLE_PARAM("SiteElevation", MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.target) };
 	alpaca_result result = system_alpaca_put(device, "sitelatitude", latitude_params, 1, ALPACA_REPLAYABLE);
 	if (result == ALPACA_OK) {
+		data->latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target;
 		result = system_alpaca_put(device, "sitelongitude", longitude_params, 1, ALPACA_REPLAYABLE);
+	}
+	if (result == ALPACA_OK) {
+		data->longitude = longitude;
 	}
 	if (result == ALPACA_OK && system_alpaca_supported(device, "SiteElevation")) {
 		result = system_alpaca_put(device, "siteelevation", elevation_params, 1, ALPACA_REPLAYABLE);
 	}
-	if (mount_usable(result)) {
+	if (result == ALPACA_OK) {
+		// after a failure nothing is read, the message quotes the last answer of the telescope; the property then shows what was accepted so far
 		mount_read_site(device);
 	}
 	mount_set_site(device);
@@ -932,25 +1123,40 @@ static void mount_geographic_coordinates_handler(indigo_device *device) {
 }
 
 static void mount_utc_time_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	time_t utc = indigo_mount_get_utc_target(device, NULL);
-	alpaca_result result = utc == -1 ? ALPACA_FAILED : mount_put_utc(device, utc);
+	if (utc == -1) {
+		// the request was no date: nothing is sent and the item shows the time of the telescope again
+		mount_set_utc(device);
+		system_alpaca_update(device, MOUNT_UTC_TIME_PROPERTY, INDIGO_ALERT_STATE, "The time has to be given as YYYY-MM-DDTHH:MM:SS");
+		return;
+	}
+	alpaca_result result = mount_put_utc(device, utc);
 	mount_set_utc(device);
 	system_alpaca_finish(device, MOUNT_UTC_TIME_PROPERTY, result, "Time");
 }
 
 static void mount_set_host_time_handler(indigo_device *device) {
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (indigo_get_switch_target(MOUNT_SET_HOST_TIME_PROPERTY, MOUNT_SET_HOST_TIME_ITEM_NAME)) {
 		result = mount_put_utc(device, time(NULL));
-		if (result == ALPACA_OK && MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
-			mount_set_utc(device);
-			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+		if (result == ALPACA_OK) {
+			// the time is set: an ALERT left by an earlier request to set it is over
+			system_alpaca_lock(device);
+			bool idle = MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE;
+			if (idle) {
+				mount_set_utc(device);
+				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			system_alpaca_unlock(device);
+			if (idle) {
+				indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+			}
 		}
 	}
 	MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
@@ -991,6 +1197,9 @@ static bool mount_on_connect(indigo_device *device) {
 	data->action = NULL;
 	data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->external_slew = data->coordinates_failed = data->aborted = false;
 	data->axis_moving[0] = data->axis_moving[1] = false;
+	data->utc_changed = false;
+	mount_set_parked(device, false);
+	mount_note_site(device);
 	data->settings_ticks = 0;
 	INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->label, "Name");
 	INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, *data->name ? data->name : PRIVATE_DATA->device_name);
@@ -1014,7 +1223,7 @@ static bool mount_on_connect(indigo_device *device) {
 	MOUNT_ON_COORDINATES_SET_PROPERTY->count = count > 0 ? count : 1;
 	MOUNT_ON_COORDINATES_SET_PROPERTY->hidden = count == 0;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->perm = count > 0 ? INDIGO_RW_PERM : INDIGO_RO_PERM;
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	system_alpaca_set_state(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_OK_STATE);
 	MOUNT_PARK_PROPERTY->hidden = !system_alpaca_can(device, "canpark") && !system_alpaca_can(device, "canunpark");
 	MOUNT_PARK_SET_PROPERTY->hidden = !system_alpaca_can(device, "cansetpark");
 	MOUNT_PARK_SET_PROPERTY->count = 1;
@@ -1025,7 +1234,7 @@ static bool mount_on_connect(indigo_device *device) {
 	}
 	MOUNT_TRACK_RATE_PROPERTY->count = data->track_rate_count > 0 ? data->track_rate_count : 1;
 	MOUNT_TRACK_RATE_PROPERTY->hidden = data->track_rate_count == 0 || !system_alpaca_supported(device, "TrackingRate");
-	MOUNT_GUIDE_RATE_PROPERTY->hidden = !system_alpaca_supported(device, "GuideRateRightAscension") || !system_alpaca_supported(device, "GuideRateDeclination");
+	MOUNT_GUIDE_RATE_PROPERTY->hidden = !mount_has_guide_rates(device);
 	MOUNT_GUIDE_RATE_PROPERTY->perm = system_alpaca_can(device, "cansetguiderates") ? INDIGO_RW_PERM : INDIGO_RO_PERM;
 	MOUNT_GUIDE_RATE_RA_ITEM->number.max = MOUNT_GUIDE_RATE_DEC_ITEM->number.max = 1000;
 	MOUNT_MOTION_RA_PROPERTY->hidden = !data->can_move_axis[0];
@@ -1040,6 +1249,7 @@ static bool mount_on_connect(indigo_device *device) {
 	X_ALPACA_OFFSET_RATE_PROPERTY->hidden = !mount_has_offset_rates(device);
 	mount_apply_settings(device);
 	mount_apply_state(device);
+	system_alpaca_lock(device);
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	MOUNT_GUIDE_RATE_RA_ITEM->number.target = MOUNT_GUIDE_RATE_RA_ITEM->number.value;
@@ -1052,6 +1262,7 @@ static bool mount_on_connect(indigo_device *device) {
 		MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value;
 	}
 	MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	system_alpaca_unlock(device);
 	if (system_alpaca_can(device, "canpulseguide")) {
 		system_alpaca_attach_secondary(device, &system_alpaca_guider_class);
 	}
@@ -1070,10 +1281,14 @@ static void mount_on_disconnect(indigo_device *device) {
 	}
 	system_alpaca_operation_end(device, &data->motion);
 	data->park_requested = data->unpark_requested = data->home_requested = data->flip_requested = data->stop_tracking = data->external_slew = data->aborted = false;
+	// the properties are still defined, so a request may be accepted while they are reset; its handler finds the session closed
+	system_alpaca_lock(device);
+	data->site = false;
 	MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_ITEM->sw.value = MOUNT_HOME_ITEM->sw.value = MOUNT_PARK_SET_CURRENT_ITEM->sw.value = MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 	MOUNT_ABORT_MOTION_PROPERTY->state = MOUNT_PARK_SET_PROPERTY->state = MOUNT_TRACKING_PROPERTY->state = MOUNT_TRACK_RATE_PROPERTY->state = MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = MOUNT_UTC_TIME_PROPERTY->state = MOUNT_SET_HOST_TIME_PROPERTY->state = MOUNT_SIDE_OF_PIER_PROPERTY->state = X_ALPACA_OFFSET_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	system_alpaca_unlock(device);
 	indigo_delete_property(device, X_ALPACA_OFFSET_RATE_PROPERTY, NULL);
 }
 
@@ -1109,7 +1324,7 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (system_alpaca_is_active(device)) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_OFFSET_RATE_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
@@ -1119,61 +1334,73 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	if (system_alpaca_change_property(device, property)) {
 		return INDIGO_OK;
 	}
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return indigo_mount_change_property(device, client, property);
 	}
 	if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		// a request while the coordinates are BUSY is dropped before the refusal is asked, so it does not take the state of the running motion away
+		system_alpaca_accept(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, ALPACA_ACCEPT_TARGETS, mount_parked_refusal, mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
+		system_alpaca_accept(device, MOUNT_ABORT_MOTION_PROPERTY, property, ALPACA_ACCEPT_VALUES | ALPACA_ACCEPT_URGENT, NULL, mount_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+		// refused before its client is recorded as the owner of the motion; a motion request that waits for its handler keeps the property
+		if (mount_is_parked(device)) {
+			system_alpaca_reject(device, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+			return INDIGO_OK;
+		}
 		indigo_mount_record_motion_client(device, client, property);
-		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);
+		system_alpaca_accept(device, MOUNT_MOTION_DEC_PROPERTY, property, ALPACA_ACCEPT_VALUES | ALPACA_ACCEPT_ANYTIME, NULL, mount_motion_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+		// refused before its client is recorded as the owner of the motion; a motion request that waits for its handler keeps the property
+		if (mount_is_parked(device)) {
+			system_alpaca_reject(device, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+			return INDIGO_OK;
+		}
 		indigo_mount_record_motion_client(device, client, property);
-		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
+		system_alpaca_accept(device, MOUNT_MOTION_RA_PROPERTY, property, ALPACA_ACCEPT_VALUES | ALPACA_ACCEPT_ANYTIME, NULL, mount_motion_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
+		system_alpaca_accept(device, MOUNT_PARK_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_park_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_SET_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_SET_PROPERTY, mount_park_set_handler);
+		system_alpaca_accept(device, MOUNT_PARK_SET_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_park_set_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);
+		system_alpaca_accept(device, MOUNT_HOME_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_home_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACKING_PROPERTY, mount_tracking_handler);
+		system_alpaca_accept(device, MOUNT_TRACKING_PROPERTY, property, ALPACA_ACCEPT_VALUES, mount_parked_refusal, mount_tracking_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACK_RATE_PROPERTY, mount_track_rate_handler);
+		system_alpaca_accept(device, MOUNT_TRACK_RATE_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_track_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_GUIDE_RATE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GUIDE_RATE_PROPERTY, mount_guide_rate_handler);
+		system_alpaca_accept(device, MOUNT_GUIDE_RATE_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_guide_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ALPACA_OFFSET_RATE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_OFFSET_RATE_PROPERTY, mount_offset_rate_handler);
+		system_alpaca_accept(device, X_ALPACA_OFFSET_RATE_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_offset_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_SIDE_OF_PIER_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SIDE_OF_PIER_PROPERTY, mount_side_of_pier_handler);
+		system_alpaca_accept(device, MOUNT_SIDE_OF_PIER_PROPERTY, property, ALPACA_ACCEPT_VALUES, mount_parked_refusal, mount_side_of_pier_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property) && mount_has_site(device)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, mount_geographic_coordinates_handler);
+	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property) && mount_site_owned(device)) {
+		system_alpaca_accept(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_geographic_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_UTC_TIME_PROPERTY, property)) {
-		indigo_mount_set_utc_target(device, property);
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_UTC_TIME_PROPERTY, mount_utc_time_handler);
+		// a request that is dropped because the previous one is not finished must not replace the time the handler is about to send
+		system_alpaca_lock(device);
+		bool idle = MOUNT_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
+		if (idle) {
+			indigo_mount_set_utc_target(device, property);
+		}
+		system_alpaca_accept(device, MOUNT_UTC_TIME_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_utc_time_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_SET_HOST_TIME_PROPERTY, mount_set_host_time_handler);
+		system_alpaca_accept(device, MOUNT_SET_HOST_TIME_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, mount_set_host_time_handler);
 		return INDIGO_OK;
 	}
 	return indigo_mount_change_property(device, client, property);

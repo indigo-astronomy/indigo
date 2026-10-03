@@ -37,6 +37,15 @@
  (Park and FindHome succeeded if AtPark / AtHome is true then), a shutter move ends when ShutterStatus leaves Opening / Closing.
  All of them use the handler + finalizer pattern; nothing waits in a handler.
 
+ Slewing is true while "any part of the dome" moves, so many devices report it while the shutter moves as well. A slew that was
+ requested during a shutter move therefore ends when both are over. A motion nobody asked this driver for (see Slaving) is shown
+ on DOME_HORIZONTAL_COORDINATES while the device reports Slewing; while the shutter moves that is done only if the azimuth or
+ the altitude is seen to change, so that a moving shutter alone is not taken for a turning dome.
+
+ DOME_SHUTTER is accepted while the shutter moves (closing a shutter that is opening must not have to wait), the other motion
+ properties are not accepted while they are BUSY. A member the device answers with NotImplemented although its Can* flag
+ announced it (or with HTTP 400, for the methods without a parameter) takes its property or item away until the next connection.
+
  Slaving. INDIGO slaves a dome from the mount agent, which writes DOME_HORIZONTAL_COORDINATES; the INDIGO dome class has no
  slaving of its own. Alpaca "Slaved" is something else: the dome hardware follows a telescope by itself and refuses SlewToAzimuth,
  SlewToAltitude, Park and FindHome with InvalidWhileSlaved. The driver exposes it as X_ALPACA_DOME_SLAVED and never changes it
@@ -49,6 +58,16 @@
  the driver accept motion requests again, which it refuses with "Dome is parked" while the dome is parked, as INDIGO domes do.
 
  Nothing is stopped on disconnect: a dome that is closing its shutter or parking finishes that when INDIGO disconnects.
+
+ While the state of the dome can not be read (the device answers the polling with an error) DOME_HORIZONTAL_COORDINATES and
+ DOME_SHUTTER are in ALERT with what was read last, unless a request or a motion owns them; they are OK again with the first state
+ that is read.
+
+ Threads: change_property runs on a bus thread, everything else on the handler queue of the device. A request is accepted
+ (system_alpaca_accept(), or the same steps with what the request needs besides) and the polling and the finalizers put the state
+ of the device into the properties under the lock of the device, so neither replaces a request that was just accepted.
+ DOME_SHUTTER is accepted while it is BUSY; the number of its requests that wait for their handler is kept under the same lock
+ and the end of a shutter move leaves the property alone while one waits.
  */
 
 #pragma mark - Includes
@@ -56,7 +75,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdatomic.h>
 #include <math.h>
 #include <assert.h>
 
@@ -110,14 +128,18 @@ typedef struct {
 	bool azimuth_requested;							///< the last request of DOME_HORIZONTAL_COORDINATES named AZ
 	bool altitude_requested;						///< the last request of DOME_HORIZONTAL_COORDINATES named ALT
 	bool external_motion;								///< DOME_HORIZONTAL_COORDINATES is BUSY because the device reports a motion nobody asked this driver for
-	bool slewing;												///< last Slewing read from the device
+	bool status_seen;										///< DOME_HORIZONTAL_COORDINATES has the position of the device of this connection
+	bool unreadable;										///< DOME_HORIZONTAL_COORDINATES is in ALERT because the polling can not read the state of the device
+	bool slewing;												///< the device reported Slewing at the last look and it was not the shutter alone that moved
 	bool parked;												///< DOME_PARK shows PARKED
 	bool unparked;											///< the user unparked the dome while the device still reports AtPark
 	bool slaved;												///< last Slaved read from the device
 	bool shutter_open;									///< direction of the running shutter move
 	int shutter_status;									///< last ShutterStatus read from the device
 	int shutter_shown;									///< ShutterStatus DOME_SHUTTER shows
-	atomic_int shutter_pending;					///< requests of DOME_SHUTTER that were accepted and whose handler did not run yet
+	int shutter_pending;								///< requests of DOME_SHUTTER that were accepted and whose handler did not run yet; guarded by the lock of the device
+	bool reason_kept;										///< reason is the one of the request that is being finished, see dome_keep_reason()
+	char reason[INDIGO_VALUE_SIZE];			///< reason of the failure of a request that was followed by a look at the device
 } dome_data;
 
 /** Operational state of the device, read member by member or from DeviceState.
@@ -172,16 +194,24 @@ static alpaca_result dome_read_status(indigo_device *device, dome_status *status
 	return dome_failed(result) ? result : ALPACA_OK;
 }
 
+// Select an item of a switch that shows the state of the device. indigo_set_switch() marks the property as changed even if the item
+// is selected already, and the property would then be published on every poll tick.
+static void dome_select(indigo_property *property, indigo_item *item) {
+	if (!item->sw.value) {
+		indigo_set_switch(property, item, true);
+	}
+}
+
 // Show a ShutterStatus on DOME_SHUTTER. A request that failed stays in ALERT until the shutter reports another status.
 static void dome_apply_shutter(indigo_device *device, int status) {
 	switch (status) {
 		case DOME_SHUTTER_OPEN:
 		case DOME_SHUTTER_OPENING:
-			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+			dome_select(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM);
 			break;
 		case DOME_SHUTTER_CLOSED:
 		case DOME_SHUTTER_CLOSING:
-			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+			dome_select(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM);
 			break;
 		case DOME_SHUTTER_ERROR:
 			// neither open nor closed is known
@@ -203,8 +233,18 @@ static void dome_apply_shutter(indigo_device *device, int status) {
 
 // Put the state of the device into the properties without publishing them. A property that is BUSY because of a request of a client
 // belongs to that request and is left alone, except for the azimuth and the altitude, which show the progress of the motion.
+// It is done in one step under the lock of the device, so a request that is accepted meanwhile either finds its property untouched
+// or is seen as BUSY here.
 static void dome_apply_status(indigo_device *device, const dome_status *status) {
-	DOME_DATA->slewing = status->slewing;
+	system_alpaca_lock(device);
+	// Slewing is true while any part of the dome moves, on many devices while the shutter moves as well. While the shutter moves and
+	// this driver did not start a motion, Slewing is taken for the shutter, unless the azimuth or the altitude changes: then the dome
+	// moves by itself and is shown as moving until Slewing ends. (This only tells who moves; when a motion is over is told by Slewing.)
+	bool shutter_moving = DOME_DATA->shutter.active || status->shutter == DOME_SHUTTER_OPENING || status->shutter == DOME_SHUTTER_CLOSING;
+	bool moved = DOME_DATA->status_seen && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden && (status->azimuth != DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value || (DOME_HORIZONTAL_COORDINATES_PROPERTY->count > 1 && status->altitude != DOME_HORIZONTAL_COORDINATES_ALT_ITEM->number.value));
+	bool rotating = status->slewing && (DOME_DATA->motion.active || DOME_DATA->external_motion || !shutter_moving || moved);
+	DOME_DATA->status_seen = true;
+	DOME_DATA->slewing = rotating;
 	DOME_DATA->shutter_status = status->shutter;
 	DOME_DATA->slaved = status->slaved;
 	if (!DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
@@ -212,15 +252,16 @@ static void dome_apply_status(indigo_device *device, const dome_status *status) 
 		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->count > 1) {
 			DOME_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = status->altitude;
 		}
-		if (status->slewing && DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+		if (rotating && DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 			// the device moves by itself: it is slaved to a telescope, or somebody else moves it
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_DATA->external_motion = true;
-		} else if (!status->slewing && DOME_DATA->external_motion) {
+		} else if (!rotating && (DOME_DATA->external_motion || (DOME_DATA->unreadable && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE))) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_DATA->external_motion = false;
 		}
 	}
+	DOME_DATA->unreadable = false;
 	if (!DOME_SHUTTER_PROPERTY->hidden && !DOME_DATA->shutter.active && DOME_DATA->shutter_pending == 0) {
 		dome_apply_shutter(device, status->shutter);
 	}
@@ -239,11 +280,36 @@ static void dome_apply_status(indigo_device *device, const dome_status *status) 
 		indigo_set_switch(X_ALPACA_DOME_SLAVED_PROPERTY, status->slaved ? X_ALPACA_DOME_SLAVED_ENABLED_ITEM : X_ALPACA_DOME_SLAVED_DISABLED_ITEM, true);
 		X_ALPACA_DOME_SLAVED_PROPERTY->state = INDIGO_OK_STATE;
 	}
+	system_alpaca_unlock(device);
+}
+
+// The device answers the polling and does not tell its state: what the properties show is not the state of the device any more.
+// A property that a request or a motion owns is left alone. The shutter is OK again when its status is read, see dome_apply_shutter().
+static void dome_status_unreadable(indigo_device *device, alpaca_result result, const char *reason) {
+	system_alpaca_lock(device);
+	bool coordinates = !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_OK_STATE;
+	bool shutter = !DOME_SHUTTER_PROPERTY->hidden && !DOME_DATA->shutter.active && DOME_DATA->shutter_pending == 0 && DOME_SHUTTER_PROPERTY->state == INDIGO_OK_STATE;
+	if (coordinates) {
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_DATA->unreadable = true;
+	}
+	if (shutter) {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_DATA->shutter_shown = DOME_SHUTTER_UNKNOWN;
+	}
+	system_alpaca_unlock(device);
+	if (coordinates) {
+		system_alpaca_report(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, result, "Reading the state of the dome", reason);
+	}
+	if (shutter) {
+		system_alpaca_report(device, DOME_SHUTTER_PROPERTY, result, "Reading the state of the dome", reason);
+	}
 }
 
 // DOME_STATE: what the dome does, whoever started it.
 static void dome_apply_lights(indigo_device *device) {
 	bool shutter_moving = DOME_DATA->shutter.active || DOME_DATA->shutter_status == DOME_SHUTTER_OPENING || DOME_DATA->shutter_status == DOME_SHUTTER_CLOSING;
+	system_alpaca_lock(device);
 	if (DOME_DATA->slewing || DOME_DATA->motion.active) {
 		DOME_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 	} else {
@@ -267,6 +333,7 @@ static void dome_apply_lights(indigo_device *device) {
 	} else {
 		DOME_STATE_OPEN_ITEM->light.value = DOME_DATA->shutter_status == DOME_SHUTTER_OPEN ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	}
+	system_alpaca_unlock(device);
 }
 
 static void dome_show_lights(indigo_device *device) {
@@ -284,10 +351,31 @@ static void dome_show_status(indigo_device *device, const dome_status *status) {
 	dome_show_lights(device);
 }
 
-// Finish a request. A method the device answers with NotImplemented is remembered and takes its property away until the next connection.
+// The device does not have the member: it answered NotImplemented, or HTTP 400 to a member without parameters. HTTP 400 to a member
+// with a parameter may as well mean that the server did not like the value.
+static bool dome_not_implemented(alpaca_result result, const char *member) {
+	bool has_parameter = !strcmp(member, "slaved") || !strcmp(member, "slewtoazimuth") || !strcmp(member, "slewtoaltitude") || !strcmp(member, "synctoazimuth");
+	return system_alpaca_not_implemented(result, has_parameter ? 1 : 0);
+}
+
+// Keep the reason of the failure of the last request: the channel only has the one of its last request, and a request that failed
+// on the way is followed by a look at what the device does.
+static alpaca_result dome_keep_reason(indigo_device *device, alpaca_result result) {
+	system_alpaca_reason(device, result, DOME_DATA->reason, sizeof(DOME_DATA->reason));
+	DOME_DATA->reason_kept = result != ALPACA_OK;
+	return result;
+}
+
+// system_alpaca_finish() with the reason that dome_keep_reason() kept, if it kept one.
+static void dome_report(indigo_device *device, indigo_property *property, alpaca_result result, const char *action) {
+	system_alpaca_finish_with(device, property, result, action, DOME_DATA->reason_kept ? DOME_DATA->reason : NULL);
+	DOME_DATA->reason_kept = false;
+}
+
+// Finish a request. A method the device does not implement is remembered and takes its property away until the next connection.
 static void dome_finish(indigo_device *device, indigo_property *property, alpaca_result result, const char *action, const char *member) {
-	system_alpaca_finish(device, property, result, action);
-	if (result == ALPACA_UNSUPPORTED) {
+	dome_report(device, property, result, action);
+	if (dome_not_implemented(result, member)) {
 		system_alpaca_set_unsupported(device, member);
 		indigo_delete_property(device, property, NULL);
 		property->hidden = true;
@@ -298,22 +386,24 @@ static void dome_finish(indigo_device *device, indigo_property *property, alpaca
 // so the device is asked whether it moves.
 static alpaca_result dome_start_result(indigo_device *device, alpaca_result result) {
 	bool slewing = false;
+	dome_keep_reason(device, result);
 	if (alpaca_may_have_executed(result) && system_alpaca_get_bool(device, "slewing", &slewing) == ALPACA_OK && slewing) {
+		DOME_DATA->reason_kept = false;
 		return ALPACA_OK;
 	}
 	return result;
 }
 
+// The item of DOME_PARK is not asked: a request to park that waits for its handler has changed it already.
 static bool dome_is_parked(indigo_device *device) {
-	return !DOME_PARK_PROPERTY->hidden && DOME_PARK_PARKED_ITEM->sw.value;
+	return !DOME_PARK_PROPERTY->hidden && DOME_DATA->parked;
 }
 
 // The device accepted a slew, a park or a search of the home position: the motion is watched until Slewing becomes false.
 // A motion that is already watched is replaced (a park during a slew), so its finalizer is scheduled anew.
 static void dome_motion_start(indigo_device *device) {
 	DOME_DATA->external_motion = false;
-	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+	system_alpaca_update(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
 	indigo_cancel_pending_handler(device, dome_motion_finalizer);
 	system_alpaca_operation_start(device, &DOME_DATA->motion, DOME_MOTION_TIMEOUT, dome_motion_finalizer);
 	dome_show_lights(device);
@@ -335,15 +425,13 @@ static void dome_motion_done(indigo_device *device, alpaca_result result, bool a
 	if (result != ALPACA_OK && (slew || !(steps || park || home))) {
 		system_alpaca_finish(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, result, "Slew");
 	} else {
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = state;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		system_alpaca_update(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, state, NULL);
 	}
 	if (steps) {
 		if (result != ALPACA_OK) {
 			system_alpaca_finish(device, DOME_STEPS_PROPERTY, result, "Move");
 		} else {
-			DOME_STEPS_PROPERTY->state = state;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			system_alpaca_update(device, DOME_STEPS_PROPERTY, state, NULL);
 		}
 	}
 	if (park) {
@@ -353,8 +441,7 @@ static void dome_motion_done(indigo_device *device, alpaca_result result, bool a
 		if (result != ALPACA_OK) {
 			system_alpaca_finish(device, DOME_PARK_PROPERTY, result, "Park");
 		} else {
-			DOME_PARK_PROPERTY->state = DOME_DATA->parked ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_PARK_PROPERTY, DOME_DATA->parked || aborted ? NULL : "Park failed: the dome stopped outside the park position");
+			system_alpaca_update(device, DOME_PARK_PROPERTY, DOME_DATA->parked ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, DOME_DATA->parked || aborted ? NULL : "Park failed: the dome stopped outside the park position");
 		}
 	}
 	if (home) {
@@ -362,8 +449,7 @@ static void dome_motion_done(indigo_device *device, alpaca_result result, bool a
 		if (result != ALPACA_OK) {
 			system_alpaca_finish(device, DOME_HOME_PROPERTY, result, "Find home");
 		} else {
-			DOME_HOME_PROPERTY->state = status.at_home ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_HOME_PROPERTY, status.at_home || aborted ? NULL : "Find home failed: the dome stopped outside the home position");
+			system_alpaca_update(device, DOME_HOME_PROPERTY, status.at_home ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, status.at_home || aborted ? NULL : "Find home failed: the dome stopped outside the home position");
 		}
 	}
 	if (result == ALPACA_OK) {
@@ -376,8 +462,8 @@ static void dome_motion_done(indigo_device *device, alpaca_result result, bool a
 
 // A request of DOME_HORIZONTAL_COORDINATES failed. A method the device does not implement takes its item away.
 static void dome_coordinates_failed(indigo_device *device, alpaca_result result, const char *action, const char *member) {
-	system_alpaca_finish(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, result, action);
-	if (result == ALPACA_UNSUPPORTED) {
+	dome_report(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, result, action);
+	if (dome_not_implemented(result, member)) {
 		system_alpaca_set_unsupported(device, member);
 		if (!strcmp(member, "synctoazimuth")) {
 			indigo_delete_property(device, DOME_ON_COORDINATES_SET_PROPERTY, NULL);
@@ -400,7 +486,7 @@ static void dome_coordinates_failed(indigo_device *device, alpaca_result result,
 
 static void dome_motion_finalizer(indigo_device *device) {
 	bool slewing = false;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_result result = system_alpaca_get_bool(device, "slewing", &slewing);
@@ -412,7 +498,7 @@ static void dome_motion_finalizer(indigo_device *device) {
 
 static void dome_shutter_finalizer(indigo_device *device) {
 	int status = DOME_SHUTTER_UNKNOWN;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_result result = system_alpaca_get_int(device, "shutterstatus", &status);
@@ -424,9 +510,20 @@ static void dome_shutter_finalizer(indigo_device *device) {
 	if (result == ALPACA_OK && !moving) {
 		bool arrived = status == (DOME_DATA->shutter_open ? DOME_SHUTTER_OPEN : DOME_SHUTTER_CLOSED);
 		DOME_DATA->shutter_status = status;
-		dome_apply_shutter(device, status);
-		if (!arrived) {
-			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+		// the end of the move is put into the property in one step with the look at the waiting requests
+		system_alpaca_lock(device);
+		bool superseded = DOME_DATA->shutter_pending > 0;
+		if (!superseded) {
+			dome_apply_shutter(device, status);
+			if (!arrived) {
+				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		system_alpaca_unlock(device);
+		if (superseded) {
+			// the next request is accepted already and DOME_SHUTTER shows it: its handler goes on from here
+			dome_show_lights(device);
+			return;
 		}
 		if (arrived) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
@@ -434,7 +531,16 @@ static void dome_shutter_finalizer(indigo_device *device) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "%s shutter failed: %s", DOME_DATA->shutter_open ? "Open" : "Close", status == DOME_SHUTTER_ERROR ? "the shutter reports an error" : "the shutter stopped");
 		}
 	} else {
-		system_alpaca_finish(device, DOME_SHUTTER_PROPERTY, result == ALPACA_OK ? ALPACA_TIMED_OUT : result, DOME_DATA->shutter_open ? "Open shutter" : "Close shutter");
+		// a request that waits for its handler owns DOME_SHUTTER: the failure of the running move is told, the state is left to that request
+		char reason[INDIGO_VALUE_SIZE];
+		system_alpaca_reason(device, result, reason, sizeof(reason));
+		system_alpaca_lock(device);
+		bool superseded = DOME_DATA->shutter_pending > 0;
+		if (!superseded) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		system_alpaca_unlock(device);
+		system_alpaca_report(device, DOME_SHUTTER_PROPERTY, result == ALPACA_OK ? ALPACA_TIMED_OUT : result, DOME_DATA->shutter_open ? "Open shutter" : "Close shutter", reason);
 	}
 	dome_show_lights(device);
 }
@@ -442,12 +548,11 @@ static void dome_shutter_finalizer(indigo_device *device) {
 static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	alpaca_result result = ALPACA_OK;
 	const char *member = "slewtoazimuth";
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (dome_is_parked(device)) {
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
+		system_alpaca_update(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, "Dome is parked");
 		dome_show_lights(device);
 		return;
 	}
@@ -456,7 +561,7 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 		alpaca_param params[] = { ALPACA_DOUBLE_PARAM("Azimuth", dome_wrap(DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target)) };
 		if (DOME_ON_COORDINATES_SET_PROPERTY->count > 1 && DOME_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 			member = "synctoazimuth";
-			result = system_alpaca_put(device, member, params, 1, ALPACA_WAIT_STANDARD);
+			result = dome_keep_reason(device, system_alpaca_put(device, member, params, 1, ALPACA_WAIT_STANDARD));
 		} else {
 			result = dome_start_result(device, system_alpaca_put(device, member, params, 1, ALPACA_WAIT_LONG));
 		}
@@ -478,29 +583,29 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 static void dome_steps_handler(indigo_device *device) {
 	double azimuth = 0;
 	const char *member = "azimuth";
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (dome_is_parked(device)) {
-		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked");
+		system_alpaca_update(device, DOME_STEPS_PROPERTY, INDIGO_ALERT_STATE, "Dome is parked");
 		return;
 	}
 	if (DOME_STEPS_ITEM->number.value == 0) {
-		DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+		system_alpaca_update(device, DOME_STEPS_PROPERTY, INDIGO_OK_STATE, NULL);
 		return;
 	}
 	// Alpaca has no relative move: the target is computed from the azimuth of the device and the dome takes the shorter way to it
-	alpaca_result result = system_alpaca_get_double(device, "azimuth", &azimuth);
+	alpaca_result result = dome_keep_reason(device, system_alpaca_get_double(device, "azimuth", &azimuth));
 	if (result == ALPACA_OK) {
 		double target = dome_wrap(azimuth + (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value ? -DOME_STEPS_ITEM->number.value : DOME_STEPS_ITEM->number.value));
 		alpaca_param params[] = { ALPACA_DOUBLE_PARAM("Azimuth", target) };
 		member = "slewtoazimuth";
 		result = dome_start_result(device, system_alpaca_put(device, member, params, 1, ALPACA_WAIT_LONG));
 		if (result == ALPACA_OK) {
+			system_alpaca_lock(device);
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = azimuth;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = target;
+			system_alpaca_unlock(device);
 			DOME_DATA->steps_active = true;
 			dome_motion_start(device);
 			return;
@@ -512,13 +617,13 @@ static void dome_steps_handler(indigo_device *device) {
 static void dome_abort_motion_handler(indigo_device *device) {
 	dome_status status = { 0 };
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (DOME_ABORT_MOTION_ITEM->sw.value) {
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		// AbortSlew stops the azimuth, the altitude and the shutter and switches the slaving of the device off
-		result = system_alpaca_put(device, "abortslew", NULL, 0, ALPACA_REPLAYABLE);
+		result = dome_keep_reason(device, system_alpaca_put(device, "abortslew", NULL, 0, ALPACA_REPLAYABLE));
 		if (result == ALPACA_OK) {
 			bool motion = DOME_DATA->motion.active, shutter = DOME_DATA->shutter.active;
 			indigo_cancel_pending_handler(device, dome_motion_finalizer);
@@ -537,38 +642,52 @@ static void dome_abort_motion_handler(indigo_device *device) {
 	dome_finish(device, DOME_ABORT_MOTION_PROPERTY, result, "Abort", "abortslew");
 }
 
+// DOME_SHUTTER shows a move in the given direction. A request that waits for its handler has put its own direction there already.
+static void dome_show_shutter_move(indigo_device *device, bool open) {
+	system_alpaca_lock(device);
+	if (DOME_DATA->shutter_pending == 0) {
+		indigo_set_switch(DOME_SHUTTER_PROPERTY, open ? DOME_SHUTTER_OPENED_ITEM : DOME_SHUTTER_CLOSED_ITEM, true);
+	}
+	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+	system_alpaca_unlock(device);
+}
+
 static void dome_shutter_handler(indigo_device *device, void *data) {
 	bool open = data != NULL;
 	const char *member = open ? "openshutter" : "closeshutter";
 	int status = DOME_SHUTTER_UNKNOWN;
+	system_alpaca_lock(device);
 	DOME_DATA->shutter_pending--;
-	if (!IS_CONNECTED) {
+	system_alpaca_unlock(device);
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (DOME_DATA->shutter.active && DOME_DATA->shutter_open == open) {
 		// the shutter is on its way there already
 		return;
 	}
-	alpaca_result result = system_alpaca_put(device, member, NULL, 0, ALPACA_WAIT_LONG);
+	alpaca_result result = dome_keep_reason(device, system_alpaca_put(device, member, NULL, 0, ALPACA_WAIT_LONG));
 	if (alpaca_may_have_executed(result) && system_alpaca_get_int(device, "shutterstatus", &status) == ALPACA_OK && (status == (open ? DOME_SHUTTER_OPENING : DOME_SHUTTER_CLOSING) || status == (open ? DOME_SHUTTER_OPEN : DOME_SHUTTER_CLOSED))) {
 		// the request failed on the way, but the shutter does what it was asked for
-		result = ALPACA_OK;
+		result = dome_keep_reason(device, ALPACA_OK);
 	}
 	if (result == ALPACA_OK) {
 		// a request for the other direction while the shutter moves replaces the running move
 		DOME_DATA->shutter_open = open;
-		indigo_set_switch(DOME_SHUTTER_PROPERTY, open ? DOME_SHUTTER_OPENED_ITEM : DOME_SHUTTER_CLOSED_ITEM, true);
-		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+		dome_show_shutter_move(device, open);
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		indigo_cancel_pending_handler(device, dome_shutter_finalizer);
 		system_alpaca_operation_start(device, &DOME_DATA->shutter, DOME_SHUTTER_TIMEOUT, dome_shutter_finalizer);
 	} else if (DOME_DATA->shutter.active) {
 		// the running move goes on
-		indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_DATA->shutter_open ? DOME_SHUTTER_OPENED_ITEM : DOME_SHUTTER_CLOSED_ITEM, true);
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "%s shutter failed: %s", open ? "Open" : "Close", alpaca_result_text(result));
+		dome_show_shutter_move(device, DOME_DATA->shutter_open);
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, "%s shutter failed: %s%s%s%s", open ? "Open" : "Close", alpaca_result_text(result), DOME_DATA->reason[0] ? " (" : "", DOME_DATA->reason, DOME_DATA->reason[0] ? ")" : "");
+		DOME_DATA->reason_kept = false;
 	} else {
+		system_alpaca_lock(device);
 		DOME_DATA->shutter_shown = DOME_SHUTTER_UNKNOWN;
 		dome_apply_shutter(device, DOME_DATA->shutter_status);
+		system_alpaca_unlock(device);
 		dome_finish(device, DOME_SHUTTER_PROPERTY, result, open ? "Open shutter" : "Close shutter", member);
 		DOME_DATA->shutter_shown = DOME_DATA->shutter_status;
 	}
@@ -576,7 +695,7 @@ static void dome_shutter_handler(indigo_device *device, void *data) {
 }
 
 static void dome_park_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (indigo_get_switch_target(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM_NAME)) {
@@ -596,25 +715,22 @@ static void dome_park_handler(indigo_device *device) {
 		indigo_apply_switch_targets(DOME_PARK_PROPERTY);
 		DOME_DATA->parked = false;
 		DOME_DATA->unparked = true;
-		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+		system_alpaca_update(device, DOME_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
 		dome_show_lights(device);
 	}
 }
 
 static void dome_home_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (!DOME_HOME_ITEM->sw.value) {
-		DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_HOME_PROPERTY, NULL);
+		system_alpaca_update(device, DOME_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
 		return;
 	}
 	if (dome_is_parked(device)) {
 		DOME_HOME_ITEM->sw.value = false;
-		DOME_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome is parked");
+		system_alpaca_update(device, DOME_HOME_PROPERTY, INDIGO_ALERT_STATE, "Dome is parked");
 		return;
 	}
 	alpaca_result result = dome_start_result(device, system_alpaca_put(device, "findhome", NULL, 0, ALPACA_WAIT_LONG));
@@ -629,13 +745,13 @@ static void dome_home_handler(indigo_device *device) {
 
 static void dome_x_alpaca_dome_slaved_handler(indigo_device *device) {
 	bool slaved = false;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_param params[] = { ALPACA_BOOL_PARAM("Slaved", indigo_get_switch_target(X_ALPACA_DOME_SLAVED_PROPERTY, X_ALPACA_DOME_SLAVED_ENABLED_ITEM_NAME)) };
-	alpaca_result result = system_alpaca_put(device, "slaved", params, 1, ALPACA_REPLAYABLE);
+	alpaca_result result = dome_keep_reason(device, system_alpaca_put(device, "slaved", params, 1, ALPACA_REPLAYABLE));
 	if (result == ALPACA_OK) {
-		result = system_alpaca_get_bool(device, "slaved", &slaved);
+		result = dome_keep_reason(device, system_alpaca_get_bool(device, "slaved", &slaved));
 	}
 	if (result == ALPACA_OK) {
 		DOME_DATA->slaved = slaved;
@@ -646,14 +762,26 @@ static void dome_x_alpaca_dome_slaved_handler(indigo_device *device) {
 
 static void dome_x_alpaca_dome_park_set_handler(indigo_device *device) {
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (X_ALPACA_DOME_PARK_SET_CURRENT_ITEM->sw.value) {
 		X_ALPACA_DOME_PARK_SET_CURRENT_ITEM->sw.value = false;
-		result = system_alpaca_put(device, "setpark", NULL, 0, ALPACA_REPLAYABLE);
+		result = dome_keep_reason(device, system_alpaca_put(device, "setpark", NULL, 0, ALPACA_REPLAYABLE));
 	}
 	dome_finish(device, X_ALPACA_DOME_PARK_SET_PROPERTY, result, "Set park position", "setpark");
+}
+
+// Refusal of a relative move while the dome moves. Called by system_alpaca_accept() with the lock of the device held.
+static const char *dome_steps_refusal(indigo_device *device) {
+	return DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? "Dome is moving: request can not be completed" : NULL;
+}
+
+// Refusal of a slew while a relative move, a park or a search of the home position is requested or running: each of them sends its own
+// target to the device and writes DOME_HORIZONTAL_COORDINATES, which the slew would own. Called with the lock of the device held.
+static const char *dome_coordinates_refusal(indigo_device *device) {
+	bool busy = DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE || DOME_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
+	return busy ? "Dome is moving: request can not be completed" : NULL;
 }
 
 #pragma mark - Hooks
@@ -673,7 +801,8 @@ static bool dome_on_connect(indigo_device *device) {
 	bool azimuth = system_alpaca_can(device, "cansetazimuth");
 	// everything the last connection left behind is forgotten, the device may be another one now
 	DOME_DATA->slew_active = DOME_DATA->steps_active = DOME_DATA->park_active = DOME_DATA->home_active = false;
-	DOME_DATA->external_motion = DOME_DATA->parked = DOME_DATA->unparked = false;
+	DOME_DATA->external_motion = DOME_DATA->status_seen = DOME_DATA->parked = DOME_DATA->unparked = DOME_DATA->reason_kept = DOME_DATA->unreadable = false;
+	system_alpaca_lock(device);
 	DOME_DATA->shutter_pending = 0;
 	DOME_DATA->shutter_shown = DOME_SHUTTER_UNKNOWN;
 	DOME_SPEED_PROPERTY->hidden = true;
@@ -692,6 +821,7 @@ static bool dome_on_connect(indigo_device *device) {
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = DOME_STEPS_PROPERTY->state = DOME_SHUTTER_PROPERTY->state = DOME_PARK_PROPERTY->state = DOME_HOME_PROPERTY->state = DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	X_ALPACA_DOME_SLAVED_PROPERTY->state = X_ALPACA_DOME_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
 	DOME_HOME_ITEM->sw.value = DOME_ABORT_MOTION_ITEM->sw.value = X_ALPACA_DOME_PARK_SET_CURRENT_ITEM->sw.value = false;
+	system_alpaca_unlock(device);
 	if (dome_read_status(device, &status) != ALPACA_OK) {
 		return false;
 	}
@@ -709,16 +839,25 @@ static void dome_on_disconnect(indigo_device *device) {
 	system_alpaca_operation_end(device, &DOME_DATA->motion);
 	system_alpaca_operation_end(device, &DOME_DATA->shutter);
 	DOME_DATA->slew_active = DOME_DATA->steps_active = DOME_DATA->park_active = DOME_DATA->home_active = DOME_DATA->external_motion = false;
+	// the properties are still defined, so a request may be accepted while they are reset; its handler finds the session closed
+	system_alpaca_lock(device);
 	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	DOME_ABORT_MOTION_ITEM->sw.value = false;
+	system_alpaca_unlock(device);
 	indigo_delete_property(device, X_ALPACA_DOME_SLAVED_PROPERTY, NULL);
 	indigo_delete_property(device, X_ALPACA_DOME_PARK_SET_PROPERTY, NULL);
 }
 
 static void dome_on_poll(indigo_device *device) {
+	char reason[INDIGO_VALUE_SIZE];
 	dome_status status = { 0 };
-	if (dome_read_status(device, &status) == ALPACA_OK) {
+	alpaca_result result = dome_read_status(device, &status);
+	system_alpaca_reason(device, result, reason, sizeof(reason));
+	if (result == ALPACA_OK) {
 		dome_show_status(device, &status);
+	} else if (!alpaca_is_transport_error(result)) {
+		dome_status_unreadable(device, result, reason);
+		dome_show_lights(device);
 	}
 }
 
@@ -749,7 +888,7 @@ static indigo_result dome_attach(indigo_device *device) {
 }
 
 static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (system_alpaca_is_active(device)) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DOME_SLAVED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_DOME_PARK_SET_PROPERTY);
 	}
@@ -761,40 +900,53 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
-		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-			// only the items the request names are sent to the device: a new azimuth does not move the altitude
+		// the steps of system_alpaca_accept(), and which items the request names: only those are sent to the device, a new azimuth does not move the altitude
+		system_alpaca_lock(device);
+		bool idle = DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE;
+		const char *refused = idle ? dome_coordinates_refusal(device) : NULL;
+		bool accepted = idle && refused == NULL;
+		if (accepted) {
 			DOME_DATA->azimuth_requested = indigo_get_item(property, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME) != NULL;
 			DOME_DATA->altitude_requested = indigo_get_item(property, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME) != NULL;
+			indigo_property_copy_targets(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler);
+		system_alpaca_unlock(device);
+		if (accepted) {
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			indigo_execute_handler(device, dome_horizontal_coordinates_handler);
+		} else if (refused != NULL) {
+			system_alpaca_reject(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, refused);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(DOME_STEPS_PROPERTY->state != INDIGO_BUSY_STATE && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler);
+		system_alpaca_accept(device, DOME_STEPS_PROPERTY, property, ALPACA_ACCEPT_VALUES, dome_steps_refusal, dome_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
+		system_alpaca_accept(device, DOME_ABORT_MOTION_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, dome_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		// accepted while the shutter moves as well: closing a shutter that is opening must not have to wait
 		bool open = indigo_get_switch(property, DOME_SHUTTER_OPENED_ITEM_NAME);
+		system_alpaca_lock(device);
 		DOME_DATA->shutter_pending++;
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		indigo_execute_handler_with_data(device, dome_shutter_handler, (void *)(intptr_t)open);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_PARK_PROPERTY, dome_park_handler);
+		system_alpaca_accept(device, DOME_PARK_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, dome_park_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HOME_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_HOME_PROPERTY, dome_home_handler);
+		system_alpaca_accept(device, DOME_HOME_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, dome_home_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ALPACA_DOME_SLAVED_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_DOME_SLAVED_PROPERTY, dome_x_alpaca_dome_slaved_handler);
+		system_alpaca_accept(device, X_ALPACA_DOME_SLAVED_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, dome_x_alpaca_dome_slaved_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ALPACA_DOME_PARK_SET_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_DOME_PARK_SET_PROPERTY, dome_x_alpaca_dome_park_set_handler);
+		system_alpaca_accept(device, X_ALPACA_DOME_PARK_SET_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, dome_x_alpaca_dome_park_set_handler);
 		return INDIGO_OK;
 	}
 	return indigo_dome_change_property(device, client, property);

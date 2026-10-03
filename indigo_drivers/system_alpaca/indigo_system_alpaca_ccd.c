@@ -33,7 +33,8 @@
  CCD_READ_MODE           fastreadout if canfastreadout
  CCD_EXPOSURE            startexposure Duration (seconds), Light; limits from exposuremin, exposuremax, exposureresolution
  CCD_FRAME_TYPE          Light=True for LIGHT and FLAT, Light=False for BIAS, DARK and DARKFLAT; BIAS uses the shortest exposure
- CCD_ABORT_EXPOSURE      abortexposure, or stopexposure with the image thrown away
+ CCD_ABORT_EXPOSURE      abortexposure, or stopexposure with the image thrown away; abortexposure is sent also when no exposure of this
+                         connection runs, because the camera may be busy with one that was started before the connection was lost
  CCD_GAIN, CCD_OFFSET    gain, offset of a camera that takes a value (gainmin .. gainmax)
  X_ALPACA_GAIN, _OFFSET  gain, offset of a camera that takes the index of a name (gains, offsets): one switch item per name
  CCD_COOLER              cooleron
@@ -47,6 +48,8 @@
  The frame and the binning are not sent when they are changed, but in front of startexposure, and only the members that differ from
  what the camera was last told: the camera checks them at StartExposure anyway (ICameraV3), and many cameras reset the subframe when
  the binning changes, so the binning goes first and the subframe is sent again after it.
+ CCD_FRAME shows the frame the client asked for moved onto the binned pixels of the current binning. The requested frame is kept, so
+ a change of the binning starts from it again and the order in which CCD_FRAME and CCD_BIN are set (or restored) does not matter.
 
  Alpaca has no streaming, CCD_STREAMING stays hidden.
 
@@ -55,7 +58,8 @@
  ccd_exposure_handler sends the frame and startexposure, starts the common countdown with indigo_ccd_exposure_setup() and leaves the
  rest to ccd_exposure_finalizer, which reads ImageReady and CameraState (one devicestate request on a Platform 7 camera) until the
  image is ready, the camera reports an error or the long timeout has passed after the end of the exposure. startexposure is never
- sent twice: if its reply is lost, CameraState tells whether the exposure runs.
+ sent twice: if its reply is lost, CameraState tells whether the exposure runs. An exposure that fails after it started is ended on
+ the camera (abortexposure, or stopexposure if that is all the camera can do), so that the camera takes the next one.
 
  IMAGE TRANSFER
 
@@ -71,6 +75,14 @@
  row by row, as 8 or 16 bits per channel: 8 bits if MaxADU and the data fit, 16 bits otherwise, shifted right if they need more than
  16 bits. Negative elements become 0. A rank 3 image with three planes becomes RGB24 or RGB48 in the order R, G, B.
  Memory: the body of the reply in the transfer channel (reused), the image buffer (reused), and for JSON the array of int32 (reused).
+
+ THREADS
+
+ change_property runs on a bus thread, the image transfer on the transfer queue and everything else on the handler queue of the device.
+ A request is accepted with system_alpaca_accept(); the polling and the handlers that touch a property of another request (the frame
+ when the binning changes, the binning when a binning mode is selected) do it under the lock of the device and leave a property alone
+ that is BUSY because a request for it waits. The same lock guards what the transfer queue and the handler queue share (running,
+ cancelled) and the count of the set points that wait for their handler: CCD_TEMPERATURE is accepted while it is BUSY.
  */
 
 #pragma mark - Includes
@@ -80,7 +92,6 @@
 #include <stdarg.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
 
 #include <indigo/indigo_ccd_driver.h>
 
@@ -100,6 +111,7 @@
 #define CCD_TRANSPOSE_BLOCK								32
 #define CCD_TEMPERATURE_TOLERANCE					0.5
 #define CCD_SHORTEST_POLL									0.01
+#define CCD_STATE_FAILURE_LIMIT						5
 
 // CameraState
 #define CCD_CAMERA_IDLE										0
@@ -167,7 +179,7 @@ typedef struct {
 } ccd_level;
 
 // State of the image transfer. channel, max_adu and the results are written by one thread at a time (the handler queue of the device
-// before the transfer starts and after it ended, the transfer queue in between); running and cancelled are guarded by the mutex.
+// before the transfer starts and after it ended, the transfer queue in between); running and cancelled are guarded by the lock of the device.
 typedef struct {
 	alpaca_channel *channel;
 	bool running;
@@ -217,6 +229,7 @@ typedef struct {
 	ccd_level offset;
 	bool cooler_on;
 	double set_point;
+	int set_point_requests;
 	double temperature;
 	double cooler_power;
 	double thermal_poll_time;
@@ -228,6 +241,12 @@ typedef struct {
 	int start_y;
 	int num_x;
 	int num_y;
+	// frame the client asked for last, in unbinned pixels; CCD_FRAME is this frame moved onto the binned pixels of the current binning
+	int frame_left;
+	int frame_top;
+	int frame_width;
+	int frame_height;
+	int bits_per_pixel;
 	// exposure
 	alpaca_operation exposure;
 	int phase;
@@ -236,10 +255,10 @@ typedef struct {
 	int exposure_top;
 	bool exposure_binned;
 	bool no_device_state;
+	int state_failures;								///< consecutive looks at an exposure whose devicestate got an answer that is no snapshot
 	alpaca_device_state state;
 	// image transfer
 	indigo_queue *transfer_queue;
-	pthread_mutex_t mutex;
 	ccd_download download;
 	unsigned char *image;
 	size_t image_size;
@@ -525,11 +544,7 @@ static alpaca_result ccd_decode_json(ccd_data *data, alpaca_channel *channel, co
 
 // Longest time the camera may need after the end of an exposure until its image is ready: the long timeout of its server.
 static double ccd_long_timeout(indigo_device *device) {
-	alpaca_server *server = PRIVATE_DATA->server;
-	pthread_mutex_lock(&server->mutex);
-	double timeout = server->long_timeout / 1000.0;
-	pthread_mutex_unlock(&server->mutex);
-	return timeout;
+	return system_alpaca_long_timeout(device);
 }
 
 // Result of reading a member in ccd_on_probe: note whether the camera has it and return false if the camera did not answer at all.
@@ -599,13 +614,25 @@ static bool ccd_probe_level(indigo_device *device, const char *member, const cha
 	return true;
 }
 
-// Bring CCD_FRAME in line with the binning and the sensor: the frame starts and ends on a binned pixel and lies on the sensor.
+// Remember the values of CCD_FRAME as the frame the client asked for.
+static void ccd_remember_frame(indigo_device *device) {
+	ccd_data *data = CCD_DATA;
+	data->frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value;
+	data->frame_top = (int)CCD_FRAME_TOP_ITEM->number.value;
+	data->frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value;
+	data->frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value;
+}
+
+// Bring CCD_FRAME in line with the binning and the sensor: the frame the client asked for is moved onto the binned pixels and cut to
+// the sensor. It starts from the requested frame every time, so the frame does not shrink step by step when the binning changes
+// and a saved configuration is restored whatever the order of CCD_FRAME and CCD_BIN is.
 // Returns false if the requested frame had to be cut because it does not fit the sensor.
 static bool ccd_normalize_frame(indigo_device *device) {
+	ccd_data *data = CCD_DATA;
 	int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value, bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-	int max_x = CCD_DATA->width / bin_x > 0 ? CCD_DATA->width / bin_x : 1, max_y = CCD_DATA->height / bin_y > 0 ? CCD_DATA->height / bin_y : 1;
-	int start_x = (int)CCD_FRAME_LEFT_ITEM->number.value / bin_x, start_y = (int)CCD_FRAME_TOP_ITEM->number.value / bin_y;
-	int num_x = (int)CCD_FRAME_WIDTH_ITEM->number.value / bin_x, num_y = (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin_y;
+	int max_x = data->width / bin_x > 0 ? data->width / bin_x : 1, max_y = data->height / bin_y > 0 ? data->height / bin_y : 1;
+	int start_x = data->frame_left / bin_x, start_y = data->frame_top / bin_y;
+	int num_x = data->frame_width / bin_x, num_y = data->frame_height / bin_y;
 	bool fits = true;
 	if (start_x < 0 || start_x >= max_x) {
 		start_x = start_x < 0 ? 0 : max_x - 1;
@@ -633,6 +660,8 @@ static bool ccd_normalize_frame(indigo_device *device) {
 	CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.target = start_y * bin_y;
 	CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = num_x * bin_x;
 	CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = num_y * bin_y;
+	// the depth is what the camera delivers, it can not be chosen
+	CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = data->bits_per_pixel;
 	return fits;
 }
 
@@ -680,18 +709,30 @@ static alpaca_result ccd_apply_frame(indigo_device *device) {
 }
 
 // Read CameraState and ImageReady: with one devicestate request from a Platform 7 camera, member by member otherwise.
+// Like the poll of the core, a devicestate that gets an answer that is no snapshot (HTTP 500, a reply that can not be read, an error of
+// the device) is no failure of the exposure: the members are read in the same call, and after CCD_STATE_FAILURE_LIMIT such answers in a
+// row devicestate is not used for the exposures of this connection any more. Only a request without an answer (and NotConnected) is
+// returned as it is; the core decides about the transport.
 static alpaca_result ccd_read_progress(indigo_device *device, int *state, bool *ready) {
 	ccd_data *data = CCD_DATA;
 	if (PRIVATE_DATA->platform7 && !data->no_device_state) {
 		alpaca_result result = system_alpaca_check(device, alpaca_get_device_state(system_alpaca_channel(device), &data->state));
 		if (result == ALPACA_OK && alpaca_state_int(&data->state, "CameraState", state) && alpaca_state_bool(&data->state, "ImageReady", ready)) {
+			data->state_failures = 0;
 			return ALPACA_OK;
 		}
-		if (result != ALPACA_OK && !alpaca_is_unsupported(result)) {
+		if (alpaca_is_transport_error(result) || result == ALPACA_NOT_CONNECTED) {
 			return result;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' does not report CameraState and ImageReady in devicestate, reading the members", device->name);
-		data->no_device_state = true;
+		if (result == ALPACA_OK || alpaca_is_unsupported(result)) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' does not report CameraState and ImageReady in devicestate, reading the members", device->name);
+			data->no_device_state = true;
+		} else if (++data->state_failures >= CCD_STATE_FAILURE_LIMIT) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' devicestate -> %s %d times in a row, reading the members from now on", device->name, alpaca_result_text(result), data->state_failures);
+			data->no_device_state = true;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' devicestate -> %s, reading the members", device->name, alpaca_result_text(result));
+		}
 	}
 	alpaca_result result = system_alpaca_get_int(device, "camerastate", state);
 	if (result == ALPACA_OK) {
@@ -715,7 +756,7 @@ static void ccd_finish(indigo_device *device, indigo_property *property, alpaca_
 	if (result == ALPACA_UNSUPPORTED) {
 		indigo_delete_property(device, property, NULL);
 		property->perm = INDIGO_RO_PERM;
-		property->state = INDIGO_OK_STATE;
+		system_alpaca_set_state(device, property, INDIGO_OK_STATE);
 		indigo_define_property(device, property, "%s can not be changed on this camera", action);
 	} else {
 		system_alpaca_finish(device, property, result, action);
@@ -734,8 +775,28 @@ static void ccd_exposure_failed(indigo_device *device, const char *action, alpac
 	data->phase = CCD_PHASE_IDLE;
 	indigo_ccd_failure_cleanup(device);
 	CCD_EXPOSURE_ITEM->number.value = 0;
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "%s failed: %s%s%s%s", action, alpaca_result_text(result), *detail ? " (" : "", detail, *detail ? ")" : "");
+	system_alpaca_update(device, CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, "%s failed: %s%s%s%s", action, alpaca_result_text(result), *detail ? " (" : "", detail, *detail ? ")" : "");
+}
+
+// What indigo_ccd_abort_exposure_cleanup() does (streaming aside, Alpaca has none), with CCD_EXPOSURE and CCD_ABORT_EXPOSURE written under
+// the lock of the device: a bus thread accepts the next exposure under that lock. CCD_EXPOSURE goes to ALERT if it was BUSY and
+// CCD_ABORT_EXPOSURE to OK, otherwise CCD_ABORT_EXPOSURE goes to ALERT. The countdown of the base class ends by itself at its next step,
+// because CCD_EXPOSURE is not BUSY any more.
+static void ccd_abort_cleanup(indigo_device *device) {
+	indigo_ccd_failure_cleanup(device);
+	system_alpaca_lock(device);
+	bool exposing = CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE;
+	if (exposing) {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		CCD_EXPOSURE_ITEM->number.value = 0;
+	}
+	CCD_ABORT_EXPOSURE_PROPERTY->state = exposing ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+	system_alpaca_unlock(device);
+	if (exposing) {
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	}
+	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 }
 
 // End of an exposure that was aborted: CCD_EXPOSURE goes to ALERT and CCD_ABORT_EXPOSURE to OK.
@@ -744,7 +805,16 @@ static void ccd_exposure_aborted(indigo_device *device) {
 	system_alpaca_operation_end(device, &data->exposure);
 	indigo_cancel_pending_handler(device, ccd_exposure_finalizer);
 	data->phase = CCD_PHASE_IDLE;
-	indigo_ccd_abort_exposure_cleanup(device);
+	ccd_abort_cleanup(device);
+}
+
+// End the exposure on the camera as far as the camera can do it: nobody waits for its image any more.
+static void ccd_cancel_on_camera(indigo_device *device) {
+	if (system_alpaca_can(device, "canabortexposure")) {
+		system_alpaca_put(device, "abortexposure", NULL, 0, ALPACA_REPLAYABLE);
+	} else if (system_alpaca_can(device, "canstopexposure")) {
+		system_alpaca_put(device, "stopexposure", NULL, 0, ALPACA_REPLAYABLE);
+	}
 }
 
 // Schedule the next look at the camera, or return false if the time of the exposure is over. The camera is asked every active poll
@@ -774,9 +844,9 @@ static void ccd_download_handler(indigo_device *device) {
 	double received = indigo_monotonic_time();
 	if (result == ALPACA_OK) {
 		size = response->body.size;
-		pthread_mutex_lock(&data->mutex);
+		system_alpaca_lock(device);
 		bool cancelled = data->download.cancelled;
-		pthread_mutex_unlock(&data->mutex);
+		system_alpaca_unlock(device);
 		if (cancelled) {
 			result = ccd_download_error(data, ALPACA_CANCELLED, "aborted");
 		} else if (*response->content_encoding) {
@@ -793,10 +863,10 @@ static void ccd_download_handler(indigo_device *device) {
 		ccd_download_error(data, result, "%s", alpaca_last_error_message(channel));
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' imagearray -> %s%s%s, %lu bytes in %.3f s, decoded in %.3f s", device->name, alpaca_result_text(result), result == ALPACA_OK ? "" : ": ", result == ALPACA_OK ? "" : data->download.message, (unsigned long)size, received - started, indigo_monotonic_time() - received);
-	pthread_mutex_lock(&data->mutex);
+	system_alpaca_lock(device);
 	data->download.result = result;
 	data->download.running = false;
-	pthread_mutex_unlock(&data->mutex);
+	system_alpaca_unlock(device);
 	indigo_execute_handler(device, ccd_download_finalizer);
 }
 
@@ -809,26 +879,26 @@ static void ccd_start_download(indigo_device *device) {
 	// the buffer of the previous image is written from now on and may move
 	CCD_IMAGE_ITEM->blob.value = NULL;
 	CCD_IMAGE_ITEM->blob.size = 0;
-	pthread_mutex_lock(&data->mutex);
+	system_alpaca_lock(device);
 	data->download.channel = system_alpaca_transfer_channel(device, limit);
 	data->download.max_adu = data->max_adu;
 	data->download.result = ALPACA_FAILED;
 	data->download.message[0] = 0;
 	data->download.cancelled = false;
 	data->download.running = true;
-	pthread_mutex_unlock(&data->mutex);
+	system_alpaca_unlock(device);
 	indigo_queue_add(data->transfer_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, ccd_download_handler, NULL);
 }
 
 // Completion of the transfer, queued by ccd_download_handler: publish the image, or end the exposure that was aborted meanwhile.
 static void ccd_download_finalizer(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
-	if (!IS_CONNECTED || !data->exposure.active || (data->phase != CCD_PHASE_DOWNLOAD && data->phase != CCD_PHASE_CANCEL)) {
+	if (!system_alpaca_is_active(device) || !data->exposure.active || (data->phase != CCD_PHASE_DOWNLOAD && data->phase != CCD_PHASE_CANCEL)) {
 		return;
 	}
-	pthread_mutex_lock(&data->mutex);
+	system_alpaca_lock(device);
 	bool running = data->download.running;
-	pthread_mutex_unlock(&data->mutex);
+	system_alpaca_unlock(device);
 	if (running) {
 		return;
 	}
@@ -842,22 +912,25 @@ static void ccd_download_finalizer(indigo_device *device) {
 		indigo_fits_keyword keywords[] = { { INDIGO_FITS_STRING, "BAYERPAT", .string = pattern, "Bayer color pattern" }, { 0 } };
 		system_alpaca_operation_end(device, &data->exposure);
 		data->phase = CCD_PHASE_IDLE;
-		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value != data->download.bpp) {
+		if (data->bits_per_pixel != data->download.bpp) {
+			data->bits_per_pixel = data->download.bpp;
+			system_alpaca_lock(device);
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = data->download.bpp;
+			system_alpaca_unlock(device);
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}
 		indigo_process_image(device, data->image, data->download.width, data->download.height, data->download.bpp, true, true, pattern != NULL ? keywords : NULL, false);
 		CCD_EXPOSURE_ITEM->number.value = 0;
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		system_alpaca_update(device, CCD_EXPOSURE_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 }
 
 static void ccd_exposure_finalizer(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
+	char detail[ALPACA_TEXT_SIZE] = { 0 };
 	int state = CCD_CAMERA_IDLE;
 	bool ready = false;
-	if (!IS_CONNECTED || !data->exposure.active || (data->phase != CCD_PHASE_EXPOSE && data->phase != CCD_PHASE_DISCARD)) {
+	if (!system_alpaca_is_active(device) || !data->exposure.active || (data->phase != CCD_PHASE_EXPOSE && data->phase != CCD_PHASE_DISCARD)) {
 		return;
 	}
 	alpaca_result result = ccd_read_progress(device, &state, &ready);
@@ -869,16 +942,18 @@ static void ccd_exposure_finalizer(indigo_device *device) {
 			ccd_exposure_aborted(device);
 		}
 	} else if (failed) {
-		ccd_exposure_failed(device, "Exposure", result, system_alpaca_error(device));
+		// the camera may still be exposing: it is told to end the exposure, or it would refuse the next one
+		system_alpaca_reason(device, result, detail, sizeof(detail));
+		ccd_cancel_on_camera(device);
+		ccd_exposure_failed(device, "Exposure", result, detail);
 	} else if (result == ALPACA_OK && ready) {
 		ccd_start_download(device);
 	} else if (result == ALPACA_OK && state == CCD_CAMERA_ERROR) {
+		ccd_cancel_on_camera(device);
 		ccd_exposure_failed(device, "Exposure", ALPACA_DEVICE_ERROR, "the camera reports an error");
 	} else if (!ccd_exposure_continue(device)) {
 		// the camera is not left exposing for ever
-		if (system_alpaca_can(device, "canabortexposure")) {
-			system_alpaca_put(device, "abortexposure", NULL, 0, ALPACA_REPLAYABLE);
-		}
+		ccd_cancel_on_camera(device);
 		ccd_exposure_failed(device, "Exposure", ALPACA_TIMED_OUT, "the image is not ready");
 	}
 }
@@ -887,7 +962,7 @@ static void ccd_exposure_handler(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
 	char detail[ALPACA_TEXT_SIZE] = { 0 };
 	int state = CCD_CAMERA_IDLE;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	indigo_use_shortest_exposure_if_bias(device);
@@ -898,9 +973,7 @@ static void ccd_exposure_handler(indigo_device *device) {
 		alpaca_param params[] = { ALPACA_DOUBLE_PARAM("Duration", duration), ALPACA_BOOL_PARAM("Light", light) };
 		result = system_alpaca_put(device, "startexposure", params, 2, ALPACA_WAIT_STANDARD);
 	}
-	if (result != ALPACA_OK) {
-		snprintf(detail, sizeof(detail), "%s", alpaca_is_transport_error(result) ? "" : system_alpaca_error(device));
-	}
+	system_alpaca_reason(device, result, detail, sizeof(detail));
 	if (alpaca_may_have_executed(result) && data->frame_known && system_alpaca_get_int(device, "camerastate", &state) == ALPACA_OK && state >= CCD_CAMERA_WAITING && state <= CCD_CAMERA_DOWNLOAD) {
 		// the reply to startexposure was lost, but the camera got the request: the exposure runs and is not started again
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' startexposure -> %s, but CameraState is %d", device->name, alpaca_result_text(result), state);
@@ -928,18 +1001,23 @@ static void ccd_exposure_handler(indigo_device *device) {
 
 static void ccd_abort_exposure_handler(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	// an exposure that was requested and did not start yet is not started any more
 	indigo_cancel_pending_handler(device, ccd_exposure_handler);
 	if (!data->exposure.active || !CCD_ABORT_EXPOSURE_ITEM->sw.value) {
-		indigo_ccd_abort_exposure_cleanup(device);
+		// No exposure of this connection runs. The camera is told all the same: it may be busy with an exposure that was started
+		// before the connection was lost, and nothing else would make it idle again.
+		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && system_alpaca_can(device, "canabortexposure")) {
+			system_alpaca_put(device, "abortexposure", NULL, 0, ALPACA_REPLAYABLE);
+		}
+		ccd_abort_cleanup(device);
 	} else if (data->phase == CCD_PHASE_DOWNLOAD) {
 		// the transfer can not be interrupted: its image is thrown away when it ends, CCD_ABORT_EXPOSURE stays BUSY until then
-		pthread_mutex_lock(&data->mutex);
+		system_alpaca_lock(device);
 		data->download.cancelled = true;
-		pthread_mutex_unlock(&data->mutex);
+		system_alpaca_unlock(device);
 		data->phase = CCD_PHASE_CANCEL;
 	} else if (data->phase == CCD_PHASE_EXPOSE) {
 		alpaca_result result = system_alpaca_can(device, "canabortexposure") ? system_alpaca_put(device, "abortexposure", NULL, 0, ALPACA_REPLAYABLE) : ALPACA_UNSUPPORTED;
@@ -959,13 +1037,16 @@ static void ccd_abort_exposure_handler(indigo_device *device) {
 }
 
 static void ccd_frame_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
+	ccd_remember_frame(device);
 	if (ccd_normalize_frame(device)) {
-		INDIGO_UPDATE_PROPERTY_STATE(CCD_FRAME_PROPERTY, INDIGO_OK_STATE, NULL);
+		system_alpaca_update(device, CCD_FRAME_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else {
-		INDIGO_UPDATE_PROPERTY_STATE(CCD_FRAME_PROPERTY, INDIGO_ALERT_STATE, "The frame does not fit the sensor");
+		// what is left of the frame is the frame from now on
+		ccd_remember_frame(device);
+		system_alpaca_update(device, CCD_FRAME_PROPERTY, INDIGO_ALERT_STATE, "The frame does not fit the sensor");
 	}
 }
 
@@ -980,8 +1061,25 @@ static void ccd_sync_bin_mode(indigo_device *device) {
 	}
 }
 
+// The binning changed: CCD_FRAME is moved onto the binned pixels and is a valid frame again, whatever the last request for it ended
+// with, and CCD_MODE shows the binning. Both are properties of other requests: one that is BUSY has a request waiting for its
+// handler, which works with the new binning anyway, so it is left alone. Returns which of the two have to be published.
+static void ccd_follow_binning(indigo_device *device, bool *frame, bool *mode) {
+	system_alpaca_lock(device);
+	*frame = CCD_FRAME_PROPERTY->state != INDIGO_BUSY_STATE;
+	*mode = CCD_MODE_PROPERTY->state != INDIGO_BUSY_STATE;
+	if (*frame) {
+		ccd_normalize_frame(device);
+		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	if (*mode) {
+		ccd_sync_bin_mode(device);
+	}
+	system_alpaca_unlock(device);
+}
+
 static void ccd_bin_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.target, bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.target;
@@ -993,19 +1091,23 @@ static void ccd_bin_handler(indigo_device *device) {
 			bin_x = bin_y;
 		}
 	}
+	bool frame = false, mode = false;
 	CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = bin_x;
 	CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = bin_y;
-	ccd_normalize_frame(device);
-	ccd_sync_bin_mode(device);
-	indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-	indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-	INDIGO_UPDATE_PROPERTY_STATE(CCD_BIN_PROPERTY, INDIGO_OK_STATE, NULL);
+	ccd_follow_binning(device, &frame, &mode);
+	if (frame) {
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+	}
+	if (mode) {
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+	}
+	system_alpaca_update(device, CCD_BIN_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
 static void ccd_mode_handler(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
 	int selected = 0, bin_x = 0, bin_y = 0;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
@@ -1023,23 +1125,36 @@ static void ccd_mode_handler(indigo_device *device) {
 		ccd_finish(device, CCD_MODE_PROPERTY, result, "Readout mode");
 	} else {
 		if (sscanf(CCD_MODE_PROPERTY->items[selected].name, "BIN_%dx%d", &bin_x, &bin_y) == 2) {
-			// a binning mode selects the whole sensor, like in the other camera drivers
-			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = bin_x;
-			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = bin_y;
-			CCD_FRAME_LEFT_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.value = 0;
-			CCD_FRAME_WIDTH_ITEM->number.value = data->width;
-			CCD_FRAME_HEIGHT_ITEM->number.value = data->height;
-			ccd_normalize_frame(device);
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			// A binning mode selects the whole sensor, like in the other camera drivers. CCD_BIN and CCD_FRAME are properties of other
+			// requests: one that is BUSY has a request waiting for its handler, which is the newer wish, so it is left alone.
+			system_alpaca_lock(device);
+			bool bin = CCD_BIN_PROPERTY->state != INDIGO_BUSY_STATE, frame = CCD_FRAME_PROPERTY->state != INDIGO_BUSY_STATE;
+			if (bin) {
+				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = bin_x;
+				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = bin_y;
+			}
+			if (frame) {
+				data->frame_left = data->frame_top = 0;
+				data->frame_width = data->width;
+				data->frame_height = data->height;
+				ccd_normalize_frame(device);
+				CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			system_alpaca_unlock(device);
+			if (frame) {
+				indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+			}
+			if (bin) {
+				indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+			}
 		}
-		INDIGO_UPDATE_PROPERTY_STATE(CCD_MODE_PROPERTY, INDIGO_OK_STATE, NULL);
+		system_alpaca_update(device, CCD_MODE_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 }
 
 static void ccd_read_mode_handler(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_param params[] = { ALPACA_BOOL_PARAM("FastReadout", CCD_READ_MODE_HIGH_SPEED_ITEM->sw.value) };
@@ -1077,31 +1192,37 @@ static void ccd_set_level(indigo_device *device, const char *member, const char 
 }
 
 static void ccd_gain_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	ccd_set_level(device, "gain", "Gain", &CCD_DATA->gain, CCD_GAIN_PROPERTY, "Gain");
 }
 
 static void ccd_offset_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	ccd_set_level(device, "offset", "Offset", &CCD_DATA->offset, CCD_OFFSET_PROPERTY, "Offset");
 }
 
 static void ccd_x_alpaca_gain_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	ccd_set_level(device, "gain", "Gain", &CCD_DATA->gain, X_ALPACA_GAIN_PROPERTY, "Gain");
 }
 
 static void ccd_x_alpaca_offset_handler(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	ccd_set_level(device, "offset", "Offset", &CCD_DATA->offset, X_ALPACA_OFFSET_PROPERTY, "Offset");
+}
+
+// A new set point was requested and ccd_temperature_handler did not send it yet. Until then CCD_TEMPERATURE is BUSY because of the
+// request and is left alone by everything else. Called with the lock of the device held: the count is written by the bus thread.
+static bool ccd_set_point_pending(indigo_device *device) {
+	return CCD_DATA->set_point_requests > 0;
 }
 
 // State of CCD_TEMPERATURE: BUSY while the cooler works towards the set point.
@@ -1112,7 +1233,7 @@ static indigo_property_state ccd_temperature_state(indigo_device *device) {
 
 static void ccd_cooler_handler(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_param params[] = { ALPACA_BOOL_PARAM("CoolerOn", CCD_COOLER_ON_ITEM->sw.value) };
@@ -1122,24 +1243,59 @@ static void ccd_cooler_handler(indigo_device *device) {
 	}
 	indigo_set_switch(CCD_COOLER_PROPERTY, data->cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
 	ccd_finish(device, CCD_COOLER_PROPERTY, result, "Cooler");
-	if (result == ALPACA_OK && !CCD_TEMPERATURE_PROPERTY->hidden && CCD_TEMPERATURE_PROPERTY->state != ccd_temperature_state(device)) {
-		INDIGO_UPDATE_PROPERTY_STATE(CCD_TEMPERATURE_PROPERTY, ccd_temperature_state(device), NULL);
+	if (result == ALPACA_OK && !CCD_TEMPERATURE_PROPERTY->hidden) {
+		system_alpaca_lock(device);
+		bool changed = !ccd_set_point_pending(device) && CCD_TEMPERATURE_PROPERTY->state != ccd_temperature_state(device);
+		if (changed) {
+			CCD_TEMPERATURE_PROPERTY->state = ccd_temperature_state(device);
+		}
+		system_alpaca_unlock(device);
+		if (changed) {
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		}
 	}
 }
 
 static void ccd_temperature_handler(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
-	if (!IS_CONNECTED) {
+	system_alpaca_lock(device);
+	if (data->set_point_requests > 0) {
+		data->set_point_requests--;
+	}
+	system_alpaca_unlock(device);
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
-	alpaca_param params[] = { ALPACA_DOUBLE_PARAM("SetCCDTemperature", CCD_TEMPERATURE_ITEM->number.target) };
+	// the property is accepted while it is BUSY, so the bus thread may be writing the target
+	system_alpaca_lock(device);
+	double set_point = CCD_TEMPERATURE_ITEM->number.target;
+	system_alpaca_unlock(device);
+	alpaca_param params[] = { ALPACA_DOUBLE_PARAM("SetCCDTemperature", set_point) };
 	alpaca_result result = system_alpaca_put(device, "setccdtemperature", params, 1, ALPACA_REPLAYABLE);
 	if (result == ALPACA_OK) {
-		data->set_point = CCD_TEMPERATURE_ITEM->number.target;
-		INDIGO_UPDATE_PROPERTY_STATE(CCD_TEMPERATURE_PROPERTY, ccd_temperature_state(device), NULL);
+		data->set_point = set_point;
+		// a newer set point that waits for its handler keeps the property BUSY
+		system_alpaca_lock(device);
+		if (!ccd_set_point_pending(device)) {
+			CCD_TEMPERATURE_PROPERTY->state = ccd_temperature_state(device);
+		}
+		system_alpaca_unlock(device);
+		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 	} else {
-		CCD_TEMPERATURE_ITEM->number.target = data->set_point;
-		ccd_finish(device, CCD_TEMPERATURE_PROPERTY, result, "Set point");
+		char reason[INDIGO_VALUE_SIZE];
+		system_alpaca_reason(device, result, reason, sizeof(reason));
+		system_alpaca_lock(device);
+		bool superseded = ccd_set_point_pending(device);
+		if (!superseded) {
+			CCD_TEMPERATURE_ITEM->number.target = data->set_point;
+		}
+		system_alpaca_unlock(device);
+		if (superseded) {
+			// the newer set point owns the property; the failure of this one is told all the same
+			system_alpaca_report(device, CCD_TEMPERATURE_PROPERTY, result, "Set point", reason);
+		} else {
+			ccd_finish(device, CCD_TEMPERATURE_PROPERTY, result, "Set point");
+		}
 	}
 }
 
@@ -1292,8 +1448,12 @@ static bool ccd_on_connect(indigo_device *device) {
 	}
 	data->phase = CCD_PHASE_IDLE;
 	data->no_device_state = false;
+	data->state_failures = 0;
 	data->thermal_poll_time = 0;
+	system_alpaca_lock(device);
 	data->download.running = false;
+	data->set_point_requests = 0;
+	system_alpaca_unlock(device);
 	data->transfer_queue = indigo_queue_create(device);
 	if (data->transfer_queue == NULL) {
 		return false;
@@ -1320,10 +1480,11 @@ static bool ccd_on_connect(indigo_device *device) {
 	CCD_FRAME_TOP_ITEM->number.value = (double)data->start_y * data->bin_y;
 	CCD_FRAME_WIDTH_ITEM->number.value = data->num_x > 0 ? (double)data->num_x * data->bin_x : data->width;
 	CCD_FRAME_HEIGHT_ITEM->number.value = data->num_y > 0 ? (double)data->num_y * data->bin_y : data->height;
+	ccd_remember_frame(device);
+	data->bits_per_pixel = (data->max_adu > 255 ? 16 : 8) * (data->sensor_type == CCD_SENSOR_COLOR ? 3 : 1);
 	ccd_normalize_frame(device);
 	CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
 	CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 48;
-	CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = (data->max_adu > 255 ? 16 : 8) * (data->sensor_type == CCD_SENSOR_COLOR ? 3 : 1);
 	CCD_FRAME_PROPERTY->state = CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 	// CCD_MODE: the readout modes of the camera, or the square binnings if it has no choice of readout modes
 	CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
@@ -1396,21 +1557,15 @@ static bool ccd_on_connect(indigo_device *device) {
 static void ccd_on_disconnect(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
 	if (data->exposure.active && data->phase == CCD_PHASE_EXPOSE) {
-		// nobody waits for the image any more: the exposure is ended on the camera as far as the camera can do it
-		if (system_alpaca_can(device, "canabortexposure")) {
-			system_alpaca_put(device, "abortexposure", NULL, 0, ALPACA_REPLAYABLE);
-		} else if (system_alpaca_can(device, "canstopexposure")) {
-			system_alpaca_put(device, "stopexposure", NULL, 0, ALPACA_REPLAYABLE);
-		}
+		ccd_cancel_on_camera(device);
 	}
 	// a transfer in progress uses the transfer channel, which is released after this hook: it is waited for
-	pthread_mutex_lock(&data->mutex);
+	system_alpaca_lock(device);
 	data->download.cancelled = true;
-	pthread_mutex_unlock(&data->mutex);
+	system_alpaca_unlock(device);
 	indigo_queue_delete(&data->transfer_queue);
 	system_alpaca_operation_end(device, &data->exposure);
 	data->phase = CCD_PHASE_IDLE;
-	data->download.running = false;
 	data->download.channel = NULL;
 	CCD_IMAGE_ITEM->blob.value = NULL;
 	CCD_IMAGE_ITEM->blob.size = 0;
@@ -1420,51 +1575,81 @@ static void ccd_on_disconnect(indigo_device *device) {
 	data->image_size = 0;
 	data->json_pixels = NULL;
 	data->json_capacity = 0;
-	// what a cancelled handler left BUSY
+	// what a cancelled handler left BUSY; the properties are still defined, so a request may be accepted while they are reset
+	system_alpaca_lock(device);
+	data->download.running = false;
 	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 	CCD_ABORT_EXPOSURE_PROPERTY->state = CCD_FRAME_PROPERTY->state = CCD_BIN_PROPERTY->state = CCD_MODE_PROPERTY->state = CCD_READ_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	CCD_GAIN_PROPERTY->state = CCD_OFFSET_PROPERTY->state = CCD_COOLER_PROPERTY->state = CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+	system_alpaca_unlock(device);
 	indigo_delete_property(device, X_ALPACA_SENSOR_PROPERTY, NULL);
 	indigo_delete_property(device, X_ALPACA_GAIN_PROPERTY, NULL);
 	indigo_delete_property(device, X_ALPACA_OFFSET_PROPERTY, NULL);
 }
 
 // Cooling is read once per idle poll interval, also while an exposure makes the device tick faster: it changes slowly.
+// Each of the three properties is read for itself, a camera may have any of them without the others.
 static void ccd_on_poll(indigo_device *device) {
 	ccd_data *data = CCD_DATA;
 	double now = indigo_monotonic_time();
 	double temperature = data->temperature, power = data->cooler_power;
 	bool cooler_on = data->cooler_on;
-	if (CCD_TEMPERATURE_PROPERTY->hidden || now < data->thermal_poll_time) {
+	if (now < data->thermal_poll_time || (CCD_TEMPERATURE_PROPERTY->hidden && CCD_COOLER_PROPERTY->hidden && CCD_COOLER_POWER_PROPERTY->hidden)) {
 		return;
 	}
 	data->thermal_poll_time = now + 0.9 * system_alpaca_poll_interval(false);
-	alpaca_result result = system_alpaca_state_double(device, "CCDTemperature", &temperature);
-	if (result == ALPACA_OK && !CCD_COOLER_PROPERTY->hidden && CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE && system_alpaca_get_bool(device, "cooleron", &cooler_on) == ALPACA_OK && cooler_on != data->cooler_on) {
-		// the cooler was switched by somebody else
-		data->cooler_on = cooler_on;
-		indigo_set_switch(CCD_COOLER_PROPERTY, cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
-		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+	// A change of the cooler that is on its way to the camera is not overwritten by what the camera says before it got it: the camera
+	// is asked first and the property is touched afterwards, under the lock of the device and only if no request for it waits.
+	system_alpaca_lock(device);
+	bool cooler_idle = CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE;
+	system_alpaca_unlock(device);
+	if (!CCD_COOLER_PROPERTY->hidden && cooler_idle && system_alpaca_get_bool(device, "cooleron", &cooler_on) == ALPACA_OK && cooler_on != data->cooler_on) {
+		system_alpaca_lock(device);
+		bool changed = CCD_COOLER_PROPERTY->state != INDIGO_BUSY_STATE;
+		if (changed) {
+			// the cooler was switched by somebody else
+			data->cooler_on = cooler_on;
+			indigo_set_switch(CCD_COOLER_PROPERTY, cooler_on ? CCD_COOLER_ON_ITEM : CCD_COOLER_OFF_ITEM, true);
+		}
+		system_alpaca_unlock(device);
+		if (changed) {
+			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+		}
 	}
-	if (result == ALPACA_OK) {
-		data->temperature = temperature;
-	}
-	indigo_property_state state = result == ALPACA_OK ? ccd_temperature_state(device) : INDIGO_ALERT_STATE;
-	if (CCD_TEMPERATURE_ITEM->number.value != data->temperature || CCD_TEMPERATURE_PROPERTY->state != state) {
-		CCD_TEMPERATURE_ITEM->number.value = data->temperature;
-		INDIGO_UPDATE_PROPERTY_STATE(CCD_TEMPERATURE_PROPERTY, state, NULL);
+	if (!CCD_TEMPERATURE_PROPERTY->hidden) {
+		alpaca_result result = system_alpaca_state_double(device, "CCDTemperature", &temperature);
+		if (result == ALPACA_OK) {
+			data->temperature = temperature;
+		}
+		indigo_property_state state = result == ALPACA_OK ? ccd_temperature_state(device) : INDIGO_ALERT_STATE;
+		// a new set point that is on its way to the camera keeps the property BUSY until ccd_temperature_handler has sent it
+		system_alpaca_lock(device);
+		bool changed = !ccd_set_point_pending(device) && (CCD_TEMPERATURE_ITEM->number.value != data->temperature || CCD_TEMPERATURE_PROPERTY->state != state);
+		if (changed) {
+			CCD_TEMPERATURE_ITEM->number.value = data->temperature;
+			CCD_TEMPERATURE_PROPERTY->state = state;
+		}
+		system_alpaca_unlock(device);
+		if (changed) {
+			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		}
 	}
 	if (!CCD_COOLER_POWER_PROPERTY->hidden) {
-		result = system_alpaca_state_double(device, "CoolerPower", &power);
-		state = result == ALPACA_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		alpaca_result result = system_alpaca_state_double(device, "CoolerPower", &power);
+		indigo_property_state state = result == ALPACA_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		if (result == ALPACA_OK) {
 			data->cooler_power = power;
 		}
 		if (CCD_COOLER_POWER_ITEM->number.value != data->cooler_power || CCD_COOLER_POWER_PROPERTY->state != state) {
 			CCD_COOLER_POWER_ITEM->number.value = data->cooler_power;
-			INDIGO_UPDATE_PROPERTY_STATE(CCD_COOLER_POWER_PROPERTY, state, NULL);
+			system_alpaca_update(device, CCD_COOLER_POWER_PROPERTY, state, NULL);
 		}
 	}
+}
+
+// Refusal of a change of the settings of an exposure while one is in progress. Called by system_alpaca_accept() with the lock of the device held.
+static const char *ccd_exposure_refusal(indigo_device *device) {
+	return CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ? "Exposure in progress" : NULL;
 }
 
 #pragma mark - Device API (ccd)
@@ -1474,7 +1659,6 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&CCD_DATA->mutex, NULL);
 		X_ALPACA_SENSOR_PROPERTY = indigo_init_text_property(NULL, device->name, X_ALPACA_SENSOR_PROPERTY_NAME, CCD_MAIN_GROUP, "Sensor", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (X_ALPACA_SENSOR_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -1500,7 +1684,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (system_alpaca_is_active(device)) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_SENSOR_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_GAIN_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_OFFSET_PROPERTY);
@@ -1513,50 +1697,48 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	}
 	if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, ccd_exposure_handler);
+		system_alpaca_accept(device, CCD_EXPOSURE_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, ccd_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, ccd_abort_exposure_handler);
+		system_alpaca_accept(device, CCD_ABORT_EXPOSURE_PROPERTY, property, ALPACA_ACCEPT_VALUES | ALPACA_ACCEPT_URGENT, NULL, ccd_abort_exposure_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_FRAME_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_FRAME_PROPERTY, ccd_frame_handler);
+		system_alpaca_accept(device, CCD_FRAME_PROPERTY, property, ALPACA_ACCEPT_VALUES, ccd_exposure_refusal, ccd_frame_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_BIN_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_BIN_PROPERTY, ccd_bin_handler);
+		system_alpaca_accept(device, CCD_BIN_PROPERTY, property, ALPACA_ACCEPT_TARGETS, ccd_exposure_refusal, ccd_bin_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_MODE_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_MODE_PROPERTY, ccd_mode_handler);
+		system_alpaca_accept(device, CCD_MODE_PROPERTY, property, ALPACA_ACCEPT_VALUES, ccd_exposure_refusal, ccd_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_READ_MODE_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_READ_MODE_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_READ_MODE_PROPERTY, ccd_read_mode_handler);
+		system_alpaca_accept(device, CCD_READ_MODE_PROPERTY, property, ALPACA_ACCEPT_VALUES, ccd_exposure_refusal, ccd_read_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_GAIN_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_GAIN_PROPERTY, ccd_gain_handler);
+		system_alpaca_accept(device, CCD_GAIN_PROPERTY, property, ALPACA_ACCEPT_TARGETS, ccd_exposure_refusal, ccd_gain_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, CCD_OFFSET_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_OFFSET_PROPERTY, ccd_offset_handler);
+		system_alpaca_accept(device, CCD_OFFSET_PROPERTY, property, ALPACA_ACCEPT_TARGETS, ccd_exposure_refusal, ccd_offset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ALPACA_GAIN_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, X_ALPACA_GAIN_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_GAIN_PROPERTY, ccd_x_alpaca_gain_handler);
+		system_alpaca_accept(device, X_ALPACA_GAIN_PROPERTY, property, ALPACA_ACCEPT_VALUES, ccd_exposure_refusal, ccd_x_alpaca_gain_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ALPACA_OFFSET_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE, X_ALPACA_OFFSET_PROPERTY, "Exposure in progress");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_OFFSET_PROPERTY, ccd_x_alpaca_offset_handler);
+		system_alpaca_accept(device, X_ALPACA_OFFSET_PROPERTY, property, ALPACA_ACCEPT_VALUES, ccd_exposure_refusal, ccd_x_alpaca_offset_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_COOLER_PROPERTY, ccd_cooler_handler);
+		system_alpaca_accept(device, CCD_COOLER_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, ccd_cooler_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_TEMPERATURE_PROPERTY, property)) {
-		// CCD_TEMPERATURE is BUSY while the cooler works towards the set point; a new set point is accepted all the same
-		CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(CCD_TEMPERATURE_PROPERTY, ccd_temperature_handler);
+		// CCD_TEMPERATURE is BUSY while the cooler works towards the set point; a new set point is accepted all the same.
+		// The steps of system_alpaca_accept(), and the count of the set points that wait for their handler.
+		system_alpaca_lock(device);
+		CCD_DATA->set_point_requests++;
+		indigo_property_copy_targets(CCD_TEMPERATURE_PROPERTY, property, false);
+		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
+		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+		indigo_execute_handler(device, ccd_temperature_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -1573,7 +1755,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 	indigo_release_property(X_ALPACA_SENSOR_PROPERTY);
 	indigo_release_property(X_ALPACA_GAIN_PROPERTY);
 	indigo_release_property(X_ALPACA_OFFSET_PROPERTY);
-	pthread_mutex_destroy(&CCD_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }

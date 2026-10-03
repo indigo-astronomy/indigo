@@ -76,7 +76,7 @@ typedef enum {
 	ALPACA_HTTP_RESET,
 	/** The peer closed the connection in an orderly way after the response started, but before its header block, its Content-Length body or its chunked body was complete. The body holds the bytes received so far. */
 	ALPACA_HTTP_TRUNCATED,
-	/** The response is not HTTP/1.x: bad status line, header line without a colon, bad or conflicting Content-Length, bad chunk framing, too many interim responses. */
+	/** The response is not HTTP/1.x: bad status line, header line without a colon, bad or conflicting Content-Length, bad chunk framing, too many interim responses, a Transfer-Encoding with a coding other than chunked (the client asks for none and decodes none). */
 	ALPACA_HTTP_MALFORMED,
 	/** The header block exceeds ALPACA_HTTP_MAX_HEADER_SIZE or the body exceeds the maximum size of the response buffer. The body holds the bytes accepted so far. */
 	ALPACA_HTTP_TOO_LARGE

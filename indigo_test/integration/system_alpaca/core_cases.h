@@ -24,6 +24,11 @@
 #ifndef system_alpaca_core_cases_h
 #define system_alpaca_core_cases_h
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
 #include "system_alpaca_test_common.h"
 
 static const char *core_focuser[] = { "--device", "focuser", NULL };
@@ -630,7 +635,10 @@ static void core_shutdown_with_connected_device(void) {
 	SA_CHECK(indigo_system_alpaca(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_BUSY);
 	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_is_connected(sa_device), SA_TIMEOUT));
 	SA_CHECK(indigo_system_alpaca(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_BUSY);
-	SA_CHECK(sa_disconnect(sa_device));
+	// and a device that is still disconnecting
+	SA_CHECK(sa_request_connection(sa_device, false) && SA_WAIT(!strcmp(sa_status(0, "/simulator/v1/rotator/0/state", "Connecting"), "true"), SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE && indigo_system_alpaca(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_BUSY);
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_is_disconnected(sa_device) && sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
 	// with everything disconnected the shutdown succeeds; attached devices do not prevent it
 	SA_CHECK(sa_driver_stop() == INDIGO_OK);
 	SA_CHECK(indigo_system_alpaca(INDIGO_DRIVER_INFO, &info) == INDIGO_OK && info.status == INDIGO_DRIVER_SHUTDOWN);
@@ -656,7 +664,7 @@ static void core_detach_during_activity(void) {
 	// the device can be attached and connected again
 	SA_CHECK(sa_advance(0, 50) && sa_attach("Focuser Simulator") && sa_request_connection(sa_device, true));
 	SA_CHECK(SA_WAIT(sa_request_count(0, "PUT", "/api/v1/focuser/0/connect") == 2, SA_TIMEOUT) && sa_advance(0, 50) && SA_WAIT(sa_is_connected(sa_device), SA_TIMEOUT));
-	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(sa_disconnect_after(sa_device, "/simulator/v1/focuser/0/state", 50));
 	// a device is deselected while a request of its handler queue waits for the server: the detach waits for that request, no longer
 	SA_CHECK(sa_attach("Rotator Simulator") && sa_connect(sa_device));
 	requests = sa_request_count(0, "GET", "/api/v1/rotator/0/devicestate");
@@ -841,10 +849,21 @@ static void core_connect_disconnect_platform7(void) {
 	SA_CHECK(sa_request_connection(sa_device, true));
 	indigo_usleep(200000);
 	SA_CHECK(sa_is_connected(sa_device) && sa_request_count(0, "PUT", "/api/v1/focuser/0/connect") == 1);
-	// decision D5: the INDIGO disconnect sends disconnect to the Alpaca device, and polling stops
-	SA_CHECK(sa_disconnect(sa_device));
-	SA_CHECK(sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") == 1 && sa_request_count(0, "PUT", "/api/v1/focuser/0/connected") == 0);
-	SA_CHECK(sa_advance(0, 2) && !strcmp(sa_status(0, "/simulator/v1/focuser/0/state", "Connected"), "false"));
+	// decision D5: the INDIGO disconnect sends disconnect to the Alpaca device, and polling stops. A Platform 7 disconnect is asynchronous:
+	// CONNECTION stays BUSY while "connecting" is polled, until the device reports that it is no longer connecting (REFACTOR.md 2.4, 2.7)
+	revision = sa_revision(sa_device, CONNECTION_PROPERTY_NAME);
+	int mark = sa_message_mark();
+	SA_CHECK(sa_request_connection(sa_device, false) && SA_WAIT(sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") == 1, SA_TIMEOUT));
+	int connecting = sa_request_count(0, "GET", "/api/v1/focuser/0/connecting");
+	SA_CHECK(SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/connecting") >= connecting + 3, SA_TIMEOUT) && sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(!sa_state_after(sa_device, CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && !sa_message_seen_since(mark, "Disconnected from"));
+	SA_CHECK(sa_request_count(0, "PUT", "/api/v1/focuser/0/connected") == 0 && !strcmp(sa_status(0, "/simulator/v1/focuser/0/state", "Connecting"), "true"));
+	// a request to connect again while the device disconnects is not accepted: nothing is sent, the disconnect goes on
+	SA_CHECK(sa_request_connection(sa_device, true));
+	connecting = sa_request_count(0, "GET", "/api/v1/focuser/0/connecting");
+	SA_CHECK(SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/connecting") >= connecting + 2, SA_TIMEOUT) && sa_request_count(0, "PUT", "/api/v1/focuser/0/connect") == 1 && sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && sa_is_disconnected(sa_device));
+	SA_CHECK(sa_message_seen_since(mark, "Disconnected from Focuser Simulator @ " SA_SERVER_NAME) && !strcmp(sa_status(0, "/simulator/v1/focuser/0/state", "Connected"), "false"));
 	int requests = sa_request_count(0, NULL, "/api/*");
 	indigo_usleep(300000);
 	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
@@ -852,6 +871,16 @@ static void core_connect_disconnect_platform7(void) {
 	SA_CHECK(sa_request_connection(sa_device, false));
 	indigo_usleep(200000);
 	SA_CHECK(sa_is_disconnected(sa_device) && sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") == 1);
+	// a device that does not finish disconnecting: the establish timeout (2 s) bounds the wait, then the device counts as disconnected,
+	// with CONNECTION in ALERT and a message
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(sa_request_count(0, "PUT", "/api/v1/focuser/0/connect") == 2, SA_TIMEOUT) && sa_advance(0, 2) && SA_WAIT(sa_is_connected(sa_device), SA_TIMEOUT));
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_request_connection(sa_device, false) && SA_WAIT(sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_ALERT_STATE, 2 * SA_TIMEOUT) && sa_switch(sa_device, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME));
+	SA_CHECK(indigo_monotonic_time() - started > 1.9 && sa_message_seen("the device did not finish disconnecting in time") && sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") == 2);
+	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME) && !strcmp(sa_status(0, "/simulator/v1/focuser/0/state", "Connecting"), "true"));
+	// the device can be connected again: the device has not finished its disconnect, so it is still connected and the connect is at once
+	SA_CHECK(sa_connect(sa_device) && sa_request_count(0, "PUT", "/api/v1/focuser/0/connect") == 3);
+	SA_CHECK(sa_disconnect_after(sa_device, "/simulator/v1/focuser/0/state", 2));
 cleanup:
 	sa_end();
 }
@@ -943,7 +972,7 @@ static void core_connect_timeout(void) {
 	SA_CHECK(sa_clear_faults(0));
 	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/connecting") >= 5, SA_TIMEOUT));
 	SA_CHECK(sa_advance(0, 100) && SA_WAIT(sa_is_connected(sa_device), SA_TIMEOUT));
-	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(sa_disconnect_after(sa_device, "/simulator/v1/focuser/0/state", 100));
 cleanup:
 	sa_end();
 }
@@ -1008,12 +1037,14 @@ static void core_unusual_identifiers(void) {
 		"--device", "rotator:uid=URN:UUID:0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF-0123456789",
 		NULL
 	};
-	const char *key = "my_device_s__id_____x____";
+	char key[INDIGO_NAME_SIZE];
 	char long_key[INDIGO_NAME_SIZE];
 	char rotator[INDIGO_NAME_SIZE];
 	SA_CHECK(sa_begin(arguments));
-	// the item name of a device is its UniqueID made safe: lower case, nothing a configuration file or a client could choke on
-	SA_CHECK(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 2 && sa_has_item(SA_BRIDGE, "X_ALPACA_DEVICES", key));
+	// the item name of a device is its UniqueID made safe: lower case, nothing a configuration file or a client could choke on;
+	// a UniqueID whose characters had to be replaced gets a hash of the whole text, so two of them do not become one key (REV-18)
+	snprintf(key, sizeof(key), "%s", sa_device_key("Fokussierer"));
+	SA_CHECK(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 2 && strlen(key) == 34 && !strncmp(key, "my_device_s__id_____x_____", 26) && strspn(key + 26, "0123456789abcdef") == 8);
 	snprintf(long_key, sizeof(long_key), "%s", sa_item_name(SA_BRIDGE, "X_ALPACA_DEVICES", 1));
 	SA_CHECK(strlen(long_key) == 63 && !strncmp(long_key, "urn_uuid_0123456789abcdef0123456789abcdef0123456789abc_", 55));
 	SA_CHECK(strstr(sa_device_status(key), "UniqueID My Device's <ID> & \"x\" Ä") != NULL);
@@ -1113,7 +1144,7 @@ static void core_transport_loss_during_connect(void) {
 	int requests = sa_request_count(0, "GET", "/api/v1/focuser/0/connecting");
 	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/connecting") >= requests + 2, SA_TIMEOUT));
 	SA_CHECK(sa_advance(0, 50) && SA_WAIT(sa_is_connected(sa_device), SA_TIMEOUT));
-	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(sa_disconnect_after(sa_device, "/simulator/v1/focuser/0/state", 50));
 cleanup:
 	sa_end();
 }
@@ -1140,20 +1171,47 @@ static void core_faulty_replies_while_connected(void) {
 		{ "stall-before", "Delay=1500" },
 		{ "stall-within", "Delay=1500" }
 	};
+	static const char *member_faults[] = { "null-value", "missing-value", "malformed-json", "truncated-json", "wrong-transaction-id" };
 	SA_CHECK(sa_begin(core_focuser));
 	SA_CHECK(sa_set_number("X_ALPACA_TIMEOUTS", "STANDARD", 0.5) == INDIGO_OK_STATE);
 	SA_CHECK(sa_attach("Focuser Simulator") && sa_connect(sa_device));
-	// one damaged reply of each kind while the device is polled: the device stays connected and the polling goes on
+	double position = sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME), temperature = sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME);
+	SA_CHECK(!isnan(position) && !isnan(temperature));
+	// one damaged reply of each kind while the device is polled: the device stays connected, the polling goes on, and the values that
+	// were published are not replaced by what a damaged reply seems to say (a reply without Value or with a null one is no 0)
 	for (int i = 0; i < ARRAY_SIZE(faults); i++) {
 		int requests = sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate");
+		int faulted = sa_faulted_count(0, "GET", "/api/v1/focuser/0/devicestate", faults[i].action);
 		SA_CHECK(sa_fault(0, "GET", "/api/v1/focuser/0/devicestate", faults[i].action, faults[i].extra));
 		if (!SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate") >= requests + 4, SA_TIMEOUT) || !sa_is_connected(sa_device)) {
 			fprintf(stderr, "polling did not survive %s\n", faults[i].action);
 			SA_CHECK(false);
 		}
+		if (sa_faulted_count(0, "GET", "/api/v1/focuser/0/devicestate", faults[i].action) != faulted + 1 || sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) != position || sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) != temperature) {
+			fprintf(stderr, "%s: %d faulted replies (expected %d), Position %g, Temperature %g\n", faults[i].action, sa_faulted_count(0, "GET", "/api/v1/focuser/0/devicestate", faults[i].action), faulted + 1, sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME), sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME));
+			SA_CHECK(false);
+		}
 		SA_CHECK(sa_clear_faults(0));
 	}
 	SA_CHECK(sa_stray_updates() == 0);
+	// the same for the replies of the members a device without devicestate is polled with: Position and Temperature keep their values
+	// (their properties may show ALERT while a value can not be read) and are OK again with the next good reply
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "focuser", 0, "InterfaceVersion=legacy") && sa_connect(sa_device) && SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/position") >= 2, SA_TIMEOUT));
+	for (int i = 0; i < ARRAY_SIZE(member_faults); i++) {
+		for (int member = 0; member < 2; member++) {
+			const char *path = member == 0 ? "/api/v1/focuser/0/position" : "/api/v1/focuser/0/temperature";
+			int requests = sa_request_count(0, "GET", path);
+			int faulted = sa_faulted_count(0, "GET", path, member_faults[i]);
+			SA_CHECK(sa_fault(0, "GET", path, member_faults[i], NULL));
+			SA_CHECK(SA_WAIT(sa_request_count(0, "GET", path) >= requests + 3, SA_TIMEOUT) && sa_is_connected(sa_device) && sa_faulted_count(0, "GET", path, member_faults[i]) == faulted + 1);
+			if (sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) != position || sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) != temperature) {
+				fprintf(stderr, "%s of %s: Position %g, Temperature %g\n", member_faults[i], path, sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME), sa_number(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME));
+				SA_CHECK(false);
+			}
+			SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+		}
+	}
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "focuser", 0, "InterfaceVersion=p7") && sa_connect(sa_device));
 	// HTTP 400 for devicestate means that the device has no such member: the polling falls back to "connected"
 	int requests = sa_request_count(0, "GET", "/api/v1/focuser/0/connected");
 	SA_CHECK(sa_fault(0, "GET", "/api/v1/focuser/0/devicestate", "http-status", "Value=400"));
@@ -1169,7 +1227,7 @@ static void core_faulty_replies_while_connected(void) {
 	SA_CHECK(sa_connect(sa_device));
 	requests = sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate");
 	SA_CHECK(SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate") >= requests + 5, SA_TIMEOUT) && sa_is_connected(sa_device));
-	SA_CHECK(sa_disconnect(sa_device) && sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") == 2);
+	SA_CHECK(sa_disconnect(sa_device) && sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") == 3);
 cleanup:
 	sa_end();
 }
@@ -1396,6 +1454,79 @@ static void core_class_safety(void) {
 	core_class_smoke("safetymonitor", "SafetyMonitor Simulator", INDIGO_INTERFACE_AUX, 3);
 }
 
+// REV-18: two UniqueIDs that differ only in characters that are not safe in an item name are two devices. Both used to become the key
+// "cam_1"; the second one was counted as a duplicate and could not be proxied.
+static void core_similar_unique_ids(void) {
+	static const char *arguments[] = { "--device", "focuser:name=First,uid=cam:1", "--device", "focuser:number=1,name=Second,uid=cam/1", "--device", "focuser:number=2,name=Third,uid=CAM_1", NULL };
+	char first[INDIGO_NAME_SIZE], second[INDIGO_NAME_SIZE], third[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(arguments));
+	snprintf(first, sizeof(first), "%s", sa_device_key("First"));
+	snprintf(second, sizeof(second), "%s", sa_device_key("Second"));
+	snprintf(third, sizeof(third), "%s", sa_device_key("Third"));
+	SA_CHECK(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 3 && *first && *second && *third && strcmp(first, second) && strcmp(first, third) && strcmp(second, third));
+	// a UniqueID that needed no replacement keeps its plain key (it is saved in the configuration of the selection)
+	SA_CHECK(!strcmp(third, "cam_1") && !strncmp(first, "cam_1_", 6) && !strncmp(second, "cam_1_", 6));
+	SA_CHECK(strstr(sa_server_status(0), "ONLINE: 3 device(s), 0 duplicate(s)") != NULL);
+	SA_CHECK(sa_attach("First") && sa_connect(sa_device) && sa_disconnect(sa_device));
+	SA_CHECK(sa_attach("Second") && sa_connect(sa_device) && sa_disconnect(sa_device));
+	SA_CHECK(sa_device_status_is(first, "ATTACHED") && sa_device_status_is(second, "ATTACHED") && sa_device_count(" @ " SA_SERVER_NAME) == 2);
+	SA_CHECK(strstr(sa_device_status(first), "UniqueID cam:1") != NULL && strstr(sa_device_status(second), "UniqueID cam/1") != NULL);
+cleanup:
+	sa_end();
+}
+
+// Status code of a raw PUT to simulator 0 with the given Content-Type (NULL for none), 0 if there was no answer.
+static int core_raw_put(const char *path, const char *content_type, const char *body) {
+	char request[1024], reply[512] = { 0 };
+	struct sockaddr_in address = { 0 };
+	int status = 0;
+	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	address.sin_family = AF_INET;
+	address.sin_port = htons((uint16_t)sa_simulators[0].http_port);
+	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	if (fd < 0) {
+		return 0;
+	}
+	if (connect(fd, (struct sockaddr *)&address, sizeof(address)) == 0) {
+		int length = snprintf(request, sizeof(request), "PUT %s HTTP/1.1\r\nHost: 127.0.0.1\r\n%s%s%sContent-Length: %zu\r\nConnection: close\r\n\r\n%s", path, content_type != NULL ? "Content-Type: " : "", content_type != NULL ? content_type : "", content_type != NULL ? "\r\n" : "", strlen(body), body);
+		if (write(fd, request, (size_t)length) == length && read(fd, reply, sizeof(reply) - 1) > 12) {
+			status = atoi(reply + 9);
+		}
+	}
+	close(fd);
+	return status;
+}
+
+// REV-25: the simulator is as strict as the specification and as the real servers are, so that the driver is tested against them:
+// - the parameters of a PUT have to be an application/x-www-form-urlencoded body (HTTP 400 otherwise), and the driver sends them so;
+// - with --error-value an error reply carries a Value next to ErrorNumber, as the ASCOM .NET servers do: the driver takes the error, not the value;
+// - a reply without ClientTransactionID (a server that does not echo it) is taken.
+static void core_strict_server_replies(void) {
+	static const char *arguments[] = { "--error-value", "--device", "focuser:interface=legacy,Position=12345", NULL };
+	SA_CHECK(sa_begin(arguments) && sa_attach("Focuser Simulator") && sa_connect(sa_device));
+	// the form is the only content type the device API takes; the driver used it for every PUT it sent
+	SA_CHECK(core_raw_put("/api/v1/focuser/0/halt", "application/json", "{}") == 400 && core_raw_put("/api/v1/focuser/0/halt", "text/plain", "ClientID=1") == 400 && core_raw_put("/api/v1/focuser/0/halt", NULL, "ClientID=1") == 400);
+	SA_CHECK(core_raw_put("/api/v1/focuser/0/halt", "application/x-www-form-urlencoded; charset=utf-8", "ClientID=1") == 200);
+	SA_CHECK(!strcmp(sa_field(sa_last_request(0, "PUT", "/api/v1/focuser/0/connected"), "ContentType"), "application/x-www-form-urlencoded"));
+	SA_CHECK(SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 12345, SA_TIMEOUT));
+	// an error with a Value of 0: the position is not read as 0, its property is in ALERT while it can not be read and back with the value
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_put(0, "/simulator/v1/focuser/0/error", "Member=position&ErrorNumber=1279&ErrorMessage=Encoder%20fault&Count=3"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Encoder fault"));
+	const char *line = sa_last_request(0, "GET", "/api/v1/focuser/0/position");
+	SA_CHECK(line != NULL && atoi(sa_field(line, "ErrorNumber")) == 1279 && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 12345);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 12345);
+	// a server that does not echo ClientTransactionID: every reply is taken, the device is polled and moves
+	SA_CHECK(sa_fault(0, NULL, "/api/v1/focuser/0/*", "missing-transaction-id", "Count=-1") && sa_device_state(0, "focuser", 0, "Position=23456"));
+	SA_CHECK(SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 23456 && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 24000) == INDIGO_OK && SA_WAIT(sa_request_count(0, "PUT", "/api/v1/focuser/0/move") == 1, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 24000, SA_TIMEOUT));
+	SA_CHECK(sa_faulted_count(0, NULL, "/api/v1/focuser/0/*", "missing-transaction-id") >= 4 && sa_is_connected(sa_device) && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
 #define SYSTEM_ALPACA_CORE_CASES \
 	{ "core_driver_metadata_and_lifecycle", core_driver_metadata_and_lifecycle }, \
 	{ "core_bridge_properties", core_bridge_properties }, \
@@ -1427,6 +1558,8 @@ static void core_class_safety(void) {
 	{ "core_connect_timeout", core_connect_timeout }, \
 	{ "core_info_content", core_info_content }, \
 	{ "core_unusual_identifiers", core_unusual_identifiers }, \
+	{ "core_similar_unique_ids", core_similar_unique_ids }, \
+	{ "core_strict_server_replies", core_strict_server_replies }, \
 	{ "core_not_connected_reported_by_device", core_not_connected_reported_by_device }, \
 	{ "core_transport_loss_idle_and_reconnect", core_transport_loss_idle_and_reconnect }, \
 	{ "core_transport_loss_during_connect", core_transport_loss_during_connect }, \

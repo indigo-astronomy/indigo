@@ -20,16 +20,554 @@
 
 // Cases of the FilterWheel device class of the system_alpaca driver (indigo_system_alpaca_wheel.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them wheel_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated FilterWheel has eight slots (Luminance, Red, Green, Blue, H-Alpha, OIII, SII, Dark with the focus offsets
+// 0, 35, 12, -18, 140, 122, 151, 0) and starts in Alpaca position 0, which is INDIGO slot 1. It turns in one direction only and
+// needs one second of device time for every slot it passes; Position reads -1 on the way. Device time only moves with sa_advance().
 
 #ifndef system_alpaca_wheel_cases_h
 #define system_alpaca_wheel_cases_h
 
+#include <indigo/indigo_wheel_driver.h>
+
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_WHEEL_CASES
+#define WHEEL_API "/api/v1/filterwheel/0/"
+#define WHEEL_STATE "/simulator/v1/filterwheel/0/state"
+#define WHEEL_ERROR "/simulator/v1/filterwheel/0/error"
+
+static const char *wheel_default[] = { "--device", "filterwheel", NULL };
+static const char *wheel_legacy[] = { "--device", "filterwheel:interface=legacy", NULL };
+
+static int wheel_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), WHEEL_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The parameters of the last request for a member start with the given text (the transaction IDs follow).
+static bool wheel_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), WHEEL_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL && !strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters));
+}
+
+// Position of the simulated wheel (0-based) once it stands, and whether it turns.
+static int wheel_simulated(void) {
+	return atoi(sa_status(0, WHEEL_STATE, "Position"));
+}
+
+static bool wheel_simulated_is(const char *key, const char *value) {
+	return !strcmp(sa_status(0, WHEEL_STATE, key), value);
+}
+
+static double wheel_slot(void) {
+	return sa_number(sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME);
+}
+
+static double wheel_target(void) {
+	return sa_number_target(sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME);
+}
+
+// Request a slot and wait until the device has got the request: only then the clock of the device may be advanced.
+static bool wheel_start(int slot) {
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	int moves = wheel_count("PUT", "position");
+	return indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, slot) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE, revision) && wheel_count("PUT", "position") > moves, SA_TIMEOUT);
+}
+
+// A whole move: request the slot, let the device time pass and wait for the end. Returns the final state of WHEEL_SLOT, -1 on failure.
+static int wheel_move(int slot, double seconds) {
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	if (!wheel_start(slot) || !sa_advance(0, seconds)) {
+		return -1;
+	}
+	if (!SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision) || sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+}
+
+// Request a slot and wait for the answer that is not BUSY. Returns the state, -1 if there was none.
+static int wheel_request(int slot) {
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	if (indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, slot) != INDIGO_OK || !SA_WAIT(sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME) > revision && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+}
+
+static bool wheel_wait_polls(const char *member, int count) {
+	int polls = wheel_count("GET", member);
+	return SA_WAIT(wheel_count("GET", member) >= polls + count, SA_TIMEOUT);
+}
+
+static bool wheel_slot_range_is(double min, double max) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	indigo_item *cached = sa_cache_item(sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME);
+	bool result = cached != NULL && cached->number.min == min && cached->number.max == max;
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+static bool wheel_name_is(int slot, const char *name) {
+	char item[INDIGO_NAME_SIZE];
+	snprintf(item, sizeof(item), WHEEL_SLOT_NAME_ITEM_NAME, slot);
+	return !strcmp(sa_text(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME, item), name);
+}
+
+static double wheel_offset(int slot) {
+	char item[INDIGO_NAME_SIZE];
+	snprintf(item, sizeof(item), WHEEL_SLOT_OFFSET_ITEM_NAME, slot);
+	return sa_number(sa_device, WHEEL_SLOT_OFFSET_PROPERTY_NAME, item);
+}
+
+static bool wheel_begin(const char * const *arguments) {
+	return sa_begin(arguments) && sa_attach("FilterWheel Simulator") && sa_connect(sa_device);
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void wheel_properties(void) {
+	static const char *names[] = { "Luminance", "Red", "Green", "Blue", "H-Alpha", "OIII", "SII", "Dark" };
+	static const int offsets[] = { 0, 35, 12, -18, 140, 122, 151, 0 };
+	SA_CHECK(sa_begin(wheel_default) && sa_attach("FilterWheel Simulator"));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_WHEEL) == INDIGO_INTERFACE_WHEEL);
+	// nothing of the class is defined and nothing was asked before the device is connected
+	SA_CHECK(!sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_OFFSET_PROPERTY_NAME));
+	SA_CHECK(wheel_count("GET", "names") == 0 && wheel_count("GET", "position") == 0);
+	SA_CHECK(sa_connect(sa_device));
+	// Alpaca position 0 is slot 1 of as many slots as the device has names
+	SA_CHECK(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && sa_perm(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_RW_PERM && wheel_slot_range_is(1, 8) && wheel_slot() == 1 && wheel_target() == 1);
+	SA_CHECK(sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 8 && sa_item_count(sa_device, WHEEL_SLOT_OFFSET_PROPERTY_NAME) == 8);
+	for (int i = 0; i < 8; i++) {
+		SA_CHECK(wheel_name_is(i + 1, names[i]) && wheel_offset(i + 1) == offsets[i]);
+	}
+	// what it took: every member once, nothing was written but connect
+	SA_CHECK(wheel_count("GET", "names") == 1 && wheel_count("GET", "focusoffsets") == 1 && wheel_count("GET", "position") == 1 && wheel_count("PUT", "*") == 1);
+	// Platform 7: the position comes with devicestate; names and offsets are not read again
+	SA_CHECK(wheel_wait_polls("devicestate", 3) && wheel_count("GET", "position") == 1 && wheel_count("GET", "names") == 1 && wheel_count("GET", "focusoffsets") == 1);
+	// names and offsets of the device can not be written: a change stays in INDIGO and nothing is sent
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME);
+	SA_CHECK(indigo_change_text_property_1_raw(&sa_client, sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME, "SLOT_NAME_2", "Rot") == INDIGO_OK && SA_WAIT(sa_revision(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) > revision, SA_TIMEOUT));
+	SA_CHECK(wheel_name_is(2, "Rot") && sa_state(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == INDIGO_OK_STATE && wheel_count("PUT", "*") == 1 && !strncmp(sa_status(0, WHEEL_STATE, "Names"), "Luminance|Red|", 14));
+	// a disconnect removes the properties, the next connection builds them again from the device
+	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_OFFSET_PROPERTY_NAME));
+	SA_CHECK(sa_connect(sa_device) && wheel_slot() == 1 && wheel_name_is(2, "Red") && wheel_count("GET", "names") == 2 && wheel_count("GET", "focusoffsets") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void wheel_legacy_properties(void) {
+	static const char *arguments[] = { "--device", "filterwheel:interface=legacy,Position=3", NULL };
+	SA_CHECK(wheel_begin(arguments));
+	// IFilterWheelV2: the same properties, connected with Connected=True, and no devicestate
+	SA_CHECK(!strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME), "2") && wheel_count("PUT", "connected") == 1 && wheel_count("PUT", "connect") == 0);
+	SA_CHECK(wheel_slot_range_is(1, 8) && wheel_slot() == 4 && wheel_name_is(4, "Blue") && wheel_offset(4) == -18 && sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 8);
+	// the position is read on every poll tick
+	int positions = wheel_count("GET", "position");
+	SA_CHECK(wheel_wait_polls("connected", 4) && wheel_count("GET", "position") >= positions + 3 && wheel_count("GET", "devicestate") == 0 && wheel_count("GET", "names") == 1);
+	SA_CHECK(sa_device_state(0, "filterwheel", 0, "Position=6") && SA_WAIT(wheel_slot() == 7 && wheel_target() == 7, SA_TIMEOUT) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// a move works the same way: 6 -> 1 goes round through 7 and 0, three slots
+	SA_CHECK(wheel_move(2, 3) == INDIGO_OK_STATE && wheel_last("PUT", "position", "Position=1&ClientID=") && wheel_simulated() == 1 && wheel_slot() == 2);
+	SA_CHECK(sa_disconnect(sa_device) && wheel_last("PUT", "connected", "Connected=False&ClientID="));
+cleanup:
+	sa_end();
+}
+
+static void wheel_slot_variants(void) {
+	static const char *five[] = { "--device", "filterwheel:Names=L|R|G|B|Ha,FocusOffsets=0|-120|45|7|3000,Position=4", NULL };
+	static const char *one[] = { "--device", "filterwheel:Names=Clear", NULL };
+	static const char *many[] = { "--device", "filterwheel:Names=1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32,Position=31", NULL };
+	// another number of slots, the last one selected
+	SA_CHECK(wheel_begin(five));
+	SA_CHECK(wheel_slot_range_is(1, 5) && wheel_slot() == 5 && sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 5 && sa_item_count(sa_device, WHEEL_SLOT_OFFSET_PROPERTY_NAME) == 5);
+	SA_CHECK(wheel_name_is(1, "L") && wheel_name_is(5, "Ha") && wheel_offset(2) == -120 && wheel_offset(5) == 3000);
+	// names that need escaping in JSON, and one that is not ASCII
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "filterwheel", 0, "Names=H%CE%B1%20%2F%207nm|%22O%20III%22|S%5CII|B%26W&Position=1") && sa_connect(sa_device));
+	SA_CHECK(wheel_slot_range_is(1, 4) && wheel_slot() == 2 && wheel_name_is(1, "H\xCE\xB1 / 7nm") && wheel_name_is(2, "\"O III\"") && wheel_name_is(3, "S\\II") && wheel_name_is(4, "B&W"));
+	// the wheel got more slots while the proxy was disconnected: the properties grow
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "filterwheel", 0, "Names=A|B|C|D|E|F|G&FocusOffsets=1|2|3|4|5|6|7&Position=6") && sa_connect(sa_device));
+	SA_CHECK(wheel_slot_range_is(1, 7) && wheel_slot() == 7 && sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 7 && wheel_name_is(7, "G") && wheel_offset(7) == 7);
+	SA_CHECK(wheel_move(1, 1) == INDIGO_OK_STATE && wheel_last("PUT", "position", "Position=0&ClientID="));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// one slot
+	SA_CHECK(wheel_begin(one));
+	SA_CHECK(wheel_slot_range_is(1, 1) && wheel_slot() == 1 && sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 1 && wheel_name_is(1, "Clear"));
+	SA_CHECK(wheel_request(1) == INDIGO_OK_STATE && wheel_last("PUT", "position", "Position=0&ClientID="));
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// as many slots as the driver takes
+	SA_CHECK(wheel_begin(many));
+	SA_CHECK(wheel_slot_range_is(1, 32) && wheel_slot() == 32 && sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 32 && wheel_name_is(32, "32") && wheel_name_is(17, "17"));
+	SA_CHECK(wheel_move(31, 31) == INDIGO_OK_STATE && wheel_last("PUT", "position", "Position=30&ClientID=") && wheel_simulated() == 30);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a wheel that has no names is as large as its list of focus offsets and gets default names
+	SA_CHECK(sa_begin(five) && sa_attach("FilterWheel Simulator") && sa_put(0, WHEEL_ERROR, "Member=names&ErrorNumber=1024") && sa_connect(sa_device));
+	SA_CHECK(wheel_slot_range_is(1, 5) && wheel_name_is(1, "Filter #1") && wheel_name_is(5, "Filter #5") && wheel_offset(2) == -120 && wheel_slot() == 5);
+	// one that has no focus offsets has none
+	SA_CHECK(sa_disconnect(sa_device) && sa_put(0, WHEEL_ERROR, "Member=names&ErrorNumber=0") && sa_put(0, WHEEL_ERROR, "Member=focusoffsets&ErrorNumber=1024") && sa_connect(sa_device));
+	SA_CHECK(wheel_slot_range_is(1, 5) && wheel_name_is(5, "Ha") && wheel_offset(2) == 0 && wheel_offset(5) == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- moves
+
+static void wheel_move_to_slot(void) {
+	SA_CHECK(wheel_begin(wheel_default));
+	// slot 5 is Alpaca position 4; the property is BUSY and keeps the slot the wheel left until the device reports another one
+	SA_CHECK(wheel_start(5));
+	SA_CHECK(wheel_count("PUT", "position") == 1 && wheel_last("PUT", "position", "Position=4&ClientID="));
+	SA_CHECK(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE && wheel_target() == 5 && wheel_slot() == 1 && wheel_simulated_is("Moving", "true"));
+	// the move is watched with Position, which is -1 on the way
+	int positions = wheel_count("GET", "position");
+	SA_CHECK(SA_WAIT(wheel_count("GET", "position") >= positions + 3, SA_TIMEOUT) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE && wheel_slot() == 1);
+	SA_CHECK(sa_advance(0, 3.9) && SA_WAIT(wheel_count("GET", "position") >= positions + 6, SA_TIMEOUT) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE && wheel_slot() == 1);
+	// a request for the property that is BUSY is not accepted: nothing is sent for it
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 7) == INDIGO_OK);
+	SA_CHECK(wheel_wait_polls("position", 3) && wheel_count("PUT", "position") == 1 && wheel_target() == 5);
+	// the wheel arrives: OK with the slot the device reports, and Position is not asked for any more
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 0.1) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(wheel_slot() == 5 && wheel_target() == 5 && wheel_simulated() == 4 && wheel_simulated_is("Moving", "false"));
+	positions = wheel_count("GET", "position");
+	SA_CHECK(wheel_wait_polls("devicestate", 3) && wheel_count("GET", "position") == positions);
+	// the last and the first slot
+	SA_CHECK(wheel_move(8, 3) == INDIGO_OK_STATE && wheel_last("PUT", "position", "Position=7&ClientID=") && wheel_simulated() == 7 && wheel_slot() == 8);
+	SA_CHECK(wheel_move(1, 1) == INDIGO_OK_STATE && wheel_last("PUT", "position", "Position=0&ClientID=") && wheel_simulated() == 0 && wheel_slot() == 1);
+	// the slot the wheel is in: the request goes to the device, which has nothing to do
+	int moves = wheel_count("PUT", "position");
+	SA_CHECK(wheel_request(1) == INDIGO_OK_STATE && wheel_count("PUT", "position") == moves + 1 && wheel_last("PUT", "position", "Position=0&ClientID=") && wheel_slot() == 1);
+	// the slot before the current one is seven slots away for a wheel that turns one way
+	SA_CHECK(wheel_move(3, 2) == INDIGO_OK_STATE && wheel_start(2));
+	SA_CHECK(sa_advance(0, 6.5) && wheel_wait_polls("position", 3) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE && wheel_slot() == 3);
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 0.5) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 2 && wheel_simulated() == 1);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void wheel_move_ends_elsewhere(void) {
+	SA_CHECK(wheel_begin(wheel_default));
+	// another client sends the wheel to another slot during a move of the driver: the move is over when the device says so
+	// (Position is not -1 any more), and it failed, because the wheel is not in the requested slot
+	SA_CHECK(wheel_start(6) && sa_advance(0, 2) && wheel_wait_polls("position", 2));
+	SA_CHECK(sa_put(0, WHEEL_API "position", "Position=2&ClientID=77&ClientTransactionID=1"));
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 4) && wheel_wait_polls("position", 3) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && indigo_monotonic_time() - started < 3);
+	SA_CHECK(sa_message_seen("Move failed: the wheel stopped at slot 3 instead of slot 6") && wheel_slot() == 3 && wheel_target() == 3 && wheel_simulated() == 2);
+	// nothing is watched any more, and the next request works
+	int positions = wheel_count("GET", "position");
+	SA_CHECK(wheel_wait_polls("devicestate", 3) && wheel_count("GET", "position") == positions);
+	SA_CHECK(wheel_move(6, 3) == INDIGO_OK_STATE && wheel_slot() == 6 && wheel_simulated() == 5);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// a wheel that refuses a new target while it turns (the driver does not know yet that another client turned it): the request fails at once
+	static const char *arguments[] = { "--device", "filterwheel:PreemptMoves=false,Position=5", NULL };
+	SA_CHECK(sa_begin(arguments) && sa_set_number("X_ALPACA_POLLING", "IDLE", 5) == INDIGO_OK_STATE && sa_attach("FilterWheel Simulator") && sa_connect(sa_device) && wheel_slot() == 6);
+	SA_CHECK(sa_put(0, WHEEL_API "position", "Position=3&ClientID=77&ClientTransactionID=2") && wheel_request(8) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_message_seen("Move failed: invalid operation (The filter wheel is already moving (0x40B))") && wheel_target() == 6 && wheel_slot() == 6 && wheel_count("PUT", "position") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- polling
+
+static void wheel_polling(void) {
+	SA_CHECK(wheel_begin(wheel_default));
+	// the slot follows the device
+	SA_CHECK(sa_device_state(0, "filterwheel", 0, "Position=5") && SA_WAIT(wheel_slot() == 6 && wheel_target() == 6, SA_TIMEOUT) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// a slot that does not change is not published again
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(wheel_wait_polls("devicestate", 4) && sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME) == revision);
+	// a move the driver did not start (another client of the device): BUSY while Position is -1, then OK in the slot it stops at
+	SA_CHECK(sa_put(0, WHEEL_API "position", "Position=7&ClientID=77&ClientTransactionID=1"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && wheel_slot() == 6);
+	// a request for a wheel that turns is not accepted
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 2) == INDIGO_OK);
+	SA_CHECK(sa_advance(0, 1) && wheel_wait_polls("devicestate", 3) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE && wheel_count("PUT", "position") == 1);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && wheel_slot() == 8 && wheel_target() == 8, SA_TIMEOUT));
+	SA_CHECK(wheel_count("PUT", "position") == 1 && wheel_count("GET", "position") == 1);
+	// a request that is pending while a poll tick is under way is not overwritten by what the tick reads: the tick is held in the device
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "devicestate", "stall-before", "Delay=700"));
+	SA_CHECK(SA_WAIT(!strcmp(sa_field(sa_last_request(0, "GET", WHEEL_API "devicestate"), "Fault"), "stall-before"), SA_TIMEOUT));
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(wheel_count("PUT", "position") == 2, SA_TIMEOUT) && wheel_last("PUT", "position", "Position=2&ClientID=") && wheel_target() == 3);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 3 && wheel_simulated() == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// before Platform 7 Position is a request of its own on every tick: one that fails leaves the slot as it is and the device connected
+	SA_CHECK(wheel_begin(wheel_legacy));
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "position", "http-status", "Value=500&Count=2") && wheel_wait_polls("connected", 4) && wheel_slot() == 1 && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && sa_is_connected(sa_device));
+	// the same pending request, with the tick held in "connected"
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "connected", "stall-before", "Delay=700"));
+	SA_CHECK(SA_WAIT(!strcmp(sa_field(sa_last_request(0, "GET", WHEEL_API "connected"), "Fault"), "stall-before"), SA_TIMEOUT));
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 4) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(wheel_count("PUT", "position") == 1, SA_TIMEOUT) && wheel_last("PUT", "position", "Position=3&ClientID=") && wheel_target() == 4);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 4);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// The worst moment: the class itself asks for Position, the device answers with a slot the driver does not know yet (someone
+	// turned the wheel by hand), and the request of the client arrives before the answer. The slot of the client is sent, not the
+	// one of the answer. The poll interval is a second here, so that the wheel is turned and the tick is held between two ticks.
+	SA_CHECK(sa_begin(wheel_legacy) && sa_set_number("X_ALPACA_POLLING", "IDLE", 1) == INDIGO_OK_STATE && sa_attach("FilterWheel Simulator") && sa_connect(sa_device));
+	SA_CHECK(wheel_wait_polls("position", 1) && sa_fault(0, "GET", WHEEL_API "position", "stall-before", "Delay=700") && sa_device_state(0, "filterwheel", 0, "Position=5"));
+	SA_CHECK(SA_WAIT(!strcmp(sa_field(sa_last_request(0, "GET", WHEEL_API "position"), "Fault"), "stall-before"), SA_TIMEOUT) && wheel_slot() == 1);
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(wheel_count("PUT", "position") == 1, SA_TIMEOUT) && wheel_last("PUT", "position", "Position=2&ClientID=") && wheel_target() == 3);
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 3 && wheel_simulated() == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+static void wheel_request_failures(void) {
+	SA_CHECK(sa_begin(wheel_default) && sa_set_number("X_ALPACA_TIMEOUTS", "LONG", 1) == INDIGO_OK_STATE && sa_attach("FilterWheel Simulator") && sa_connect(sa_device));
+	// the device refuses the request: ALERT with its message, the wheel and the property stay in the slot
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "ascom-error", "Value=1025&Message=No%20such%20slot"));
+	SA_CHECK(wheel_request(4) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: invalid value (No such slot (0x401))") && wheel_slot() == 1 && wheel_target() == 1 && wheel_simulated() == 0);
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "ascom-error", "Value=1035&Message=Cover%20open"));
+	SA_CHECK(wheel_request(4) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: invalid operation (Cover open (0x40B))"));
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "ascom-error", "Value=1279&Message=Motor%20fault"));
+	SA_CHECK(wheel_request(4) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: device error (Motor fault (0x4FF))") && wheel_count("PUT", "position") == 3 && sa_is_connected(sa_device));
+	// and the next good request is OK
+	SA_CHECK(wheel_move(2, 1) == INDIGO_OK_STATE && wheel_slot() == 2);
+	// HTTP 500: the request may have reached the device, so Position is asked; it did not, and the failure keeps its reason
+	int moves = wheel_count("PUT", "position"), positions = wheel_count("GET", "position");
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(wheel_request(4) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: server error (HTTP 500: Kaboom)") && wheel_count("PUT", "position") == moves + 1 && wheel_count("GET", "position") == positions + 1);
+	SA_CHECK(wheel_slot() == 2 && wheel_target() == 2 && wheel_simulated() == 1);
+	// a reply that can not be read after the wheel started to turn: the move is watched as usual
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "malformed-json", NULL));
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(wheel_start(4) && wheel_wait_polls("position", 2) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 4 && wheel_count("PUT", "position") == moves + 2);
+	// a connection that breaks before the reply: selecting a slot twice is selecting it once, so the request is sent again
+	moves = wheel_count("PUT", "position");
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "drop", NULL));
+	SA_CHECK(wheel_move(5, 1) == INDIGO_OK_STATE && wheel_count("PUT", "position") == moves + 2 && wheel_slot() == 5 && wheel_simulated() == 4);
+	// a device that takes the request and answers after the long timeout (1 s here): the wheel turns, the move is watched
+	moves = wheel_count("PUT", "position");
+	positions = wheel_count("GET", "position");
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "stall-before", "Delay=1500"));
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 6) == INDIGO_OK && SA_WAIT(wheel_count("GET", "position") >= positions + 2, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && wheel_count("PUT", "position") == moves + 1);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 6);
+	// a device that does not take the request and does not answer in time: timeout, the device stays connected
+	SA_CHECK(sa_fault(0, "PUT", WHEEL_API "position", "stall-before", "Delay=1500&Dispatch=false"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(wheel_request(7) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: timeout") && indigo_monotonic_time() - started > 0.8 && indigo_monotonic_time() - started < 4);
+	SA_CHECK(wheel_slot() == 6 && wheel_target() == 6 && wheel_simulated() == 5 && wheel_wait_polls("devicestate", 2) && sa_is_connected(sa_device));
+	// an error of Position during the move: the move failed after it started
+	SA_CHECK(wheel_start(8) && wheel_wait_polls("position", 2));
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "position", "ascom-error", "Value=1280&Message=Sensor%20lost"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Move failed: device error (Sensor lost (0x500))") && wheel_target() == 6 && sa_is_connected(sa_device));
+	// the wheel still turns, which the poll shows; the property settles in the slot it stops at
+	SA_CHECK(SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 2) && SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && wheel_slot() == 8, SA_TIMEOUT));
+	// a reply of Position that is no reply
+	SA_CHECK(wheel_start(1) && wheel_wait_polls("position", 2));
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "position", "malformed-json", NULL));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Move failed: invalid reply"));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) != INDIGO_BUSY_STATE && wheel_slot() == 1, SA_TIMEOUT));
+	// a wheel that does not arrive within the long timeout is given up; it goes on by itself
+	revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	int step_mark = sa_message_mark();
+	SA_CHECK(wheel_start(8));
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen_since(step_mark, "Move failed: timeout") && indigo_monotonic_time() - started > 0.7 && indigo_monotonic_time() - started < 4);
+	SA_CHECK(wheel_slot() == 1 && wheel_target() == 1 && sa_is_connected(sa_device));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 7) && SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && wheel_slot() == 8, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void wheel_transport_loss(void) {
+	SA_CHECK(wheel_begin(wheel_default));
+	// the server goes away while the wheel is idle: the proxy is disconnected with CONNECTION in ALERT and its properties are gone
+	SA_CHECK(wheel_wait_polls("devicestate", 2) && sa_fault(0, NULL, WHEEL_API "*", "reset", "Count=-1"));
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_OFFSET_PROPERTY_NAME));
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the server is back: a new connection, a working wheel
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && wheel_move(3, 2) == INDIGO_OK_STATE && wheel_simulated() == 2);
+	// the server goes away in the middle of a move: the move ends in ALERT, the device is disconnected, nothing hangs
+	SA_CHECK(wheel_start(7) && wheel_wait_polls("position", 2) && sa_fault(0, NULL, WHEEL_API "*", "reset", "Count=-1"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
+	SA_CHECK(sa_message_seen("Move failed: connection lost") && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the next connection finds the wheel still turning: the slot is not known, BUSY until it stops
+	SA_CHECK(sa_clear_faults(0) && sa_advance(0, 2) && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE && wheel_slot() == 0);
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 7 && wheel_target() == 7);
+	SA_CHECK(wheel_move(8, 1) == INDIGO_OK_STATE && wheel_simulated() == 7);
+	// the device is disconnected on the server by someone else
+	SA_CHECK(sa_device_state(0, "filterwheel", 0, "Connected=false") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_message_seen("the device was disconnected on the Alpaca server"));
+	SA_CHECK(sa_connect(sa_device) && wheel_slot() == 8 && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void wheel_connect_failures(void) {
+	SA_CHECK(sa_begin(wheel_default) && sa_attach("FilterWheel Simulator"));
+	// a device whose names can not be read does not connect; nothing stays defined and the device is disconnected again
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "names", "malformed-json", NULL));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) && wheel_simulated_is("Connected", "false"));
+	// the transport breaks while the focus offsets are read
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "focusoffsets", "reset", "Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && wheel_count("GET", "position") == 0 && sa_clear_faults(0));
+	// a wheel that does not tell its position
+	SA_CHECK(sa_fault(0, "GET", WHEEL_API "position", "ascom-error", "Value=1279&Message=Sensor%20fault"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_message_seen("Sensor fault") && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && wheel_simulated_is("Connected", "false"));
+	// a wheel without names and without focus offsets has no slots
+	SA_CHECK(sa_put(0, WHEEL_ERROR, "Member=names&ErrorNumber=1024") && sa_put(0, WHEEL_ERROR, "Member=focusoffsets&ErrorNumber=1024"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME));
+	// and it connects when the device is well again
+	SA_CHECK(sa_put(0, WHEEL_ERROR, "Member=names&ErrorNumber=0") && sa_put(0, WHEEL_ERROR, "Member=focusoffsets&ErrorNumber=0") && sa_connect(sa_device));
+	SA_CHECK(wheel_slot_range_is(1, 8) && wheel_slot() == 1 && wheel_name_is(8, "Dark") && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- lifecycle
+
+static void wheel_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(wheel_default));
+	snprintf(key, sizeof(key), "%s", sa_device_key("FilterWheel Simulator"));
+	SA_CHECK(sa_attach("FilterWheel Simulator"));
+	// connect and disconnect, several times
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_connect(sa_device) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && wheel_slot() == 1 && sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 8);
+		SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && !sa_defined(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME));
+	}
+	SA_CHECK(sa_disconnect(sa_device) && sa_connect(sa_device));
+	// a disconnect in the middle of a move: Alpaca has nothing to stop a wheel with, the finalizer is cancelled, nothing is asked any more
+	SA_CHECK(wheel_start(6) && wheel_wait_polls("position", 2));
+	int puts = wheel_count("PUT", "*");
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME) && wheel_count("PUT", "*") == puts + 1);
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the wheel went on: the next connection finds it turning and follows it to the slot
+	SA_CHECK(sa_device_state(0, "filterwheel", 0, "Connected=true") && sa_advance(0, 2) && sa_device_state(0, "filterwheel", 0, "Connected=false") && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && wheel_slot() == 6 && wheel_target() == 6);
+	// a disconnect right after a request
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 7) == INDIGO_OK && sa_disconnect(sa_device) && !sa_defined(sa_device, WHEEL_SLOT_PROPERTY_NAME));
+	SA_CHECK(sa_device_state(0, "filterwheel", 0, "Connected=true") && sa_advance(0, 5) && sa_device_state(0, "filterwheel", 0, "Connected=false") && sa_connect(sa_device) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// the device is detached in the middle of a move: it goes away without a hang, the Alpaca device is disconnected
+	SA_CHECK(wheel_start(2) && wheel_wait_polls("position", 2));
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 3 && wheel_simulated_is("Connected", "false"));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// and attached again it is a working wheel
+	SA_CHECK(sa_device_state(0, "filterwheel", 0, "Connected=true") && sa_advance(0, 10) && sa_device_state(0, "filterwheel", 0, "Connected=false"));
+	SA_CHECK(sa_attach("FilterWheel Simulator") && sa_connect(sa_device) && wheel_slot() == 2 && wheel_move(4, 2) == INDIGO_OK_STATE && wheel_simulated() == 3);
+cleanup:
+	sa_end();
+}
+
+// A wheel that does nothing publishes nothing, however it is polled; a change of the device is published at once.
+static void wheel_steady_state_is_silent(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		const char *poll = legacy ? "connected" : "devicestate";
+		SA_CHECK(sa_begin(legacy ? wheel_legacy : wheel_default) && sa_attach("FilterWheel Simulator") && sa_connect(sa_device));
+		SA_CHECK(wheel_wait_polls(poll, 3) && sa_steady(0, sa_device, legacy ? WHEEL_API "connected" : WHEEL_API "devicestate", 25));
+		SA_CHECK(sa_device_state(0, "filterwheel", 0, "Position=2") && SA_WAIT(wheel_slot() == 3, SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// The device answers the polling and does not tell where the wheel is: WHEEL_SLOT is in ALERT with the last slot and the reason,
+// told once, and is OK again with the first slot that is read. On a Platform 7 device devicestate fails as well (for good),
+// so Position is read with a request of its own.
+static void wheel_unreadable_position(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(sa_begin(legacy ? wheel_legacy : wheel_default) && sa_attach("FilterWheel Simulator") && sa_connect(sa_device));
+		if (!legacy) {
+			SA_CHECK(sa_fault(0, "GET", WHEEL_API "devicestate", "http-status", "Value=500&Count=-1"));
+			SA_CHECK(sa_device_state(0, "filterwheel", 0, "Position=1") && SA_WAIT(wheel_slot() == 2, SA_TIMEOUT) && sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE);
+		}
+		double shown = wheel_slot();
+		SA_CHECK(sa_put(0, WHEEL_ERROR, "Member=position&ErrorNumber=1279&ErrorMessage=Sensor%20offline"));
+		SA_CHECK(SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT) && sa_message_seen("Reading the slot failed: device error (Sensor offline"));
+		unsigned revision = sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME);
+		SA_CHECK(wheel_wait_polls("position", 5) && sa_revision(sa_device, WHEEL_SLOT_PROPERTY_NAME) == revision && wheel_slot() == shown && sa_is_connected(sa_device));
+		SA_CHECK(sa_device_state(0, "filterwheel", 0, "Position=3") && sa_put(0, WHEEL_ERROR, "Member=position&ErrorNumber=0"));
+		SA_CHECK(SA_WAIT(sa_state(sa_device, WHEEL_SLOT_PROPERTY_NAME) == INDIGO_OK_STATE && wheel_slot() == 4, SA_TIMEOUT) && wheel_target() == 4);
+		SA_CHECK(sa_clear_faults(0) && sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// REV-12: the slot properties never move. They were resized on every connection to the number of slots, which reallocated them for a wheel
+// with more slots than the base class allocates (16) while a bus thread may use them (indigo_wheel_change_property() matches every
+// request against them). Room for the largest number of slots is made at attach, so the properties stay where they are.
+static void wheel_slot_properties_do_not_move(void) {
+	static const char *slots[] = { "--device", "filterwheel:Names=1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32,Position=31", NULL };
+	SA_CHECK(sa_begin(slots) && sa_attach("FilterWheel Simulator"));
+	indigo_device *device = sa_device_pointer(sa_device);
+	SA_CHECK(device != NULL && device->device_context != NULL);
+	indigo_wheel_context *wheel_context = (indigo_wheel_context *)device->device_context;
+	indigo_property *slot_names = wheel_context->wheel_slot_name_property, *slot_offsets = wheel_context->wheel_slot_offset_property;
+	SA_CHECK(slot_names->allocated_count >= 32 && slot_offsets->allocated_count >= 32);
+	for (int round = 0; round < 3; round++) {
+		SA_CHECK(sa_connect(sa_device) && sa_item_count(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME) == 32 && sa_item_count(sa_device, WHEEL_SLOT_OFFSET_PROPERTY_NAME) == 32);
+		SA_CHECK(wheel_context->wheel_slot_name_property == slot_names && wheel_context->wheel_slot_offset_property == slot_offsets && !strcmp(sa_text(sa_device, WHEEL_SLOT_NAME_PROPERTY_NAME, "SLOT_NAME_32"), "32"));
+		SA_CHECK(sa_disconnect(sa_device));
+	}
+cleanup:
+	sa_end();
+}
+
+#define SYSTEM_ALPACA_WHEEL_CASES \
+	{ "wheel_steady_state_is_silent", wheel_steady_state_is_silent }, \
+	{ "wheel_unreadable_position", wheel_unreadable_position }, \
+	{ "wheel_properties", wheel_properties }, \
+	{ "wheel_slot_properties_do_not_move", wheel_slot_properties_do_not_move }, \
+	{ "wheel_legacy_properties", wheel_legacy_properties }, \
+	{ "wheel_slot_variants", wheel_slot_variants }, \
+	{ "wheel_move_to_slot", wheel_move_to_slot }, \
+	{ "wheel_move_ends_elsewhere", wheel_move_ends_elsewhere }, \
+	{ "wheel_polling", wheel_polling }, \
+	{ "wheel_request_failures", wheel_request_failures }, \
+	{ "wheel_transport_loss", wheel_transport_loss }, \
+	{ "wheel_connect_failures", wheel_connect_failures }, \
+	{ "wheel_lifecycle", wheel_lifecycle },
 
 #endif /* system_alpaca_wheel_cases_h */

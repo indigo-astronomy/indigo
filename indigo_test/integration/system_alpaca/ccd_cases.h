@@ -20,16 +20,1642 @@
 
 // Cases of the Camera device class of the system_alpaca driver (indigo_system_alpaca_ccd.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them ccd_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The simulated camera (system_alpaca_simulator_camera.c) serves a test pattern instead of a picture: every pixel is a function of
+// its place on the sensor, value = (3 * sensor_x + 7 * sensor_y + 31 * colour) % (MaxADU + 1), a dark frame holds value % 16.
+// ccd_expected() below restates that formula independently of the driver, so a transposed, flipped, shifted, wrongly binned or
+// plane-swapped image fails the comparison of every pixel in ccd_image_is().
+//
+// The cases watch the bus with a second client, ccd_client: the property cache of the harness does not keep BLOBs and only the
+// last value of a property, and these cases need the published image and the sequence of the countdown values.
 
 #ifndef system_alpaca_ccd_cases_h
 #define system_alpaca_ccd_cases_h
 
+#include <indigo/indigo_driver.h>
+
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_CCD_CASES
+#define CCD_API "/api/v1/camera/0/"
+#define CCD_STATE "/simulator/v1/camera/0/state"
+#define CCD_ERROR "/simulator/v1/camera/0/error"
+#define CCD_SENSOR "X_ALPACA_SENSOR"
+#define CCD_GAIN_LIST "X_ALPACA_GAIN"
+#define CCD_OFFSET_LIST "X_ALPACA_OFFSET"
+#define CCD_MAX_SAMPLES 256
+
+// What the simulated camera was told when the image was taken, in the units of Alpaca (binned pixels).
+typedef struct {
+	int start_x;
+	int start_y;
+	int bin_x;
+	int bin_y;
+	int sensor_type;
+	int bayer_x;
+	int bayer_y;
+	unsigned max_adu;
+	bool dark;
+	int shift;
+} ccd_pattern;
+
+typedef struct {
+	double value;
+	indigo_property_state state;
+} ccd_sample;
+
+static pthread_mutex_t ccd_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char ccd_device[INDIGO_NAME_SIZE];
+static bool ccd_client_attached = false;
+static unsigned char *ccd_image = NULL;
+static size_t ccd_image_size = 0;
+static unsigned ccd_image_count = 0;
+static ccd_sample ccd_samples[CCD_MAX_SAMPLES];
+static int ccd_sample_count = 0;
+
+// ---------------------------------------------------------------------------- the second client
+
+static indigo_result ccd_client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	(void)client;
+	(void)device;
+	(void)message;
+	pthread_mutex_lock(&ccd_mutex);
+	if (!strcmp(property->device, ccd_device)) {
+		if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->items[0].blob.value != NULL) {
+			ccd_image = indigo_safe_realloc(ccd_image, property->items[0].blob.size + 1);
+			memcpy(ccd_image, property->items[0].blob.value, property->items[0].blob.size);
+			ccd_image[property->items[0].blob.size] = 0;
+			ccd_image_size = property->items[0].blob.size;
+			ccd_image_count++;
+		} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) && ccd_sample_count < CCD_MAX_SAMPLES) {
+			ccd_samples[ccd_sample_count].value = property->items[0].number.value;
+			ccd_samples[ccd_sample_count++].state = property->state;
+		}
+	}
+	pthread_mutex_unlock(&ccd_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_client ccd_client = {
+	"system_alpaca camera test client",
+	false,
+	NULL,
+	INDIGO_OK,
+	INDIGO_VERSION_CURRENT,
+	NULL,
+	NULL,
+	NULL,
+	ccd_client_update_property,
+	NULL,
+	NULL,
+	NULL,
+	false,
+	false
+};
+
+// Number of images published so far.
+static unsigned ccd_images(void) {
+	pthread_mutex_lock(&ccd_mutex);
+	unsigned result = ccd_image_count;
+	pthread_mutex_unlock(&ccd_mutex);
+	return result;
+}
+
+// Forget the recorded updates of CCD_EXPOSURE.
+static void ccd_clear_samples(void) {
+	pthread_mutex_lock(&ccd_mutex);
+	ccd_sample_count = 0;
+	pthread_mutex_unlock(&ccd_mutex);
+}
+
+// CCD_EXPOSURE was published with the given value in the BUSY state.
+static bool ccd_counted(double value) {
+	bool result = false;
+	pthread_mutex_lock(&ccd_mutex);
+	for (int i = 0; i < ccd_sample_count && !result; i++) {
+		result = ccd_samples[i].state == INDIGO_BUSY_STATE && ccd_samples[i].value == value;
+	}
+	pthread_mutex_unlock(&ccd_mutex);
+	return result;
+}
+
+// The recorded updates of CCD_EXPOSURE are a countdown: all of them BUSY, starting with the requested duration (first) followed by
+// the whole seconds from top down to 0 without a step up, and nothing above top.
+static bool ccd_countdown_is(double first, double top) {
+	bool result = true;
+	pthread_mutex_lock(&ccd_mutex);
+	result = ccd_sample_count >= 2 && ccd_samples[0].value == first;
+	for (int i = 1; i < ccd_sample_count && result; i++) {
+		double value = ccd_samples[i].value;
+		result = ccd_samples[i].state == INDIGO_BUSY_STATE && value == floor(value) && value >= 0 && value <= top && (i == 1 || value <= ccd_samples[i - 1].value);
+	}
+	if (!result) {
+		for (int i = 0; i < ccd_sample_count; i++) {
+			fprintf(stderr, "    CCD_EXPOSURE %g in state %d\n", ccd_samples[i].value, ccd_samples[i].state);
+		}
+	}
+	pthread_mutex_unlock(&ccd_mutex);
+	return result;
+}
+
+// ---------------------------------------------------------------------------- helpers
+
+// Simulator 0 with the given camera, the driver, the proxy of the camera attached and watched by ccd_client. Not connected yet.
+static bool ccd_begin_attached(const char * const *arguments) {
+	if (!sa_begin(arguments) || !sa_attach("Camera Simulator")) {
+		return false;
+	}
+	pthread_mutex_lock(&ccd_mutex);
+	snprintf(ccd_device, sizeof(ccd_device), "%s", sa_device);
+	ccd_image_count = 0;
+	ccd_sample_count = 0;
+	pthread_mutex_unlock(&ccd_mutex);
+	ccd_client_attached = indigo_attach_client(&ccd_client) == INDIGO_OK;
+	return ccd_client_attached;
+}
+
+// Wait for the answer to a request made after the given revision: a state that is not BUSY. Returns it, -1 if there was none.
+static int ccd_answer(const char *property, unsigned revision) {
+	if (!SA_WAIT(sa_revision(sa_device, property) > revision && sa_state(sa_device, property) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static int ccd_set_switch(const char *property, const char *item, bool value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? ccd_answer(property, revision) : -1;
+}
+
+static int ccd_set_number(const char *property, const char *item, double value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? ccd_answer(property, revision) : -1;
+}
+
+// Connect the camera and select the raw image format: the published BLOB is then a header of three numbers and the pixels as the driver delivered them.
+static bool ccd_connect(void) {
+	return sa_connect(sa_device) && ccd_set_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true) == INDIGO_OK_STATE;
+}
+
+static bool ccd_begin(const char * const *arguments) {
+	return ccd_begin_attached(arguments) && ccd_connect();
+}
+
+static void ccd_end(void) {
+	if (ccd_client_attached) {
+		indigo_detach_client(&ccd_client);
+		ccd_client_attached = false;
+	}
+	sa_end();
+	pthread_mutex_lock(&ccd_mutex);
+	indigo_safe_free(ccd_image);
+	ccd_image = NULL;
+	ccd_image_size = 0;
+	pthread_mutex_unlock(&ccd_mutex);
+}
+
+// Set CCD_FRAME (unbinned pixels) in one request.
+static int ccd_set_frame(double left, double top, double width, double height) {
+	static const char *items[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
+	const double values[] = { left, top, width, height };
+	unsigned revision = sa_revision(sa_device, CCD_FRAME_PROPERTY_NAME);
+	return indigo_change_number_property(&sa_client, sa_device, CCD_FRAME_PROPERTY_NAME, 4, items, values) == INDIGO_OK ? ccd_answer(CCD_FRAME_PROPERTY_NAME, revision) : -1;
+}
+
+static int ccd_set_bin(double horizontal, double vertical) {
+	static const char *items[] = { CCD_BIN_HORIZONTAL_ITEM_NAME, CCD_BIN_VERTICAL_ITEM_NAME };
+	const double values[] = { horizontal, vertical };
+	unsigned revision = sa_revision(sa_device, CCD_BIN_PROPERTY_NAME);
+	return indigo_change_number_property(&sa_client, sa_device, CCD_BIN_PROPERTY_NAME, 2, items, values) == INDIGO_OK ? ccd_answer(CCD_BIN_PROPERTY_NAME, revision) : -1;
+}
+
+static bool ccd_frame_is(double left, double top, double width, double height) {
+	return sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_LEFT_ITEM_NAME) == left && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_TOP_ITEM_NAME) == top && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_WIDTH_ITEM_NAME) == width && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_HEIGHT_ITEM_NAME) == height;
+}
+
+static bool ccd_bin_is(double horizontal, double vertical) {
+	return sa_number(sa_device, CCD_BIN_PROPERTY_NAME, CCD_BIN_HORIZONTAL_ITEM_NAME) == horizontal && sa_number(sa_device, CCD_BIN_PROPERTY_NAME, CCD_BIN_VERTICAL_ITEM_NAME) == vertical;
+}
+
+// Minimum, maximum and step of a number item.
+static bool ccd_range_is(const char *property, const char *item, double min, double max, double step) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	indigo_item *cached = sa_cache_item(sa_device, property, item);
+	bool result = cached != NULL && cached->number.min == min && cached->number.max == max && cached->number.step == step;
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+static bool ccd_label_is(const char *property, const char *item, const char *label) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	indigo_item *cached = sa_cache_item(sa_device, property, item);
+	bool result = cached != NULL && !strcmp(cached->label, label);
+	pthread_mutex_unlock(&sa_cache_mutex);
+	return result;
+}
+
+// State of the simulated camera, e.g. ccd_simulated("NumX").
+static const char *ccd_simulated(const char *key) {
+	return sa_status(0, CCD_STATE, key);
+}
+
+static bool ccd_simulated_is(const char *key, const char *value) {
+	return !strcmp(ccd_simulated(key), value);
+}
+
+static bool ccd_simulated_frame_is(int bin_x, int bin_y, int start_x, int start_y, int num_x, int num_y) {
+	return atoi(ccd_simulated("BinX")) == bin_x && atoi(ccd_simulated("BinY")) == bin_y && atoi(ccd_simulated("StartX")) == start_x && atoi(ccd_simulated("StartY")) == start_y && atoi(ccd_simulated("NumX")) == num_x && atoi(ccd_simulated("NumY")) == num_y;
+}
+
+// Number of recorded requests of a member of the camera.
+static int ccd_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), CCD_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The parameters of the last request of a member start with the given text (the transaction IDs follow).
+static bool ccd_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), CCD_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL && !strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters));
+}
+
+// A field of the record of the last request of a member, e.g. ccd_last_field("GET", "imagearray", "Accept"); "" if there is none.
+static const char *ccd_last_field(const char *method, const char *member, const char *field) {
+	char path[128];
+	snprintf(path, sizeof(path), CCD_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL ? sa_field(line, field) : "";
+}
+
+// Number of requests that ask the camera how far the exposure is.
+static int ccd_progress_reads(void) {
+	return ccd_count("GET", "devicestate") + ccd_count("GET", "imageready");
+}
+
+// Make the camera answer "not implemented" to a member from now on.
+static bool ccd_remove_member(const char *member) {
+	char form[128];
+	snprintf(form, sizeof(form), "Member=%s&ErrorNumber=1024", member);
+	return sa_put(0, CCD_ERROR, form);
+}
+
+// Request an exposure and wait until the camera was told to start it and CCD_EXPOSURE is BUSY. Device time does not move.
+static bool ccd_start(double duration) {
+	int starts = ccd_count("PUT", "startexposure");
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	if (indigo_change_number_property_1(&sa_client, sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, duration) != INDIGO_OK) {
+		return false;
+	}
+	return SA_WAIT(ccd_count("PUT", "startexposure") == starts + 1, SA_TIMEOUT) && sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_BUSY_STATE, revision);
+}
+
+// Let the device time of the running exposure pass and wait for the end of the exposure in the given state.
+static bool ccd_finish(double duration, indigo_property_state state, unsigned revision) {
+	return sa_advance(0, duration) && SA_WAIT(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, state, revision) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == (int)state, 2 * SA_TIMEOUT);
+}
+
+// A whole exposure that has to deliver exactly one image.
+static bool ccd_take(double duration) {
+	unsigned images = ccd_images();
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	if (!ccd_start(duration) || !ccd_finish(duration, INDIGO_OK_STATE, revision)) {
+		fprintf(stderr, "    exposure of %g s ended with CCD_EXPOSURE in state %d\n", duration, sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME));
+		return false;
+	}
+	return ccd_images() == images + 1 && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0;
+}
+
+// Print the messages the harness keeps, for the diagnosis of a failed check.
+static void ccd_print_messages(void) {
+	pthread_mutex_lock(&sa_cache_mutex);
+	for (int i = 0; i < SA_MAX_MESSAGES; i++) {
+		if (*sa_messages[i]) {
+			fprintf(stderr, "    message: %s\n", sa_messages[i]);
+		}
+	}
+	pthread_mutex_unlock(&sa_cache_mutex);
+}
+
+// A whole exposure that has to fail without an image: CCD_EXPOSURE and CCD_IMAGE end in ALERT, the message contains the text.
+static bool ccd_take_failing(double duration, const char *text) {
+	unsigned images = ccd_images();
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	if (!ccd_start(duration) || !ccd_finish(duration, INDIGO_ALERT_STATE, revision)) {
+		fprintf(stderr, "    exposure of %g s ended with CCD_EXPOSURE in state %d\n", duration, sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME));
+		return false;
+	}
+	if (!sa_message_seen(text)) {
+		fprintf(stderr, "    no message with '%s'\n", text);
+		ccd_print_messages();
+		return false;
+	}
+	return ccd_images() == images && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0;
+}
+
+// Value the test pattern of the simulator has at pixel x, y of the image, restated from REFACTOR.md 6.1.
+static unsigned ccd_expected(const ccd_pattern *pattern, int x, int y, int plane) {
+	unsigned sensor_x = (unsigned)((pattern->start_x + x) * pattern->bin_x);
+	unsigned sensor_y = (unsigned)((pattern->start_y + y) * pattern->bin_y);
+	unsigned colour = pattern->sensor_type == 1 ? (unsigned)plane : pattern->sensor_type > 1 ? ((sensor_x + (unsigned)pattern->bayer_x) % 2) + ((sensor_y + (unsigned)pattern->bayer_y) % 2) : 0;
+	unsigned value = (3 * sensor_x + 7 * sensor_y + 31 * colour) % (pattern->max_adu + 1);
+	return (pattern->dark ? value % 16 : value) >> pattern->shift;
+}
+
+// The last published image is a raw image of width x height pixels with the given number of channels and bytes per channel, stored
+// top-down row by row with the channels interleaved, every pixel has the value of the test pattern, and the image is followed by
+// the given BAYERPAT (NULL for none) and nothing else.
+static bool ccd_image_is(int width, int height, int channels, int bytes, const ccd_pattern *pattern, const char *bayer) {
+	static const uint32_t signatures[2][2] = { { INDIGO_RAW_MONO8, INDIGO_RAW_MONO16 }, { INDIGO_RAW_RGB24, INDIGO_RAW_RGB48 } };
+	char appendix[64] = { 0 };
+	bool result = false;
+	if (bayer != NULL) {
+		snprintf(appendix, sizeof(appendix), "SIMPLE=T;BAYERPAT='%s';", bayer);
+	}
+	size_t pixels = (size_t)width * (size_t)height * (size_t)channels * (size_t)bytes;
+	pthread_mutex_lock(&ccd_mutex);
+	indigo_raw_header header = { 0 };
+	if (ccd_image == NULL || ccd_image_size < sizeof(header)) {
+		fprintf(stderr, "    no image\n");
+	} else {
+		memcpy(&header, ccd_image, sizeof(header));
+		const unsigned char *pixel = ccd_image + sizeof(header);
+		if (header.signature != signatures[channels == 3][bytes == 2] || (int)header.width != width || (int)header.height != height) {
+			fprintf(stderr, "    image %08x %u x %u instead of %08x %d x %d\n", header.signature, header.width, header.height, signatures[channels == 3][bytes == 2], width, height);
+		} else if (ccd_image_size != sizeof(header) + pixels + strlen(appendix)) {
+			fprintf(stderr, "    image of %lu bytes instead of %lu\n", (unsigned long)ccd_image_size, (unsigned long)(sizeof(header) + pixels + strlen(appendix)));
+		} else if (strcmp((const char *)pixel + pixels, appendix)) {
+			fprintf(stderr, "    image followed by '%s' instead of '%s'\n", (const char *)pixel + pixels, appendix);
+		} else {
+			result = true;
+			for (int y = 0; y < height && result; y++) {
+				for (int x = 0; x < width && result; x++) {
+					for (int channel = 0; channel < channels && result; channel++, pixel += bytes) {
+						unsigned value = bytes == 2 ? (unsigned)(pixel[0] | pixel[1] << 8) : pixel[0];
+						if (value != ccd_expected(pattern, x, y, channel)) {
+							fprintf(stderr, "    pixel %d, %d channel %d is %u instead of %u\n", x, y, channel, value, ccd_expected(pattern, x, y, channel));
+							result = false;
+						}
+					}
+				}
+			}
+		}
+	}
+	pthread_mutex_unlock(&ccd_mutex);
+	return result;
+}
+
+static const char *ccd_default[] = { "--device", "camera", NULL };
+
+// ---------------------------------------------------------------------------- properties
+
+// A sensor that is not square in any respect, so that no two values of CCD_INFO can be mixed up.
+static const char *ccd_odd_sensor[] = { "--device", "camera:CameraXSize=120,CameraYSize=90,MaxBinX=4,MaxBinY=3,PixelSizeX=3.76,PixelSizeY=4.5,MaxADU=4095", NULL };
+
+static void ccd_properties(void) {
+	char guider[INDIGO_NAME_SIZE];
+	SA_CHECK(ccd_begin_attached(ccd_odd_sensor));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_CCD) == INDIGO_INTERFACE_CCD);
+	// nothing of the class is defined and the camera was asked nothing but its interface version before the device is connected
+	SA_CHECK(!sa_defined(sa_device, CCD_INFO_PROPERTY_NAME) && !sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME) && !sa_defined(sa_device, CCD_SENSOR) && !sa_defined(sa_device, CCD_GAIN_LIST) && !sa_defined(sa_device, CCD_OFFSET_LIST));
+	SA_CHECK(ccd_count("GET", "cameraxsize") == 0 && ccd_count("GET", "can*") == 0 && ccd_count("PUT", "*") == 0 && !sa_device_defined(guider));
+	SA_CHECK(ccd_connect());
+	// CCD_INFO
+	SA_CHECK(sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_WIDTH_ITEM_NAME) == 120 && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_HEIGHT_ITEM_NAME) == 90);
+	SA_CHECK(sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME) == 4 && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME) == 3);
+	SA_CHECK(sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_PIXEL_WIDTH_ITEM_NAME) == 3.76 && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME) == 4.5);
+	SA_CHECK(fabs(sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_PIXEL_SIZE_ITEM_NAME) - 4.13) < 1e-9 && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME) == 12);
+	// the frame and the binning the camera is set to, the limits of the sensor
+	SA_CHECK(ccd_frame_is(0, 0, 120, 90) && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 16 && sa_state(sa_device, CCD_FRAME_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(ccd_range_is(CCD_FRAME_PROPERTY_NAME, CCD_FRAME_WIDTH_ITEM_NAME, 0, 120, 1) && ccd_range_is(CCD_FRAME_PROPERTY_NAME, CCD_FRAME_HEIGHT_ITEM_NAME, 0, 90, 1));
+	SA_CHECK(ccd_bin_is(1, 1) && sa_perm(sa_device, CCD_BIN_PROPERTY_NAME) == INDIGO_RW_PERM && ccd_range_is(CCD_BIN_PROPERTY_NAME, CCD_BIN_HORIZONTAL_ITEM_NAME, 1, 4, 1) && ccd_range_is(CCD_BIN_PROPERTY_NAME, CCD_BIN_VERTICAL_ITEM_NAME, 1, 3, 1));
+	// the readout modes of the camera are CCD_MODE; a camera with readout modes has no FastReadout
+	SA_CHECK(sa_item_count(sa_device, CCD_MODE_PROPERTY_NAME) == 2 && ccd_label_is(CCD_MODE_PROPERTY_NAME, "MODE_0", "High quality") && ccd_label_is(CCD_MODE_PROPERTY_NAME, "MODE_1", "Fast"));
+	SA_CHECK(sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_0") && !sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_1") && !sa_defined(sa_device, CCD_READ_MODE_PROPERTY_NAME));
+	// exposure limits and resolution of the camera
+	SA_CHECK(ccd_range_is(CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.0001, 3600, 0.0001) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_item_count(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME) == 1 && !sa_switch(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME));
+	SA_CHECK(sa_defined(sa_device, CCD_IMAGE_PROPERTY_NAME) && sa_switch(sa_device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME) && sa_switch(sa_device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME));
+	SA_CHECK(sa_switch(sa_device, CCD_FRAME_TYPE_PROPERTY_NAME, CCD_FRAME_TYPE_LIGHT_ITEM_NAME) && !sa_defined(sa_device, CCD_STREAMING_PROPERTY_NAME));
+	// gain and offset are values between a minimum and a maximum
+	SA_CHECK(sa_number(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 100 && ccd_range_is(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 0, 300, 1) && sa_perm(sa_device, CCD_GAIN_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(sa_number(sa_device, CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME) == 10 && ccd_range_is(CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME, 0, 255, 1) && sa_perm(sa_device, CCD_OFFSET_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(!sa_defined(sa_device, CCD_GAIN_LIST) && !sa_defined(sa_device, CCD_OFFSET_LIST) && sa_number(sa_device, CCD_EGAIN_PROPERTY_NAME, CCD_EGAIN_ITEM_NAME) == 0.25);
+	// cooling: the cooler is off, the sensor has the temperature of the heat sink, the set point of the camera is the target
+	SA_CHECK(sa_switch(sa_device, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME) && sa_perm(sa_device, CCD_COOLER_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == 18.5 && sa_number_target(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == -10);
+	SA_CHECK(sa_perm(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_RW_PERM && sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_number(sa_device, CCD_COOLER_POWER_PROPERTY_NAME, CCD_COOLER_POWER_ITEM_NAME) == 0 && sa_perm(sa_device, CCD_COOLER_POWER_PROPERTY_NAME) == INDIGO_RO_PERM);
+	// the sensor
+	SA_CHECK(sa_item_count(sa_device, CCD_SENSOR) == 3 && sa_perm(sa_device, CCD_SENSOR) == INDIGO_RO_PERM && !strcmp(sa_text(sa_device, CCD_SENSOR, "NAME"), "SIM571"));
+	SA_CHECK(!strcmp(sa_text(sa_device, CCD_SENSOR, "TYPE"), "Monochrome") && !strcmp(sa_text(sa_device, CCD_SENSOR, "FULL_WELL_CAPACITY"), "51000"));
+	// the camera can pulse guide: its guider is there
+	SA_CHECK(SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT) && (core_interface(guider) & INDIGO_INTERFACE_GUIDER) != 0);
+	// what it took: every member once, nothing written but connect, and nothing asked that the camera does not need
+	static const char *members[] = { "cameraxsize", "cameraysize", "canabortexposure", "canasymmetricbin", "canfastreadout", "cangetcoolerpower", "canpulseguide", "cansetccdtemperature", "canstopexposure", "maxbinx", "maxbiny", "binx", "biny", "startx", "starty", "numx", "numy", "pixelsizex", "pixelsizey", "maxadu", "electronsperadu", "fullwellcapacity", "sensortype", "sensorname", "exposuremin", "exposuremax", "exposureresolution", "readoutmodes", "readoutmode", "gainmin", "gainmax", "gain", "offsetmin", "offsetmax", "offset", "ccdtemperature", "cooleron", "setccdtemperature", "coolerpower" };
+	for (size_t i = 0; i < sizeof(members) / sizeof(members[0]); i++) {
+		if (ccd_count("GET", members[i]) != 1) {
+			fprintf(stderr, "    %s was read %d times\n", members[i], ccd_count("GET", members[i]));
+			SA_CHECK(false);
+		}
+	}
+	SA_CHECK(ccd_count("GET", "bayeroffset*") == 0 && ccd_count("GET", "gains") == 0 && ccd_count("GET", "offsets") == 0 && ccd_count("GET", "fastreadout") == 0 && ccd_count("GET", "imagearray*") == 0);
+	SA_CHECK(ccd_count("PUT", "*") == 1 && ccd_count("PUT", "connect") == 1);
+	// a disconnect removes the properties and the guider, the next connection builds them again
+	SA_CHECK(sa_disconnect(sa_device) && SA_WAIT(!sa_device_defined(guider), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, CCD_INFO_PROPERTY_NAME) && !sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME) && !sa_defined(sa_device, CCD_SENSOR) && !sa_defined(sa_device, CCD_GAIN_PROPERTY_NAME) && !sa_defined(sa_device, CCD_TEMPERATURE_PROPERTY_NAME));
+	SA_CHECK(ccd_connect() && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_WIDTH_ITEM_NAME) == 120 && sa_item_count(sa_device, CCD_SENSOR) == 3 && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
+	SA_CHECK(ccd_count("GET", "cameraxsize") == 2 && ccd_count("GET", "canpulseguide") == 2 && ccd_count("GET", "gainmin") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- exposure
+
+static void ccd_exposure(void) {
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	char poll_connection[32];
+	SA_CHECK(ccd_begin(ccd_default));
+	SA_CHECK(sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_OK_STATE && ccd_images() == 0);
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	int reads = ccd_progress_reads();
+	SA_CHECK(ccd_start(7.5));
+	// the camera has the frame it was read with at connect, so nothing but the exposure is sent: seconds and the kind of the frame
+	SA_CHECK(ccd_count("PUT", "startexposure") == 1 && ccd_last("PUT", "startexposure", "Duration=7.5&Light=True&ClientID=") && ccd_count("PUT", "binx") + ccd_count("PUT", "biny") + ccd_count("PUT", "startx") + ccd_count("PUT", "starty") + ccd_count("PUT", "numx") + ccd_count("PUT", "numy") == 0);
+	SA_CHECK(ccd_simulated_is("CameraState", "2") && ccd_simulated_is("ImageReady", "false"));
+	// in progress: the camera is asked again and again, CCD_EXPOSURE and CCD_IMAGE stay BUSY, the image is not asked for
+	SA_CHECK(SA_WAIT(ccd_progress_reads() >= reads + 5, SA_TIMEOUT) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 7.4) && SA_WAIT(ccd_progress_reads() >= reads + 10, SA_TIMEOUT) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && ccd_count("GET", "imagearray") == 0 && ccd_images() == 0);
+	// a second exposure is not accepted meanwhile
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 3) == INDIGO_OK);
+	// device time reaches the end: ImageReady, the image is fetched once as ImageBytes on a connection of its own and published
+	snprintf(poll_connection, sizeof(poll_connection), "%s", ccd_last_field("GET", "devicestate", "Connection"));
+	SA_CHECK(ccd_finish(0.1, INDIGO_OK_STATE, revision) && ccd_images() == 1 && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(ccd_count("GET", "imagearray") == 1 && !strcmp(ccd_last_field("GET", "imagearray", "Accept"), "application/imagebytes, application/json") && ccd_count("PUT", "startexposure") == 1);
+	SA_CHECK(*poll_connection && strcmp(ccd_last_field("GET", "imagearray", "Connection"), poll_connection) && !strcmp(ccd_last_field("GET", "devicestate", "Connection"), poll_connection));
+	SA_CHECK(ccd_image_is(320, 240, 1, 2, &pattern, NULL) && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0 && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 16);
+	// a Platform 7 camera is watched with devicestate alone
+	SA_CHECK(ccd_count("GET", "imageready") == 0 && ccd_count("GET", "camerastate") == 0);
+	// once the exposure is over the camera is not asked about it any more
+	int puts = ccd_count("PUT", "*");
+	indigo_usleep(300000);
+	SA_CHECK(ccd_count("GET", "imagearray") == 1 && ccd_count("PUT", "*") == puts && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// the next exposure: one more image, again nothing but startexposure
+	SA_CHECK(ccd_take(0.25) && ccd_images() == 2 && ccd_last("PUT", "startexposure", "Duration=0.25&Light=True&ClientID=") && ccd_count("GET", "imagearray") == 2 && ccd_count("PUT", "*") == puts + 1);
+	SA_CHECK(ccd_image_is(320, 240, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_legacy_exposure(void) {
+	static const char *arguments[] = { "--device", "camera:interface=legacy,CameraXSize=48,CameraYSize=36,ReadoutTime=2", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	char guider[INDIGO_NAME_SIZE];
+	SA_CHECK(ccd_begin(arguments));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	// ICameraV3: Connected instead of connect, no devicestate; the properties are the same
+	SA_CHECK(ccd_count("PUT", "connected") == 1 && ccd_count("PUT", "connect") == 0 && !strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME), "3"));
+	SA_CHECK(sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_WIDTH_ITEM_NAME) == 48 && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_HEIGHT_ITEM_NAME) == 36 && sa_item_count(sa_device, CCD_MODE_PROPERTY_NAME) == 2);
+	SA_CHECK(sa_defined(sa_device, CCD_GAIN_PROPERTY_NAME) && sa_defined(sa_device, CCD_COOLER_PROPERTY_NAME) && sa_defined(sa_device, CCD_SENSOR) && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
+	// the temperature is polled member by member
+	SA_CHECK(SA_WAIT(ccd_count("GET", "ccdtemperature") >= 4 && ccd_count("GET", "coolerpower") >= 4 && ccd_count("GET", "cooleron") >= 4, SA_TIMEOUT) && ccd_count("GET", "devicestate") == 0);
+	// the exposure is watched with CameraState and ImageReady
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(3) && ccd_last("PUT", "startexposure", "Duration=3&Light=True&ClientID="));
+	SA_CHECK(SA_WAIT(ccd_count("GET", "camerastate") >= 5 && ccd_count("GET", "imageready") >= 5, SA_TIMEOUT) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && ccd_count("GET", "imagearray") == 0);
+	// the exposure time is over and the camera reads the sensor out: the exposure is not complete before the camera says that the image is ready
+	int reads = ccd_count("GET", "imageready");
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(ccd_count("GET", "imageready") >= reads + 5, SA_TIMEOUT) && ccd_simulated_is("CameraState", "3") && ccd_simulated_is("ImageReady", "false"));
+	SA_CHECK(sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && ccd_count("GET", "imagearray") == 0 && ccd_images() == 0);
+	SA_CHECK(ccd_finish(2, INDIGO_OK_STATE, revision) && ccd_images() == 1 && ccd_count("GET", "imagearray") == 1 && ccd_image_is(48, 36, 1, 2, &pattern, NULL));
+	SA_CHECK(ccd_count("GET", "devicestate") == 0 && sa_disconnect(sa_device) && ccd_last("PUT", "connected", "Connected=False&ClientID="));
+cleanup:
+	ccd_end();
+}
+
+// The device handler queue of the camera is held by a handler of the case until ccd_gate_open().
+static bool ccd_gate_closed = false;
+static bool ccd_gate_entered = false;
+
+static void ccd_gate_handler(indigo_device *device) {
+	double deadline = indigo_monotonic_time() + 3 * SA_TIMEOUT;
+	bool closed = true;
+	(void)device;
+	while (closed && indigo_monotonic_time() < deadline) {
+		pthread_mutex_lock(&ccd_mutex);
+		ccd_gate_entered = true;
+		closed = ccd_gate_closed;
+		pthread_mutex_unlock(&ccd_mutex);
+		indigo_usleep(2000);
+	}
+}
+
+static bool ccd_gate_is_entered(void) {
+	pthread_mutex_lock(&ccd_mutex);
+	bool result = ccd_gate_entered;
+	pthread_mutex_unlock(&ccd_mutex);
+	return result;
+}
+
+static bool ccd_gate_close(void) {
+	indigo_device *device = sa_device_pointer(sa_device);
+	if (device == NULL) {
+		return false;
+	}
+	pthread_mutex_lock(&ccd_mutex);
+	ccd_gate_closed = true;
+	ccd_gate_entered = false;
+	pthread_mutex_unlock(&ccd_mutex);
+	indigo_execute_handler(device, ccd_gate_handler);
+	return SA_WAIT(ccd_gate_is_entered(), SA_TIMEOUT);
+}
+
+static void ccd_gate_open(void) {
+	pthread_mutex_lock(&ccd_mutex);
+	ccd_gate_closed = false;
+	pthread_mutex_unlock(&ccd_mutex);
+}
+
+// Request an abort and wait for its answer.
+static int ccd_abort(void) {
+	return ccd_set_switch(CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
+}
+
+static void ccd_exposure_countdown(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=32,CameraYSize=24", NULL };
+	SA_CHECK(ccd_begin(arguments));
+	// a fractional duration above a second: the camera gets the exact duration, the property counts whole seconds down from the next one
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	ccd_clear_samples();
+	SA_CHECK(ccd_start(2.5) && ccd_last("PUT", "startexposure", "Duration=2.5&Light=True&ClientID=") && SA_WAIT(ccd_counted(0), SA_TIMEOUT));
+	SA_CHECK(ccd_countdown_is(2.5, 3) && ccd_counted(2) && ccd_counted(1));
+	// the countdown is not the end of the exposure: the camera did not say that the image is ready
+	SA_CHECK(sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && ccd_count("GET", "imagearray") == 0 && ccd_simulated_is("CameraState", "2"));
+	SA_CHECK(ccd_finish(2.5, INDIGO_OK_STATE, revision) && ccd_images() == 1);
+	// a subsecond exposure has no countdown: the property keeps the duration until the image is there
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	ccd_clear_samples();
+	int reads = ccd_progress_reads();
+	SA_CHECK(ccd_start(0.4) && ccd_last("PUT", "startexposure", "Duration=0.4&Light=True&ClientID=") && SA_WAIT(ccd_progress_reads() >= reads + 12, SA_TIMEOUT));
+	SA_CHECK(!ccd_counted(0) && !ccd_counted(1) && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0.4 && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(ccd_finish(0.4, INDIGO_OK_STATE, revision) && ccd_images() == 2 && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0);
+	// abort in the middle of a countdown, then a shorter exposure at once: its countdown starts from its own duration
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	ccd_clear_samples();
+	SA_CHECK(ccd_start(5) && SA_WAIT(ccd_counted(4), SA_TIMEOUT) && ccd_abort() == INDIGO_OK_STATE && sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SA_CHECK(sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0 && ccd_count("PUT", "abortexposure") == 1);
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	ccd_clear_samples();
+	SA_CHECK(ccd_start(1.5) && ccd_last("PUT", "startexposure", "Duration=1.5&Light=True&ClientID=") && SA_WAIT(ccd_counted(0), SA_TIMEOUT));
+	SA_CHECK(ccd_countdown_is(1.5, 2) && ccd_counted(1) && !ccd_counted(4) && !ccd_counted(3) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(ccd_finish(1.5, INDIGO_OK_STATE, revision) && ccd_images() == 3);
+	// the countdown does not depend on the handler queue of the device: it goes on while the queue is occupied
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	ccd_clear_samples();
+	SA_CHECK(ccd_start(2.2) && ccd_gate_close());
+	reads = ccd_progress_reads();
+	SA_CHECK(SA_WAIT(ccd_counted(0), SA_TIMEOUT) && ccd_countdown_is(2.2, 3) && ccd_counted(1) && ccd_progress_reads() <= reads + 1);
+	ccd_gate_open();
+	SA_CHECK(ccd_finish(2.2, INDIGO_OK_STATE, revision) && ccd_images() == 4);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_gate_open();
+	ccd_end();
+}
+
+static void ccd_frame_types(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=40,CameraYSize=30,MaxADU=4095,ExposureMin=0.002", NULL };
+	ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 4095 };
+	SA_CHECK(ccd_begin(arguments));
+	// a dark frame: Light=False, and the camera delivers a dark frame
+	pattern.dark = true;
+	SA_CHECK(ccd_set_switch(CCD_FRAME_TYPE_PROPERTY_NAME, CCD_FRAME_TYPE_DARK_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_take(2) && ccd_last("PUT", "startexposure", "Duration=2&Light=False&ClientID="));
+	SA_CHECK(ccd_image_is(40, 30, 1, 2, &pattern, NULL));
+	// a bias frame is a dark frame of the shortest exposure the camera has, whatever was asked for
+	SA_CHECK(ccd_set_switch(CCD_FRAME_TYPE_PROPERTY_NAME, CCD_FRAME_TYPE_BIAS_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_take(5) && ccd_last("PUT", "startexposure", "Duration=0.002&Light=False&ClientID="));
+	SA_CHECK(ccd_image_is(40, 30, 1, 2, &pattern, NULL) && fabs(atof(ccd_simulated("LastExposureDuration")) - 0.002) < 1e-9);
+	SA_CHECK(ccd_set_switch(CCD_FRAME_TYPE_PROPERTY_NAME, CCD_FRAME_TYPE_DARKFLAT_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_take(1.25) && ccd_last("PUT", "startexposure", "Duration=1.25&Light=False&ClientID="));
+	SA_CHECK(ccd_image_is(40, 30, 1, 2, &pattern, NULL));
+	// flat and light frames are exposed to light
+	pattern.dark = false;
+	SA_CHECK(ccd_set_switch(CCD_FRAME_TYPE_PROPERTY_NAME, CCD_FRAME_TYPE_FLAT_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_take(0.5) && ccd_last("PUT", "startexposure", "Duration=0.5&Light=True&ClientID="));
+	SA_CHECK(ccd_image_is(40, 30, 1, 2, &pattern, NULL));
+	SA_CHECK(ccd_set_switch(CCD_FRAME_TYPE_PROPERTY_NAME, CCD_FRAME_TYPE_LIGHT_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_take(0.002) && ccd_last("PUT", "startexposure", "Duration=0.002&Light=True&ClientID="));
+	SA_CHECK(ccd_image_is(40, 30, 1, 2, &pattern, NULL) && ccd_images() == 5 && ccd_count("PUT", "startexposure") == 5);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- geometry
+
+// The members of the PUT requests after the request with the given sequence number, in the order they were sent, e.g. "binx startexposure" (the buffer is static).
+static const char *ccd_puts(int since) {
+	static char members[256];
+	char query[64];
+	size_t used = 0;
+	members[0] = 0;
+	snprintf(query, sizeof(query), "Method=PUT&Since=%d", since);
+	const char *line = sa_get(0, "/simulator/v1/requests", query);
+	while (line != NULL && *line) {
+		const char *member = strrchr(sa_field(line, "Path"), '/');
+		if (member != NULL) {
+			used += (size_t)snprintf(members + used, sizeof(members) - used, "%s%s", used > 0 ? " " : "", member + 1);
+		}
+		line += strcspn(line, "\n");
+		line += *line == '\n';
+	}
+	return members;
+}
+
+// Sequence number of the last recorded request.
+static int ccd_sequence(void) {
+	const char *line = sa_last_request(0, NULL, "*");
+	return line != NULL ? atoi(sa_field(line, "Sequence")) : 0;
+}
+
+static void ccd_geometry(void) {
+	ccd_pattern pattern = { .start_x = 7, .start_y = 4, .bin_x = 2, .bin_y = 3, .max_adu = 4095 };
+	SA_CHECK(ccd_begin(ccd_odd_sensor));
+	// binning and frame are not sent when they are set: the binning keeps the frame on the binned pixels
+	SA_CHECK(ccd_set_bin(2, 3) == INDIGO_OK_STATE && ccd_bin_is(2, 3) && ccd_frame_is(0, 0, 120, 90));
+	// CCD_FRAME is in unbinned pixels
+	SA_CHECK(ccd_set_frame(14, 12, 82, 57) == INDIGO_OK_STATE && ccd_frame_is(14, 12, 82, 57) && ccd_count("PUT", "*") == 1 && ccd_simulated_frame_is(1, 1, 0, 0, 120, 90));
+	// the exposure sends them: the binning first, then the frame in binned pixels
+	int since = ccd_sequence();
+	SA_CHECK(ccd_take(1) && !strcmp(ccd_puts(since), "binx biny startx starty numx numy startexposure"));
+	SA_CHECK(ccd_last("PUT", "binx", "BinX=2&ClientID=") && ccd_last("PUT", "biny", "BinY=3&ClientID=") && ccd_last("PUT", "startx", "StartX=7&ClientID=") && ccd_last("PUT", "starty", "StartY=4&ClientID="));
+	SA_CHECK(ccd_last("PUT", "numx", "NumX=41&ClientID=") && ccd_last("PUT", "numy", "NumY=19&ClientID=") && ccd_simulated_frame_is(2, 3, 7, 4, 41, 19));
+	// the image is the frame: 41 x 19 binned pixels from the binned pixel 7, 4 on
+	SA_CHECK(ccd_image_is(41, 19, 1, 2, &pattern, NULL));
+	// a frame that does not lie on binned pixels is moved onto them; it is the frame the camera has already, so nothing is sent
+	SA_CHECK(ccd_set_frame(15, 13, 83, 59) == INDIGO_OK_STATE && ccd_frame_is(14, 12, 82, 57));
+	since = ccd_sequence();
+	SA_CHECK(ccd_take(1) && !strcmp(ccd_puts(since), "startexposure") && ccd_image_is(41, 19, 1, 2, &pattern, NULL));
+	// the depth of the image is the one of the camera, it can not be chosen
+	SA_CHECK(ccd_set_number(CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME, 8) == INDIGO_OK_STATE && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 16 && ccd_frame_is(14, 12, 82, 57));
+	// only what changed is sent
+	SA_CHECK(ccd_set_frame(14, 24, 82, 57) == INDIGO_OK_STATE && ccd_frame_is(14, 24, 82, 57));
+	since = ccd_sequence();
+	pattern.start_y = 8;
+	SA_CHECK(ccd_take(1) && !strcmp(ccd_puts(since), "starty startexposure") && ccd_last("PUT", "starty", "StartY=8&ClientID=") && ccd_image_is(41, 19, 1, 2, &pattern, NULL));
+	// a frame that does not fit the sensor is cut to it and reported
+	SA_CHECK(ccd_set_frame(100, 60, 80, 60) == INDIGO_ALERT_STATE && ccd_frame_is(100, 60, 20, 30) && sa_message_seen("The frame does not fit the sensor"));
+	// another binning: the frame stays where it is on the sensor, and the camera gets binning and frame again
+	SA_CHECK(ccd_set_bin(1, 1) == INDIGO_OK_STATE && ccd_bin_is(1, 1) && ccd_frame_is(100, 60, 20, 30) && sa_state(sa_device, CCD_FRAME_PROPERTY_NAME) == INDIGO_OK_STATE);
+	since = ccd_sequence();
+	pattern = (ccd_pattern){ .start_x = 100, .start_y = 60, .bin_x = 1, .bin_y = 1, .max_adu = 4095 };
+	SA_CHECK(ccd_take(1) && !strcmp(ccd_puts(since), "binx biny startx starty numx numy startexposure") && ccd_simulated_frame_is(1, 1, 100, 60, 20, 30) && ccd_image_is(20, 30, 1, 2, &pattern, NULL));
+	// frame and binning can not be changed during an exposure
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(4) && ccd_set_frame(0, 0, 120, 90) == INDIGO_ALERT_STATE && ccd_frame_is(100, 60, 20, 30) && ccd_set_bin(2, 2) == INDIGO_ALERT_STATE && ccd_bin_is(1, 1) && sa_message_seen("Exposure in progress"));
+	pattern.start_x = 100;
+	SA_CHECK(ccd_finish(4, INDIGO_OK_STATE, revision) && ccd_image_is(20, 30, 1, 2, &pattern, NULL) && ccd_simulated_frame_is(1, 1, 100, 60, 20, 30));
+	SA_CHECK(sa_disconnect(sa_device));
+	// the next connection starts with what the camera is set to
+	SA_CHECK(sa_device_state(0, "camera", 0, "BinX=3&BinY=2&StartX=5&StartY=6&NumX=30&NumY=20") && ccd_connect() && ccd_bin_is(3, 2) && ccd_frame_is(15, 12, 90, 40));
+	since = ccd_sequence();
+	pattern = (ccd_pattern){ .start_x = 5, .start_y = 6, .bin_x = 3, .bin_y = 2, .max_adu = 4095 };
+	SA_CHECK(ccd_take(1) && !strcmp(ccd_puts(since), "startexposure") && ccd_image_is(30, 20, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_symmetric_binning(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=120,CameraYSize=90,MaxBinX=4,MaxBinY=3,CanAsymmetricBin=false,ReadoutModeCount=1", NULL };
+	ccd_pattern pattern = { .bin_x = 3, .bin_y = 3, .max_adu = 65535 };
+	SA_CHECK(ccd_begin(arguments));
+	// the camera bins both axes alike: the smaller maximum is the limit of both
+	SA_CHECK(sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME) == 3 && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME) == 3);
+	SA_CHECK(ccd_range_is(CCD_BIN_PROPERTY_NAME, CCD_BIN_HORIZONTAL_ITEM_NAME, 1, 3, 1) && ccd_range_is(CCD_BIN_PROPERTY_NAME, CCD_BIN_VERTICAL_ITEM_NAME, 1, 3, 1));
+	// a camera with a single readout mode: CCD_MODE lists the binnings and follows CCD_BIN
+	SA_CHECK(sa_item_count(sa_device, CCD_MODE_PROPERTY_NAME) == 3 && ccd_label_is(CCD_MODE_PROPERTY_NAME, "BIN_1x1", "RAW 120x90") && ccd_label_is(CCD_MODE_PROPERTY_NAME, "BIN_2x2", "RAW 60x45") && ccd_label_is(CCD_MODE_PROPERTY_NAME, "BIN_3x3", "RAW 40x30"));
+	SA_CHECK(sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_1x1") && ccd_count("GET", "readoutmodes") == 1 && ccd_count("GET", "readoutmode") == 0);
+	// the item that was changed decides
+	SA_CHECK(ccd_set_bin(2, 1) == INDIGO_OK_STATE && ccd_bin_is(2, 2) && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_2x2") && !sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_1x1"));
+	SA_CHECK(ccd_set_bin(2, 3) == INDIGO_OK_STATE && ccd_bin_is(3, 3) && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_3x3") && ccd_frame_is(0, 0, 120, 90));
+	SA_CHECK(ccd_set_frame(9, 6, 99, 60) == INDIGO_OK_STATE && ccd_frame_is(9, 6, 99, 60));
+	pattern.start_x = 3;
+	pattern.start_y = 2;
+	SA_CHECK(ccd_take(1) && ccd_last("PUT", "binx", "BinX=3&ClientID=") && ccd_simulated_frame_is(3, 3, 3, 2, 33, 20) && ccd_image_is(33, 20, 1, 2, &pattern, NULL));
+	// a mode selects its binning and the whole sensor
+	SA_CHECK(ccd_set_switch(CCD_MODE_PROPERTY_NAME, "BIN_2x2", true) == INDIGO_OK_STATE && ccd_bin_is(2, 2) && ccd_frame_is(0, 0, 120, 90) && ccd_count("PUT", "readoutmode") == 0);
+	pattern = (ccd_pattern){ .bin_x = 2, .bin_y = 2, .max_adu = 65535 };
+	SA_CHECK(ccd_take(1) && ccd_simulated_frame_is(2, 2, 0, 0, 60, 45) && ccd_image_is(60, 45, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- capability variants
+
+// Make the server answer HTTP 400 to a member from now on, the way a server does that does not know the member at all.
+static bool ccd_reject_member(const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), "*/camera/0/%s", member);
+	return sa_fault(0, NULL, path, "http-status", "Value=400&Count=-1");
+}
+
+// The requests of the given members so far, as one number.
+static int ccd_count_all(const char * const *members, int count) {
+	int result = 0;
+	for (int i = 0; i < count; i++) {
+		result += ccd_count(NULL, members[i]);
+	}
+	return result;
+}
+
+static void ccd_capability_variants(void) {
+	static const char *bare[] = { "--device", "camera:CameraXSize=64,CameraYSize=48,CanAbortExposure=false,CanStopExposure=false,CanPulseGuide=false,CanSetCCDTemperature=false,CanGetCoolerPower=false,CanAsymmetricBin=false,MaxBinX=1,MaxBinY=1,GainMode=0,OffsetMode=0,ReadoutModeCount=1", NULL };
+	static const char *lists[] = { "--device", "camera:CameraXSize=64,CameraYSize=48,GainMode=1,Gain=2,OffsetMode=1,Offset=1,CanFastReadout=true,FastReadout=true,CanSetCCDTemperature=false,CanGetCoolerPower=false,CanPulseGuide=false", NULL };
+	static const char *missing[] = { "ccdtemperature", "cooleron", "electronsperadu", "fullwellcapacity", "sensortype", "sensorname", "exposuremin", "exposuremax" };
+	static const char *rejected[] = { "ccdtemperature", "cooleron", "gainmin", "gainmax", "gains", "offsetmin", "offsetmax", "offsets", "sensortype", "electronsperadu", "readoutmodes" };
+	static const char *optional[] = { "ccdtemperature", "cooleron", "coolerpower", "setccdtemperature", "gainmin", "gainmax", "gains", "gain", "offsetmin", "offsetmax", "offsets", "offset", "electronsperadu", "fullwellcapacity", "sensortype", "sensorname", "bayeroffsetx", "bayeroffsety", "exposuremin", "exposuremax", "exposureresolution", "readoutmodes", "readoutmode", "fastreadout", "pulseguide", "ispulseguiding" };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	char guider[INDIGO_NAME_SIZE];
+	// a camera that has nothing but the mandatory members: no property for what it does not have, and no guider
+	SA_CHECK(ccd_begin_attached(bare));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	for (size_t i = 0; i < sizeof(missing) / sizeof(missing[0]); i++) {
+		SA_CHECK(ccd_remove_member(missing[i]));
+	}
+	SA_CHECK(ccd_connect());
+	SA_CHECK(!sa_defined(sa_device, CCD_COOLER_PROPERTY_NAME) && !sa_defined(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) && !sa_defined(sa_device, CCD_COOLER_POWER_PROPERTY_NAME) && !sa_defined(sa_device, CCD_READ_MODE_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, CCD_GAIN_PROPERTY_NAME) && !sa_defined(sa_device, CCD_OFFSET_PROPERTY_NAME) && !sa_defined(sa_device, CCD_GAIN_LIST) && !sa_defined(sa_device, CCD_OFFSET_LIST) && !sa_defined(sa_device, CCD_EGAIN_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, CCD_SENSOR) && !sa_device_defined(guider) && sa_device_count(NULL) == 2);
+	// no binning, so CCD_BIN can not be written and CCD_MODE has the one mode
+	SA_CHECK(sa_perm(sa_device, CCD_BIN_PROPERTY_NAME) == INDIGO_RO_PERM && ccd_bin_is(1, 1) && sa_item_count(sa_device, CCD_MODE_PROPERTY_NAME) == 1 && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_1x1"));
+	// no exposure limits of the camera: the property keeps the limits of the INDIGO camera class
+	SA_CHECK(!ccd_range_is(CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.0001, 3600, 0.0001) && sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME) && sa_defined(sa_device, CCD_FRAME_PROPERTY_NAME));
+	// every optional member was asked for at most once, the ones behind a Can* flag or behind another member not at all
+	SA_CHECK(ccd_count("GET", "ccdtemperature") == 1 && ccd_count("GET", "cooleron") == 1 && ccd_count("GET", "gainmin") == 1 && ccd_count("GET", "gains") == 1 && ccd_count("GET", "offsetmax") == 1 && ccd_count("GET", "offsets") == 1);
+	SA_CHECK(ccd_count("GET", "exposuremin") == 1 && ccd_count("GET", "exposuremax") == 1 && ccd_count("GET", "sensortype") == 1 && ccd_count("GET", "readoutmodes") == 1);
+	SA_CHECK(ccd_count("GET", "gain") + ccd_count("GET", "offset") + ccd_count("GET", "setccdtemperature") + ccd_count("GET", "coolerpower") + ccd_count("GET", "exposureresolution") + ccd_count("GET", "readoutmode") + ccd_count("GET", "fastreadout") + ccd_count("GET", "bayeroffset*") == 0);
+	// and none of them is asked for again: not by the polling and not by an exposure
+	int asked = ccd_count_all(optional, (int)(sizeof(optional) / sizeof(optional[0])));
+	int polls = ccd_count("GET", "devicestate");
+	SA_CHECK(ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL) && SA_WAIT(ccd_count("GET", "devicestate") >= polls + 5, SA_TIMEOUT));
+	SA_CHECK(ccd_count_all(optional, (int)(sizeof(optional) / sizeof(optional[0]))) == asked && sa_is_connected(sa_device) && sa_disconnect(sa_device));
+	ccd_end();
+	// the same for a server that answers HTTP 400 for the members it does not know
+	SA_CHECK(ccd_begin_attached(ccd_default));
+	for (size_t i = 0; i < sizeof(rejected) / sizeof(rejected[0]); i++) {
+		SA_CHECK(ccd_reject_member(rejected[i]));
+	}
+	SA_CHECK(ccd_connect());
+	SA_CHECK(!sa_defined(sa_device, CCD_COOLER_PROPERTY_NAME) && !sa_defined(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) && !sa_defined(sa_device, CCD_EGAIN_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, CCD_GAIN_PROPERTY_NAME) && !sa_defined(sa_device, CCD_OFFSET_PROPERTY_NAME) && !sa_defined(sa_device, CCD_GAIN_LIST) && !sa_defined(sa_device, CCD_OFFSET_LIST));
+	// the sensor has a name and a full well capacity, but no known type
+	SA_CHECK(!strcmp(sa_text(sa_device, CCD_SENSOR, "NAME"), "SIM571") && !strcmp(sa_text(sa_device, CCD_SENSOR, "TYPE"), "") && !strcmp(sa_text(sa_device, CCD_SENSOR, "FULL_WELL_CAPACITY"), "51000"));
+	SA_CHECK(sa_item_count(sa_device, CCD_MODE_PROPERTY_NAME) == 4 && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_1x1") && ccd_label_is(CCD_MODE_PROPERTY_NAME, "BIN_4x4", "RAW 80x60"));
+	asked = ccd_count_all(rejected, (int)(sizeof(rejected) / sizeof(rejected[0])));
+	polls = ccd_count("GET", "devicestate");
+	SA_CHECK(asked == (int)(sizeof(rejected) / sizeof(rejected[0])) && ccd_count("GET", "gain") + ccd_count("GET", "offset") == 0);
+	SA_CHECK(SA_WAIT(ccd_count("GET", "devicestate") >= polls + 5, SA_TIMEOUT) && ccd_count_all(rejected, (int)(sizeof(rejected) / sizeof(rejected[0]))) == asked && sa_is_connected(sa_device) && sa_disconnect(sa_device));
+	ccd_end();
+	// gain and offset as the index of a name, FastReadout instead of readout modes, a set point that can not be set, no cooler power
+	SA_CHECK(ccd_begin(lists));
+	SA_CHECK(sa_item_count(sa_device, CCD_GAIN_LIST) == 4 && sa_perm(sa_device, CCD_GAIN_LIST) == INDIGO_RW_PERM && ccd_label_is(CCD_GAIN_LIST, "GAIN_0", "Low noise") && ccd_label_is(CCD_GAIN_LIST, "GAIN_3", "Extended"));
+	SA_CHECK(sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_2") && !sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_0") && !sa_defined(sa_device, CCD_GAIN_PROPERTY_NAME));
+	SA_CHECK(sa_item_count(sa_device, CCD_OFFSET_LIST) == 4 && ccd_label_is(CCD_OFFSET_LIST, "OFFSET_1", "Offset 50") && sa_switch(sa_device, CCD_OFFSET_LIST, "OFFSET_1") && !sa_defined(sa_device, CCD_OFFSET_PROPERTY_NAME));
+	SA_CHECK(ccd_count("GET", "gainmin") == 1 && ccd_count("GET", "gains") == 1 && ccd_count("GET", "gain") == 1 && ccd_count("GET", "offsets") == 1 && ccd_count("GET", "offset") == 1);
+	SA_CHECK(sa_item_count(sa_device, CCD_READ_MODE_PROPERTY_NAME) == 2 && sa_switch(sa_device, CCD_READ_MODE_PROPERTY_NAME, CCD_READ_MODE_HIGH_SPEED_ITEM_NAME) && ccd_count("GET", "fastreadout") == 1);
+	SA_CHECK(sa_item_count(sa_device, CCD_MODE_PROPERTY_NAME) == 4 && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_1x1") && ccd_count("GET", "readoutmodes") == 1 && ccd_count("GET", "readoutmode") == 0);
+	SA_CHECK(sa_perm(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_RO_PERM && sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == 18.5 && sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_defined(sa_device, CCD_COOLER_PROPERTY_NAME) && !sa_defined(sa_device, CCD_COOLER_POWER_PROPERTY_NAME) && !sa_device_defined(guider));
+	polls = ccd_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(ccd_count("GET", "devicestate") >= polls + 5, SA_TIMEOUT) && ccd_count("GET", "coolerpower") == 0 && ccd_count("GET", "setccdtemperature") == 0 && ccd_count("GET", "ispulseguiding") == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+	ccd_end();
+	// a Platform 7 camera that does not implement devicestate: it is polled and its exposure is watched member by member
+	SA_CHECK(ccd_begin_attached(ccd_default) && ccd_reject_member("devicestate") && ccd_connect() && ccd_count("PUT", "connect") == 1);
+	SA_CHECK(SA_WAIT(ccd_count("GET", "connected") >= 4 && ccd_count("GET", "ccdtemperature") >= 4, SA_TIMEOUT) && ccd_count("GET", "devicestate") == 1);
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(2) && SA_WAIT(ccd_count("GET", "camerastate") >= 4 && ccd_count("GET", "imageready") >= 4, SA_TIMEOUT) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(ccd_finish(2, INDIGO_OK_STATE, revision) && ccd_images() == 1 && ccd_count("GET", "devicestate") == 2 && sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// The connection of the camera failed: CONNECTION is in ALERT and disconnected, nothing of the class is defined, the Alpaca device is disconnected again.
+static bool ccd_connection_failed(const char *guider) {
+	if (!sa_request_connection(sa_device, true) || !SA_WAIT(core_alerted(sa_device), 2 * SA_TIMEOUT)) {
+		return false;
+	}
+	return !sa_defined(sa_device, CCD_INFO_PROPERTY_NAME) && !sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME) && !sa_defined(sa_device, CCD_SENSOR) && !sa_defined(sa_device, CCD_GAIN_LIST) && !sa_device_defined(guider) && ccd_simulated_is("Connected", "false") && sa_message_seen("Failed to connect to");
+}
+
+static void ccd_connect_failures(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48,GainMode=1,Gain=1", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	char guider[INDIGO_NAME_SIZE];
+	SA_CHECK(ccd_begin_attached(arguments));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	// the camera does not tell the size of its sensor: no connection, and nothing is left behind
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=cameraxsize&ErrorNumber=1279&ErrorMessage=Sensor%20fault&Count=1") && ccd_connection_failed(guider) && ccd_count("PUT", "disconnect") == 1);
+	// the server stops answering in the middle of the questions about the camera
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/maxadu", "stall-before", "Delay=3000") && ccd_connection_failed(guider) && ccd_count("GET", "electronsperadu") == 0);
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/gains", "reset", "Count=-1") && ccd_connection_failed(guider) && sa_clear_faults(0));
+	// a sensor without pixels
+	SA_CHECK(sa_device_state(0, "camera", 0, "CameraXSize=0") && ccd_connection_failed(guider) && sa_device_state(0, "camera", 0, "CameraXSize=64"));
+	// after all that the camera connects and works
+	SA_CHECK(ccd_connect() && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT) && sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_1") && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_WIDTH_ITEM_NAME) == 64);
+	SA_CHECK(ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL) && sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- image contract
+
+// A sensor so large that the test pattern exceeds 16 bits, and a small frame far from its origin: 22 x 21 binned pixels (2 x 1) from the binned pixel 10003, 9005 on.
+static const char *ccd_large_sensor[] = { "--device", "camera:CameraXSize=30000,CameraYSize=20000,MaxBinX=4,MaxBinY=4", NULL };
+
+static bool ccd_set_far_frame(void) {
+	return ccd_set_bin(2, 1) == INDIGO_OK_STATE && ccd_set_frame(20006, 9005, 44, 21) == INDIGO_OK_STATE && ccd_frame_is(20006, 9005, 44, 21);
+}
+
+// Set up the simulated camera while it is disconnected and connect it again.
+static bool ccd_reconnect(const char *state) {
+	return sa_disconnect(sa_device) && sa_device_state(0, "camera", 0, state) && ccd_connect();
+}
+
+typedef struct {
+	const char *state;
+	unsigned max_adu;
+	int bytes;
+	int shift;
+} ccd_wire;
+
+static void ccd_image_element_types(void) {
+	static const ccd_wire wires[] = {
+		{ "MaxADU=255&ImageElementType=2&TransmissionElementType=0", 255, 1, 0 },					// Byte
+		{ "MaxADU=255&ImageElementType=2&TransmissionElementType=8", 255, 1, 0 },					// UInt16 that fits 8 bits
+		{ "MaxADU=4095&ImageElementType=2&TransmissionElementType=0", 4095, 2, 0 },				// UInt16
+		{ "MaxADU=32767&ImageElementType=1&TransmissionElementType=0", 32767, 2, 0 },			// Int16
+		{ "MaxADU=65535&ImageElementType=2&TransmissionElementType=2", 65535, 2, 0 },			// Int32
+		{ "MaxADU=1048575&ImageElementType=2&TransmissionElementType=0", 1048575, 2, 4 },	// Int32 of a 20 bit camera: scaled to 16 bits
+		{ "MaxADU=65535&ImageElementType=2&TransmissionElementType=9", 65535, 2, 0 },			// UInt32
+		{ "MaxADU=65535&ImageElementType=3&TransmissionElementType=4", 65535, 2, 0 },			// Single
+		{ "MaxADU=65535&ImageElementType=3&TransmissionElementType=0", 65535, 2, 0 },			// Double
+		{ "MaxADU=65535&ImageElementType=7&TransmissionElementType=7", 65535, 2, 0 },			// Int64
+		{ "MaxADU=65535&ImageElementType=5&TransmissionElementType=5", 65535, 2, 0 }			// UInt64
+	};
+	ccd_pattern pattern = { .start_x = 10003, .start_y = 9005, .bin_x = 2, .bin_y = 1 };
+	SA_CHECK(ccd_begin(ccd_large_sensor));
+	for (size_t i = 0; i < sizeof(wires) / sizeof(wires[0]); i++) {
+		pattern.max_adu = wires[i].max_adu;
+		pattern.shift = wires[i].shift;
+		if (!ccd_reconnect(wires[i].state) || !ccd_set_far_frame() || !ccd_take(1) || !ccd_image_is(22, 21, 1, wires[i].bytes, &pattern, NULL) || sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) != 8 * wires[i].bytes) {
+			fprintf(stderr, "    with %s\n", wires[i].state);
+			SA_CHECK(false);
+		}
+	}
+	SA_CHECK(ccd_count("GET", "imagearray") == (int)(sizeof(wires) / sizeof(wires[0])) && ccd_simulated_frame_is(2, 1, 10003, 9005, 22, 21));
+	// the data start where the metadata say, not after the 44 bytes of the metadata
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "imagebytes-datastart", "Value=67") && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && !strcmp(ccd_last_field("GET", "imagearray", "Fault"), "imagebytes-datastart"));
+	// the transfer encoding of the reply and a server that closes the connection after it make no difference
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "chunked", "Bytes=100") && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && !strcmp(ccd_last_field("GET", "imagearray", "Fault"), "chunked"));
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "connection-close", NULL) && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && !strcmp(ccd_last_field("GET", "imagearray", "Fault"), "connection-close"));
+	SA_CHECK(ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && !strcmp(ccd_last_field("GET", "imagearray", "Fault"), ""));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// BAYERPAT of the test pattern at the origin of the frame, derived from the colours of its first four pixels (the buffer is static).
+static const char *ccd_bayer(const ccd_pattern *pattern) {
+	static char text[5];
+	for (int i = 0; i < 4; i++) {
+		unsigned sensor_x = (unsigned)((pattern->start_x + i % 2) * pattern->bin_x);
+		unsigned sensor_y = (unsigned)((pattern->start_y + i / 2) * pattern->bin_y);
+		text[i] = "RGB"[((sensor_x + (unsigned)pattern->bayer_x) % 2) + ((sensor_y + (unsigned)pattern->bayer_y) % 2)];
+	}
+	text[4] = 0;
+	return text;
+}
+
+static void ccd_image_bayer(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=60,CameraYSize=40,SensorType=2,BayerOffsetX=1,BayerOffsetY=0,MaxADU=4095", NULL };
+	ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .sensor_type = 2, .bayer_x = 1, .bayer_y = 0, .max_adu = 4095 };
+	SA_CHECK(ccd_begin(arguments));
+	// the colour filter array of the sensor, with the offsets of the camera
+	SA_CHECK(!strcmp(sa_text(sa_device, CCD_SENSOR, "TYPE"), "Bayer GRBG") && ccd_count("GET", "bayeroffsetx") == 1 && ccd_count("GET", "bayeroffsety") == 1);
+	SA_CHECK(sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 16);
+	// the whole sensor: one plane, the pixels under their filters, and the pattern of the sensor
+	SA_CHECK(!strcmp(ccd_bayer(&pattern), "GRBG") && ccd_take(1) && ccd_image_is(60, 40, 1, 2, &pattern, "GRBG"));
+	// a frame that starts on an odd column and an odd row starts with another colour
+	pattern.start_x = 5;
+	pattern.start_y = 3;
+	SA_CHECK(ccd_set_frame(5, 3, 37, 22) == INDIGO_OK_STATE && ccd_take(1) && !strcmp(ccd_bayer(&pattern), "GBRG") && ccd_image_is(37, 22, 1, 2, &pattern, "GBRG"));
+	pattern.start_x = 6;
+	SA_CHECK(ccd_set_frame(6, 3, 37, 22) == INDIGO_OK_STATE && ccd_take(1) && !strcmp(ccd_bayer(&pattern), "BGGR") && ccd_image_is(37, 22, 1, 2, &pattern, "BGGR"));
+	pattern.start_x = 5;
+	pattern.start_y = 4;
+	SA_CHECK(ccd_set_frame(5, 4, 37, 22) == INDIGO_OK_STATE && ccd_take(1) && !strcmp(ccd_bayer(&pattern), "RGGB") && ccd_image_is(37, 22, 1, 2, &pattern, "RGGB"));
+	// a binned frame has no colour filter pattern
+	pattern = (ccd_pattern){ .start_x = 2, .start_y = 2, .bin_x = 2, .bin_y = 2, .sensor_type = 2, .bayer_x = 1, .bayer_y = 0, .max_adu = 4095 };
+	SA_CHECK(ccd_set_bin(2, 2) == INDIGO_OK_STATE && ccd_frame_is(4, 4, 36, 22) && ccd_take(1) && ccd_image_is(18, 11, 1, 2, &pattern, NULL));
+	// the other offsets of the matrix
+	pattern = (ccd_pattern){ .bin_x = 1, .bin_y = 1, .sensor_type = 2, .bayer_x = 0, .bayer_y = 1, .max_adu = 4095 };
+	SA_CHECK(ccd_reconnect("BayerOffsetX=0&BayerOffsetY=1&BinX=1&BinY=1&StartX=0&StartY=0&NumX=60&NumY=40") && !strcmp(sa_text(sa_device, CCD_SENSOR, "TYPE"), "Bayer GBRG"));
+	SA_CHECK(ccd_take(1) && !strcmp(ccd_bayer(&pattern), "GBRG") && ccd_image_is(60, 40, 1, 2, &pattern, "GBRG"));
+	pattern.bayer_x = 1;
+	SA_CHECK(ccd_reconnect("BayerOffsetX=1&BayerOffsetY=1") && !strcmp(sa_text(sa_device, CCD_SENSOR, "TYPE"), "Bayer BGGR") && ccd_take(1) && ccd_image_is(60, 40, 1, 2, &pattern, "BGGR"));
+	// in a FITS image the pattern is the keyword BAYERPAT
+	SA_CHECK(ccd_set_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_take(1));
+	pthread_mutex_lock(&ccd_mutex);
+	bool keyword = ccd_image_size > 2880 && !strncmp((const char *)ccd_image, "SIMPLE  =", 9) && memmem(ccd_image, 2880, "BAYERPAT= 'BGGR", 15) != NULL;
+	pthread_mutex_unlock(&ccd_mutex);
+	SA_CHECK(keyword && ccd_set_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true) == INDIGO_OK_STATE);
+	// another colour filter array than RGGB has no BAYERPAT, and the offsets are not asked for
+	int offsets = ccd_count("GET", "bayeroffset*");
+	pattern.sensor_type = 3;
+	SA_CHECK(ccd_reconnect("SensorType=3") && !strcmp(sa_text(sa_device, CCD_SENSOR, "TYPE"), "CMYG") && ccd_count("GET", "bayeroffset*") == offsets && ccd_take(1) && ccd_image_is(60, 40, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_image_color(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=30000,CameraYSize=20000,MaxBinX=4,MaxBinY=4,SensorType=1,MaxADU=255", NULL };
+	ccd_pattern pattern = { .start_x = 10003, .start_y = 9005, .bin_x = 2, .bin_y = 1, .sensor_type = 1, .max_adu = 255 };
+	SA_CHECK(ccd_begin(arguments));
+	SA_CHECK(!strcmp(sa_text(sa_device, CCD_SENSOR, "TYPE"), "Color") && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 24 && sa_number(sa_device, CCD_INFO_PROPERTY_NAME, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME) == 8);
+	// three planes of bytes: red, green and blue of every pixel side by side
+	SA_CHECK(ccd_set_far_frame() && ccd_take(1) && ccd_image_is(22, 21, 3, 1, &pattern, NULL) && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 24);
+	// three planes of 16 bits
+	pattern.max_adu = 65535;
+	SA_CHECK(ccd_reconnect("MaxADU=65535") && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 48 && ccd_frame_is(20006, 9005, 44, 21));
+	SA_CHECK(ccd_take(1) && ccd_image_is(22, 21, 3, 2, &pattern, NULL) && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 48);
+	// three planes of 32 bits of a camera with more than 16 bits
+	pattern.max_adu = 1048575;
+	pattern.shift = 4;
+	SA_CHECK(ccd_reconnect("MaxADU=1048575") && ccd_take(1) && ccd_image_is(22, 21, 3, 2, &pattern, NULL));
+	// the same as JSON
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "imagebytes-json", NULL) && ccd_take(1) && ccd_image_is(22, 21, 3, 2, &pattern, NULL) && !strcmp(ccd_last_field("GET", "imagearray", "Fault"), "imagebytes-json"));
+	pattern.max_adu = 255;
+	pattern.shift = 0;
+	SA_CHECK(ccd_reconnect("MaxADU=255&ImageBytes=false") && ccd_take(1) && ccd_image_is(22, 21, 3, 1, &pattern, NULL) && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 24);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_image_json(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=30000,CameraYSize=20000,MaxBinX=4,MaxBinY=4,MaxADU=4095,ImageBytes=false", NULL };
+	ccd_pattern pattern = { .start_x = 10003, .start_y = 9005, .bin_x = 2, .bin_y = 1, .max_adu = 4095 };
+	SA_CHECK(ccd_begin(arguments));
+	// a server without ImageBytes answers with the JSON array although ImageBytes was offered
+	SA_CHECK(ccd_set_far_frame() && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && !strcmp(ccd_last_field("GET", "imagearray", "Accept"), "application/imagebytes, application/json"));
+	// an array of doubles
+	SA_CHECK(sa_device_state(0, "camera", 0, "ImageElementType=3") && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL));
+	// an array of 16 bit integers, chunked
+	SA_CHECK(sa_device_state(0, "camera", 0, "ImageElementType=1") && sa_fault(0, "GET", "*/camera/0/imagearray", "chunked", "Bytes=333") && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL));
+	// 8 and 20 bit cameras
+	pattern.max_adu = 255;
+	SA_CHECK(ccd_reconnect("MaxADU=255&ImageElementType=2") && ccd_take(1) && ccd_image_is(22, 21, 1, 1, &pattern, NULL) && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 8);
+	pattern.max_adu = 1048575;
+	pattern.shift = 4;
+	SA_CHECK(ccd_reconnect("MaxADU=1048575") && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && sa_number(sa_device, CCD_FRAME_PROPERTY_NAME, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME) == 16);
+	// what can be wrong with a JSON image: every time the exposure fails with the reason, and the next one delivers its image
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "malformed-json", NULL) && ccd_take_failing(1, "Image download failed: invalid reply (Malformed JSON image"));
+	SA_CHECK(ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "truncated-json", NULL) && ccd_take_failing(1, "Image download failed: invalid reply (Malformed JSON image"));
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "missing-value", NULL) && ccd_take_failing(1, "Image download failed: invalid reply (Value is missing)"));
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "null-value", NULL) && ccd_take_failing(1, "Image download failed: invalid reply ("));
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "wrong-transaction-id", NULL) && ccd_take_failing(1, "of the image does not match the request"));
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "truncated-body", "Count=-1") && ccd_take_failing(1, "Image download failed: connection lost") && sa_clear_faults(0));
+	// the error of the device in the JSON envelope
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=imagearray&ErrorNumber=1035&ErrorMessage=No%20image%20here&Count=1") && ccd_take_failing(1, "Image download failed: invalid operation (No image here (0x40B))"));
+	SA_CHECK(ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && sa_is_connected(sa_device));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_image_faults(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=30000,CameraYSize=20000,MaxBinX=4,MaxBinY=4,MaxADU=4095", NULL };
+	static const char *faults[][3] = {
+		{ "imagebytes-version", NULL, "Image download failed: invalid reply (Unsupported ImageBytes metadata version 2)" },
+		{ "imagebytes-datastart", NULL, "Image download failed: invalid reply (ImageBytes DataStart 8 is outside the reply of" },
+		{ "imagebytes-type", NULL, "Image download failed: invalid reply (Unsupported ImageBytes element types 2 transmitted as 99)" },
+		{ "imagebytes-type", "Value=3", "Image download failed: invalid reply (Unsupported ImageBytes element types 2 transmitted as 3)" },
+		{ "imagebytes-rank", NULL, "Image download failed: invalid reply (Unsupported ImageBytes rank 5)" },
+		{ "imagebytes-rank", "Value=3", "Image download failed: invalid reply (Unsupported ImageBytes dimensions 22 x 21 x 0)" },
+		{ "imagebytes-dimensions", NULL, "Image download failed: invalid reply (ImageBytes data of 924 bytes do not match 23 x 21 x 1 elements of 2 bytes)" },
+		{ "imagebytes-dimensions", "Value=-22", "Image download failed: invalid reply (Unsupported ImageBytes dimensions 0 x 21 x 0)" },
+		{ "imagebytes-short", NULL, "Image download failed: invalid reply (ImageBytes data of 462 bytes do not match 22 x 21 x 1 elements of 2 bytes)" },
+		{ "imagebytes-error", NULL, "Image download failed: invalid operation (Injected ImageBytes error (0x40B))" },
+		{ "imagebytes-error", "Value=1280&Message=Sensor%20overheated", "Image download failed: device error (Sensor overheated (0x500))" },
+		{ "wrong-transaction-id", NULL, "of the image does not match the request" },
+		{ "http-status", "Value=500", "Image download failed: server error" },
+		{ "http-status", "Value=400", "Image download failed: request rejected by the server" },
+		{ "truncated-body", NULL, "Image download failed: connection lost" },
+		{ "reset", "Bytes=200", "Image download failed: connection lost" },
+		{ "drop", NULL, "Image download failed: connection lost" },
+		{ "stall-within", "Delay=3000", "Image download failed: timeout" },
+		{ "stall-before", "Delay=7000", "Image download failed: timeout" }
+	};
+	static const char *breaks[] = { "truncated-body", "reset", "drop", "silent-close" };
+	const ccd_pattern pattern = { .start_x = 10003, .start_y = 9005, .bin_x = 2, .bin_y = 1, .max_adu = 4095 };
+	char extra[128];
+	SA_CHECK(ccd_begin(arguments));
+	SA_CHECK(ccd_set_far_frame() && ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL));
+	for (size_t i = 0; i < sizeof(breaks) / sizeof(breaks[0]); i++) {
+		// a connection that breaks once is no failure: the image is asked for again, and it is the right one
+		int requests = ccd_count("GET", "imagearray");
+		if (!sa_fault(0, "GET", "*/camera/0/imagearray", breaks[i], NULL) || !ccd_take(1) || !ccd_image_is(22, 21, 1, 2, &pattern, NULL) || ccd_count("GET", "imagearray") < requests + (i < 3 ? 2 : 1) || ccd_count("PUT", "startexposure") != (int)i + 2) {
+			fprintf(stderr, "    with %s once\n", breaks[i]);
+			SA_CHECK(false);
+		}
+	}
+	for (size_t i = 0; i < sizeof(faults) / sizeof(faults[0]); i++) {
+		// every reply to imagearray is damaged: the exposure fails with the reason, the camera stays connected and the next exposure delivers its image
+		snprintf(extra, sizeof(extra), "Count=-1%s%s", faults[i][1] != NULL ? "&" : "", faults[i][1] != NULL ? faults[i][1] : "");
+		bool failed = sa_fault(0, "GET", "*/camera/0/imagearray", faults[i][0], extra) && ccd_take_failing(1, faults[i][2]);
+		if (!failed || strcmp(ccd_last_field("GET", "imagearray", "Fault"), faults[i][0]) || !sa_is_connected(sa_device) || !sa_clear_faults(0) || !ccd_take(1) || !ccd_image_is(22, 21, 1, 2, &pattern, NULL)) {
+			fprintf(stderr, "    with %s %s\n", faults[i][0], faults[i][1] != NULL ? faults[i][1] : "");
+			SA_CHECK(false);
+		}
+	}
+	// the camera has no image when it is asked for it, an error in the ImageBytes metadata
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=imagearray&ErrorNumber=1035&ErrorMessage=No%20image%20here&Count=1") && ccd_take_failing(1, "Image download failed: invalid operation (No image here (0x40B))"));
+	SA_CHECK(ccd_take(1) && ccd_image_is(22, 21, 1, 2, &pattern, NULL) && sa_is_connected(sa_device));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_image_transfer_channel(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	char guider[INDIGO_NAME_SIZE];
+	SA_CHECK(ccd_begin(arguments));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	// the camera takes its time to deliver the image
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "stall-before", "Delay=4000"));
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(1) && sa_advance(0, 1) && SA_WAIT(ccd_count("GET", "imagearray") == 1, SA_TIMEOUT));
+	// meanwhile the camera is polled, the cooler can be switched and the temperature follows, on the connection the image is not on
+	int polls = ccd_count("GET", "devicestate");
+	SA_CHECK(ccd_set_switch(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_simulated_is("CoolerOn", "true") && sa_advance(0, 3));
+	SA_CHECK(SA_WAIT(sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == 15.5 && ccd_count("GET", "devicestate") >= polls + 5, SA_TIMEOUT));
+	// the guider of the camera connects and the exposure is still waiting for its image
+	SA_CHECK(sa_connect(guider) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && ccd_images() == 0 && ccd_count("GET", "imagearray") == 1);
+	SA_CHECK(strcmp(ccd_last_field("GET", "imagearray", "Connection"), ccd_last_field("GET", "devicestate", "Connection")) && !strcmp(ccd_last_field("PUT", "cooleron", "Connection"), ccd_last_field("GET", "devicestate", "Connection")));
+	// a new exposure has to wait
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 2) == INDIGO_OK);
+	// then the image arrives
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && ccd_images() == 1 && ccd_image_is(64, 48, 1, 2, &pattern, NULL) && ccd_count("PUT", "startexposure") == 1);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- abort
+
+static void ccd_abort_exposure(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	SA_CHECK(ccd_begin(arguments));
+	// an exposure is aborted on the camera: abortexposure, no image, CCD_EXPOSURE and CCD_IMAGE in ALERT, CCD_ABORT_EXPOSURE answered OK
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(10) && sa_advance(0, 4) && ccd_abort() == INDIGO_OK_STATE && !sa_switch(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME));
+	SA_CHECK(ccd_count("PUT", "abortexposure") == 1 && ccd_last("PUT", "abortexposure", "ClientID=") && ccd_count("PUT", "stopexposure") == 0);
+	SA_CHECK(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0);
+	SA_CHECK(sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_ALERT_STATE && ccd_simulated_is("CameraState", "0") && ccd_simulated_is("ImageReady", "false"));
+	// nothing of the aborted exposure arrives later
+	int polls = ccd_count("GET", "devicestate");
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(ccd_count("GET", "devicestate") >= polls + 4, SA_TIMEOUT) && ccd_images() == 0 && ccd_count("GET", "imagearray") == 0 && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// the next exposure works at once
+	SA_CHECK(ccd_take(1) && ccd_images() == 1 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// abort while the image is on its way: the transfer ends by itself, the image is thrown away, the abort is answered then
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "stall-before", "Delay=3000"));
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(1) && sa_advance(0, 1) && SA_WAIT(ccd_count("GET", "imagearray") == 2, SA_TIMEOUT));
+	SA_CHECK(ccd_abort() == INDIGO_OK_STATE && sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(ccd_images() == 1 && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_ALERT_STATE && ccd_count("PUT", "abortexposure") == 1 && !sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SA_CHECK(ccd_take(1) && ccd_images() == 2 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// an abort without an exposure of this driver is passed on to the camera all the same: it may be busy with an exposure this connection does not know
+	SA_CHECK(ccd_abort() != -1 && !sa_switch(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME) && ccd_count("PUT", "abortexposure") == 2 && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_abort_variants(void) {
+	static const char *stop_only[] = { "--device", "camera:CameraXSize=64,CameraYSize=48,CanAbortExposure=false", NULL };
+	static const char *neither[] = { "--device", "camera:CameraXSize=64,CameraYSize=48,CanAbortExposure=false,CanStopExposure=false", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	// a camera that can only stop: the exposure is stopped, the image the camera keeps is not fetched
+	SA_CHECK(ccd_begin(stop_only));
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(10) && sa_advance(0, 4) && ccd_abort() == INDIGO_OK_STATE && ccd_count("PUT", "stopexposure") == 1 && ccd_last("PUT", "stopexposure", "ClientID=") && ccd_count("PUT", "abortexposure") == 0);
+	SA_CHECK(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_ALERT_STATE && ccd_simulated_is("CameraState", "0") && ccd_simulated_is("ImageReady", "true"));
+	SA_CHECK(ccd_images() == 0 && ccd_count("GET", "imagearray") == 0 && ccd_take(1) && ccd_images() == 1 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// an abort the camera refuses is turned into a stop
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "camera", 0, "CanAbortExposure=true") && ccd_connect() && sa_put(0, CCD_ERROR, "Member=abortexposure&ErrorNumber=1035&ErrorMessage=Not%20now&Count=1"));
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(10) && ccd_abort() == INDIGO_OK_STATE && ccd_count("PUT", "abortexposure") == 1 && ccd_count("PUT", "stopexposure") == 2 && sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SA_CHECK(ccd_images() == 1 && ccd_count("GET", "imagearray") == 1 && ccd_take(1) && ccd_images() == 2 && sa_disconnect(sa_device));
+	ccd_end();
+	// a camera that can neither abort nor stop: the exposure runs to its end, CCD_ABORT_EXPOSURE stays BUSY until then and the image is not fetched
+	SA_CHECK(ccd_begin(neither));
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(6) && indigo_change_switch_property_1(&sa_client, sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_message_seen("The camera can not abort the exposure, its image will be discarded"), SA_TIMEOUT) && sa_state(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// a new exposure is not accepted while the camera is busy with the old one
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1) == INDIGO_OK);
+	unsigned abort_revision = sa_revision(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 6) && SA_WAIT(sa_state_after(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE, abort_revision), SA_TIMEOUT) && sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SA_CHECK(ccd_images() == 0 && ccd_count("GET", "imagearray") == 0 && ccd_count("PUT", "abortexposure") + ccd_count("PUT", "stopexposure") == 0 && ccd_count("PUT", "startexposure") == 1);
+	SA_CHECK(ccd_take(1) && ccd_images() == 1 && ccd_image_is(64, 48, 1, 2, &pattern, NULL) && sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- controls
+
+static void ccd_controls(void) {
+	static const char *values[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	static const char *lists[] = { "--device", "camera:CameraXSize=64,CameraYSize=48,GainMode=1,Gain=2,OffsetMode=1,Offset=1,CanFastReadout=true", NULL };
+	// gain and offset as values: the value goes to the camera as it is
+	SA_CHECK(ccd_begin(values));
+	SA_CHECK(ccd_set_number(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 250) == INDIGO_OK_STATE && ccd_count("PUT", "gain") == 1 && ccd_last("PUT", "gain", "Gain=250&ClientID=") && ccd_simulated_is("Gain", "250"));
+	SA_CHECK(sa_number(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 250 && ccd_set_number(CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME, 33) == INDIGO_OK_STATE && ccd_last("PUT", "offset", "Offset=33&ClientID=") && ccd_simulated_is("Offset", "33"));
+	// a value the camera refuses: ALERT with the message of the camera, the property is back at the value the camera has
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=gain&ErrorNumber=1025&ErrorMessage=Gain%20is%20locked&Count=1") && ccd_set_number(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 120) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_message_seen("Gain failed: invalid value (Gain is locked (0x401))") && sa_number(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 250 && sa_number_target(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 250 && ccd_simulated_is("Gain", "250"));
+	SA_CHECK(sa_fault(0, "PUT", "*/camera/0/offset", "http-status", "Value=500") && ccd_set_number(CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME, 44) == INDIGO_ALERT_STATE && sa_message_seen("Offset failed: server error") && sa_number(sa_device, CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME) == 33);
+	// and the next request is fine again
+	SA_CHECK(ccd_set_number(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 120) == INDIGO_OK_STATE && ccd_simulated_is("Gain", "120") && ccd_set_number(CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME, 44) == INDIGO_OK_STATE && ccd_simulated_is("Offset", "44"));
+	// the readout mode is the index of the selected item of CCD_MODE
+	SA_CHECK(ccd_set_switch(CCD_MODE_PROPERTY_NAME, "MODE_1", true) == INDIGO_OK_STATE && ccd_count("PUT", "readoutmode") == 1 && ccd_last("PUT", "readoutmode", "ReadoutMode=1&ClientID=") && ccd_simulated_is("ReadoutMode", "1"));
+	SA_CHECK(sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_1") && !sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_0") && ccd_bin_is(1, 1) && ccd_frame_is(0, 0, 64, 48));
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=readoutmode&ErrorNumber=1035&ErrorMessage=Busy&Count=1") && ccd_set_switch(CCD_MODE_PROPERTY_NAME, "MODE_0", true) == INDIGO_ALERT_STATE && sa_message_seen("Readout mode failed: invalid operation (Busy (0x40B))"));
+	SA_CHECK(sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_1") && !sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_0") && ccd_simulated_is("ReadoutMode", "1"));
+	// nothing of it can be changed during an exposure, and nothing is sent
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	int puts = ccd_count("PUT", "gain") + ccd_count("PUT", "offset") + ccd_count("PUT", "readoutmode");
+	SA_CHECK(ccd_start(5) && ccd_set_number(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 7) == INDIGO_ALERT_STATE && ccd_set_number(CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME, 7) == INDIGO_ALERT_STATE && ccd_set_switch(CCD_MODE_PROPERTY_NAME, "MODE_0", true) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_number(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 120 && sa_number(sa_device, CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME) == 44 && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_1"));
+	SA_CHECK(ccd_finish(5, INDIGO_OK_STATE, revision) && ccd_count("PUT", "gain") + ccd_count("PUT", "offset") + ccd_count("PUT", "readoutmode") == puts);
+	// a setter the camera does not implement after all: the property stays, read only, and is not sent again
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=gain&ErrorNumber=1024&Count=1") && indigo_change_number_property_1(&sa_client, sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 99) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_perm(sa_device, CCD_GAIN_PROPERTY_NAME) == INDIGO_RO_PERM, SA_TIMEOUT) && sa_state(sa_device, CCD_GAIN_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 120 && sa_message_seen("Gain can not be changed on this camera"));
+	SA_CHECK(sa_disconnect(sa_device));
+	// the next connection finds out again
+	SA_CHECK(ccd_connect() && sa_perm(sa_device, CCD_GAIN_PROPERTY_NAME) == INDIGO_RW_PERM && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_1") && sa_number(sa_device, CCD_OFFSET_PROPERTY_NAME, CCD_OFFSET_ITEM_NAME) == 44 && sa_disconnect(sa_device));
+	ccd_end();
+	// gain and offset as names: the index of the selected name goes to the camera
+	SA_CHECK(ccd_begin(lists));
+	SA_CHECK(ccd_set_switch(CCD_GAIN_LIST, "GAIN_3", true) == INDIGO_OK_STATE && ccd_count("PUT", "gain") == 1 && ccd_last("PUT", "gain", "Gain=3&ClientID=") && ccd_simulated_is("Gain", "3") && sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_3") && !sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_2"));
+	SA_CHECK(ccd_set_switch(CCD_OFFSET_LIST, "OFFSET_0", true) == INDIGO_OK_STATE && ccd_last("PUT", "offset", "Offset=0&ClientID=") && ccd_simulated_is("Offset", "0") && sa_switch(sa_device, CCD_OFFSET_LIST, "OFFSET_0"));
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=gain&ErrorNumber=1279&ErrorMessage=Sensor%20fault&Count=1") && ccd_set_switch(CCD_GAIN_LIST, "GAIN_0", true) == INDIGO_ALERT_STATE && sa_message_seen("Gain failed: device error (Sensor fault (0x4FF))"));
+	SA_CHECK(sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_3") && !sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_0") && ccd_simulated_is("Gain", "3"));
+	// FastReadout
+	SA_CHECK(sa_switch(sa_device, CCD_READ_MODE_PROPERTY_NAME, CCD_READ_MODE_LOW_NOISE_ITEM_NAME) && ccd_set_switch(CCD_READ_MODE_PROPERTY_NAME, CCD_READ_MODE_HIGH_SPEED_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(ccd_count("PUT", "fastreadout") == 1 && ccd_last("PUT", "fastreadout", "FastReadout=True&ClientID=") && ccd_simulated_is("FastReadout", "true") && sa_switch(sa_device, CCD_READ_MODE_PROPERTY_NAME, CCD_READ_MODE_HIGH_SPEED_ITEM_NAME));
+	SA_CHECK(sa_fault(0, "PUT", "*/camera/0/fastreadout", "malformed-json", NULL) && ccd_set_switch(CCD_READ_MODE_PROPERTY_NAME, CCD_READ_MODE_LOW_NOISE_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Fast readout failed: invalid reply"));
+	SA_CHECK(ccd_set_switch(CCD_READ_MODE_PROPERTY_NAME, CCD_READ_MODE_LOW_NOISE_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_last("PUT", "fastreadout", "FastReadout=False&ClientID=") && ccd_simulated_is("FastReadout", "false"));
+	// the selection is saved with the configuration of the device and sent to the camera when the configuration is loaded
+	SA_CHECK(ccd_set_switch(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true) == INDIGO_OK_STATE && sa_disconnect(sa_device) && sa_device_state(0, "camera", 0, "Gain=1&Offset=2"));
+	puts = ccd_count("PUT", "gain");
+	SA_CHECK(ccd_connect() && sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_1") && sa_switch(sa_device, CCD_OFFSET_LIST, "OFFSET_2") && ccd_count("PUT", "gain") == puts);
+	SA_CHECK(ccd_set_switch(CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_simulated_is("Gain", "3") && ccd_simulated_is("Offset", "0") && ccd_count("PUT", "gain") == puts + 1 && ccd_last("PUT", "gain", "Gain=3&ClientID="));
+	SA_CHECK(sa_switch(sa_device, CCD_GAIN_LIST, "GAIN_3") && sa_switch(sa_device, CCD_OFFSET_LIST, "OFFSET_0") && sa_state(sa_device, CCD_GAIN_LIST) == INDIGO_OK_STATE && sa_state(sa_device, CCD_OFFSET_LIST) == INDIGO_OK_STATE);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- cooling
+
+static void ccd_cooling(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	SA_CHECK(ccd_begin(arguments));
+	// the cooler: CoolerOn, and the temperature is BUSY on its way to the set point of the camera
+	unsigned revision = sa_revision(sa_device, CCD_TEMPERATURE_PROPERTY_NAME);
+	SA_CHECK(ccd_set_switch(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_count("PUT", "cooleron") == 1 && ccd_last("PUT", "cooleron", "CoolerOn=True&ClientID=") && ccd_simulated_is("CoolerOn", "true"));
+	SA_CHECK(sa_switch(sa_device, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME) && SA_WAIT(sa_state_after(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_BUSY_STATE, revision), SA_TIMEOUT));
+	// device time: one degree per second; temperature and power are polled
+	SA_CHECK(sa_advance(0, 8.5) && SA_WAIT(sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == 10 && sa_number(sa_device, CCD_COOLER_POWER_PROPERTY_NAME, CCD_COOLER_POWER_ITEM_NAME) == 100, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_number_target(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == -10);
+	// a new set point while the cooler works: degrees Celsius as they are, the target follows, the value stays the measured one
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -5.5) == INDIGO_OK && SA_WAIT(ccd_count("PUT", "setccdtemperature") == 1, SA_TIMEOUT));
+	SA_CHECK(ccd_last("PUT", "setccdtemperature", "SetCCDTemperature=-5.5&ClientID=") && atof(ccd_simulated("SetCCDTemperature")) == -5.5 && sa_number_target(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == -5.5);
+	SA_CHECK(sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == 10 && sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// the sensor reaches the set point: OK, and the power the cooler needs to hold it
+	revision = sa_revision(sa_device, CCD_TEMPERATURE_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 15.5) && SA_WAIT(sa_state_after(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_number(sa_device, CCD_COOLER_POWER_PROPERTY_NAME, CCD_COOLER_POWER_ITEM_NAME) == 60, SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == -5.5 && sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, CCD_COOLER_POWER_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// a pending set point is not overwritten by a poll: the poll tick that is due runs before the request is sent, and must not answer it
+	SA_CHECK(ccd_gate_close() && SA_WAIT(sa_queue_due(sa_device_pointer(sa_device), INDIGO_TASK_PRIORITY_TIME) > 0, SA_TIMEOUT));
+	revision = sa_revision(sa_device, CCD_TEMPERATURE_PROPERTY_NAME);
+	int polls = ccd_count("GET", "devicestate");
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -20) == INDIGO_OK && SA_WAIT(sa_state_after(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_BUSY_STATE, revision), SA_TIMEOUT));
+	ccd_gate_open();
+	SA_CHECK(SA_WAIT(ccd_count("PUT", "setccdtemperature") == 2 && ccd_count("GET", "devicestate") >= polls + 3, SA_TIMEOUT) && ccd_last("PUT", "setccdtemperature", "SetCCDTemperature=-20&ClientID="));
+	// the tick that was due ran before the handler of the request
+	SA_CHECK(sa_count_before(0, "GET", CCD_API "devicestate", sa_sequence(0, "PUT", CCD_API "setccdtemperature")) > polls);
+	SA_CHECK(!sa_state_after(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_number_target(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == -20);
+	SA_CHECK(sa_advance(0, 14.5) && SA_WAIT(sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == -20, SA_TIMEOUT));
+	// a set point the camera refuses: ALERT with its message, the target is back at the set point the camera has
+	revision = sa_revision(sa_device, CCD_TEMPERATURE_PROPERTY_NAME);
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=setccdtemperature&ErrorNumber=1025&ErrorMessage=Too%20cold&Count=1") && indigo_change_number_property_1(&sa_client, sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME, -40) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_message_seen("Set point failed: invalid value (Too cold (0x401))"), SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(sa_number_target(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == -20 && sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && atof(ccd_simulated("SetCCDTemperature")) == -20);
+	// the cooler is switched off on the device: the poll notices it
+	SA_CHECK(sa_device_state(0, "camera", 0, "CoolerOn=false") && SA_WAIT(sa_switch(sa_device, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME) && sa_number(sa_device, CCD_COOLER_POWER_PROPERTY_NAME, CCD_COOLER_POWER_ITEM_NAME) == 0, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, CCD_COOLER_PROPERTY_NAME) == INDIGO_OK_STATE && ccd_count("PUT", "cooleron") == 1);
+	// the temperature changes on the device
+	SA_CHECK(sa_device_state(0, "camera", 0, "HeatSinkTemperature=12.25") && SA_WAIT(sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == 12.25, SA_TIMEOUT) && sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	// the camera does not tell its temperature for a while: ALERT, then OK again with the value
+	revision = sa_revision(sa_device, CCD_TEMPERATURE_PROPERTY_NAME);
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=ccdtemperature&ErrorNumber=1279&ErrorMessage=Sensor%20fault&Count=2") && SA_WAIT(sa_state_after(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, CCD_TEMPERATURE_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && sa_number(sa_device, CCD_TEMPERATURE_PROPERTY_NAME, CCD_TEMPERATURE_ITEM_NAME) == 12.25 && sa_is_connected(sa_device));
+	// the cooler can not be switched: ALERT, the switch shows what the camera does
+	SA_CHECK(sa_fault(0, "PUT", "*/camera/0/cooleron", "http-status", "Value=500") && ccd_set_switch(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME, true) == INDIGO_ALERT_STATE && sa_message_seen("Cooler failed: server error"));
+	SA_CHECK(sa_switch(sa_device, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME) && ccd_simulated_is("CoolerOn", "false"));
+	SA_CHECK(ccd_set_switch(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_simulated_is("CoolerOn", "true") && ccd_last("PUT", "cooleron", "CoolerOn=True&ClientID="));
+	SA_CHECK(ccd_set_switch(CCD_COOLER_PROPERTY_NAME, CCD_COOLER_OFF_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_simulated_is("CoolerOn", "false") && ccd_last("PUT", "cooleron", "CoolerOn=False&ClientID="));
+	// after a disconnect nothing is polled any more
+	SA_CHECK(sa_disconnect(sa_device));
+	polls = ccd_count("GET", "*");
+	indigo_usleep(400000);
+	SA_CHECK(ccd_count("GET", "*") == polls);
+cleanup:
+	ccd_gate_open();
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+// Request an exposure the camera does not start: CCD_EXPOSURE ends in ALERT with a message that contains the text, and there is no image.
+static bool ccd_start_failing(double duration, const char *text) {
+	unsigned images = ccd_images();
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	if (indigo_change_number_property_1(&sa_client, sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, duration) != INDIGO_OK || !SA_WAIT(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_ALERT_STATE, 2 * SA_TIMEOUT)) {
+		fprintf(stderr, "    exposure of %g s ended with CCD_EXPOSURE in state %d\n", duration, sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME));
+		return false;
+	}
+	if (!sa_message_seen(text)) {
+		fprintf(stderr, "    no message with '%s'\n", text);
+		ccd_print_messages();
+		return false;
+	}
+	return ccd_images() == images && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0 && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) != INDIGO_BUSY_STATE;
+}
+
+static void ccd_exposure_start_failures(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	SA_CHECK(ccd_begin(arguments));
+	// the camera refuses the exposure: ALERT with its message, nothing is waited for, the next exposure works
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=startexposure&ErrorNumber=1025&ErrorMessage=Duration%20is%20out%20of%20range&Count=1") && ccd_start_failing(2, "Exposure failed: invalid value (Duration is out of range (0x401))"));
+	SA_CHECK(ccd_count("PUT", "startexposure") == 1 && ccd_simulated_is("CameraState", "0") && ccd_count("GET", "imagearray") == 0 && ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// the server fails before the camera gets the request: the camera is asked whether it exposes, and it does not
+	int states = ccd_count("GET", "camerastate");
+	SA_CHECK(sa_fault(0, "PUT", "*/camera/0/startexposure", "http-status", "Value=500") && ccd_start_failing(2, "Exposure failed: server error") && ccd_count("PUT", "startexposure") == 3 && ccd_count("GET", "camerastate") == states + 1);
+	SA_CHECK(sa_fault(0, "PUT", "*/camera/0/startexposure", "reset", "Dispatch=false") && ccd_start_failing(2, "Exposure failed: connection lost") && ccd_count("PUT", "startexposure") == 4 && ccd_count("GET", "camerastate") == states + 2 && sa_is_connected(sa_device));
+	SA_CHECK(ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL) && ccd_count("PUT", "startexposure") == 5);
+	// the camera starts the exposure, but its answer is lost: the exposure is not started a second time, the camera says that it runs
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "PUT", "*/camera/0/startexposure", "malformed-json", NULL) && ccd_start(3) && ccd_count("GET", "camerastate") == states + 3 && ccd_simulated_is("CameraState", "2"));
+	SA_CHECK(ccd_finish(3, INDIGO_OK_STATE, revision) && ccd_count("PUT", "startexposure") == 6 && ccd_images() == 3 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// the same when the answer does not arrive in time
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "PUT", "*/camera/0/startexposure", "stall-before", "Delay=3000") && ccd_start(3) && SA_WAIT(ccd_count("GET", "camerastate") == states + 4, SA_TIMEOUT) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(ccd_finish(3, INDIGO_OK_STATE, revision) && ccd_count("PUT", "startexposure") == 7 && ccd_images() == 4 && ccd_image_is(64, 48, 1, 2, &pattern, NULL) && sa_is_connected(sa_device));
+	// the camera does not take the frame: the exposure is not started; the next exposure sends the whole frame again
+	SA_CHECK(ccd_set_bin(2, 2) == INDIGO_OK_STATE && ccd_set_frame(8, 4, 40, 30) == INDIGO_OK_STATE && sa_put(0, CCD_ERROR, "Member=numx&ErrorNumber=1025&ErrorMessage=NumX%20is%20too%20large&Count=1"));
+	SA_CHECK(ccd_start_failing(2, "Exposure failed: invalid value (NumX is too large (0x401))") && ccd_count("PUT", "startexposure") == 7 && ccd_count("PUT", "numy") == 0);
+	int since = ccd_sequence();
+	pattern = (ccd_pattern){ .start_x = 4, .start_y = 2, .bin_x = 2, .bin_y = 2, .max_adu = 65535 };
+	SA_CHECK(ccd_take(1) && !strcmp(ccd_puts(since), "binx biny startx starty numx numy startexposure") && ccd_simulated_frame_is(2, 2, 4, 2, 20, 15) && ccd_image_is(20, 15, 1, 2, &pattern, NULL));
+	// the camera is busy with an exposure this connection knows nothing about: the exposure is refused, an abort makes the camera idle again
+	SA_CHECK(sa_put(0, CCD_API "startexposure", "Duration=100&Light=True&ClientID=7&ClientTransactionID=1") && ccd_simulated_is("CameraState", "2"));
+	SA_CHECK(ccd_start_failing(2, "Exposure failed: invalid operation (An exposure is already in progress (0x40B))") && ccd_abort() != -1 && ccd_count("PUT", "abortexposure") == 1 && ccd_simulated_is("CameraState", "0"));
+	SA_CHECK(ccd_take(1) && ccd_image_is(20, 15, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_exposure_progress_failures(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	SA_CHECK(ccd_begin(arguments));
+	// the camera fails while it is asked how far the exposure is (CameraState is an error of the device, devicestate leaves it out):
+	// the exposure failed, the camera is told to end it and the next exposure works
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(5) && sa_put(0, CCD_ERROR, "Member=camerastate&ErrorNumber=1279&ErrorMessage=Sensor%20fault"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Exposure failed: device error (Sensor fault (0x4FF))") && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SA_CHECK(sa_put(0, CCD_ERROR, "Member=camerastate&ErrorNumber=0") && ccd_count("PUT", "abortexposure") == 1 && ccd_simulated_is("CameraState", "0") && sa_is_connected(sa_device) && ccd_images() == 0 && ccd_count("GET", "imagearray") == 0);
+	SA_CHECK(ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// the camera reports an error state
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(5) && sa_device_state(0, "camera", 0, "CameraState=5") && SA_WAIT(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(sa_message_seen("Exposure failed: device error (the camera reports an error)") && ccd_count("PUT", "abortexposure") == 2 && ccd_simulated_is("CameraState", "0") && ccd_images() == 1 && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0);
+	SA_CHECK(ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// a single request without an answer is not the end of the exposure
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	int stalls = sa_request_count(0, "GET", CCD_API "devicestate");
+	SA_CHECK(ccd_start(3) && sa_fault(0, "GET", "*/camera/0/devicestate", "stall-before", "Delay=2500") && SA_WAIT(ccd_count("GET", "devicestate") >= stalls + 8, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && ccd_finish(3, INDIGO_OK_STATE, revision) && ccd_images() == 3 && ccd_image_is(64, 48, 1, 2, &pattern, NULL) && sa_is_connected(sa_device));
+	// an image that never gets ready: after the duration and the long timeout the camera is told to end the exposure, and the exposure failed
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	double started = indigo_monotonic_time();
+	SA_CHECK(ccd_start(1) && SA_WAIT(sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), 3 * SA_TIMEOUT) && indigo_monotonic_time() - started >= 5.9);
+	SA_CHECK(sa_message_seen("Exposure failed: timeout (the image is not ready)") && ccd_count("PUT", "abortexposure") == 3 && ccd_simulated_is("CameraState", "0") && ccd_images() == 3);
+	SA_CHECK(ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// REV-2: devicestate is the way a Platform 7 camera is watched during an exposure, but an answer to it that is no snapshot (HTTP 500 here)
+// is no failure of the exposure: CameraState and ImageReady are read member by member then, as the polling of the core does, and after
+// five such answers in a row devicestate is not used for the exposures of the connection any more.
+static void ccd_device_state_failures(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	SA_CHECK(ccd_begin(arguments));
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	int states = ccd_count("GET", "camerastate");
+	SA_CHECK(ccd_start(5) && sa_fault(0, "GET", CCD_API "devicestate", "http-status", "Value=500&Count=-1"));
+	// the poll of the core gives devicestate up after five failed ticks; more failed replies than that were read by the exposure
+	SA_CHECK(SA_WAIT(sa_faulted_count(0, "GET", CCD_API "devicestate", "http-status") >= 8 && ccd_count("GET", "camerastate") > states, SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(sa_device, CCD_EXPOSURE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && ccd_count("PUT", "abortexposure") == 0);
+	SA_CHECK(sa_clear_faults(0) && ccd_finish(5, INDIGO_OK_STATE, revision) && ccd_images() == 1 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// the next exposure works
+	SA_CHECK(ccd_take(1) && ccd_images() == 2 && sa_disconnect(sa_device));
+	// a single HTTP 500 in a new connection: the exposure is not disturbed and devicestate stays in use
+	SA_CHECK(ccd_connect());
+	revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	int faults = sa_faulted_count(0, "GET", CCD_API "devicestate", "http-status");
+	SA_CHECK(ccd_start(5) && sa_fault(0, "GET", CCD_API "devicestate", "http-status", "Value=500") && SA_WAIT(sa_faulted_count(0, "GET", CCD_API "devicestate", "http-status") == faults + 1, SA_TIMEOUT));
+	int snapshots = ccd_count("GET", "devicestate");
+	SA_CHECK(SA_WAIT(ccd_count("GET", "devicestate") >= snapshots + 3, SA_TIMEOUT) && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(ccd_finish(5, INDIGO_OK_STATE, revision) && ccd_images() == 3 && sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_transport_loss(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	char guider[INDIGO_NAME_SIZE];
+	SA_CHECK(ccd_begin(arguments));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	SA_CHECK(SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT) && ccd_take(1));
+	// the transport is lost while the camera is idle: disconnected with CONNECTION in ALERT, the properties of the camera and its guider are gone
+	SA_CHECK(sa_fault(0, NULL, "/api/v1/camera/0/*", "reset", "Count=-1") && SA_WAIT(core_alerted(sa_device) && !sa_device_defined(guider), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, CCD_INFO_PROPERTY_NAME) && !sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME) && !sa_defined(sa_device, CCD_SENSOR) && !sa_defined(sa_device, CCD_TEMPERATURE_PROPERTY_NAME));
+	// the server is back: connect, and the camera works
+	SA_CHECK(sa_clear_faults(0) && ccd_connect() && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT) && ccd_take(1) && ccd_images() == 2 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// the transport is lost during an exposure
+	SA_CHECK(ccd_start(30) && sa_fault(0, NULL, "/api/v1/camera/0/*", "reset", "Count=-1") && SA_WAIT(core_alerted(sa_device) && !sa_device_defined(guider), SA_TIMEOUT) && !sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME));
+	// after the reconnect nothing of that exposure is left in the driver, but the camera is still busy with it: an abort makes it idle
+	SA_CHECK(sa_clear_faults(0) && ccd_connect() && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) != INDIGO_BUSY_STATE && ccd_simulated_is("CameraState", "2"));
+	SA_CHECK(ccd_start_failing(1, "Exposure failed: invalid operation (An exposure is already in progress (0x40B))") && ccd_abort() != -1 && ccd_simulated_is("CameraState", "0"));
+	SA_CHECK(ccd_take(1) && ccd_images() == 3 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// the transport is lost while the image is on its way
+	SA_CHECK(sa_fault(0, "GET", "*/camera/0/imagearray", "stall-before", "Delay=3000"));
+	int transfers = ccd_count("GET", "imagearray");
+	SA_CHECK(ccd_start(1) && sa_advance(0, 1) && SA_WAIT(ccd_count("GET", "imagearray") == transfers + 1, SA_TIMEOUT) && sa_fault(0, NULL, "/api/v1/camera/0/*", "reset", "Count=-1"));
+	SA_CHECK(SA_WAIT(core_alerted(sa_device) && !sa_device_defined(guider), 2 * SA_TIMEOUT) && !sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME));
+	SA_CHECK(sa_clear_faults(0) && ccd_connect() && ccd_take(1) && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+static void ccd_disconnect_during_exposure(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=64,CameraYSize=48", NULL };
+	const ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	char guider[INDIGO_NAME_SIZE];
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(ccd_begin(arguments));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	snprintf(key, sizeof(key), "%s", sa_device_key("Camera Simulator"));
+	// a disconnect during an exposure ends the exposure on the camera before the camera is disconnected
+	int since = ccd_sequence();
+	SA_CHECK(ccd_start(30) && sa_disconnect(sa_device) && !strcmp(ccd_puts(since), "startexposure abortexposure disconnect") && ccd_simulated_is("CameraState", "0") && ccd_simulated_is("Connected", "false"));
+	// the next connection starts clean
+	SA_CHECK(ccd_connect() && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0 && !sa_switch(sa_device, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME));
+	SA_CHECK(ccd_take(1) && ccd_images() == 1 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// a camera that can only stop is stopped
+	SA_CHECK(ccd_reconnect("CanAbortExposure=false"));
+	since = ccd_sequence();
+	SA_CHECK(ccd_start(30) && sa_disconnect(sa_device) && !strcmp(ccd_puts(since), "startexposure stopexposure disconnect") && ccd_simulated_is("CameraState", "0"));
+	// a disconnect while the image is on its way waits for the transfer; the image is not published
+	SA_CHECK(sa_device_state(0, "camera", 0, "CanAbortExposure=true") && ccd_connect() && sa_fault(0, "GET", "*/camera/0/imagearray", "stall-before", "Delay=3000"));
+	SA_CHECK(ccd_start(1) && sa_advance(0, 1) && SA_WAIT(ccd_count("GET", "imagearray") == 2, SA_TIMEOUT) && sa_disconnect(sa_device) && ccd_images() == 1 && ccd_simulated_is("Connected", "false"));
+	SA_CHECK(ccd_connect() && ccd_take(1) && ccd_images() == 2 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	// the camera is deselected during an exposure: the exposure is ended, the camera is disconnected, camera and guider are gone
+	since = ccd_sequence();
+	SA_CHECK(ccd_start(30) && sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device) && !sa_device_defined(guider), SA_TIMEOUT));
+	SA_CHECK(!strcmp(ccd_puts(since), "startexposure abortexposure disconnect") && ccd_simulated_is("CameraState", "0") && ccd_simulated_is("Connected", "false") && sa_device_count(NULL) == 1);
+	// and deselected while the image is on its way
+	SA_CHECK(sa_attach("Camera Simulator") && ccd_connect() && sa_fault(0, "GET", "*/camera/0/imagearray", "stall-before", "Delay=3000"));
+	int transfers = ccd_count("GET", "imagearray");
+	SA_CHECK(ccd_start(1) && sa_advance(0, 1) && SA_WAIT(ccd_count("GET", "imagearray") == transfers + 1, SA_TIMEOUT) && sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device) && !sa_device_defined(guider), 2 * SA_TIMEOUT));
+	SA_CHECK(ccd_images() == 2 && ccd_simulated_is("Connected", "false"));
+	// selected again it works as before
+	SA_CHECK(sa_attach("Camera Simulator") && ccd_connect() && ccd_take(1) && ccd_images() == 3 && ccd_image_is(64, 48, 1, 2, &pattern, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- guider
+
+// A request to the Alpaca API of the simulated camera made by the case itself. Returns the HTTP status, the body is in the response of the simulator.
+static int ccd_api(const char *method, const char *member, const char *form) {
+	sa_simulator *simulator = sa_simulators;
+	char path[128];
+	snprintf(path, sizeof(path), CCD_API "%s", member);
+	alpaca_http_result result = !strcmp(method, "PUT") ? alpaca_http_put(simulator->control, path, NULL, form, NULL, &simulator->response) : alpaca_http_get(simulator->control, path, form, NULL, &simulator->response);
+	return result == ALPACA_HTTP_OK ? simulator->response.status : -1;
+}
+
+// The request is answered with HTTP 200 and its body contains the text.
+static bool ccd_api_answers(const char *method, const char *member, const char *form, const char *text) {
+	return ccd_api(method, member, form) == 200 && sa_simulators[0].response.body.data != NULL && strstr(sa_simulators[0].response.body.data, text) != NULL;
+}
+
+static void ccd_guider(void) {
+	char guider[INDIGO_NAME_SIZE];
+	SA_CHECK(ccd_begin_attached(ccd_default));
+	snprintf(guider, sizeof(guider), "%s (guider)", sa_device);
+	// a camera that can pulse guide has a guider while it is connected
+	SA_CHECK(!sa_device_defined(guider) && ccd_connect() && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT) && (core_interface(guider) & INDIGO_INTERFACE_GUIDER) != 0 && sa_device_count(NULL) == 3);
+	SA_CHECK(!strcmp(sa_text(guider, INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME), sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)) && ccd_count("GET", "canpulseguide") == 1);
+	SA_CHECK(sa_disconnect(sa_device) && SA_WAIT(!sa_device_defined(guider), SA_TIMEOUT) && sa_device_count(NULL) == 2);
+	// a camera that can not has none, whatever it had before
+	SA_CHECK(sa_device_state(0, "camera", 0, "CanPulseGuide=false") && ccd_connect() && ccd_count("GET", "canpulseguide") == 2 && !sa_device_defined(guider) && sa_device_count(NULL) == 2);
+	SA_CHECK(ccd_api_answers("PUT", "pulseguide", "Direction=0&Duration=100&ClientID=7&ClientTransactionID=1", "\"ErrorNumber\":1024") && ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=2", "\"ErrorNumber\":1024"));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "camera", 0, "CanPulseGuide=true") && ccd_connect() && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT) && sa_connect(guider));
+	// the pulse guiding of the simulated camera, as the guider module needs it: Direction 0 - 3, Duration in milliseconds of device time,
+	// PulseGuide returns at once and IsPulseGuiding tells when the pulse is over
+	SA_CHECK(ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=3", "\"Value\":false") && ccd_api_answers("PUT", "pulseguide", "Direction=2&Duration=1500&ClientID=7&ClientTransactionID=4", "\"ErrorNumber\":0"));
+	SA_CHECK(ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=5", "\"Value\":true") && sa_advance(0, 1.4) && ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=6", "\"Value\":true"));
+	SA_CHECK(ccd_api_answers("GET", "devicestate", "ClientID=7&ClientTransactionID=7", "{\"Name\":\"IsPulseGuiding\",\"Value\":true}") && sa_advance(0, 0.1) && ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=8", "\"Value\":false"));
+	SA_CHECK(ccd_api_answers("GET", "devicestate", "ClientID=7&ClientTransactionID=9", "{\"Name\":\"IsPulseGuiding\",\"Value\":false}"));
+	// a pulse of no duration is over at once, a new pulse replaces the one that runs
+	SA_CHECK(ccd_api_answers("PUT", "pulseguide", "Direction=3&Duration=0&ClientID=7&ClientTransactionID=10", "\"ErrorNumber\":0") && ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=11", "\"Value\":false"));
+	SA_CHECK(ccd_api_answers("PUT", "pulseguide", "Direction=0&Duration=5000&ClientID=7&ClientTransactionID=12", "\"ErrorNumber\":0") && ccd_api_answers("PUT", "pulseguide", "Direction=1&Duration=200&ClientID=7&ClientTransactionID=13", "\"ErrorNumber\":0"));
+	SA_CHECK(sa_advance(0, 0.2) && ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=14", "\"Value\":false"));
+	// values out of range are InvalidValue, misspelled parameters are HTTP 400
+	SA_CHECK(ccd_api_answers("PUT", "pulseguide", "Direction=4&Duration=100&ClientID=7&ClientTransactionID=15", "\"ErrorNumber\":1025") && ccd_api_answers("PUT", "pulseguide", "Direction=1&Duration=-5&ClientID=7&ClientTransactionID=16", "\"ErrorNumber\":1025"));
+	SA_CHECK(ccd_api("PUT", "pulseguide", "Direction=1&duration=100&ClientID=7&ClientTransactionID=17") == 400 && ccd_api("PUT", "pulseguide", "Duration=100&ClientID=7&ClientTransactionID=18") == 400);
+	// pulse guiding and an exposure do not disturb each other
+	unsigned revision = sa_revision(sa_device, CCD_EXPOSURE_PROPERTY_NAME);
+	SA_CHECK(ccd_start(2) && ccd_api_answers("PUT", "pulseguide", "Direction=0&Duration=1000&ClientID=7&ClientTransactionID=19", "\"ErrorNumber\":0") && ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=20", "\"Value\":true"));
+	SA_CHECK(ccd_finish(2, INDIGO_OK_STATE, revision) && ccd_images() == 1 && ccd_api_answers("GET", "ispulseguiding", "ClientID=7&ClientTransactionID=21", "\"Value\":false") && sa_is_connected(guider));
+	// the guider goes with the camera
+	SA_CHECK(sa_disconnect(sa_device) && SA_WAIT(!sa_device_defined(guider), SA_TIMEOUT) && ccd_count("PUT", "disconnect") == 3);
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- lifecycle
+
+static void ccd_lifecycle(void) {
+	const ccd_pattern full = { .bin_x = 1, .bin_y = 1, .max_adu = 4095 };
+	const ccd_pattern binned = { .start_x = 3, .start_y = 2, .bin_x = 3, .bin_y = 3, .max_adu = 4095 };
+	SA_CHECK(ccd_begin_attached(ccd_odd_sensor));
+	// connect, expose, disconnect, again and again: every connection is a fresh one
+	for (int i = 1; i <= 3; i++) {
+		SA_CHECK(ccd_connect() && sa_state(sa_device, CCD_EXPOSURE_PROPERTY_NAME) == INDIGO_OK_STATE && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) != INDIGO_BUSY_STATE && ccd_frame_is(0, 0, 120, 90));
+		SA_CHECK(ccd_take(1) && (int)ccd_images() == i && ccd_image_is(120, 90, 1, 2, &full, NULL) && sa_disconnect(sa_device) && !sa_defined(sa_device, CCD_EXPOSURE_PROPERTY_NAME));
+		SA_CHECK(ccd_count("PUT", "connect") == i && ccd_count("PUT", "disconnect") == i && ccd_count("PUT", "startexposure") == i && ccd_count("GET", "imagearray") == i && ccd_simulated_is("Connected", "false"));
+	}
+	// a disconnect of a disconnected camera changes nothing
+	SA_CHECK(sa_disconnect(sa_device) && ccd_count("PUT", "disconnect") == 3);
+	// the configuration: binning and frame are saved, changed and loaded; the frame comes back as it was although it is restored before the binning it belongs to
+	SA_CHECK(ccd_connect() && ccd_set_bin(3, 3) == INDIGO_OK_STATE && ccd_set_frame(9, 6, 99, 60) == INDIGO_OK_STATE && ccd_frame_is(9, 6, 99, 60) && ccd_set_switch(CCD_MODE_PROPERTY_NAME, "MODE_1", true) == INDIGO_OK_STATE);
+	SA_CHECK(ccd_set_number(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 77) == INDIGO_OK_STATE && ccd_set_switch(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME, true) == INDIGO_OK_STATE);
+	SA_CHECK(ccd_set_bin(2, 2) == INDIGO_OK_STATE && ccd_set_frame(0, 0, 120, 90) == INDIGO_OK_STATE && ccd_set_number(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, 5) == INDIGO_OK_STATE && ccd_set_switch(CCD_MODE_PROPERTY_NAME, "MODE_0", true) == INDIGO_OK_STATE);
+	SA_CHECK(ccd_bin_is(2, 2) && ccd_frame_is(0, 0, 120, 90) && sa_number(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 5 && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_0"));
+	SA_CHECK(ccd_set_switch(CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true) == INDIGO_OK_STATE && ccd_bin_is(3, 3) && ccd_frame_is(9, 6, 99, 60) && sa_number(sa_device, CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME) == 77 && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "MODE_1"));
+	// the camera has what the driver sends at once, the frame with the next exposure
+	SA_CHECK(ccd_simulated_is("Gain", "77") && ccd_simulated_is("ReadoutMode", "1") && ccd_take(1) && ccd_simulated_frame_is(3, 3, 3, 2, 33, 20) && ccd_image_is(33, 20, 1, 2, &binned, NULL));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// ---------------------------------------------------------------------------- memory
+
+static void ccd_large_frame(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=3000,CameraYSize=2000,MaxBinX=4,MaxBinY=4", NULL };
+	ccd_pattern pattern = { .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	SA_CHECK(ccd_begin(arguments));
+	// 6 million pixels, 12 MB of ImageBytes: every pixel is where it belongs
+	SA_CHECK(ccd_take(1) && ccd_image_is(3000, 2000, 1, 2, &pattern, NULL));
+	// a small frame after a large one, and a large one again: the buffers are reused
+	pattern = (ccd_pattern){ .start_x = 100, .start_y = 50, .bin_x = 4, .bin_y = 4, .max_adu = 65535 };
+	SA_CHECK(ccd_set_bin(4, 4) == INDIGO_OK_STATE && ccd_set_frame(400, 200, 404, 300) == INDIGO_OK_STATE && ccd_take(1) && ccd_image_is(101, 75, 1, 2, &pattern, NULL));
+	// 1.5 million pixels as JSON
+	pattern = (ccd_pattern){ .bin_x = 2, .bin_y = 2, .max_adu = 65535 };
+	SA_CHECK(ccd_set_bin(2, 2) == INDIGO_OK_STATE && ccd_set_frame(0, 0, 3000, 2000) == INDIGO_OK_STATE && sa_fault(0, "GET", "*/camera/0/imagearray", "imagebytes-json", NULL) && ccd_take(1) && ccd_image_is(1500, 1000, 1, 2, &pattern, NULL));
+	pattern = (ccd_pattern){ .bin_x = 1, .bin_y = 1, .max_adu = 65535 };
+	SA_CHECK(ccd_set_bin(1, 1) == INDIGO_OK_STATE && ccd_frame_is(0, 0, 3000, 2000) && ccd_take(1) && ccd_image_is(3000, 2000, 1, 2, &pattern, NULL));
+	// 32 bit elements of a camera with more than 16 bits, 24 MB of ImageBytes
+	pattern.max_adu = 1048575;
+	pattern.shift = 4;
+	SA_CHECK(ccd_reconnect("MaxADU=1048575") && ccd_take(1) && ccd_image_is(3000, 2000, 1, 2, &pattern, NULL));
+	// three planes: 2.25 million elements
+	pattern = (ccd_pattern){ .bin_x = 2, .bin_y = 2, .sensor_type = 1, .max_adu = 255 };
+	SA_CHECK(ccd_reconnect("MaxADU=255&SensorType=1&BinX=2&BinY=2&NumX=1500&NumY=500") && ccd_frame_is(0, 0, 3000, 1000) && ccd_take(1) && ccd_image_is(1500, 500, 3, 1, &pattern, NULL));
+	SA_CHECK(ccd_images() == 6 && sa_disconnect(sa_device));
+cleanup:
+	ccd_end();
+}
+
+// Two requests that wait for their handlers behind each other, the second one for a property the handler of the first one touches:
+// a new binning followed by a new frame, and a binning mode followed by a new binning. The handler that runs first leaves the
+// property of the request that waits alone, so the later request is what the camera gets. The gate holds the queue of the device,
+// so both requests are accepted before the first handler runs.
+static void ccd_requests_in_a_row(void) {
+	static const char *arguments[] = { "--device", "camera:CameraXSize=120,CameraYSize=90,MaxBinX=4,MaxBinY=3,CanAsymmetricBin=false,ReadoutModeCount=1", NULL };
+	static const char *bin_items[] = { CCD_BIN_HORIZONTAL_ITEM_NAME, CCD_BIN_VERTICAL_ITEM_NAME };
+	static const char *frame_items[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
+	const double two[] = { 2, 2 }, three[] = { 3, 3 }, frame[] = { 20, 10, 60, 40 };
+	SA_CHECK(ccd_begin(arguments) && ccd_bin_is(1, 1) && ccd_frame_is(0, 0, 120, 90));
+	SA_CHECK(ccd_gate_close());
+	SA_CHECK(indigo_change_number_property(&sa_client, sa_device, CCD_BIN_PROPERTY_NAME, 2, bin_items, two) == INDIGO_OK && indigo_change_number_property(&sa_client, sa_device, CCD_FRAME_PROPERTY_NAME, 4, frame_items, frame) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, CCD_BIN_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, CCD_FRAME_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	unsigned revision = sa_revision(sa_device, CCD_FRAME_PROPERTY_NAME);
+	ccd_gate_open();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, CCD_FRAME_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state(sa_device, CCD_BIN_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(ccd_bin_is(2, 2) && ccd_frame_is(20, 10, 60, 40) && sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_2x2") && sa_state(sa_device, CCD_FRAME_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(ccd_take(1) && ccd_simulated_frame_is(2, 2, 10, 5, 30, 20));
+	SA_CHECK(ccd_gate_close());
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, CCD_MODE_PROPERTY_NAME, "BIN_1x1", true) == INDIGO_OK && indigo_change_number_property(&sa_client, sa_device, CCD_BIN_PROPERTY_NAME, 2, bin_items, three) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, CCD_MODE_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, CCD_BIN_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	revision = sa_revision(sa_device, CCD_BIN_PROPERTY_NAME);
+	ccd_gate_open();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, CCD_BIN_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_state(sa_device, CCD_MODE_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT));
+	SA_CHECK(ccd_bin_is(3, 3) && SA_WAIT(sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_3x3") && !sa_switch(sa_device, CCD_MODE_PROPERTY_NAME, "BIN_1x1"), SA_TIMEOUT) && ccd_frame_is(0, 0, 120, 90));
+	SA_CHECK(ccd_take(1) && ccd_simulated_frame_is(3, 3, 0, 0, 40, 30));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	ccd_gate_open();
+	ccd_end();
+}
+
+// A camera that does nothing publishes nothing, however it is polled (the cooler, the temperature and the cooler power are read on
+// every idle tick); a change of the device is published at once.
+static void ccd_steady_state_is_silent(void) {
+	static const char *legacy_camera[] = { "--device", "camera:interface=legacy", NULL };
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(ccd_begin(legacy ? legacy_camera : ccd_default));
+		SA_CHECK(SA_WAIT(ccd_count("GET", legacy ? "connected" : "devicestate") >= 3, SA_TIMEOUT) && sa_steady(0, sa_device, legacy ? CCD_API "connected" : CCD_API "devicestate", 25));
+		SA_CHECK(sa_device_state(0, "camera", 0, "CoolerOn=true") && SA_WAIT(sa_switch(sa_device, CCD_COOLER_PROPERTY_NAME, CCD_COOLER_ON_ITEM_NAME), SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		ccd_end();
+	}
+	return;
+cleanup:
+	ccd_end();
+}
+
+#define SYSTEM_ALPACA_CCD_CASES \
+	{ "ccd_steady_state_is_silent", ccd_steady_state_is_silent }, \
+	{ "ccd_requests_in_a_row", ccd_requests_in_a_row }, \
+	{ "ccd_properties", ccd_properties }, \
+	{ "ccd_exposure", ccd_exposure }, \
+	{ "ccd_legacy_exposure", ccd_legacy_exposure }, \
+	{ "ccd_exposure_countdown", ccd_exposure_countdown }, \
+	{ "ccd_frame_types", ccd_frame_types }, \
+	{ "ccd_geometry", ccd_geometry }, \
+	{ "ccd_symmetric_binning", ccd_symmetric_binning }, \
+	{ "ccd_capability_variants", ccd_capability_variants }, \
+	{ "ccd_connect_failures", ccd_connect_failures }, \
+	{ "ccd_image_element_types", ccd_image_element_types }, \
+	{ "ccd_image_bayer", ccd_image_bayer }, \
+	{ "ccd_image_color", ccd_image_color }, \
+	{ "ccd_image_json", ccd_image_json }, \
+	{ "ccd_image_faults", ccd_image_faults }, \
+	{ "ccd_image_transfer_channel", ccd_image_transfer_channel }, \
+	{ "ccd_abort_exposure", ccd_abort_exposure }, \
+	{ "ccd_abort_variants", ccd_abort_variants }, \
+	{ "ccd_controls", ccd_controls }, \
+	{ "ccd_cooling", ccd_cooling }, \
+	{ "ccd_exposure_start_failures", ccd_exposure_start_failures }, \
+	{ "ccd_exposure_progress_failures", ccd_exposure_progress_failures }, \
+	{ "ccd_device_state_failures", ccd_device_state_failures }, \
+	{ "ccd_transport_loss", ccd_transport_loss }, \
+	{ "ccd_disconnect_during_exposure", ccd_disconnect_during_exposure }, \
+	{ "ccd_guider", ccd_guider }, \
+	{ "ccd_lifecycle", ccd_lifecycle }, \
+	{ "ccd_large_frame", ccd_large_frame },
 
 #endif /* system_alpaca_ccd_cases_h */

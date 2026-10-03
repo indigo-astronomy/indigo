@@ -531,6 +531,59 @@ cleanup:
 	sa_end();
 }
 
+// devicestate that fails with an answer of the server (HTTP 500, a reply that can not be read) must not freeze what a class polls:
+// on_poll is called all the same and reads the members one by one, and a devicestate that keeps failing is not used any more.
+static void interface_device_state_failures(void) {
+	static const char *arguments[] = { "--device", "focuser", "--device", "focuser:number=1,name=Old Focuser,interface=legacy", NULL };
+	char modern[INDIGO_NAME_SIZE];
+	interface_reset();
+	SA_CHECK(sa_begin(arguments));
+	SA_CHECK(sa_attach("Focuser Simulator") && interface_run(sa_device, interface_install));
+	snprintf(modern, sizeof(modern), "%s", sa_device);
+	interface_poll_body = interface_state_poll;
+	SA_CHECK(sa_connect(modern) && SA_WAIT(interface_polls >= 3, SA_TIMEOUT) && interface_freeze());
+	SA_CHECK(interface_results[1] == ALPACA_OK && interface_integers[1] == 50000 && sa_request_count(0, "GET", "/api/v1/focuser/0/position") == 0);
+	interface_frozen = false;
+	// HTTP 500 in two ticks: the hook runs in both and reads the position of the device with a request of its own, nothing is said about it
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=1234") && sa_fault(0, "GET", "/api/v1/focuser/0/devicestate", "http-status", "Value=500&Count=2"));
+	SA_CHECK(SA_WAIT(sa_faulted_count(0, "GET", "/api/v1/focuser/0/devicestate", "http-status") == 2, SA_TIMEOUT) && interface_wait_polls(3) && interface_freeze());
+	SA_CHECK(sa_request_count(0, "GET", "/api/v1/focuser/0/position") == 2 && interface_results[1] == ALPACA_OK && interface_integers[1] == 1234);
+	SA_CHECK(sa_is_connected(modern) && !sa_message_seen("DeviceState can not be read"));
+	// devicestate works again: it is used again, the member is not asked for any more
+	interface_frozen = false;
+	int states = sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate");
+	SA_CHECK(interface_wait_polls(3) && interface_freeze() && sa_request_count(0, "GET", "/api/v1/focuser/0/position") == 2 && sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate") >= states + 2);
+	// a reply that can not be read, for good: after five ticks in a row the device is told to be polled member by member, and devicestate is not asked for any more
+	interface_frozen = false;
+	SA_CHECK(sa_fault(0, "GET", "/api/v1/focuser/0/devicestate", "malformed-json", "Count=-1"));
+	SA_CHECK(SA_WAIT(sa_message_seen("DeviceState can not be read (invalid reply: Malformed JSON"), SA_TIMEOUT) && sa_faulted_count(0, "GET", "/api/v1/focuser/0/devicestate", "malformed-json") == 5);
+	int connected = sa_request_count(0, "GET", "/api/v1/focuser/0/connected");
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=4321") && interface_wait_polls(3) && interface_freeze());
+	SA_CHECK(interface_results[1] == ALPACA_OK && interface_integers[1] == 4321 && interface_results[0] == ALPACA_OK && interface_results[2] == ALPACA_OK);
+	SA_CHECK(sa_faulted_count(0, "GET", "/api/v1/focuser/0/devicestate", "malformed-json") == 5 && sa_request_count(0, "GET", "/api/v1/focuser/0/connected") >= connected + 2 && sa_is_connected(modern));
+	// the next connection tries devicestate again
+	states = sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate");
+	interface_frozen = false;
+	SA_CHECK(sa_clear_faults(0) && sa_disconnect(modern) && sa_connect(modern) && SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate") >= states + 3, SA_TIMEOUT));
+	SA_CHECK(interface_wait_polls(2) && interface_freeze() && interface_integers[1] == 4321);
+	interface_poll_body = NULL;
+	SA_CHECK(sa_disconnect(modern));
+	// an older device is polled with "connected": an error of the server in its place does not keep the hook from running either
+	SA_CHECK(sa_attach("Old Focuser") && interface_run(sa_device, interface_install));
+	interface_polls = 0;
+	interface_frozen = false;
+	interface_poll_body = interface_state_poll;
+	SA_CHECK(sa_connect(sa_device) && SA_WAIT(interface_polls >= 3, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "GET", "/api/v1/focuser/1/connected", "http-status", "Value=500&Count=-1") && sa_device_state(0, "focuser", 1, "Position=777"));
+	SA_CHECK(SA_WAIT(sa_faulted_count(0, "GET", "/api/v1/focuser/1/connected", "http-status") >= 3, SA_TIMEOUT) && interface_wait_polls(2) && interface_freeze());
+	SA_CHECK(interface_results[1] == ALPACA_OK && interface_integers[1] == 777 && sa_is_connected(sa_device));
+	interface_poll_body = NULL;
+	SA_CHECK(sa_clear_faults(0) && sa_disconnect(sa_device));
+cleanup:
+	interface_poll_body = NULL;
+	sa_end();
+}
+
 static void interface_capability_body(indigo_device *device) {
 	interface_results[0] = system_alpaca_probe_bool(device, "absolute", interface_flags + 0);
 	interface_results[1] = system_alpaca_probe_bool(device, "Absolute", interface_flags + 1);
@@ -554,7 +607,9 @@ static void interface_capability_body(indigo_device *device) {
 static void interface_capability_cache(void) {
 	interface_reset();
 	SA_CHECK(sa_begin(core_focuser));
-	SA_CHECK(sa_attach("Focuser Simulator") && sa_connect(sa_device));
+	// the hooks of the focuser class are replaced: its on_probe and on_poll read members of their own (absolute, position, temperature...),
+	// and the case counts every request for a member, so the body below has to be the only code that asks the device for them
+	SA_CHECK(sa_attach("Focuser Simulator") && interface_run(sa_device, interface_install) && sa_connect(sa_device));
 	// the device has no position (a relative focuser answers NotImplemented), its stepsize fails for another reason
 	SA_CHECK(sa_put(0, "/simulator/v1/focuser/0/error", "Member=position&ErrorNumber=1024") && sa_put(0, "/simulator/v1/focuser/0/error", "Member=stepsize&ErrorNumber=1279"));
 	SA_CHECK(sa_fault(0, "GET", "/api/v1/focuser/0/maxincrement", "drop", "Count=3"));
@@ -585,7 +640,7 @@ cleanup:
 // A move written the way indigo_system_alpaca_private.h tells a class module to write a long operation.
 static void interface_move_finalizer(indigo_device *device) {
 	bool moving = false;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	interface_finalizers++;
@@ -599,8 +654,7 @@ static void interface_move_finalizer(indigo_device *device) {
 
 static void interface_move_handler(indigo_device *device) {
 	alpaca_param params[] = { ALPACA_INT_PARAM("Position", interface_target) };
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	system_alpaca_update(device, FOCUSER_POSITION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 	alpaca_result result = system_alpaca_put(device, "move", params, 1, ALPACA_WAIT_LONG);
 	interface_results[0] = result;
 	if (result == ALPACA_OK) {
@@ -673,10 +727,11 @@ static void interface_operation_helpers(void) {
 	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
 	int disconnects = interface_disconnects;
 	SA_CHECK(interface_run(sa_device, interface_move_handler) && interface_results[0] == ALPACA_OK && SA_WAIT(interface_finalizers > finalizers + 2, SA_TIMEOUT));
+	int step_mark = sa_message_mark();
 	SA_CHECK(sa_fault(0, NULL, "/api/v1/focuser/0/*", "reset", "Count=-1"));
 	double started = indigo_monotonic_time();
 	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
-	SA_CHECK(sa_message_seen("Move failed: connection lost") && interface_disconnects == disconnects + 1 && !interface_operation.active);
+	SA_CHECK(sa_message_seen_since(step_mark, "Move failed: connection lost") && interface_disconnects == disconnects + 1 && !interface_operation.active);
 	SA_CHECK(!sa_defined(sa_device, FOCUSER_POSITION_PROPERTY_NAME));
 	finalizers = interface_finalizers;
 	polls = interface_polls;
@@ -740,6 +795,7 @@ cleanup:
 	{ "interface_transport_parameters_and_replay", interface_transport_parameters_and_replay }, \
 	{ "interface_class_hooks", interface_class_hooks }, \
 	{ "interface_state_helpers", interface_state_helpers }, \
+	{ "interface_device_state_failures", interface_device_state_failures }, \
 	{ "interface_capability_cache", interface_capability_cache }, \
 	{ "interface_operation_helpers", interface_operation_helpers }, \
 	{ "interface_channels", interface_channels },

@@ -20,16 +20,807 @@
 
 // Cases of the Rotator device class of the system_alpaca driver (indigo_system_alpaca_rotator.c).
 //
-// The class is a stub so far, covered by the core_class_* and core_secondary_guider cases. Its own cases go here:
-// write them as described at the top of system_alpaca_test_common.h, name them rotator_<what it proves> and add one line
-// { "name", function }, for each of them to the macro below (the macro continues over several lines, like
-// SYSTEM_ALPACA_CORE_CASES in core_cases.h). No other file has to be edited.
+// The cases start the simulated Rotator at MechanicalPosition = 123.4 with a sync offset of 20, so Position = 143.4: an angle that is
+// neither zero nor the same in both coordinates, which a mixed-up position, a lost offset or a wrong sign would show at once.
+// The rotator turns 10 degrees per second of device time and takes the shorter way to an absolute target; StepSize is 0.01.
+// Device time only moves with sa_advance(), so a move stays in progress until the case lets it end.
 
 #ifndef system_alpaca_rotator_cases_h
 #define system_alpaca_rotator_cases_h
 
+#include <indigo/indigo_rotator_driver.h>
+
 #include "system_alpaca_test_common.h"
 
-#define SYSTEM_ALPACA_ROTATOR_CASES
+#define ROTATOR_API "/api/v1/rotator/0/"
+#define ROTATOR_STATE "/simulator/v1/rotator/0/state"
+#define ROTATOR_ERROR "/simulator/v1/rotator/0/error"
+#define ROTATOR_MECHANICAL "X_ALPACA_MECHANICAL_POSITION"
+#define ROTATOR_MECHANICAL_ITEM "POSITION"
+
+static const char *rotator_default[] = { "--device", "rotator:MechanicalPosition=123.4,SyncOffset=20", NULL };
+static const char *rotator_legacy[] = { "--device", "rotator:interface=legacy,MechanicalPosition=123.4,SyncOffset=20", NULL };
+
+static int rotator_count(const char *method, const char *member) {
+	char path[128];
+	snprintf(path, sizeof(path), ROTATOR_API "%s", member);
+	return sa_request_count(0, method, path);
+}
+
+// The parameters of the last request for a member start with the given text (the transaction IDs follow).
+static bool rotator_last(const char *method, const char *member, const char *parameters) {
+	char path[128];
+	snprintf(path, sizeof(path), ROTATOR_API "%s", member);
+	const char *line = sa_last_request(0, method, path);
+	return line != NULL && !strncmp(sa_field(line, !strcmp(method, "PUT") ? "Body" : "Query"), parameters, strlen(parameters));
+}
+
+// Angles go through a text representation twice, so they are compared with a tolerance far below the step of the rotator.
+static bool rotator_near(double value, double expected) {
+	return fabs(value - expected) < 1e-6;
+}
+
+// State of the simulated device, e.g. rotator_simulated("MechanicalPosition").
+static double rotator_simulated(const char *key) {
+	return atof(sa_status(0, ROTATOR_STATE, key));
+}
+
+static bool rotator_simulated_is(const char *key, const char *value) {
+	return !strcmp(sa_status(0, ROTATOR_STATE, key), value);
+}
+
+static double rotator_position(void) {
+	return sa_number(sa_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+}
+
+static double rotator_target(void) {
+	return sa_number_target(sa_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+}
+
+static double rotator_raw(void) {
+	return sa_number(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME, ROTATOR_RAW_POSITION_ITEM_NAME);
+}
+
+static double rotator_mechanical(void) {
+	return sa_number(sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM);
+}
+
+// All three motion properties are in the given state.
+static bool rotator_states_are(indigo_property_state state) {
+	return sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == (int)state && sa_state(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) == (int)state && sa_state(sa_device, ROTATOR_MECHANICAL) == (int)state;
+}
+
+// Wait for the answer to a request made after the given revision: a state that is not BUSY. Returns it, -1 if there was none.
+static int rotator_answer(const char *property, unsigned revision) {
+	if (!SA_WAIT(sa_revision(sa_device, property) > revision && sa_state(sa_device, property) != INDIGO_BUSY_STATE, SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, property);
+}
+
+static int rotator_set_number(const char *property, const char *item, double value) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK ? rotator_answer(property, revision) : -1;
+}
+
+static int rotator_set_switch(const char *property, const char *item) {
+	unsigned revision = sa_revision(sa_device, property);
+	return indigo_change_switch_property_1(&sa_client, sa_device, property, item, true) == INDIGO_OK ? rotator_answer(property, revision) : -1;
+}
+
+// The driver has published a move: every motion property the device has is BUSY. With target_follows the target of ROTATOR_POSITION is
+// published as well: it comes with the update of ROTATOR_POSITION that follows the updates of the other motion properties. (A change
+// of ROTATOR_POSITION itself publishes its target when it is accepted, and an update that changes nothing is not published.)
+static bool rotator_move_published(bool target_follows) {
+	int relative = sa_state(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME), mechanical = sa_state(sa_device, ROTATOR_MECHANICAL);
+	unsigned position_revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	if (sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE || (relative != INDIGO_BUSY_STATE && relative != -1) || (mechanical != INDIGO_BUSY_STATE && mechanical != -1)) {
+		return false;
+	}
+	return !target_follows || (position_revision > sa_revision(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) && position_revision > sa_revision(sa_device, ROTATOR_MECHANICAL));
+}
+
+// Start a move that is expected to stay in progress, with the given Alpaca method. The property is BUSY as soon as the request is accepted,
+// so the start is over when the device has got the method and the driver has published the move: only then the clock of the device may
+// be advanced.
+static bool rotator_start_move(const char *property, const char *item, double value, const char *member) {
+	int moves = rotator_count("PUT", member);
+	bool target_follows = strcmp(property, ROTATOR_POSITION_PROPERTY_NAME) != 0;
+	return indigo_change_number_property_1(&sa_client, sa_device, property, item, value) == INDIGO_OK && SA_WAIT(rotator_count("PUT", member) > moves && rotator_move_published(target_follows), SA_TIMEOUT);
+}
+
+// A whole move: start it, let the device time pass and wait for the end. Returns the final state of ROTATOR_POSITION, -1 on failure.
+static int rotator_move(const char *property, const char *item, double value, const char *member, double seconds) {
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	if (!rotator_start_move(property, item, value, member) || !sa_advance(0, seconds)) {
+		return -1;
+	}
+	if (!SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) || sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT)) {
+		return -1;
+	}
+	return sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+}
+
+static int rotator_goto(double angle, double seconds) {
+	return rotator_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, angle, "moveabsolute", seconds);
+}
+
+static bool rotator_wait_polls(const char *member, int count) {
+	int polls = rotator_count("GET", member);
+	return SA_WAIT(rotator_count("GET", member) >= polls + count, SA_TIMEOUT);
+}
+
+// A poll tick is held up in the device for the given time: wait until the device has got its request, so that everything the case
+// does next happens while the tick waits for the reply and the hook of the class has not run yet.
+static bool rotator_hold_poll(const char *member, int milliseconds) {
+	char path[128], extra[64];
+	snprintf(path, sizeof(path), ROTATOR_API "%s", member);
+	snprintf(extra, sizeof(extra), "Delay=%d", milliseconds);
+	if (!sa_fault(0, "GET", path, "stall-before", extra)) {
+		return false;
+	}
+	return SA_WAIT(!strcmp(sa_field(sa_last_request(0, "GET", path), "Fault"), "stall-before"), SA_TIMEOUT);
+}
+
+static bool rotator_begin(const char * const *arguments) {
+	return sa_begin(arguments) && sa_attach("Rotator Simulator") && sa_connect(sa_device);
+}
+
+// ---------------------------------------------------------------------------- properties
+
+static void rotator_properties(void) {
+	SA_CHECK(sa_begin(rotator_default) && sa_attach("Rotator Simulator"));
+	SA_CHECK((core_interface(sa_device) & INDIGO_INTERFACE_ROTATOR) == INDIGO_INTERFACE_ROTATOR);
+	// nothing of the class is defined and nothing was asked before the device is connected
+	SA_CHECK(!sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL) && !sa_defined(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME));
+	SA_CHECK(rotator_count("GET", "canreverse") == 0 && rotator_count("GET", "position") == 0);
+	SA_CHECK(sa_connect(sa_device));
+	// the position is the synced one, the mechanical one is the raw position
+	SA_CHECK(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_perm(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_RW_PERM && rotator_near(rotator_position(), 143.4) && rotator_near(rotator_target(), 143.4));
+	SA_CHECK(sa_perm(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) == INDIGO_RO_PERM && rotator_near(rotator_raw(), 123.4));
+	SA_CHECK(sa_perm(sa_device, ROTATOR_MECHANICAL) == INDIGO_RW_PERM && sa_item_count(sa_device, ROTATOR_MECHANICAL) == 1 && rotator_near(rotator_mechanical(), 123.4) && rotator_near(sa_number_target(sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM), 123.4));
+	SA_CHECK(rotator_states_are(INDIGO_OK_STATE) && sa_number(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME) == 0);
+	// Sync exists (IRotatorV3 and later), the rotator can be reversed and knows its step
+	SA_CHECK(sa_switch(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME) && sa_item_count(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) == 2);
+	SA_CHECK(sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME) && sa_perm(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME) == INDIGO_RW_PERM);
+	SA_CHECK(sa_perm(sa_device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME) == INDIGO_RO_PERM && sa_number(sa_device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME, ROTATOR_STEPS_PER_REVOLUTION_ITEM_NAME) == 36000);
+	SA_CHECK(sa_item_count(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME) == 1 && !sa_switch(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
+	// what Alpaca has no member for stays hidden; the sync offset lives in the device
+	SA_CHECK(!sa_defined(sa_device, ROTATOR_LIMITS_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_BACKLASH_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_POSITION_OFFSET_PROPERTY_NAME));
+	// what it took: every member once, nothing was written but connect
+	SA_CHECK(rotator_count("GET", "canreverse") == 1 && rotator_count("GET", "position") == 1 && rotator_count("GET", "ismoving") == 1 && rotator_count("GET", "targetposition") == 1);
+	SA_CHECK(rotator_count("GET", "stepsize") == 1 && rotator_count("GET", "mechanicalposition") == 1 && rotator_count("PUT", "*") == 1);
+	// Platform 7: the state comes with devicestate, the members that are in it are not asked for again
+	SA_CHECK(rotator_wait_polls("devicestate", 3) && rotator_count("GET", "position") == 1 && rotator_count("GET", "ismoving") == 1 && rotator_count("GET", "mechanicalposition") == 1);
+	SA_CHECK(rotator_count("GET", "canreverse") == 1 && rotator_count("GET", "stepsize") == 1 && rotator_count("GET", "targetposition") == 1);
+	// a disconnect removes the properties, the next connection builds them again
+	SA_CHECK(sa_disconnect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL));
+	SA_CHECK(!sa_defined(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME));
+	SA_CHECK(sa_connect(sa_device) && rotator_near(rotator_position(), 143.4) && rotator_near(rotator_mechanical(), 123.4) && rotator_count("GET", "canreverse") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_legacy_properties(void) {
+	SA_CHECK(rotator_begin(rotator_legacy));
+	// IRotatorV3: the same properties, connected with Connected=True, and no devicestate
+	SA_CHECK(!strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME), "3") && rotator_count("PUT", "connected") == 1 && rotator_count("PUT", "connect") == 0);
+	SA_CHECK(rotator_near(rotator_position(), 143.4) && rotator_near(rotator_raw(), 123.4) && rotator_near(rotator_mechanical(), 123.4) && sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME));
+	// the state is read member by member on every poll tick
+	int positions = rotator_count("GET", "position"), mechanicals = rotator_count("GET", "mechanicalposition");
+	SA_CHECK(rotator_wait_polls("ismoving", 4) && rotator_count("GET", "position") >= positions + 3 && rotator_count("GET", "mechanicalposition") >= mechanicals + 3 && rotator_count("GET", "devicestate") == 0);
+	SA_CHECK(sa_device_state(0, "rotator", 0, "MechanicalPosition=200.25") && SA_WAIT(rotator_near(rotator_position(), 220.25) && rotator_near(rotator_raw(), 200.25) && rotator_near(rotator_mechanical(), 200.25), SA_TIMEOUT));
+	// a move works the same way
+	SA_CHECK(rotator_goto(250.5, 4) == INDIGO_OK_STATE && rotator_last("PUT", "moveabsolute", "Position=250.5&ClientID=") && rotator_near(rotator_simulated("MechanicalPosition"), 230.5));
+	SA_CHECK(rotator_near(rotator_position(), 250.5) && rotator_near(rotator_raw(), 230.5) && rotator_states_are(INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device) && rotator_last("PUT", "connected", "Connected=False&ClientID="));
+cleanup:
+	sa_end();
+}
+
+static void rotator_capability_variants(void) {
+	static const char *old[] = { "--device", "rotator:interface=2,MechanicalPosition=123.4,CanReverse=false,StepSizeAvailable=false", NULL };
+	// IRotatorV2 has neither MechanicalPosition nor Sync; this one can not be reversed either and does not know its step
+	SA_CHECK(rotator_begin(old));
+	SA_CHECK(rotator_near(rotator_position(), 123.4) && sa_defined(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL) && !sa_defined(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME));
+	// members of a later interface version are not asked for at all, the others once
+	SA_CHECK(rotator_wait_polls("ismoving", 4) && rotator_count("GET", "mechanicalposition") == 0 && rotator_count("GET", "reverse") == 0 && rotator_count("GET", "canreverse") == 1 && rotator_count("GET", "stepsize") == 1);
+	// a change of the position is always a move
+	SA_CHECK(rotator_goto(100.5, 3) == INDIGO_OK_STATE && rotator_last("PUT", "moveabsolute", "Position=100.5&ClientID=") && rotator_count("PUT", "sync") == 0 && rotator_near(rotator_position(), 100.5));
+	SA_CHECK(rotator_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -20.5, "move", 3) == INDIGO_OK_STATE && rotator_near(rotator_position(), 80) && rotator_count("GET", "mechanicalposition") == 0);
+	SA_CHECK(sa_disconnect(sa_device));
+	sa_end();
+	// members a device of the current version does not implement are found out with the first request
+	SA_CHECK(sa_begin(rotator_default) && sa_attach("Rotator Simulator"));
+	SA_CHECK(sa_put(0, ROTATOR_ERROR, "Member=targetposition&ErrorNumber=1024") && sa_put(0, ROTATOR_ERROR, "Member=halt&ErrorNumber=1024") && sa_put(0, ROTATOR_ERROR, "Member=sync&ErrorNumber=1024") && sa_put(0, ROTATOR_ERROR, "Member=movemechanical&ErrorNumber=1024"));
+	SA_CHECK(sa_connect(sa_device) && sa_defined(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_MECHANICAL));
+	// no TargetPosition: the target of a move is the requested angle, and TargetPosition is not asked for again
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 150.5, "moveabsolute") && rotator_near(rotator_target(), 150.5) && rotator_count("GET", "targetposition") == 1);
+	// no Halt: the first abort finds out, the property goes away, the move goes on
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(!sa_defined(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME), SA_TIMEOUT) && sa_message_seen("Abort failed: not implemented by the device") && rotator_count("PUT", "halt") == 1);
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 150.5));
+	// no Sync: the request fails, ROTATOR_ON_POSITION_SET goes away and the next change of the position is a move
+	SA_CHECK(rotator_set_switch(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 10.25) == INDIGO_ALERT_STATE && sa_message_seen("Sync failed: not implemented by the device") && rotator_count("PUT", "sync") == 1);
+	SA_CHECK(SA_WAIT(!sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME), SA_TIMEOUT) && rotator_near(rotator_position(), 150.5) && rotator_near(rotator_target(), 150.5));
+	SA_CHECK(rotator_goto(160.5, 1) == INDIGO_OK_STATE && rotator_count("PUT", "sync") == 1 && rotator_near(rotator_position(), 160.5));
+	// no MoveMechanical: the request fails and the property goes away, the mechanical position can still be read
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 90.5) == INDIGO_OK);
+	SA_CHECK(SA_WAIT(!sa_defined(sa_device, ROTATOR_MECHANICAL), SA_TIMEOUT) && sa_message_seen("Move failed: not implemented by the device") && rotator_count("PUT", "movemechanical") == 1);
+	SA_CHECK(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && rotator_near(rotator_target(), 160.5) && sa_defined(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) && rotator_near(rotator_raw(), 140.5));
+	SA_CHECK(rotator_goto(170.5, 1) == INDIGO_OK_STATE && rotator_near(rotator_raw(), 150.5));
+	// the next connection asks again
+	SA_CHECK(sa_disconnect(sa_device) && sa_put(0, ROTATOR_ERROR, "Member=halt&ErrorNumber=0") && sa_put(0, ROTATOR_ERROR, "Member=sync&ErrorNumber=0") && sa_put(0, ROTATOR_ERROR, "Member=movemechanical&ErrorNumber=0") && sa_connect(sa_device));
+	SA_CHECK(sa_defined(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_MECHANICAL) && sa_switch(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME));
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && rotator_count("PUT", "halt") == 2);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- moves
+
+static void rotator_absolute_move(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// GOTO: MoveAbsolute with the angle as it is; all motion properties are BUSY, the target is the requested angle (TargetPosition is not read back, OMNI-2)
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200.5, "moveabsolute"));
+	SA_CHECK(rotator_count("PUT", "moveabsolute") == 1 && rotator_last("PUT", "moveabsolute", "Position=200.5&ClientID=") && rotator_count("PUT", "move") == 0 && rotator_count("PUT", "movemechanical") == 0);
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && rotator_near(rotator_target(), 200.5) && rotator_near(rotator_position(), 143.4) && rotator_count("GET", "targetposition") == 1);
+	// the move is watched with IsMoving, both positions are published on the way
+	SA_CHECK(rotator_wait_polls("ismoving", 3) && rotator_states_are(INDIGO_BUSY_STATE));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(rotator_near(rotator_position(), 163.4) && rotator_near(rotator_raw(), 143.4) && rotator_near(rotator_mechanical(), 143.4), SA_TIMEOUT));
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && rotator_near(rotator_target(), 200.5));
+	// a request for a motion property that is BUSY is not accepted, one for another motion property is refused
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 300) == INDIGO_OK);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 10) == INDIGO_OK);
+	SA_CHECK(rotator_wait_polls("ismoving", 3) && rotator_count("PUT", "moveabsolute") == 1 && rotator_count("PUT", "move") == 0 && rotator_near(rotator_target(), 200.5));
+	// the device arrives: OK, the measured positions, and IsMoving is not asked for any more
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 3.71) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && rotator_states_are(INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_position(), 200.5) && rotator_near(rotator_target(), 200.5) && rotator_near(rotator_raw(), 180.5) && rotator_near(rotator_mechanical(), 180.5) && rotator_near(rotator_simulated("MechanicalPosition"), 180.5));
+	int polls = rotator_count("GET", "ismoving");
+	SA_CHECK(rotator_wait_polls("devicestate", 3) && rotator_count("GET", "ismoving") == polls);
+	// 360 is 0 for Alpaca; the rotator goes the short way through the end of the circle and the angle wraps on the way
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 360, "moveabsolute") && rotator_last("PUT", "moveabsolute", "Position=0&ClientID=") && SA_WAIT(rotator_near(rotator_target(), 0), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 15) && SA_WAIT(rotator_near(rotator_position(), 350.5) && rotator_near(rotator_raw(), 330.5), SA_TIMEOUT) && sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 0) && rotator_near(rotator_raw(), 340));
+	// a negative angle is brought into 0 ... 360; from 0 the short way to 270 is backwards
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, -90, "moveabsolute") && rotator_last("PUT", "moveabsolute", "Position=270&ClientID=") && SA_WAIT(rotator_near(rotator_target(), 270), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(rotator_near(rotator_position(), 330) && rotator_near(rotator_raw(), 310), SA_TIMEOUT));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 6) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 270) && rotator_near(rotator_raw(), 250));
+	// forwards through 0: the position goes 270 ... 359, 0 ... 20.25, never out of the range
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20.25, "moveabsolute") && rotator_near(rotator_target(), 20.25));
+	SA_CHECK(sa_advance(0, 9.5) && SA_WAIT(rotator_near(rotator_position(), 5) && rotator_near(rotator_raw(), 345), SA_TIMEOUT));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 20.25) && rotator_near(rotator_raw(), 0.25));
+	// the angle the rotator is at: the request goes to the device, which has nothing to do
+	polls = rotator_count("PUT", "moveabsolute");
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20.25) == INDIGO_OK_STATE && rotator_count("PUT", "moveabsolute") == polls + 1 && rotator_states_are(INDIGO_OK_STATE));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_relative_move(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// Move takes the signed angle as it is; the target of the position is the position plus the angle
+	SA_CHECK(rotator_start_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 25.5, "move"));
+	SA_CHECK(rotator_count("PUT", "move") == 1 && rotator_last("PUT", "move", "Position=25.5&ClientID=") && rotator_count("PUT", "moveabsolute") == 0);
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && rotator_near(rotator_target(), 168.9) && rotator_near(rotator_position(), 143.4) && rotator_near(sa_number_target(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME), 25.5));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(rotator_near(rotator_position(), 153.4) && rotator_near(rotator_raw(), 133.4), SA_TIMEOUT) && rotator_states_are(INDIGO_BUSY_STATE));
+	unsigned revision = sa_revision(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 1.55) && SA_WAIT(sa_state_after(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_OK_STATE, revision) && rotator_states_are(INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_position(), 168.9) && rotator_near(rotator_raw(), 148.9) && rotator_near(rotator_simulated("MechanicalPosition"), 148.9));
+	// the move is over, so there is no relative move left
+	SA_CHECK(sa_number(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME) == 0 && sa_number_target(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME) == 0);
+	// a negative angle
+	SA_CHECK(rotator_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -40.25, "move", 5) == INDIGO_OK_STATE && rotator_last("PUT", "move", "Position=-40.25&ClientID="));
+	SA_CHECK(rotator_near(rotator_position(), 128.65) && rotator_near(rotator_raw(), 108.65));
+	// no angle: no request
+	int moves = rotator_count("PUT", "move");
+	SA_CHECK(rotator_set_number(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 0) == INDIGO_OK_STATE && rotator_count("PUT", "move") == moves && rotator_states_are(INDIGO_OK_STATE));
+	// a relative move through 0: the target and the position wrap
+	SA_CHECK(sa_device_state(0, "rotator", 0, "MechanicalPosition=330.5") && SA_WAIT(rotator_near(rotator_position(), 350.5), SA_TIMEOUT));
+	SA_CHECK(rotator_start_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 30, "move") && rotator_near(rotator_target(), 20.5));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(rotator_near(rotator_position(), 10.5) && rotator_near(rotator_raw(), 350.5), SA_TIMEOUT));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 20.5) && rotator_near(rotator_raw(), 0.5));
+	// and back through 0
+	SA_CHECK(rotator_start_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -45, "move") && rotator_near(rotator_target(), 335.5));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 335.5) && rotator_near(rotator_raw(), 315.5));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_mechanical_move(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// MoveMechanical with the mechanical angle; the target of the position is the mechanical target plus the sync offset
+	SA_CHECK(rotator_start_move(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 300.5, "movemechanical"));
+	SA_CHECK(rotator_count("PUT", "movemechanical") == 1 && rotator_last("PUT", "movemechanical", "Position=300.5&ClientID=") && rotator_count("PUT", "moveabsolute") == 0 && rotator_count("PUT", "move") == 0);
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && rotator_near(rotator_target(), 320.5) && rotator_near(sa_number_target(sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM), 300.5) && rotator_near(rotator_mechanical(), 123.4));
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(rotator_near(rotator_mechanical(), 223.4) && rotator_near(rotator_raw(), 223.4) && rotator_near(rotator_position(), 243.4), SA_TIMEOUT) && rotator_states_are(INDIGO_BUSY_STATE));
+	unsigned revision = sa_revision(sa_device, ROTATOR_MECHANICAL);
+	SA_CHECK(sa_advance(0, 7.71) && SA_WAIT(sa_state_after(sa_device, ROTATOR_MECHANICAL, INDIGO_OK_STATE, revision) && rotator_states_are(INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_mechanical(), 300.5) && rotator_near(rotator_raw(), 300.5) && rotator_near(rotator_position(), 320.5) && rotator_near(rotator_target(), 320.5) && rotator_near(rotator_simulated("MechanicalPosition"), 300.5));
+	// a negative angle is brought into 0 ... 360
+	SA_CHECK(rotator_move(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, -30, "movemechanical", 4) == INDIGO_OK_STATE && rotator_last("PUT", "movemechanical", "Position=330&ClientID=") && rotator_near(rotator_mechanical(), 330) && rotator_near(rotator_position(), 350));
+	// a device that leaves TargetPosition alone in MoveMechanical (the standard names Move and MoveAbsolute only): the target of the
+	// position is the computed one, not what TargetPosition still says since the last MoveAbsolute
+	SA_CHECK(sa_device_state(0, "rotator", 0, "TargetTracksMechanical=false") && rotator_goto(200.5, 15) == INDIGO_OK_STATE && rotator_near(rotator_simulated("TargetPosition"), 200.5));
+	SA_CHECK(rotator_start_move(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 100.25, "movemechanical") && rotator_near(rotator_simulated("TargetPosition"), 200.5));
+	SA_CHECK(rotator_near(rotator_target(), 120.25) && rotator_states_are(INDIGO_BUSY_STATE));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 9) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 120.25) && rotator_near(rotator_target(), 120.25) && rotator_near(rotator_mechanical(), 100.25));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// OMNI-2: a device whose TargetPosition is the mechanical target without the sync offset, as the ASCOM OmniSim 0.5.0 rotator reports
+// it. The target of ROTATOR_POSITION is the requested sky angle all the same, and the end of a move is decided by IsMoving.
+static void rotator_target_is_mechanical(void) {
+	static const char *arguments[] = { "--device", "rotator:MechanicalPosition=123.4,SyncOffset=20,TargetIsMechanical=true", NULL };
+	SA_CHECK(rotator_begin(arguments));
+	// MoveAbsolute to the sky angle 200.5, which the device reports as TargetPosition 180.5
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200.5, "moveabsolute") && rotator_near(rotator_simulated("TargetPosition"), 180.5));
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && rotator_near(rotator_target(), 200.5));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(rotator_near(rotator_position(), 163.4), SA_TIMEOUT) && rotator_near(rotator_target(), 200.5));
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && rotator_states_are(INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_position(), 200.5) && rotator_near(rotator_target(), 200.5) && rotator_near(rotator_raw(), 180.5));
+	// Move by -30.25: the target is 170.25, the device reports 150.25
+	SA_CHECK(rotator_start_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -30.25, "move") && rotator_near(rotator_simulated("TargetPosition"), 150.25));
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && rotator_near(rotator_target(), 170.25));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 4) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && rotator_states_are(INDIGO_OK_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_position(), 170.25) && rotator_near(rotator_target(), 170.25) && rotator_near(rotator_raw(), 150.25));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_sync(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// SYNC: the position is set in the device without a move; the mechanical position stays
+	SA_CHECK(rotator_set_switch(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME) == INDIGO_OK_STATE && rotator_count("PUT", "*") == 1);
+	unsigned raw_revision = sa_revision(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME);
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 10.25) == INDIGO_OK_STATE);
+	SA_CHECK(rotator_count("PUT", "sync") == 1 && rotator_last("PUT", "sync", "Position=10.25&ClientID=") && rotator_count("PUT", "moveabsolute") == 0 && rotator_count("PUT", "move") == 0 && rotator_count("PUT", "movemechanical") == 0);
+	SA_CHECK(rotator_near(rotator_position(), 10.25) && rotator_near(rotator_target(), 10.25) && rotator_near(rotator_raw(), 123.4) && rotator_near(rotator_mechanical(), 123.4) && rotator_states_are(INDIGO_OK_STATE));
+	SA_CHECK(rotator_near(rotator_simulated("MechanicalPosition"), 123.4) && rotator_near(rotator_simulated("SyncOffset"), -113.15) && rotator_simulated_is("IsMoving", "false") && sa_revision(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) == raw_revision);
+	// the mode stays as the user set it; 360 is synced as 0
+	SA_CHECK(sa_switch(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME) && rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 360) == INDIGO_OK_STATE && rotator_last("PUT", "sync", "Position=0&ClientID="));
+	SA_CHECK(rotator_near(rotator_position(), 0) && rotator_near(rotator_raw(), 123.4) && rotator_near(rotator_simulated("SyncOffset"), -123.4));
+	// a move after the sync is made in the synced coordinates
+	SA_CHECK(rotator_set_switch(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(rotator_goto(30.5, 4) == INDIGO_OK_STATE && rotator_near(rotator_position(), 30.5) && rotator_near(rotator_raw(), 153.9) && rotator_count("PUT", "sync") == 2);
+	// a mechanical move as well: the offset stays
+	SA_CHECK(rotator_start_move(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 163.9, "movemechanical") && rotator_near(rotator_target(), 40.5));
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 40.5) && rotator_near(rotator_raw(), 163.9));
+	// a sync the device refuses: ALERT with its message, the position and the offset stay
+	SA_CHECK(rotator_set_switch(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "sync", "ascom-error", "Value=1279&Message=Not%20homed"));
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 90.5) == INDIGO_ALERT_STATE && sa_message_seen("Sync failed: device error (Not homed (0x4FF))"));
+	SA_CHECK(rotator_near(rotator_position(), 40.5) && rotator_near(rotator_target(), 40.5) && rotator_near(rotator_simulated("SyncOffset"), -123.4) && sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME));
+	// a sync whose reply is lost is sent again: syncing twice to an angle is syncing once
+	int syncs = rotator_count("PUT", "sync");
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "sync", "drop", NULL));
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 90.5) == INDIGO_OK_STATE && rotator_count("PUT", "sync") == syncs + 2 && rotator_near(rotator_position(), 90.5) && rotator_near(rotator_raw(), 163.9));
+	// a sync made at the device (another client): the position changes, the mechanical one does not
+	SA_CHECK(sa_put(0, ROTATOR_API "sync", "Position=200.75&ClientID=77&ClientTransactionID=1") && SA_WAIT(rotator_near(rotator_position(), 200.75) && rotator_near(rotator_target(), 200.75), SA_TIMEOUT) && rotator_near(rotator_raw(), 163.9));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_reverse(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// REVERSED is Reverse=True
+	SA_CHECK(rotator_set_switch(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME));
+	SA_CHECK(rotator_count("PUT", "reverse") == 1 && rotator_last("PUT", "reverse", "Reverse=True&ClientID=") && rotator_simulated_is("Reverse", "true"));
+	SA_CHECK(rotator_set_switch(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME) == INDIGO_OK_STATE && rotator_count("PUT", "reverse") == 2 && rotator_last("PUT", "reverse", "Reverse=False&ClientID=") && rotator_simulated_is("Reverse", "false"));
+	// the direction is changed at the device: the property follows
+	SA_CHECK(sa_device_state(0, "rotator", 0, "Reverse=true") && SA_WAIT(sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(sa_state(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_count("PUT", "reverse") == 2);
+	// it is not changed during a move: refused with a message, nothing is sent
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200.5, "moveabsolute"));
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME, true) == INDIGO_OK && SA_WAIT(sa_message_seen("Rotator is moving: request can not be completed"), SA_TIMEOUT));
+	SA_CHECK(sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME) && rotator_count("PUT", "reverse") == 2);
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 6) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	// a change the device refuses: ALERT with its message, and the switch shows the direction of the device
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "reverse", "ascom-error", "Value=1279&Message=Locked"));
+	SA_CHECK(rotator_set_switch(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME) == INDIGO_ALERT_STATE && sa_message_seen("Change of direction failed: device error (Locked (0x4FF))"));
+	SA_CHECK(sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME) && rotator_simulated_is("Reverse", "true"));
+	// a reply that is lost: setting the direction twice is setting it once, so it is sent again
+	int reverses = rotator_count("PUT", "reverse");
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "reverse", "drop", NULL));
+	SA_CHECK(rotator_set_switch(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME) == INDIGO_OK_STATE && rotator_count("PUT", "reverse") == reverses + 2 && rotator_simulated_is("Reverse", "false"));
+	// the next connection starts with the direction of the device
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "rotator", 0, "Reverse=true") && sa_connect(sa_device) && sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_abort(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// while idle: Halt is sent, nothing else changes
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && !sa_switch(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
+	SA_CHECK(rotator_count("PUT", "halt") == 1 && rotator_states_are(INDIGO_OK_STATE) && !sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	// during a move: Halt, all motion properties end in ALERT with the angle the rotator stopped at
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 250.5, "moveabsolute"));
+	SA_CHECK(sa_advance(0, 3.25) && SA_WAIT(rotator_near(rotator_position(), 175.9), SA_TIMEOUT));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && !sa_switch(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) && rotator_count("PUT", "halt") == 2);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && rotator_states_are(INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_position(), 175.9) && rotator_near(rotator_target(), 175.9) && rotator_near(rotator_raw(), 155.9) && rotator_near(rotator_simulated("MechanicalPosition"), 155.9) && rotator_simulated_is("IsMoving", "false"));
+	// the aborted move is not watched any more and does not go on later
+	int polls = rotator_count("GET", "ismoving");
+	SA_CHECK(sa_advance(0, 30) && rotator_wait_polls("devicestate", 3) && rotator_count("GET", "ismoving") == polls && rotator_near(rotator_position(), 175.9));
+	// a fresh move works, relative this time
+	SA_CHECK(rotator_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -5.5, "move", 1) == INDIGO_OK_STATE && rotator_near(rotator_position(), 170.4) && rotator_states_are(INDIGO_OK_STATE));
+	// abort of a relative and of a mechanical move
+	SA_CHECK(rotator_start_move(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 50, "move") && sa_advance(0, 1.5) && SA_WAIT(rotator_near(rotator_position(), 185.4), SA_TIMEOUT));
+	revision = sa_revision(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME);
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && SA_WAIT(sa_state_after(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision) && rotator_states_are(INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_position(), 185.4) && sa_number_target(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME) == 0);
+	SA_CHECK(rotator_start_move(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 100.5, "movemechanical") && sa_advance(0, 2) && SA_WAIT(rotator_near(rotator_mechanical(), 145.4), SA_TIMEOUT));
+	revision = sa_revision(sa_device, ROTATOR_MECHANICAL);
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && SA_WAIT(sa_state_after(sa_device, ROTATOR_MECHANICAL, INDIGO_ALERT_STATE, revision) && rotator_states_are(INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(rotator_mechanical(), 145.4) && rotator_near(sa_number_target(sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM), 145.4) && rotator_near(rotator_position(), 165.4));
+	// a Halt the device refuses: the abort fails, the move goes on and is watched to its end
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 180.5, "moveabsolute"));
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "halt", "ascom-error", "Value=1279&Message=Motor%20fault"));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_ALERT_STATE && sa_message_seen("Abort failed: device error (Motor fault (0x4FF))"));
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && sa_defined(sa_device, ROTATOR_ABORT_MOTION_PROPERTY_NAME));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 180.5));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- polling
+
+static void rotator_polling(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// the positions follow the device
+	SA_CHECK(sa_device_state(0, "rotator", 0, "MechanicalPosition=200.25"));
+	SA_CHECK(SA_WAIT(rotator_near(rotator_position(), 220.25) && rotator_near(rotator_target(), 220.25) && rotator_near(rotator_raw(), 200.25) && rotator_near(rotator_mechanical(), 200.25), SA_TIMEOUT) && rotator_states_are(INDIGO_OK_STATE));
+	// values that do not change are not published again
+	unsigned position_revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME), raw_revision = sa_revision(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME), direction_revision = sa_revision(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME);
+	SA_CHECK(rotator_wait_polls("devicestate", 4) && sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == position_revision && sa_revision(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) == raw_revision && sa_revision(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME) == direction_revision);
+	// a move the driver did not start (another client of the device): the position is BUSY with the target of the device, follows it and ends OK
+	SA_CHECK(sa_put(0, ROTATOR_API "moveabsolute", "Position=250.5&ClientID=77&ClientTransactionID=1"));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && rotator_near(rotator_target(), 250.5), SA_TIMEOUT) && sa_state(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(rotator_near(rotator_position(), 230.25) && rotator_near(rotator_raw(), 210.25), SA_TIMEOUT) && sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	// other moves and a change of the direction are refused meanwhile, with a message
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 10) == INDIGO_OK && SA_WAIT(sa_message_seen("Rotator is moving: request can not be completed"), SA_TIMEOUT));
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 10) == INDIGO_OK && indigo_change_switch_property_1(&sa_client, sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME, true) == INDIGO_OK);
+	SA_CHECK(rotator_wait_polls("devicestate", 3) && rotator_count("PUT", "move") == 0 && rotator_count("PUT", "movemechanical") == 0 && rotator_count("PUT", "reverse") == 0 && sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME));
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && rotator_near(rotator_position(), 250.5) && rotator_near(rotator_target(), 250.5) && rotator_near(rotator_raw(), 230.5));
+	// such a move can be aborted
+	SA_CHECK(sa_put(0, ROTATOR_API "move", "Position=-60&ClientID=77&ClientTransactionID=2") && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && rotator_near(rotator_target(), 190.5), SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 2.5) && SA_WAIT(rotator_near(rotator_position(), 225.5), SA_TIMEOUT));
+	position_revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE && rotator_count("PUT", "halt") == 1);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, position_revision), SA_TIMEOUT) && rotator_near(rotator_position(), 225.5) && rotator_near(rotator_target(), 225.5) && rotator_near(rotator_simulated("MechanicalPosition"), 205.5));
+	// a move of the device itself whose Halt fails: the abort fails with the reason, the position stays BUSY and follows the device
+	SA_CHECK(sa_put(0, ROTATOR_API "moveabsolute", "Position=240.5&ClientID=77&ClientTransactionID=3") && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "halt", "ascom-error", "Value=1279&Message=Motor%20fault"));
+	SA_CHECK(rotator_set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME) == INDIGO_ALERT_STATE && sa_message_seen("Abort failed: device error (Motor fault (0x4FF))") && sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 240.5), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_pending_change_survives_poll(void) {
+	// A request is pending from the moment the bus accepted it until its handler runs. A poll tick that is under way at that moment
+	// must leave the property alone. The tick is held in the device while the request arrives: once in the request the core makes
+	// before it calls the class (devicestate, connected) and once in a request the class makes itself (Reverse, Position), which
+	// is when the class has already looked at the properties and is about to publish what the device says.
+	static const char *holds[2][2] = { { "devicestate", "reverse" }, { "connected", "position" } };
+	for (int variant = 0; variant < 4; variant++) {
+		const char *hold = holds[variant / 2][variant % 2];
+		SA_CHECK(rotator_begin(variant / 2 ? rotator_legacy : rotator_default));
+		// the target of ROTATOR_POSITION
+		SA_CHECK(rotator_hold_poll(hold, 700));
+		unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+		SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 100.5) == INDIGO_OK);
+		SA_CHECK(SA_WAIT(rotator_count("PUT", "moveabsolute") == 1, SA_TIMEOUT) && rotator_last("PUT", "moveabsolute", "Position=100.5&ClientID="));
+		SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 100.5));
+		// the angle of ROTATOR_RELATIVE_MOVE
+		SA_CHECK(rotator_hold_poll(hold, 700));
+		revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+		SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 15.5) == INDIGO_OK);
+		SA_CHECK(SA_WAIT(rotator_count("PUT", "move") == 1, SA_TIMEOUT) && rotator_last("PUT", "move", "Position=15.5&ClientID="));
+		SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 116));
+		// the target of X_ALPACA_MECHANICAL_POSITION, which the tick would set to the mechanical position of the device
+		SA_CHECK(rotator_hold_poll(hold, 700));
+		revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+		SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 50.5) == INDIGO_OK);
+		SA_CHECK(SA_WAIT(rotator_count("PUT", "movemechanical") == 1, SA_TIMEOUT) && rotator_last("PUT", "movemechanical", "Position=50.5&ClientID="));
+		SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_mechanical(), 50.5) && rotator_near(rotator_position(), 70.5));
+		// the switch of ROTATOR_DIRECTION: the tick reads Reverse=False of the device while REVERSED is requested
+		SA_CHECK(rotator_hold_poll(hold, 700));
+		revision = sa_revision(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME);
+		SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME, true) == INDIGO_OK);
+		SA_CHECK(SA_WAIT(rotator_count("PUT", "reverse") == 1, SA_TIMEOUT) && rotator_last("PUT", "reverse", "Reverse=True&ClientID=") && rotator_answer(ROTATOR_DIRECTION_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+		SA_CHECK(sa_switch(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME) && rotator_simulated_is("Reverse", "true"));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- failures
+
+static void rotator_request_failures(void) {
+	SA_CHECK(sa_begin(rotator_default) && sa_set_number("X_ALPACA_TIMEOUTS", "LONG", 1) == INDIGO_OK_STATE && sa_attach("Rotator Simulator") && sa_connect(sa_device));
+	// the device refuses the move: it did not start, all motion properties are in ALERT and the targets are back at the positions
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "moveabsolute", "ascom-error", "Value=1025&Message=Out%20of%20range"));
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200.5) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: invalid value (Out of range (0x401))"));
+	SA_CHECK(rotator_states_are(INDIGO_ALERT_STATE) && rotator_near(rotator_target(), 143.4) && rotator_near(rotator_position(), 143.4) && rotator_count("GET", "ismoving") == 1 && rotator_near(rotator_simulated("MechanicalPosition"), 123.4) && sa_is_connected(sa_device));
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "move", "ascom-error", "Value=1035&Message=Locked"));
+	SA_CHECK(rotator_set_number(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 10) == INDIGO_ALERT_STATE && SA_WAIT(sa_message_seen("Move failed: invalid operation (Locked (0x40B))") && rotator_states_are(INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(sa_number_target(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME) == 0 && rotator_near(rotator_target(), 143.4));
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "movemechanical", "ascom-error", "Value=1279&Message=Motor%20fault"));
+	SA_CHECK(rotator_set_number(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 50.5) == INDIGO_ALERT_STATE && SA_WAIT(sa_message_seen("Move failed: device error (Motor fault (0x4FF))") && rotator_states_are(INDIGO_ALERT_STATE), SA_TIMEOUT));
+	SA_CHECK(rotator_near(sa_number_target(sa_device, ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM), 123.4) && sa_defined(sa_device, ROTATOR_MECHANICAL));
+	// the next good request is OK again, for all of them
+	SA_CHECK(rotator_goto(150.5, 1) == INDIGO_OK_STATE && rotator_states_are(INDIGO_OK_STATE) && rotator_near(rotator_position(), 150.5));
+	// HTTP 500: the request may have reached the device, so IsMoving is asked; it did not, the move is not sent again and the failure keeps its reason
+	int moves = rotator_count("PUT", "moveabsolute"), polls = rotator_count("GET", "ismoving");
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "moveabsolute", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200.5) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: server error (HTTP 500: Kaboom)"));
+	SA_CHECK(rotator_count("PUT", "moveabsolute") == moves + 1 && rotator_count("GET", "ismoving") == polls + 1 && rotator_near(rotator_simulated("MechanicalPosition"), 130.5));
+	// a reply that can not be read after the device started to move: the move is watched as usual and not sent again
+	moves = rotator_count("PUT", "moveabsolute");
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "moveabsolute", "malformed-json", NULL));
+	unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 160.5, "moveabsolute") && rotator_near(rotator_target(), 160.5));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 160.5) && rotator_count("PUT", "moveabsolute") == moves + 1);
+	// a device that takes the move and answers after the long timeout (1 s here): the same
+	moves = rotator_count("PUT", "move");
+	polls = rotator_count("GET", "ismoving");
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "move", "stall-before", "Delay=1500"));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 10.5) == INDIGO_OK && SA_WAIT(rotator_count("GET", "ismoving") >= polls + 2 && rotator_count("PUT", "move") == moves + 1, SA_TIMEOUT));
+	SA_CHECK(rotator_states_are(INDIGO_BUSY_STATE) && !sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && rotator_near(rotator_position(), 171) && rotator_count("PUT", "move") == moves + 1);
+	// a device that does not take the move and does not answer in time: the move failed with a timeout, the device stays connected
+	moves = rotator_count("PUT", "moveabsolute");
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "moveabsolute", "stall-before", "Delay=1500&Dispatch=false"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 300.5) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: timeout"));
+	SA_CHECK(indigo_monotonic_time() - started > 0.8 && indigo_monotonic_time() - started < 4 && rotator_count("PUT", "moveabsolute") == moves + 1 && rotator_near(rotator_target(), 171) && rotator_wait_polls("devicestate", 2) && sa_is_connected(sa_device));
+	// an error of IsMoving during the move: the move failed after it started
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 220.5, "moveabsolute") && rotator_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "ismoving", "ascom-error", "Value=1280&Message=Encoder%20lost"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Move failed: device error (Encoder lost (0x500))") && sa_is_connected(sa_device));
+	// the device still moves, which the poll shows; the properties settle when it stops
+	SA_CHECK(SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT));
+	SA_CHECK(sa_advance(0, 5) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 220.5), SA_TIMEOUT));
+	// a reply of IsMoving that is no reply
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 225.5, "moveabsolute") && rotator_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "ismoving", "malformed-json", NULL));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen("Move failed: invalid reply"));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE && rotator_near(rotator_position(), 225.5), SA_TIMEOUT));
+	// a position that can not be read during the move
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 230.5, "moveabsolute") && rotator_wait_polls("ismoving", 2));
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	int step_mark = sa_message_mark();
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "mechanicalposition", "http-status", "Value=500&Message=Kaboom"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_message_seen_since(step_mark, "Move failed: server error (HTTP 500: Kaboom)"));
+	SA_CHECK(sa_advance(0, 1) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE && rotator_near(rotator_position(), 230.5), SA_TIMEOUT));
+	// a move that does not end within six times the long timeout is given up; the device goes on by itself
+	revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+	step_mark = sa_message_mark();
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 50.5, "moveabsolute"));
+	started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), 2 * SA_TIMEOUT) && sa_message_seen_since(step_mark, "Move failed: timeout"));
+	SA_CHECK(indigo_monotonic_time() - started > 5 && indigo_monotonic_time() - started < 9 && sa_is_connected(sa_device) && rotator_near(rotator_target(), 230.5));
+	SA_CHECK(SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_advance(0, 20) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 50.5), SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_transport_loss(void) {
+	SA_CHECK(rotator_begin(rotator_default));
+	// the server goes away while the rotator is idle: the proxy is disconnected with CONNECTION in ALERT and its properties are gone
+	SA_CHECK(rotator_wait_polls("devicestate", 2) && sa_fault(0, NULL, ROTATOR_API "*", "reset", "Count=-1"));
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL));
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the server is back: a new connection, a working rotator
+	SA_CHECK(sa_clear_faults(0) && sa_connect(sa_device) && rotator_states_are(INDIGO_OK_STATE) && rotator_goto(150.5, 1) == INDIGO_OK_STATE && rotator_near(rotator_simulated("MechanicalPosition"), 130.5));
+	// the server goes away in the middle of a move: the move ends in ALERT, the device is disconnected, nothing hangs
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 250.5, "moveabsolute") && rotator_wait_polls("ismoving", 2));
+	SA_CHECK(sa_fault(0, NULL, ROTATOR_API "*", "reset", "Count=-1"));
+	double started = indigo_monotonic_time();
+	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
+	SA_CHECK(sa_message_seen("Move failed: connection lost") && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL));
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the next connection finds the rotator where the device took it meanwhile: still moving to its target, then there
+	SA_CHECK(sa_clear_faults(0) && sa_advance(0, 4) && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 190.5) && rotator_near(rotator_target(), 250.5));
+	SA_CHECK(sa_advance(0, 10) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 250.5), SA_TIMEOUT));
+	SA_CHECK(rotator_goto(240.5, 1) == INDIGO_OK_STATE && rotator_near(rotator_raw(), 220.5));
+	// the device is disconnected on the server by someone else
+	SA_CHECK(sa_device_state(0, "rotator", 0, "Connected=false") && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_message_seen("the device was disconnected on the Alpaca server"));
+	SA_CHECK(sa_connect(sa_device) && rotator_near(rotator_position(), 240.5) && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+static void rotator_connect_failures(void) {
+	SA_CHECK(sa_begin(rotator_default) && sa_attach("Rotator Simulator"));
+	// a device that does not tell whether it can be reversed does not connect; nothing stays defined and the device is disconnected again
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "canreverse", "malformed-json", NULL));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
+	SA_CHECK(!sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL) && rotator_simulated_is("Connected", "false"));
+	// a rotator whose position can not be read
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "position", "ascom-error", "Value=1279&Message=Encoder%20fault"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && sa_message_seen("Encoder fault") && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && rotator_simulated_is("Connected", "false"));
+	// the transport breaks while the capabilities are read
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "ismoving", "reset", "Count=-1"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && rotator_count("GET", "stepsize") == 0 && sa_clear_faults(0));
+	// replies that say nothing fail the connection wherever they come
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "mechanicalposition", "http-status", "Value=500"));
+	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && !sa_defined(sa_device, ROTATOR_MECHANICAL) && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME));
+	// members that fail with an error of their own, or that the server answers HTTP 400 for, are left out: no direction, no step, no mechanical position
+	SA_CHECK(sa_fault(0, "GET", ROTATOR_API "reverse", "ascom-error", "Value=1279") && sa_fault(0, "GET", ROTATOR_API "stepsize", "http-status", "Value=400") && sa_fault(0, "GET", ROTATOR_API "mechanicalposition", "ascom-error", "Value=1279"));
+	SA_CHECK(sa_connect(sa_device) && rotator_near(rotator_position(), 143.4) && sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME));
+	SA_CHECK(!sa_defined(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL));
+	SA_CHECK(rotator_goto(150.5, 1) == INDIGO_OK_STATE && rotator_near(rotator_position(), 150.5) && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// ---------------------------------------------------------------------------- lifecycle
+
+static void rotator_lifecycle(void) {
+	char key[INDIGO_NAME_SIZE];
+	SA_CHECK(sa_begin(rotator_default));
+	snprintf(key, sizeof(key), "%s", sa_device_key("Rotator Simulator"));
+	SA_CHECK(sa_attach("Rotator Simulator"));
+	// connect and disconnect, several times
+	for (int i = 0; i < 3; i++) {
+		SA_CHECK(sa_connect(sa_device) && rotator_states_are(INDIGO_OK_STATE) && rotator_near(rotator_position(), 143.4) && rotator_near(rotator_mechanical(), 123.4));
+		SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL));
+	}
+	SA_CHECK(sa_disconnect(sa_device) && sa_connect(sa_device));
+	// a disconnect in the middle of a move: nothing is sent to stop it, the finalizer is cancelled, nothing is asked any more
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 250.5, "moveabsolute") && rotator_wait_polls("ismoving", 2));
+	SA_CHECK(sa_disconnect(sa_device) && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_MECHANICAL) && rotator_count("PUT", "halt") == 0);
+	int requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// the device went on: the next connection finds it moving and follows it to the end
+	SA_CHECK(sa_device_state(0, "rotator", 0, "Connected=true") && sa_advance(0, 4) && sa_device_state(0, "rotator", 0, "Connected=false") && sa_connect(sa_device));
+	SA_CHECK(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, ROTATOR_MECHANICAL) == INDIGO_OK_STATE && sa_state(sa_device, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 183.4) && rotator_near(rotator_target(), 250.5));
+	SA_CHECK(sa_advance(0, 8) && SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 250.5), SA_TIMEOUT));
+	// a disconnect right after a request
+	SA_CHECK(indigo_change_number_property_1(&sa_client, sa_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 251.5) == INDIGO_OK && sa_disconnect(sa_device) && !sa_defined(sa_device, ROTATOR_POSITION_PROPERTY_NAME));
+	// the device changes while the proxy is disconnected: an older interface, no reversing. The next connection shows it.
+	SA_CHECK(sa_device_state(0, "rotator", 0, "Connected=true") && sa_advance(0, 5) && sa_device_state(0, "rotator", 0, "InterfaceVersion=2&CanReverse=false&Connected=false"));
+	SA_CHECK(sa_connect(sa_device) && sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && !sa_defined(sa_device, ROTATOR_MECHANICAL) && !sa_defined(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && !sa_defined(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME));
+	SA_CHECK(sa_disconnect(sa_device) && sa_device_state(0, "rotator", 0, "InterfaceVersion=4&CanReverse=true") && sa_connect(sa_device));
+	SA_CHECK(sa_defined(sa_device, ROTATOR_MECHANICAL) && sa_defined(sa_device, ROTATOR_RAW_POSITION_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && sa_defined(sa_device, ROTATOR_DIRECTION_PROPERTY_NAME));
+	// the device is detached in the middle of a move: it goes away without a hang, the Alpaca device is disconnected
+	SA_CHECK(rotator_start_move(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 90.5, "moveabsolute") && rotator_wait_polls("ismoving", 2));
+	double started = indigo_monotonic_time();
+	SA_CHECK(sa_select(key, false) && SA_WAIT(!sa_device_defined(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 3);
+	SA_CHECK(rotator_simulated_is("Connected", "false") && rotator_count("PUT", "halt") == 0);
+	requests = sa_request_count(0, NULL, "/api/*");
+	indigo_usleep(300000);
+	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
+	// and attached again it is a working rotator
+	SA_CHECK(sa_device_state(0, "rotator", 0, "Connected=true") && sa_advance(0, 30) && sa_device_state(0, "rotator", 0, "Connected=false"));
+	SA_CHECK(sa_attach("Rotator Simulator") && sa_connect(sa_device) && rotator_near(rotator_position(), 90.5) && rotator_goto(95.5, 1) == INDIGO_OK_STATE && rotator_near(rotator_raw(), 75.5));
+cleanup:
+	sa_end();
+}
+
+// A rotator that does nothing publishes nothing, however it is polled; a change of the device is published at once.
+static void rotator_steady_state_is_silent(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		const char *poll = legacy ? "connected" : "devicestate";
+		SA_CHECK(sa_begin(legacy ? rotator_legacy : rotator_default) && sa_attach("Rotator Simulator") && sa_connect(sa_device));
+		SA_CHECK(rotator_wait_polls(poll, 3) && sa_steady(0, sa_device, legacy ? ROTATOR_API "connected" : ROTATOR_API "devicestate", 25));
+		SA_CHECK(sa_device_state(0, "rotator", 0, "MechanicalPosition=201.5") && SA_WAIT(rotator_near(rotator_position(), 221.5), SA_TIMEOUT));
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// The device answers the polling and does not tell where it is: ROTATOR_POSITION is in ALERT with the last position and the reason,
+// told once, and is OK again with the first position that is read. On a Platform 7 device devicestate fails as well (for good),
+// so the members are read one by one.
+static void rotator_unreadable_position(void) {
+	for (int legacy = 0; legacy < 2; legacy++) {
+		SA_CHECK(sa_begin(legacy ? rotator_legacy : rotator_default) && sa_attach("Rotator Simulator") && sa_connect(sa_device));
+		if (!legacy) {
+			SA_CHECK(sa_fault(0, "GET", ROTATOR_API "devicestate", "http-status", "Value=500&Count=-1"));
+			SA_CHECK(sa_device_state(0, "rotator", 0, "MechanicalPosition=201.5") && SA_WAIT(rotator_near(rotator_position(), 221.5), SA_TIMEOUT) && sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
+		}
+		double shown = rotator_position();
+		SA_CHECK(sa_put(0, ROTATOR_ERROR, "Member=position&ErrorNumber=1279&ErrorMessage=Encoder%20offline"));
+		SA_CHECK(SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE, SA_TIMEOUT) && sa_message_seen("Reading the position failed: device error (Encoder offline"));
+		unsigned revision = sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME);
+		SA_CHECK(rotator_wait_polls("position", 5) && sa_revision(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == revision && rotator_position() == shown && sa_is_connected(sa_device));
+		SA_CHECK(sa_device_state(0, "rotator", 0, "MechanicalPosition=310.25") && sa_put(0, ROTATOR_ERROR, "Member=position&ErrorNumber=0"));
+		SA_CHECK(SA_WAIT(sa_state(sa_device, ROTATOR_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && rotator_near(rotator_position(), 330.25), SA_TIMEOUT));
+		SA_CHECK(sa_clear_faults(0) && sa_disconnect(sa_device));
+		sa_end();
+	}
+	return;
+cleanup:
+	sa_end();
+}
+
+// HTTP 400 to a method with a parameter is a failed request, not a method the device does not have: the server may not have liked
+// the value. The property stays and the next request is sent. (NotImplemented takes it away, see rotator_capability_variants.)
+static void rotator_rejected_parameter(void) {
+	SA_CHECK(sa_begin(rotator_default) && sa_attach("Rotator Simulator") && sa_connect(sa_device));
+	SA_CHECK(rotator_set_switch(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "sync", "http-status", "Value=400&Message=Position%20out%20of%20range"));
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 77.5) == INDIGO_ALERT_STATE && sa_message_seen("Sync failed: request rejected by the server") && rotator_count("PUT", "sync") == 1);
+	SA_CHECK(rotator_wait_polls("devicestate", 2) && sa_defined(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME) && sa_switch(sa_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME));
+	SA_CHECK(rotator_set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 77.5) == INDIGO_OK_STATE && rotator_count("PUT", "sync") == 2 && rotator_near(rotator_position(), 77.5));
+	SA_CHECK(sa_fault(0, "PUT", ROTATOR_API "movemechanical", "http-status", "Value=400&Message=Position%20out%20of%20range"));
+	SA_CHECK(rotator_set_number(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 90.5) == INDIGO_ALERT_STATE && sa_message_seen("Move failed: request rejected by the server") && rotator_count("PUT", "movemechanical") == 1);
+	SA_CHECK(rotator_wait_polls("devicestate", 2) && sa_defined(sa_device, ROTATOR_MECHANICAL));
+	SA_CHECK(rotator_start_move(ROTATOR_MECHANICAL, ROTATOR_MECHANICAL_ITEM, 90.5, "movemechanical") && rotator_count("PUT", "movemechanical") == 2);
+	SA_CHECK(sa_advance(0, 60) && SA_WAIT(rotator_states_are(INDIGO_OK_STATE), SA_TIMEOUT) && rotator_near(rotator_mechanical(), 90.5));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+#define SYSTEM_ALPACA_ROTATOR_CASES \
+	{ "rotator_steady_state_is_silent", rotator_steady_state_is_silent }, \
+	{ "rotator_unreadable_position", rotator_unreadable_position }, \
+	{ "rotator_rejected_parameter", rotator_rejected_parameter }, \
+	{ "rotator_properties", rotator_properties }, \
+	{ "rotator_legacy_properties", rotator_legacy_properties }, \
+	{ "rotator_capability_variants", rotator_capability_variants }, \
+	{ "rotator_absolute_move", rotator_absolute_move }, \
+	{ "rotator_relative_move", rotator_relative_move }, \
+	{ "rotator_mechanical_move", rotator_mechanical_move }, \
+	{ "rotator_target_is_mechanical", rotator_target_is_mechanical }, \
+	{ "rotator_sync", rotator_sync }, \
+	{ "rotator_reverse", rotator_reverse }, \
+	{ "rotator_abort", rotator_abort }, \
+	{ "rotator_polling", rotator_polling }, \
+	{ "rotator_pending_change_survives_poll", rotator_pending_change_survives_poll }, \
+	{ "rotator_request_failures", rotator_request_failures }, \
+	{ "rotator_transport_loss", rotator_transport_loss }, \
+	{ "rotator_connect_failures", rotator_connect_failures }, \
+	{ "rotator_lifecycle", rotator_lifecycle },
 
 #endif /* system_alpaca_rotator_cases_h */

@@ -44,6 +44,13 @@
  because Alpaca reports Brightness 0 while the calibrator is off.
 
  Nothing is stopped on disconnect: a cover that is moving finishes its move, a light that is on stays on.
+
+ While the state of the device can not be read (the device answers the polling with an error) AUX_COVER and AUX_LIGHT_SWITCH are in
+ ALERT with what was read last, unless a request or a move owns them; they are OK again with the first state that is read.
+
+ Threads: change_property runs on a bus thread, everything else on the handler queue of the device. The three properties that are
+ accepted while they are BUSY are written by both sides, so both do it under the lock of the device, together with the number of
+ requests that wait for their handler: the polling and the end of a move leave a property alone while a request for it waits.
  */
 
 #pragma mark - Includes
@@ -51,7 +58,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdatomic.h>
 #include <assert.h>
 
 #include <indigo/indigo_aux_driver.h>
@@ -124,8 +130,8 @@ typedef struct {
 	int calibrator_state;								///< last CalibratorState read from the device
 	int calibrator_shown;								///< CalibratorState AUX_LIGHT_SWITCH shows
 	int brightness;											///< last Brightness read from the device
-	atomic_int cover_pending;						///< requests of AUX_COVER that were accepted and whose handler did not run yet
-	atomic_int calibrator_pending;			///< the same for AUX_LIGHT_SWITCH and AUX_LIGHT_INTENSITY
+	int cover_pending;									///< requests of AUX_COVER that were accepted and whose handler did not run yet; guarded by the lock of the device
+	int calibrator_pending;							///< the same for AUX_LIGHT_SWITCH and AUX_LIGHT_INTENSITY
 } lightbox_data;
 
 /** Operational state of the device, read member by member or from DeviceState.
@@ -194,14 +200,23 @@ static alpaca_result lightbox_calibrator_changing(indigo_device *device, bool *c
 	return result;
 }
 
+// Select an item of a switch that shows the state of the device. indigo_set_switch() marks the property as changed even if the item
+// is selected already, and the property would then be published on every poll tick.
+static void lightbox_select(indigo_property *property, indigo_item *item) {
+	if (!item->sw.value) {
+		indigo_set_switch(property, item, true);
+	}
+}
+
 // Show a CoverState on AUX_COVER. A request that failed stays in ALERT until the cover reports another state.
+// Called with the lock of the device held.
 static void lightbox_apply_cover(indigo_device *device, int state) {
 	switch (state) {
 		case LIGHTBOX_COVER_CLOSED:
-			indigo_set_switch(AUX_COVER_PROPERTY, AUX_COVER_CLOSE_ITEM, true);
+			lightbox_select(AUX_COVER_PROPERTY, AUX_COVER_CLOSE_ITEM);
 			break;
 		case LIGHTBOX_COVER_OPEN:
-			indigo_set_switch(AUX_COVER_PROPERTY, AUX_COVER_OPEN_ITEM, true);
+			lightbox_select(AUX_COVER_PROPERTY, AUX_COVER_OPEN_ITEM);
 			break;
 		case LIGHTBOX_COVER_MOVING:
 			// the state does not tell where the cover is going
@@ -226,18 +241,18 @@ static void lightbox_apply_cover(indigo_device *device, int state) {
 }
 
 // Show a CalibratorState and the Brightness on AUX_LIGHT_SWITCH and AUX_LIGHT_INTENSITY. A request that failed stays in ALERT until
-// the calibrator reports another state.
+// the calibrator reports another state. Called with the lock of the device held.
 static void lightbox_apply_calibrator(indigo_device *device, int state, int brightness) {
 	bool on = state == LIGHTBOX_CALIBRATOR_READY || (state == LIGHTBOX_CALIBRATOR_NOT_READY && brightness > 0);
 	switch (state) {
 		case LIGHTBOX_CALIBRATOR_OFF:
-			indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_OFF_ITEM, true);
+			lightbox_select(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_OFF_ITEM);
 			LIGHTBOX_DATA->light_on = false;
 			break;
 		case LIGHTBOX_CALIBRATOR_READY:
 		case LIGHTBOX_CALIBRATOR_NOT_READY:
 			if (on) {
-				indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM, true);
+				lightbox_select(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM);
 				LIGHTBOX_DATA->light_on = true;
 			}
 			break;
@@ -257,6 +272,10 @@ static void lightbox_apply_calibrator(indigo_device *device, int state, int brig
 	if (on) {
 		// Brightness is 0 while the calibrator is off, the intensity then keeps the value for the next time it is switched on
 		AUX_LIGHT_INTENSITY_ITEM->number.value = brightness;
+		if (LIGHTBOX_DATA->calibrator_pending == 0) {
+			// what is shown is what the light is switched on with the next time, unless a request for another intensity waits for its handler
+			AUX_LIGHT_INTENSITY_ITEM->number.target = brightness;
+		}
 	}
 	if (on && state == LIGHTBOX_CALIBRATOR_NOT_READY) {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -267,16 +286,43 @@ static void lightbox_apply_calibrator(indigo_device *device, int state, int brig
 }
 
 // Put the state of the device into the properties without publishing them. A property with a request that is waiting for its
-// handler or for its finalizer belongs to that request and is left alone.
+// handler or for its finalizer belongs to that request and is left alone. It is done in one step under the lock of the device,
+// so a request that is accepted meanwhile either finds its property untouched or is seen as waiting here.
 static void lightbox_apply_status(indigo_device *device, const lightbox_status *status) {
 	LIGHTBOX_DATA->cover_state = status->cover;
 	LIGHTBOX_DATA->calibrator_state = status->calibrator;
 	LIGHTBOX_DATA->brightness = status->brightness;
+	system_alpaca_lock(device);
 	if (!AUX_COVER_PROPERTY->hidden && !LIGHTBOX_DATA->cover.active && LIGHTBOX_DATA->cover_pending == 0) {
 		lightbox_apply_cover(device, status->cover);
 	}
 	if (!AUX_LIGHT_SWITCH_PROPERTY->hidden && !LIGHTBOX_DATA->calibrator.active && LIGHTBOX_DATA->calibrator_pending == 0) {
 		lightbox_apply_calibrator(device, status->calibrator, status->brightness);
+	}
+	system_alpaca_unlock(device);
+}
+
+// The device answers the polling and does not tell its state: what the properties show is not the state of the device any more.
+// A property that a request or a move owns is left alone. The properties are OK again when the state is read, see lightbox_apply_cover()
+// and lightbox_apply_calibrator().
+static void lightbox_status_unreadable(indigo_device *device, alpaca_result result, const char *reason) {
+	system_alpaca_lock(device);
+	bool cover = !AUX_COVER_PROPERTY->hidden && !LIGHTBOX_DATA->cover.active && LIGHTBOX_DATA->cover_pending == 0 && AUX_COVER_PROPERTY->state == INDIGO_OK_STATE;
+	bool calibrator = !AUX_LIGHT_SWITCH_PROPERTY->hidden && !LIGHTBOX_DATA->calibrator.active && LIGHTBOX_DATA->calibrator_pending == 0 && AUX_LIGHT_SWITCH_PROPERTY->state == INDIGO_OK_STATE;
+	if (cover) {
+		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		LIGHTBOX_DATA->cover_shown = LIGHTBOX_NOT_SHOWN;
+	}
+	if (calibrator) {
+		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+		LIGHTBOX_DATA->calibrator_shown = LIGHTBOX_NOT_SHOWN;
+	}
+	system_alpaca_unlock(device);
+	if (cover) {
+		system_alpaca_report(device, AUX_COVER_PROPERTY, result, "Reading the state of the cover", reason);
+	}
+	if (calibrator) {
+		system_alpaca_report(device, AUX_LIGHT_SWITCH_PROPERTY, result, "Reading the state of the calibrator", reason);
 	}
 }
 
@@ -298,9 +344,12 @@ static void lightbox_no_halt(indigo_device *device) {
 // Send CalibratorOn with the requested intensity or CalibratorOff and watch the calibrator until it is stable.
 // property is the one the request came through; it gets the message if the request fails.
 static void lightbox_calibrator_start(indigo_device *device, bool on, indigo_property *property) {
+	char reason[INDIGO_VALUE_SIZE];
 	int brightness = 0;
 	if (on) {
+		system_alpaca_lock(device);
 		brightness = AUX_LIGHT_INTENSITY_PROPERTY->hidden ? (LIGHTBOX_DATA->max_brightness > 0 ? LIGHTBOX_DATA->max_brightness : 1) : (int)(AUX_LIGHT_INTENSITY_ITEM->number.target + 0.5);
+		system_alpaca_unlock(device);
 	}
 	if (LIGHTBOX_DATA->calibrator.active && LIGHTBOX_DATA->light_on == on && LIGHTBOX_DATA->brightness_sent == brightness) {
 		// the calibrator is on its way there already
@@ -308,24 +357,31 @@ static void lightbox_calibrator_start(indigo_device *device, bool on, indigo_pro
 	}
 	alpaca_param params[] = { ALPACA_INT_PARAM("Brightness", brightness) };
 	alpaca_result result = on ? system_alpaca_put(device, "calibratoron", params, 1, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE) : system_alpaca_put(device, "calibratoroff", NULL, 0, ALPACA_WAIT_LONG | ALPACA_REPLAYABLE);
+	system_alpaca_reason(device, result, reason, sizeof(reason));
 	if (result == ALPACA_OK) {
 		LIGHTBOX_DATA->light_on = on;
 		LIGHTBOX_DATA->brightness_sent = brightness;
+		system_alpaca_lock(device);
 		indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, on ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		AUX_LIGHT_INTENSITY_PROPERTY->state = on ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+		system_alpaca_unlock(device);
+		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_cancel_pending_handler(device, lightbox_calibrator_finalizer);
 		system_alpaca_operation_start(device, &LIGHTBOX_DATA->calibrator, LIGHTBOX_CALIBRATOR_TIMEOUT, lightbox_calibrator_finalizer);
 		return;
 	}
-	// the calibrator did not take the request: the intensity goes back to what the device has
-	AUX_LIGHT_INTENSITY_ITEM->number.target = AUX_LIGHT_INTENSITY_ITEM->number.value;
+	system_alpaca_lock(device);
+	// the calibrator did not take the request: the intensity goes back to what the device has, unless the next request is waiting already
+	if (LIGHTBOX_DATA->calibrator_pending == 0) {
+		AUX_LIGHT_INTENSITY_ITEM->number.target = AUX_LIGHT_INTENSITY_ITEM->number.value;
+	}
 	if (LIGHTBOX_DATA->calibrator.active) {
 		// the running change goes on
 		indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, LIGHTBOX_DATA->light_on ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
 		AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
 		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_send_message(device, ALERT_PROPERTY, "Calibrator %s failed: %s", on ? "on" : "off", alpaca_result_text(result));
@@ -333,11 +389,13 @@ static void lightbox_calibrator_start(indigo_device *device, bool on, indigo_pro
 	}
 	LIGHTBOX_DATA->calibrator_shown = LIGHTBOX_NOT_SHOWN;
 	lightbox_apply_calibrator(device, LIGHTBOX_DATA->calibrator_state, LIGHTBOX_DATA->brightness);
+	system_alpaca_unlock(device);
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-	system_alpaca_finish(device, property, result, on ? "Calibrator on" : "Calibrator off");
-	if (result == ALPACA_UNSUPPORTED) {
+	system_alpaca_finish_with(device, property, result, on ? "Calibrator on" : "Calibrator off", reason);
+	if (system_alpaca_not_implemented(result, on ? 1 : 0)) {
 		// the device says it has a calibrator and does not implement its methods: there is nothing to control
+		// (HTTP 400 to CalibratorOn may as well mean that the server did not like the brightness)
 		system_alpaca_set_unsupported(device, on ? "calibratoron" : "calibratoroff");
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
@@ -350,7 +408,7 @@ static void lightbox_calibrator_start(indigo_device *device, bool on, indigo_pro
 static void lightbox_cover_finalizer(indigo_device *device) {
 	int state = LIGHTBOX_COVER_UNKNOWN;
 	bool moving = false;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_result result = lightbox_cover_moving(device, &moving);
@@ -364,22 +422,43 @@ static void lightbox_cover_finalizer(indigo_device *device) {
 	if (result == ALPACA_OK && !moving) {
 		bool arrived = state == (LIGHTBOX_DATA->cover_open ? LIGHTBOX_COVER_OPEN : LIGHTBOX_COVER_CLOSED);
 		LIGHTBOX_DATA->cover_state = state;
-		lightbox_apply_cover(device, state);
+		// the end of the move is put into the property in one step with the look at the waiting requests
+		system_alpaca_lock(device);
+		bool superseded = LIGHTBOX_DATA->cover_pending > 0;
+		if (!superseded) {
+			lightbox_apply_cover(device, state);
+			if (!arrived) {
+				AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		system_alpaca_unlock(device);
+		if (superseded) {
+			// the next request is accepted already and AUX_COVER shows it: its handler goes on from here
+			return;
+		}
 		if (arrived) {
 			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 		} else {
-			AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AUX_COVER_PROPERTY, "%s cover failed: %s", LIGHTBOX_DATA->cover_open ? "Open" : "Close", state == LIGHTBOX_COVER_ERROR ? "the cover reports an error" : "the cover stopped");
 		}
 	} else {
-		system_alpaca_finish(device, AUX_COVER_PROPERTY, result == ALPACA_OK ? ALPACA_TIMED_OUT : result, LIGHTBOX_DATA->cover_open ? "Open cover" : "Close cover");
+		// a request that waits for its handler owns AUX_COVER: the failure of the running move is told, the state is left to that request
+		char reason[INDIGO_VALUE_SIZE];
+		system_alpaca_reason(device, result, reason, sizeof(reason));
+		system_alpaca_lock(device);
+		bool superseded = LIGHTBOX_DATA->cover_pending > 0;
+		if (!superseded) {
+			AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		system_alpaca_unlock(device);
+		system_alpaca_report(device, AUX_COVER_PROPERTY, result == ALPACA_OK ? ALPACA_TIMED_OUT : result, LIGHTBOX_DATA->cover_open ? "Open cover" : "Close cover", reason);
 	}
 }
 
 static void lightbox_calibrator_finalizer(indigo_device *device) {
 	int state = LIGHTBOX_CALIBRATOR_UNKNOWN, brightness = LIGHTBOX_DATA->brightness_sent;
-	bool changing = false;
-	if (!IS_CONNECTED) {
+	bool changing = false, on = LIGHTBOX_DATA->light_on;
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	alpaca_result result = lightbox_calibrator_changing(device, &changing);
@@ -399,30 +478,67 @@ static void lightbox_calibrator_finalizer(indigo_device *device) {
 		}
 	}
 	if (result == ALPACA_OK && !changing) {
-		bool arrived = state == (LIGHTBOX_DATA->light_on ? LIGHTBOX_CALIBRATOR_READY : LIGHTBOX_CALIBRATOR_OFF);
+		bool arrived = state == (on ? LIGHTBOX_CALIBRATOR_READY : LIGHTBOX_CALIBRATOR_OFF);
 		LIGHTBOX_DATA->calibrator_state = state;
 		LIGHTBOX_DATA->brightness = brightness;
-		lightbox_apply_calibrator(device, state, brightness);
+		// the end of the change is put into the properties in one step with the look at the waiting requests
+		system_alpaca_lock(device);
+		bool superseded = LIGHTBOX_DATA->calibrator_pending > 0;
+		if (!superseded) {
+			lightbox_apply_calibrator(device, state, brightness);
+			if (!arrived) {
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		system_alpaca_unlock(device);
+		if (superseded) {
+			// the next request is accepted already and the properties show it: its handler goes on from here
+			return;
+		}
 		if (arrived) {
 			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		} else {
-			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, "Calibrator %s failed: %s", LIGHTBOX_DATA->light_on ? "on" : "off", state == LIGHTBOX_CALIBRATOR_ERROR ? "the calibrator reports an error" : "the calibrator is in another state");
+			// what was asked for is named, not what the calibrator turned out to be
+			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, "Calibrator %s failed: %s", on ? "on" : "off", state == LIGHTBOX_CALIBRATOR_ERROR ? "the calibrator reports an error" : "the calibrator is in another state");
 		}
 		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	} else {
-		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-		system_alpaca_finish(device, AUX_LIGHT_SWITCH_PROPERTY, result == ALPACA_OK ? ALPACA_TIMED_OUT : result, LIGHTBOX_DATA->light_on ? "Calibrator on" : "Calibrator off");
+		// a request that waits for its handler owns AUX_LIGHT_SWITCH and AUX_LIGHT_INTENSITY: the failure of the running change is told,
+		// the states are left to that request
+		char reason[INDIGO_VALUE_SIZE];
+		system_alpaca_reason(device, result, reason, sizeof(reason));
+		system_alpaca_lock(device);
+		bool superseded = LIGHTBOX_DATA->calibrator_pending > 0;
+		if (!superseded) {
+			AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		system_alpaca_unlock(device);
+		if (!superseded) {
+			indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+		}
+		system_alpaca_report(device, AUX_LIGHT_SWITCH_PROPERTY, result == ALPACA_OK ? ALPACA_TIMED_OUT : result, on ? "Calibrator on" : "Calibrator off", reason);
 	}
+}
+
+// AUX_COVER shows a move in the given direction. A request that waits for its handler has put its own direction there already.
+static void lightbox_show_cover_move(indigo_device *device, bool open) {
+	system_alpaca_lock(device);
+	if (LIGHTBOX_DATA->cover_pending == 0) {
+		indigo_set_switch(AUX_COVER_PROPERTY, open ? AUX_COVER_OPEN_ITEM : AUX_COVER_CLOSE_ITEM, true);
+	}
+	AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
+	system_alpaca_unlock(device);
 }
 
 static void lightbox_aux_cover_handler(indigo_device *device, void *data) {
 	bool open = data != NULL;
 	const char *member = open ? "opencover" : "closecover";
+	char reason[INDIGO_VALUE_SIZE] = { 0 };
 	int state = LIGHTBOX_COVER_UNKNOWN;
+	system_alpaca_lock(device);
 	LIGHTBOX_DATA->cover_pending--;
-	if (!IS_CONNECTED) {
+	system_alpaca_unlock(device);
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (LIGHTBOX_DATA->cover.active && LIGHTBOX_DATA->cover_open == open) {
@@ -431,31 +547,33 @@ static void lightbox_aux_cover_handler(indigo_device *device, void *data) {
 	}
 	if (LIGHTBOX_DATA->cover.active && system_alpaca_supported(device, "haltcover")) {
 		// a request for the other direction replaces the running move: the cover is stopped before it is sent back
-		if (system_alpaca_put(device, "haltcover", NULL, 0, ALPACA_REPLAYABLE) == ALPACA_UNSUPPORTED) {
+		if (system_alpaca_not_implemented(system_alpaca_put(device, "haltcover", NULL, 0, ALPACA_REPLAYABLE), 0)) {
 			lightbox_no_halt(device);
 		}
 	}
 	alpaca_result result = system_alpaca_put(device, member, NULL, 0, ALPACA_WAIT_LONG);
+	system_alpaca_reason(device, result, reason, sizeof(reason));
 	if (alpaca_may_have_executed(result) && system_alpaca_get_int(device, "coverstate", &state) == ALPACA_OK && (state == LIGHTBOX_COVER_MOVING || state == (open ? LIGHTBOX_COVER_OPEN : LIGHTBOX_COVER_CLOSED))) {
 		// the request failed on the way, but the cover does what it was asked for
 		result = ALPACA_OK;
 	}
 	if (result == ALPACA_OK) {
 		LIGHTBOX_DATA->cover_open = open;
-		indigo_set_switch(AUX_COVER_PROPERTY, open ? AUX_COVER_OPEN_ITEM : AUX_COVER_CLOSE_ITEM, true);
-		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
+		lightbox_show_cover_move(device, open);
 		indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 		indigo_cancel_pending_handler(device, lightbox_cover_finalizer);
 		system_alpaca_operation_start(device, &LIGHTBOX_DATA->cover, LIGHTBOX_COVER_TIMEOUT, lightbox_cover_finalizer);
 	} else if (LIGHTBOX_DATA->cover.active) {
 		// the finalizer of the running move tells where the cover ended
-		indigo_set_switch(AUX_COVER_PROPERTY, LIGHTBOX_DATA->cover_open ? AUX_COVER_OPEN_ITEM : AUX_COVER_CLOSE_ITEM, true);
-		indigo_update_property(device, AUX_COVER_PROPERTY, "%s cover failed: %s", open ? "Open" : "Close", alpaca_result_text(result));
+		lightbox_show_cover_move(device, LIGHTBOX_DATA->cover_open);
+		indigo_update_property(device, AUX_COVER_PROPERTY, "%s cover failed: %s%s%s%s", open ? "Open" : "Close", alpaca_result_text(result), *reason ? " (" : "", reason, *reason ? ")" : "");
 	} else {
+		system_alpaca_lock(device);
 		LIGHTBOX_DATA->cover_shown = LIGHTBOX_NOT_SHOWN;
 		lightbox_apply_cover(device, LIGHTBOX_DATA->cover_state);
-		system_alpaca_finish(device, AUX_COVER_PROPERTY, result, open ? "Open cover" : "Close cover");
-		if (result == ALPACA_UNSUPPORTED) {
+		system_alpaca_unlock(device);
+		system_alpaca_finish_with(device, AUX_COVER_PROPERTY, result, open ? "Open cover" : "Close cover", reason);
+		if (system_alpaca_not_implemented(result, 0)) {
 			// the device says it has a cover and does not implement its methods: there is nothing to control
 			system_alpaca_set_unsupported(device, member);
 			indigo_delete_property(device, AUX_COVER_PROPERTY, NULL);
@@ -466,50 +584,87 @@ static void lightbox_aux_cover_handler(indigo_device *device, void *data) {
 }
 
 static void lightbox_x_alpaca_cover_abort_motion_handler(indigo_device *device) {
+	char reason[INDIGO_VALUE_SIZE] = { 0 };
 	int state = LIGHTBOX_COVER_UNKNOWN;
 	alpaca_result result = ALPACA_OK;
-	if (!IS_CONNECTED) {
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (X_ALPACA_COVER_ABORT_MOTION_ITEM->sw.value) {
 		X_ALPACA_COVER_ABORT_MOTION_ITEM->sw.value = false;
 		result = system_alpaca_put(device, "haltcover", NULL, 0, ALPACA_REPLAYABLE);
+		system_alpaca_reason(device, result, reason, sizeof(reason));
 		if (result == ALPACA_OK) {
 			// the move is over, wherever the cover is now
 			indigo_cancel_pending_handler(device, lightbox_cover_finalizer);
 			system_alpaca_operation_end(device, &LIGHTBOX_DATA->cover);
-			if (LIGHTBOX_DATA->cover_pending == 0 && system_alpaca_get_int(device, "coverstate", &state) == ALPACA_OK) {
+			system_alpaca_lock(device);
+			bool idle = LIGHTBOX_DATA->cover_pending == 0;
+			system_alpaca_unlock(device);
+			// a request that waits for its handler owns AUX_COVER; one that arrives while the cover is asked does, too
+			if (idle && system_alpaca_get_int(device, "coverstate", &state) == ALPACA_OK) {
 				LIGHTBOX_DATA->cover_state = state;
-				lightbox_apply_cover(device, state);
-				indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+				system_alpaca_lock(device);
+				idle = LIGHTBOX_DATA->cover_pending == 0;
+				if (idle) {
+					lightbox_apply_cover(device, state);
+				}
+				system_alpaca_unlock(device);
+				if (idle) {
+					indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+				}
 			}
 		}
 	}
-	system_alpaca_finish(device, X_ALPACA_COVER_ABORT_MOTION_PROPERTY, result, "Halt cover");
-	if (result == ALPACA_UNSUPPORTED) {
+	system_alpaca_finish_with(device, X_ALPACA_COVER_ABORT_MOTION_PROPERTY, result, "Halt cover", reason);
+	if (system_alpaca_not_implemented(result, 0)) {
 		lightbox_no_halt(device);
 	}
 }
 
 static void lightbox_aux_light_switch_handler(indigo_device *device, void *data) {
+	system_alpaca_lock(device);
 	LIGHTBOX_DATA->calibrator_pending--;
-	if (!IS_CONNECTED) {
+	system_alpaca_unlock(device);
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	lightbox_calibrator_start(device, data != NULL, AUX_LIGHT_SWITCH_PROPERTY);
 }
 
 static void lightbox_aux_light_intensity_handler(indigo_device *device) {
+	system_alpaca_lock(device);
 	LIGHTBOX_DATA->calibrator_pending--;
-	if (!IS_CONNECTED) {
+	system_alpaca_unlock(device);
+	if (!system_alpaca_is_active(device)) {
 		return;
 	}
 	if (LIGHTBOX_DATA->light_on) {
 		// a new brightness of a light that is on is CalibratorOn again
 		lightbox_calibrator_start(device, true, AUX_LIGHT_INTENSITY_PROPERTY);
 	} else {
-		AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target;
+		// The intensity of a light that is off is kept for the next time it is switched on. A change of the calibrator whose finalizer
+		// found this request waiting left AUX_LIGHT_SWITCH to it: it is ended here with what that finalizer read from the device.
+		system_alpaca_lock(device);
+		bool end_switch = !LIGHTBOX_DATA->calibrator.active && LIGHTBOX_DATA->calibrator_pending == 0 && AUX_LIGHT_SWITCH_PROPERTY->state == INDIGO_BUSY_STATE;
+		bool arrived = LIGHTBOX_DATA->calibrator_state == LIGHTBOX_CALIBRATOR_OFF;
+		double intensity = AUX_LIGHT_INTENSITY_ITEM->number.target;
+		if (end_switch) {
+			lightbox_apply_calibrator(device, LIGHTBOX_DATA->calibrator_state, LIGHTBOX_DATA->brightness);
+			if (!arrived) {
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		if (!LIGHTBOX_DATA->light_on) {
+			AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = intensity;
+		}
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+		system_alpaca_unlock(device);
+		if (end_switch && arrived) {
+			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+		} else if (end_switch) {
+			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, "Calibrator off failed: %s", LIGHTBOX_DATA->calibrator_state == LIGHTBOX_CALIBRATOR_ERROR ? "the calibrator reports an error" : "the calibrator is in another state");
+		}
 		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	}
 }
@@ -543,6 +698,7 @@ static bool lightbox_on_connect(indigo_device *device) {
 	lightbox_status status = { 0 };
 	bool cover = LIGHTBOX_DATA->cover_state != LIGHTBOX_COVER_NOT_PRESENT, calibrator = LIGHTBOX_DATA->calibrator_state != LIGHTBOX_CALIBRATOR_NOT_PRESENT;
 	// everything the last connection left behind is forgotten, the device may be another one now
+	system_alpaca_lock(device);
 	LIGHTBOX_DATA->cover_pending = LIGHTBOX_DATA->calibrator_pending = 0;
 	LIGHTBOX_DATA->cover_shown = LIGHTBOX_DATA->calibrator_shown = LIGHTBOX_NOT_SHOWN;
 	LIGHTBOX_DATA->light_on = false;
@@ -552,9 +708,11 @@ static bool lightbox_on_connect(indigo_device *device) {
 	AUX_LIGHT_INTENSITY_PROPERTY->hidden = !calibrator || LIGHTBOX_DATA->max_brightness <= 1;
 	AUX_COVER_PROPERTY->state = AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = X_ALPACA_COVER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	X_ALPACA_COVER_ABORT_MOTION_ITEM->sw.value = false;
+	system_alpaca_unlock(device);
 	if (lightbox_read_status(device, &status) != ALPACA_OK) {
 		return false;
 	}
+	system_alpaca_lock(device);
 	if (calibrator) {
 		AUX_LIGHT_INTENSITY_ITEM->number.max = LIGHTBOX_DATA->max_brightness > 0 ? LIGHTBOX_DATA->max_brightness : 1;
 		if (AUX_LIGHT_INTENSITY_ITEM->number.value <= 0 || AUX_LIGHT_INTENSITY_ITEM->number.value > AUX_LIGHT_INTENSITY_ITEM->number.max) {
@@ -564,6 +722,7 @@ static bool lightbox_on_connect(indigo_device *device) {
 	}
 	lightbox_apply_status(device, &status);
 	AUX_LIGHT_INTENSITY_ITEM->number.target = AUX_LIGHT_INTENSITY_ITEM->number.value;
+	system_alpaca_unlock(device);
 	// the interface tells what the device is: a light box, a dust cap or both
 	snprintf(INFO_DEVICE_INTERFACE_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", INDIGO_INTERFACE_AUX | (calibrator ? INDIGO_INTERFACE_AUX_LIGHTBOX : 0) | (cover ? INDIGO_INTERFACE_AUX_DUSTCAP : 0));
 	indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -585,9 +744,14 @@ static void lightbox_on_disconnect(indigo_device *device) {
 }
 
 static void lightbox_on_poll(indigo_device *device) {
+	char reason[INDIGO_VALUE_SIZE];
 	lightbox_status status = { 0 };
-	if (lightbox_read_status(device, &status) == ALPACA_OK) {
+	alpaca_result result = lightbox_read_status(device, &status);
+	system_alpaca_reason(device, result, reason, sizeof(reason));
+	if (result == ALPACA_OK) {
 		lightbox_show_status(device, &status);
+	} else if (!alpaca_is_transport_error(result)) {
+		lightbox_status_unreadable(device, result, reason);
 	}
 }
 
@@ -627,7 +791,7 @@ static indigo_result lightbox_attach(indigo_device *device) {
 }
 
 static indigo_result lightbox_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
+	if (system_alpaca_is_active(device)) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_COVER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_ALPACA_COVER_ABORT_MOTION_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_LIGHT_SWITCH_PROPERTY);
@@ -643,29 +807,35 @@ static indigo_result lightbox_change_property(indigo_device *device, indigo_clie
 	if (indigo_property_match_changeable(AUX_COVER_PROPERTY, property)) {
 		// accepted while the cover moves as well, see lightbox_aux_cover_handler()
 		bool open = indigo_get_switch(property, AUX_COVER_OPEN_ITEM_NAME);
+		system_alpaca_lock(device);
 		LIGHTBOX_DATA->cover_pending++;
 		indigo_property_copy_values(AUX_COVER_PROPERTY, property, false);
 		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
 		indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 		indigo_execute_handler_with_data(device, lightbox_aux_cover_handler, (void *)(intptr_t)open);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_ALPACA_COVER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_ALPACA_COVER_ABORT_MOTION_PROPERTY, lightbox_x_alpaca_cover_abort_motion_handler);
+		system_alpaca_accept(device, X_ALPACA_COVER_ABORT_MOTION_PROPERTY, property, ALPACA_ACCEPT_VALUES, NULL, lightbox_x_alpaca_cover_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_SWITCH_PROPERTY, property)) {
 		// accepted while the calibrator stabilises as well: a light that is not ready yet can be switched off
 		bool on = indigo_get_switch(property, AUX_LIGHT_SWITCH_ON_ITEM_NAME);
+		system_alpaca_lock(device);
 		LIGHTBOX_DATA->calibrator_pending++;
 		indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
 		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_execute_handler_with_data(device, lightbox_aux_light_switch_handler, (void *)(intptr_t)on);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
 		// accepted while the calibrator stabilises as well: the last of a series of requests is the brightness that stays
+		system_alpaca_lock(device);
 		LIGHTBOX_DATA->calibrator_pending++;
 		indigo_property_copy_targets(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
+		system_alpaca_unlock(device);
 		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_execute_handler(device, lightbox_aux_light_intensity_handler);
 		return INDIGO_OK;
