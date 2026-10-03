@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x03000018
+#define DRIVER_VERSION 0x03000019
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -756,6 +756,19 @@ static void home_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+// length of the separator after the declination degrees: '*' (Meade documentation), 0xDF (degree sign of the Meade handset
+// character set), UTF-8 degree sign, ':' and '?' (sent by clients that fail to encode the degree sign), 0 if there is none
+static int lx200_degree_separator(const char *text) {
+	unsigned char c = (unsigned char)*text;
+	if (c == '*' || c == 0xDF || c == ':' || c == '?') {
+		return 1;
+	}
+	if (c == 0xC2 && (unsigned char)text[1] == 0xB0) {
+		return 2;
+	}
+	return 0;
+}
+
 static bool lx200_parse_coordinates(const char *text, bool declination, double *value) {
 	bool negative = false;
 	if (declination) {
@@ -764,15 +777,19 @@ static bool lx200_parse_coordinates(const char *text, bool declination, double *
 		}
 		negative = *text++ == '-';
 	}
-	if (strlen(text) < 5 || strspn(text, "0123456789") != 2 || text[2] != (declination ? '*' : ':') || strspn(text + 3, "0123456789") != 2) {
+	if (strspn(text, "0123456789") != 2) {
+		return false;
+	}
+	int separator = declination ? lx200_degree_separator(text + 2) : (text[2] == ':' ? 1 : 0);
+	if (separator == 0 || strspn(text + 2 + separator, "0123456789") != 2) {
 		return false;
 	}
 	int major = (text[0] - '0') * 10 + text[1] - '0';
-	int minutes = (text[3] - '0') * 10 + text[4] - '0';
+	int minutes = (text[2 + separator] - '0') * 10 + text[3 + separator] - '0';
 	if (major > (declination ? 90 : 23) || minutes >= 60) {
 		return false;
 	}
-	text += 5;
+	text += 4 + separator;
 	bool seconds = *text == ':';
 	double component = minutes;
 	if (seconds) {

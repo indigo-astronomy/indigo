@@ -808,6 +808,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
+		INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ALIGNMENT_MODE_PROPERTY, "Alignment mode can't be changed while the mount is slewing");
 		indigo_property_copy_values(MOUNT_ALIGNMENT_MODE_PROPERTY, property, false);
 		indigo_delete_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 		indigo_delete_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
@@ -863,6 +864,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_SELECT_POINTS
+		INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, "Alignment points can't be selected while the mount is slewing");
 		indigo_property_copy_values(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, property, false);
 		for (int i = 0; i < MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count; i++) {
 			int index = atoi(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[i].name);
@@ -881,6 +883,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_DELETE_POINTS
+		// The alignment model translates the target of a running slew to raw coordinates, so it must not change under it (#129)
+		INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, "Alignment points can't be deleted while the mount is slewing");
 		for (int i = 0; i < property->count; i++) {
 			if (property->items[i].sw.value) {
 				if (!strcmp(property->items[i].name, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME)) {
@@ -899,6 +903,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_RESET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_RESET
+		INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ALIGNMENT_RESET_PROPERTY, "Alignment data can't be reset while the mount is slewing");
 		indigo_property_copy_values(MOUNT_ALIGNMENT_RESET_PROPERTY, property, false);
 		if (MOUNT_ALIGNMENT_RESET_ITEM->sw.value) {
 			MOUNT_CONTEXT->alignment_point_count = 0;
