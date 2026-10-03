@@ -1922,7 +1922,7 @@ static void lx200_invalid_coordinates(void) {
 	CHECK(num(AGENT, "AGENT_LX200_CONFIGURATION", "EPOCH", 2000));
 	exchange(":Sr02:15#:Sd-10*30#:MS#");
 	CHECK(!strcmp(lx_output, "110"));
-	const char *invalid[] = { "Sr25:00:00", "Sr24:00:00", "Sr-01:00", "Sr+01:00", "Sr12:75:00", "Sr12:60", "Sr12:30:60", "Sr12:30:-1", "Sr12:30:nan", "Sr12:30:inf", "Sr12:30:1e1", "Sr12:30:0x1p2", "Sr12*30:00", "Sr12:30x00", "Sr12:30:00junk", "Sr12:30:", "Sr12:30.", "Sr12:30:00.", "Sr12:30:00:01", "Sr1:30", "Sr12:3", "Sr 12:30", "Sr12:30 ", "Sr9999999999999999999999:00", "Sr", "Sd+91*00:00", "Sd-91*00", "Sd+90*00:01", "Sd-90*01", "Sd+90*00:00.1", "Sd+90*00:00.00000000001", "Sd+20*75:00", "Sd+20*30:60", "Sd+20*-1", "Sd+20*30:nan", "Sd+20*30:inf", "Sd+20*30:1e1", "Sd+20:30:00", "Sd+20*30x00", "Sd+20*30:00junk", "Sd+20*30:", "Sd+20*30.5", "Sd20*30", "Sd--20*30", "Sd+2*30", "Sd+20*3", "Sd+20*30 ", "Sd" };
+	const char *invalid[] = { "Sr25:00:00", "Sr24:00:00", "Sr-01:00", "Sr+01:00", "Sr12:75:00", "Sr12:60", "Sr12:30:60", "Sr12:30:-1", "Sr12:30:nan", "Sr12:30:inf", "Sr12:30:1e1", "Sr12:30:0x1p2", "Sr12*30:00", "Sr12:30x00", "Sr12:30:00junk", "Sr12:30:", "Sr12:30.", "Sr12:30:00.", "Sr12:30:00:01", "Sr1:30", "Sr12:3", "Sr 12:30", "Sr12:30 ", "Sr9999999999999999999999:00", "Sr", "Sd+91*00:00", "Sd-91*00", "Sd+90*00:01", "Sd-90*01", "Sd+90*00:00.1", "Sd+90*00:00.00000000001", "Sd+20*75:00", "Sd+20*30:60", "Sd+20*-1", "Sd+20*30:nan", "Sd+20*30:inf", "Sd+20*30:1e1", "Sd+20x30:00", "Sd+20.30:00", "Sd+20\xB0" "30:00", "Sd+20\xC2" "30:00", "Sd+20*30x00", "Sd+20*30:00junk", "Sd+20*30:", "Sd+20*30.5", "Sd20*30", "Sd--20*30", "Sd+2*30", "Sd+20*3", "Sd+20*30 ", "Sd" };
 	for (int i = 0; i < ARRAY_SIZE(invalid); i++) {
 		char command[256];
 		snprintf(command, sizeof(command), ":%s#:MS#:GVP#", invalid[i]);
@@ -1938,6 +1938,26 @@ static void lx200_invalid_coordinates(void) {
 	CHECK(!strcmp(lx_output, "110"));
 	CHECK(value(AGENT, TARGET, "RA") == 5.5);
 	CHECK(value(AGENT, TARGET, "DEC") == 20.25);
+}
+
+// Clients encode the declination degree sign differently, ":Sd+20?29:45#" was sent by a real client and was rejected before.
+static void lx200_degree_separators(void) {
+	CHECK(start_server());
+	CHECK(num(AGENT, "AGENT_LX200_CONFIGURATION", "EPOCH", 2000));
+	const char *commands[] = { ":Sr08:22:32#:Sd+20*29:45#:MS#", ":Sr08:22:32#:Sd+20?29:45#:MS#", ":Sr08:22:32#:Sd+20\xDF" "29:45#:MS#", ":Sr08:22:32#:Sd+20\xC2\xB0" "29:45#:MS#", ":Sr08:22:32#:Sd+20:29:45#:MS#" };
+	for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+		CHECK(num(AGENT, TARGET, "DEC", 0));
+		exchange(commands[i]);
+		if (strcmp(lx_output, "110")) {
+			fprintf(stderr, "Unexpected reply for separator %d: %s\n", i, lx_output);
+		}
+		CHECK(!strcmp(lx_output, "110"));
+		CHECK(fabs(value(AGENT, TARGET, "RA") - (8 + 22.0 / 60 + 32.0 / 3600)) < 1e-10);
+		CHECK(fabs(value(AGENT, TARGET, "DEC") - (20 + 29.0 / 60 + 45.0 / 3600)) < 1e-10);
+	}
+	exchange(":Sd-05?30#:MS#");
+	CHECK(!strcmp(lx_output, "10"));
+	CHECK(value(AGENT, TARGET, "DEC") == -5.5);
 }
 
 static void lx200_coordinate_boundaries(void) {
@@ -2131,6 +2151,7 @@ static const indigo_test_case tests[] = {
 	{ "negative site fits", negative_site_fits },
 	{ "lx200 invalid coordinates", lx200_invalid_coordinates },
 	{ "lx200 coordinate boundaries", lx200_coordinate_boundaries },
+	{ "lx200 degree separators", lx200_degree_separators },
 
 	{ "operation timeouts", operation_timeouts },
 	{ "coupled timeouts", coupled_timeouts },
