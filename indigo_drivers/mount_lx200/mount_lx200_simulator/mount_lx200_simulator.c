@@ -68,6 +68,10 @@ typedef struct {
 	// offset with minutes and seconds. Gemini Level 5 command description, :u# and :GG#.
 	bool double_precision;
 	const char *ready_file;
+	// The :V# answer of an Astro-Physics GTO servo controller: VCPn-Pxx-yy from the GTOCP4 on, a revision
+	// letter on a GTOCP3. It decides the coordinate precision, the King rate, the firmware park positions
+	// and the longest timed pulse.
+	const char *ap_version;
 	simulator_model model;
 } simulator_options;
 
@@ -178,6 +182,7 @@ static void usage(const char *name) {
 	printf("  --park-fails            Accept the Gemini park but keep answering :h?# with 0\n");
 	printf("  --double-precision      Answer Gemini coordinates as decimals and :GG# extended\n");
 	printf("  --model <name>          a supported LX200 profile\n");
+	printf("  --ap-version <version>  Astro-Physics :V# answer, VCP4-P02-15 by default\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -256,6 +261,12 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "--model requires a supported LX200 profile\n");
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--ap-version")) {
+			if (++i == argc) {
+				fprintf(stderr, "--ap-version requires a version\n");
+				return false;
+			}
+			options.ap_version = argv[i];
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -342,7 +353,8 @@ static void set_target_ra(const char *text) {
 	if (text[5] == '.') {
 		state.target_ra_cs = atol(text) * 360000L + (long)(atof(text + 3) * 6000.0);
 	} else {
-		state.target_ra_cs += atol(text + 6) * 100L;
+		// A GTOCP4 from P01-04 on sends hundredths of a second.
+		state.target_ra_cs += lround(atof(text + 6) * 100.0);
 	}
 }
 
@@ -350,7 +362,7 @@ static void set_target_dec(const char *text) {
 	long degrees = atol(text);
 	long value = labs(degrees) * 3600L + atol(text + 4) * 60L;
 	if (text[6] == '\'' || text[6] == ':') {
-		value += atol(text + 7);
+		value += lround(atof(text + 7));
 	}
 	state.target_dec_as = text[0] == '-' ? -value : value;
 }
@@ -554,13 +566,65 @@ static bool agotino_dispatch(const char *command) {
 // :pS#, answers both the sync (:CM#) and the recalibration (:CMR#) with the fixed 32 character string,
 // selects the centering rate with :RC0# to :RC3# and takes timed pulses as :Mnxxx#. Answers true when the
 // request was handled.
+// The King correction of a GTO servo controller, switched on with :RT8# and off with :RT3#.
+static bool ap_king;
+
+static bool ap_controller_is_cp4_or_later(void) {
+	const char *version = options.ap_version != NULL ? options.ap_version : "VCP4-P02-15";
+	return !strncmp(version, "VCP", 3);
+}
+
 static bool ap_dispatch(const char *command) {
 	char response[64];
 	if (!strcmp(command, "GVP")) {
 		return true;
 	}
 	if (!strcmp(command, "V")) {
-		write_response("VCP4-P02-15#");
+		snprintf(response, sizeof(response), "%s#", options.ap_version != NULL ? options.ap_version : "VCP4-P02-15");
+		write_response(response);
+		return true;
+	}
+	if (!strcmp(command, "GOS")) {
+		// Park, tracking rate, slewing, guide, move and slew rate indices, PEM, fault and the axis direction
+		// flags of the GTO status.
+		char rate = !state.tracking ? '9' : state.tracking_rate == 'L' ? '0' : state.tracking_rate == 'S' ? '1' : ap_king ? 'T' : '2';
+		snprintf(response, sizeof(response), "%c%c0%c00212O0000#", state.parked ? 'P' : '0', rate, state.slewing ? 'S' : '0');
+		write_response(response);
+		return true;
+	}
+	if (!strncmp(command, "RT", 2) && command[2] && command[3] == 0) {
+		switch (command[2]) {
+			case '0': state.tracking_rate = 'L'; state.tracking = true; break;
+			case '1': state.tracking_rate = 'S'; state.tracking = true; break;
+			case '2': state.tracking_rate = 'Q'; state.tracking = true; break;
+			case '3': ap_king = false; break;
+			case '8': ap_king = true; break;
+			case '9': state.tracking = false; break;
+		}
+		return true;
+	}
+	// Bit 7 of the extended status flags the firmware park positions of a GTOCP3/4.
+	if (!strcmp(command, "G_E")) {
+		write_response(ap_controller_is_cp4_or_later() ? "128#" : "0#");
+		return true;
+	}
+	if (!strcmp(command, "G_S")) {
+		write_response("0#");
+		return true;
+	}
+	if (!strcmp(command, "RD0")) {
+		write_response("1");
+		return true;
+	}
+	// :KA# parks where the mount stands, the slew to a park position is the job of the client.
+	if (!strcmp(command, "KA")) {
+		state.tracking = false;
+		state.parked = true;
+		return true;
+	}
+	if (command[0] == '$' && command[1] == 'K' && command[2] >= '1' && command[2] <= '5' && command[3] == 0) {
+		state.tracking = false;
+		start_reference_motion(true);
 		return true;
 	}
 	if (!strcmp(command, "pS")) {

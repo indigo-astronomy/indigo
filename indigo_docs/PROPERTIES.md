@@ -1371,13 +1371,15 @@ Source: `indigo_drivers/mount_ioptron/indigo_mount_ioptron.c`.
 
 ### mount_lx200
 
-Custom properties: `X_ALTITUDE_LIMITS`, `X_AP_SYNC_MODE`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`.
+Custom properties: `X_ALTITUDE_LIMITS`, `X_AP_PARK_POSITION`, `X_AP_SYNC_MODE`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`.
 
 Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
 `X_MOUNT_TYPE.CLASSIC` explicitly selects the original Meade LX200 Classic. It uses the documented quartz/manual tracking-frequency commands, exposes time/location and motion, and hides unsupported adjustable guide-rate, tracking-switch, park and home properties. Its guider uses host-timed `RG` plus directional `M`/`Q` commands at the fixed controller guide speed, with independent axes and replacement/zero-stop semantics. Guiding conflicts with manual motion or a driver GOTO are rejected. `GENERIC` retains its existing compatibility behavior.
 
 `X_AP_SYNC_MODE` (Astro-Physics GTO only, persistent) chooses how a sync reaches the servo controller: `RCAL` (default) recalibrates with `:CMR#` and keeps the side of the pier the controller knows, `SYNC` sends `:CM#`, which also redefines the side of the pier and is meant for the first calibration after the mount was moved through the clutches.
+
+`X_AP_PARK_POSITION` (Astro-Physics GTO only, persistent, shown when the controller has firmware park positions: every GTOCP5/6, and a GTOCP3/4 that reports them) chooses where a park ends: `CURRENT` (default) parks where the mount stands with `:KA#`, `PARK1` to `PARK5` stop the tracking and let the controller slew to that park position itself with `$K1#` to `$K5#`; `MOUNT_PARK` stays busy until `:GOS#` reports the mount parked.
 
 Source: `indigo_drivers/mount_lx200/indigo_mount_lx200.c`.
 

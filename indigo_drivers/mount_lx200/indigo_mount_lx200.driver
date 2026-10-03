@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 70;
+	version = 71;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -105,6 +105,12 @@ driver lx200 {
 		// A Gemini answers :Gv# with ! while an axis is stalled, and :h?# with 0 both for a park
 		// it never received and for one that failed. See meade_update_gemini_state().
 		bool stalled, gemini_park_expected, gemini_park_failed;
+		// Astro-Physics GTO servo controller: generation (2 to 6, from :V#), the :GOS# status, coordinates with
+		// tenths/hundredths of a second, King rate, firmware park positions, timed pulses over 999 ms, a firmware
+		// park in progress and the last fault reported in :GOS#.
+		int ap_controller;
+		bool ap_use_gos, ap_high_precision, ap_king, ap_firmware_parks, ap_long_pulses, ap_parking;
+		char ap_fault;
 		double gemini_park_deadline;
 		bool goto_issued;
 		bool park_allowed, unpark_allowed, home_allowed;
@@ -723,10 +729,13 @@ driver lx200 {
 				meade_set_tracking(device, true);
 			}
 		}
-		if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
+		// A GTOCP4 from P01-04 and every GTOCP5/6 take the right ascension to a hundredth and the declination to a
+		// tenth of a second.
+		bool ap_precision = MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_high_precision;
+		if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, ap_precision ? "%02d:%02d:%05.2f" : "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 			return false;
 		}
-		if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
+		if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, ap_precision ? "%+03d*%02d:%04.1f" : "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 			return false;
 		}
 		if (!meade_simple_reply_command(device, ":MS#") || *PRIVATE_DATA->response != '0') {
@@ -754,10 +763,13 @@ driver lx200 {
 
 	static bool meade_sync(indigo_device *device, double ra, double dec) {
 		char sexagesimal[128];
-		if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
+		// A GTOCP4 from P01-04 and every GTOCP5/6 take the right ascension to a hundredth and the declination to a
+		// tenth of a second.
+		bool ap_precision = MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_high_precision;
+		if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, ap_precision ? "%02d:%02d:%05.2f" : "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 			return false;
 		}
-		if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
+		if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, ap_precision ? "%+03d*%02d:%04.1f" : "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
 			return false;
 		}
 		// A GTO servo controller recalibrates with :CMR#, which keeps the side of the pier it already knows. :CM#
@@ -845,8 +857,11 @@ driver lx200 {
 			} else if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 				return meade_no_reply_command(device, ":X122#");
 			} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
-				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
-					return meade_no_reply_command(device, ":RT2#");
+				// The King correction is switched on with :RT8# and off with :RT3#, :RT2# then selects the sidereal rate.
+				if (MOUNT_TRACK_RATE_KING_ITEM->sw.value && PRIVATE_DATA->ap_king) {
+					return meade_no_reply_command(device, ":RT8#") && meade_no_reply_command(device, ":RT2#");
+				} else if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+					return (!PRIVATE_DATA->ap_king || meade_no_reply_command(device, ":RT3#")) && meade_no_reply_command(device, ":RT2#");
 				} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
 					return meade_no_reply_command(device, ":RT1#");
 				} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
@@ -908,12 +923,18 @@ driver lx200 {
 			PRIVATE_DATA->lastTrackRate = rate;
 			return true;
 		}
+		if (MOUNT_TYPE_AP_ITEM->sw.value && MOUNT_TRACKING_OFF_ITEM->sw.value) {
+			// Every :RTn# of a GTO servo controller but :RT9# starts tracking, so the rate is applied when tracking is
+			// switched on.
+			PRIVATE_DATA->lastTrackRate = 0;
+			return true;
+		}
 		if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'q') {
 			PRIVATE_DATA->lastTrackRate = 'q';
 			if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
 				return gemini_set(device, 131, "");
 			} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
-				return meade_no_reply_command(device, ":RT2#");
+				return (!PRIVATE_DATA->ap_king || meade_no_reply_command(device, ":RT3#")) && meade_no_reply_command(device, ":RT2#");
 			} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
 				return meade_no_reply_command(device, ":XSS1.000#");
 			} else if (!MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
@@ -949,6 +970,8 @@ driver lx200 {
 				return gemini_set(device, 132, "");
 			} else if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
 				return meade_no_reply_command(device, ":TK#");
+			} else if (MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_king) {
+				return meade_no_reply_command(device, ":RT8#") && meade_no_reply_command(device, ":RT2#");
 			}
 		}
 		return true;
@@ -1140,6 +1163,20 @@ driver lx200 {
 		if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 			return meade_no_reply_command(device, ":hP#");
 		}
+		if (MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_firmware_parks && !AP_PARK_POSITION_CURRENT_ITEM->sw.value) {
+			// A controller with firmware park positions slews to Park n itself after $Kn#; the tracking is stopped first.
+			int position = 1;
+			for (int i = 1; i <= 5; i++) {
+				if (AP_PARK_POSITION_PROPERTY->items[i].sw.value) {
+					position = i;
+				}
+			}
+			if (!meade_no_reply_command(device, ":Q#") || !meade_simple_reply_command(device, ":RD0#") || !meade_no_reply_command(device, ":RT9#") || !meade_no_reply_command(device, "$K%d#", position)) {
+				return false;
+			}
+			PRIVATE_DATA->ap_parking = true;
+			return true;
+		}
 		if (MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
 			return meade_no_reply_command(device, ":KA#");
 		}
@@ -1289,10 +1326,12 @@ driver lx200 {
 			return meade_classic_guide_start(device, &PRIVATE_DATA->classicGuideNS, &PRIVATE_DATA->classicGuideDeadlineNS, north > 0 ? 'n' : 's', north > 0 ? north : south);
 		}
 		if (MOUNT_TYPE_AP_ITEM->sw.value) {
+			// A GTOCP4 or later times pulses up to 99999 ms, earlier boxes take three digits.
+			int limit = PRIVATE_DATA->ap_long_pulses ? 99999 : 999;
 			if (north > 0) {
-				return meade_no_reply_command(device, ":Mn%03d#", north);
+				return meade_no_reply_command(device, ":Mn%03d#", north > limit ? limit : north);
 			} else if (south > 0) {
-				return meade_no_reply_command(device, ":Ms%03d#", south);
+				return meade_no_reply_command(device, ":Ms%03d#", south > limit ? limit : south);
 			}
 		} else {
 			if (north > 0) {
@@ -1309,10 +1348,11 @@ driver lx200 {
 			return meade_classic_guide_start(device, &PRIVATE_DATA->classicGuideWE, &PRIVATE_DATA->classicGuideDeadlineWE, west > 0 ? 'w' : 'e', west > 0 ? west : east);
 		}
 		if (MOUNT_TYPE_AP_ITEM->sw.value) {
+			int limit = PRIVATE_DATA->ap_long_pulses ? 99999 : 999;
 			if (west > 0) {
-				return meade_no_reply_command(device, ":Mw%03d#", west);
+				return meade_no_reply_command(device, ":Mw%03d#", west > limit ? limit : west);
 			} else if (east > 0) {
-				return meade_no_reply_command(device, ":Me%03d#", east);
+				return meade_no_reply_command(device, ":Me%03d#", east > limit ? limit : east);
 			}
 		} else {
 			if (west > 0) {
@@ -1715,6 +1755,34 @@ driver lx200 {
 
 	static void meade_update_generic_state(indigo_device *device);
 
+	// Reads what the servo controller can do from its :V# version. A guider connected without the mount needs it
+	// for the pulse length.
+	static void meade_read_ap_version(indigo_device *device) {
+		PRIVATE_DATA->ap_controller = 2;
+		PRIVATE_DATA->ap_use_gos = PRIVATE_DATA->ap_high_precision = PRIVATE_DATA->ap_king = PRIVATE_DATA->ap_long_pulses = false;
+		// The servo controller version: VCPn-Pxx-yy on a GTOCPn from the GTOCP4 on, a chip revision letter on earlier
+		// boxes, S and later on a GTOCP3.
+		if (meade_command(device, ":V#") && *PRIVATE_DATA->response) {
+			char version[INDIGO_VALUE_SIZE];
+			INDIGO_COPY_VALUE(version, PRIVATE_DATA->response);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", version);
+			INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, version);
+			if (!strncmp(version, "VCP", 3) && version[3] >= '4' && version[3] <= '9') {
+				PRIVATE_DATA->ap_controller = version[3] - '0';
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "GTOCP%c", version[3]);
+				const char *revision = strlen(version) > 5 ? version + 5 : "";
+				bool early = !strncmp(revision, "P01-00", 6) || !strncmp(revision, "P01-01", 6) || !strncmp(revision, "P01-02", 6) || !strncmp(revision, "P01-03", 6);
+				PRIVATE_DATA->ap_high_precision = PRIVATE_DATA->ap_controller > 4 || !early;
+				PRIVATE_DATA->ap_king = PRIVATE_DATA->ap_controller > 4 || strncmp(revision, "P02-08", 6) >= 0;
+				PRIVATE_DATA->ap_long_pulses = true;
+			} else if (strcmp(version, "S") >= 0) {
+				PRIVATE_DATA->ap_controller = 3;
+				strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GTOCP3");
+			}
+			PRIVATE_DATA->ap_use_gos = PRIVATE_DATA->ap_controller >= 3;
+		}
+	}
+
 	static void meade_init_ap_mount(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
@@ -1727,18 +1795,80 @@ driver lx200 {
 		meade_no_reply_command(device, "#");
 		meade_no_reply_command(device, ":U#");
 		meade_no_reply_command(device, ":Br 00:00:00#");
-		// The servo controller version, VCP4-P02-15 on a GTOCP4 and a chip revision letter on earlier boxes.
-		if (meade_command(device, ":V#") && *PRIVATE_DATA->response) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", PRIVATE_DATA->response);
-			INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
-			if (!strncmp(PRIVATE_DATA->response, "VCP", 3) && isdigit((unsigned char)PRIVATE_DATA->response[3])) {
-				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "GTOCP%c", PRIVATE_DATA->response[3]);
+		PRIVATE_DATA->ap_firmware_parks = PRIVATE_DATA->ap_parking = false;
+		PRIVATE_DATA->ap_fault = '0';
+		meade_read_ap_version(device);
+		// Firmware park positions: always on a GTOCP5/6, flagged by bit 7 of :G_E# on a GTOCP3/4 or by a :G_S# of 160
+		// on a GTOCP4.
+		if (PRIVATE_DATA->ap_controller >= 5) {
+			PRIVATE_DATA->ap_firmware_parks = true;
+		} else if (PRIVATE_DATA->ap_controller >= 3) {
+			if (meade_command(device, ":G_E#") && isdigit((unsigned char)*PRIVATE_DATA->response) && (atoi(PRIVATE_DATA->response) & 0x80)) {
+				PRIVATE_DATA->ap_firmware_parks = true;
+			} else if (PRIVATE_DATA->ap_controller == 4 && meade_command(device, ":G_S#") && atoi(PRIVATE_DATA->response) == 160) {
+				PRIVATE_DATA->ap_firmware_parks = true;
 			}
 		}
+		AP_PARK_POSITION_PROPERTY->hidden = !PRIVATE_DATA->ap_firmware_parks;
+		if (PRIVATE_DATA->ap_king) {
+			MOUNT_TRACK_RATE_PROPERTY->count = 4;
+		}
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "GTOCP%d, status %s, high precision %s, King rate %s, firmware parks %s, long pulses %s", PRIVATE_DATA->ap_controller, PRIVATE_DATA->ap_use_gos ? "yes" : "no", PRIVATE_DATA->ap_high_precision ? "yes" : "no", PRIVATE_DATA->ap_king ? "yes" : "no", PRIVATE_DATA->ap_firmware_parks ? "yes" : "no", PRIVATE_DATA->ap_long_pulses ? "yes" : "no");
+	}
+
+	// Decodes the :GOS# status of a GTOCP3 from revision S on and of every later controller: 1 park (P parked),
+	// 2 tracking (0 lunar, 1 solar, 2 sidereal, T King, C/c custom, 9 stopped), 4 slewing (S), 11 fault.
+	static bool meade_update_ap_status(indigo_device *device) {
+		if (!meade_command(device, ":GOS#") || strlen(PRIVATE_DATA->response) < 11) {
+			return false;
+		}
+		char status[INDIGO_VALUE_SIZE];
+		INDIGO_COPY_VALUE(status, PRIVATE_DATA->response);
+		PRIVATE_DATA->parked = status[0] == 'P';
+		if (PRIVATE_DATA->parked) {
+			PRIVATE_DATA->ap_parking = false;
+		}
+		PRIVATE_DATA->parking = PRIVATE_DATA->ap_parking;
+		PRIVATE_DATA->tracking = !PRIVATE_DATA->parked && status[1] != '9';
+		PRIVATE_DATA->slewing = status[3] == 'S';
+		if (PRIVATE_DATA->tracking && MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_item *rate = status[1] == '0' ? MOUNT_TRACK_RATE_LUNAR_ITEM : status[1] == '1' ? MOUNT_TRACK_RATE_SOLAR_ITEM : status[1] == '2' ? MOUNT_TRACK_RATE_SIDEREAL_ITEM : status[1] == 'T' && PRIVATE_DATA->ap_king ? MOUNT_TRACK_RATE_KING_ITEM : NULL;
+			if (rate != NULL && !rate->sw.value) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, rate, true);
+				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			}
+		}
+		char fault = status[10];
+		// A stalled motor or a servo fault means the axis is not where a slew would have taken it.
+		PRIVATE_DATA->stalled = fault == '1' || fault == 'Z' || fault == '4' || fault == 'X';
+		if (fault != PRIVATE_DATA->ap_fault) {
+			PRIVATE_DATA->ap_fault = fault;
+			const char *message = NULL;
+			switch (fault) {
+				case '0': message = NULL; break;
+				case '1': case 'Z': message = "Motor stall"; break;
+				case '2': case 'Y': message = "Low power supply voltage"; break;
+				case '4': case 'X': message = "Servo fault"; break;
+				case 'N': message = "CCW internal declination limit or absolute encoder limit"; break;
+				case 'S': message = "CW internal declination limit or absolute encoder limit"; break;
+				case 'E': message = "East internal right ascension limit or absolute encoder limit"; break;
+				case 'W': message = "West internal right ascension limit or absolute encoder limit"; break;
+				case 'z': message = "Kill function has been issued"; break;
+				default: message = "Unknown fault"; break;
+			}
+			if (message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Mount reports: %s", message);
+			}
+		}
+		return true;
 	}
 
 	static void meade_update_ap_state(indigo_device *device) {
-		meade_update_generic_state(device);
+		if (!PRIVATE_DATA->ap_use_gos || !meade_update_ap_status(device)) {
+			// Without a status the motion is guessed from the coordinates and tracking is what was last requested.
+			meade_update_generic_state(device);
+			PRIVATE_DATA->tracking = MOUNT_TRACKING_ON_ITEM->sw.value;
+		}
 		if (meade_command(device, ":pS#")) {
 			if (!strcmp(PRIVATE_DATA->response, "West") && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
@@ -2354,6 +2484,7 @@ driver lx200 {
 		ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
 		ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
 		AP_SYNC_MODE_PROPERTY->hidden = true;
+		AP_PARK_POSITION_PROPERTY->hidden = true;
 		PRIVATE_DATA->use_dst_commands = false;
 		PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
 		PRIVATE_DATA->goto_issued = false;
@@ -2774,6 +2905,45 @@ driver lx200 {
 				value = false;
 			}
 		}
+		switch AP_PARK_POSITION {
+			name = "X_AP_PARK_POSITION";
+			group = MOUNT_ADVANCED_GROUP;
+			label = "Park position";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			hidden = true;
+			persistent = true;
+			on_change { }
+			item AP_PARK_POSITION_CURRENT {
+				name = "CURRENT";
+				label = "Current position";
+				value = true;
+			}
+			item AP_PARK_POSITION_PARK1 {
+				name = "PARK1";
+				label = "Park 1";
+				value = false;
+			}
+			item AP_PARK_POSITION_PARK2 {
+				name = "PARK2";
+				label = "Park 2";
+				value = false;
+			}
+			item AP_PARK_POSITION_PARK3 {
+				name = "PARK3";
+				label = "Park 3";
+				value = false;
+			}
+			item AP_PARK_POSITION_PARK4 {
+				name = "PARK4";
+				label = "Park 4";
+				value = false;
+			}
+			item AP_PARK_POSITION_PARK5 {
+				name = "PARK5";
+				label = "Park 5";
+				value = false;
+			}
+		}
 		switch ZWO_BUZZER {
 			name = "X_ZWO_BUZZER";
 			group = MOUNT_ADVANCED_GROUP;
@@ -3109,7 +3279,12 @@ driver lx200 {
 					}
 					if (meade_park(device)) {
 						if (MOUNT_TYPE_AP_ITEM->sw.value) {
-							PRIVATE_DATA->parked = true;
+							if (PRIVATE_DATA->ap_parking) {
+								// A firmware park position is reached through a slew, :GOS# tells when it is parked.
+								MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+							} else {
+								PRIVATE_DATA->parked = true;
+							}
 						}
 						if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 							MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -3424,6 +3599,9 @@ driver lx200 {
 			}
 			if (connection_result && MOUNT_TYPE_CLASSIC_ITEM->sw.value) {
 				PRIVATE_DATA->classicGuider = device;
+			}
+			if (connection_result && MOUNT_TYPE_AP_ITEM->sw.value) {
+				meade_read_ap_version(device->master_device);
 			}
 			if (connection_result && MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
 				// The aGotino firmware has no pulse guiding command. It reads the leading :Mg of

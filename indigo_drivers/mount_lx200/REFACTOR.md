@@ -2433,3 +2433,50 @@ uses none of the changed `--model ap` paths and was not rerun.
 
 Simulated tests: **106 run, 106 passed** (third recorded run; the first two recorded runs failed as described
 above). Hardware tests: **0 run, 0 passed**.
+
+## Astro-Physics GTO: status, precision, King rate, firmware parks and long pulses (2026-10-04, 3.0.0.71)
+
+The Astro-Physics profile now follows what the servo controller reports instead of guessing.
+
+- `:V#` sets the controller generation: `VCPn-...` is a GTOCPn (4 and later), a revision letter from `S` on is
+  a GTOCP3, anything else a GTOCP2. `MOUNT_INFO` model follows.
+- Status: a GTOCP3 and later is polled with `:GOS#`. Position 1 gives the park state (`P`), 2 the tracking
+  and its rate (`0` lunar, `1` solar, `2` sidereal, `T` King, `9` stopped), 4 a slew (`S`), 11 a fault. A
+  motor stall or servo fault ends the coordinates in ALERT; every new fault is sent as a message once. This
+  replaces the coordinate-jump heuristic, which stays for a GTOCP2 and for a status that cannot be read, so a
+  sync no longer shows a false slew.
+- Precision: a GTOCP4 from P01-04 and every GTOCP5/6 get `:Sr` with hundredths of a second and `:Sd` with
+  tenths of an arcsecond.
+- King rate: a GTOCP4 from P02-08 and every GTOCP5/6 show the `KING` item of `MOUNT_TRACK_RATE`; it is set with
+  `:RT8#` then `:RT2#`, and sidereal sends `:RT3#` before `:RT2#`. Every `:RTn#` but `:RT9#` starts tracking,
+  so a rate chosen while tracking is off is applied when tracking is switched on.
+- Firmware parks: shown as `X_AP_PARK_POSITION` on a GTOCP5/6, and on a GTOCP3/4 whose `:G_E#` has bit 7 set
+  or a GTOCP4 whose `:G_S#` answers 160. Park 1 to 5 send `:Q#`, `:RD0#`, `:RT9#` and `$Kn#`; `MOUNT_PARK`
+  stays busy until `:GOS#` reports the mount parked. `CURRENT` keeps `:KA#`.
+- Pulses: a GTOCP4 and later times `:M<d><ms>#` up to 99999 ms, an earlier controller is limited to 999 ms.
+
+Simulator (`--model ap`): `:GOS#` from its own state, `:RT0/1/2/3/8/9#`, `:G_E#` (128 for a `VCP` version),
+`:G_S#`, `:RD0#`, `$K1#` to `$K5#` as a slew to the park position, `:KA#` parks in place, `--ap-version`
+chooses the `:V#` answer, and `:Sr`/`:Sd` accept fractional seconds.
+
+Tests: `lx200_ap_profile` expects the high precision coordinates and changes the tracking rates while tracking.
+New: `lx200_ap_status_reports_a_fault`, `lx200_ap_king_rate`, `lx200_ap_firmware_park`, `lx200_ap_long_pulse`,
+`lx200_ap_gtocp3`, `lx200_ap_gtocp3_pulse_limit`.
+
+First recorded run (2026-10-04 00:01): 112/109 Failed.
+
+- `lx200_ap_long_pulse`: a guider connected without the mount never read `:V#`, so the 99999 ms limit was not
+  known and the pulse was cut to 999 ms. The version is now read by `meade_read_ap_version()`, which the guider
+  connection calls as well.
+- `lx200_ap_king_rate`, `lx200_ap_firmware_park`: the cases waited for fresh `MOUNT_EQUATORIAL_COORDINATES`
+  publications, which a steady mount does not make. They now wait for two `:GOS#` polls on the simulator side.
+
+MIGRATION_STATUS.md hardware-free count 110 -> 116.
+
+Second recorded run (2026-10-04 00:12) on macOS arm64: 112/112 OK. `mount_asi`, which shares the simulator,
+uses none of the changed `--model ap` paths and was not rerun.
+
+### Final test summary for this change
+
+Simulated tests: **112 run, 112 passed** (second recorded run; the first recorded run failed as described
+above). Hardware tests: **0 run, 0 passed**.

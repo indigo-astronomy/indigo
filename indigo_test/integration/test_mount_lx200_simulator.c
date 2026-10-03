@@ -383,8 +383,9 @@ static void check_profile(int index) {
 	SERIAL_CHECK_TRUE(lx_coordinates(23.5, -0.5, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, sync_command, sync_before));
 	SERIAL_CHECK_EQ_INT(slew_before, event_count(&simulator, "MS", NULL));
-	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sr23:30:00", 0));
-	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sd-00*30:00", 0));
+	// A GTOCP4 from P01-04 on takes hundredths of a second of right ascension and tenths of declination.
+	SERIAL_CHECK_TRUE(wait_event(&simulator, index == 6 ? "Sr23:30:00.00" : "Sr23:30:00", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, index == 6 ? "Sd-00*30:00.0" : "Sd-00*30:00", 0));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 23.5, 0.001));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -0.5, 0.001));
 	if (profile->tracking) {
@@ -393,7 +394,10 @@ static void check_profile(int index) {
 		if (profile->tracking_command != NULL) {
 			SERIAL_CHECK_TRUE(wait_event(&simulator, profile->tracking_command, 0));
 		}
-		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+		// Every :RTn# of a GTO servo controller but :RT9# starts tracking, so its rates are changed while it tracks.
+		if (index != 6) {
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+		}
 		const char *rate_items[] = { MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
 		const char *classic[] = { "TS", "TL", "TQ" };
 		const char *ap[] = { "RT1", "RT0", "RT2" };
@@ -403,6 +407,10 @@ static void check_profile(int index) {
 			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rate_items[rate], true, INDIGO_OK_STATE));
 			const char *command = index == 6 ? ap[rate] : index == 10 ? oat[rate] : index == 3 ? gemini[rate] : index == 2 && rate == 0 ? "TSOLAR" : classic[rate];
 			SERIAL_CHECK_TRUE(wait_event(&simulator, command, 0));
+		}
+		if (index == 6) {
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(wait_event(&simulator, "RT9", 0));
 		}
 	}
 	if (profile->manual) {
@@ -537,6 +545,168 @@ static void lx200_ap_sync_mode(void) {
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_AP_SYNC_MODE", "RCAL", true, INDIGO_OK_STATE));
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool start_ap_profile(external_serial_simulator *simulator, const char *version) {
+	const char *arguments[] = { "--model", "ap", "--ap-version", version, NULL };
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(&lx200_mount)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	// A GTOCP3 is not recognised by its revision letter, the type is chosen.
+	if (lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "AP", true, INDIGO_OK_STATE) && connect_serial_device(&lx200_mount, simulator->port)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	disconnect_serial_device(&lx200_mount);
+	tear_down_serial_driver(&lx200_mount);
+	return false;
+}
+
+static bool start_secondary_profile(external_serial_simulator *simulator, const simulator_driver_case *secondary, const char *model, const char *type);
+
+// A steady mount publishes nothing, so the polls are counted on the controller side.
+static bool wait_ap_polls(external_serial_simulator *simulator, int polls) {
+	int before = event_count(simulator, "GOS", NULL);
+	return wait_event(simulator, "GOS", before + polls - 1);
+}
+
+// A fault in the :GOS# status, a motor stall here, has to reach the client as a fault on the coordinates, and
+// the next clean status has to end it.
+static void lx200_ap_status_reports_a_fault(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "ap", "AP"));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GOS", 0));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GOS", "020000212O1000#"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The tracking the status reports is the one shown, also when another client stopped it.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GOS", "090000212O0000#"));
+	SERIAL_CHECK_TRUE(wait_ap_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GTOCP4 from P02-08 on corrects the sidereal rate for refraction: :RT8# switches the King rate on and
+// :RT3# off, :RT2# then selects the sidereal rate.
+static void lx200_ap_king_rate(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "ap", "AP"));
+	online = true;
+	SERIAL_CHECK_EQ_INT(4, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	int sidereal = event_count(&simulator, "RT2", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "RT8", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "RT2", sidereal));
+	// The status reports the King rate as T, which has to keep the King item selected.
+	SERIAL_CHECK_TRUE(wait_ap_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "RT3", 0));
+	SERIAL_CHECK_TRUE(wait_ap_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A controller with firmware park positions parks itself with $Kn# after the tracking is stopped, and the park
+// ends when :GOS# reports it. The current position is still parked with :KA#.
+static void lx200_ap_firmware_park(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "ap", "AP"));
+	online = true;
+	SERIAL_CHECK_TRUE(has_defined_property("X_AP_PARK_POSITION"));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "G_E", 0));
+	assert_switch_item_value("X_AP_PARK_POSITION", "CURRENT", true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_AP_PARK_POSITION", "PARK3", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Q", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "RD0", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "RT9", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "$K3", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "KA", NULL));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "PO", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_AP_PARK_POSITION", "CURRENT", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "KA", 0));
+	SERIAL_CHECK_TRUE(wait_ap_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GTOCP4 times a pulse up to 99999 ms itself.
+static void lx200_ap_long_pulse(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "ap", "AP"));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 1500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mn1500", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 250, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mw250", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_guider); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GTOCP3 answers :V# with a revision letter. It reports :GOS# but takes whole seconds, has no King rate and
+// no firmware park positions, and times pulses up to 999 ms.
+static void lx200_ap_gtocp3(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_ap_profile(&simulator, "V"));
+	online = true;
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "AP", true);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "GTOCP3"));
+	SERIAL_CHECK_EQ_INT(3, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(!has_defined_property("X_AP_PARK_POSITION"));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GOS", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(5.5, 20.25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sr05:30:00", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sd+20*15:00", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "KA", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GTOCP3 times at most 999 ms, a longer request is cut to that.
+static void lx200_ap_gtocp3_pulse_limit(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--model", "ap", "--ap-version", "V", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) && bring_up_serial_driver(&lx200_guider));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_TYPE_PROPERTY_NAME, "AP", true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 1500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Ms999", 0));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Ms1500", NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_guider); }
 	stop_external_serial_simulator(&simulator);
 }
 
@@ -3116,6 +3286,12 @@ int main(int argc, char **argv) {
 		{ "lx200_ap_detected_by_version", lx200_ap_detected_by_version },
 		{ "lx200_ap_side_of_pier", lx200_ap_side_of_pier },
 		{ "lx200_ap_sync_mode", lx200_ap_sync_mode },
+		{ "lx200_ap_status_reports_a_fault", lx200_ap_status_reports_a_fault },
+		{ "lx200_ap_king_rate", lx200_ap_king_rate },
+		{ "lx200_ap_firmware_park", lx200_ap_firmware_park },
+		{ "lx200_ap_long_pulse", lx200_ap_long_pulse },
+		{ "lx200_ap_gtocp3", lx200_ap_gtocp3 },
+		{ "lx200_ap_gtocp3_pulse_limit", lx200_ap_gtocp3_pulse_limit },
 		{ "lx200_agotino_profile", lx200_agotino_profile },
 		{ "lx200_agotino_holds_the_goto_until_the_slew_ends", lx200_agotino_holds_the_goto_until_the_slew_ends },
 		{ "lx200_agotino_abort_reports_the_unreached_target", lx200_agotino_abort_reports_the_unreached_target },
