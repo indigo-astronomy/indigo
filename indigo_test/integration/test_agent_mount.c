@@ -100,9 +100,35 @@ static indigo_result deleted(indigo_client *client, indigo_device *device, indig
 	return INDIGO_OK;
 }
 
+// The last message that came with an update of AGENT_START_PROCESS.
+static char start_message[256];
+
 static indigo_result message(indigo_client *client, indigo_device *device, indigo_property *property, const char *text) {
 	fprintf(stderr, "  %s: %s\n", device->name, text ? text : "");
+	if (text && property && !strcmp(property->device, AGENT) && !strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
+		pthread_mutex_lock(&cache_mutex);
+		snprintf(start_message, sizeof(start_message), "%s", text);
+		pthread_mutex_unlock(&cache_mutex);
+	}
 	return INDIGO_OK;
+}
+
+// The bus delivers the message of an update after the update itself, so it is waited for.
+static bool start_message_is(const char *text) {
+	double deadline = indigo_monotonic_time() + 5;
+	while (true) {
+		pthread_mutex_lock(&cache_mutex);
+		bool result = strstr(start_message, text) != NULL;
+		if (result || indigo_monotonic_time() >= deadline) {
+			if (!result) {
+				fprintf(stderr, "AGENT_START_PROCESS message '%s', expected '%s'\n", start_message, text);
+			}
+			pthread_mutex_unlock(&cache_mutex);
+			return result;
+		}
+		pthread_mutex_unlock(&cache_mutex);
+		indigo_usleep(1000);
+	}
 }
 
 static indigo_client client = { .name = "Mount integration client", .define_property = defined, .update_property = updated, .delete_property = deleted, .send_message = message };
@@ -198,6 +224,10 @@ typedef struct {
 static command commands[4096];
 static int command_count;
 static bool immediate, reject_motion;
+// ignore_coordinates: the mount drops every MOUNT_EQUATORIAL_COORDINATES request without an answer. nyx_proxy: the mount behaves like
+// system_alpaca before NYX-1 behind a NYX-101: an unpark makes the coordinates BUSY and clears the park light at once, and a coordinates
+// request that arrives while they are BUSY is dropped.
+static bool ignore_coordinates, nyx_proxy;
 
 static indigo_property *prop(int index, const char *name) {
 	for (int i = 0; i < peers[index].count; i++) {
@@ -322,12 +352,24 @@ static indigo_result peer_change(indigo_device *device, indigo_client *client, i
 		if (command_count < ARRAY_SIZE(commands)) {
 			commands[command_count++] = (command){ index, indigo_copy_property(NULL, request) };
 		}
+		if (index == 0 && !strcmp(target->name, "MOUNT_EQUATORIAL_COORDINATES") && (ignore_coordinates || (nyx_proxy && target->state == INDIGO_BUSY_STATE))) {
+			pthread_mutex_unlock(&peer_mutex);
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(target, request, false);
 		target->state = motion(target->name) && index < 3 ? (reject_motion ? INDIGO_ALERT_STATE : immediate ? INDIGO_OK_STATE : INDIGO_BUSY_STATE) : INDIGO_OK_STATE;
 		if (!strcmp(target->name, "GEOGRAPHIC_COORDINATES") && (p->defer_site_write || p->legacy_site_timer)) {
 			target->state = INDIGO_BUSY_STATE;
 		}
 		publish(index, target);
+		if (index == 0 && nyx_proxy && !strcmp(target->name, "MOUNT_PARK") && indigo_get_item(target, "UNPARKED")->sw.value) {
+			indigo_property *coordinates = prop(0, "MOUNT_EQUATORIAL_COORDINATES");
+			coordinates->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, coordinates, NULL);
+			indigo_property *lights = prop(0, "MOUNT_STATE");
+			indigo_get_item(lights, "PARK")->light.value = INDIGO_IDLE_STATE;
+			indigo_update_property(device, lights, NULL);
+		}
 		if (!strcmp(target->name, "GEOGRAPHIC_COORDINATES") && p->legacy_site_timer) {
 			indigo_set_timer(device, 0, peer_site_timer, NULL);
 		}
@@ -790,6 +832,11 @@ static void filter_site_configuration(bool deferred, bool adopt) {
 		}
 		CHECK(wait_state(AGENT, lists[index], rev, INDIGO_OK_STATE));
 		CHECK(state(peer_names[index], "CONFIG") == INDIGO_OK_STATE);
+		// With the HOST source the agent writes the site again when the restored site of the peer arrives, which may
+		// happen after the selection has become OK.
+		if (!adopt) {
+			CHECK(wait_request(index, "GEOGRAPHIC_COORDINATES", before + 1));
+		}
 		CHECK(requests(index, "GEOGRAPHIC_COORDINATES") == before + (adopt ? 1 : 2));
 		for (int i = 0; i < 3; i++) {
 			CHECK(value(peer_names[index], "GEOGRAPHIC_COORDINATES", items[i]) == (adopt ? saved[i] : host[i]));
@@ -2074,6 +2121,102 @@ static void configuration_failure(void) {
 	CHECK(value(AGENT, "AGENT_MOUNT_FOV", "WIDTH") == 3);
 }
 
+/* NYX-1 seen from the agent: the mount reported "not parked" while MOUNT_PARK was still BUSY and dropped the coordinates sent then.
+   The agent has to wait for MOUNT_PARK OK before it sends the coordinates. */
+static void unpark_waits_for_park_property(void) {
+	CHECK(select_peer(0, true, false));
+	indigo_property *park = prop(0, "MOUNT_PARK");
+	indigo_set_switch(park, park->items, true);
+	complete(0, "MOUNT_PARK", INDIGO_OK_STATE);
+	CHECK(value(AGENT, "AGENT_MOUNT_STATE", "PARK") == INDIGO_OK_STATE);
+	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "RA", 3.25);
+	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", -12.75);
+	CHECK(num(AGENT, TARGET, "RA", 8.5));
+	CHECK(num(AGENT, TARGET, "DEC", 20));
+	nyx_proxy = true;
+	int parks = requests(0, "MOUNT_PARK"), coordinates = requests(0, "MOUNT_EQUATORIAL_COORDINATES");
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "MOUNT_PARK", parks));
+	double deadline = indigo_monotonic_time() + 5;
+	while (value(AGENT, "AGENT_MOUNT_STATE", "PARK") != INDIGO_IDLE_STATE && indigo_monotonic_time() < deadline) {
+		indigo_usleep(1000);
+	}
+	CHECK(value(AGENT, "AGENT_MOUNT_STATE", "PARK") == INDIGO_IDLE_STATE);
+	// MOUNT_PARK is BUSY: nothing is sent yet
+	indigo_usleep(300000);
+	CHECK(requests(0, "MOUNT_EQUATORIAL_COORDINATES") == coordinates);
+	// the unpark ends, the coordinates with it; now the goto is sent, accepted and the mount moves
+	complete(0, "MOUNT_PARK", INDIGO_OK_STATE);
+	complete(0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE);
+	CHECK(wait_request(0, "MOUNT_EQUATORIAL_COORDINATES", coordinates));
+	CHECK(value(peer_names[0], "MOUNT_EQUATORIAL_COORDINATES", "RA") == 8.5);
+	complete(0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE);
+	CHECK(wait_state(AGENT, START, 0, INDIGO_OK_STATE));
+	// an unpark that ends in ALERT after the park light went off: no goto, ALERT
+	indigo_set_switch(park, park->items, true);
+	complete(0, "MOUNT_PARK", INDIGO_OK_STATE);
+	CHECK(value(AGENT, "AGENT_MOUNT_STATE", "PARK") == INDIGO_OK_STATE);
+	parks = requests(0, "MOUNT_PARK");
+	coordinates = requests(0, "MOUNT_EQUATORIAL_COORDINATES");
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "MOUNT_PARK", parks));
+	indigo_usleep(100000);
+	complete(0, "MOUNT_PARK", INDIGO_ALERT_STATE);
+	CHECK(wait_state(AGENT, START, 0, INDIGO_ALERT_STATE));
+	CHECK(start_message_is("Unpark failed"));
+	CHECK(requests(0, "MOUNT_EQUATORIAL_COORDINATES") == coordinates);
+	nyx_proxy = false;
+}
+
+/* NYX-1 seen from the agent: a mount that ends OK without having moved to the target, because the request was dropped or the slew stopped short. */
+static void slew_target_check(void) {
+	CHECK(select_peer(0, true, false));
+	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "RA", 3.25);
+	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", -12.75);
+	CHECK(num(AGENT, TARGET, "RA", 8.5));
+	CHECK(num(AGENT, TARGET, "DEC", 20));
+	// the request is dropped: the mount stays OK where it was
+	ignore_coordinates = true;
+	fast_wait = true;
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_ALERT_STATE));
+	CHECK(start_message_is("Mount did not reach the target"));
+	fast_wait = false;
+	ignore_coordinates = false;
+	// the slew stops 30' of RA short of the target
+	int coordinates = requests(0, "MOUNT_EQUATORIAL_COORDINATES");
+	unsigned rev = revision(AGENT, START);
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "MOUNT_EQUATORIAL_COORDINATES", coordinates));
+	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "RA", 8);
+	complete(0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE);
+	CHECK(wait_state(AGENT, START, rev, INDIGO_ALERT_STATE));
+	CHECK(start_message_is("Mount did not reach the target"));
+	// a mount that reports a position close to the target (rounding, refraction): OK
+	coordinates = requests(0, "MOUNT_EQUATORIAL_COORDINATES");
+	rev = revision(AGENT, START);
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_BUSY_STATE));
+	CHECK(wait_request(0, "MOUNT_EQUATORIAL_COORDINATES", coordinates));
+	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "RA", 8.5 + 20.0 / 3600);
+	emit_number(0, "MOUNT_EQUATORIAL_COORDINATES", "DEC", 20 - 5.0 / 60);
+	complete(0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE);
+	CHECK(wait_state(AGENT, START, rev, INDIGO_OK_STATE));
+	// a target 1' away, the request dropped: within the tolerance, but the mount neither accepted the slew nor moved
+	CHECK(num(AGENT, TARGET, "DEC", 20 - 4.0 / 60));
+	ignore_coordinates = true;
+	fast_wait = true;
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_ALERT_STATE));
+	CHECK(start_message_is("Mount did not start the slew"));
+	fast_wait = false;
+	ignore_coordinates = false;
+	// a sync goes to the target at once
+	CHECK(operation("SYNC", 0, "MOUNT_EQUATORIAL_COORDINATES", INDIGO_OK_STATE));
+	// a slew the mount refuses: ALERT with a message
+	reject_motion = true;
+	CHECK(sw(AGENT, START, "SLEW", true, INDIGO_ALERT_STATE));
+	CHECK(start_message_is("Mount slew failed"));
+	reject_motion = false;
+}
+
 static void cleanup(void) {
 	if (server_open) {
 		sw(AGENT, "AGENT_LX200_SERVER", "STOPPED", true, INDIGO_OK_STATE);
@@ -2142,6 +2285,8 @@ static const indigo_test_case tests[] = {
 	{ "rotator sync wrap", rotator_sync_wrap },
 	{ "configuration failure", configuration_failure },
 
+	{ "unpark waits for park property", unpark_waits_for_park_property },
+	{ "slew target check", slew_target_check },
 	{ "unpark failure", unpark_failure },
 	{ "unpark failure legacy", unpark_failure_legacy },
 	{ "legacy dome slew", legacy_dome_slew },

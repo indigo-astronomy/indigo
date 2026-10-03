@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x03000019
+#define DRIVER_VERSION 0x0300001A
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -45,6 +45,15 @@
 #include <indigo/indigo_dome_azimuth.h>
 
 #include "indigo_agent_mount.h"
+
+/* A slew or a sync has reached its target when the mount reports a position within this angle (degrees) of it. Generous on purpose:
+   mounts round their coordinates (low precision LX200: 6 s of RA, 1'), apply refraction or a pointing model, and keep tracking after the
+   end of the slew, while a mount that did not move at all is degrees away in every practical case. Both positions are the J2000
+   coordinates of MOUNT_EQUATORIAL_COORDINATES on the bus, so no conversion of the epoch is involved. */
+#define TARGET_TOLERANCE																0.25
+
+/* A position that changed by less than this angle (degrees) is unchanged. */
+#define POSITION_UNCHANGED															(1.0 / 3600)
 
 #define DEVICE_PRIVATE_DATA														((mount_agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA														((mount_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
@@ -184,6 +193,11 @@ typedef struct {
 	double mount_latitude, mount_longitude, mount_elevation;
 	bool mount_state_defined;
 	bool mount_parking, mount_parked, mount_unparked;
+	indigo_property_state mount_park_state;
+	bool mount_park_unparked_item;
+	unsigned mount_park_updates;
+	double mount_goto_ra, mount_goto_dec;
+	bool mount_goto_pending, mount_goto_accepted;
 	bool mount_tracking, mount_stopped;
 	bool mount_homing, mount_homed;
 	double mount_target_ra, mount_target_dec;
@@ -309,9 +323,16 @@ static void set_slaving_lights(indigo_device *device, bool control_dome, bool co
 	}
 }
 
+/* The mount is unparked only when MOUNT_PARK has finished: OK with UNPARKED. A mount may report "not parked" in MOUNT_STATE while MOUNT_PARK
+   is still BUSY, and a coordinates request sent then may be refused or dropped by the mount driver. */
+static bool mount_unpark_finished(indigo_device *device) {
+	return DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_park_state == INDIGO_OK_STATE && DEVICE_PRIVATE_DATA->mount_park_unparked_item;
+}
+
 static bool unpark_before_coordinates(indigo_device *device, bool control_dome) {
 	bool unpark_mount = AGENT_MOUNT_FEATURES_CAN_PARK_ITEM->sw.value && !DEVICE_PRIVATE_DATA->mount_unparked;
 	bool unpark_dome = control_dome && AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value && !DEVICE_PRIVATE_DATA->dome_unparked;
+	unsigned park_updates = DEVICE_PRIVATE_DATA->mount_park_updates;
 	if (unpark_mount) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 	}
@@ -322,15 +343,23 @@ static bool unpark_before_coordinates(indigo_device *device, bool control_dome) 
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || !INDIGO_FILTER_MOUNT_SELECTED || (control_dome && !INDIGO_FILTER_DOME_SELECTED)) {
 			return false;
 		}
-		if ((unpark_mount && (!AGENT_MOUNT_FEATURES_CAN_PARK_ITEM->sw.value || AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_ALERT_STATE)) || (unpark_dome && (!AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value || AGENT_DOME_STATE_PARK_ITEM->light.value == INDIGO_ALERT_STATE))) {
+		bool mount_park_failed = DEVICE_PRIVATE_DATA->mount_park_updates != park_updates && DEVICE_PRIVATE_DATA->mount_park_state == INDIGO_ALERT_STATE;
+		if ((unpark_mount && (!AGENT_MOUNT_FEATURES_CAN_PARK_ITEM->sw.value || AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_ALERT_STATE || mount_park_failed)) || (unpark_dome && (!AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value || AGENT_DOME_STATE_PARK_ITEM->light.value == INDIGO_ALERT_STATE))) {
 			return false;
 		}
-		if ((!unpark_mount || DEVICE_PRIVATE_DATA->mount_unparked) && (!unpark_dome || DEVICE_PRIVATE_DATA->dome_unparked)) {
+		if ((!unpark_mount || mount_unpark_finished(device)) && (!unpark_dome || DEVICE_PRIVATE_DATA->dome_unparked)) {
 			return true;
 		}
 		indigo_usleep(1000);
 	}
 	return false;
+}
+
+/* Angle between two equatorial positions in degrees, right ascensions in hours (haversine, exact for small angles). */
+static double angular_distance(double ra1, double dec1, double ra2, double dec2) {
+	double d_ra = (ra1 - ra2) * 15 * M_PI / 180, d_dec = (dec1 - dec2) * M_PI / 180;
+	double h = sin(d_dec / 2) * sin(d_dec / 2) + cos(dec1 * M_PI / 180) * cos(dec2 * M_PI / 180) * sin(d_ra / 2) * sin(d_ra / 2);
+	return 2 * asin(fmin(1, sqrt(h))) * 180 / M_PI;
 }
 
 static void mount_dome_control(indigo_device *device, bool control_dome, bool control_rotator, control_operation operation) {
@@ -366,9 +395,15 @@ static void mount_dome_control(indigo_device *device, bool control_dome, bool co
 			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		}
 	}
+	double target_ra = AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, target_dec = AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target;
+	double start_ra = DEVICE_PRIVATE_DATA->mount_ra, start_dec = DEVICE_PRIVATE_DATA->mount_dec;
 	{
 		static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
+		double values[] = { target_ra, target_dec };
+		DEVICE_PRIVATE_DATA->mount_goto_ra = target_ra;
+		DEVICE_PRIVATE_DATA->mount_goto_dec = target_dec;
+		DEVICE_PRIVATE_DATA->mount_goto_accepted = false;
+		DEVICE_PRIVATE_DATA->mount_goto_pending = true;
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	}
 	if (control_rotator) {
@@ -448,6 +483,19 @@ static void mount_dome_control(indigo_device *device, bool control_dome, bool co
 	if (control_rotator && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE) {
 		indigo_error("ROTATOR_POSITION didn't become OK in 180s");
 	}
+	DEVICE_PRIVATE_DATA->mount_goto_pending = false;
+	/* A mount that reports OK is believed only when it is where it was sent: a request that was dropped (e.g. while the mount was BUSY with
+	   an unpark) and a slew that stopped short end OK as well. A slew that was never accepted (no BUSY with its target) and did not move the
+	   mount failed even when the target is within the tolerance, unless the mount was at the target already. */
+	char failure[INDIGO_VALUE_SIZE] = { 0 };
+	if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_OK_STATE) {
+		double distance = angular_distance(DEVICE_PRIVATE_DATA->mount_ra, DEVICE_PRIVATE_DATA->mount_dec, target_ra, target_dec);
+		if (distance > TARGET_TOLERANCE) {
+			snprintf(failure, sizeof(failure), "Mount did not reach the target, it is %.1f' away", distance * 60);
+		} else if (operation == MOUNT_DOME_CONTROL_SLEW && !DEVICE_PRIVATE_DATA->mount_goto_accepted && angular_distance(DEVICE_PRIVATE_DATA->mount_ra, DEVICE_PRIVATE_DATA->mount_dec, start_ra, start_dec) < POSITION_UNCHANGED && angular_distance(start_ra, start_dec, target_ra, target_dec) >= POSITION_UNCHANGED) {
+			snprintf(failure, sizeof(failure), "Mount did not start the slew");
+		}
+	}
 	AGENT_MOUNT_START_SLEW_ITEM->sw.value = AGENT_MOUNT_START_SYNC_ITEM->sw.value = false;
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -455,9 +503,16 @@ static void mount_dome_control(indigo_device *device, bool control_dome, bool co
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		set_slaving_lights(device, control_dome, control_rotator, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE);
-	} else if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
+	} else if (*failure || DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
+		if (!*failure && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE && operation == MOUNT_DOME_CONTROL_SLEW) {
+			snprintf(failure, sizeof(failure), "Mount slew failed");
+		}
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		if (*failure) {
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "%s", failure);
+		} else {
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		}
 		/* Only the subsystem that failed raises its light, a failed mount slew is not a slaving failure */
 		set_slaving_lights(
 			device,
@@ -1290,6 +1345,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			CLIENT_PRIVATE_DATA->equatorial_coordinates_defined = false;
 			CLIENT_PRIVATE_DATA->show_negative_time_past_transit = false;
 			CLIENT_PRIVATE_DATA->mount_parking = CLIENT_PRIVATE_DATA->mount_parked = CLIENT_PRIVATE_DATA->mount_unparked = CLIENT_PRIVATE_DATA->mount_tracking = CLIENT_PRIVATE_DATA->mount_stopped = false;
+			CLIENT_PRIVATE_DATA->mount_park_state = INDIGO_IDLE_STATE;
+			CLIENT_PRIVATE_DATA->mount_park_unparked_item = false;
 			CLIENT_PRIVATE_DATA->mount_homing = CLIENT_PRIVATE_DATA->mount_homed = false;
 			CLIENT_PRIVATE_DATA->mount_state_defined = false;
 			CLIENT_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
@@ -1375,7 +1432,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			} else if (!strcmp(item->name, MOUNT_STATE_PARK_ITEM_NAME)) {
 				CLIENT_PRIVATE_DATA->mount_parking = (item->light.value == INDIGO_BUSY_STATE);
 				CLIENT_PRIVATE_DATA->mount_parked = (item->light.value == INDIGO_OK_STATE);
-				CLIENT_PRIVATE_DATA->mount_unparked = (item->light.value == INDIGO_IDLE_STATE);
+				// not parked is not unparked yet while MOUNT_PARK is BUSY: some mounts clear AtPark before the unpark is over
+				CLIENT_PRIVATE_DATA->mount_unparked = (item->light.value == INDIGO_IDLE_STATE) && CLIENT_PRIVATE_DATA->mount_park_state != INDIGO_BUSY_STATE;
 				if (AGENT_MOUNT_STATE_PARK_ITEM->light.value != item->light.value || !CLIENT_PRIVATE_DATA->mount_state_defined) {
 					AGENT_MOUNT_STATE_PARK_ITEM->light.value = item->light.value;
 					if (item->light.value == INDIGO_IDLE_STATE) {
@@ -1441,7 +1499,17 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
-		if (!CLIENT_PRIVATE_DATA->mount_state_defined) {
+		// MOUNT_PARK itself is tracked for every mount, unpark_before_coordinates() waits for its end
+		CLIENT_PRIVATE_DATA->mount_park_state = property->state;
+		CLIENT_PRIVATE_DATA->mount_park_updates++;
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
+				CLIENT_PRIVATE_DATA->mount_park_unparked_item = property->items[i].sw.value;
+			}
+		}
+		if (CLIENT_PRIVATE_DATA->mount_state_defined) {
+			CLIENT_PRIVATE_DATA->mount_unparked = AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_IDLE_STATE && property->state != INDIGO_BUSY_STATE;
+		} else {
 			if (property->state == INDIGO_ALERT_STATE) {
 				if (CLIENT_PRIVATE_DATA->mount_parking || CLIENT_PRIVATE_DATA->mount_parked || CLIENT_PRIVATE_DATA->mount_unparked) {
 					CLIENT_PRIVATE_DATA->mount_parking = false;
@@ -1538,6 +1606,10 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				CLIENT_PRIVATE_DATA->mount_dec = item->number.value;
 				CLIENT_PRIVATE_DATA->mount_target_dec = item->number.target;
 			}
+		}
+		// the mount accepted the request of mount_dome_control(): BUSY with its target (a BUSY of an earlier operation has other targets)
+		if (CLIENT_PRIVATE_DATA->mount_goto_pending && property->state == INDIGO_BUSY_STATE && fabs(CLIENT_PRIVATE_DATA->mount_target_ra - CLIENT_PRIVATE_DATA->mount_goto_ra) < 1e-6 && fabs(CLIENT_PRIVATE_DATA->mount_target_dec - CLIENT_PRIVATE_DATA->mount_goto_dec) < 1e-6) {
+			CLIENT_PRIVATE_DATA->mount_goto_accepted = true;
 		}
 		if (!CLIENT_PRIVATE_DATA->mount_state_defined) {
 			if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && property->state == INDIGO_BUSY_STATE) {
