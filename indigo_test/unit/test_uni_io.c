@@ -232,6 +232,20 @@ static void discover_without_responder_times_out(void) {
 	ASSERT_TRUE(elapsed >= 0.35 && elapsed < 2.0);
 }
 
+// Without a target and with include_loopback set, a responder that listens on 127.0.0.1 only (e.g. an Alpaca server started
+// with --urls=http://127.0.0.1:<port>) is found. macOS has no broadcast on lo0, so 127.255.255.255 alone never reaches it there.
+static void discover_reaches_loopback_responder(void) {
+	discovery_responder responder;
+	discovery_result result = { 0 };
+	ASSERT_TRUE(start_discovery_responder(&responder, 1));
+	int count = indigo_uni_discover(NULL, responder.port, "hello", 5, 1, INDIGO_DELAY(0.3), true, collect_reply, &result);
+	stop_discovery_responder(&responder);
+	ASSERT_TRUE(count >= 1);
+	ASSERT_TRUE(responder.requests >= 1);
+	ASSERT_STREQ("127.0.0.1", result.responder);
+	ASSERT_STREQ("hello", responder.last_request);
+}
+
 // Invalid arguments are rejected without sending anything.
 static void discover_rejects_invalid_arguments(void) {
 	discovery_result result = { 0 };
@@ -314,6 +328,7 @@ int main(void) {
 		{ "discover_repeats_request_for_each_poll", discover_repeats_request_for_each_poll },
 		{ "discover_stops_when_callback_returns_false", discover_stops_when_callback_returns_false },
 		{ "discover_without_responder_times_out", discover_without_responder_times_out },
+		{ "discover_reaches_loopback_responder", discover_reaches_loopback_responder },
 		{ "discover_rejects_invalid_arguments", discover_rejects_invalid_arguments },
 		{ "connect_with_timeout_succeeds", connect_with_timeout_succeeds },
 		{ "connect_with_timeout_reports_refused_connection", connect_with_timeout_reports_refused_connection },

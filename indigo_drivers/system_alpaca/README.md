@@ -12,7 +12,7 @@ https://ascom-standards.org/Developer/AlpacaImageBytes.pdf
 
 Any device served by an ASCOM Alpaca server (API version 1, interface versions up to ASCOM Platform 7).
 
-The device "Alpaca" is always present. One proxy device named "DeviceName on ServerName" is created at runtime for every Alpaca device selected in X_ALPACA_DEVICES property; every "@" in DeviceName or ServerName is replaced by "-", because INDIGO uses "@" for devices of remote services.
+The device "Alpaca" is always present. One proxy device is created at runtime for every Alpaca device that is not switched off in X_ALPACA_DEVICES. It is named "ALPACA DeviceName", with the word "alpaca" removed from DeviceName and every "@" replaced by "-", because INDIGO uses "@" for devices of remote services; devices of the same name are numbered "#2", "#3", ...
 
 ## Supported platforms
 
@@ -49,7 +49,7 @@ Driver is developed and tested with simulators only:
 
 ## NOTES:
 * Servers are found by Alpaca discovery (UDP port 32227 by default, see X_ALPACA_DISCOVERY_SETTINGS). A server which does not answer the discovery can be added as host:port in X_ALPACA_SERVERS.
-* Discovered devices are listed in X_ALPACA_DEVICES, only the selected ones are made available as INDIGO devices. The selection is saved with the configuration of the device "Alpaca".
+* Every discovered device is made available as an INDIGO device. Devices can be switched off in X_ALPACA_DEVICES; the switch is saved with the configuration of the device "Alpaca" and the device stays off after a restart. At most 32 devices can be used at a time.
 * Devices exported by INDIGO ASCOM ALPACA bridge agent are ignored.
 * Disconnecting an INDIGO device disconnects the Alpaca device on its server for all other clients of that server as well.
 * Image is downloaded in ImageBytes format if the server supports it, in JSON format otherwise. JSON transfer of large images is very slow.
@@ -57,5 +57,5 @@ Driver is developed and tested with simulators only:
 
 ## Testing
 
-2026-10-03 09:55 3.0.0.1 mac arm64 simulator 300/300 OK
-2026-10-03 09:57 3.0.0.1 mac arm64 OmniSim 0.5.0 20/20 OK
+2026-10-03 14:36 3.0.0.1 mac arm64 simulator 308/308 OK
+2026-10-03 14:37 3.0.0.1 mac arm64 OmniSim 0.5.0 20/20 OK

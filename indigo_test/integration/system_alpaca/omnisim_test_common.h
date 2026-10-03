@@ -24,7 +24,7 @@
 //
 // HOW OMNISIM IS RUN
 //
-// - It is found as omnisim/*/ascom.alpaca.simulators next to the sources of system_alpaca_simulator, or wherever
+// - It is found as omnisim/*/ascom.alpaca.simulators next to the INDIGO working tree, or wherever
 //   INDIGO_TEST_OMNISIM points. Nothing is downloaded; without an executable the tier is not run.
 // - It is effectively one instance per host (a global mutex and a named pipe: a second start forwards its arguments to the
 //   running instance and exits). The whole run therefore holds an exclusive flock() on the executable itself, so two runs
@@ -53,7 +53,7 @@
 #include "system_alpaca_test_common.h"
 
 #ifndef SYSTEM_ALPACA_OMNISIM_DIR
-#define SYSTEM_ALPACA_OMNISIM_DIR "../indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim"
+#define SYSTEM_ALPACA_OMNISIM_DIR "../../omnisim"
 #endif
 
 #define OMNI_EXECUTABLE_NAME "ascom.alpaca.simulators"
@@ -530,11 +530,35 @@ static bool omni_write_config(const char *targets) {
 	return true;
 }
 
-// The usual start of a case: the driver with discovery off, OmniSim added as a manual server and one cycle run, after which
-// its devices are listed. The instance was started by the case runner.
+// Every device is proxied unless it is switched off (decision D15). So that a case decides which proxy devices exist, every device
+// OmniSim lists is switched off by its UniqueID before the driver finds OmniSim; sa_attach() then switches one on.
+static bool omni_switch_off_all(void) {
+	static char unique_ids[32][INDIGO_NAME_SIZE];
+	const char *ids[32];
+	int count = 0;
+	sa_simulator *simulator = sa_simulators + 0;
+	alpaca_http_result result = alpaca_http_get(simulator->control, "/management/v1/configureddevices", NULL, NULL, &simulator->response);
+	const alpaca_json_value *list = result == ALPACA_HTTP_OK && simulator->response.status == 200 ? omni_parse(NULL) : NULL;
+	for (const alpaca_json_value *entry = list != NULL ? alpaca_json_first(list) : NULL; entry != NULL && count < 32; entry = alpaca_json_next(entry)) {
+		const char *unique_id = NULL;
+		if (alpaca_json_get_string(alpaca_json_get(entry, "UniqueID"), &unique_id)) {
+			snprintf(unique_ids[count], INDIGO_NAME_SIZE, "%s", unique_id);
+			ids[count] = unique_ids[count];
+			count++;
+		}
+	}
+	if (count < 10 || !sa_switch_off(ids, count)) {
+		fprintf(stderr, "    the devices of OmniSim were not switched off (%d listed)\n", count);
+		return false;
+	}
+	return true;
+}
+
+// The usual start of a case: the driver with discovery off, the devices of OmniSim switched off, OmniSim added as a manual server
+// and one cycle run, after which its devices are listed. The instance was started by the case runner.
 static bool omni_begin(void) {
 	omni_connect_control();
-	if (!omni_write_config("127.0.0.1:9") || !sa_driver_start()) {
+	if (!omni_write_config("127.0.0.1:9") || !sa_driver_start() || !omni_switch_off_all()) {
 		return false;
 	}
 	if (sa_set_text("X_ALPACA_SERVERS", "ADD", omni_url) != INDIGO_OK_STATE || !sa_discover()) {
@@ -556,7 +580,7 @@ static bool omni_attach_connect(const char *label) {
 	return true;
 }
 
-// Disconnect and deselect (detach) the device of the case, both checked.
+// Disconnect and switch off (detach) the device of the case, both checked.
 static bool omni_disconnect_detach(const char *label) {
 	char key[INDIGO_NAME_SIZE];
 	snprintf(key, sizeof(key), "%s", sa_device_key(label));

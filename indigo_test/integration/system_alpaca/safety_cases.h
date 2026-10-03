@@ -318,7 +318,7 @@ static void safety_transport_loss(void) {
 	double started = indigo_monotonic_time();
 	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT) && indigo_monotonic_time() - started < 5);
 	SA_CHECK(safety_is(INDIGO_ALERT_STATE, INDIGO_IDLE_STATE) && safety_safe_count() == safe && sa_defined(sa_device, SAFETY));
-	SA_CHECK(sa_message_seen("Safety state is unknown, the connection to SafetyMonitor Simulator") && sa_message_seen("was lost"));
+	SA_CHECK(sa_message_seen("Safety state is unknown, the connection to ALPACA SafetyMonitor Simulator was lost"));
 	// nothing is sent any more, and the staleness timer is gone: the property is not touched
 	revision = sa_revision(sa_device, SAFETY);
 	safe = safety_safe_count();

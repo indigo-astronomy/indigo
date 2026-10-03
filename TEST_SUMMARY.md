@@ -320,8 +320,8 @@
 | rotator_optec | 2026-09-27 22:45 | 3.0.0.5 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_simulator | 2026-09-27 22:46 | 3.0.0.8 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 | rotator_wa | 2026-09-27 22:46 | 3.0.0.6 | mac arm64 | simulator | 35 / 35 | ✅ OK |
-| system_alpaca | 2026-10-03 09:55 | 3.0.0.1 | mac arm64 | simulator | 300 / 300 | ✅ OK |
-|  | 2026-10-03 09:57 | 3.0.0.1 | mac arm64 | OmniSim 0.5.0 | 20 / 20 | ✅ OK |
+| system_alpaca | 2026-10-03 14:36 | 3.0.0.1 | mac arm64 | simulator | 308 / 308 | ✅ OK |
+|  | 2026-10-03 14:37 | 3.0.0.1 | mac arm64 | OmniSim 0.5.0 | 20 / 20 | ✅ OK |
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.17 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
 |  | 2026-09-30 19:13 | 3.0.0.17 | linux arm64 | EFW | 16 / 16 | ✅ OK |

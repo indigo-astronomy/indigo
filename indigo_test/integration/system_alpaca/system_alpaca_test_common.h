@@ -29,7 +29,7 @@
 //   static void focuser_moves(void) {
 //     static const char *arguments[] = { "--device", "focuser:Position=1000", NULL };
 //     SA_CHECK(sa_begin(arguments));                    // simulator 0 with discovery, driver, one discovery cycle
-//     SA_CHECK(sa_attach("Focuser Simulator"));        // select the device, wait for its proxy; its name is sa_device
+//     SA_CHECK(sa_attach("Focuser Simulator"));        // switch the device on, wait for its proxy; its name is sa_device
 //     SA_CHECK(sa_connect(sa_device));
 //     ... indigo_change_number_property_1(&sa_client, sa_device, ...), SA_WAIT(...), sa_request_count(...)
 //   cleanup:
@@ -42,6 +42,11 @@
 // - The simulator is controlled through its control API: sa_put() / sa_get() for /simulator/v1/..., and the
 //   helpers sa_advance() (manual clock), sa_fault(), sa_request_count() and sa_last_request() on top of them.
 //   Device time only moves when the test advances the clock.
+// - The driver proxies every device it finds unless the device is switched off in X_ALPACA_DEVICES (decision D15). So that a case
+//   decides which proxy devices exist, the configuration sa_write_config() writes (sa_begin() writes one) switches off every device
+//   of the simulators that run at that time; sa_attach() switches one on. A case about the default sets sa_switch_off_devices to
+//   false before the configuration is written and waits for the proxies with sa_wait_attached(). Devices that appear later
+//   (a simulator started or a device added afterwards) are on, unless the case switches them off by their UniqueID first.
 // - A case is registered by adding one line "{ "name", function }," to the SYSTEM_ALPACA_<CLASS>_CASES macro at the
 //   end of its <class>_cases.h. Nothing else has to be edited.
 
@@ -857,11 +862,60 @@ static bool sa_driver_running = false;
 // Name of the proxy device attached by the last sa_attach().
 static char sa_device[INDIGO_NAME_SIZE];
 
+// sa_write_config() switches off every device of the running simulators (see the top of this file). sa_end() sets it again.
+static bool sa_switch_off_devices = true;
+
+// Key of a device, the name of its item in X_ALPACA_DEVICES: its UniqueID in lower case with everything that is not safe in an item
+// name replaced by '_', and a hash of the whole UniqueID if a character was replaced or it is too long (as the driver documents it in
+// indigo_docs/PROPERTIES.md; REV-18). key has room for SA_KEY_SIZE bytes.
+#define SA_KEY_SIZE 64
+
+static void sa_key(const char *unique_id, char *key) {
+	size_t length = strlen(unique_id);
+	uint32_t hash = 2166136261u;
+	bool replaced = false;
+	for (size_t i = 0; i < length; i++) {
+		char c = unique_id[i] >= 'A' && unique_id[i] <= 'Z' ? (char)(unique_id[i] - 'A' + 'a') : unique_id[i];
+		bool safe = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_';
+		hash = (hash ^ (unsigned char)c) * 16777619u;
+		replaced = replaced || !safe;
+		if (i < SA_KEY_SIZE - 1) {
+			key[i] = safe ? c : '_';
+		}
+	}
+	if (length >= SA_KEY_SIZE - 10 && (replaced || length >= SA_KEY_SIZE)) {
+		snprintf(key + SA_KEY_SIZE - 10, 10, "_%08x", (unsigned)hash);
+	} else if (replaced) {
+		snprintf(key + length, 10, "_%08x", (unsigned)hash);
+	} else {
+		key[length] = 0;
+	}
+}
+
+// Write X_ALPACA_DEVICES with every device of the running simulators switched off, as a saved configuration has it. The devices are
+// read from the control API of the simulators, which records nothing, so the request counts of a case do not change.
+static void sa_write_devices_off(FILE *file) {
+	char key[SA_KEY_SIZE];
+	int count = 0;
+	for (int i = 0; i < SA_MAX_SIMULATORS; i++) {
+		const char *line = sa_simulators[i].control != NULL ? sa_get(i, "/simulator/v1/devices", NULL) : NULL;
+		while (line != NULL && *line) {
+			sa_key(sa_field(line, "UniqueID"), key);
+			fprintf(file, "%s<oneSwitch name='%s'>Off</oneSwitch>\n", count++ == 0 ? "<newSwitchVector device='" SA_BRIDGE "' name='X_ALPACA_DEVICES'>\n" : "", key);
+			line += strcspn(line, "\n");
+			line += *line == '\n';
+		}
+	}
+	if (count > 0) {
+		fprintf(file, "</newSwitchVector>\n");
+	}
+}
+
 // Write the configuration of the bridge device the driver restores at INIT. Discovery is always directed at explicit loopback
 // targets (a broadcast would reach real Alpaca servers of the network the test machine is in), and timeouts and poll intervals
 // are short. With discovery_enabled the driver runs a cycle with discovery every second. Without it the only cycle the driver
 // runs by itself is the one at INIT (the interval is an hour), so a case decides with sa_discover() when a cycle runs.
-// extra is appended, it may be NULL.
+// With sa_switch_off_devices every device of the running simulators is switched off. extra is appended after that, it may be NULL.
 static FILE *sa_open_config(void) {
 	char path[PATH_MAX];
 	snprintf(path, sizeof(path), "%s/.indigo", getenv("HOME"));
@@ -884,6 +938,9 @@ static bool sa_write_config(bool discovery_enabled, const char *targets, const c
 	fprintf(file, "<newTextVector device='" SA_BRIDGE "' name='X_ALPACA_DISCOVERY_TARGETS'>\n<oneText name='TARGETS'>%s</oneText>\n</newTextVector>\n", targets);
 	fprintf(file, "<newNumberVector device='" SA_BRIDGE "' name='X_ALPACA_TIMEOUTS'>\n<oneNumber name='ESTABLISH'>2</oneNumber>\n<oneNumber name='STANDARD'>2</oneNumber>\n<oneNumber name='LONG'>5</oneNumber>\n</newNumberVector>\n");
 	fprintf(file, "<newNumberVector device='" SA_BRIDGE "' name='X_ALPACA_POLLING'>\n<oneNumber name='IDLE'>0.1</oneNumber>\n<oneNumber name='ACTIVE'>0.05</oneNumber>\n</newNumberVector>\n");
+	if (sa_switch_off_devices) {
+		sa_write_devices_off(file);
+	}
 	if (extra != NULL) {
 		fputs(extra, file);
 	}
@@ -1054,6 +1111,38 @@ static bool sa_attach(const char *label) {
 	return SA_WAIT(sa_defined(sa_device, CONNECTION_PROPERTY_NAME), SA_TIMEOUT);
 }
 
+// Wait until the device whose label in X_ALPACA_DEVICES contains the text has its proxy device, without switching anything: what a
+// device that is on by default gets. The name of the proxy is left in sa_device.
+static bool sa_wait_attached(const char *label) {
+	char key[INDIGO_NAME_SIZE];
+	sa_device[0] = 0;
+	bool attached = SA_WAIT(sa_device_status_is(sa_device_key(label), "ATTACHED"), SA_TIMEOUT);
+	snprintf(key, sizeof(key), "%s", sa_device_key(label));
+	if (!attached) {
+		fprintf(stderr, "'%s' (key '%s') has no proxy device: %s\n", label, key, sa_device_status(key));
+		return false;
+	}
+	snprintf(sa_device, sizeof(sa_device), "%s", sa_proxy_name(key));
+	return SA_WAIT(sa_defined(sa_device, CONNECTION_PROPERTY_NAME), SA_TIMEOUT);
+}
+
+// Switch the devices with the given UniqueIDs off in one request, whether they are listed or not, and wait for the answer.
+static bool sa_switch_off(const char * const *unique_ids, int count) {
+	static char keys[128][SA_KEY_SIZE];
+	const char *items[128];
+	bool values[128];
+	if (count < 1 || count > 128) {
+		return false;
+	}
+	for (int i = 0; i < count; i++) {
+		sa_key(unique_ids[i], keys[i]);
+		items[i] = keys[i];
+		values[i] = false;
+	}
+	unsigned revision = sa_revision(SA_BRIDGE, "X_ALPACA_DEVICES");
+	return indigo_change_switch_property(&sa_client, SA_BRIDGE, "X_ALPACA_DEVICES", count, items, values) == INDIGO_OK && SA_WAIT(sa_revision(SA_BRIDGE, "X_ALPACA_DEVICES") > revision && sa_state(SA_BRIDGE, "X_ALPACA_DEVICES") == INDIGO_OK_STATE, SA_TIMEOUT);
+}
+
 static bool sa_is_connected(const char *device) {
 	return sa_state(device, CONNECTION_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(device, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 }
@@ -1100,7 +1189,8 @@ static bool sa_disconnect_after(const char *device, const char *state_path, doub
 }
 
 // The usual start of a case: simulator 0 with the given arguments (NULL for one device of every type) and discovery,
-// the driver with periodic discovery disabled, and one discovery cycle, after which the devices of the simulator are listed.
+// the driver with periodic discovery disabled, and one discovery cycle, after which the devices of the simulator are listed,
+// switched off unless the case cleared sa_switch_off_devices (then they are attached by default).
 static bool sa_begin(const char * const *arguments) {
 	return sa_simulator_start(0, arguments, true) && sa_write_config(false, sa_targets(), NULL) && sa_driver_start() && sa_discover();
 }
@@ -1139,6 +1229,7 @@ static void sa_end(void) {
 	for (int i = 0; i < SA_MAX_SIMULATORS; i++) {
 		sa_simulator_stop(i);
 	}
+	sa_switch_off_devices = true;
 }
 
 #endif /* system_alpaca_test_common_h */

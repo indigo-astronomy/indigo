@@ -271,6 +271,46 @@
 		59647F032F769C5F005F72E3 /* indigo_aux_svbpowerbox.c in Sources */ = {isa = PBXBuildFile; fileRef = 59647EFD2F769C45005F72E3 /* indigo_aux_svbpowerbox.c */; };
 		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
+		5969479630711545003BF9CE /* indigo_system_alpaca_mount.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000D /* indigo_system_alpaca_mount.c */; };
+		5969479730711545003BF9CE /* indigo_system_alpaca_dome.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000004 /* indigo_system_alpaca_dome.c */; };
+		5969479830711545003BF9CE /* indigo_system_alpaca_lightbox.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000B /* indigo_system_alpaca_lightbox.c */; };
+		5969479930711545003BF9CE /* indigo_system_alpaca.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000001 /* indigo_system_alpaca.c */; };
+		5969479A30711545003BF9CE /* indigo_system_alpaca_guider.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000006 /* indigo_system_alpaca_guider.c */; };
+		5969479B30711545003BF9CE /* indigo_system_alpaca_safety.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000010 /* indigo_system_alpaca_safety.c */; };
+		5969479C30711545003BF9CE /* indigo_system_alpaca_focuser.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000005 /* indigo_system_alpaca_focuser.c */; };
+		5969479D30711545003BF9CE /* indigo_system_alpaca_weather.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000014 /* indigo_system_alpaca_weather.c */; };
+		5969479F30711545003BF9CE /* indigo_system_alpaca_transport.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000012 /* indigo_system_alpaca_transport.c */; };
+		596947A030711545003BF9CE /* indigo_system_alpaca_switch.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000011 /* indigo_system_alpaca_switch.c */; };
+		596947A130711545003BF9CE /* indigo_system_alpaca_json.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000009 /* indigo_system_alpaca_json.c */; };
+		596947A230711545003BF9CE /* indigo_system_alpaca_http.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000007 /* indigo_system_alpaca_http.c */; };
+		596947A330711545003BF9CE /* indigo_system_alpaca_rotator.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000F /* indigo_system_alpaca_rotator.c */; };
+		596947A430711545003BF9CE /* indigo_system_alpaca_ccd.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000003 /* indigo_system_alpaca_ccd.c */; };
+		596947A530711545003BF9CE /* indigo_system_alpaca_wheel.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000015 /* indigo_system_alpaca_wheel.c */; };
+		596947A630711545003BF9CE /* indigo_system_alpaca.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000002 /* indigo_system_alpaca.h */; };
+		596947A730711545003BF9CE /* indigo_system_alpaca_private.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000E /* indigo_system_alpaca_private.h */; };
+		596947A830711545003BF9CE /* indigo_system_alpaca_json.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000A /* indigo_system_alpaca_json.h */; };
+		596947A930711545003BF9CE /* indigo_system_alpaca_http.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000008 /* indigo_system_alpaca_http.h */; };
+		596947AA30711545003BF9CE /* indigo_system_alpaca_transport.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000013 /* indigo_system_alpaca_transport.h */; };
+		596947AB30711545003BF9CE /* indigo_system_alpaca_mount.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000D /* indigo_system_alpaca_mount.c */; };
+		596947AC30711545003BF9CE /* indigo_system_alpaca_dome.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000004 /* indigo_system_alpaca_dome.c */; };
+		596947AD30711545003BF9CE /* indigo_system_alpaca_lightbox.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000B /* indigo_system_alpaca_lightbox.c */; };
+		596947AE30711545003BF9CE /* indigo_system_alpaca.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000001 /* indigo_system_alpaca.c */; };
+		596947AF30711545003BF9CE /* indigo_system_alpaca_guider.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000006 /* indigo_system_alpaca_guider.c */; };
+		596947B030711545003BF9CE /* indigo_system_alpaca_safety.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000010 /* indigo_system_alpaca_safety.c */; };
+		596947B130711545003BF9CE /* indigo_system_alpaca_focuser.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000005 /* indigo_system_alpaca_focuser.c */; };
+		596947B230711545003BF9CE /* indigo_system_alpaca_weather.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000014 /* indigo_system_alpaca_weather.c */; };
+		596947B430711545003BF9CE /* indigo_system_alpaca_transport.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000012 /* indigo_system_alpaca_transport.c */; };
+		596947B530711545003BF9CE /* indigo_system_alpaca_switch.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000011 /* indigo_system_alpaca_switch.c */; };
+		596947B630711545003BF9CE /* indigo_system_alpaca_json.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000009 /* indigo_system_alpaca_json.c */; };
+		596947B730711545003BF9CE /* indigo_system_alpaca_http.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000007 /* indigo_system_alpaca_http.c */; };
+		596947B830711545003BF9CE /* indigo_system_alpaca_rotator.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000F /* indigo_system_alpaca_rotator.c */; };
+		596947B930711545003BF9CE /* indigo_system_alpaca_ccd.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000003 /* indigo_system_alpaca_ccd.c */; };
+		596947BA30711545003BF9CE /* indigo_system_alpaca_wheel.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000015 /* indigo_system_alpaca_wheel.c */; };
+		596947BB30711545003BF9CE /* indigo_system_alpaca.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000002 /* indigo_system_alpaca.h */; };
+		596947BC30711545003BF9CE /* indigo_system_alpaca_private.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000E /* indigo_system_alpaca_private.h */; };
+		596947BD30711545003BF9CE /* indigo_system_alpaca_json.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A1000000000A /* indigo_system_alpaca_json.h */; };
+		596947BE30711545003BF9CE /* indigo_system_alpaca_http.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000008 /* indigo_system_alpaca_http.h */; };
+		596947BF30711545003BF9CE /* indigo_system_alpaca_transport.h in Headers */ = {isa = PBXBuildFile; fileRef = C0DE20261001A10000000013 /* indigo_system_alpaca_transport.h */; };
 		596E15462DAC1A150004569F /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
 		596FCA8F2BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
 		596FCA902BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
@@ -1171,7 +1211,6 @@
 		0B1A1A49F21C22297655432E /* indigo_polaralign_mlastro_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_polaralign_mlastro_main.c; sourceTree = "<group>"; };
 		0CA600C37EE2C1F0D8525286 /* test_guider_cgusbst4_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_cgusbst4_simulator.c; sourceTree = "<group>"; };
 		0CCCD046232F755B98098609 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		E3E24DC4AC744AD3CEED2BD9 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		0E2DAEC5555FF3DF5BFBE8E0 /* test_ao_sx_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ao_sx_transport.c; sourceTree = "<group>"; };
 		173AB632933D9A9B625CD9D5 /* test_mount_asi_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_asi_simulator.c; sourceTree = "<group>"; };
 		2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_test_isolation.h; sourceTree = "<group>"; };
@@ -4963,7 +5002,6 @@
 		59FA7C0B301DCEA000A35CFB /* DRIVER_TESTING_RULES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_TESTING_RULES.md; sourceTree = "<group>"; };
 		59FA7C0C301DD71000A35CFB /* test_timer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_timer.c; sourceTree = "<group>"; };
 		59FA7C0D301DD8A000A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
-		5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW_SWITCH_TARGETS.md; sourceTree = "<group>"; };
 		59FA7C0F301DDB2200A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
 		59FA7C10301E27AE00A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
 		59FA7C11301E296100A35CFB /* REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW.md; sourceTree = "<group>"; };
@@ -5021,6 +5059,7 @@
 		59FFB063288D3CB900F172AC /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone_main.c; sourceTree = "<group>"; };
 		5A1F0C3E9B7D4E2A8C6B1D04 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW_SWITCH_TARGETS.md; sourceTree = "<group>"; };
 		6690353AF13CB11838BACF0D /* test_guider_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_asi_sdk.c; sourceTree = "<group>"; };
 		7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_outputs.c; sourceTree = "<group>"; };
 		76F8AA906122440EB263392A /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -5202,7 +5241,6 @@
 		9D56D3573057CCA900725436 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		9D56D3583058281000725436 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		9D56D3593058283B00725436 /* test_agent_astrometry.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_astrometry.c; sourceTree = "<group>"; };
-		C0DE20260928A00100000001 /* test_agent_astrometry_solver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_astrometry_solver.c; sourceTree = "<group>"; };
 		9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_atik_sdk.c; sourceTree = "<group>"; };
 		9D586C3D22FB0C34002D382E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D586C3E22FB0D43002D382E /* indigo_ccd_ptp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ptp.h; sourceTree = "<group>"; };
@@ -5632,7 +5670,6 @@
 		C0DE20260917F4F000000005 /* generated_reference_trace.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = generated_reference_trace.txt; sourceTree = "<group>"; };
 		C0DE20260918000100000001 /* test_ccd_mi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_mi_hw.c; sourceTree = "<group>"; };
 		C0DE20260918000200000001 /* test_ccd_iidc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_iidc_hw.c; sourceTree = "<group>"; };
-		C0DE20260930000100000001 /* test_ccd_dsi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_dsi_hw.c; sourceTree = "<group>"; };
 		C0DE20260918100000000000 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260918100000000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -5703,6 +5740,69 @@
 		C0DE20260924A00100000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260926120000000001 /* hardware_device_record.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hardware_device_record.h; sourceTree = "<group>"; };
 		C0DE20260926D0AB00000001 /* test_detach_abort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_detach_abort.c; sourceTree = "<group>"; };
+		C0DE20260928A00100000001 /* test_agent_astrometry_solver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_astrometry_solver.c; sourceTree = "<group>"; };
+		C0DE20260930000100000001 /* test_ccd_dsi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_dsi_hw.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000001 /* indigo_system_alpaca.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000002 /* indigo_system_alpaca.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000003 /* indigo_system_alpaca_ccd.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_ccd.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000004 /* indigo_system_alpaca_dome.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_dome.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000005 /* indigo_system_alpaca_focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_focuser.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000006 /* indigo_system_alpaca_guider.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_guider.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000007 /* indigo_system_alpaca_http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_http.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000008 /* indigo_system_alpaca_http.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_http.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000009 /* indigo_system_alpaca_json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_json.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000000A /* indigo_system_alpaca_json.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_json.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000000B /* indigo_system_alpaca_lightbox.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_lightbox.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000000C /* indigo_system_alpaca_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_main.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000000D /* indigo_system_alpaca_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_mount.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000000E /* indigo_system_alpaca_private.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_private.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000000F /* indigo_system_alpaca_rotator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_rotator.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000010 /* indigo_system_alpaca_safety.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_safety.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000011 /* indigo_system_alpaca_switch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_switch.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000012 /* indigo_system_alpaca_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_transport.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000013 /* indigo_system_alpaca_transport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_transport.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000014 /* indigo_system_alpaca_weather.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_weather.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000015 /* indigo_system_alpaca_wheel.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_wheel.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000017 /* system_alpaca_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000018 /* system_alpaca_simulator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = system_alpaca_simulator.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000019 /* system_alpaca_simulator_camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_camera.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000001A /* system_alpaca_simulator_covercalibrator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_covercalibrator.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000001B /* system_alpaca_simulator_dome.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_dome.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000001C /* system_alpaca_simulator_filterwheel.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_filterwheel.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000001D /* system_alpaca_simulator_focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_focuser.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000001E /* system_alpaca_simulator_observingconditions.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_observingconditions.c; sourceTree = "<group>"; };
+		C0DE20261001A1000000001F /* system_alpaca_simulator_rotator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_rotator.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000020 /* system_alpaca_simulator_safetymonitor.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_safetymonitor.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000021 /* system_alpaca_simulator_switch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_switch.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000022 /* system_alpaca_simulator_telescope.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_telescope.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000023 /* test_system_alpaca_json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_json.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000024 /* test_system_alpaca_http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_http.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000025 /* test_system_alpaca_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_simulator.c; sourceTree = "<group>"; };
+		C0DE20261001A10000000027 /* ccd_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ccd_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000028 /* core_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = core_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000029 /* dome_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dome_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000002A /* focuser_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = focuser_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000002B /* guider_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = guider_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000002C /* lightbox_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lightbox_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000002D /* mount_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mount_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000002E /* rotator_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rotator_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A1000000002F /* safety_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = safety_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000030 /* switch_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = switch_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000031 /* system_alpaca_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = system_alpaca_test_common.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000032 /* weather_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = weather_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000033 /* wheel_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wheel_cases.h; sourceTree = "<group>"; };
+		C0DE20261001A10000000034 /* alpaca_apiversions.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_apiversions.json; sourceTree = "<group>"; };
+		C0DE20261001A10000000035 /* alpaca_configureddevices.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_configureddevices.json; sourceTree = "<group>"; };
+		C0DE20261001A10000000036 /* alpaca_description.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_description.json; sourceTree = "<group>"; };
+		C0DE20261001A10000000037 /* alpaca_devicestate.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_devicestate.json; sourceTree = "<group>"; };
+		C0DE20261001A10000000038 /* alpaca_error.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_error.json; sourceTree = "<group>"; };
+		C0DE20261001A10000000039 /* alpaca_imagearray_rank2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_imagearray_rank2.json; sourceTree = "<group>"; };
+		C0DE20261001A1000000003A /* alpaca_imagearray_rank3.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_imagearray_rank3.json; sourceTree = "<group>"; };
+		C0DE20261001A1000000003B /* alpaca_value.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_value.json; sourceTree = "<group>"; };
+		C0DE20261001A1000000003C /* interface_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = interface_cases.h; sourceTree = "<group>"; };
+		C0DE20261002A10000000001 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		C0DE20261003A10000000001 /* test_system_alpaca_omnisim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_omnisim.c; sourceTree = "<group>"; };
+		C0DE20261003A10000000002 /* omnisim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = omnisim_test_common.h; sourceTree = "<group>"; };
 		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
@@ -5748,6 +5848,7 @@
 		DF10000000000000000004 /* test_dome_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_dragonfly_simulator.c; sourceTree = "<group>"; };
 		DF10000000000000000005 /* test_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_uni_io.c; sourceTree = "<group>"; };
 		DF9510A9A0388C24156FC1BA /* polaralign_mlastro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = polaralign_mlastro_simulator.c; sourceTree = "<group>"; };
+		E3E24DC4AC744AD3CEED2BD9 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
 		F03E2D230D06433C8E608E74 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		F0A57A260923000000000001 /* test_mount_lx200_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_mountsim.c; sourceTree = "<group>"; };
@@ -5757,67 +5858,6 @@
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
-		C0DE20261002A10000000001 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		C0DE20261001A10000000001 /* indigo_system_alpaca.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000002 /* indigo_system_alpaca.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000003 /* indigo_system_alpaca_ccd.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_ccd.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000004 /* indigo_system_alpaca_dome.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_dome.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000005 /* indigo_system_alpaca_focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_focuser.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000006 /* indigo_system_alpaca_guider.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_guider.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000007 /* indigo_system_alpaca_http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_http.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000008 /* indigo_system_alpaca_http.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_http.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000009 /* indigo_system_alpaca_json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_json.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000000A /* indigo_system_alpaca_json.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_json.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000000B /* indigo_system_alpaca_lightbox.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_lightbox.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000000C /* indigo_system_alpaca_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_main.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000000D /* indigo_system_alpaca_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_mount.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000000E /* indigo_system_alpaca_private.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_private.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000000F /* indigo_system_alpaca_rotator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_rotator.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000010 /* indigo_system_alpaca_safety.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_safety.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000011 /* indigo_system_alpaca_switch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_switch.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000012 /* indigo_system_alpaca_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_transport.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000013 /* indigo_system_alpaca_transport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca_transport.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000014 /* indigo_system_alpaca_weather.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_weather.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000015 /* indigo_system_alpaca_wheel.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca_wheel.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000017 /* system_alpaca_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000018 /* system_alpaca_simulator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = system_alpaca_simulator.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000019 /* system_alpaca_simulator_camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_camera.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000001A /* system_alpaca_simulator_covercalibrator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_covercalibrator.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000001B /* system_alpaca_simulator_dome.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_dome.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000001C /* system_alpaca_simulator_filterwheel.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_filterwheel.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000001D /* system_alpaca_simulator_focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_focuser.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000001E /* system_alpaca_simulator_observingconditions.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_observingconditions.c; sourceTree = "<group>"; };
-		C0DE20261001A1000000001F /* system_alpaca_simulator_rotator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_rotator.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000020 /* system_alpaca_simulator_safetymonitor.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_safetymonitor.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000021 /* system_alpaca_simulator_switch.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_switch.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000022 /* system_alpaca_simulator_telescope.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = system_alpaca_simulator_telescope.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000023 /* test_system_alpaca_json.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_json.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000024 /* test_system_alpaca_http.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_http.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000025 /* test_system_alpaca_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_simulator.c; sourceTree = "<group>"; };
-		C0DE20261003A10000000001 /* test_system_alpaca_omnisim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_omnisim.c; sourceTree = "<group>"; };
-		C0DE20261001A10000000027 /* ccd_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ccd_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000028 /* core_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = core_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000029 /* dome_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dome_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000002A /* focuser_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = focuser_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000002B /* guider_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = guider_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000002C /* lightbox_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lightbox_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000002D /* mount_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mount_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000002E /* rotator_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rotator_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A1000000002F /* safety_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = safety_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000030 /* switch_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = switch_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000031 /* system_alpaca_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = system_alpaca_test_common.h; sourceTree = "<group>"; };
-		C0DE20261003A10000000002 /* omnisim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = omnisim_test_common.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000032 /* weather_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = weather_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000033 /* wheel_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = wheel_cases.h; sourceTree = "<group>"; };
-		C0DE20261001A10000000034 /* alpaca_apiversions.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_apiversions.json; sourceTree = "<group>"; };
-		C0DE20261001A10000000035 /* alpaca_configureddevices.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_configureddevices.json; sourceTree = "<group>"; };
-		C0DE20261001A10000000036 /* alpaca_description.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_description.json; sourceTree = "<group>"; };
-		C0DE20261001A10000000037 /* alpaca_devicestate.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_devicestate.json; sourceTree = "<group>"; };
-		C0DE20261001A10000000038 /* alpaca_error.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_error.json; sourceTree = "<group>"; };
-		C0DE20261001A10000000039 /* alpaca_imagearray_rank2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_imagearray_rank2.json; sourceTree = "<group>"; };
-		C0DE20261001A1000000003A /* alpaca_imagearray_rank3.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_imagearray_rank3.json; sourceTree = "<group>"; };
-		C0DE20261001A1000000003B /* alpaca_value.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = alpaca_value.json; sourceTree = "<group>"; };
-		C0DE20261001A1000000003C /* interface_cases.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = interface_cases.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16655,7 +16695,6 @@
 				C0DE20261001A10000000009 /* indigo_system_alpaca_json.c */,
 				C0DE20261001A1000000000A /* indigo_system_alpaca_json.h */,
 				C0DE20261001A1000000000B /* indigo_system_alpaca_lightbox.c */,
-				C0DE20261001A1000000000C /* indigo_system_alpaca_main.c */,
 				C0DE20261001A1000000000D /* indigo_system_alpaca_mount.c */,
 				C0DE20261001A1000000000E /* indigo_system_alpaca_private.h */,
 				C0DE20261001A1000000000F /* indigo_system_alpaca_rotator.c */,
@@ -16665,34 +16704,10 @@
 				C0DE20261001A10000000013 /* indigo_system_alpaca_transport.h */,
 				C0DE20261001A10000000014 /* indigo_system_alpaca_weather.c */,
 				C0DE20261001A10000000015 /* indigo_system_alpaca_wheel.c */,
+				C0DE20261001A1000000000C /* indigo_system_alpaca_main.c */,
 				C0DE20261001A10000000016 /* system_alpaca_simulator */,
 			);
 			path = system_alpaca;
-			sourceTree = "<group>";
-		};
-		C0DE20270913000400000004 /* focuser_lunatico_simulator */ = {
-			isa = PBXGroup;
-			children = (
-				C0DE20270913000400000006 /* lunatico_simulator_common.h */,
-				C0DE20270913000400000005 /* focuser_lunatico_simulator.c */,
-			);
-			path = focuser_lunatico_simulator;
-			sourceTree = "<group>";
-		};
-		C0DE20270913000400000009 /* rotator_lunatico_simulator */ = {
-			isa = PBXGroup;
-			children = (
-				C0DE2027091300040000000A /* rotator_lunatico_simulator.c */,
-			);
-			path = rotator_lunatico_simulator;
-			sourceTree = "<group>";
-		};
-		DF10000000000000000010 /* dome_dragonfly_simulator */ = {
-			isa = PBXGroup;
-			children = (
-				DF10000000000000000003 /* dome_dragonfly_simulator.c */,
-			);
-			path = dome_dragonfly_simulator;
 			sourceTree = "<group>";
 		};
 		C0DE20261001A10000000016 /* system_alpaca_simulator */ = {
@@ -16736,6 +16751,31 @@
 			path = system_alpaca;
 			sourceTree = "<group>";
 		};
+		C0DE20270913000400000004 /* focuser_lunatico_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20270913000400000006 /* lunatico_simulator_common.h */,
+				C0DE20270913000400000005 /* focuser_lunatico_simulator.c */,
+			);
+			path = focuser_lunatico_simulator;
+			sourceTree = "<group>";
+		};
+		C0DE20270913000400000009 /* rotator_lunatico_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE2027091300040000000A /* rotator_lunatico_simulator.c */,
+			);
+			path = rotator_lunatico_simulator;
+			sourceTree = "<group>";
+		};
+		DF10000000000000000010 /* dome_dragonfly_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				DF10000000000000000003 /* dome_dragonfly_simulator.c */,
+			);
+			path = dome_dragonfly_simulator;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -16769,6 +16809,11 @@
 				598A1C26259BA94A00C0B34C /* indigo_focuser_wemacro_bt.h in Headers */,
 				59A68E1D277DC3D0000439CC /* indigo_ccd_svb.h in Headers */,
 				598A1C28259BA94A00C0B34C /* indigo_usb_utils.h in Headers */,
+				596947BB30711545003BF9CE /* indigo_system_alpaca.h in Headers */,
+				596947BC30711545003BF9CE /* indigo_system_alpaca_private.h in Headers */,
+				596947BD30711545003BF9CE /* indigo_system_alpaca_json.h in Headers */,
+				596947BE30711545003BF9CE /* indigo_system_alpaca_http.h in Headers */,
+				596947BF30711545003BF9CE /* indigo_system_alpaca_transport.h in Headers */,
 				59540AD826D00D3C000C2A1B /* indigo_aux_geoptikflat.h in Headers */,
 				598A1C2B259BA94A00C0B34C /* indigo_agent_auxiliary.h in Headers */,
 				598A1C2C259BA94A00C0B34C /* indigo_wheel_xagyl.h in Headers */,
@@ -17059,6 +17104,11 @@
 				59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */,
 				593894B42C4C22B100CEF4A5 /* indigo_aux_upb3.h in Headers */,
 				59A68E32277DE626000439CC /* indigo_ccd_asi.h in Headers */,
+				596947A630711545003BF9CE /* indigo_system_alpaca.h in Headers */,
+				596947A730711545003BF9CE /* indigo_system_alpaca_private.h in Headers */,
+				596947A830711545003BF9CE /* indigo_system_alpaca_json.h in Headers */,
+				596947A930711545003BF9CE /* indigo_system_alpaca_http.h in Headers */,
+				596947AA30711545003BF9CE /* indigo_system_alpaca_transport.h in Headers */,
 				5958A14F2FE9B10500F0B407 /* indigo_focuser_askar.h in Headers */,
 				9D239B38304FEC35002E0722 /* indigo_ccd_touptek_vendors.h in Headers */,
 				9DAD522721246C18002FCC79 /* indigo_mount_synscan.h in Headers */,
@@ -17478,6 +17528,21 @@
 				9D7FC61E2C4906B2004496F2 /* indigo_focuser_fc3.c in Sources */,
 				598A1B65259BA94A00C0B34C /* indigo_mount_simulator.c in Sources */,
 				9DD01BE8298A63A50044FB3B /* indigo_build.c in Sources */,
+				596947AB30711545003BF9CE /* indigo_system_alpaca_mount.c in Sources */,
+				596947AC30711545003BF9CE /* indigo_system_alpaca_dome.c in Sources */,
+				596947AD30711545003BF9CE /* indigo_system_alpaca_lightbox.c in Sources */,
+				596947AE30711545003BF9CE /* indigo_system_alpaca.c in Sources */,
+				596947AF30711545003BF9CE /* indigo_system_alpaca_guider.c in Sources */,
+				596947B030711545003BF9CE /* indigo_system_alpaca_safety.c in Sources */,
+				596947B130711545003BF9CE /* indigo_system_alpaca_focuser.c in Sources */,
+				596947B230711545003BF9CE /* indigo_system_alpaca_weather.c in Sources */,
+				596947B430711545003BF9CE /* indigo_system_alpaca_transport.c in Sources */,
+				596947B530711545003BF9CE /* indigo_system_alpaca_switch.c in Sources */,
+				596947B630711545003BF9CE /* indigo_system_alpaca_json.c in Sources */,
+				596947B730711545003BF9CE /* indigo_system_alpaca_http.c in Sources */,
+				596947B830711545003BF9CE /* indigo_system_alpaca_rotator.c in Sources */,
+				596947B930711545003BF9CE /* indigo_system_alpaca_ccd.c in Sources */,
+				596947BA30711545003BF9CE /* indigo_system_alpaca_wheel.c in Sources */,
 				598A1B67259BA94A00C0B34C /* libuvc_stream.c in Sources */,
 				595A8E5A2C9479E600E7998C /* indigo_ccd_pentax.c in Sources */,
 				598A1B68259BA94A00C0B34C /* indigo_mount_ioptron.c in Sources */,
@@ -17854,6 +17919,21 @@
 				59F6BB41261CA65800DA9BE1 /* indigo_alpaca_switch.c in Sources */,
 				591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */,
 				59FFB066288D3D3600F172AC /* indigo_ccd_playerone.c in Sources */,
+				5969479630711545003BF9CE /* indigo_system_alpaca_mount.c in Sources */,
+				5969479730711545003BF9CE /* indigo_system_alpaca_dome.c in Sources */,
+				5969479830711545003BF9CE /* indigo_system_alpaca_lightbox.c in Sources */,
+				5969479930711545003BF9CE /* indigo_system_alpaca.c in Sources */,
+				5969479A30711545003BF9CE /* indigo_system_alpaca_guider.c in Sources */,
+				5969479B30711545003BF9CE /* indigo_system_alpaca_safety.c in Sources */,
+				5969479C30711545003BF9CE /* indigo_system_alpaca_focuser.c in Sources */,
+				5969479D30711545003BF9CE /* indigo_system_alpaca_weather.c in Sources */,
+				5969479F30711545003BF9CE /* indigo_system_alpaca_transport.c in Sources */,
+				596947A030711545003BF9CE /* indigo_system_alpaca_switch.c in Sources */,
+				596947A130711545003BF9CE /* indigo_system_alpaca_json.c in Sources */,
+				596947A230711545003BF9CE /* indigo_system_alpaca_http.c in Sources */,
+				596947A330711545003BF9CE /* indigo_system_alpaca_rotator.c in Sources */,
+				596947A430711545003BF9CE /* indigo_system_alpaca_ccd.c in Sources */,
+				596947A530711545003BF9CE /* indigo_system_alpaca_wheel.c in Sources */,
 				59A4132E2971E54C00F0A80B /* indigo_wheel_playerone.c in Sources */,
 				59111CF7285F504300E57194 /* indigocat_neptune.c in Sources */,
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,

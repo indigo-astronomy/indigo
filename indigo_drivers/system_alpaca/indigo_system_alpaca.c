@@ -37,6 +37,26 @@
  - what a bus thread and the handler queue of a proxy device share (CONNECTION, the session flags, the state and the requested
    values of the properties a client can change) is written under the lock of the device, system_alpaca_lock(), which is never
    held across a request or a call of the bus. The header indigo_system_alpaca_private.h describes the rules for a class module.
+
+ Devices (decision D15, which replaces D4):
+ - every Alpaca device the driver learns about (discovery, a manual server, a device a server lists later) is proxied by default;
+   X_ALPACA_DEVICES has one switch per known device, named by its key (UniqueID made safe, make_key()), and it is on by default;
+ - what is remembered is the set of keys the user switched off (switched_off[]): a switch that is turned off puts the key there, one that
+   is turned on takes it out. A key that is not listed yet is taken as it is, so a saved configuration, which is restored before
+   anything is discovered, applies to devices that appear later. A device that is switched off stays listed (OFFLINE while no server
+   lists it) so that its switch is saved with the configuration (CONFIG SAVE writes the whole property); a device that is on and is no
+   longer listed by any server is forgotten, there is nothing to remember about it;
+ - nothing is attached while the configuration of the bridge is being restored (bridge_reconcile() waits for it): the restore of
+   X_ALPACA_SERVERS asks the manual servers for their devices before X_ALPACA_DEVICES comes in the file, and a device switched off
+   there must never get a proxy, not even for a moment. The switch is recorded on the bus thread when the request is accepted, so the
+   set is complete when the restore ends;
+ - the proxies are attached in the order in which the devices became known; when more devices are on than MAX_DEVICES proxy devices
+   fit, the rest wait as FAILED with the reason in X_ALPACA_DEVICE_STATUS and a message, and get their proxy as soon as there is room
+   (a device switched off makes room at once).
+
+ Names (decision D17, which replaces the "<DeviceName> on <ServerName>" of D14): "ALPACA <DeviceName>" without any "alpaca" of the
+ DeviceName and without "@", the DeviceType if nothing is left; devices of the same name are numbered " #2", " #3"... in the order of their
+ keys, see proxy_make_name(). The guider of a camera or a telescope is "<name> (guider)".
  */
 
 #pragma mark - Includes
@@ -79,8 +99,7 @@
 #define TRANSPORT_ERROR_LIMIT											2
 #define DEVICE_STATE_FAILURE_LIMIT								5
 #define SHUTDOWN_WAIT															5.0
-#define DEVICE_NAME_PART_SIZE											60
-#define SERVER_NAME_PART_SIZE											40
+#define DEVICE_NAME_PART_SIZE											100
 
 #pragma mark - Property definitions
 
@@ -193,7 +212,7 @@ typedef struct {
 	char error[INDIGO_NAME_SIZE];
 } server_record;
 
-// One Alpaca device, known from configureddevices of a server or from the saved selection.
+// One Alpaca device, known from configureddevices of a server or because it was switched off by its key.
 typedef struct {
 	bool used;
 	char key[KEY_SIZE];															// UniqueID in lower case with unsafe characters replaced, the item name in X_ALPACA_DEVICES
@@ -204,16 +223,11 @@ typedef struct {
 	server_record *server;													// server that lists the device, NULL if no server does
 	bool present;																		// listed by its server
 	bool listed;																		// seen in the listing that is being processed
-	bool selected;																	// the user wants a proxy device (decision D4)
+	bool selected;																	// its switch in X_ALPACA_DEVICES is on, i.e. it is not switched off (decision D15)
 	bool reattach;																	// the device type changed, the proxy has to be created again
 	indigo_device *device;													// attached proxy device
-	char message[INDIGO_NAME_SIZE];									// why the selected device has no proxy
+	char message[INDIGO_NAME_SIZE];									// why the device that is switched on has no proxy
 } device_record;
-
-typedef struct {
-	char key[KEY_SIZE];
-	bool selected;
-} selection_request;
 
 typedef struct {
 	char name[INDIGO_NAME_SIZE];
@@ -236,7 +250,7 @@ static indigo_queue *driver_queue = NULL;
 static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // bridge_mutex guards what bus threads and the driver queue share of the bridge device: the items of the properties that are rebuilt
-// at run time, the states and the settings of its properties (bridge_finish(), bridge_setting()) and the selection requests;
+// at run time, the states and the settings of its properties (bridge_finish(), bridge_setting()) and the set of switched off devices;
 // settings_mutex guards the scalar settings read by the handler queues of the proxy devices.
 // Lock order: a bus callback runs with the lock of the bus held and takes bridge_mutex inside it. The driver queue therefore
 // never calls the bus (define, update, delete of a property) while it holds bridge_mutex: it only edits items under it.
@@ -246,9 +260,12 @@ static indigo_device *bridge = NULL;
 static indigo_device *devices[MAX_DEVICES];
 static server_record servers[MAX_SERVERS];
 static device_record records[MAX_RECORDS];
-static selection_request selection_requests[MAX_RECORDS];
-static int selection_request_count = 0;
+// keys of the devices the user switched off in X_ALPACA_DEVICES; written by a bus thread, read by the driver queue, under bridge_mutex
+static char switched_off[MAX_RECORDS][KEY_SIZE];
+static int switched_off_count = 0;
 static bool selection_pending = false;
+static bool reconcile_pending = false;
+static int capacity_refused = 0;
 static bool servers_pending = false;
 static list_item list_items[MAX_RECORDS];
 static alpaca_configured_device listed_devices[MAX_LISTED_DEVICES];
@@ -1229,6 +1246,7 @@ bool system_alpaca_attach_secondary(indigo_device *device, const alpaca_class *s
 
 static void bridge_discovery_handler(indigo_device *device, void *data);
 static void bridge_lists_handler(indigo_device *device);
+static void bridge_reconcile_handler(indigo_device *device);
 
 // Value of a number item of a setting of the bridge. A bus thread writes the settings under bridge_mutex when a client changes them.
 static double bridge_setting(indigo_item *item) {
@@ -1336,6 +1354,59 @@ static device_record *record_add(const char *key) {
 	return NULL;
 }
 
+// Index of a key in switched_off, -1 if the device is not switched off. Called with bridge_mutex held.
+static int switched_off_find(const char *key) {
+	for (int i = 0; i < switched_off_count; i++) {
+		if (!strcmp(switched_off[i], key)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+// Switch a device off or on by its key. Returns false if the set is full and the device could not be switched off. Called with bridge_mutex held.
+static bool switched_off_set(const char *key, bool off) {
+	int index = switched_off_find(key);
+	if (off && index < 0) {
+		if (switched_off_count == MAX_RECORDS) {
+			return false;
+		}
+		strcpy(switched_off[switched_off_count++], key);
+	} else if (!off && index >= 0) {
+		// the last key takes the place of the one taken out; the last one itself only shortens the set
+		if (index < --switched_off_count) {
+			strcpy(switched_off[index], switched_off[switched_off_count]);
+		}
+	}
+	return true;
+}
+
+// Driver queue: bring the records in line with switched_off. A device that is switched off and is not known yet gets a record of its own,
+// listed as OFFLINE until a server lists it, so that its switch stays in X_ALPACA_DEVICES and is saved with the configuration.
+static void records_apply_selection(void) {
+	int lost = 0;
+	pthread_mutex_lock(&bridge_mutex);
+	for (int i = 0; i < MAX_RECORDS; i++) {
+		if (records[i].used) {
+			records[i].selected = switched_off_find(records[i].key) < 0;
+		}
+	}
+	for (int i = 0; i < switched_off_count; i++) {
+		if (record_find(switched_off[i]) == NULL) {
+			device_record *record = record_add(switched_off[i]);
+			if (record != NULL) {
+				copy_text(record->unique_id, sizeof(record->unique_id), switched_off[i]);
+			} else {
+				lost++;
+			}
+		}
+	}
+	pthread_mutex_unlock(&bridge_mutex);
+	if (lost > 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d device(s) switched off are not listed, the limit of %d devices is reached", lost, MAX_RECORDS);
+	}
+}
+
 static void proxy_free(indigo_device *device) {
 	alpaca_private_data *private_data = PRIVATE_DATA;
 	pthread_mutex_destroy(&private_data->mutex);
@@ -1347,46 +1418,92 @@ static void proxy_free(indigo_device *device) {
 	indigo_safe_free(device);
 }
 
-// "<DeviceName> on <ServerName>", with the address of the server if it has no name. The parts are cut between UTF-8 characters to
-// DEVICE_NAME_PART_SIZE and SERVER_NAME_PART_SIZE, so that the suffix of a collision (" #" and 6 digits), the suffix of a secondary device
-// (" (guider)") and the suffix of indigo_make_name_unique() (" #" and up to 3 digits) still fit into INDIGO_NAME_SIZE with the terminating zero: 59 + 4 + 39 + 8 + 9 + 5 + 1 < 128.
-static void proxy_base_name(const device_record *record, char *name) {
-	char device_part[DEVICE_NAME_PART_SIZE];
-	char server_part[SERVER_NAME_PART_SIZE];
-	char address[ALPACA_HOST_SIZE + 16];
-	snprintf(address, sizeof(address), "%s:%d", record->server->transport->host, record->server->transport->port);
-	copy_name_part(device_part, sizeof(device_part), *record->name ? record->name : record->type);
-	copy_name_part(server_part, sizeof(server_part), record->server->description.server_name);
-	if (*server_part == 0) {
-		copy_name_part(server_part, sizeof(server_part), address);
+// Remove every "alpaca" from a name, in any letter case and also inside a word ("MyAlpacaDome" becomes "MyDome"), and tidy what is
+// left: a run of spaces becomes one space, and spaces and separators ("-", "_", ":") left dangling at either end are removed.
+static void strip_alpaca(char *text) {
+	static const char *word = "alpaca";
+	size_t length = strlen(word);
+	char *target = text;
+	for (const char *source = text; *source; ) {
+		size_t matched = 0;
+		while (matched < length && source[matched] && lower_case(source[matched]) == word[matched]) {
+			matched++;
+		}
+		if (matched == length) {
+			source += length;
+		} else if (*source == ' ' && (target == text || target[-1] == ' ')) {
+			source++;
+		} else {
+			*target++ = *source++;
+		}
 	}
-	snprintf(name, INDIGO_NAME_SIZE, "%s on %s", device_part, server_part);
+	*target = 0;
+	while (target > text && strchr(" -_:", target[-1]) != NULL) {
+		*--target = 0;
+	}
+	size_t skip = strspn(text, " -_:");
+	memmove(text, text + skip, strlen(text + skip) + 1);
 }
 
-// Name of a proxy device. The configuration of a device is saved under its name, so the name should not depend on the order in which
-// devices are discovered or attached. When another known Alpaca device would get the same name (two servers of the same name with a
-// device of the same name), the name therefore gets a suffix made of the UniqueID instead of a running number.
-// indigo_make_name_unique() remains the last resort against a device of the same name on the bus.
+// Name of an Alpaca device without a number (decision D17): "ALPACA <DeviceName>", without any "alpaca" of the DeviceName (strip_alpaca())
+// and with the characters a device name can not have replaced (copy_name_part(), "@" included, D14). If nothing is left of the
+// DeviceName, the DeviceType is used. The prefix in upper case keeps every proxy apart from the bridge device "Alpaca".
+// The DeviceName part is cut between UTF-8 characters to DEVICE_NAME_PART_SIZE, so that "ALPACA ", the number of a duplicate (" #" and
+// up to 3 digits) and the suffix of a secondary device (" (guider)") still fit into INDIGO_NAME_SIZE with the terminating zero: 7 + 99 + 5 + 9 + 1 < 128.
+static void proxy_base_name(const device_record *record, char *name) {
+	char part[INDIGO_NAME_SIZE];
+	char cut[DEVICE_NAME_PART_SIZE];
+	copy_name_part(part, sizeof(part), record->name);
+	strip_alpaca(part);
+	if (*part == 0) {
+		copy_name_part(part, sizeof(part), record->type);
+		strip_alpaca(part);
+	}
+	copy_text(cut, sizeof(cut), *part ? part : "Device");
+	strip_alpaca(cut);
+	snprintf(name, INDIGO_NAME_SIZE, "ALPACA %s", cut);
+}
+
+// No device of the bus has the name. indigo_make_name_unique() is asked on a copy: it changes the copy only if the name is taken.
+static bool proxy_name_free(const char *name) {
+	char probe[INDIGO_NAME_SIZE + 16];
+	snprintf(probe, sizeof(probe), "%s", name);
+	indigo_make_name_unique(probe, NULL);
+	return !strcmp(probe, name);
+}
+
+// Name of a proxy device (decision D17). Devices of the same name get a running number: "ALPACA Focuser Simulator", "ALPACA Focuser
+// Simulator #2", ... The configuration of a device is saved under its name, so the numbers are given in a fixed order, not in the order
+// of attaching: a device gets the place of its key among the keys of all devices of the same name the servers list now, switched on or
+// off. A name that is taken on the bus (a device of that name that kept its name while it is attached, or any other device) is passed
+// over for the next number. A proxy keeps its name while it is attached.
 static void proxy_make_name(const device_record *record, char *name) {
+	char base[INDIGO_NAME_SIZE];
 	char other[INDIGO_NAME_SIZE];
-	uint32_t hash = 2166136261u;
-	proxy_base_name(record, name);
+	int number = 1;
+	proxy_base_name(record, base);
 	for (int i = 0; i < MAX_RECORDS; i++) {
-		if (records[i].used && records + i != record && records[i].server != NULL) {
+		if (records[i].used && records + i != record && records[i].server != NULL && records[i].present) {
 			proxy_base_name(records + i, other);
-			if (!strcmp(name, other)) {
-				for (const char *c = record->key; *c; c++) {
-					hash = (hash ^ (unsigned char)*c) * 16777619u;
-				}
-				snprintf(name + strlen(name), INDIGO_NAME_SIZE - strlen(name), " #%06x", (unsigned)(hash & 0xFFFFFF));
-				break;
+			if (!strcmp(base, other) && strcmp(records[i].key, record->key) < 0) {
+				number++;
 			}
+		}
+	}
+	for (int attempt = 0; attempt < 1000; attempt++, number++) {
+		if (number == 1) {
+			strcpy(name, base);
+		} else {
+			snprintf(name, INDIGO_NAME_SIZE, "%s #%d", base, number);
+		}
+		if (proxy_name_free(name)) {
+			return;
 		}
 	}
 	indigo_make_name_unique(name, NULL);
 }
 
-// Create and attach the proxy device of a selected Alpaca device. The device has to answer InterfaceVersion first: a device that is
+// Create and attach the proxy device of an Alpaca device that is switched on. The device has to answer InterfaceVersion first: a device that is
 // listed but does not work is not attached. On failure everything is released again and record->message says why.
 static bool proxy_attach(device_record *record, const alpaca_class *device_class) {
 	static const indigo_device proxy_template = INDIGO_DEVICE_INITIALIZER("", NULL, NULL, NULL, NULL, NULL);
@@ -1692,6 +1809,7 @@ static void bridge_sync_property(indigo_device *device, indigo_property *propert
 
 // Publish the lists of servers and devices. The item lists are not touched while the configuration is being restored, because the
 // restore of a property fails when the property is deleted in the middle of it; the update is repeated when the restore is over.
+// The switches are taken from switched_off, so a request accepted since the last reconcile is not published back to its old value.
 static void bridge_update_lists(void) {
 	indigo_device *device = bridge;
 	int count = 0;
@@ -1702,6 +1820,7 @@ static void bridge_update_lists(void) {
 		}
 		return;
 	}
+	records_apply_selection();
 	for (int i = 0; i < MAX_SERVERS; i++) {
 		server_record *server = servers + i;
 		if (server->used) {
@@ -1747,10 +1866,41 @@ static void bridge_update_lists(void) {
 	bridge_sync_property(device, X_ALPACA_DEVICE_STATUS_PROPERTY, count);
 }
 
-// Bring the proxy devices in line with the lists: attach what is selected and present, detach what is not, forget what is neither.
+static bool proxy_room(void) {
+	for (int slot = 0; slot < MAX_DEVICES; slot++) {
+		if (devices[slot] == NULL) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Bring the proxy devices in line with the lists: attach what is switched on and present, detach what is not, forget what is on and
+// listed by no server. Nothing is done while the configuration is being restored (see the top of this file): the work is repeated when
+// the restore is over, so the switches restored from the configuration are known before the first proxy device is attached.
+// The devices are detached first, so that the room a device switched off leaves is there for a device that waits for it.
 static void bridge_reconcile(void) {
 	int retention = (int)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_RETENTION_ITEM);
 	bool stopping = is_shutting_down();
+	int refused = 0;
+	if (bridge_config_busy()) {
+		if (!reconcile_pending) {
+			reconcile_pending = true;
+			indigo_queue_add(driver_queue, bridge, INDIGO_TASK_PRIORITY_NORMAL, CONFIG_WAIT_INTERVAL, bridge_reconcile_handler, &driver_queue_mutex);
+		}
+		return;
+	}
+	// this reconcile does what a deferred one would have done
+	reconcile_pending = false;
+	records_apply_selection();
+	for (int i = 0; i < MAX_RECORDS; i++) {
+		device_record *record = records + i;
+		bool wanted = record->selected && record->present && find_class(record->type) != NULL && !stopping;
+		if (record->used && record->device != NULL && (!wanted || record->reattach)) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' is detached (%s)", record->device->name, !record->selected ? "switched off" : !record->present ? "not available any more" : "changed");
+			proxy_detach(record);
+		}
+	}
 	for (int i = 0; i < MAX_RECORDS; i++) {
 		device_record *record = records + i;
 		if (!record->used) {
@@ -1758,21 +1908,24 @@ static void bridge_reconcile(void) {
 		}
 		const alpaca_class *device_class = find_class(record->type);
 		bool wanted = record->selected && record->present && device_class != NULL && !stopping;
-		if (record->device != NULL && (!wanted || record->reattach)) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' is detached (%s)", record->device->name, !record->selected ? "not selected any more" : !record->present ? "not available any more" : "changed");
-			proxy_detach(record);
-		}
 		record->reattach = false;
 		if (wanted && record->device == NULL) {
 			char previous[INDIGO_NAME_SIZE];
 			strcpy(previous, record->message);
-			if (!proxy_attach(record, device_class) && strcmp(previous, record->message)) {
+			bool attached = false;
+			if (proxy_room()) {
+				attached = proxy_attach(record, device_class);
+			} else {
+				snprintf(record->message, sizeof(record->message), "the limit of %d proxy devices is reached", MAX_DEVICES);
+				refused++;
+			}
+			if (!attached && strcmp(previous, record->message)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Alpaca device '%s' (%s #%d) is not attached: %s", record->name, record->type, record->number, record->message);
 			}
 		} else if (!wanted) {
 			record->message[0] = 0;
 		}
-		if (!record->present && !record->selected) {
+		if (!record->present && record->selected) {
 			memset(record, 0, sizeof(device_record));
 		}
 	}
@@ -1782,7 +1935,20 @@ static void bridge_reconcile(void) {
 			server_remove(server);
 		}
 	}
+	if (refused > 0 && refused != capacity_refused) {
+		indigo_send_message(bridge, NULL, "%d Alpaca device(s) have no proxy device, the limit of %d proxy devices is reached; switch devices off in %s to make room", refused, MAX_DEVICES, X_ALPACA_DEVICES_PROPERTY_NAME);
+	}
+	capacity_refused = refused;
 	bridge_update_lists();
+}
+
+// The reconcile deferred while the configuration was being restored, unless another one has run since.
+static void bridge_reconcile_handler(indigo_device *device) {
+	assert(device != NULL);
+	if (reconcile_pending && !is_shutting_down()) {
+		reconcile_pending = false;
+		bridge_reconcile();
+	}
 }
 
 static bool discovery_callback(const char *responder, int responder_port, const char *reply, long length, void *context) {
@@ -1952,8 +2118,7 @@ static void bridge_x_alpaca_servers_handler(indigo_device *device) {
 	bridge_finish(device, X_ALPACA_SERVERS_PROPERTY, NULL);
 }
 
-// Apply the selection requests collected by bridge_change_property(). A device that is selected before any server listed it
-// (the saved selection is restored before the first discovery) gets a record of its own, which waits for the device to appear.
+// Bring the proxy devices in line with the switches recorded by bridge_change_devices().
 static void bridge_x_alpaca_devices_handler(indigo_device *device) {
 	assert(device != NULL);
 	if (is_shutting_down()) {
@@ -1961,20 +2126,6 @@ static void bridge_x_alpaca_devices_handler(indigo_device *device) {
 	}
 	pthread_mutex_lock(&bridge_mutex);
 	selection_pending = false;
-	for (int i = 0; i < selection_request_count; i++) {
-		selection_request *request = selection_requests + i;
-		device_record *record = record_find(request->key);
-		if (record == NULL && request->selected) {
-			record = record_add(request->key);
-			if (record != NULL) {
-				strcpy(record->unique_id, request->key);
-			}
-		}
-		if (record != NULL) {
-			record->selected = request->selected;
-		}
-	}
-	selection_request_count = 0;
 	pthread_mutex_unlock(&bridge_mutex);
 	bridge_reconcile();
 }
@@ -2177,37 +2328,37 @@ static indigo_result bridge_enumerate_properties(indigo_device *device, indigo_c
 	return indigo_aux_enumerate_properties(device, client, property);
 }
 
-// Selection of the devices (decision D4). The request is only recorded here; items of devices that are not in the list yet
-// (a saved selection is restored before the devices are discovered) are remembered by their name, which is the key of the device.
+// The switches of the devices (decision D15): every device is on unless it was switched off. The switch is recorded here, on the bus
+// thread, in switched_off, so that the switches a configuration restore sends are all known when the restore ends; the handler then
+// brings the proxy devices in line. An item is named by the key of its device; a name that is not a key yet (a UniqueID in upper case)
+// is made one. A key that is not listed is taken as it is: switched off it is remembered and listed until its device appears, switched
+// on it needs nothing, because on is the default.
 static void bridge_change_devices(indigo_device *device, indigo_property *property) {
+	int ignored = 0;
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *request = property->items + i;
-		indigo_item *item = indigo_get_item(X_ALPACA_DEVICES_PROPERTY, request->name);
 		char key[KEY_SIZE];
-		if (item != NULL) {
-			item->sw.value = request->sw.value;
-			item->do_update = true;
-		} else if (!request->sw.value || *request->name == 0) {
+		if (*request->name == 0) {
 			continue;
 		}
 		make_key(request->name, key);
-		int index = 0;
-		while (index < selection_request_count && strcmp(selection_requests[index].key, key)) {
-			index++;
+		indigo_item *item = indigo_get_item(X_ALPACA_DEVICES_PROPERTY, key);
+		if (item != NULL) {
+			item->sw.value = request->sw.value;
+			item->do_update = true;
 		}
-		if (index < selection_request_count) {
-			selection_requests[index].selected = request->sw.value;
-		} else if (selection_request_count < MAX_RECORDS) {
-			strcpy(selection_requests[selection_request_count].key, key);
-			selection_requests[selection_request_count++].selected = request->sw.value;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Selection of '%s' ignored, too many requests", request->name);
+		if (!switched_off_set(key, !request->sw.value)) {
+			ignored++;
 		}
 	}
 	// every request is answered, also one that changes no item that exists yet: a client and the configuration restore wait for the answer
 	X_ALPACA_DEVICES_PROPERTY->do_update = true;
-	X_ALPACA_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_ALPACA_DEVICES_PROPERTY, NULL);
+	X_ALPACA_DEVICES_PROPERTY->state = ignored > 0 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+	if (ignored > 0) {
+		indigo_update_property(device, X_ALPACA_DEVICES_PROPERTY, "%d device(s) not switched off, at most %d devices can be switched off", ignored, MAX_RECORDS);
+	} else {
+		indigo_update_property(device, X_ALPACA_DEVICES_PROPERTY, NULL);
+	}
 	// one handler applies all the requests recorded until it runs, so a client that sends many requests does not fill the queue
 	if (!selection_pending) {
 		selection_pending = true;
@@ -2401,7 +2552,7 @@ static void remove_all_devices(void) {
 	}
 	memset(servers, 0, sizeof(servers));
 	memset(records, 0, sizeof(records));
-	selection_request_count = 0;
+	switched_off_count = 0;
 }
 
 #pragma mark - Main code
@@ -2421,8 +2572,10 @@ indigo_result indigo_system_alpaca(indigo_driver_action action, indigo_driver_in
 			}
 			memset(servers, 0, sizeof(servers));
 			memset(records, 0, sizeof(records));
-			selection_request_count = 0;
+			switched_off_count = 0;
 			selection_pending = false;
+			reconcile_pending = false;
+			capacity_refused = 0;
 			servers_pending = false;
 			lists_pending = false;
 			pthread_mutex_lock(&settings_mutex);

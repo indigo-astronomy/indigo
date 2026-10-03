@@ -367,12 +367,12 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 
 **Not part of the INDIGO project (decision D9).** OmniSim is an extra application, installed only on the machines where `system_alpaca` is developed.
 
-- It lives in the working tree, in `indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim/`, next to the sources of the deterministic C simulator (section 6/2), but it is **never committed**. The root `.gitignore` carries the rule `/indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim/`, so neither the archive nor the unpacked build can reach the remote repository. Only that subdirectory is ignored; the simulator sources beside it are tracked as usual.
+- It lives **outside the working tree**, in a directory `omnisim/` next to it (for a checkout in `~/Development/indigo` that is `~/Development/omnisim`), so it can never be committed. Until 2026-10-03 it lived in the git-ignored `indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim/`; it was moved at the user's request and the `.gitignore` rule was removed.
 - Nothing of OmniSim is tracked: no binary, no archive, no submodule, no entry in `indigo_libs/externals`, and no download step in any Makefile or test target.
 - The INDIGO build, the packages and the default test targets do not depend on it. A machine without OmniSim builds and tests INDIGO exactly as before; only the opt-in OmniSim tier (section 6/5) is skipped there.
 - The developer installs, updates and removes it by hand, as described below.
 
-**Installation.** The release is a plain archive holding a self-contained build, so there is no installer and no .NET runtime to install. The steps are the same on every platform: download the asset for the host, check it, and unpack it into the ignored `omnisim/` directory.
+**Installation.** The release is a plain archive holding a self-contained build, so there is no installer and no .NET runtime to install. The steps are the same on every platform: download the asset for the host, check it, and unpack it into `omnisim/` next to the INDIGO working tree.
 
 1. Pick the asset of release **v0.5.0** from https://github.com/ASCOMInitiative/ASCOM.Alpaca.Simulators/releases/tag/v0.5.0:
 
@@ -386,11 +386,11 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
    | Windows x64 | `ascom.alpaca.simulators.windows-x64.zip` (51 MB) | `f808dc0d9c8d5cbfaa8b03ceaad64454a3a52728e2602795c397d847fbc367a0` |
 
    The checksums are the digests GitHub publishes for the release assets (read on 2026-10-01). The `*.AppImage.tar.xz` assets (experimental, need libfuse2) and `net80.zip` (needs an installed .NET 8 runtime) are not used.
-2. Download, verify and unpack into the ignored directory. From the root of the INDIGO working tree, on macOS arm64:
+2. Download, verify and unpack. From the root of the INDIGO working tree, on macOS arm64:
 
    ```sh
-   mkdir -p indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim
-   cd indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim
+   mkdir -p ../omnisim
+   cd ../omnisim
    curl -LO https://github.com/ASCOMInitiative/ASCOM.Alpaca.Simulators/releases/download/v0.5.0/ascom.alpaca.simulators.macos-arm64.zip
    shasum -a 256 ascom.alpaca.simulators.macos-arm64.zip
    unzip -q ascom.alpaca.simulators.macos-arm64.zip
@@ -398,13 +398,7 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 
    On Linux the same with `sha256sum` and `tar -xJf ascom.alpaca.simulators.linux-x64.tar.xz`, plus the ICU library from the distribution (`libicu` package), which the self-contained build still needs.
 3. The archive unpacks into a directory named after the asset (about 130 MB), so the executable ends up as `omnisim/ascom.alpaca.simulators.macos-arm64/ascom.alpaca.simulators`. Verified for the macOS arm64 zip from its file listing; the Linux archives are expected to follow the same layout, to be confirmed on the first Linux install.
-4. Check that git does not see it. `git status --short` must not list anything under `omnisim/`, and
-
-   ```sh
-   git check-ignore -v indigo_drivers/system_alpaca/system_alpaca_simulator/omnisim
-   ```
-
-   must print the `.gitignore` rule. Never use `git add -f` on this directory.
+4. Nothing to check in git: the directory is outside the working tree.
 5. macOS only: the release is a plain executable, not an application bundle. An archive downloaded with a browser carries the quarantine attribute, which may have to be removed before the first start (`xattr -dr com.apple.quarantine omnisim`). A `curl` download is not quarantined.
 6. Smoke test. Start the server in one terminal, with a private `HOME` so that the run leaves nothing in the developer's own ASCOM profile:
 
@@ -422,7 +416,7 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 
    The reply must list the simulated devices. Stop the server with Ctrl-C.
 
-- **How the tests find it:** the opt-in tier looks for `omnisim/*/ascom.alpaca.simulators` in the directory above. `INDIGO_TEST_OMNISIM` (the path of the executable) overrides this for an installation kept elsewhere. If neither yields an executable, the tier is skipped and reported as not run.
+- **How the tests find it:** the opt-in tier looks for `omnisim/*/ascom.alpaca.simulators` next to the INDIGO working tree (`indigo_test/Makefile` passes the absolute path as `SYSTEM_ALPACA_OMNISIM_DIR`). `INDIGO_TEST_OMNISIM` (the path of the executable) overrides this for an installation kept elsewhere. If neither yields an executable, the tier is skipped and reported as not run.
 - **Update:** delete the content of `omnisim/` and unpack the new version. The version used is recorded with every OmniSim result.
 - **Removal:** delete `omnisim/`. On Linux OmniSim writes its profiles (`.config/ascom/alpaca/...`) and logs under the `HOME` it was started with; on macOS it writes them to `~/Library/Application Support/ascom/alpaca/` and `~/Documents/ascom` of the real user whatever `HOME` is, so remove those too.
 - **State of this procedure:** the asset names, sizes, checksums and the macOS arm64 archive layout were read from the release on 2026-10-01, and the `.gitignore` rule was checked with `git check-ignore`. The measurements above come from the linux-x64 research run. The macOS arm64 install was done on 2026-10-02: the checksum matched, `git check-ignore` printed the rule, and the server started with a private `HOME` answered `configureddevices` (all ten device types) about 3 s after the start and reported version `0.5.0+05d607826b39bdee2bcbb09bcaac6f35b3c6dba9`; its focuser has InterfaceVersion 4. The quarantine step was not needed for the `curl` download.
@@ -475,7 +469,7 @@ A dedicated **deterministic C simulator** is necessary. It is the only way to co
   - `X_ALPACA_DISCOVERY`: switch `ENABLED` / `DISABLED`, plus `X_ALPACA_DISCOVERY_SETTINGS` with UDP port (32227), interval (s), timeout (ms) and number of polls.
   - `X_ALPACA_DISCOVER`: one-shot "scan now".
   - `X_ALPACA_SERVERS`: manual servers (`host:port`), with add and remove.
-  - `X_ALPACA_DEVICES`: list of discovered devices (name, type, server, UniqueID, state), plus a selection of which are proxied (decision D4).
+  - `X_ALPACA_DEVICES`: list of discovered devices (name, type, server, UniqueID, state); every device is proxied unless the user switches it off, and the switches that are off are persisted by UniqueID (decision D15, replacing D4).
 - **Server record** (`alpaca_server`), one per `ip:port`:
   - HTTP connection(s), a mutex, `ClientID`, the `ClientTransactionID` counter;
   - the reusable response buffer in private data (`AGENTS.md:60`);
@@ -484,7 +478,7 @@ A dedicated **deterministic C simulator** is necessary. It is the only way to co
 - **Proxy device**, one `indigo_device` per `configureddevices` item. The key is the `UniqueID`, so the device keeps its identity when its IP changes.
   - Private data points to the server record and holds the `DeviceType`, `DeviceNumber`, `InterfaceVersion`, capability cache (`Can*` plus probed optional members) and polling state.
   - `master_device` is the first device from the same server.
-  - Device name: `"<DeviceName> on <ServerName>"`, with every `@` of the two names replaced by `-` (D14, 2026-10-03; originally `"<DeviceName> @ <ServerName>"`), made unique with `indigo_make_name_unique`.
+  - Device name: `"ALPACA <DeviceName>"` with every "alpaca" of the DeviceName removed and every `@` replaced by `-`, the DeviceType if nothing is left; duplicates numbered `#2`, `#3`, … in the order of their UniqueIDs (D17, 2026-10-03; before that `"<DeviceName> on <ServerName>"` (D14) and originally `"<DeviceName> @ <ServerName>"`).
 - **Type mapping:**
 
   | Alpaca | INDIGO device | Notes |
@@ -614,7 +608,7 @@ Following `indigo_test/AGENTS.md` and `indigo_test/DRIVER_TESTING_RULES.md`:
    Cases that use a fixed or broadcast port run with `jobs = 1`, or as opt-in.
 4. **Loopback test with `agent_alpaca`** (opt-in): `system_alpaca` against an in-process `agent_alpaca` fronting the INDIGO simulators, on a non-default discovery port.
 5. **OmniSim tier** (opt-in `make -C indigo_test test-system-alpaca-omnisim`, on any development machine where OmniSim is installed as described in section 4.1):
-   - the target never downloads or installs anything; it starts the executable found in the git-ignored `system_alpaca_simulator/omnisim/` directory (or named by `INDIGO_TEST_OMNISIM`) and is skipped (reported as not run) when there is none;
+   - the target never downloads or installs anything; it starts the executable found in the `omnisim/` directory next to the working tree (or named by `INDIGO_TEST_OMNISIM`) and is skipped (reported as not run) when there is none;
    - the expected version is v0.5.0, read from the running instance and recorded with the result;
    - `HOME` in a temporary directory, a pre-seeded `server/v1/instance-0.xml`;
    - one instance serialised with a lock, and a reset between cases;
@@ -719,10 +713,10 @@ All runs on macOS arm64 (Apple clang), 2026-10-01. Nothing here was built or run
 - Not verified: Linux, Windows, GCC, x86_64 execution; real broadcast discovery (tests use explicit loopback targets); IPv6; the `UNSUPPORTED` device-type and API-version branches and the rollback of a failing class attach (the simulator cannot produce them); the standalone executable beyond starting it.
 - The bridge properties are documented in `indigo_docs/PROPERTIES.md`, section `system_alpaca`. Beyond the plan of section 5.2 there are `X_ALPACA_DISCOVERY_TARGETS` (explicit IPv4 targets, needed for hermetic tests and for networks without broadcast), `X_ALPACA_SERVER_STATUS`, `X_ALPACA_DEVICE_STATUS`, `X_ALPACA_TIMEOUTS` and `X_ALPACA_POLLING`; the planned single `X_ALPACA_DEVICES` list is split into the selection switch and a read-only status text.
 - Deviations from section 5.2, with reasons:
-  - Each proxy is its own `master_device` with its own connection and handler queue (only the guider shares its primary's). With per-device selection (D4) the first device of a server can be detached, which would take away the queue the others run on.
+  - Each proxy is its own `master_device` with its own connection and handler queue (only the guider shares its primary's). With devices that can be switched off one by one (D15) the first device of a server can be detached, which would take away the queue the others run on.
   - `CONNECTION` runs on the proxy's own handler queue, not on the driver queue, so a slow device does not block discovery. The driver queue keeps discovery, management and attach/detach.
   - Disabling discovery only skips the UDP request; the cycle still refreshes the known servers, otherwise a manual server that was down at start would never be picked up.
-  - On a name collision the suffix is ` #<6 hex digits of the UniqueID hash>`, not a running number, so device names and their config files do not depend on the attach order.
+  - On a name collision the suffix is a running number ` #2`, ` #3`… given in the order of the UniqueIDs of the devices of that name the servers list (D17, 2026-10-03), not in attach order; it is stable across restarts while the same devices are present. (Until then it was ` #<6 hex digits of the UniqueID hash>`.)
   - A listed device that does not answer `interfaceversion` is `FAILED` and retried every cycle.
   - NotConnected (0x407) takes the device to disconnected / ALERT; there is no automatic reconnect.
   - The proxy loop is filtered by `description` (ServerName or Manufacturer) only.
@@ -858,7 +852,7 @@ TSan does not see accesses inside the uninstrumented `libindigo` (for example `i
 The driver against an independent Alpaca implementation, ASCOM OmniSim 0.5.0 (`0.5.0+05d607826b39bdee2bcbb09bcaac6f35b3c6dba9`), installed on the development Mac as section 4.1 describes.
 
 - **Sources:** `indigo_test/integration/test_system_alpaca_omnisim.c` (20 cases, runner) and `indigo_test/integration/system_alpaca/omnisim_test_common.h` (harness on top of `system_alpaca_test_common.h`). Opt-in target `make -C indigo_test test-system-alpaca-omnisim`; not in `INTEGRATION_TESTS` or `OPT_IN_DRIVER_TESTS`, so the ordinary recorded run does not depend on OmniSim; nothing is downloaded.
-- **Finding OmniSim:** `INDIGO_TEST_OMNISIM`, else `system_alpaca_simulator/omnisim/*/ascom.alpaca.simulators`. Without it the tier prints NOT RUN, plans no case and exits 0; the recording script then records nothing.
+- **Finding OmniSim:** `INDIGO_TEST_OMNISIM`, else `omnisim/*/ascom.alpaca.simulators` next to the working tree (until 2026-10-03 inside `system_alpaca_simulator/`). Without it the tier prints NOT RUN, plans no case and exits 0; the recording script then records nothing.
 - **Isolation:** OmniSim's own reset does not restore everything (the rotator kept interface version 2 and its position, a halted cover stayed Unknown), so every case starts a fresh instance with a private `HOME` and working directory under `/tmp/indigo-system-alpaca-omnisim.*`, on a free loopback port added as a manual server (no broadcast). The private `HOME` does not isolate everything: on macOS OmniSim keeps its device profiles in `~/Library/Application Support/ascom/alpaca/ascom-alpaca-simulator/` and its logs in `~/Documents/ascom` of the real user, whatever `HOME` is (found on 2026-10-03, when a site latitude set by a case survived into the next run). `omnisim_mount_manual_motion` therefore restores SiteLatitude itself, also in its cleanup. OmniSim is single instance per host: a run holds an exclusive `flock()` on the executable, cases run serially with a 300 s watchdog, and a reaper process kills the instance when its case ends or dies.
 - **Recording:** `python3 tools/run_driver_test.py system_alpaca --hw --target test-system-alpaca-omnisim`, without `--type`: the suite writes the device record `OmniSim 0.5.0` from `management/v1/description`, which becomes its own `README.md` line. With `--type` and no OmniSim the script would record "0/0 Failed".
 - **Cases:** `omnisim_discovery` (discovery to 127.0.0.1:32227 finds the instance with all 10 devices), `omnisim_focuser` / `_legacy`, `omnisim_wheel` / `_legacy`, `omnisim_rotator` / `_legacy` (Platform 7 and an older interface set through OmniSim's settings API), `omnisim_mount_goto`, `omnisim_mount_park_home_tracking`, `omnisim_mount_manual_motion`, `omnisim_mount_guider`, `omnisim_camera_image`, `omnisim_camera_abort`, `omnisim_dome` / `_legacy`, `omnisim_lightbox`, `omnisim_switch`, `omnisim_weather`, `omnisim_safety` / `_legacy`. Each one adds the server, selects, attaches, connects, runs the operations on real time, disconnects, detaches and checks that the Alpaca device was disconnected (D5).
@@ -910,10 +904,22 @@ Evidence (subagent, final sources):
 ### 7.7 Decisions D13 and D14 (2026-10-03)
 
 - **D13, manual motion:** `mount_move_axis()` reads SideOfPier when a non-zero motion starts (a stop reads nothing; a failed read uses the side of the last poll; an unknown or unimplemented side gives no inversion) and inverts the secondary rate on pierWest. The primary axis is unchanged: `WEST` is a positive rate on both sides. Measured on OmniSim 0.5.0 with raw MoveAxis on sites at 48° and −30° latitude: a positive secondary rate raises the declination on pierEast and lowers it on pierWest in both hemispheres, a positive primary rate lowers RA on both sides. New case `mount_manual_motion_sense` (both sides reached by a sync of another client, both hemispheres, fallback of a failed read, no re-send of a running motion, a telescope without SideOfPier); `mount_manual_motion` and `omnisim_mount_manual_motion` assert the new sense. All three fail with the previous mount module.
-- **D14, names:** `"<DeviceName> on <ServerName>"`; every `@` of the two names is replaced by `-`, because the framework parses any `@` in a device name (bus routing by substring, the XML writer cuts at the last `@`, `indigo_filter.c` treats such a name as remote). The worst-case length is 125 bytes, below `INDIGO_NAME_SIZE`. New cases `core_proxy_names_without_at` and `core_proxy_names_routing` attach devices named like remote services (`"@ Omni"`, ...) and show that requests for the proxies no longer reach them, while a control request for the old name format does. The labels of the `X_ALPACA_DEVICES` items still read `"Name (Type) @ Server"`; they are labels and never routed.
+- **D14, names** (the format was replaced by D17 the same day, the `@` rule still holds): `"<DeviceName> on <ServerName>"`; every `@` of the two names is replaced by `-`, because the framework parses any `@` in a device name (bus routing by substring, the XML writer cuts at the last `@`, `indigo_filter.c` treats such a name as remote). The worst-case length is 125 bytes, below `INDIGO_NAME_SIZE`. New cases `core_proxy_names_without_at` and `core_proxy_names_routing` attach devices named like remote services (`"@ Omni"`, ...) and show that requests for the proxies no longer reach them, while a control request for the old name format does. The labels of the `X_ALPACA_DEVICES` items still read `"Name (Type) @ Server"`; they are labels and never routed.
 - Evidence (subagent): the suite 257 / 257 three times with `INDIGO_TEST_JOBS=4` and once with `=1`; ASan + UBSan and TSan of the whole suite without a report; strict build clean in our files; OmniSim tier 20 / 20.
 - **Recorded runs** (orchestrator, 2026-10-03): simulator at 09:55, **300 / 300 OK** (257 + 43); OmniSim 0.5.0 at 09:57, **20 / 20 OK**.
 - Limit: a real mount whose Alpaca driver already compensates the pier side, or mirrors the secondary axis differently from OmniSim, would move the wrong way on pierWest; the driver can not detect this.
+
+### 7.8 Decisions D15 to D17 and the loopback discovery fix (2026-10-03)
+
+Found by the user: with OmniSim running on the same Mac (`--urls=http://127.0.0.1:32323`) nothing appeared in INDIGO. Two causes: broadcast discovery never reached a server listening on 127.0.0.1 on macOS (D16), and every device had to be switched on by hand (D4, replaced by D15). The user also found the proxy names too long (D17).
+
+- **D16, `indigo_uni_discover()`** (`indigo_libs/indigo_uni_io.c`): with `include_loopback` the request also goes to `127.0.0.1`; macOS has no broadcast on `lo0`, so `127.255.255.255` alone never reached a local responder. A local responder may now answer twice on Linux; the driver counts one server. Regression case `discover_reaches_loopback_responder` in `indigo_test/unit/test_uni_io.c` (fails before the fix, passes after, 3 runs); driver case `core_broadcast_discovery_on_loopback` (no targets, no manual server; fails when linked against the old `indigo_uni_io.c`). `focuser_askar` calls the function without `include_loopback` and is not affected. Linux not run.
+- **D15, devices on by default:** the driver remembers the UniqueIDs the user switched off; everything else is proxied. A switched-off device stays listed (so CONFIG SAVE keeps its Off item) and is never attached, not even during the restore of the saved configuration at start: reconciliation waits while the CONFIG restore of the bridge is BUSY (`core_switched_off_never_attached_at_start`, 5 restarts, 0 requests to the switched-off devices; fails with the wait removed). An old saved configuration keeps what was on on and what was off off; devices not in it come up on. Beyond 32 proxies further devices wait as `FAILED` with a message on the bridge and get a proxy as soon as another device is switched off. The harness switches off every simulator device by default so class cases still control which proxies exist.
+- **D17, names:** `"ALPACA <DeviceName>"` with every "alpaca" removed in any case (also inside a word), spaces and dangling `-`, `_`, `:` tidied, `@` replaced, the DeviceType if nothing is left; duplicates `#2`, `#3`, … by UniqueID order among the devices of that name, a proxy keeps its name while attached. Every proxy starts with `ALPACA `, so none can equal the bridge `Alpaca`.
+- New cases: `core_default_on_after_discovery`, `core_switch_off_persists_across_restart`, `core_device_added_at_run_time`, `core_old_saved_configuration`, `core_capacity_default_on`, `core_switched_off_never_attached_at_start`, `core_broadcast_discovery_on_loopback`, `core_proxy_names_strip_alpaca`, `core_proxy_names_numbered`; all D15 / D17 cases fail against the previous driver. Found and fixed during the verification: an overlapping `strcpy` (ASan) and a late startup reconciliation retrying an attach (TSan).
+- Evidence (subagent): the suite 265 / 265 three times with `INDIGO_TEST_JOBS=4` and once with `=1`; ASan + UBSan and TSan of the whole suite without a report; strict build clean in our files; `test_system_alpaca_http` 43 / 43.
+- **OmniSim moved** at the user's request to `omnisim/` next to the working tree (section 4.1); the `.gitignore` rule is gone.
+- **Recorded runs** (orchestrator, 2026-10-03): simulator at 14:36, **308 / 308 OK** (265 + 43); OmniSim 0.5.0 at 14:37 from the new location, **20 / 20 OK**.
 
 ## 8. Found defects
 
@@ -1060,7 +1066,7 @@ Decided by the user on 2026-09-24:
 | D1 | Hand-written driver, **with the same structure as generated code** (the generated hot-plug layout: driver queue, `devices[]`, shared private data, `<driver>_open` / `<driver>_close`, handler + `_finalizer`, on_change-style handlers). No generator changes. |
 | D2 | Library changes approved (general JSON parser in `indigo_json.c`, multi-responder UDP discovery, connect timeout). **Everything must be covered by unit tests.** |
 | D3 | The HTTP client goes into `indigo_uni_io`. |
-| D4 | Variant (b): only devices selected in `X_ALPACA_DEVICES` are proxied, persisted by UniqueID. |
+| D4 | Variant (b): only devices selected in `X_ALPACA_DEVICES` are proxied, persisted by UniqueID. Replaced by D15 on 2026-10-03. |
 | D5 | On an INDIGO disconnect, send `Connected=false` / `disconnect` to the Alpaca device. |
 | D6 | Simulators only for now. No hardware testing is planned and no hardware validation is claimed. |
 | D7 | No CI. The OmniSim and ConformU tiers stay manual / opt-in. |
@@ -1070,7 +1076,7 @@ Decided by the user on 2026-10-01:
 
 | ID | Decision |
 |---|---|
-| D9 | OmniSim is **not installed into the INDIGO project**. It is an extra application, installed by hand only on the machines where the driver is developed (section 4.1). It may be unpacked in `system_alpaca/system_alpaca_simulator/omnisim/`, which `.gitignore` keeps out of the remote repository. ConformU is **not relevant** for `system_alpaca`, because it tests the opposite (server) side; the ConformU round trip is dropped from the test strategy and from D7. |
+| D9 | OmniSim is **not installed into the INDIGO project**. It is an extra application, installed by hand only on the machines where the driver is developed (section 4.1). It may be unpacked in `system_alpaca/system_alpaca_simulator/omnisim/`, which `.gitignore` keeps out of the remote repository. ConformU is **not relevant** for `system_alpaca`, because it tests the opposite (server) side; the ConformU round trip is dropped from the test strategy and from D7. (Since 2026-10-03 it lives outside the working tree, next to it, see section 4.1.) |
 | D10 | **Minimise the impact on the framework and on other drivers; keep the changes in `indigo_drivers/system_alpaca/` wherever possible.** This supersedes the library placement in D2 and D3: the general JSON parser and the HTTP/1.1 client are driver-local modules (`indigo_system_alpaca_json.c/.h`, `indigo_system_alpaca_http.c/.h`), not additions to `indigo_libs/indigo_json.c` and `indigo_uni_io`. The driver uses the existing `indigo_uni_io` API as it is (`indigo_uni_discover()` and the connect timeout already exist from D8). The requirement of D2 that everything is covered by unit tests stands. Outside the driver folder only the unavoidable registration remains: tests and fixtures under `indigo_test/`, the root `Makefile` driver lists, `indigo.xcodeproj`, `indigo_docs/PROPERTIES.md`, and the status documents. The work runs on subagents from step S2 on (section 11). |
 
 Decided by the user on 2026-10-03:
@@ -1080,7 +1086,10 @@ Decided by the user on 2026-10-03:
 | D11 | A filter wheel move is complete when `Position` is no longer −1; a move that ends in another slot than the requested one leaves `WHEEL_SLOT` in ALERT with the real slot (WHL-1). |
 | D12 | A sync on a telescope that does not track is sent as it is; the telescope refuses it and the client gets ALERT with its message. The driver does not switch tracking on for a sync (REV-7 stays as it is). |
 | D13 | `MOUNT_MOTION_DEC` is compensated for the pier side: `NORTH` always moves toward the north celestial pole, also on pier side West, where Alpaca MoveAxis on the mechanical axis moves the other way. |
-| D14 | Proxy devices are named `"<DeviceName> on <ServerName>"` instead of `"<DeviceName> @ <ServerName>"`, because `" @ "` is the remote-host separator of the bus (REV-16). |
+| D14 | Proxy devices are named `"<DeviceName> on <ServerName>"` instead of `"<DeviceName> @ <ServerName>"`, because `" @ "` is the remote-host separator of the bus (REV-16). Replaced by D17 on 2026-10-03. |
+| D15 | Replaces D4: every discovered Alpaca device is proxied by default and appears without a manual selection; a device the user switches off in `X_ALPACA_DEVICES` stays off, persisted by UniqueID. |
+| D16 | Fix `indigo_uni_discover()` in `indigo_libs` (variant A, rather than a driver-local workaround): with `include_loopback` it also sends to `127.0.0.1`, because macOS has no broadcast on `lo0` and a local Alpaca server listening on 127.0.0.1 (OmniSim started with `--urls=http://127.0.0.1:<port>`) was never found. Regression case `discover_reaches_loopback_responder` in `indigo_test/unit/test_uni_io.c`, failing before the fix. |
+| D17 | Replaces the naming of D14: a proxy is named `"ALPACA <DeviceName>"`, where every occurrence of "alpaca" in any letter case is removed from DeviceName (DeviceType if nothing is left) and the ServerName is not part of the name; a name that is not unique gets `" #<number>"`. `@` stays replaced. |
 
 ## 10. Baseline
 
@@ -1202,9 +1211,9 @@ The critical path is W0 → WP2 → WP5 → WP8 (the camera) → WP11/12.
 
 ## Final test summary
 
-State on 2026-10-03 after the decisions D11 to D14; this summary is updated with every recorded run.
+State on 2026-10-03 after the decisions D15 to D17; this summary is updated with every recorded run.
 
-- Simulated tests: **300 run, 300 passed** in the recorded run of 2026-10-03 09:55 (`test_system_alpaca_simulator` 257, `test_system_alpaca_http` 43), plus the unit test `test_system_alpaca_json` 48 run, 48 passed, which the recording script does not count.
-- OmniSim tests: **20 run, 20 passed** in the recorded run of 2026-10-03 09:57 (OmniSim 0.5.0).
+- Simulated tests: **308 run, 308 passed** in the recorded run of 2026-10-03 14:36 (`test_system_alpaca_simulator` 265, `test_system_alpaca_http` 43), plus the unit test `test_system_alpaca_json` 48 run, 48 passed, which the recording script does not count, and the library regression case in `test_uni_io`.
+- OmniSim tests: **20 run, 20 passed** in the recorded run of 2026-10-03 14:37 (OmniSim 0.5.0).
 - Hardware tests: 0 run, 0 passed (decision D6).
 - The OmniSim and ConformU runs from the research phase (subagent, linux-x64 container, outside the repository) were exploratory tool probes. They are not driver tests and are not counted.

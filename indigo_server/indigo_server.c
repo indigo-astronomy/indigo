@@ -204,6 +204,7 @@
 #include "polaralign_mlastro/indigo_polaralign_mlastro.h"
 #include "polaralign_simulator/indigo_polaralign_simulator.h"
 #include "focuser_askar/indigo_focuser_askar.h"
+#include "system_alpaca/indigo_system_alpaca.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -355,6 +356,7 @@ driver_entry_point static_drivers[] = {
 	indigo_rotator_lunatico,
 	indigo_rotator_optec,
 	indigo_rotator_simulator,
+	indigo_system_alpaca,
 	indigo_wheel_asi,
 	indigo_wheel_astroasis,
 	indigo_wheel_atik,

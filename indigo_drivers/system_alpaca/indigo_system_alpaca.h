@@ -44,7 +44,7 @@
 extern "C" {
 #endif
 
-/** Discover ASCOM Alpaca servers and create a proxy device for every selected Alpaca device.
+/** Discover ASCOM Alpaca servers and create a proxy device for every Alpaca device that is not switched off in X_ALPACA_DEVICES.
  */
 INDIGO_EXTERN indigo_result indigo_system_alpaca(indigo_driver_action action, indigo_driver_info *info);
 

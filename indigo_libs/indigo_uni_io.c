@@ -1105,8 +1105,12 @@ int indigo_uni_discover(const char *target, int port, const char *payload, long 
 		if (target_count == 0) {
 			targets[target_count++].s_addr = htonl(INADDR_BROADCAST);
 		}
+		// 127.255.255.255 reaches every local responder on Linux, 127.0.0.1 is needed on macOS and Windows (no broadcast on loopback)
 		if (include_loopback && target_count < INDIGO_UNI_DISCOVERY_MAX_TARGETS) {
 			inet_pton(AF_INET, "127.255.255.255", &targets[target_count++]);
+		}
+		if (include_loopback && target_count < INDIGO_UNI_DISCOVERY_MAX_TARGETS) {
+			inet_pton(AF_INET, "127.0.0.1", &targets[target_count++]);
 		}
 	}
 	struct sockaddr_in address;

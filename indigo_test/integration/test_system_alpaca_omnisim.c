@@ -89,7 +89,7 @@ static void omnisim_discovery(void) {
 	char targets[64];
 	omni_connect_control();
 	snprintf(targets, sizeof(targets), "127.0.0.1:32227");
-	SA_CHECK(omni_write_config(targets) && sa_driver_start());
+	SA_CHECK(omni_write_config(targets) && sa_driver_start() && omni_switch_off_all());
 	SA_CHECK(SA_WAIT(sa_discover() && sa_has_item(SA_BRIDGE, "X_ALPACA_SERVER_STATUS", omni_url), 3 * SA_TIMEOUT));
 	printf("    discovered %s: %s\n", omni_url, sa_text(SA_BRIDGE, "X_ALPACA_SERVER_STATUS", omni_url));
 	SA_CHECK(!strncmp(sa_text(SA_BRIDGE, "X_ALPACA_SERVER_STATUS", omni_url), "ONLINE", 6));
@@ -100,8 +100,8 @@ static void omnisim_discovery(void) {
 		const char *key = sa_device_key(labels[i]);
 		SA_CHECK(*key && sa_device_status_is(key, "AVAILABLE"));
 	}
-	// the device is proxied under "<DeviceName> on <ServerName>"
-	SA_CHECK(sa_attach(FOCUSER_LABEL) && strstr(sa_device, " on " OMNI_SERVER_NAME) != NULL);
+	// the device is proxied under "ALPACA <DeviceName>" without the "Alpaca" of OmniSim's device names (decision D17)
+	SA_CHECK(sa_attach(FOCUSER_LABEL) && !strncmp(sa_device, "ALPACA ", 7) && strstr(sa_device + 7, "Alpaca") == NULL && strstr(sa_device + 7, "alpaca") == NULL);
 	SA_CHECK(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME)[0] != 0);
 cleanup:
 	omni_end();

@@ -207,7 +207,8 @@ INDIGO_EXTERN bool indigo_perform_active_discovery(const char *host, int port, i
 typedef bool (*indigo_uni_discovery_callback)(const char *responder, int responder_port, const char *reply, long length, void *context);
 
 /** Perform UDP discovery with multiple responders. The request is sent to target (IPv4 address) or, when target is NULL,
-    to the broadcast address of every broadcast capable IPv4 interface (and 127.255.255.255 if include_loopback is set).
+    to the broadcast address of every broadcast capable IPv4 interface (and 127.255.255.255 and 127.0.0.1 if include_loopback is set,
+    so a local responder may answer twice).
     Each of the polls sends the request and collects replies until no reply arrives within timeout (in microseconds).
     Returns the number of replies passed to callback.
  */
