@@ -810,15 +810,17 @@ static void mount_manual_motion(void) {
 	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME) && !sa_switch(sa_device, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
 	SA_CHECK(mount_count("PUT", "moveaxis") == 4 && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15) && sa_advance(0, 20) && mount_simulated_at(ra0 + 30 * drift - 10 * centering / 15, 30, 1e-9));
 	// the secondary axis at the same time. The start position is through the pole (4.86 h east of the meridian), where the declination axis of
-	// a German mount is reversed: the positive rate of MOUNT_MOTION_DEC.NORTH lowers the declination there. The driver leaves that as it is.
+	// a German mount is reversed: MOUNT_MOTION_DEC.NORTH is a negative rate there, and it raises the declination
 	SA_CHECK(mount_simulated("HourAngle") < 0 && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
-	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "moveaxis") == 5 && mount_last("PUT", "moveaxis", "Axis=1&Rate=0.1336983") && mount_near(mount_simulated("AxisRate1"), centering, 1e-15) && mount_near(mount_simulated("AxisRate0"), centering, 1e-15));
-	SA_CHECK(sa_advance(0, 10) && mount_near(mount_simulated("Declination"), 30 - 10 * centering, 1e-9) && SA_WAIT(mount_near(sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME), 30 - 10 * centering, 1e-9), SA_TIMEOUT));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "moveaxis") == 5 && mount_last("PUT", "moveaxis", "Axis=1&Rate=-0.1336983") && mount_near(mount_simulated("AxisRate1"), -centering, 1e-15) && mount_near(mount_simulated("AxisRate0"), centering, 1e-15));
+	SA_CHECK(sa_advance(0, 10) && mount_near(mount_simulated("Declination"), 30 + 10 * centering, 1e-9) && SA_WAIT(mount_near(sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME), 30 + 10 * centering, 1e-9), SA_TIMEOUT));
 	// stopping one axis leaves the other one moving
-	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=0&ClientID=") && mount_simulated("AxisRate0") == 0 && mount_near(mount_simulated("AxisRate1"), centering, 1e-15) && sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
-	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15) && mount_last("PUT", "moveaxis", "Axis=1&Rate=-0.1336983") && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=0&Rate=0&ClientID=") && mount_simulated("AxisRate0") == 0 && mount_near(mount_simulated("AxisRate1"), -centering, 1e-15) && sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	// SOUTH through the pole is a positive rate and lowers the declination
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15) && mount_last("PUT", "moveaxis", "Axis=1&Rate=0.1336983") && !sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SA_CHECK(sa_advance(0, 5) && mount_near(mount_simulated("Declination"), 30 + 5 * centering, 1e-9));
 	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_simulated("AxisRate1") == 0 && mount_simulated_is("Slewing", "false"));
-	// in the normal pointing state (1.2 h west of the meridian) the positive rate raises the declination
+	// in the normal pointing state (1.2 h west of the meridian) NORTH is the positive rate, and it raises the declination
 	SA_CHECK(mount_select(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && mount_set_coordinates(0.8, -42.5) == INDIGO_OK_STATE && SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME), SA_TIMEOUT));
 	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15) && sa_advance(0, 10) && mount_near(mount_simulated("Declination"), -42.5 + 10 * centering, 1e-9));
 	// the other rates: find is 256 times the sidereal rate, max is the fastest rate of AxisRates. A change of the rate applies to the next request.
@@ -908,6 +910,92 @@ cleanup:
 	sa_end();
 	indigo_log_message_handler = NULL;
 	indigo_set_log_level(level);
+}
+
+// Another client synchronises the telescope to the given hour angle, so that its side of the pier changes without a request of the driver.
+static bool mount_external_sync(double hour_angle, double dec) {
+	char form[128];
+	snprintf(form, sizeof(form), "RightAscension=%.10f&Declination=%.10f", fmod(mount_simulated("SiderealTime") - hour_angle + 48, 24), dec);
+	return sa_put(0, MOUNT_API "synctocoordinates", form) && mount_near(mount_simulated("HourAngle"), hour_angle, 1e-6) && mount_near(mount_simulated("Declination"), dec, 1e-9);
+}
+
+// The simulated telescope moves by the given hour angle and declination in the given time of the device (the sidereal rate of the
+// simulator differs from the one of the case in the ninth digit, hence the tolerance of the hour angle).
+static bool mount_moves(double seconds, double hour_angle, double dec) {
+	double hour_angle0 = mount_simulated("HourAngle"), dec0 = mount_simulated("Declination");
+	if (!sa_advance(0, seconds)) {
+		return false;
+	}
+	double moved_hour_angle = mount_simulated("HourAngle") - hour_angle0, moved_dec = mount_simulated("Declination") - dec0;
+	if (!mount_near(moved_hour_angle, hour_angle, 1e-6) || !mount_near(moved_dec, dec, 1e-9)) {
+		fprintf(stderr, "    moved by %.12f h, %.12f deg instead of %.12f h, %.12f deg\n", moved_hour_angle, moved_dec, hour_angle, dec);
+		return false;
+	}
+	return true;
+}
+
+// MOUNT_MOTION_DEC.NORTH moves toward the north celestial pole on both sides of the pier and on a northern and a southern site: the rate
+// of the secondary axis is inverted on pierWest, where the simulated German mount (like OmniSim) lowers the declination with a positive
+// rate. MOUNT_MOTION_RA.WEST is a positive rate everywhere. The side is read when a motion starts; a running motion is not sent again
+// when the side changes, and a telescope that does not tell its side gets the plain sense. See MANUAL MOTION in indigo_system_alpaca_mount.c.
+static void mount_manual_motion_sense(void) {
+	static const char *north[] = { "--device", "telescope:EquatorialSystem=2,Tracking=true", NULL };
+	static const char *unknown_legacy[] = { "--device", "telescope:interface=legacy,EquatorialSystem=2,Tracking=true,SiteLatitude=-30.2407,SiteLongitude=-70.7366", NULL };
+	const double centering = 32 * MOUNT_SIDEREAL, drift = 1.00273790935 / 3600;
+	for (int site = 0; site < 2; site++) {
+		// polled once a minute: a side of the pier that changed after the connection is known only from the read at the start of a motion
+		SA_CHECK(sa_begin(site ? mount_south : north) && sa_set_number("X_ALPACA_POLLING", "IDLE", 60) == INDIGO_OK_STATE && sa_attach(MOUNT_LABEL) && sa_connect(sa_device));
+		SA_CHECK(mount_near(sa_number(sa_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME), site ? -30.2407 : 48.1486, 1e-9));
+		SA_CHECK(mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+		bool east_on_bus = sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME);
+		for (int west = 0; west < 2; west++) {
+			double dec = site ? -40 : 40;
+			// 2 h west of the meridian the mount is on pierEast, 2 h east of it on pierWest
+			SA_CHECK(mount_external_sync(west ? -2 : 2, dec));
+			// the bus still shows the side of the connection or of the last motion: the driver has not seen the change yet
+			SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) == east_on_bus);
+			int reads = mount_count("GET", "sideofpier");
+			SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("GET", "sideofpier") == reads + 1);
+			SA_CHECK(mount_near(mount_parameter("PUT", "moveaxis", "Rate"), west ? -centering : centering, 1e-15) && mount_moves(10, 10 * drift, 10 * centering));
+			SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("GET", "sideofpier") == reads + 2);
+			SA_CHECK(mount_near(mount_parameter("PUT", "moveaxis", "Rate"), west ? centering : -centering, 1e-15) && mount_moves(10, 10 * drift, -10 * centering));
+			// a stop needs no side
+			SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false) == INDIGO_OK_STATE && mount_last("PUT", "moveaxis", "Axis=1&Rate=0&ClientID=") && mount_count("GET", "sideofpier") == reads + 2);
+			// the primary axis is not inverted: WEST makes the hour angle grow, EAST makes it fall, the tracking is replaced by the rate
+			SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15) && mount_moves(10, 10 * centering / 15, 0));
+			SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15) && mount_moves(10, -10 * centering / 15, 0));
+			SA_CHECK(mount_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false) == INDIGO_OK_STATE && mount_count("GET", "sideofpier") == reads + 2 && mount_simulated_is("Slewing", "false"));
+		}
+		SA_CHECK(sa_disconnect(sa_device));
+		sa_end();
+	}
+	// a side that can not be read when the motion starts: the side of the last poll tick (pierWest from the connection) counts
+	SA_CHECK(sa_begin(mount_south) && sa_set_number("X_ALPACA_POLLING", "IDLE", 60) == INDIGO_OK_STATE && sa_attach(MOUNT_LABEL) && sa_connect(sa_device));
+	SA_CHECK(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+	SA_CHECK(sa_fault(0, "GET", MOUNT_API "sideofpier", "ascom-error", "Value=1280&Count=1&Message=Busy"));
+	int reads = mount_count("GET", "sideofpier");
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("GET", "sideofpier") == reads + 1 && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15) && mount_moves(10, 10 * drift, 10 * centering));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE && sa_disconnect(sa_device));
+	sa_end();
+	// a running motion is not sent again when the side changes: the axis turns on, past the pole it moves away from it, like a hand controller
+	SA_CHECK(mount_begin(mount_south) && mount_select(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME) && sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -centering, 1e-15) && mount_moves(10, 10 * drift, 10 * centering));
+	int moves = mount_count("PUT", "moveaxis");
+	SA_CHECK(mount_external_sync(2, -40) && SA_WAIT(sa_switch(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME), SA_TIMEOUT));
+	SA_CHECK(mount_count("PUT", "moveaxis") == moves && mount_near(mount_simulated("AxisRate1"), -centering, 1e-15) && mount_moves(10, 10 * drift, -10 * centering) && sa_switch(sa_device, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	// the next start uses the side of that moment
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_count("PUT", "moveaxis") == moves + 1 && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), centering, 1e-15) && mount_moves(10, 10 * drift, 10 * centering));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false) == INDIGO_OK_STATE && sa_disconnect(sa_device));
+	sa_end();
+	// a telescope that does not implement SideOfPier: the plain sense, a positive rate for NORTH also where a German mount points through the
+	// pole, and the side is not asked for again
+	SA_CHECK(sa_begin(unknown_legacy) && sa_attach(MOUNT_LABEL) && sa_put(0, MOUNT_ERROR, "Member=sideofpier&ErrorNumber=1024") && sa_connect(sa_device));
+	SA_CHECK(!sa_defined(sa_device, MOUNT_SIDE_OF_PIER_PROPERTY_NAME) && mount_simulated("HourAngle") < 0 && mount_count("GET", "sideofpier") == 1);
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), MOUNT_SIDEREAL, 1e-15) && mount_moves(10, 10 * drift, -10 * MOUNT_SIDEREAL));
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true) == INDIGO_OK_STATE && mount_near(mount_parameter("PUT", "moveaxis", "Rate"), -MOUNT_SIDEREAL, 1e-15) && mount_count("GET", "sideofpier") == 1);
+	SA_CHECK(mount_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false) == INDIGO_OK_STATE && sa_disconnect(sa_device));
+cleanup:
+	sa_end();
 }
 
 // ---------------------------------------------------------------------------- settings
@@ -1471,6 +1559,7 @@ cleanup:
 	{ "mount_park_and_home", mount_park_and_home }, \
 	{ "mount_manual_motion", mount_manual_motion }, \
 	{ "mount_manual_motion_ownership", mount_manual_motion_ownership }, \
+	{ "mount_manual_motion_sense", mount_manual_motion_sense }, \
 	{ "mount_tracking_and_rates", mount_tracking_and_rates }, \
 	{ "mount_site_and_time", mount_site_and_time }, \
 	{ "mount_side_of_pier", mount_side_of_pier }, \

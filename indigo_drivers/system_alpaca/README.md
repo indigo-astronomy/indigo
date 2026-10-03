@@ -12,7 +12,7 @@ https://ascom-standards.org/Developer/AlpacaImageBytes.pdf
 
 Any device served by an ASCOM Alpaca server (API version 1, interface versions up to ASCOM Platform 7).
 
-The device "Alpaca" is always present. One proxy device named "DeviceName @ ServerName" is created at runtime for every Alpaca device selected in X_ALPACA_DEVICES property.
+The device "Alpaca" is always present. One proxy device named "DeviceName on ServerName" is created at runtime for every Alpaca device selected in X_ALPACA_DEVICES property; every "@" in DeviceName or ServerName is replaced by "-", because INDIGO uses "@" for devices of remote services.
 
 ## Supported platforms
 
@@ -57,5 +57,5 @@ Driver is developed and tested with simulators only:
 
 ## Testing
 
-2026-10-03 04:17 3.0.0.1 mac arm64 simulator 297/297 OK
-2026-10-03 04:18 3.0.0.1 mac arm64 OmniSim 0.5.0 20/20 OK
+2026-10-03 09:55 3.0.0.1 mac arm64 simulator 300/300 OK
+2026-10-03 09:57 3.0.0.1 mac arm64 OmniSim 0.5.0 20/20 OK

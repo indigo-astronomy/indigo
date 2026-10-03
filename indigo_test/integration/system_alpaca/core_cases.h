@@ -24,6 +24,7 @@
 #ifndef system_alpaca_core_cases_h
 #define system_alpaca_core_cases_h
 
+#include <stdatomic.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -195,10 +196,10 @@ static void core_discovery_several_servers(void) {
 		snprintf(names[i], INDIGO_NAME_SIZE, "%s", sa_proxy_name(sa_item_name(SA_BRIDGE, "X_ALPACA_DEVICES", i)));
 		SA_CHECK(SA_WAIT(sa_defined(names[i], CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
 	}
-	SA_CHECK(!strncmp(names[0], "Focuser Simulator @ " SA_SERVER_NAME " #", strlen("Focuser Simulator @ " SA_SERVER_NAME " #")));
-	SA_CHECK(!strncmp(names[1], "Focuser Simulator @ " SA_SERVER_NAME " #", strlen("Focuser Simulator @ " SA_SERVER_NAME " #")));
+	SA_CHECK(!strncmp(names[0], "Focuser Simulator on " SA_SERVER_NAME " #", strlen("Focuser Simulator on " SA_SERVER_NAME " #")));
+	SA_CHECK(!strncmp(names[1], "Focuser Simulator on " SA_SERVER_NAME " #", strlen("Focuser Simulator on " SA_SERVER_NAME " #")));
 	SA_CHECK(strcmp(names[0], names[1]) != 0);
-	SA_CHECK(!strcmp(names[2], "Rotator Simulator @ " SA_SERVER_NAME));
+	SA_CHECK(!strcmp(names[2], "Rotator Simulator on " SA_SERVER_NAME));
 	SA_CHECK(sa_device_count(NULL) == 4);
 	// the names come from the identity of the devices, not from the order in which they are attached
 	for (int i = 0; i < 2; i++) {
@@ -345,7 +346,7 @@ static void core_selection_attach_detach(void) {
 	SA_CHECK(sa_begin(NULL));
 	snprintf(key, sizeof(key), "%s", sa_device_key("Focuser Simulator"));
 	SA_CHECK(sa_attach("Focuser Simulator"));
-	SA_CHECK(!strcmp(sa_device, "Focuser Simulator @ " SA_SERVER_NAME));
+	SA_CHECK(!strcmp(sa_device, "Focuser Simulator on " SA_SERVER_NAME));
 	SA_CHECK(sa_switch(SA_BRIDGE, "X_ALPACA_DEVICES", key) && sa_status_count("ATTACHED") == 1 && sa_status_count("AVAILABLE") == 9);
 	SA_CHECK(strstr(sa_device_status(key), "Focuser #0") != NULL);
 	SA_CHECK(sa_device_count(NULL) == 2);
@@ -418,7 +419,7 @@ static void core_selection_persists_across_restart(void) {
 	SA_CHECK(sa_discover());
 	SA_CHECK(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 10 && sa_status_count("ATTACHED") == 2 && sa_status_count("AVAILABLE") == 8);
 	SA_CHECK(sa_device_status_is(focuser, "ATTACHED") && sa_device_status_is(rotator, "ATTACHED"));
-	SA_CHECK(sa_device_defined("Focuser Simulator @ " SA_SERVER_NAME) && sa_device_defined("Rotator Simulator @ " SA_SERVER_NAME) && sa_device_count(NULL) == 3);
+	SA_CHECK(sa_device_defined("Focuser Simulator on " SA_SERVER_NAME) && sa_device_defined("Rotator Simulator on " SA_SERVER_NAME) && sa_device_count(NULL) == 3);
 	// with periodic discovery saved as enabled no request is needed at all
 	SA_CHECK(sa_select(rotator, false) && SA_WAIT(sa_device_status_is(rotator, "AVAILABLE"), SA_TIMEOUT));
 	SA_CHECK(sa_set_switch("X_ALPACA_DISCOVERY", "ENABLED", true) == INDIGO_OK_STATE);
@@ -428,7 +429,7 @@ static void core_selection_persists_across_restart(void) {
 	SA_CHECK(sa_switch(SA_BRIDGE, "X_ALPACA_DISCOVERY", "ENABLED"));
 	SA_CHECK(SA_WAIT(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 10 && sa_status_count("ATTACHED") == 1, SA_TIMEOUT));
 	SA_CHECK(sa_device_status_is(focuser, "ATTACHED") && sa_device_status_is(rotator, "AVAILABLE"));
-	SA_CHECK(sa_device_defined("Focuser Simulator @ " SA_SERVER_NAME) && sa_device_count(NULL) == 2);
+	SA_CHECK(sa_device_defined("Focuser Simulator on " SA_SERVER_NAME) && sa_device_count(NULL) == 2);
 	SA_CHECK(sa_set_switch("X_ALPACA_DISCOVERY", "DISABLED", true) == INDIGO_OK_STATE);
 cleanup:
 	sa_end();
@@ -496,7 +497,7 @@ static void core_device_removed_from_server(void) {
 	SA_CHECK(!sa_device_defined(sa_device) && sa_device_count(NULL) == 2);
 	SA_CHECK(!strncmp(sa_server_status(0), "ONLINE:", 7) && strstr(sa_server_status(0), "1 device(s)") != NULL);
 	SA_CHECK(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 2 && sa_device_status_is(key, "OFFLINE") && sa_switch(SA_BRIDGE, "X_ALPACA_DEVICES", key));
-	SA_CHECK(sa_device_defined("Rotator Simulator @ " SA_SERVER_NAME));
+	SA_CHECK(sa_device_defined("Rotator Simulator on " SA_SERVER_NAME));
 	// the device comes back under the same UniqueID with another device number: it is attached again because it is still selected
 	SA_CHECK(sa_put(0, "/simulator/v1/devices", "Type=Focuser&Number=7&Name=Focuser%20Simulator&UniqueID=c0ffee00-0003-4000-8000-000000000001"));
 	SA_CHECK(sa_discover());
@@ -591,7 +592,7 @@ static void core_capacity(void) {
 	// 33 devices are selected, the driver has room for 32 proxy devices
 	SA_CHECK(indigo_change_switch_property(&sa_client, SA_BRIDGE, "X_ALPACA_DEVICES", 33, items, values) == INDIGO_OK);
 	SA_CHECK(SA_WAIT(sa_status_count("ATTACHED") == 32 && sa_status_count("FAILED") == 1, 3 * SA_TIMEOUT));
-	SA_CHECK(sa_device_count(" @ " SA_SERVER_NAME) == 32);
+	SA_CHECK(sa_device_count(" on " SA_SERVER_NAME) == 32);
 	for (int i = 0; i < 33; i++) {
 		if (sa_device_status_is(keys[i], "FAILED")) {
 			failed = i;
@@ -606,7 +607,7 @@ static void core_capacity(void) {
 	SA_CHECK(sa_select(keys[attached], false) && SA_WAIT(sa_device_status_is(keys[attached], "AVAILABLE"), SA_TIMEOUT));
 	SA_CHECK(sa_discover());
 	SA_CHECK(sa_status_count("ATTACHED") == 32 && sa_status_count("FAILED") == 0 && sa_device_status_is(keys[failed], "ATTACHED"));
-	SA_CHECK(sa_device_count(" @ " SA_SERVER_NAME) == 32);
+	SA_CHECK(sa_device_count(" on " SA_SERVER_NAME) == 32);
 	// every proxy device is a working device
 	snprintf(sa_device, sizeof(sa_device), "%s", sa_proxy_name(keys[failed]));
 	SA_CHECK(sa_connect(sa_device) && sa_disconnect(sa_device));
@@ -810,10 +811,10 @@ static void core_restart_with_saved_configuration(void) {
 		if (round % 2 == 0) {
 			// ...so the driver comes up with the proxy device without any request; both servers list the same UniqueID, the manual one was asked first
 			SA_CHECK(SA_WAIT(sa_item_count(SA_BRIDGE, "X_ALPACA_SERVER_STATUS") == 2 && sa_status_count("ATTACHED") == 1, SA_TIMEOUT));
-			SA_CHECK(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 1 && sa_device_defined("Focuser Simulator @ " SA_SERVER_NAME));
+			SA_CHECK(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 1 && sa_device_defined("Focuser Simulator on " SA_SERVER_NAME));
 			SA_CHECK(!strcmp(sa_text(SA_BRIDGE, "X_ALPACA_SERVERS", "LIST"), sa_server_item(1)) && strstr(sa_device_status("a1baca00-0005-4000-8000-000000000000"), sa_server_item(1)) != NULL);
-			SA_CHECK(sa_connect("Focuser Simulator @ " SA_SERVER_NAME) && sa_request_count(1, "PUT", "/api/v1/focuser/0/connected") == round + 1);
-			SA_CHECK(sa_disconnect("Focuser Simulator @ " SA_SERVER_NAME));
+			SA_CHECK(sa_connect("Focuser Simulator on " SA_SERVER_NAME) && sa_request_count(1, "PUT", "/api/v1/focuser/0/connected") == round + 1);
+			SA_CHECK(sa_disconnect("Focuser Simulator on " SA_SERVER_NAME));
 		} else {
 			// a shutdown that arrives while the first discovery cycle is running or the devices are being attached is carried out all the same
 			indigo_usleep(round * 20000);
@@ -839,7 +840,7 @@ static void core_connect_disconnect_platform7(void) {
 	SA_CHECK(sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate") == 0);
 	SA_CHECK(sa_advance(0, 2));
 	SA_CHECK(SA_WAIT(sa_is_connected(sa_device), SA_TIMEOUT));
-	SA_CHECK(sa_message_seen("Connected to Focuser Simulator @ " SA_SERVER_NAME));
+	SA_CHECK(sa_message_seen("Connected to Focuser Simulator on " SA_SERVER_NAME));
 	SA_CHECK(sa_request_count(0, "GET", "/api/v1/focuser/0/connected") == 1);
 	SA_CHECK(!strcmp(sa_status(0, "/simulator/v1/focuser/0/state", "Connected"), "true"));
 	// the state is polled with one devicestate request per tick
@@ -863,7 +864,7 @@ static void core_connect_disconnect_platform7(void) {
 	connecting = sa_request_count(0, "GET", "/api/v1/focuser/0/connecting");
 	SA_CHECK(SA_WAIT(sa_request_count(0, "GET", "/api/v1/focuser/0/connecting") >= connecting + 2, SA_TIMEOUT) && sa_request_count(0, "PUT", "/api/v1/focuser/0/connect") == 1 && sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SA_CHECK(sa_advance(0, 2) && SA_WAIT(sa_state(sa_device, CONNECTION_PROPERTY_NAME) == INDIGO_OK_STATE, SA_TIMEOUT) && sa_is_disconnected(sa_device));
-	SA_CHECK(sa_message_seen_since(mark, "Disconnected from Focuser Simulator @ " SA_SERVER_NAME) && !strcmp(sa_status(0, "/simulator/v1/focuser/0/state", "Connected"), "false"));
+	SA_CHECK(sa_message_seen_since(mark, "Disconnected from Focuser Simulator on " SA_SERVER_NAME) && !strcmp(sa_status(0, "/simulator/v1/focuser/0/state", "Connected"), "false"));
 	int requests = sa_request_count(0, NULL, "/api/*");
 	indigo_usleep(300000);
 	SA_CHECK(sa_request_count(0, NULL, "/api/*") == requests);
@@ -920,7 +921,7 @@ static void core_connect_failure(void) {
 	// the device refuses to connect: CONNECTION ends in ALERT with the device disconnected, the message tells why
 	SA_CHECK(sa_fault(0, "PUT", "/api/v1/focuser/0/connect", "ascom-error", "Value=1279&Message=Motor%20unplugged"));
 	SA_CHECK(sa_request_connection(sa_device, true) && SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
-	SA_CHECK(sa_message_seen("Failed to connect to Focuser Simulator @ " SA_SERVER_NAME ": Motor unplugged"));
+	SA_CHECK(sa_message_seen("Failed to connect to Focuser Simulator on " SA_SERVER_NAME ": Motor unplugged"));
 	SA_CHECK(sa_device_defined(sa_device) && sa_status_count("ATTACHED") == 1);
 	SA_CHECK(sa_request_count(0, "GET", "/api/v1/focuser/0/devicestate") == 0);
 	// the next attempt starts from scratch and succeeds
@@ -981,8 +982,8 @@ static void core_info_content(void) {
 	static const char *arguments[] = { "--server-name", "Roll-off Roof / West", "--device", "focuser:name=Main Focuser,uid=F0C05E00-AAAA-4000-8000-000000000042,Description=Test focuser model 9,DriverInfo=Driver info text,DriverVersion=7.5", NULL };
 	SA_CHECK(sa_begin(arguments));
 	SA_CHECK(sa_attach("Main Focuser"));
-	// the name is "<DeviceName> @ <ServerName>" with the characters a file name can not have replaced
-	SA_CHECK(!strcmp(sa_device, "Main Focuser @ Roll-off Roof - West"));
+	// the name is "<DeviceName> on <ServerName>" with the characters a file name can not have replaced
+	SA_CHECK(!strcmp(sa_device, "Main Focuser on Roll-off Roof - West"));
 	SA_CHECK(sa_item_count(sa_device, INFO_PROPERTY_NAME) == 8);
 	SA_CHECK(!strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_NAME_ITEM_NAME), sa_device));
 	SA_CHECK(!strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_DRIVER_ITEM_NAME), "indigo_system_alpaca"));
@@ -1053,7 +1054,7 @@ static void core_unusual_identifiers(void) {
 	snprintf(sa_device, sizeof(sa_device), "%s", sa_proxy_name(key));
 	SA_CHECK(SA_WAIT(sa_defined(sa_device, CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
 	SA_CHECK(strlen(sa_device) < INDIGO_NAME_SIZE - 16 && core_valid_utf8(sa_device));
-	SA_CHECK(!strncmp(sa_device, "Fokussierer Süd-Ost „Großer Refraktor“", strlen("Fokussierer Süd-Ost „Großer Refraktor“")) && !strcmp(strstr(sa_device, " @ "), " @ Sternwarte Über -Tal- & 'Berg' -Nord--"));
+	SA_CHECK(!strncmp(sa_device, "Fokussierer Süd-Ost „Großer Refraktor“", strlen("Fokussierer Süd-Ost „Großer Refraktor“")) && !strcmp(strstr(sa_device, " on "), " on Sternwarte Über -Tal- & 'Berg' -Nord--"));
 	SA_CHECK(core_valid_utf8(sa_text(SA_BRIDGE, "X_ALPACA_DEVICE_STATUS", key)) && core_valid_utf8(sa_server_status(0)));
 	SA_CHECK(!strcmp(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME), "My Device's <ID> & \"x\" Ä"));
 	SA_CHECK(sa_connect(sa_device) && sa_disconnect(sa_device));
@@ -1066,6 +1067,85 @@ static void core_unusual_identifiers(void) {
 	SA_CHECK(SA_WAIT(sa_item_count(SA_BRIDGE, "X_ALPACA_DEVICES") == 2, SA_TIMEOUT) && sa_switch(SA_BRIDGE, "X_ALPACA_DEVICES", key) && sa_switch(SA_BRIDGE, "X_ALPACA_DEVICES", long_key));
 	SA_CHECK(sa_discover() && sa_status_count("ATTACHED") == 2 && sa_device_defined(sa_device) && sa_device_defined(rotator));
 cleanup:
+	sa_end();
+}
+
+// A device of the bus that stands for a remote INDIGO service, named "@ <service>" like the one indigo_client_xml.c attaches. It only counts
+// what the bus routes to it.
+static atomic_int core_remote_requests = 0;
+
+static indigo_result core_remote_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	atomic_fetch_add(&core_remote_requests, 1);
+	return INDIGO_OK;
+}
+
+static indigo_result core_remote_change(indigo_device *device, indigo_client *client, indigo_property *property) {
+	atomic_fetch_add(&core_remote_requests, 1);
+	return INDIGO_OK;
+}
+
+// Proxy names have no "@", the separator of the remote services of the bus (REV-16): "<DeviceName> on <ServerName>", with every "@" of the
+// names the server reports replaced, so that neither a ServerName like "Omni @ Observatory" nor a DeviceName with "@" brings it back. With the
+// old " @ " a request for "Focuser @ INDIGO Alpaca Simulator" was also routed to a remote service named "INDIGO" (indigo_bus.c matches
+// "@ <service>" anywhere in the device name); with the new names no request for a proxy reaches such a service.
+static void core_proxy_names_without_at(void) {
+	static const char *arguments[] = { "--server-name", "Omni @ Observatory", "--device", "focuser:name=Focuser @ Pier", "--device", "telescope:name=Mount@Pier", NULL };
+	static indigo_device remote_omni = INDIGO_DEVICE_INITIALIZER("@ Omni", NULL, core_remote_enumerate, core_remote_change, NULL, NULL);
+	static indigo_device remote_observatory = INDIGO_DEVICE_INITIALIZER("@ Observatory", NULL, core_remote_enumerate, core_remote_change, NULL, NULL);
+	static indigo_device remote_indigo = INDIGO_DEVICE_INITIALIZER("@ INDIGO", NULL, core_remote_enumerate, core_remote_change, NULL, NULL);
+	char focuser[INDIGO_NAME_SIZE];
+	char mount[INDIGO_NAME_SIZE];
+	char guider[INDIGO_NAME_SIZE + 16];
+	bool attached = false;
+	SA_CHECK(sa_begin(arguments) && sa_attach("(Focuser)"));
+	snprintf(focuser, sizeof(focuser), "%s", sa_device);
+	SA_CHECK(!strcmp(focuser, "Focuser - Pier on Omni - Observatory"));
+	SA_CHECK(sa_attach("(Telescope)") && sa_connect(sa_device));
+	snprintf(mount, sizeof(mount), "%s", sa_device);
+	snprintf(guider, sizeof(guider), "%s (guider)", mount);
+	SA_CHECK(!strcmp(mount, "Mount-Pier on Omni - Observatory") && SA_WAIT(sa_defined(guider, CONNECTION_PROPERTY_NAME), SA_TIMEOUT));
+	SA_CHECK(strchr(focuser, '@') == NULL && strchr(mount, '@') == NULL && strchr(guider, '@') == NULL);
+	// remote services whose names are contained in the names the server reported
+	SA_CHECK(indigo_use_host_suffix && indigo_attach_device(&remote_omni) == INDIGO_OK && indigo_attach_device(&remote_observatory) == INDIGO_OK && indigo_attach_device(&remote_indigo) == INDIGO_OK);
+	attached = true;
+	atomic_store(&core_remote_requests, 0);
+	const char *proxies[] = { focuser, mount, guider };
+	for (int i = 0; i < 3; i++) {
+		indigo_property *request = indigo_init_switch_property(NULL, proxies[i], "X_ROUTING_PROBE", NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+		SA_CHECK(indigo_enumerate_properties(&sa_client, request) == INDIGO_OK && indigo_change_property(&sa_client, request) == INDIGO_OK);
+		indigo_release_property(request);
+		SA_CHECK(indigo_change_switch_property_1(&sa_client, proxies[i], CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true) == INDIGO_OK);
+	}
+	SA_CHECK(atomic_load(&core_remote_requests) == 0);
+	// the probe works: the old form of the name is routed to the remote service "INDIGO" of the simulator's default server name
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, "Focuser Simulator @ " SA_SERVER_NAME, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true) == INDIGO_OK && atomic_load(&core_remote_requests) == 1);
+	SA_CHECK(sa_disconnect(mount));
+cleanup:
+	if (attached) {
+		indigo_detach_device(&remote_indigo);
+		indigo_detach_device(&remote_observatory);
+		indigo_detach_device(&remote_omni);
+	}
+	sa_end();
+}
+
+// The default server name of the simulator gives the same test with a remote service named like the first word of the ServerName.
+static void core_proxy_names_routing(void) {
+	static indigo_device remote_indigo = INDIGO_DEVICE_INITIALIZER("@ INDIGO", NULL, core_remote_enumerate, core_remote_change, NULL, NULL);
+	static indigo_device remote_simulator = INDIGO_DEVICE_INITIALIZER("@ Simulator", NULL, core_remote_enumerate, core_remote_change, NULL, NULL);
+	bool attached = false;
+	SA_CHECK(sa_begin(NULL) && sa_attach("Focuser Simulator"));
+	SA_CHECK(!strcmp(sa_device, "Focuser Simulator on " SA_SERVER_NAME));
+	SA_CHECK(indigo_attach_device(&remote_indigo) == INDIGO_OK && indigo_attach_device(&remote_simulator) == INDIGO_OK);
+	attached = true;
+	atomic_store(&core_remote_requests, 0);
+	SA_CHECK(indigo_change_switch_property_1(&sa_client, sa_device, CONFIG_PROPERTY_NAME, CONFIG_LOAD_ITEM_NAME, true) == INDIGO_OK && sa_connect(sa_device) && sa_disconnect(sa_device));
+	SA_CHECK(atomic_load(&core_remote_requests) == 0);
+cleanup:
+	if (attached) {
+		indigo_detach_device(&remote_simulator);
+		indigo_detach_device(&remote_indigo);
+	}
 	sa_end();
 }
 
@@ -1136,7 +1216,7 @@ static void core_transport_loss_during_connect(void) {
 	double started = indigo_monotonic_time();
 	SA_CHECK(SA_WAIT(core_alerted(sa_device), SA_TIMEOUT));
 	SA_CHECK(indigo_monotonic_time() - started < 1.5);
-	SA_CHECK(sa_message_seen("Failed to connect to Focuser Simulator @ " SA_SERVER_NAME));
+	SA_CHECK(sa_message_seen("Failed to connect to Focuser Simulator on " SA_SERVER_NAME));
 	// one failed request does not prove that the server is gone, so the device is still told to disconnect (decision D5)
 	SA_CHECK(sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") >= 1);
 	// and a new connect works when the server is back
@@ -1469,7 +1549,7 @@ static void core_similar_unique_ids(void) {
 	SA_CHECK(strstr(sa_server_status(0), "ONLINE: 3 device(s), 0 duplicate(s)") != NULL);
 	SA_CHECK(sa_attach("First") && sa_connect(sa_device) && sa_disconnect(sa_device));
 	SA_CHECK(sa_attach("Second") && sa_connect(sa_device) && sa_disconnect(sa_device));
-	SA_CHECK(sa_device_status_is(first, "ATTACHED") && sa_device_status_is(second, "ATTACHED") && sa_device_count(" @ " SA_SERVER_NAME) == 2);
+	SA_CHECK(sa_device_status_is(first, "ATTACHED") && sa_device_status_is(second, "ATTACHED") && sa_device_count(" on " SA_SERVER_NAME) == 2);
 	SA_CHECK(strstr(sa_device_status(first), "UniqueID cam:1") != NULL && strstr(sa_device_status(second), "UniqueID cam/1") != NULL);
 cleanup:
 	sa_end();
@@ -1558,6 +1638,8 @@ cleanup:
 	{ "core_connect_timeout", core_connect_timeout }, \
 	{ "core_info_content", core_info_content }, \
 	{ "core_unusual_identifiers", core_unusual_identifiers }, \
+	{ "core_proxy_names_without_at", core_proxy_names_without_at }, \
+	{ "core_proxy_names_routing", core_proxy_names_routing }, \
 	{ "core_similar_unique_ids", core_similar_unique_ids }, \
 	{ "core_strict_server_replies", core_strict_server_replies }, \
 	{ "core_not_connected_reported_by_device", core_not_connected_reported_by_device }, \

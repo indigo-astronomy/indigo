@@ -302,14 +302,17 @@ static void copy_text(char *target, size_t size, const char *source) {
 }
 
 // Copy text that becomes a part of a device name: characters that are not allowed in file names (the configuration of a device is
-// saved in a file named after it) and control characters are replaced, white space at both ends is removed.
+// saved in a file named after it), control characters and "@" are replaced, white space at both ends is removed. "@" is the separator
+// of the remote service in the names of the bus: indigo_bus.c routes a request to a remote service "@ <service>" whose name is contained
+// in the device name, indigo_xml.c cuts a name at its last "@" before it is sent to a server and indigo_filter.c takes a related device
+// with "@" for a remote one, so a proxy name has none.
 static void copy_name_part(char *target, size_t size, const char *source) {
 	while (*source == ' ') {
 		source++;
 	}
 	copy_text(target, size, source);
 	for (char *c = target; *c; c++) {
-		if ((unsigned char)*c < ' ' || strchr("/\\:*?\"<>|", *c) != NULL) {
+		if ((unsigned char)*c < ' ' || strchr("/\\:*?\"<>|@", *c) != NULL) {
 			*c = '-';
 		}
 	}
@@ -1344,7 +1347,9 @@ static void proxy_free(indigo_device *device) {
 	indigo_safe_free(device);
 }
 
-// "<DeviceName> @ <ServerName>", with the address of the server if it has no name.
+// "<DeviceName> on <ServerName>", with the address of the server if it has no name. The parts are cut between UTF-8 characters to
+// DEVICE_NAME_PART_SIZE and SERVER_NAME_PART_SIZE, so that the suffix of a collision (" #" and 6 digits), the suffix of a secondary device
+// (" (guider)") and the suffix of indigo_make_name_unique() (" #" and up to 3 digits) still fit into INDIGO_NAME_SIZE with the terminating zero: 59 + 4 + 39 + 8 + 9 + 5 + 1 < 128.
 static void proxy_base_name(const device_record *record, char *name) {
 	char device_part[DEVICE_NAME_PART_SIZE];
 	char server_part[SERVER_NAME_PART_SIZE];
@@ -1355,7 +1360,7 @@ static void proxy_base_name(const device_record *record, char *name) {
 	if (*server_part == 0) {
 		copy_name_part(server_part, sizeof(server_part), address);
 	}
-	snprintf(name, INDIGO_NAME_SIZE, "%s @ %s", device_part, server_part);
+	snprintf(name, INDIGO_NAME_SIZE, "%s on %s", device_part, server_part);
 }
 
 // Name of a proxy device. The configuration of a device is saved under its name, so the name should not depend on the order in which

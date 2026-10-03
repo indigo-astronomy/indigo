@@ -72,10 +72,24 @@
  sent and answered by the telescope (InvalidWhileParked). A telescope that somebody else parked is recognised by AtPark of the next poll
  or by the first InvalidWhileParked it answers.
 
- The sense of rotation of MoveAxis is left undefined by the standard. The driver uses the sense of the ASCOM simulators and of the
- common mounts: a positive rate of the primary axis moves west (the hour angle grows), a positive rate of the secondary axis moves north.
- The axes are the mechanical ones: a German mount that points through the pole (SideOfPier pierWest) moves south with a positive rate of
- the secondary axis, and the driver does not compensate for that, because a telescope may as well do it itself.
+ MANUAL MOTION
+
+ MOUNT_MOTION_RA and MOUNT_MOTION_DEC are MoveAxis of the primary and the secondary axis. The standard leaves the sense of rotation
+ undefined; the driver follows ASCOM OmniSim, the reference implementation, and the common mounts. The axes are the mechanical ones:
+
+ - Primary axis: a positive rate moves west (the hour angle grows, the right ascension falls) on both sides of the pier and in both
+   hemispheres, so WEST is a positive rate and EAST a negative one, always.
+ - Secondary axis: a positive rate raises the declination in the normal pointing state (SideOfPier pierEast) and lowers it when a German
+   mount points through the pole (pierWest), in both hemispheres. NORTH always moves toward the north celestial pole and SOUTH away from
+   it: the driver sends a positive rate for NORTH on pierEast and a negative one on pierWest. On a southern site NORTH moves away from
+   the visible (south) pole as well; the declination grows.
+ - The side is read with SideOfPier when the motion starts (the value of the last poll tick if that read fails). A telescope that does
+   not implement SideOfPier, or reports pierUnknown, gets a positive rate for NORTH, which is right for a fork or any mount that never
+   points through the pole.
+ - The sense is chosen when MoveAxis is sent: a reversal, a change of the rate and every new start use the side of that moment. A motion
+   that runs while the side changes is not sent again. The secondary axis that moves over the pole continues to turn the same way, as
+   a hand controller does, and moves away from the pole on the other side; resending it with the other sign would only turn it back to
+   the pole.
 
  Slews to horizontal coordinates are not mapped: MOUNT_HORIZONTAL_COORDINATES is read only in the INDIGO mount model.
 
@@ -866,7 +880,20 @@ static void mount_end_motion(indigo_device *device, indigo_property *property, i
 	system_alpaca_unlock(device);
 }
 
+// Side of the pier that decides the sense of the secondary axis, see MANUAL MOTION: read when a motion starts, so that a flip made by
+// another client since the last poll tick counts; the value of the last poll tick if it can not be read now. 1 is pierWest; 0, -1
+// (pierUnknown) and a telescope that does not implement SideOfPier leave the sense as it is.
+static int mount_motion_side_of_pier(indigo_device *device) {
+	int side = -1;
+	alpaca_result result = system_alpaca_state_int(device, "SideOfPier", &side);
+	if (result == ALPACA_UNSUPPORTED) {
+		return -1;
+	}
+	return result == ALPACA_OK ? side : MOUNT_DATA->side_of_pier;
+}
+
 // MOUNT_MOTION_DEC and MOUNT_MOTION_RA: MoveAxis with the rate of the selected item of MOUNT_SLEW_RATE, a rate of zero when both items are off.
+// The sign of a secondary rate is inverted on pierWest, so that NORTH always moves toward the north celestial pole.
 static void mount_move_axis(indigo_device *device, int axis, indigo_property *property, const char *positive, const char *negative) {
 	mount_data *data = MOUNT_DATA;
 	double rate = 0;
@@ -886,6 +913,9 @@ static void mount_move_axis(indigo_device *device, int axis, indigo_property *pr
 		rate = -rate;
 	} else if (!indigo_get_switch_target(property, positive)) {
 		rate = 0;
+	}
+	if (axis == 1 && rate != 0 && mount_motion_side_of_pier(device) == 1) {
+		rate = -rate;
 	}
 	char reason[INDIGO_VALUE_SIZE];
 	alpaca_result result = mount_put_axis_rate(device, axis, rate);

@@ -100,8 +100,8 @@ static void omnisim_discovery(void) {
 		const char *key = sa_device_key(labels[i]);
 		SA_CHECK(*key && sa_device_status_is(key, "AVAILABLE"));
 	}
-	// the device is proxied under "<DeviceName> @ <ServerName>"
-	SA_CHECK(sa_attach(FOCUSER_LABEL) && strstr(sa_device, " @ " OMNI_SERVER_NAME) != NULL);
+	// the device is proxied under "<DeviceName> on <ServerName>"
+	SA_CHECK(sa_attach(FOCUSER_LABEL) && strstr(sa_device, " on " OMNI_SERVER_NAME) != NULL);
 	SA_CHECK(sa_text(sa_device, INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME)[0] != 0);
 cleanup:
 	omni_end();
@@ -494,43 +494,68 @@ static bool omni_manual_motion(const char *property, const char *item, double se
 	return omni_set_switch(sa_device, property, item, false, SA_TIMEOUT) == INDIGO_OK_STATE;
 }
 
+// One manual motion of 1 s; the change of the declination or of the right ascension (hours, -12 ... 12) of the telescope is left in *change.
+static bool omni_motion_change(const char *property, const char *item, const char *member, const char *where, double *change) {
+	double before = omni_double("telescope", member);
+	if (!omni_manual_motion(property, item, 1) || !SA_WAIT(!omni_bool("telescope", "slewing"), SA_TIMEOUT)) {
+		return false;
+	}
+	double after = omni_double("telescope", member);
+	*change = !strcmp(member, "rightascension") ? omni_ra_difference(after, before) : after - before;
+	printf("    %s, %s.%s: %s %.5f -> %.5f\n", where, property, item, member, before, after);
+	return true;
+}
+
+// Put SiteLatitude of OmniSim back; the telescope is connected for it if the driver disconnected it already.
+static bool omni_restore_latitude(double latitude) {
+	char form[64];
+	bool connected = omni_bool("telescope", "connected");
+	snprintf(form, sizeof(form), "SiteLatitude=%.10g", latitude);
+	bool restored = (connected || omni_put("telescope", "connected", "Connected=true") == 0) && omni_put("telescope", "sitelatitude", form) == 0;
+	if (!connected) {
+		omni_put("telescope", "connected", "Connected=false");
+	}
+	if (!restored) {
+		fprintf(stderr, "    SiteLatitude of OmniSim could not be put back to %.10g\n", latitude);
+	}
+	return restored;
+}
+
+// MOUNT_MOTION_DEC.NORTH moves toward the north celestial pole on both sides of the pier and on a northern and a southern site; OmniSim turns
+// the secondary axis the other way through the pole (pierWest), so the driver inverts the rate there (indigo_system_alpaca_mount.c, MANUAL
+// MOTION). MOUNT_MOTION_RA.WEST makes the right ascension fall everywhere, the primary axis is never inverted.
 static void omnisim_mount_manual_motion(void) {
-	double before = 0, after = 0;
+	char where[64];
+	double change = 0, latitude = NAN;
 	SA_CHECK(omni_begin());
 	SA_CHECK(omni_attach_connect(TELESCOPE_LABEL));
 	// the rates of MOUNT_SLEW_RATE come from AxisRates [0, 6.67] and [10, 20]
 	SA_CHECK(omni_set_switch(sa_device, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, true, SA_TIMEOUT) == INDIGO_OK_STATE);
-	// pierWest (east of the meridian)
-	SA_CHECK(omni_goto(omni_hours(omni_lst() + 2), 30));
-	SA_CHECK(omni_int("telescope", "sideofpier") == 1);
-	before = omni_double("telescope", "declination");
-	SA_CHECK(omni_manual_motion(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, 1));
-	SA_CHECK(SA_WAIT(!omni_bool("telescope", "slewing"), SA_TIMEOUT));
-	after = omni_double("telescope", "declination");
-	printf("    pierWest, MOUNT_MOTION_DEC.NORTH: declination %.4f -> %.4f\n", before, after);
-	SA_CHECK(fabs(after - before) > 0.1);
-	double west_sense = after - before;
-	// pierEast (west of the meridian)
-	SA_CHECK(omni_goto(omni_hours(omni_lst() - 2), 30));
-	SA_CHECK(omni_int("telescope", "sideofpier") == 0);
-	before = omni_double("telescope", "declination");
-	SA_CHECK(omni_manual_motion(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, 1));
-	SA_CHECK(SA_WAIT(!omni_bool("telescope", "slewing"), SA_TIMEOUT));
-	after = omni_double("telescope", "declination");
-	printf("    pierEast, MOUNT_MOTION_DEC.NORTH: declination %.4f -> %.4f\n", before, after);
-	SA_CHECK(after - before > 0.1);
-	// the driver sends a positive secondary rate for NORTH on both sides and does not compensate the pier side (indigo_system_alpaca_mount.c,
-	// MOTION): through the pole OmniSim turns the axis the other way, so NORTH moves south on pierWest
-	SA_CHECK(west_sense < -0.1);
-	before = omni_double("telescope", "rightascension");
-	SA_CHECK(omni_manual_motion(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, 1));
-	SA_CHECK(SA_WAIT(!omni_bool("telescope", "slewing"), SA_TIMEOUT));
-	after = omni_double("telescope", "rightascension");
-	printf("    pierEast, MOUNT_MOTION_RA.WEST: right ascension %.5f -> %.5f\n", before, after);
-	// west: the hour angle grows, the right ascension of the place the telescope points at falls
-	SA_CHECK(omni_ra_difference(after, before) < -0.01);
+	for (int site = 0; site < 2; site++) {
+		// OmniSim's site is at 51.07861 N; the southern one is set on the telescope directly. OmniSim saves SiteLatitude in its profile, which
+		// it keeps in the user's Application Support folder whatever HOME is, so the latitude is put back when the case ends, also after a failure
+		if (site) {
+			latitude = omni_double("telescope", "sitelatitude");
+			SA_CHECK(omni_put("telescope", "sitelatitude", "SiteLatitude=-30.2407") == 0 && fabs(omni_double("telescope", "sitelatitude") + 30.2407) < 1e-9);
+		}
+		for (int west = 0; west < 2; west++) {
+			// 2 h east of the meridian the telescope points through the pole (pierWest), 2 h west of it it is on pierEast
+			SA_CHECK(omni_goto(omni_hours(omni_lst() + (west ? 2 : -2)), 10));
+			SA_CHECK(omni_int("telescope", "sideofpier") == west);
+			snprintf(where, sizeof(where), "%s site, %s", site ? "southern" : "northern", west ? "pierWest" : "pierEast");
+			SA_CHECK(omni_motion_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, "declination", where, &change) && change > 0.1);
+			SA_CHECK(omni_motion_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, "declination", where, &change) && change < -0.1);
+			// west: the hour angle grows, the right ascension of the place the telescope points at falls
+			SA_CHECK(omni_motion_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, "rightascension", where, &change) && change < -0.01);
+		}
+	}
+	SA_CHECK(omni_restore_latitude(latitude));
+	latitude = NAN;
 	SA_CHECK(omni_disconnect_detach(TELESCOPE_LABEL));
 cleanup:
+	if (!isnan(latitude)) {
+		omni_restore_latitude(latitude);
+	}
 	omni_end();
 }
 

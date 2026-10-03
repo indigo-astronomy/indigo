@@ -49,7 +49,8 @@
 //   sense of rotation undefined; the model follows the ASCOM OmniSim
 //   (TelescopeHardware.cs): a positive primary rate increases the hour angle,
 //   so RightAscension decreases, and a positive secondary rate increases
-//   Declination in the normal pointing state and decreases it through the pole.
+//   Declination in the normal pointing state and decreases it through the pole,
+//   on a northern and a southern site alike (measured on OmniSim 0.5.0).
 //   The primary axis then turns at the given rate instead of the tracking rate.
 // - PulseGuide moves RightAscension (East +, West -) and Declination (North +)
 //   at the guide rates for Duration; a Duration of 0 ends the pulse of that

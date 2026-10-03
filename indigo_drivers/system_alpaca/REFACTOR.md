@@ -1,6 +1,6 @@
 # system_alpaca: ASCOM Alpaca client (discovery and proxy) driver
 
-Status: **implementation in progress, 2026-10-03**. The core and all device classes are implemented and covered against the deterministic simulator and OmniSim 0.5.0 (section 7). The independent review and its fixes are done (section 7.6); the final audit and the open decisions of the user (REV-7, MoveAxis sense, REV-16) remain. Sections 0 to 6 are the research and design record of 2026-09-24, kept as written apart from dated corrections.
+Status: **implementation in progress, 2026-10-03**. The core and all device classes are implemented and covered against the deterministic simulator and OmniSim 0.5.0 (section 7). The independent review and its fixes are done (section 7.6); the decisions D11 to D14 are implemented; the final audit remains. Sections 0 to 6 are the research and design record of 2026-09-24, kept as written apart from dated corrections.
 
 ## 0. Goal and scope
 
@@ -10,7 +10,7 @@ Status: **implementation in progress, 2026-10-03**. The core and all device clas
 - Location: `indigo_drivers/system_alpaca`.
 - Build registration in root `Makefile`:
   - `DEVELOPED_DRIVERS`: built, excluded from `install` / `uninstall` and so from the distribution (`Makefile.drvs:42-46`).
-  - **Temporarily also `EXCLUDED_DRIVERS`.** `Makefile.drvs` collects `system_*` through a wildcard, and a folder without sources would break `make all`. The folder is also excluded because `indigo_driver_metadata` would fail on a missing library. Remove it from `EXCLUDED_DRIVERS` in the step that adds the first sources (plan step S3).
+  - **Temporarily also `EXCLUDED_DRIVERS`** (removed on 2026-10-03 at the user's request; since then `make all` builds the driver and `install` skips it). `Makefile.drvs` collects `system_*` through a wildcard, and a folder without sources would break `make all`. The folder is also excluded because `indigo_driver_metadata` would fail on a missing library. Remove it from `EXCLUDED_DRIVERS` in the step that adds the first sources (plan step S3).
 - Language: C (INDIGO 3.0 API). Platforms: Linux, macOS, Windows through the portable `indigo_uni_io` APIs, with no platform-dependent code in the driver (`AGENTS.md:57`).
 
 ## 1. Sources
@@ -424,7 +424,7 @@ Parameter names are shown with their exact casing. **P** = PUT, otherwise GET.
 
 - **How the tests find it:** the opt-in tier looks for `omnisim/*/ascom.alpaca.simulators` in the directory above. `INDIGO_TEST_OMNISIM` (the path of the executable) overrides this for an installation kept elsewhere. If neither yields an executable, the tier is skipped and reported as not run.
 - **Update:** delete the content of `omnisim/` and unpack the new version. The version used is recorded with every OmniSim result.
-- **Removal:** delete `omnisim/`. Outside it, OmniSim only writes its profiles (`.config/ascom/alpaca/...`) and logs under the `HOME` it was started with.
+- **Removal:** delete `omnisim/`. On Linux OmniSim writes its profiles (`.config/ascom/alpaca/...`) and logs under the `HOME` it was started with; on macOS it writes them to `~/Library/Application Support/ascom/alpaca/` and `~/Documents/ascom` of the real user whatever `HOME` is, so remove those too.
 - **State of this procedure:** the asset names, sizes, checksums and the macOS arm64 archive layout were read from the release on 2026-10-01, and the `.gitignore` rule was checked with `git check-ignore`. The measurements above come from the linux-x64 research run. The macOS arm64 install was done on 2026-10-02: the checksum matched, `git check-ignore` printed the rule, and the server started with a private `HOME` answered `configureddevices` (all ten device types) about 3 s after the start and reported version `0.5.0+05d607826b39bdee2bcbb09bcaac6f35b3c6dba9`; its focuser has InterfaceVersion 4. The quarantine step was not needed for the `curl` download.
 
 ### 4.2 ConformU v4.5.0 (GPL-3.0, run only as an external tool)
@@ -484,7 +484,7 @@ A dedicated **deterministic C simulator** is necessary. It is the only way to co
 - **Proxy device**, one `indigo_device` per `configureddevices` item. The key is the `UniqueID`, so the device keeps its identity when its IP changes.
   - Private data points to the server record and holds the `DeviceType`, `DeviceNumber`, `InterfaceVersion`, capability cache (`Can*` plus probed optional members) and polling state.
   - `master_device` is the first device from the same server.
-  - Device name: `"<DeviceName> @ <ServerName>"`, made unique with `indigo_make_name_unique`.
+  - Device name: `"<DeviceName> on <ServerName>"`, with every `@` of the two names replaced by `-` (D14, 2026-10-03; originally `"<DeviceName> @ <ServerName>"`), made unique with `indigo_make_name_unique`.
 - **Type mapping:**
 
   | Alpaca | INDIGO device | Notes |
@@ -678,7 +678,7 @@ States: `todo`, `in progress`, `done`, `blocked`. Every step records its evidenc
 | S10 | CCD (+ guider), ImageBytes, JSON fallback | CCD checklist, image contract (dimensions, orientation, Bayer, RGB) | done (2026-10-02, WP8). Evidence in section 7.2. |
 | S11 | Dome, CoverCalibrator, Switch, ObservingConditions, SafetyMonitor | Dome and AUX checklists | done (2026-10-02, WP9 and WP10). Evidence in section 7.2. |
 | S12 | OmniSim opt-in tier (OmniSim installed on the development machine per section 4.1; no ConformU, decision D9) | Record of the OmniSim run | done (2026-10-03, WP11). Evidence in section 7.5. |
-| S13 | `PROPERTIES.md`, README (only with approval), `TEST_SUMMARY.md`, optionally `MIGRATION_STATUS.md` / Windows / `STATIC_DRIVERS` | Final audit per `AGENTS.override.md` checklist | in progress: `PROPERTIES.md`, `README.md` (approved 2026-10-02), `TEST_SUMMARY.md` and the Xcode group references are done; `MIGRATION_STATUS.md` has no row for developed drivers (as `ccd_pentax`); open: the decisions REV-7, MoveAxis sense and REV-16, removal from `EXCLUDED_DRIVERS`, Windows project and `STATIC_DRIVERS` (optional) |
+| S13 | `PROPERTIES.md`, README (only with approval), `TEST_SUMMARY.md`, optionally `MIGRATION_STATUS.md` / Windows / `STATIC_DRIVERS` | Final audit per `AGENTS.override.md` checklist | in progress: `PROPERTIES.md`, `README.md` (approved 2026-10-02), `TEST_SUMMARY.md` and the Xcode group references are done; `MIGRATION_STATUS.md` has no row for developed drivers (as `ccd_pentax`); removed from `EXCLUDED_DRIVERS` on 2026-10-03 (the drivers `status` target lists it as built and excluded from install); decisions D11 to D14 recorded; open: D13 and D14 implementation, Windows project and `STATIC_DRIVERS` (optional) |
 
 ### 7.1 Step evidence
 
@@ -727,7 +727,7 @@ All runs on macOS arm64 (Apple clang), 2026-10-01. Nothing here was built or run
   - NotConnected (0x407) takes the device to disconnected / ALERT; there is no automatic reconnect.
   - The proxy loop is filtered by `description` (ServerName or Manufacturer) only.
   - `_main.c` ignores SIGPIPE; the driver library never touches signal dispositions.
-- Known limits: 32 proxies, 16 servers, 128 known devices, 64 devices per server listing, 16 discovery targets. A request with the long timeout class blocks its own device's queue for up to that time. `" @ "` in proxy names is the framework's remote-host separator; it worked through `indigo_server`, a remote service named exactly like an Alpaca ServerName is untested.
+- Known limits: 32 proxies, 16 servers, 128 known devices, 64 devices per server listing, 16 discovery targets. A request with the long timeout class blocks its own device's queue for up to that time. Proxy names contain no `@` (D14), so the remote-host separator of the framework can neither split nor misroute them; `core_proxy_names_without_at` and `core_proxy_names_routing` check the routing in-process, a run through `indigo_server` with a remote service is still untested.
 
 **Xcode.** Every new file is registered in `indigo.xcodeproj` as a group reference as soon as it exists (user's instruction, 2026-10-01). Membership in the Sources and Headers phases of the `indigo` and `indigo_m1` targets follows when the driver is complete.
 
@@ -784,7 +784,7 @@ All runs on macOS arm64 (Apple clang). Nothing here was built or run on Linux, W
 - ObservingConditions sensors without a standard item are `X_` items of `AUX_WEATHER` (`X_WIND_GUST`, `X_RAIN_RATE`, `X_CLOUD_COVER`, `X_SKY_ILLUMINANCE`, `X_STAR_FWHM`); Alpaca SkyQuality is `SKY_BRIGHTNESS`.
 - Alpaca `Slaved` of a dome is `X_ALPACA_DOME_SLAVED`. The removed SNOOP / `DOME_SLAVING` behaviour (commit `2c79d79b0`) is not brought back; synchronisation stays with the mount agent.
 - A filter wheel move is complete when `Position` is no longer −1 (user's decision, 2026-10-02); a move that ends in another slot than the requested one is ALERT with the real slot (WHL-1).
-- Manual motion: the driver sends a positive secondary rate for `MOUNT_MOTION_DEC.NORTH` on both pier sides and does not invert by SideOfPier; the standard leaves the sense undefined. `mount_manual_motion` asserts this on both sides.
+- Manual motion: `MOUNT_MOTION_DEC.NORTH` always moves toward the north celestial pole (D13, implemented 2026-10-03; until then the driver sent a positive secondary rate on both pier sides): the driver reads SideOfPier when a motion starts and inverts the secondary rate on pierWest, in both hemispheres; without a known side it does not invert, and a running motion is not re-sent when the side changes. `mount_manual_motion` and `mount_manual_motion_sense` assert this.
 - A sync while the telescope does not track is refused by the telescope and reported as ALERT with its message; the driver switches tracking on for a slew, not for a sync.
 - The camera keeps `ImageReady` as the only completion signal of an exposure; a running image transfer can not be interrupted, so abort, disconnect and detach wait for it within the long timeout.
 - `PROPERTIES.md` lists every custom property and the capability-dependent use of the standard ones.
@@ -859,7 +859,7 @@ The driver against an independent Alpaca implementation, ASCOM OmniSim 0.5.0 (`0
 
 - **Sources:** `indigo_test/integration/test_system_alpaca_omnisim.c` (20 cases, runner) and `indigo_test/integration/system_alpaca/omnisim_test_common.h` (harness on top of `system_alpaca_test_common.h`). Opt-in target `make -C indigo_test test-system-alpaca-omnisim`; not in `INTEGRATION_TESTS` or `OPT_IN_DRIVER_TESTS`, so the ordinary recorded run does not depend on OmniSim; nothing is downloaded.
 - **Finding OmniSim:** `INDIGO_TEST_OMNISIM`, else `system_alpaca_simulator/omnisim/*/ascom.alpaca.simulators`. Without it the tier prints NOT RUN, plans no case and exits 0; the recording script then records nothing.
-- **Isolation:** OmniSim's own reset does not restore everything (the rotator kept interface version 2 and its position, a halted cover stayed Unknown), so every case starts a fresh instance with a private `HOME` and working directory under `/tmp/indigo-system-alpaca-omnisim.*`, on a free loopback port added as a manual server (no broadcast). OmniSim is single instance per host: a run holds an exclusive `flock()` on the executable, cases run serially with a 300 s watchdog, and a reaper process kills the instance when its case ends or dies.
+- **Isolation:** OmniSim's own reset does not restore everything (the rotator kept interface version 2 and its position, a halted cover stayed Unknown), so every case starts a fresh instance with a private `HOME` and working directory under `/tmp/indigo-system-alpaca-omnisim.*`, on a free loopback port added as a manual server (no broadcast). The private `HOME` does not isolate everything: on macOS OmniSim keeps its device profiles in `~/Library/Application Support/ascom/alpaca/ascom-alpaca-simulator/` and its logs in `~/Documents/ascom` of the real user, whatever `HOME` is (found on 2026-10-03, when a site latitude set by a case survived into the next run). `omnisim_mount_manual_motion` therefore restores SiteLatitude itself, also in its cleanup. OmniSim is single instance per host: a run holds an exclusive `flock()` on the executable, cases run serially with a 300 s watchdog, and a reaper process kills the instance when its case ends or dies.
 - **Recording:** `python3 tools/run_driver_test.py system_alpaca --hw --target test-system-alpaca-omnisim`, without `--type`: the suite writes the device record `OmniSim 0.5.0` from `management/v1/description`, which becomes its own `README.md` line. With `--type` and no OmniSim the script would record "0/0 Failed".
 - **Cases:** `omnisim_discovery` (discovery to 127.0.0.1:32227 finds the instance with all 10 devices), `omnisim_focuser` / `_legacy`, `omnisim_wheel` / `_legacy`, `omnisim_rotator` / `_legacy` (Platform 7 and an older interface set through OmniSim's settings API), `omnisim_mount_goto`, `omnisim_mount_park_home_tracking`, `omnisim_mount_manual_motion`, `omnisim_mount_guider`, `omnisim_camera_image`, `omnisim_camera_abort`, `omnisim_dome` / `_legacy`, `omnisim_lightbox`, `omnisim_switch`, `omnisim_weather`, `omnisim_safety` / `_legacy`. Each one adds the server, selects, attaches, connects, runs the operations on real time, disconnects, detaches and checks that the Alpaca device was disconnected (D5).
 - **Results:** 4 runs of 20 / 20 in a row (one through the script with `--dry-run`, three with `make`), about 236 s each; recorded run of 2026-10-03 02:21: **20 / 20 OK**.
@@ -871,7 +871,7 @@ Questions settled against OmniSim:
 - **Rotator TargetPosition:** OmniSim reports the mechanical target, without the sync offset, also for Move and MoveAbsolute; the standard defines it as the sky angle, so that is an OmniSim defect, which OMNI-2 makes the driver independent of.
 - **Dome AbortSlew while the shutter moves** leaves ShutterStatus Error; **HaltCover** leaves CoverState Unknown; both as our simulator models them.
 - **PulseGuide Duration=0** is accepted and ends a running pulse of the same axis only; negative durations are 0x401.
-- **MoveAxis** acts on the mechanical axes: a positive secondary rate raises the declination on pierEast and lowers it on pierWest, as our simulator models it and as the driver documents (open user decision, section 7.2).
+- **MoveAxis** acts on the mechanical axes: a positive secondary rate raises the declination on pierEast and lowers it on pierWest, on a northern and a southern site alike, and a positive primary rate moves west on both sides; the driver compensates the secondary axis (D13), checked by `omnisim_mount_manual_motion` on both sides and both hemispheres.
 - **Members of a later interface version** are answered with HTTP 200 and ErrorNumber 0x4FF ("requires Interface Version N"), not 400 or 0x400; the driver gates those members by interface version and never sends them.
 - **devicestate** content per type matches what the class modules read; the camera of OmniSim is ICameraV3 and has none.
 - **SafetyMonitor** answers IsSafe of a disconnected device with 0x407 (OMNI-3).
@@ -884,14 +884,14 @@ Simulator changes from this tier: the focuser keeps IsMoving for SettleTime afte
 
 **Review (WP12).** A subagent that wrote none of the code read the whole driver, its tests and its registration against `AGENTS.md`, `indigo_drivers/AGENTS.override.md`, `indigo_test/AGENTS.md`, `DRIVER_TESTING_RULES.md` and the Alpaca specification: 3 major, 22 minor and 3 style findings (REV-1 to REV-28), all by reading. Found sound: the HTTP client, the transport (casing, encoding, transaction ID, ErrorNumber before Value, no replay of non-idempotent PUTs), locale-independent numbers, the JSON parser (non-recursive, depth limit, bounded allocation, UTF-8), discovery and the proxy-loop filter, the lock order and that the device lock is never held across a request or a bus call, the ImageBytes path, the guider units, the formatting rules, `static` symbols (`nm`: no collision with `agent_alpaca` or other archives), the `PROPERTIES.md` names, the Xcode registration, and no OS-specific code in the driver. Nothing in section 2 was found to misread the specification.
 
-**Fixes (WP12b).** Every finding was first tried by a test. The sources before the fixes were frozen, and every regression case was run against the old driver with the new case headers, where it fails at the check of its defect (logs kept in the session scratchpad). Results per finding are in section 8. REV-7 (Sync does not switch tracking on) and the `MOUNT_MOTION_DEC` sense on pier side West are open decisions of the user and were not changed; REV-16 (the `" @ "` in proxy names) was examined but not changed (below).
+**Fixes (WP12b).** Every finding was first tried by a test. The sources before the fixes were frozen, and every regression case was run against the old driver with the new case headers, where it fails at the check of its defect (logs kept in the session scratchpad). Results per finding are in section 8. REV-7 (Sync does not switch tracking on) and the `MOUNT_MOTION_DEC` sense on pier side West were open decisions of the user and were not changed; REV-16 (the `" @ "` in proxy names) was examined but not changed (below). All three were decided on 2026-10-03 (D12, D13, D14).
 
 - **Platform 7 disconnect** (from the OmniSim tier): a user disconnect now waits, by a finalizer bounded by the establish timeout, until `Connecting` is false; `CONNECTION` stays BUSY meanwhile, a connect request is ignored and SHUTDOWN is refused. A timeout ends disconnected with ALERT. Transport loss, a failed connect and detach do not wait. Covered by `core_connect_disconnect_platform7` and `core_shutdown_with_connected_device`; against OmniSim the disconnect took 1.11 s.
 - **Simulator made stricter** (REV-25): a device-API PUT whose body is not `application/x-www-form-urlencoded` is HTTP 400 (`--any-content-type` restores the lenient behaviour), `--error-value` adds a Value to error replies as the ASCOM .NET servers do, and the fault `missing-transaction-id` exists. The whole suite runs against the strict content-type check.
 - **Harness:** queue introspection and gates, sequence helpers, message marks so that a message check can not match an older identical message, `sa_disconnect_after()`; the poll-versus-pending-request cases are ordered by conditions and sequence numbers instead of sleeps. About 70 `indigo_usleep` calls remain in negative checks ("nothing happens within 300 ms") that the review did not cite.
 - **Behaviour changes:** a switch named in a request is always sent, also when the cached value already equals it (REV-10; three assertions that encoded the defect were changed); a UniqueID in which a character was replaced gets a hash in its `X_ALPACA_DEVICES` key (REV-18), so a saved selection of such a device is lost once; the HTTP client rejects any transfer coding other than chunked (REV-17).
 - **`connect_timeout`** of `test_system_alpaca_http` is registered only where it can run, so the HTTP suite counts 43 on macOS instead of 44.
-- **REV-16:** `indigo_trim_local_service()` has no caller in the repository. A concrete problem exists in the routing of the bus (`indigo_bus.c`, `indigo_use_host_suffix` on by default): a request for the proxy "Focuser @ OmniSim" was also delivered to a device of a remote service named "Omni", because the match is a substring search, and would be forwarded as "Focuser". It needs `indigo_server` with a remote connection whose service name is a prefix of the Alpaca ServerName. Proposed fix: a separator without `@`, e.g. "Focuser [OmniSim]". Waiting for the user's decision.
+- **REV-16:** `indigo_trim_local_service()` has no caller in the repository. A concrete problem exists in the routing of the bus (`indigo_bus.c`, `indigo_use_host_suffix` on by default): a request for the proxy "Focuser @ OmniSim" was also delivered to a device of a remote service named "Omni", because the match is a substring search, and would be forwarded as "Focuser". It needs `indigo_server` with a remote connection whose service name is a prefix of the Alpaca ServerName. Decided by the user as D14 and implemented on 2026-10-03: proxies are named `"<DeviceName> on <ServerName>"` and every `@` of the names is replaced by `-`; `core_proxy_names_without_at` and `core_proxy_names_routing` show in-process that a request for a proxy no longer reaches a device named like a remote service.
 - **REV-15, CONFIG part:** the CONFIG state is written by the restore handler of the framework without a lock the driver could share; a stale read only defers work by 0.1 s. Not fixable in the driver (D10).
 
 Evidence (subagent, final sources):
@@ -906,6 +906,14 @@ Evidence (subagent, final sources):
 | `make -C indigo_test test-system-alpaca-omnisim` | 20 / 20, OmniSim 0.5.0 |
 
 **Recorded runs** (orchestrator, 2026-10-03): `python3 tools/run_driver_test.py system_alpaca` at 04:17, **297 / 297 OK** (254 + 43); `python3 tools/run_driver_test.py system_alpaca --hw --target test-system-alpaca-omnisim` at 04:18, **OmniSim 0.5.0 20 / 20 OK**. Both in `README.md` and `TEST_SUMMARY.md`.
+
+### 7.7 Decisions D13 and D14 (2026-10-03)
+
+- **D13, manual motion:** `mount_move_axis()` reads SideOfPier when a non-zero motion starts (a stop reads nothing; a failed read uses the side of the last poll; an unknown or unimplemented side gives no inversion) and inverts the secondary rate on pierWest. The primary axis is unchanged: `WEST` is a positive rate on both sides. Measured on OmniSim 0.5.0 with raw MoveAxis on sites at 48° and −30° latitude: a positive secondary rate raises the declination on pierEast and lowers it on pierWest in both hemispheres, a positive primary rate lowers RA on both sides. New case `mount_manual_motion_sense` (both sides reached by a sync of another client, both hemispheres, fallback of a failed read, no re-send of a running motion, a telescope without SideOfPier); `mount_manual_motion` and `omnisim_mount_manual_motion` assert the new sense. All three fail with the previous mount module.
+- **D14, names:** `"<DeviceName> on <ServerName>"`; every `@` of the two names is replaced by `-`, because the framework parses any `@` in a device name (bus routing by substring, the XML writer cuts at the last `@`, `indigo_filter.c` treats such a name as remote). The worst-case length is 125 bytes, below `INDIGO_NAME_SIZE`. New cases `core_proxy_names_without_at` and `core_proxy_names_routing` attach devices named like remote services (`"@ Omni"`, ...) and show that requests for the proxies no longer reach them, while a control request for the old name format does. The labels of the `X_ALPACA_DEVICES` items still read `"Name (Type) @ Server"`; they are labels and never routed.
+- Evidence (subagent): the suite 257 / 257 three times with `INDIGO_TEST_JOBS=4` and once with `=1`; ASan + UBSan and TSan of the whole suite without a report; strict build clean in our files; OmniSim tier 20 / 20.
+- **Recorded runs** (orchestrator, 2026-10-03): simulator at 09:55, **300 / 300 OK** (257 + 43); OmniSim 0.5.0 at 09:57, **20 / 20 OK**.
+- Limit: a real mount whose Alpaca driver already compensates the pier side, or mirrors the secondary axis differently from OmniSim, would move the wrong way on pierWest; the driver can not detect this.
 
 ## 8. Found defects
 
@@ -1065,6 +1073,15 @@ Decided by the user on 2026-10-01:
 | D9 | OmniSim is **not installed into the INDIGO project**. It is an extra application, installed by hand only on the machines where the driver is developed (section 4.1). It may be unpacked in `system_alpaca/system_alpaca_simulator/omnisim/`, which `.gitignore` keeps out of the remote repository. ConformU is **not relevant** for `system_alpaca`, because it tests the opposite (server) side; the ConformU round trip is dropped from the test strategy and from D7. |
 | D10 | **Minimise the impact on the framework and on other drivers; keep the changes in `indigo_drivers/system_alpaca/` wherever possible.** This supersedes the library placement in D2 and D3: the general JSON parser and the HTTP/1.1 client are driver-local modules (`indigo_system_alpaca_json.c/.h`, `indigo_system_alpaca_http.c/.h`), not additions to `indigo_libs/indigo_json.c` and `indigo_uni_io`. The driver uses the existing `indigo_uni_io` API as it is (`indigo_uni_discover()` and the connect timeout already exist from D8). The requirement of D2 that everything is covered by unit tests stands. Outside the driver folder only the unavoidable registration remains: tests and fixtures under `indigo_test/`, the root `Makefile` driver lists, `indigo.xcodeproj`, `indigo_docs/PROPERTIES.md`, and the status documents. The work runs on subagents from step S2 on (section 11). |
 
+Decided by the user on 2026-10-03:
+
+| ID | Decision |
+|---|---|
+| D11 | A filter wheel move is complete when `Position` is no longer −1; a move that ends in another slot than the requested one leaves `WHEEL_SLOT` in ALERT with the real slot (WHL-1). |
+| D12 | A sync on a telescope that does not track is sent as it is; the telescope refuses it and the client gets ALERT with its message. The driver does not switch tracking on for a sync (REV-7 stays as it is). |
+| D13 | `MOUNT_MOTION_DEC` is compensated for the pier side: `NORTH` always moves toward the north celestial pole, also on pier side West, where Alpaca MoveAxis on the mechanical axis moves the other way. |
+| D14 | Proxy devices are named `"<DeviceName> on <ServerName>"` instead of `"<DeviceName> @ <ServerName>"`, because `" @ "` is the remote-host separator of the bus (REV-16). |
+
 ## 10. Baseline
 
 This is a new driver, so there is no original implementation to build or test. No baseline build was run: the folder contains no sources, and `system_alpaca` is in `EXCLUDED_DRIVERS`.
@@ -1185,9 +1202,9 @@ The critical path is W0 → WP2 → WP5 → WP8 (the camera) → WP11/12.
 
 ## Final test summary
 
-State on 2026-10-03 after the fixes of the independent review; this summary is updated with every recorded run.
+State on 2026-10-03 after the decisions D11 to D14; this summary is updated with every recorded run.
 
-- Simulated tests: **297 run, 297 passed** in the recorded run of 2026-10-03 04:17 (`test_system_alpaca_simulator` 254, `test_system_alpaca_http` 43), plus the unit test `test_system_alpaca_json` 48 run, 48 passed, which the recording script does not count.
-- OmniSim tests: **20 run, 20 passed** in the recorded run of 2026-10-03 04:18 (OmniSim 0.5.0).
+- Simulated tests: **300 run, 300 passed** in the recorded run of 2026-10-03 09:55 (`test_system_alpaca_simulator` 257, `test_system_alpaca_http` 43), plus the unit test `test_system_alpaca_json` 48 run, 48 passed, which the recording script does not count.
+- OmniSim tests: **20 run, 20 passed** in the recorded run of 2026-10-03 09:57 (OmniSim 0.5.0).
 - Hardware tests: 0 run, 0 passed (decision D6).
 - The OmniSim and ConformU runs from the research phase (subagent, linux-x64 container, outside the repository) were exploratory tool probes. They are not driver tests and are not counted.
