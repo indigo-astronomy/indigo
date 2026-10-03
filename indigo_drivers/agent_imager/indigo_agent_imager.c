@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0300003F
+#define DRIVER_VERSION 0x03000040
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -70,7 +70,7 @@
 #define AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+3)
 #define AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+4)
 #define AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM  				(AGENT_IMAGER_FOCUS_PROPERTY->items+5)
-#define AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+6)
+#define AGENT_IMAGER_FOCUS_BAHTINOV_ANGLE_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+6)
 #define AGENT_IMAGER_FOCUS_BRACKETING_STEP_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+7)
 #define AGENT_IMAGER_FOCUS_BACKLASH_ITEM     				(AGENT_IMAGER_FOCUS_PROPERTY->items+8)
 #define AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM  (AGENT_IMAGER_FOCUS_PROPERTY->items+9)
@@ -220,6 +220,7 @@
 #define GRID	32
 
 #define MAX_BAHTINOV_FRAME_SIZE 500
+#define BAHTINOV_LEARN_CONFIDENCE 1.5
 
 #define TO_MB(x) ((x) / (1024.0 * 1024.0))
 
@@ -294,6 +295,7 @@ typedef struct {
 	bool use_hfd_estimator;
 	bool use_rms_estimator;
 	bool use_bahtinov_estimator;
+	double bahtinov_mask_angle[2];
 	bool use_ucurve_focusing;
 	bool use_iterative_focusing;
 	bool use_aux_1;
@@ -922,6 +924,40 @@ static void restore_subframe(indigo_device *device) {
 	}
 }
 
+// Bahtinov focus error with the configured mask angle, the learned mask angle or a free angle search. A confident free search
+// result (re)defines the learned angle, so a changed mask is picked up when the learned angle stops matching.
+static double bahtinov_focus_error(indigo_device *device, indigo_raw_header *header) {
+	void *data = (char *)header + sizeof(indigo_raw_header);
+	double configured[2] = { -AGENT_IMAGER_FOCUS_BAHTINOV_ANGLE_ITEM->number.value, AGENT_IMAGER_FOCUS_BAHTINOV_ANGLE_ITEM->number.value };
+	double *learned = DEVICE_PRIVATE_DATA->bahtinov_mask_angle;
+	double *mask_angle = configured[1] > 0 ? configured : (learned[1] > 0 ? learned : NULL);
+	indigo_bahtinov_result result;
+	bool found = mask_angle != NULL && indigo_bahtinov_analyze(header->signature, data, header->width, header->height, mask_angle, &result);
+	if (!found && configured[1] <= 0) {
+		found = indigo_bahtinov_analyze(header->signature, data, header->width, header->height, NULL, &result);
+		if (found && mask_angle != NULL && result.confidence < BAHTINOV_LEARN_CONFIDENCE) {
+			found = false;
+		}
+		if (found && result.confidence >= BAHTINOV_LEARN_CONFIDENCE && (fabs(result.angle[0] - learned[0]) > 0.5 || fabs(result.angle[1] - learned[1]) > 0.5)) {
+			learned[0] = result.angle[0];
+			learned[1] = result.angle[1];
+			indigo_send_message(device, BUSY_PROPERTY, "Bahtinov mask angle detected: %.2f° / %.2f°", learned[0], learned[1]);
+		}
+	}
+	AGENT_IMAGER_SPIKE_1_RHO_ITEM->number.value = found ? result.rho[0] : 0;
+	AGENT_IMAGER_SPIKE_1_THETA_ITEM->number.value = found ? result.theta[0] : 0;
+	AGENT_IMAGER_SPIKE_2_RHO_ITEM->number.value = found ? result.rho[1] : 0;
+	AGENT_IMAGER_SPIKE_2_THETA_ITEM->number.value = found ? result.theta[1] : 0;
+	AGENT_IMAGER_SPIKE_3_RHO_ITEM->number.value = found ? result.rho[2] : 0;
+	AGENT_IMAGER_SPIKE_3_THETA_ITEM->number.value = found ? result.theta[2] : 0;
+	if (found) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bahtinov focus error %+.3fpx, outer spikes %.2f° / %.2f°, SNR %.1f / %.1f / %.1f, confidence %.2f", result.error, result.angle[0], result.angle[1], result.snr[0], result.snr[1], result.snr[2], result.confidence);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bahtinov pattern not found");
+	}
+	return found ? fabs(result.error) : -1;
+}
+
 static bool capture_and_process_frame(indigo_device *device, uint8_t **saturation_mask) {
 	if (!capture_frame(device)) {
 		return false;
@@ -999,7 +1035,7 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 		} else if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator) {
 			if (header->width <= MAX_BAHTINOV_FRAME_SIZE && header->height <= MAX_BAHTINOV_FRAME_SIZE) {
 				AGENT_IMAGER_STATS_FOCUS_POSITION_ITEM->number.value = DEVICE_PRIVATE_DATA->focuser_position;
-				AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = indigo_bahtinov_error(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height, AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_THETA_ITEM->number.value);
+				AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = bahtinov_focus_error(device, header);
 			} else {
 				AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = -1;
 			}
@@ -2596,7 +2632,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM, AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM_NAME, "Iterative final step", 1, 0xFFFF, 1, 5);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM, AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM_NAME, "U-Curve fitting samples", 6, MAX_UCURVE_SAMPLES, 1, 10);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM, AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM_NAME, "U-Curve sample step", 1, 0xFFFF, 1, 20);
-		indigo_init_number_item(AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM, AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM_NAME, "Bahtinov sigma", 0, 3, 0, 0.15);
+		indigo_init_number_item(AGENT_IMAGER_FOCUS_BAHTINOV_ANGLE_ITEM, AGENT_IMAGER_FOCUS_BAHTINOV_ANGLE_ITEM_NAME, "Bahtinov mask angle (0 = learn)", 0, 45, 0.1, 0);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BRACKETING_STEP_ITEM, AGENT_IMAGER_FOCUS_BRACKETING_STEP_ITEM_NAME, "Bracketing step", -0xFFFF, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_ITEM_NAME, "Backlash", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM_NAME, "Backlash overshoot factor (1 disabled)", 1, 3, 0.5, 1);

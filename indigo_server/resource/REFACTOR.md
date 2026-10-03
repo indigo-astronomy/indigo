@@ -484,7 +484,7 @@ Visibility should then follow the selected estimator:
 - `U_CURVE`: show `AGENT_IMAGER_SELECTION.COUNT` and `AGENT_IMAGER_SELECTION.RADIUS`; show `AGENT_IMAGER_SELECTION.SUBFRAME` only when `COUNT == 1`; show `U_CURVE_SAMPLES` and `U_CURVE_STEP`
 - `HFD_PEAK`: show `AGENT_IMAGER_SELECTION.RADIUS`, `AGENT_IMAGER_SELECTION.SUBFRAME`, `ITERATIVE_INITIAL`, and `ITERATIVE_FINAL`
 - `RMS_CONTRAST`: show `ITERATIVE_INITIAL` and `ITERATIVE_FINAL`
-- `BAHTINOV`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, and `BAHTINOV_SIGMA`
+- `BAHTINOV`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, and `BAHTINOV_ANGLE`
 - For any selected estimator, show shared autofocus controls `BACKLASH` and `BACKLASH_OVERSHOOT_FACTOR` immediately after the focus-estimator selector
 
 Use labeled menu values for automatic subframing: `Off`, `1x`, `2x`, `3x`, `4x`, and `5x`. If the visible edit controls end on a half row, insert a row break before the read-only focuser values so `POSITION`, `TEMPERATURE`, `COMPENSATION`, and focus quality can sit together on one row. Focus quality comes from `AGENT_IMAGER_STATS`: `HFD` for `U_CURVE` and `HFD_PEAK`, `RMS_CONTRAST` for `RMS_CONTRAST`, and `BAHTINOV_ERROR` for `BAHTINOV`.

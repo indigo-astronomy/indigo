@@ -163,8 +163,32 @@ INDIGO_EXTERN indigo_result indigo_update_saturation_mask(indigo_raw_type raw_ty
 INDIGO_EXTERN indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data, double *psf_min, double *psf_max, double *corners);
 
 // Bahtinov images analysis related
+
+/** Result of a Bahtinov mask pattern analysis.
+ */
+typedef struct {
+	double error;				///< signed focus error in pixels: distance of the outer spikes crossing from the central spike
+	double rho[3];			///< spikes in normal form x * cos(theta) + y * sin(theta) = rho in pixel index coordinates, [0] is the central spike
+	double theta[3];		///< spike angles in radians, in range [0, pi)
+	double angle[2];		///< outer spike angles relative to the central spike in degrees ([0] negative, [1] positive)
+	double snr[3];			///< signal to noise ratios of the central and the outer spikes
+	double confidence;	///< ratio of the best and the best competing outer spike pair (free angle search only, 0 otherwise)
+} indigo_bahtinov_result;
+
 INDIGO_EXTERN uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int width, const int height, double sigma);
 INDIGO_EXTERN void indigo_skeletonize(uint8_t* data, int width, int height);
+
+/** Analyze an image of a star seen through a Bahtinov mask.
+ *  Works with broadband images (continuous spikes), narrowband images (dotted spikes) and undebayered frames.
+ *  mask_angle - known outer spike angles relative to the central spike in degrees (e.g. { -12.6, 12.7 }) or NULL to search all angles.
+ *  A known angle makes faint and narrowband patterns measurable, but a wrong angle is not always detected and gives wrong results.
+ *  Returns false if no reliable pattern was found.
+ */
+INDIGO_EXTERN bool indigo_bahtinov_analyze(indigo_raw_type raw_type, const void *data, const int width, const int height, const double *mask_angle, indigo_bahtinov_result *result);
+
+/** Compatibility wrapper of indigo_bahtinov_analyze() with free angle search, sigma is ignored.
+ *  Returns the absolute focus error in pixels or -1 if no reliable pattern was found.
+ */
 INDIGO_EXTERN double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double sigma, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3);
 
 #ifdef __cplusplus

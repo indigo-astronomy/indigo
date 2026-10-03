@@ -587,7 +587,7 @@ Source: `indigo_drivers/agent_guider/indigo_agent_guider.c`.
 | FILTER_AUX_1_LIST | switch | no | device name | Exposes the common AUX #1 selector as an external shutter. |
 | FILTER_RELATED_AGENT_LIST | switch | no | agent name | Exposes the common related-agent selector. |
 | AGENT_IMAGER_BATCH | number | no | COUNT, EXPOSURE, DELAY, FRAMES_TO_SKIP_BEFORE_DITHER, PAUSE_AFTER_TRANSIT | Imaging batch settings. |
-| AGENT_IMAGER_FOCUS | number | no | INITIAL, FINAL, ITERATIVE_INITIAL, ITERATIVE_FINAL, U_CURVE_SAMPLES, U_CURVE_STEP, BAHTINOV_SIGMA, BRACKETING_STEP, BACKLASH, BACKLASH_OVERSHOOT_FACTOR, STACK, REPEAT, DELAY | Autofocus settings. |
+| AGENT_IMAGER_FOCUS | number | no | INITIAL, FINAL, ITERATIVE_INITIAL, ITERATIVE_FINAL, U_CURVE_SAMPLES, U_CURVE_STEP, BAHTINOV_ANGLE, BRACKETING_STEP, BACKLASH, BACKLASH_OVERSHOOT_FACTOR, STACK, REPEAT, DELAY | Autofocus settings. |
 | AGENT_IMAGER_FOCUS_FAILURE | switch | no | STOP, RESTORE | Action on autofocus failure. |
 | AGENT_IMAGER_FOCUS_ESTIMATOR | switch | no | U_CURVE, HFD_PEAK, RMS_CONTRAST, BAHTINOV | Autofocus estimator selection. |
 | AGENT_IMAGER_CAPTURE | number | no | CAPTURE | Capture trigger/control value. |

@@ -47,7 +47,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_uni_io \
 	$(UNIT_BUILD)/test_system_alpaca_json \
-	$(UNIT_BUILD)/test_raw_image
+	$(UNIT_BUILD)/test_raw_image \
+	$(UNIT_BUILD)/test_bahtinov
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qsi_sdk \
@@ -373,6 +374,9 @@ $(UNIT_BUILD)/test_token: unit/test_token.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_bahtinov: unit/test_bahtinov.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_base64: unit/test_base64.c test_runner.h | $(UNIT_BUILD)

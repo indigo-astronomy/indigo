@@ -4932,6 +4932,7 @@
 		59FA7BE4301D2E9700A35CFB /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
 		59FA7BE6301D35FD00A35CFB /* test_bus_property.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_bus_property.c; sourceTree = "<group>"; };
 		59FA7BE7301D35FD00A35CFB /* test_raw_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_raw_image.c; sourceTree = "<group>"; };
+		E6B7A18DF9F2AC278C15028B /* test_bahtinov.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_bahtinov.c; sourceTree = "<group>"; };
 		59FA7BE8301D35FD00A35CFB /* test_token.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_token.c; sourceTree = "<group>"; };
 		59FA7BEA301D360C00A35CFB /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59FA7BEB301D360C00A35CFB /* test_runner.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = test_runner.h; sourceTree = "<group>"; };
@@ -14160,6 +14161,7 @@
 				59FA7BF1301D386600A35CFB /* test_polynomial_fit.c */,
 				59FA7BE6301D35FD00A35CFB /* test_bus_property.c */,
 				59FA7BE7301D35FD00A35CFB /* test_raw_image.c */,
+				E6B7A18DF9F2AC278C15028B /* test_bahtinov.c */,
 				59FA7BE8301D35FD00A35CFB /* test_token.c */,
 				DF10000000000000000005 /* test_uni_io.c */,
 				C0DE20261001A10000000023 /* test_system_alpaca_json.c */,

@@ -11,7 +11,8 @@ Status: hardware-free validation of the Imager Agent alone, of its cooperation w
 
 ## Tests
 
-- `integration/test_agent_imager.c` (39 cases): the agent alone with the CCD simulator and stub peers for guider, mount, solver and external shutter.
+- `integration/test_agent_imager.c` (40 cases): the agent alone with the CCD simulator and stub peers for guider, mount, solver and external shutter. `bahtinov preview and focus` covers the Bahtinov estimator with a learned mask angle, `bahtinov configured mask angle` (new) covers a configured `BAHTINOV_ANGLE` and the published spike lines.
+- `unit/test_bahtinov.c` (12 cases, new): `indigo_bahtinov_analyze()` on synthetic patterns with known geometry - broadband, narrowband (dotted), vertical, horizontal and oblique patterns, undebayered mosaic, MONO8/RGB24 input, known and searched mask angle, rejection of frames without a star or without a mask, and the `indigo_bahtinov_error()` compatibility wrapper.
 - `integration/test_agent_imager_guider_mount.c` (8 cases, new): the production Imager, Guider and Mount agents with the CCD simulator (imager camera, guider camera and guide output) and the mount simulator on one in-process bus with strict bus locking. Covers the dithering handshake during a guided batch, dither cadence (`FRAMES_TO_SKIP_BEFORE_DITHER`, `DITHER_AFTER_LAST_FRAME`), aborting the imager or the guider while dithering, dither requests without guiding, and the Mount Agent stopping imager and guider processes on slew and park, including a withdrawn `ABORT_RELATED_PROCESS.IMAGER` permission.
 - `integration/test_agent_imager_instances.c` (6 cases, new): three instances on three simulator cameras. Covers barrier lockstep with different exposure times (every frame starts on all cameras within 0.5 s and after the previous frame ended everywhere), abort propagation from the leader, a member aborting while the others wait at the barrier (`IMG-1`), leader-only dithering through the production Guider Agent with PRE_CAPTURE and with POST_CAPTURE + PRE_CAPTURE barriers without any member exposure overlapping a dither (`IMG-2`), and independent instances not interfering.
 - Both new suites fork every case, give it a private HOME through `indigo_test_use_private_home()` and link the production driver archives. The cooperation suite also passed under AddressSanitizer with the agents and simulators compiled from source.
@@ -24,6 +25,14 @@ Status: hardware-free validation of the Imager Agent alone, of its cooperation w
 - `DRIVER_VERSION` raised from `0x0300003B` to `0x0300003D`.
 - `IMG-3` (reproduced, production, 2026-09-27): a follow-up of the `IMG-1` fix. The aborted exposure batch cleared `AGENT_ABORT_PROCESS` before it moved `AGENT_START_PROCESS` out of BUSY; a barrier member whose ALERT arrived in between made `snoop_barrier_state()` see the batch still running with no abort pending, so it set `AGENT_ABORT_PROCESS` BUSY again and aborted a batch that had already ended, and nothing cleared it. Seen as the intermittent `additional instances and barrier` failure (1 of 10 runs, also in the recorded macOS run). Fix: the batch sets its final `AGENT_START_PROCESS` state before it clears the abort. Regression: `additional instances and barrier` now delivers the member's ALERT inside the leader's `AGENT_ABORT_PROCESS` OK publication and checks that the abort stays OK (5 of 5 runs failed before the fix, 10 of 10 passed after). `DRIVER_VERSION` raised to `0x0300003E`.
 
+## Bahtinov estimator rework (2026-10-03)
+
+- The Bahtinov estimator failed on real frames: the binarize/skeletonize/Hough pipeline assumed a black noise-free background (default sigma 0.15 rejected every real frame as "too many bright pixels"), the parallel thinning broke thick spikes into fragments, the outer spikes had to be 15-40 deg from the central one (real masks have e.g. 12.6 deg) and near-vertical spikes produced NaN in the slope-intercept intersection.
+- `indigo_bahtinov_analyze()` (indigo_raw_utils) replaces it: matched line filter with side bands, central spike subtraction before the outer spike search, matched filter weights from the central spike radial profile (narrowband dots of all gratings are at the same radii), symmetric pair selection with an ambiguity check, optional known mask angle. `indigo_bahtinov_error()` keeps its signature, `sigma` is ignored.
+- `AGENT_IMAGER_FOCUS.BAHTINOV_SIGMA` is replaced by `BAHTINOV_ANGLE` (0 = learn): the agent uses the configured angle, otherwise an angle learned from the first confident frame (reported in a message), and falls back to a free search when the learned angle stops matching.
+- Validated offline on 47 real frames of a Poseidon-C PRO with a Bahtinov mask (no filter, L-Pro, Ha+OIII, SII+OIII, 10 focuser steps apart): with the mask angle known all 43 frames with a mask pattern were measured and the error was linear in the focuser position (rms 0.09-0.58 px, 0.11 px per step), the frame without a mask and a frame without the star were rejected. These frames are not part of the repository.
+- `DRIVER_VERSION` raised from `0x0300003F` to `0x03000040`.
+
 ## Environment and limitations
 
 - Linux x86_64 (Ubuntu, GNU ld 2.42), simulator only. macOS, Windows and ARM were not run in this session.
@@ -31,6 +40,10 @@ Status: hardware-free validation of the Imager Agent alone, of its cooperation w
 
 ## Final test summary
 
-- Simulated tests: 55 run, 55 passed (39 + 10 + 6) on macOS arm64 with `0x0300003E` through
-  `tools/run_driver_test.py agent_imager --no-record`. Earlier: 53 run, 53 passed (39 + 8 + 6).
+- Simulated tests: 56 run, 55 passed (40 + 9/10 + 6) on macOS arm64 with `0x03000040` through
+  `tools/run_driver_test.py agent_imager --no-record`, plus `unit/test_bahtinov` 12/12. The failed case was
+  `mount slew aborts imager and guider` in `test_agent_imager_guider_mount`: guider calibration in `start_guiding()` timed out.
+  It is intermittent and not caused by the Bahtinov change: five reruns gave 8/10, 10/10, 10/10, 10/10, 10/10 and the
+  unchanged sources (`0x0300003F`) gave 7/10 (the same two mount cases and `dither cadence skip and after last frame`) and 10/10.
+- Earlier: 55 run, 55 passed (39 + 10 + 6) with `0x0300003E`; 53 run, 53 passed (39 + 8 + 6).
 - Hardware tests: 0 run, 0 passed.

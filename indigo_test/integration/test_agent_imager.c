@@ -965,6 +965,26 @@ static void bahtinov_preview_and_focus(void) {
 	ASSERT_TRUE(run("FOCUSING", INDIGO_OK_STATE));
 }
 
+static void bahtinov_configured_mask_angle(void) {
+	ASSERT_TRUE(sw(AGENT, "FILTER_CCD_LIST", BAHTINOV, true, INDIGO_OK_STATE));
+	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "EXPOSURE", 0.1));
+	ASSERT_TRUE(sw(AGENT, "AGENT_IMAGER_FOCUS_ESTIMATOR", "BAHTINOV", true, INDIGO_OK_STATE));
+	// the simulator mask has its outer spikes 20.1 deg from the central spike
+	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_FOCUS", AGENT_IMAGER_FOCUS_BAHTINOV_ANGLE_ITEM_NAME, 20.1));
+	bool ok = run("PREVIEW_1", INDIGO_OK_STATE);
+	double error = value(AGENT, "AGENT_IMAGER_STATS", AGENT_IMAGER_STATS_BAHTINOV_ITEM_NAME);
+	double theta1 = value(AGENT, "AGENT_IMAGER_SPIKES", AGENT_IMAGER_SPIKE_1_THETA_ITEM_NAME), theta2 = value(AGENT, "AGENT_IMAGER_SPIKES", AGENT_IMAGER_SPIKE_2_THETA_ITEM_NAME), theta3 = value(AGENT, "AGENT_IMAGER_SPIKES", AGENT_IMAGER_SPIKE_3_THETA_ITEM_NAME);
+	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_FOCUS", AGENT_IMAGER_FOCUS_BAHTINOV_ANGLE_ITEM_NAME, 0));
+	ASSERT_TRUE(ok);
+	ASSERT_TRUE(error >= 0);
+	// outer spikes are published at the configured angle on either side of the central spike
+	double delta2 = fabs(theta2 - theta1) * 180 / M_PI, delta3 = fabs(theta3 - theta1) * 180 / M_PI;
+	delta2 = delta2 > 90 ? 180 - delta2 : delta2;
+	delta3 = delta3 > 90 ? 180 - delta3 : delta3;
+	ASSERT_TRUE(fabs(delta2 - 20.1) < 0.6);
+	ASSERT_TRUE(fabs(delta3 - 20.1) < 0.6);
+}
+
 static void configuration_reload(void) {
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_BATCH", "COUNT", 7));
 	ASSERT_TRUE(num(AGENT, "AGENT_IMAGER_FOCUS", "ITERATIVE_INITIAL", 27));
@@ -1359,6 +1379,7 @@ static const indigo_test_case tests[] = {
 	{ "additional instance lifecycle", additional_instance_lifecycle },
 	{ "additional instance removal during publication", additional_instance_removal_during_publication },
 	{ "bahtinov preview and focus", bahtinov_preview_and_focus },
+	{ "bahtinov configured mask angle", bahtinov_configured_mask_angle },
 	{ "configuration reload", configuration_reload },
 	{ "shutdown while paused", shutdown_while_paused },
 	{ "camera disconnect and recover", camera_disconnect_and_recover },
