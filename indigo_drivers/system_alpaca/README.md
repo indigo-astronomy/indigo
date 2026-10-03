@@ -58,5 +58,5 @@ Driver is developed and tested with simulators only:
 ## Testing
 
 2026-10-03 16:16 3.0.0.1 linux arm64 simulator 309/309 OK
-2026-10-03 19:02 3.0.0.1 mac arm64 simulator 312/312 OK
 2026-10-03 19:04 3.0.0.1 mac arm64 OmniSim 0.5.0 20/20 OK
+2026-10-03 19:20 3.0.0.1 mac arm64 simulator 312/312 OK

@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include <indigo/indigo_driver.h>
+#include <indigo/indigo_timer.h>
 
 #include "indigo_system_alpaca_http.h"
 
@@ -829,6 +830,8 @@ static alpaca_http_result alpaca_http_exchange_run(alpaca_http_exchange *exchang
 
 static alpaca_http_result alpaca_http_request(alpaca_http_connection *connection, const char *method, bool replayable, const char *path, const char *query, const char *form, const alpaca_http_options *options, alpaca_http_response *response) {
 	static const alpaca_http_options default_options = { 0 };
+	// A network request takes as long as the server needs; the handler queue task that makes it has no run time limit.
+	indigo_set_handler_max_run_time(0);
 	if (connection == NULL || response == NULL || path == NULL) {
 		return ALPACA_HTTP_INVALID_REQUEST;
 	}

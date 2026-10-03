@@ -1973,6 +1973,8 @@ static bool discovery_callback(const char *responder, int responder_port, const 
 // Send the discovery request: to the targets of X_ALPACA_DISCOVERY_TARGETS if there are any, otherwise as a broadcast on every
 // interface and on the loopback network, and collect the endpoints (address of the responder and AlpacaPort) that answered.
 static void bridge_discover(void) {
+	// The UDP discovery waits for replies for polls * timeout, the handler queue task has no run time limit.
+	indigo_set_handler_max_run_time(0);
 	int port = (int)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_PORT_ITEM);
 	int polls = (int)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_POLLS_ITEM);
 	long timeout = (long)bridge_setting(X_ALPACA_DISCOVERY_SETTINGS_TIMEOUT_ITEM) * 1000;
