@@ -271,3 +271,13 @@ Found by `test_agent_astrometry_solver`: a sync to wrong coordinates, meant as a
 Tests: `mount_shares_pointing_and_follows_guide_pulses` now slews to 3 h/30°, syncs to 3.2 h/31° and checks the shared pointing stays at 3 h/30° while the reported coordinates follow the sync; `guider_pulse_survives_previous_finalizer` and `test_ccd_simulator` leave the park position by a GOTO instead of a sync.
 
 Validation on macOS arm64: `test_mount_simulator`, `test_ccd_simulator`, `test_agent_imager_guider_mount` 10/10, `test_agent_scripting_sequencer` 26/26 and `test_detach_abort` passed. Hardware 0 run / 0 passed.
+
+## Alignment model frozen during a slew (issue #129)
+
+Framework fix, no driver change and no version bump. `indigo_mount_change_property()` served `MOUNT_ALIGNMENT_MODE`, `MOUNT_ALIGNMENT_SELECT_POINTS`, `MOUNT_ALIGNMENT_DELETE_POINTS` and `MOUNT_ALIGNMENT_RESET` while a slew was running. Each of them changes the model that translates the target of that slew to raw coordinates, recomputes the reported target and publishes `MOUNT_EQUATORIAL_COORDINATES` as OK, so the slew ended early and elsewhere. All four are now refused with ALERT while `MOUNT_EQUATORIAL_COORDINATES` is BUSY.
+
+Tests: `mount_alignment_model_is_frozen_during_slew` creates one alignment point in the nearest-point mode, starts a slew, sends all four requests into it and checks that each is refused, the point, its selection and the mode are unchanged, the slew reaches its target, and the deletion is served once the mount is idle. Against the library before the fix the case failed at the first refusal; that run was made with its first version, which used fixed coordinates, and was not repeated after the geometry was derived from the simulator's position. `main()` now runs in a private home, because a sync outside the controller mode saves the alignment points to the configuration folder.
+
+Not covered: a request that arrives in the few statements between the generated handler prologue, which sets the state to OK, and the handler setting it to BUSY again is not refused. The case waits for the first reported motion before it sends its requests for that reason.
+
+Validation on macOS arm64: the new case 25/25 in isolation, `test_mount_simulator` 20/20 through `tools/run_driver_test.py`. Hardware 0 run / 0 passed.

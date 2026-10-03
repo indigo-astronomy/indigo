@@ -490,6 +490,66 @@ cleanup:
 	stop_serial_driver(&mount_simulator);
 }
 
+static int alignment_point_count(void) {
+	indigo_property *property = find_cached_property(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
+	return property == NULL ? 0 : property->count;
+}
+
+static bool wait_for_alignment_point_count(int count) {
+	for (int i = 0; i < 100; i++) {
+		if (alignment_point_count() == count) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// Issue #129: the alignment model translates the target of a running slew, so deleting, deselecting or resetting
+// alignment points or switching the alignment mode under it moved the end position and ended the slew early.
+static void mount_alignment_model_is_frozen_during_slew(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	unsigned int revision = property_revision(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// the unparked simulator rests at the pole at the current LST, so the alignment point and the target are derived from
+	// where it is: a small sync offset and a slew away from the pole, long enough to send every request into it
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	double target_ra = fmod(ra + 3, 24);
+	double target_dec = dec - 16;
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(fmod(ra + 0.1, 24), dec - 1));
+	SERIAL_CHECK_TRUE(wait_for_alignment_point_count(1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(target_ra, target_dec));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	// BUSY is published when the request is accepted, before the queued handler starts the slew; the first reported
+	// motion proves the handler is past its start, where the state is briefly not BUSY inside the driver
+	SERIAL_CHECK_TRUE(wait_for_mount_coordinate_change(fmod(ra + 0.1, 24), dec - 1));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, "0"));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME, "0"));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME));
+	// the refusals count only if the slew they were sent into is still running
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(1, alignment_point_count());
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME, "0")->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, target_ra, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, target_dec, 0.001));
+	// the same request is served once the mount is idle, which also leaves no alignment point behind for the other cases
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_alignment_point_count(0));
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
 static void mount_abort_allows_fresh_goto(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
@@ -1088,6 +1148,7 @@ int main(void) {
 		{ "mount_manual_motion_disconnect", mount_manual_motion_disconnect },
 		{ "mount_goto_runs_on_queue_and_rejects_overlap", mount_goto_runs_on_queue_and_rejects_overlap },
 		{ "mount_abort_allows_fresh_goto", mount_abort_allows_fresh_goto },
+		{ "mount_alignment_model_is_frozen_during_slew", mount_alignment_model_is_frozen_during_slew },
 		{ "mount_park_home_and_parked_guards", mount_park_home_and_parked_guards },
 		{ "mount_manual_axes_reverse_and_abort", mount_manual_axes_reverse_and_abort },
 		{ "mount_supports_all_rate_modes", mount_supports_all_rate_modes },
@@ -1101,7 +1162,13 @@ int main(void) {
 		{ "mount_guider_exposes_expected_properties", mount_guider_exposes_expected_properties },
 		{ "mount_guider_passes_guider_compliance_checks", mount_guider_passes_guider_compliance_checks }
 	};
-	return indigo_run_tests("mount simulator integration tests", tests, ARRAY_SIZE(tests));
+	// a sync in an alignment mode other than the controller's saves the alignment points to the configuration folder
+	if (!indigo_test_use_private_home()) {
+		return 1;
+	}
+	int result = indigo_run_tests("mount simulator integration tests", tests, ARRAY_SIZE(tests));
+	indigo_test_remove_private_home();
+	return result;
 }
 
 #else
