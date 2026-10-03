@@ -103,14 +103,22 @@ static void serial_simulator_trace_line(bool trace, const char *prefix, const ch
 }
 
 static bool serial_simulator_write_all(int fd, const char *buffer, size_t length) {
+	// A PTY holds about 1 kB, so a longer reply on a non-blocking descriptor has to wait for the
+	// reader instead of being cut short; the wait is bounded so a reader that is gone ends it.
+	int retries = 0;
 	while (length > 0) {
 		ssize_t written = write(fd, buffer, length);
 		if (written < 0) {
 			if (errno == EINTR) {
 				continue;
 			}
+			if ((errno == EAGAIN || errno == EWOULDBLOCK) && retries++ < 2000) {
+				usleep(1000);
+				continue;
+			}
 			return false;
 		}
+		retries = 0;
 		buffer += written;
 		length -= (size_t)written;
 	}
