@@ -50,7 +50,7 @@ uninstall: status
 	rm -f $(INSTALL_LIB)/libindigo_client.a
 
 clean: status
-	rm -f *.o *.orig $(BUILD_LIB)/libindigo_client.*
+	rm -f *.o *.d *.orig $(BUILD_LIB)/libindigo_client.*
 
 clean-all: status
 	git clean -dfx
@@ -77,8 +77,18 @@ LIBINDIGO_CLIENT_SRCS := \
 
 LIBINDIGO_CLIENT_FILES := $(LIBINDIGO_CLIENT_SRCS:.c=.o)
 
-%.o: ../%.c
-	$(CC) $(CFLAGS) -DINDIGO_CLIENT -c $< -o $@
+# -MD records the included headers in a .d file next to each object, so a header change rebuilds
+# the objects too (-MMD would skip them, the indigo headers come via -isystem). A missing .d (an
+# object built before this rule) forces one rebuild. The touch keeps the object newer than its .d.
+LIBINDIGO_CLIENT_DEPS := $(LIBINDIGO_CLIENT_SRCS:.c=.d)
+
+%.o: ../%.c %.d
+	$(CC) $(CFLAGS) -DINDIGO_CLIENT -MD -MP -c $< -o $@
+	@touch $@
+
+$(LIBINDIGO_CLIENT_DEPS):
+
+-include $(LIBINDIGO_CLIENT_DEPS)
 
 libindigo_client: $(BUILD_LIB)/libindigo_client.a $(BUILD_LIB)/libindigo_client.$(SOEXT)
 

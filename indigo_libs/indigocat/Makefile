@@ -1,6 +1,7 @@
 include ../../Makefile.inc
 
 LIBINDIGOCAT_FILES = $(addsuffix .o, $(basename $(wildcard *.c)))
+LIBINDIGOCAT_DEPS = $(LIBINDIGOCAT_FILES:.o=.d)
 
 .PHONY: all clean
 
@@ -25,5 +26,16 @@ $(BUILD_LIB)/libindigocat.a: $(LIBINDIGOCAT_FILES)
 $(BUILD_LIB)/libindigocat.$(SOEXT): $(LIBINDIGOCAT_FILES)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -ldl -lusb-1.0 -lz -lstdc++
 
+# -MD records the included headers in a .d file next to each object, so a header change rebuilds
+# the objects too (-MMD would skip them, the indigo headers come via -isystem). A missing .d (an
+# object built before this rule) forces one rebuild. The touch keeps the object newer than its .d.
+%.o: %.c %.d
+	$(CC) $(CFLAGS) -MD -MP -c $< -o $@
+	@touch $@
+
+$(LIBINDIGOCAT_DEPS):
+
+-include $(LIBINDIGOCAT_DEPS)
+
 clean:
-	rm -f *.o *.orig $(BUILD_LIB)/libindigocat.*
+	rm -f *.o *.d *.orig $(BUILD_LIB)/libindigocat.*

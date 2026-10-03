@@ -1,5 +1,7 @@
 **/*.orig
 **/*.o
+indigo_libs/indigo_client/*.d
+indigo_libs/indigocat/*.d
 **/.hg
 **/.hgignore
 **/.DS_Store
