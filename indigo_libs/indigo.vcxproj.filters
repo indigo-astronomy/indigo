@@ -445,6 +445,9 @@
     <ClCompile Include="indigo_raw_utils.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
+    <ClCompile Include="indigo_bahtinov.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
     <ClCompile Include="indigo_polynomial_fit.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
@@ -709,6 +712,9 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="indigo\indigo_raw_utils.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="indigo\indigo_bahtinov.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="indigo\indigo_polynomial_fit.h">

@@ -48,6 +48,7 @@
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_raw_utils.h>
+#include <indigo/indigo_bahtinov.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_polynomial_fit.h>
 
