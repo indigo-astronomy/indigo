@@ -308,7 +308,7 @@
 |  | 2026-09-27 12:23 | 3.0.0.21 | linux x64 | simulator | 18 / 18 | ✅ OK |
 |  | 2026-09-27 23:07 | 3.0.0.21 | mac arm64 | simulator | 18 / 18 | ✅ OK |
 | mount_simulator | 2026-09-26 22:40 | 3.0.0.23 | linux x64 | simulator | 19 / 19 | ✅ OK |
-|  | 2026-10-04 11:04 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
+|  | 2026-10-04 11:19 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-10-04 11:15 | 3.0.0.24 | mac arm64 | simulator | 20 / 20 | ✅ OK |
 | mount_starbook | 2026-09-27 12:08 | 3.0.0.11 | linux x64 | simulator | 13 / 13 | ✅ OK |
 |  | 2026-09-27 23:08 | 3.0.0.11 | mac arm64 | simulator | 13 / 13 | ✅ OK |
@@ -316,7 +316,7 @@
 |  | 2026-09-24 21:27 | 3.0.0.8 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-24 21:48 | 3.0.0.9 | mac arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-26 22:41 | 3.0.0.13 | linux x64 | simulator | 24 / 24 | ✅ OK |
-|  | 2026-10-04 11:02 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
+|  | 2026-10-04 11:20 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-10-04 11:05 | 3.0.0.15 | mac arm64 | AZGTi | 18 / 18 | ✅ OK |
 |  | 2026-10-04 11:16 | 3.0.0.15 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
