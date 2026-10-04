@@ -450,6 +450,9 @@ static void pmc8_mount_uses_manual_mount_type_without_autodetection(void) {
 	SERIAL_CHECK_TRUE(g11_selected);
 	SERIAL_CHECK_TRUE(cached_switch_item_value(PMC8_MOUNT_TYPE_PROPERTY_NAME, "EXOS-2", &exos2_selected));
 	SERIAL_CHECK_TRUE(!exos2_selected);
+	// A forced model skips the model query.
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "ESGv"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESGi"));
 
 cleanup:
 	if (context.connected) {
@@ -738,9 +741,13 @@ static void pmc8_mount_parks_and_unparks(void) {
 	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, arguments));
 	SERIAL_CHECK_TRUE(slew_to_work_position());
 	int stops = event_count(&simulator, "ESTr0000");
+	unsigned int moving = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, 30));
+	// The coordinates are BUSY while the park moves the mount and OK at the park position.
+	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE) > moving);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(cached_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, &parked));
 	SERIAL_CHECK_TRUE(parked);
 	SERIAL_CHECK_TRUE(event_count(&simulator, "ESTr0000") > stops);
@@ -965,10 +972,33 @@ static const char *watch_device, *watch_property;
 static atomic_bool watch_on;
 static atomic_int watch_results;
 static _Atomic double watch_last_result;
+// The coordinates of the last OK and of the last ALERT publication of the mount.
+static _Atomic double ok_ra, ok_dec, alert_ra, alert_dec;
+
+static void remember_coordinates(indigo_property *property) {
+	double ra = NAN, dec = NAN;
+	for (int i = 0; i < property->count; i++) {
+		if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
+			ra = property->items[i].number.value;
+		} else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
+			dec = property->items[i].number.value;
+		}
+	}
+	if (property->state == INDIGO_OK_STATE) {
+		atomic_store(&ok_ra, ra);
+		atomic_store(&ok_dec, dec);
+	} else if (property->state == INDIGO_ALERT_STATE) {
+		atomic_store(&alert_ra, ra);
+		atomic_store(&alert_dec, dec);
+	}
+}
 
 static indigo_result watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, PMC8_MOUNT_DEVICE_NAME)) {
 		atomic_store(&mount_device, device);
+		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+			remember_coordinates(property);
+		}
 	}
 	if (atomic_load(&watch_on) && !strcmp(property->device, watch_device) && !strcmp(property->name, watch_property) && property->state != INDIGO_BUSY_STATE) {
 		atomic_store(&watch_last_result, indigo_monotonic_time());
@@ -1176,6 +1206,974 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// ------------------------------------------------------------------ simulator control and wire values
+
+// Writes one control line for the simulator and waits until it consumed it.
+static bool sim_control(external_serial_simulator *simulator, const char *line) {
+	char path[PATH_MAX], temporary[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.control", simulator->ready_file, NULL) || !simulator_fixture_path(temporary, sizeof(temporary), "%s.inject", simulator->ready_file, NULL)) {
+		return false;
+	}
+	for (int i = 0; i < 300 && access(path, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s\n", line);
+	fclose(file);
+	if (rename(temporary, path) != 0) {
+		return false;
+	}
+	for (int i = 0; i < 300 && access(path, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	return access(path, F_OK) != 0;
+}
+
+// count 1 = one shot, 0 = sticky; reply DROP, CLEAR or the reply to send instead.
+static bool inject(external_serial_simulator *simulator, const char *command, const char *reply, int count) {
+	char line[256];
+	snprintf(line, sizeof(line), "%s\t%s\t%d", command, reply, count);
+	return sim_control(simulator, line);
+}
+
+// fault is @stall, @short or @normal.
+static bool axis_fault(external_serial_simulator *simulator, const char *fault, int axis) {
+	char line[64];
+	snprintf(line, sizeof(line), "%s\t%d", fault, axis);
+	return sim_control(simulator, line);
+}
+
+// The command and the time of the index-th (0 based) event starting with prefix, or of the last one for index -1.
+static bool find_event(external_serial_simulator *simulator, const char *prefix, int index, char *command, size_t size, double *time) {
+	char path[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return false;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char line[256];
+	int count = 0;
+	bool found = false;
+	while (fgets(line, sizeof(line), file)) {
+		char *text = strchr(line, '\t');
+		if (text == NULL) {
+			continue;
+		}
+		*text++ = 0;
+		text[strcspn(text, "\r\n")] = 0;
+		if (strncmp(text, prefix, strlen(prefix))) {
+			continue;
+		}
+		if (index < 0 || count == index) {
+			if (command != NULL) {
+				snprintf(command, size, "%s", text);
+			}
+			if (time != NULL) {
+				*time = atof(line);
+			}
+			found = true;
+			if (index >= 0) {
+				break;
+			}
+		}
+		count++;
+	}
+	fclose(file);
+	return found;
+}
+
+static double last_event_time(external_serial_simulator *simulator, const char *prefix) {
+	double time = NAN;
+	find_event(simulator, prefix, -1, NULL, 0, &time);
+	return time;
+}
+
+static bool last_event_is(external_serial_simulator *simulator, const char *prefix, const char *expected) {
+	char last[64] = "";
+	find_event(simulator, prefix, -1, last, sizeof(last), NULL);
+	if (strcmp(last, expected)) {
+		fprintf(stderr, "    the last %s command is '%s', expected '%s'\n", prefix, last, expected);
+		return false;
+	}
+	return true;
+}
+
+// The signed 24 bit count the last command starting with prefix ("ESSp1", "ESPt0") carried.
+static bool last_count(external_serial_simulator *simulator, const char *prefix, int32_t *count) {
+	char last[64] = "";
+	if (!find_event(simulator, prefix, -1, last, sizeof(last), NULL) || strlen(last) < 12) {
+		fprintf(stderr, "    no %s command\n", prefix);
+		return false;
+	}
+	int32_t value = (int32_t)strtol(last + 5, NULL, 16);
+	if (value & 0x800000) {
+		value |= (int32_t)0xFF000000;
+	}
+	*count = value;
+	return true;
+}
+
+// The commands that change the controller: point, sync, direction, rate and tracking rate.
+static int write_events(external_serial_simulator *simulator) {
+	return event_count(simulator, "ESP") + event_count(simulator, "ESS") + event_count(simulator, "ESTr");
+}
+
+static bool wait_until_event_count(external_serial_simulator *simulator, const char *prefix, int count, double seconds) {
+	double deadline = indigo_monotonic_time() + seconds;
+	while (indigo_monotonic_time() < deadline) {
+		if (event_count(simulator, prefix) >= count) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "    fewer than %d %s commands within %.0f s\n", count, prefix, seconds);
+	return false;
+}
+
+static bool cached_switch_is(const char *property_name, const char *item_name, bool expected) {
+	bool value = !expected;
+	return cached_switch_item_value(property_name, item_name, &value) && value == expected;
+}
+
+static bool wait_for_switch(const char *property_name, const char *item_name, bool expected, double seconds) {
+	double deadline = indigo_monotonic_time() + seconds;
+	while (indigo_monotonic_time() < deadline) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == expected) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "    %s.%s did not become %s within %.0f s\n", property_name, item_name, expected ? "ON" : "OFF", seconds);
+	return false;
+}
+
+static bool change_switch(const char *property_name, const char *item_name) {
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_switch_property_1(&simulator_test_client, PMC8_MOUNT_DEVICE_NAME, property_name, item_name, true) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_after(property_name, INDIGO_OK_STATE, revision);
+}
+
+// Turns one item off and waits for the result of its handler, not for the BUSY echo of the copied request.
+static bool release_switch(const char *property_name, const char *item_name) {
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_switch_property_1(&simulator_test_client, PMC8_MOUNT_DEVICE_NAME, property_name, item_name, false) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_after(property_name, INDIGO_OK_STATE, revision) && cached_switch_is(property_name, item_name, false);
+}
+
+static bool sync_to(double hour_angle, double dec) {
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	return request_coordinates(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, ra_at_hour_angle(hour_angle), dec) && wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision);
+}
+
+// Points the device queue of the mount (shared with the guider) at the test: every handler queued before this one has run.
+static atomic_int fence_passes;
+
+static void fence_handler(indigo_device *device) {
+	atomic_fetch_add(&fence_passes, 1);
+}
+
+static bool drain_mount_queue(void) {
+	indigo_device *device = atomic_load(&mount_device);
+	if (device == NULL) {
+		fprintf(stderr, "    no mount device pointer recorded\n");
+		return false;
+	}
+	int before = atomic_load(&fence_passes);
+	indigo_execute_handler(device, fence_handler);
+	for (int i = 0; i < 1500 && atomic_load(&fence_passes) == before; i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&fence_passes) > before;
+}
+
+static void retarget(const simulator_driver_case *device_case) {
+	reset_simulator_context(device_case);
+	enumerate_simulator_device();
+}
+
+// ------------------------------------------------------------------ capabilities, identity and connection
+
+// The properties the controller has no command for are not defined, the connect handshake is the
+// identification followed by the drive state, and nothing the controller has no command for, or
+// that other clients depend on, is written.
+static void pmc8_mount_pins_capabilities_and_connect_handshake(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--boot-seconds", "1", NULL };
+	const char *undefined[] = {
+		MOUNT_GUIDE_RATE_PROPERTY_NAME,
+		MOUNT_PARK_SET_PROPERTY_NAME,
+		MOUNT_PARK_POSITION_PROPERTY_NAME,
+		MOUNT_HOME_PROPERTY_NAME,
+		MOUNT_HOME_SET_PROPERTY_NAME,
+		MOUNT_HOME_POSITION_PROPERTY_NAME,
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME,
+		MOUNT_ALIGNMENT_MODE_PROPERTY_NAME,
+		MOUNT_RAW_COORDINATES_PROPERTY_NAME,
+		MOUNT_PEC_PROPERTY_NAME,
+		MOUNT_PEC_TRAINING_PROPERTY_NAME,
+		MOUNT_STATE_PROPERTY_NAME,
+		UTC_TIME_PROPERTY_NAME,
+		MOUNT_SET_HOST_TIME_PROPERTY_NAME
+	};
+	char command[64];
+
+	SERIAL_CHECK_TRUE(start_pmc8_mount_in_serial_mode_with_args(&simulator, arguments));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	for (int i = 0; i < ARRAY_SIZE(undefined); i++) {
+		if (has_defined_property(undefined[i])) {
+			fprintf(stderr, "    %s is defined\n", undefined[i]);
+		}
+		SERIAL_CHECK_TRUE(!has_defined_property(undefined[i]));
+	}
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(3, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME)->perm);
+	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, find_cached_property(PMC8_MOUNT_TYPE_PROPERTY_NAME)->perm);
+	// Identification first, then the drive state; nothing switches the controller's interface.
+	SERIAL_CHECK_TRUE(find_event(&simulator, "ES", 0, command, sizeof(command), NULL) && !strcmp(command, "ESGv!"));
+	SERIAL_CHECK_TRUE(find_event(&simulator, "ES", 1, command, sizeof(command), NULL) && !strcmp(command, "ESGi!"));
+	SERIAL_CHECK_TRUE(find_event(&simulator, "ES", 2, command, sizeof(command), NULL) && !strcmp(command, "ESGx!"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESX"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESY"));
+	SERIAL_CHECK_EQ_INT(0, write_events(&simulator));
+	// The controller has no site commands: the site stays in the driver.
+	SERIAL_CHECK_TRUE(set_mount_site(48.15, 17.11));
+	// The side of pier is read-only and reported by the device.
+	unsigned int revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_EQ_INT(revision, property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(0, write_events(&simulator));
+	// The connection options stay defined while disconnected, the mount type writable again.
+	disconnect_serial_device(&pmc8_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(PMC8_CONNECTION_MODE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(PMC8_MOUNT_TYPE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_RW_PERM, find_cached_property(PMC8_MOUNT_TYPE_PROPERTY_NAME)->perm);
+	SERIAL_CHECK_TRUE(wait_for_event(&simulator, "REBOOT", 0));
+	SERIAL_CHECK_TRUE(connect_serial_device(&pmc8_mount, NULL));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	} else {
+		tear_down_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Connects to a controller started with the arguments and returns the model the driver detected.
+static bool connect_and_read_model(external_serial_simulator *simulator, const char * const *arguments, char *model, size_t size) {
+	if (!start_pmc8_mount_in_serial_mode_with_args(simulator, arguments)) {
+		return false;
+	}
+	indigo_item *item = find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME);
+	snprintf(model, size, "%s", item == NULL ? "" : indigo_get_text_item_value(item));
+	return true;
+}
+
+// Firmware releases below 20 name the model in the version string and have no information block
+// (ESGi is never sent to them); later ones carry the model code at offset 20 of ESGi. The model
+// decides the axis counts, so the sidereal rate on the wire differs per model.
+static void pmc8_mount_detects_models_on_both_sides_of_the_firmware_threshold(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *old_titan[] = { "--version-reply", "ESGvES1A05 TITAN!", NULL };
+	const char *new_g11[] = { "--info-reply", "ESGi0000000000000000050000!", NULL };
+	char model[INDIGO_VALUE_SIZE];
+
+	SERIAL_CHECK_TRUE(connect_and_read_model(&simulator, old_titan, model, sizeof(model)));
+	SERIAL_CHECK_TRUE(!strcmp(model, "Losmandy Titan"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESGi"));
+	assert_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "1A05 TITAN");
+	// 3456000 counts: 15 arcseconds a second are 40 counts, sent 25 times finer.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr03E8!"));
+	stop_serial_driver(&pmc8_mount);
+	stop_external_serial_simulator(&simulator);
+
+	SERIAL_CHECK_TRUE(connect_and_read_model(&simulator, new_g11, model, sizeof(model)));
+	SERIAL_CHECK_TRUE(!strcmp(model, "Losmandy G-11"));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "ESGi"));
+	// 4608000 counts: 53.33 counts a second.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr0535!"));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A controller that names no model the driver knows is refused: CONNECTION ends ALERT after the
+// driver's own retries and no mount property stays defined.
+static void pmc8_mount_refuses_an_unidentified_controller(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--version-reply", "ESGvES0B05 HEQ5!", NULL };
+	bool driver_up = false;
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_PMC8_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&pmc8_mount));
+	driver_up = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(change_switch(PMC8_CONNECTION_MODE_PROPERTY_NAME, "SERIAL"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, pmc8_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	// Three attempts ten seconds apart.
+	SERIAL_CHECK_TRUE(wait_for_state_within(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE, 45));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(3, event_count(&simulator, "ESGv"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESGi"));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_INFO_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	} else if (driver_up) {
+		tear_down_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The drive state published on connect is the controller's, not the driver default, and a reply that
+// carries no rate leaves tracking ALERT while the connection completes.
+static void pmc8_mount_publishes_the_controller_tracking_state_on_connect(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *lunar[] = { "--tracking-rate", "0497", NULL };
+	const char *solar[] = { "--tracking-rate", "04B3", NULL };
+	bool driver_up = false;
+
+	SERIAL_CHECK_TRUE(start_pmc8_mount_in_serial_mode_with_args(&simulator, lunar));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+	stop_serial_driver(&pmc8_mount);
+	stop_external_serial_simulator(&simulator);
+
+	SERIAL_CHECK_TRUE(start_pmc8_mount_in_serial_mode_with_args(&simulator, solar));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true));
+	stop_serial_driver(&pmc8_mount);
+	stop_external_serial_simulator(&simulator);
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_PMC8_SIMULATOR_EXECUTABLE, solar));
+	SERIAL_CHECK_TRUE(inject(&simulator, "ESGx!", "ESGx!", 0));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&pmc8_mount));
+	driver_up = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(change_switch(PMC8_CONNECTION_MODE_PROPERTY_NAME, "SERIAL"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, pmc8_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(true));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	} else if (driver_up) {
+		tear_down_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// ------------------------------------------------------------------ coordinates, GOTO and tracking
+
+typedef struct {
+	double latitude, longitude, hour_angle, dec;
+	const char *dec_command;
+	int32_t ha_count;
+	const char *side_of_pier;
+} sync_point;
+
+// A SYNC writes the signed 24 bit axis counts: hour angle and declination measured from the park
+// position (counterweight down, telescope at the pole), on the side of the pier that keeps the
+// telescope above the counterweight. The readback of the next poll gives the coordinates back.
+static void pmc8_mount_encodes_coordinates_on_both_pier_sides_and_hemispheres(void) {
+	external_serial_simulator simulator = { 0 };
+	const sync_point points[] = {
+		// 10 degrees from the pole, 1 hour from the park position: positive counts, west of the pier.
+		{ 48.15, 17.11, -5, 80, "ESSp101C200!", 172800, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME },
+		// Past the meridian: both counts negative, east of the pier.
+		{ 48.15, 17.11, 2, 60, "ESSp1FABA00!", -691200, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME },
+		// Southern hemisphere, east of the meridian: both counts negative, west of the pier.
+		{ -33.9, 18.4, -3, -60, "ESSp1FABA00!", -518400, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME },
+		// Southern hemisphere past the meridian: both counts positive, east of the pier.
+		{ -33.9, 18.4, 2, -70, "ESSp1038400!", 691200, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME }
+	};
+
+	SERIAL_CHECK_TRUE(start_pmc8_mount_in_serial_mode(&simulator));
+	// Epoch 2000 is passed to the controller without precession, so the counts are exact.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EPOCH_PROPERTY_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < ARRAY_SIZE(points); i++) {
+		const sync_point *point = points + i;
+		SERIAL_CHECK_TRUE(set_mount_site(point->latitude, point->longitude));
+		SERIAL_CHECK_TRUE(fresh_coordinates());
+		SERIAL_CHECK_TRUE(sync_to(point->hour_angle, point->dec));
+		int32_t ha_count = 0;
+		SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSp1", point->dec_command));
+		SERIAL_CHECK_TRUE(last_count(&simulator, "ESSp0", &ha_count));
+		printf("    HA %+.0f h DEC %+.0f at latitude %+.1f: %s, hour angle count %d\n", point->hour_angle, point->dec, point->latitude, point->dec_command, ha_count);
+		// The driver reads the sidereal time a moment after the test: 48 counts a second.
+		SERIAL_CHECK_TRUE(abs(ha_count - point->ha_count) < 200);
+		SERIAL_CHECK_TRUE(fresh_coordinates());
+		SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - point->dec) < 0.001);
+		SERIAL_CHECK_TRUE(fabs(hour_angle_now() - point->hour_angle) < 0.005);
+		SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, point->side_of_pier, true));
+	}
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GOTO requested while another one runs is not taken: every point carries the first target and the
+// mount ends there.
+static void pmc8_mount_keeps_the_first_goto_when_a_second_arrives(void) {
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-5), 80));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-4), 70));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 60));
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(3, event_count(&simulator, "ESPt1"));
+	SERIAL_CHECK_EQ_INT(3, event_count(&simulator, "ESPt101C200!"));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 80) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(hour_angle_now() + 5) < 0.01);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Completion comes from the controller: a point whose axis reports its speed but never moves is
+// abandoned within the time the distance allows, and a slew the controller ends short of the target
+// fails. Both end ALERT with the real position, and the next GOTO is accepted.
+static void pmc8_mount_fails_a_stalled_or_short_goto(void) {
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
+	SERIAL_CHECK_TRUE(sync_to(-5, 80));
+	SERIAL_CHECK_TRUE(axis_fault(&simulator, "@stall", 1));
+	int stops = event_count(&simulator, "ESPt300000!");
+	double requested = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-5), 81));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, 25));
+	double abandoned = indigo_monotonic_time() - requested;
+	printf("    the stalled slew was abandoned after %.1f s\n", abandoned);
+	SERIAL_CHECK_TRUE(abandoned > 9 && abandoned < 16);
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count(&simulator, "ESPt300000!"));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "ESPt1"));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 80) < 0.001);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(axis_fault(&simulator, "@short", 1));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-5), 84));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, 30));
+	SERIAL_CHECK_EQ_INT(4, event_count(&simulator, "ESPt1"));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	double dec = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	printf("    the short slew ended at DEC %.4f\n", dec);
+	SERIAL_CHECK_TRUE(dec > 83 && dec < 83.9);
+	SERIAL_CHECK_TRUE(axis_fault(&simulator, "@normal", 1));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-5), 84));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 30));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 84) < 0.01);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Tracking: every rate on the wire in the units of the model, the direction of the drive by the
+// hemisphere, RA drifting with the sky while the drive is off and holding while it runs, and a GOTO
+// resuming the selected rate.
+static void pmc8_mount_tracks_at_the_selected_rates(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--speed-scale", "4", NULL };
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, arguments));
+	SERIAL_CHECK_TRUE(sync_to(-3, 70));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr0000!"));
+	// The drive off: the right ascension follows the sidereal time.
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	double ra = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double lst = cached_number(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME);
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	double drift = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra;
+	double elapsed = cached_number(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME) - lst;
+	printf("    drive off: RA moved %.1f s while the sidereal time moved %.1f s\n", drift * 3600, elapsed * 3600);
+	SERIAL_CHECK_TRUE(elapsed > 1.0 / 3600 && fabs(drift - elapsed) < 0.2 / 3600);
+	// The drive on: the right ascension holds.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSd0", "ESSd01!"));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	ra = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	lst = cached_number(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME);
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	drift = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra;
+	elapsed = cached_number(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME) - lst;
+	printf("    drive on: RA moved %.2f s while the sidereal time moved %.1f s\n", drift * 3600, elapsed * 3600);
+	SERIAL_CHECK_TRUE(elapsed > 1.0 / 3600 && fabs(drift) < 0.2 / 3600);
+	// Lunar and solar rates: 14.685 and 15.041 arcseconds a second on 4147200 counts, 25 times finer.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr0497!"));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B3!"));
+	// A GOTO stops the drive and resumes it at the selected rate.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+	int stops = event_count(&simulator, "ESTr0000!");
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-3.5), 72));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 60));
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count(&simulator, "ESTr0000!"));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr0497!"));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	// In the southern hemisphere the drive turns the right ascension counts down.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME));
+	SERIAL_CHECK_TRUE(set_mount_site(-33.9, 18.4));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSd0", "ESSd00!"));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Releasing or aborting right ascension motion on a tracking mount restores the drive, north raises
+// the declination, the slew rate presets are axis rates, and an abort while idle changes nothing.
+static void pmc8_mount_restores_tracking_after_manual_motion_and_abort(void) {
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
+	// The SYNC starts the drive.
+	SERIAL_CHECK_TRUE(sync_to(-3, 70));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSr0", "ESSr01000!"));
+	double moved = last_event_time(&simulator, "ESSr01000!");
+	SERIAL_CHECK_TRUE(release_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_time(&simulator, "ESTr") > moved);
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSd0", "ESSd01!"));
+	// An abort of east motion: both axes stop, the drive resumes, the momentary switch returns OFF.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSd0", "ESSd00!"));
+	moved = last_event_time(&simulator, "ESSr01000!");
+	int dec_stops = event_count(&simulator, "ESSr10000!");
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(last_event_time(&simulator, "ESTr") > moved);
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSd0", "ESSd01!"));
+	SERIAL_CHECK_EQ_INT(dec_stops + 1, event_count(&simulator, "ESSr10000!"));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	// North raises the declination.
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	double dec = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSr1", "ESSr11000!"));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(release_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSr1", "ESSr10000!"));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	double raised = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec;
+	printf("    north at the centering rate raised the declination by %.3f degrees\n", raised);
+	SERIAL_CHECK_TRUE(raised > 0.1);
+	// The find rate.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSr1", "ESSr13000!"));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSr1", "ESSr10000!"));
+	// An abort while idle with the drive off leaves the drive off and the position where it is.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	dec = cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	double ha = hour_angle_now();
+	int points = event_count(&simulator, "ESPt");
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr0000!"));
+	SERIAL_CHECK_EQ_INT(points, event_count(&simulator, "ESPt"));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1e-6);
+	SERIAL_CHECK_TRUE(fabs(hour_angle_now() - ha) < 1e-4);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A park replaces a running GOTO, publishes the coordinates BUSY while it moves and OK at the park
+// position. A parked mount refuses tracking, manual motion and GOTO without a command, keeping its own
+// state, and accepts them again once unparked.
+static void pmc8_mount_park_replaces_a_goto_and_guards_the_parked_mount(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--speed-scale", "4", NULL };
+	install_watch();
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, arguments));
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-5), 80));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "ESPt1", 1, 5));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "ESPt1000000!", 1, 5));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, 30));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESPt1", "ESPt1000000!"));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESPt0", "ESPt0000000!"));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 90) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(hour_angle_now() + 6) < 0.01);
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// Parked: refused without a command, the switches keep the driver's state.
+	int writes = write_events(&simulator);
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-4), 70));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(drain_mount_queue());
+	SERIAL_CHECK_EQ_INT(writes, write_events(&simulator));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// Unparked, the guards are gone.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+
+cleanup:
+	remove_watch();
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// ------------------------------------------------------------------ polling, disconnect and ownership
+
+// A failed position readback publishes the coordinates ALERT with the last valid values, the next
+// good poll restores OK.
+static void pmc8_mount_reports_a_failed_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	install_watch();
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
+	SERIAL_CHECK_TRUE(sync_to(-3, 70));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	// Every attempt of one ESGp0 transaction goes unanswered.
+	SERIAL_CHECK_TRUE(inject(&simulator, "ESGp0!", "DROP", 11));
+	double deadline = indigo_monotonic_time() + 15;
+	while (property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) == alerts && indigo_monotonic_time() < deadline) {
+		indigo_usleep(20000);
+	}
+	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) > alerts);
+	printf("    ALERT with RA %.6f DEC %.6f after OK with RA %.6f DEC %.6f\n", atomic_load(&alert_ra), atomic_load(&alert_dec), atomic_load(&ok_ra), atomic_load(&ok_dec));
+	SERIAL_CHECK_TRUE(atomic_load(&alert_ra) == atomic_load(&ok_ra) && atomic_load(&alert_dec) == atomic_load(&ok_dec));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 5));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 70) < 0.001);
+
+cleanup:
+	remove_watch();
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Disconnecting during a GOTO or manual motion stops the axes before the port closes, and the next
+// session starts with no motion item ON and nothing BUSY.
+static void pmc8_mount_stops_motion_when_disconnected(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--boot-seconds", "1", NULL };
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, arguments));
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(0.5), 60));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "ESPt1", 1, 5));
+	disconnect_serial_device(&pmc8_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(wait_for_event(&simulator, "REBOOT", 0));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "ESPt300000!"));
+	SERIAL_CHECK_TRUE(last_event_time(&simulator, "ESPt300000!") < last_event_time(&simulator, "REBOOT"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&pmc8_mount, NULL));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	// Manual motion.
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSr1", "ESSr11000!"));
+	disconnect_serial_device(&pmc8_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "REBOOT", 2, 5));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESSr1", "ESSr10000!"));
+	SERIAL_CHECK_TRUE(last_event_time(&simulator, "ESSr10000!") < last_event_time(&simulator, "REBOOT"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&pmc8_mount, NULL));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_MOTION_DEC_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	} else {
+		tear_down_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Manual motion started by a client is released when that client detaches: the bus aborts it and the
+// axis receives its stop command.
+static atomic_int aborting_markers;
+
+static void aborting_log_handler(indigo_log_levels level, const char *message) {
+	if (strstr(message, "Aborting '" PMC8_MOUNT_DEVICE_NAME "'." MOUNT_MOTION_DEC_PROPERTY_NAME " ") != NULL) {
+		atomic_fetch_add(&aborting_markers, 1);
+	} else if (level == INDIGO_LOG_ERROR) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+static void pmc8_mount_releases_motion_of_a_detached_client(void) {
+	external_serial_simulator simulator = { 0 };
+	indigo_client owner = { .name = "PMC-Eight motion owner", .version = INDIGO_VERSION_CURRENT };
+	indigo_log_levels log_level = indigo_get_log_level();
+	bool attached = false;
+	install_watch();
+	atomic_store(&aborting_markers, 0);
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
+	SERIAL_CHECK_TRUE(atomic_load(&mount_device) != NULL);
+	indigo_log_message_handler = aborting_log_handler;
+	indigo_set_log_level(INDIGO_LOG_INFO);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_attach_client(&owner));
+	attached = true;
+	int starts = event_count(&simulator, "ESSd1");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&owner, pmc8_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(drain_mount_queue());
+	SERIAL_CHECK_EQ_INT(starts + 1, event_count(&simulator, "ESSd1"));
+	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&aborting_markers));
+	int stops = event_count(&simulator, "ESSr10000!");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_detach_client(&owner));
+	attached = false;
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&aborting_markers));
+	SERIAL_CHECK_TRUE(wait_for_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, 5));
+	SERIAL_CHECK_TRUE(drain_mount_queue());
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count(&simulator, "ESSr10000!"));
+	SERIAL_CHECK_EQ_INT(INDIGO_NOT_FOUND, indigo_unregister_detach_abort(atomic_load(&mount_device), MOUNT_MOTION_DEC_PROPERTY_NAME));
+
+cleanup:
+	if (attached) {
+		indigo_detach_client(&owner);
+	}
+	indigo_set_log_level(log_level);
+	indigo_log_message_handler = NULL;
+	remove_watch();
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// ------------------------------------------------------------------ guider
+
+// Pulses on both axes complete independently, a right ascension pulse on a tracking mount changes the
+// drive rate and returns to it without stopping the axis, a zero pulse moves nothing, the guide rate is
+// sent at both ends of its range, and a guider session neither polls the mount nor fails to pulse after
+// a reconnect.
+static void pmc8_guider_completes_axes_independently_and_reconnects(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--tracking-rate", "04B0", "--boot-seconds", "1", NULL };
+	double start = 0, end = 0;
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_PMC8_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&pmc8_guider, &pmc8_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	// West 1500 ms and north 1000 ms at once.
+	unsigned int ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
+	unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 1500));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 1000));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_revision));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, ra_revision));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	// The drive runs at 1.5 times sidereal and returns to sidereal; the axis is never stopped.
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "ESTr0708!"));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESTr0000!"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESSr0"));
+	SERIAL_CHECK_TRUE(find_event(&simulator, "ESTr0708!", -1, NULL, 0, &start) && find_event(&simulator, "ESTr04B0!", -1, NULL, 0, &end));
+	printf("    west pulse of 1500 ms ran %.0f ms on the wire, %.1f counts ahead of the drive\n", (end - start) * 1000, (end - start) * 24);
+	SERIAL_CHECK_TRUE(end - start > 1.45 && end - start < 1.8);
+	// North at half the sidereal rate, 24 counts a second, stopped while the right ascension pulse still runs.
+	SERIAL_CHECK_TRUE(find_event(&simulator, "ESSr10018!", -1, NULL, 0, &start) && find_event(&simulator, "ESSr10000!", -1, NULL, 0, &end));
+	printf("    north pulse of 1000 ms ran %.0f ms on the wire, %.1f counts\n", (end - start) * 1000, (end - start) * 24);
+	SERIAL_CHECK_TRUE(end - start > 0.95 && end - start < 1.3);
+	SERIAL_CHECK_TRUE(end < last_event_time(&simulator, "ESTr04B0!"));
+	// A zero pulse ends at once and moves nothing.
+	int moves = event_count(&simulator, "ESSr1") - event_count(&simulator, "ESSr10000!");
+	dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_revision));
+	SERIAL_CHECK_EQ_INT(moves, event_count(&simulator, "ESSr1") - event_count(&simulator, "ESSr10000!"));
+	// Both ends of the guide rate: 10 % and 90 % of sidereal.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 10));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "ESSr10004!", 1, 5));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 90));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "ESSr1002B!", 1, 5));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "ESTr08E8!", 1, 5));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The guider alone never read the mount position.
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "ESGp"));
+	// A disconnect during a right ascension pulse returns the drive to the tracking rate.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 3000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_until_event_count(&simulator, "ESTr0258!", 1, 5));
+	disconnect_serial_device(&pmc8_guider);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(wait_for_event(&simulator, "REBOOT", 0));
+	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
+	SERIAL_CHECK_TRUE(last_event_time(&simulator, "ESTr04B0!") < last_event_time(&simulator, "REBOOT"));
+	// Reconnected, the guider pulses again.
+	SERIAL_CHECK_TRUE(connect_serial_device(&pmc8_guider, NULL));
+	dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	int pulses = event_count(&simulator, "ESSr10018!");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_revision));
+	SERIAL_CHECK_EQ_INT(pulses + 1, event_count(&simulator, "ESSr10018!"));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_guider);
+	} else {
+		tear_down_serial_driver(&pmc8_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The mount and the guider share one connection: a GOTO requested during a guide pulse reaches its
+// target and the pulse completes, and the guider keeps pulsing after the mount disconnects.
+static void pmc8_guider_and_mount_share_the_connection(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--speed-scale", "4", NULL };
+	bool driver_up = false, mount_connected = false;
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, arguments));
+	driver_up = mount_connected = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&pmc8_guider, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	retarget(&pmc8_mount);
+	SERIAL_CHECK_TRUE(slew_to_work_position());
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	printf("    the GOTO during the pulse arrived at hour angle %.4f h, DEC %.4f\n", hour_angle_now(), cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME));
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 80) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(hour_angle_now() + 5) < 0.01);
+	retarget(&pmc8_guider);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(GUIDER_GUIDE_DEC_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0.001));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "ESSr10018!"));
+	// The mount disconnects, the guider keeps the connection and pulses.
+	disconnect_serial_device(&pmc8_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	mount_connected = false;
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "REBOOT"));
+	retarget(&pmc8_guider);
+	SERIAL_CHECK_TRUE(cached_switch_is(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	unsigned int revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, pmc8_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(2, event_count(&simulator, "ESSr10018!"));
+
+cleanup:
+	if (driver_up) {
+		if (mount_connected) {
+			disconnect_serial_device(&pmc8_mount);
+		}
+		disconnect_serial_device(&pmc8_guider);
+		tear_down_serial_driver(&pmc8_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "pmc8_mount_defines_custom_properties_while_disconnected", pmc8_mount_defines_custom_properties_while_disconnected },
@@ -1198,7 +2196,22 @@ int main(void) {
 		{ "pmc8_mount_keeps_its_position_across_a_controller_reboot", pmc8_mount_keeps_its_position_across_a_controller_reboot },
 		{ "pmc8_guider_guides_in_the_requested_directions", pmc8_guider_guides_in_the_requested_directions },
 		{ "pmc8_mount_tracking_request_survives_goto_end", pmc8_mount_tracking_request_survives_goto_end },
-		{ "pmc8_guider_pulse_survives_previous_finalizer", pmc8_guider_pulse_survives_previous_finalizer }
+		{ "pmc8_guider_pulse_survives_previous_finalizer", pmc8_guider_pulse_survives_previous_finalizer },
+		{ "pmc8_mount_pins_capabilities_and_connect_handshake", pmc8_mount_pins_capabilities_and_connect_handshake },
+		{ "pmc8_mount_detects_models_on_both_sides_of_the_firmware_threshold", pmc8_mount_detects_models_on_both_sides_of_the_firmware_threshold },
+		{ "pmc8_mount_refuses_an_unidentified_controller", pmc8_mount_refuses_an_unidentified_controller },
+		{ "pmc8_mount_publishes_the_controller_tracking_state_on_connect", pmc8_mount_publishes_the_controller_tracking_state_on_connect },
+		{ "pmc8_mount_encodes_coordinates_on_both_pier_sides_and_hemispheres", pmc8_mount_encodes_coordinates_on_both_pier_sides_and_hemispheres },
+		{ "pmc8_mount_keeps_the_first_goto_when_a_second_arrives", pmc8_mount_keeps_the_first_goto_when_a_second_arrives },
+		{ "pmc8_mount_fails_a_stalled_or_short_goto", pmc8_mount_fails_a_stalled_or_short_goto },
+		{ "pmc8_mount_tracks_at_the_selected_rates", pmc8_mount_tracks_at_the_selected_rates },
+		{ "pmc8_mount_restores_tracking_after_manual_motion_and_abort", pmc8_mount_restores_tracking_after_manual_motion_and_abort },
+		{ "pmc8_mount_park_replaces_a_goto_and_guards_the_parked_mount", pmc8_mount_park_replaces_a_goto_and_guards_the_parked_mount },
+		{ "pmc8_mount_reports_a_failed_poll", pmc8_mount_reports_a_failed_poll },
+		{ "pmc8_mount_stops_motion_when_disconnected", pmc8_mount_stops_motion_when_disconnected },
+		{ "pmc8_mount_releases_motion_of_a_detached_client", pmc8_mount_releases_motion_of_a_detached_client },
+		{ "pmc8_guider_completes_axes_independently_and_reconnects", pmc8_guider_completes_axes_independently_and_reconnects },
+		{ "pmc8_guider_and_mount_share_the_connection", pmc8_guider_and_mount_share_the_connection }
 	};
 	return indigo_run_tests("PMC-Eight mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }
