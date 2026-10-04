@@ -119,8 +119,8 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_NEXSTARAUX_EVENTS names a file receiving '<dst> <cmd> <data>' per request.\n");
-	printf("INDIGO_NEXSTARAUX_FAULT names a file holding '<dst> <cmd> <silent|garbage|close>'\n");
-	printf("which is applied once to the next matching request and then removed.\n");
+	printf("INDIGO_NEXSTARAUX_FAULT names a file holding '<dst> <cmd> <silent|garbage|close> [count]'\n");
+	printf("which is applied to the next count matching requests (default one) and then removed.\n");
 }
 
 static bool parse_args(int argc, char *argv[]) {
@@ -244,8 +244,9 @@ static void advance_motion(void) {
 	advance_axis(&alt, elapsed);
 }
 
-// One-shot fault injection. The control file names the destination and the
-// command of the request that has to misbehave.
+// Fault injection. The control file names the destination and the command of
+// the request that has to misbehave, and optionally how many matching requests
+// in a row do; the default is one.
 static const char *pending_fault(uint8_t dst, uint8_t command) {
 	static char action[32];
 	const char *path = getenv("INDIGO_NEXSTARAUX_FAULT");
@@ -257,13 +258,23 @@ static const char *pending_fault(uint8_t dst, uint8_t command) {
 		return NULL;
 	}
 	unsigned fault_dst = 0, fault_command = 0;
+	int count = 1;
 	action[0] = '\0';
-	bool matched = fscanf(file, "%x %x %31s", &fault_dst, &fault_command, action) == 3 && fault_dst == dst && fault_command == command;
+	int fields = fscanf(file, "%x %x %31s %d", &fault_dst, &fault_command, action, &count);
+	bool matched = fields >= 3 && fault_dst == dst && fault_command == command;
 	fclose(file);
 	if (!matched) {
 		return NULL;
 	}
-	unlink(path);
+	if (count > 1) {
+		file = fopen(path, "w");
+		if (file != NULL) {
+			fprintf(file, "%02x %02x %s %d\n", fault_dst, fault_command, action, count - 1);
+			fclose(file);
+		}
+	} else {
+		unlink(path);
+	}
 	return action;
 }
 

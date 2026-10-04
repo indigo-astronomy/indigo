@@ -117,7 +117,7 @@
 | mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 144 / 35 | |
 | mount_mxhd              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | 0 / 0 | |
 | mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 38 / 12 | ⏰ TODO - make libnexstar for Windows |
-| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 42 / 36 | |
+| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 59 / 36 | |
 | mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 36 / 38 | |
 | mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 24 / 0 | |
 | mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 44 / 0 | |

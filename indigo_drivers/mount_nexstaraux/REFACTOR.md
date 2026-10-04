@@ -432,3 +432,80 @@ Both cases failed against the version 21 driver and pass with version 22. Record
 `tools/run_driver_test.py mount_nexstaraux` on Linux x64: 42/42. No hardware run for this change.
 
 Final test summary for this change: simulator suite 42 run / 42 passed; hardware 0 run / 0 passed.
+
+## Mount testing rules coverage (2026-10-04)
+
+Version 23. The simulator suite was checked item by item against the extended "Mount Drivers" chapter
+of `indigo_test/DRIVER_TESTING_RULES.md` and the missing driver-relevant scenarios were added. Seven
+defects were found by the new cases and fixed in `indigo_mount_nexstaraux.driver`:
+
+- **A park the controller refused stayed BUSY for ever.** The failure branch of `MOUNT_PARK` set ALERT
+  without publishing it (the handler references a finalizer, so the generator adds no final update)
+  and left `PARKED` selected. It now publishes ALERT with `UNPARKED` selected.
+- **A park left `MOUNT_TRACKING` ON over a stopped drive, and the coordinates OK while moving.** The
+  park stops the drive on the controller; it now also publishes `MOUNT_TRACKING` OFF (unless a request
+  is pending) with the state light IDLE, and publishes `MOUNT_EQUATORIAL_COORDINATES` BUSY while the
+  mount moves to the park position.
+- **A parked mount could be guided.** The guide handlers now refuse a pulse with ALERT while the mount
+  is parked or parking, like the generated parked guards of the mount properties.
+- **Disconnecting did not stop the mount.** A goto, park or manual motion kept running after the mount
+  was disconnected, and a pulse cut short by a guider disconnect kept its axis turning at the guide
+  rate because its finalizer was cancelled. Both devices now stop their axes in `on_disconnect`, and
+  the mount clears its motion items and its slew/park flags so the next session starts clean.
+- **A lost answer to the tracking restore left the mount standing with tracking ON.**
+  `nexstaraux_stop_axis()` now resends the rate once; when it still fails it reports `MOUNT_TRACKING`
+  OFF with ALERT through `nexstaraux_tracking_lost()`.
+- **A failed coordinate poll was silent.** It now publishes ALERT with the last valid position, and the
+  next good poll restores OK (only an ALERT it set itself, never the ALERT of a failed goto).
+- **The guide rate was not shared.** `MOUNT_GUIDE_RATE` and `GUIDER_RATE` write the same controller
+  registers; a successful write through one is now published on the other. The private data keeps
+  both device pointers for this (`on_attach`/`on_detach`).
+
+The simulator's `INDIGO_NEXSTARAUX_FAULT` file takes an optional count, so a fault can persist over
+several requests (`<dst> <cmd> <action> [count]`).
+
+### New and extended cases
+
+| Rule area | Case |
+| --- | --- |
+| Handshake order, negative capability contract, track-rate items | `metadata`, `property_contract` (extended) |
+| MOUNT_STATE lights, order against the follow-up tracking restart | `mount_state_lights` |
+| Tracking setting kept through the goto, resumed at the selected rate | `goto_keeps_tracking_setting` |
+| Refusal at the first and last command of the goto sequence | `goto_refused_mid_sequence` |
+| Lost status reply during a goto | `goto_survives_a_lost_status_reply` |
+| Busy goto ignores a second request | `busy_goto_ignores_second_request` |
+| Abort landing mid-slew, one stop per axis, ALERT never OK | `abort_lands_mid_slew`, `abort_slew` and `abort_while_idle` (extended) |
+| Direction readback of every manual direction, guide pulse displacement | `motion_directions_read_back` |
+| Parked guards incl. guide pulses, no latch after unpark | `parked_guards` |
+| Park refused by the controller, park with tracking on, unpark sends nothing | `park_refused_by_controller`, `park_and_unpark` and `abort_park` (extended) |
+| Disconnect during goto, manual motion and park | `disconnect_stops_motion` |
+| Guider disconnect during a pulse, guider-only session, GOTO during a pulse | `guider_disconnect_during_pulse`, `guider_only_session`, `goto_during_guide_pulse` |
+| Tracking restore retry and persistent failure | `tracking_restore_retried` |
+| Failed initial readback, failed poll ALERT/recovery | `initial_readback_failure`, `coordinate_polling` (extended) |
+| Guide rate shared by mount and guider | `guide_rate_shared_with_guider` |
+| Hour-angle targets, encoder wrap | `hour_angle_targets` |
+| Refused switch shows the real state, SYNC not retried, no update for undefined properties | `tracking_failure`, `sync_command_failure`, `reconnect` (extended) |
+
+### Gaps left open
+
+- **Southern hemisphere.** The driver flips the tracking direction (`MC_SET_NEG_GUIDERATE`) south of
+  the equator but not the encoder-to-hour-angle conversion of coordinates, gotos and syncs, so the two
+  cannot both be right for a mount in the south. Which one the controller expects needs a southern
+  hardware run; nothing was changed and no south-specific motion case was added.
+- **Guide pulses ignore the guide rate.** Pulses are `MC_MOVE_POS/NEG` at rate 1, half sidereal
+  absolute, replacing the tracking rate. At the default 50 % a declination pulse moves guide rate x
+  duration (asserted), but another `MOUNT_GUIDE_RATE`/`GUIDER_RATE` has no effect on pulses, and on a
+  tracking mount a WEST pulse moves 1.5x sidereal against 0.5x for EAST. Fixing it needs the 24 bit
+  `MC_SET_POS_GUIDERATE` rate, whose unit the protocol document does not give.
+- The tracking restore after a pulse stops the axis first instead of writing the rate on the fly;
+  kept because it is what was verified on hardware.
+- Connect stops the tracking drive because the protocol has no way to read it; the guide rates are
+  read back (`guide_rate`).
+- Discovery, transport changes and alignment/PEC/home/pier-side rows do not apply (no such commands).
+
+The seven defects above were reproduced by the new cases against the version 22 driver
+(`mount_state_lights`, `parked_guards`, `park_refused_by_controller`, `park_and_unpark`,
+`disconnect_stops_motion`, `guider_disconnect_during_pulse`, `tracking_restore_retried`,
+`coordinate_polling`, `guide_rate_shared_with_guider` failed) and pass with version 23. Recorded run
+through `tools/run_driver_test.py mount_nexstaraux` on macOS arm64: 59/59. No hardware run for this
+change.
