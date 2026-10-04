@@ -115,9 +115,49 @@ static uint64_t lx_monotonic_ns(void) {
 static atomic_uint_fast64_t guide_completed[2];
 static atomic_int mount_coordinates_state = INDIGO_OK_STATE;
 
+// The SLEW light of MOUNT_STATE, captured from the moment a test armed it with
+// arm_slew_light_capture(): when it was first published BUSY (monotonic ns, 0 until then), and the
+// light the client held when the coordinates were first published OK after a BUSY publication
+// (-1 until then). MOUNT_STATE has to change in the same update as the coordinates, so it is
+// already published when they are.
+static atomic_bool slew_light_armed, slew_coordinates_busy;
+static atomic_uint_fast64_t slew_light_busy_at;
+static atomic_int slew_light_at_ok;
+
+static void arm_slew_light_capture(void) {
+	atomic_store(&slew_light_busy_at, 0);
+	atomic_store(&slew_coordinates_busy, false);
+	atomic_store(&slew_light_at_ok, -1);
+	atomic_store(&slew_light_armed, true);
+}
+
+static void capture_slew_light(indigo_property *property) {
+	indigo_item *light = find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME);
+	if (light == NULL || !atomic_load(&slew_light_armed)) {
+		return;
+	}
+	if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		uint_fast64_t expected = 0;
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME) && property->items[i].light.value == INDIGO_BUSY_STATE) {
+				atomic_compare_exchange_strong(&slew_light_busy_at, &expected, lx_monotonic_ns());
+			}
+		}
+	} else if (property->state == INDIGO_BUSY_STATE) {
+		atomic_store(&slew_coordinates_busy, true);
+	} else if (property->state == INDIGO_OK_STATE && atomic_load(&slew_coordinates_busy)) {
+		int expected = -1;
+		atomic_compare_exchange_strong(&slew_light_at_ok, &expected, (int)light->light.value);
+	}
+}
+
 static indigo_result timed_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, lx200_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		atomic_store(&mount_coordinates_state, property->state);
+		capture_slew_light(property);
+	}
+	if (!strcmp(property->device, lx200_mount.device_name) && !strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		capture_slew_light(property);
 	}
 	if (!strcmp(property->device, lx200_guider.device_name) && property->state == INDIGO_OK_STATE) {
 		int axis = !strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ? 0 : !strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ? 1 : -1;
@@ -254,6 +294,33 @@ static bool wait_event(external_serial_simulator *simulator, const char *command
 	return false;
 }
 
+// Waits until the given number of complete polling cycles has run. :GR# opens every cycle, so once
+// the count has grown by one more than that, the cycles before the last one have published what
+// they read. A steady mount publishes nothing, so the cycles are counted on the controller side.
+static bool wait_complete_polls(external_serial_simulator *simulator, int polls) {
+	int before = event_count(simulator, "GR", NULL);
+	for (int i = 0; i < 1500; i++) {
+		if (event_count(simulator, "GR", NULL) > before + polls) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Fewer than %d polling cycles completed\n", polls);
+	return false;
+}
+
+static bool wait_for_switch_value(const char *property_name, const char *item_name, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	fprintf(stderr, "%s.%s is not %s\n", property_name, item_name, value ? "ON" : "OFF");
+	return false;
+}
+
 // One control line, a fault rule "command<TAB>reply" or an event of the simulator.
 static bool send_control(external_serial_simulator *simulator, const char *line) {
 	char path[PATH_MAX], temporary[PATH_MAX];
@@ -381,6 +448,9 @@ static void check_profile(int index) {
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_profile(&simulator, profile->model, index == 5 || index == 6 ? profile->type : NULL));
 	online = true;
+	// Across the connect, disconnect and reconnect below the driver publishes no update for a
+	// property it has not defined.
+	int undefined_updates = updates_without_define();
 	assert_device_interface(INDIGO_INTERFACE_MOUNT);
 	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, profile->type, true);
 	SERIAL_CHECK_EQ_INT(profile->info_count, find_cached_property(MOUNT_INFO_PROPERTY_NAME)->count);
@@ -455,6 +525,7 @@ static void check_profile(int index) {
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
 	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
 	SERIAL_CHECK_TRUE(lx_coordinates(6.25, 12.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(undefined_updates, updates_without_define());
 cleanup:
 	if (online) {
 		stop_serial_driver(&lx200_mount);
@@ -1912,8 +1983,11 @@ static void lx200_onstep_options_and_partial_failures(void) {
 	}
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "hQ", 0));
+	// Both are momentary actions and read OFF once done.
+	assert_switch_item_value(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, false);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "hF", 0));
+	assert_switch_item_value(MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, false);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
 	bool enabled = wait_event(&simulator, "$QZ+", 0);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_DISABLED_ITEM_NAME, true, INDIGO_OK_STATE));
@@ -1932,10 +2006,17 @@ static void lx200_park_rejects_motion_and_unpark_recovers(void) {
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", 0));
 	int before = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	double parked_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(before, event_count(&simulator, "MS", NULL));
+	// Each refusal leaves the property on the state of the mount, not on the rejected request.
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - parked_ra) < 0.001);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Me", NULL));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "hR", 0));
 	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_BUSY_STATE));
@@ -3136,11 +3217,23 @@ static void lx200_manual_reversal_and_axis_stops(void) {
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
 	online = true;
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	double declination = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mn", 0));
+	// North raises the declination the mount reports, south lowers it again.
+	for (int i = 0; i < 50 && cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) < declination + 0.2; i++) {
+		indigo_usleep(100000);
+	}
+	double raised = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(raised >= declination + 0.2);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qn", 0));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Ms", 0));
+	for (int i = 0; i < 50 && cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) > raised - 0.2; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) <= raised - 0.2);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", 0));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_BUSY_STATE));
@@ -3897,6 +3990,458 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Whether MOUNT_STATE.SLEW was published BUSY after the last :MS# and before the first :GR# of the
+// poll that followed it. The simulator and the client share the monotonic clock.
+static bool slew_light_precedes_the_next_poll(external_serial_simulator *simulator) {
+	for (int i = 0; i < 500 && atomic_load(&slew_light_busy_at) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	double lit = atomic_load(&slew_light_busy_at) / 1e9, slew = 0, poll = 0;
+	if (lit == 0 || event_count(simulator, "MS", &slew) <= 0) {
+		fprintf(stderr, "No slew light or no :MS#\n");
+		return false;
+	}
+	char path[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return false;
+	}
+	for (int i = 0; i < 500 && poll == 0; i++) {
+		FILE *file = fopen(path, "r");
+		char line[256];
+		while (file != NULL && poll == 0 && fgets(line, sizeof(line), file)) {
+			char *tab = strchr(line, '\t');
+			if (tab != NULL && !strncmp(tab + 1, "GR", 2) && (tab[3] == '\n' || tab[3] == '\r') && atof(line) > slew) {
+				poll = atof(line);
+			}
+		}
+		if (file != NULL) {
+			fclose(file);
+		}
+		if (poll == 0) {
+			indigo_usleep(10000);
+		}
+	}
+	printf("    :MS# at %.3f, the slew light at %.3f, the next poll at %.3f\n", slew, lit, poll);
+	return poll > 0 && lit > slew && lit < poll;
+}
+
+// An abort that lands in the middle of a goto stops the mount short of the target, and the goto it
+// ended is a failed request: MOUNT_EQUATORIAL_COORDINATES ends ALERT, never OK at a target the
+// mount did not reach. Two fresh readbacks of the same position prove the stop, the stop is sent
+// once, and the next goto is taken. An abort while the mount stands still changes neither its
+// position nor its tracking. MOUNT_STATE carries the SLEW light in the same update as the
+// coordinates, BUSY when the goto is accepted and IDLE when it ends.
+static void lx200_goto_abort_ends_alert_and_idle_abort_keeps_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	// The idle abort: one stop, and the position and the tracking stay what they were.
+	int stops = settled_event_count(&simulator, "Q");
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, false);
+	SERIAL_CHECK_EQ_INT(stops + 1, settled_event_count(&simulator, "Q"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Td", NULL));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 0.0001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.0001);
+	// A goto of about three seconds, aborted half a second in.
+	arm_slew_light_capture();
+	SERIAL_CHECK_TRUE(lx_coordinates(18, -80, INDIGO_BUSY_STATE));
+	// The light goes on when the goto is accepted, after :MS# and before the first poll that
+	// follows it, which is what turned it on before.
+	SERIAL_CHECK_TRUE(slew_light_precedes_the_next_poll(&simulator));
+	atomic_store(&slew_light_armed, false);
+	stops = settled_event_count(&simulator, "Q");
+	unsigned int revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(stops + 1, settled_event_count(&simulator, "Q"));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	double first_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double first_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	double second_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double second_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	printf("    the aborted goto stopped at RA %.4f DEC %.4f, the target was RA 18 DEC -80\n", second_ra, second_dec);
+	SERIAL_CHECK_TRUE(fabs(first_ra - second_ra) < 0.0001 && fabs(first_dec - second_dec) < 0.0001);
+	SERIAL_CHECK_TRUE(fabs(second_dec + 80) > 1 && fabs(second_ra - 18) > 0.1);
+	// The readback of a stopped mount is valid, so the poll restores OK, and the next goto is taken.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	int slews = event_count(&simulator, "MS", NULL);
+	arm_slew_light_capture();
+	SERIAL_CHECK_TRUE(lx_coordinates(9, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", slews));
+	SERIAL_CHECK_TRUE(slew_light_precedes_the_next_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, atomic_load(&slew_light_at_ok));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 15, 0.001));
+cleanup:
+	atomic_store(&slew_light_armed, false);
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static int motion_command_count(external_serial_simulator *simulator) {
+	static const char *commands[] = { "MS", "Mn", "Ms", "Me", "Mw" };
+	int count = 0;
+	for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+		count += settled_event_count(simulator, commands[i]);
+	}
+	return count;
+}
+
+// An abort of a running park or home sends the stop and ends the request: MOUNT_PARK and
+// MOUNT_HOME are not left BUSY, the mount is shown neither parked nor at home, and no later poll
+// latches either. Homing leaves the park state alone. A park that runs to the end stops the
+// tracking, and the unpark that follows sends no motion command.
+static void lx200_onstep_park_and_home_abort_settle(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	// Far from the park position, so the park slew runs for seconds.
+	SERIAL_CHECK_TRUE(lx_coordinates(18, -80, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	int parks = event_count(&simulator, "hP", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", parks));
+	int stops = settled_event_count(&simulator, "Q");
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(stops + 1, settled_event_count(&simulator, "Q"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_PARK_PROPERTY_NAME));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(parks + 1, event_count(&simulator, "hP", NULL));
+	// The same for home, from a position away from it.
+	SERIAL_CHECK_TRUE(lx_coordinates(18, -80, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	int homes = event_count(&simulator, "hC", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hC", homes));
+	stops = settled_event_count(&simulator, "Q");
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(stops + 1, settled_event_count(&simulator, "Q"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_HOME_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, false);
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(homes + 1, event_count(&simulator, "hC", NULL));
+	// A park that runs to the end parks the mount with the tracking off.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// The unpark only releases the mount.
+	int motions = motion_command_count(&simulator);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(motions, motion_command_count(&simulator));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A disconnect during a goto or a manual motion stops the mount before the port closes, and the
+// next session starts clean: no stale BUSY, the motion items OFF, and the next manual motion
+// does not stop a direction the previous session was moving in.
+static void lx200_disconnect_stops_motion_and_reconnect_is_clean(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(18, -80, INDIGO_BUSY_STATE));
+	int stops = settled_event_count(&simulator, "Q");
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_EQ_INT(stops + 1, settled_event_count(&simulator, "Q"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) != INDIGO_BUSY_STATE);
+	// The mount stopped where it was, short of the target.
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 80) > 1);
+	// A manual motion interrupted the same way.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	stops = settled_event_count(&simulator, "Q");
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_EQ_INT(stops + 1, settled_event_count(&simulator, "Q"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_MOTION_DEC_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_MOTION_RA_PROPERTY_NAME)->state);
+	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
+	assert_switch_item_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false);
+	// The next motion is a fresh one: it starts without stopping what the old session moved.
+	int north_stops = settled_event_count(&simulator, "Qn");
+	int south = event_count(&simulator, "Ms", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Ms", south));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qs", 0));
+	SERIAL_CHECK_EQ_INT(north_stops, settled_event_count(&simulator, "Qn"));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A new session publishes the state the controller is in, not the defaults of the driver: a mount
+// left tracking on the lunar rate, and a mount left parked, whose parked guard then holds.
+static void lx200_connect_publishes_the_device_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ONSTEP_PREFERRED_PIER_SIDE", "WEST", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ONSTEP_MERIDIAN_LIMITS", "WEST", 7.5, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true));
+	assert_switch_item_value("X_ONSTEP_PREFERRED_PIER_SIDE", "WEST", true);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_ONSTEP_MERIDIAN_LIMITS", "WEST") - 7.5) < 0.001);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	int slews = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(slews, event_count(&simulator, "MS", NULL));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ONSTEP_PREFERRED_PIER_SIDE", "AUTO", true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Sexagesimal fields that round up carry into the next field and never reach 60 or 24: a right
+// ascension just below 24 h goes out as 00:00:00, a declination just below the pole as +90*00,
+// and the largest legal values go out unchanged. MOUNT_EPOCH is the epoch of the controller, so
+// the strings are exactly the requested values. A sync carries the target without a slew.
+static bool sync_encodes(external_serial_simulator *simulator, double ra, double dec, const char *ra_command, const char *dec_command) {
+	int ra_before = event_count(simulator, ra_command, NULL), dec_before = event_count(simulator, dec_command, NULL);
+	if (!lx_coordinates(ra, dec, INDIGO_OK_STATE)) {
+		fprintf(stderr, "Sync to %.7f %.7f failed\n", ra, dec);
+		return false;
+	}
+	return wait_event(simulator, ra_command, ra_before) && wait_event(simulator, dec_command, dec_before);
+}
+
+static void lx200_coordinate_encoding_at_wrap_points(void) {
+	for (int profile = 0; profile < 2; profile++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		bool ap = profile == 1;
+		SERIAL_CHECK_TRUE(start_profile(&simulator, ap ? "ap" : "meade", ap ? "AP" : NULL));
+		online = true;
+		SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+		if (ap) {
+			// A GTOCP4 takes hundredths of a second of right ascension and tenths of an arc second.
+			SERIAL_CHECK_TRUE(sync_encodes(&simulator, 23 + 59 / 60.0 + 59.99 / 3600.0, 89 + 59 / 60.0 + 59.9 / 3600.0, "Sr23:59:59.99", "Sd+89*59:59.9"));
+			SERIAL_CHECK_TRUE(sync_encodes(&simulator, 23 + 59 / 60.0 + 59.996 / 3600.0, 89 + 59 / 60.0 + 59.96 / 3600.0, "Sr00:00:00.00", "Sd+90*00:00.0"));
+			SERIAL_CHECK_TRUE(sync_encodes(&simulator, 1 + 59 / 60.0 + 59.997 / 3600.0, -(29 / 60.0 + 59.96 / 3600.0), "Sr02:00:00.00", "Sd-00*30:00.0"));
+			SERIAL_CHECK_EQ_INT(0, prefixed_event_count(&simulator, "Sr24"));
+		} else {
+			SERIAL_CHECK_TRUE(sync_encodes(&simulator, 23 + 59 / 60.0 + 59 / 3600.0, 89 + 59 / 60.0 + 59 / 3600.0, "Sr23:59:59", "Sd+89*59:59"));
+			SERIAL_CHECK_TRUE(sync_encodes(&simulator, 23 + 59 / 60.0 + 59.7 / 3600.0, 89 + 59 / 60.0 + 59.7 / 3600.0, "Sr00:00:00", "Sd+90*00:00"));
+			SERIAL_CHECK_TRUE(sync_encodes(&simulator, 1 + 59 / 60.0 + 59.6 / 3600.0, -(29 / 60.0 + 59.6 / 3600.0), "Sr02:00:00", "Sd-00*30:00"));
+			SERIAL_CHECK_TRUE(sync_encodes(&simulator, 0, -90, "Sr00:00:00", "Sd-90*00:00"));
+			SERIAL_CHECK_EQ_INT(0, prefixed_event_count(&simulator, "Sr24"));
+			SERIAL_CHECK_EQ_INT(0, prefixed_event_count(&simulator, "Sd+89*59:60"));
+		}
+	cleanup:
+		if (online) { stop_serial_driver(&lx200_mount); }
+		stop_external_serial_simulator(&simulator);
+		if (!online) {
+			return;
+		}
+	}
+}
+
+// A goto is three commands, and a refusal or a lost reply at any of them ends the request: ALERT,
+// no later command of the sequence, the coordinates keep the position the mount really has, the
+// reason the controller gives reaches the client, and the next goto is taken.
+static void lx200_meade_goto_refusals_stop_the_sequence(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	const char *commands[] = { "Sr07:30:00", "Sd-12*30:00", "MS" };
+	const char *replies[] = { "0", "DROP", "1Object Below Horizon#" };
+	for (int i = 0; i < 3; i++) {
+		int later[3];
+		for (int j = 0; j < 3; j++) {
+			later[j] = settled_event_count(&simulator, commands[j]);
+		}
+		*lx_last_message = 0;
+		SERIAL_CHECK_TRUE(inject_reply(&simulator, commands[i], replies[i]));
+		SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_ALERT_STATE));
+		for (int j = i + 1; j < 3; j++) {
+			SERIAL_CHECK_EQ_INT(later[j], settled_event_count(&simulator, commands[j]));
+		}
+		SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 0.001);
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.001);
+	}
+	printf("    the client was told: %s", lx_last_message);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Object Below Horizon") != NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -12.5, 0.001));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// SHUTDOWN is refused while the mount or a sibling sharing its connection is connected, and the
+// connection survives the attempt.
+static void lx200_shutdown_refused_while_connected(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false, guider = false;
+	indigo_driver_info info = { 0 };
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "meade", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(indigo_mount_lx200(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_mount_lx200(INDIGO_DRIVER_INFO, &info));
+	SERIAL_CHECK_EQ_INT(INDIGO_DRIVER_INIT, info.status);
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	guider = true;
+	SERIAL_CHECK_TRUE(indigo_mount_lx200(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK);
+	SERIAL_CHECK_TRUE(context.connected);
+	int pulses = event_count(&simulator, "Mgn0100", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mgn0100", pulses));
+	disconnect_serial_device(&lx200_guider);
+	guider = false;
+cleanup:
+	if (guider) { disconnect_serial_device(&lx200_guider); }
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void request_tracking_on(void) {
+	indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+}
+
+// A tracking request copied while the poll reads the status of a mount that does not track is
+// not overwritten by that status: the handler turns tracking on, the opposite command is never
+// sent, and the next status shows the mount tracking.
+static void lx200_onstep_tracking_request_survives_status_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	int on = event_count(&simulator, "Te", NULL);
+	int off = settled_event_count(&simulator, "Td");
+	unsigned int revision = property_state_revision(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE);
+	arm_log_trigger("<- :GU#", request_tracking_on);
+	SERIAL_CHECK_TRUE(wait_for_log_trigger());
+	disarm_log_trigger();
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Te", on));
+	SERIAL_CHECK_EQ_INT(on + 1, settled_event_count(&simulator, "Te"));
+	SERIAL_CHECK_EQ_INT(off, settled_event_count(&simulator, "Td"));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+cleanup:
+	disarm_log_trigger();
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A refused write of a ZWO AM setting ends ALERT and shows the setting the mount really has, and
+// an immediate retry succeeds. The guide rate goes out at both ends of its range.
+static void lx200_zwo_refused_settings_show_the_device_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "zwo", NULL));
+	online = true;
+	assert_switch_item_value("X_ZWO_MAX_SLEW_SPEED", "LOW", true);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SRl1440", "0"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_MAX_SLEW_SPEED", "HIGH", true, INDIGO_ALERT_STATE));
+	assert_switch_item_value("X_ZWO_MAX_SLEW_SPEED", "LOW", true);
+	assert_switch_item_value("X_ZWO_MAX_SLEW_SPEED", "HIGH", false);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_MAX_SLEW_SPEED", "HIGH", true, INDIGO_OK_STATE));
+	assert_switch_item_value("X_ZWO_MAX_SLEW_SPEED", "HIGH", true);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "STa11+00", "0"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_MERIDIAN", "TRACK_PASSED_MERIDIAN", true, INDIGO_ALERT_STATE));
+	assert_switch_item_value("X_ZWO_MERIDIAN", "TRACK_PASSED_MERIDIAN", false);
+	assert_switch_item_value("X_ZWO_MERIDIAN", "AUTO_FLIP_AT_LIMIT", true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_MERIDIAN", "TRACK_PASSED_MERIDIAN", true, INDIGO_OK_STATE));
+	assert_switch_item_value("X_ZWO_MERIDIAN", "TRACK_PASSED_MERIDIAN", true);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "STa11-05", "0"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ZWO_MERIDIAN_LIMIT", "LIMIT", -5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_ZWO_MERIDIAN_LIMIT", "LIMIT")) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ZWO_MERIDIAN_LIMIT", "LIMIT", -5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_ZWO_MERIDIAN_LIMIT", "LIMIT") + 5) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Rg0.1", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 90, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Rg0.9", 0));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A Gemini has one guiding speed, which the mount shows as MOUNT_GUIDE_RATE and the guider as
+// GUIDER_RATE. A change through either device reaches the controller in its native units, at
+// both ends of the 20 to 80 % range, and is shown by the other device as well.
+static void lx200_gemini_guide_rate_is_shared_by_mount_and_guider(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, NULL, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	reset_simulator_context(&lx200_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 20, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, prefixed_event_count(&simulator, "150:0.2"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 80, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, prefixed_event_count(&simulator, "150:0.8"));
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME) - 80) < 0.5);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 30, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, prefixed_event_count(&simulator, "150:0.3"));
+	reset_simulator_context(&lx200_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 30) < 0.5);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 30) < 0.5);
+cleanup:
+	if (online) {
+		disconnect_serial_device(&lx200_guider);
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(int argc, char **argv) {
 	setbuf(stdout, NULL);
 	simulator_test_client.update_property = timed_client_update;
@@ -4028,6 +4573,16 @@ int main(int argc, char **argv) {
 		{ "lx200_aux_power_request_survives_poll", lx200_aux_power_request_survives_poll },
 		{ "lx200_classic_guider_pulse_survives_previous_finalizer", lx200_classic_guider_pulse_survives_previous_finalizer },
 		{ "lx200_utc_request_survives_host_time", lx200_utc_request_survives_host_time },
+		{ "lx200_goto_abort_ends_alert_and_idle_abort_keeps_state", lx200_goto_abort_ends_alert_and_idle_abort_keeps_state },
+		{ "lx200_onstep_park_and_home_abort_settle", lx200_onstep_park_and_home_abort_settle },
+		{ "lx200_disconnect_stops_motion_and_reconnect_is_clean", lx200_disconnect_stops_motion_and_reconnect_is_clean },
+		{ "lx200_connect_publishes_the_device_state", lx200_connect_publishes_the_device_state },
+		{ "lx200_coordinate_encoding_at_wrap_points", lx200_coordinate_encoding_at_wrap_points },
+		{ "lx200_meade_goto_refusals_stop_the_sequence", lx200_meade_goto_refusals_stop_the_sequence },
+		{ "lx200_shutdown_refused_while_connected", lx200_shutdown_refused_while_connected },
+		{ "lx200_onstep_tracking_request_survives_status_poll", lx200_onstep_tracking_request_survives_status_poll },
+		{ "lx200_zwo_refused_settings_show_the_device_state", lx200_zwo_refused_settings_show_the_device_state },
+		{ "lx200_gemini_guide_rate_is_shared_by_mount_and_guider", lx200_gemini_guide_rate_is_shared_by_mount_and_guider },
 		{ "lx200_mount_passes_serial_compliance_checks", lx200_mount_passes_serial_compliance_checks },
 		{ "lx200_guider_passes_serial_compliance_checks", lx200_guider_passes_serial_compliance_checks },
 		{ "lx200_focuser_passes_serial_compliance_checks", lx200_focuser_passes_serial_compliance_checks },

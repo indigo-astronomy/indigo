@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300004B
+#define DRIVER_VERSION       0x0300004C
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -387,6 +387,8 @@ typedef struct {
 	char gemini_direction_ns, gemini_direction_we;
 	double gemini_park_deadline;
 	bool goto_issued;
+	// The guider device, which shows the guiding speed of a Gemini as GUIDER_RATE.
+	indigo_device *guider_device;
 	bool park_allowed, unpark_allowed, home_allowed;
 	double timeout;
 	char response[128];
@@ -1126,20 +1128,31 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 
 static bool meade_set_tracking(indigo_device *device, bool on);
 
-static bool meade_slew(indigo_device *device, double ra, double dec) {
+// Sends the target of a goto or a sync with :Sr# and :Sd#. indigo_dtos_r() carries a field that
+// rounds up to 60 into the next one, so a right ascension just below 24 h comes out as 24:00:00,
+// which no controller takes; it is 00:00:00.
+static bool meade_set_target(indigo_device *device, double ra, double dec) {
 	char sexagesimal[128];
+	// A GTOCP4 from P01-04 and every GTOCP5/6 take the right ascension to a hundredth and the declination to a
+	// tenth of a second.
+	bool ap_precision = MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_high_precision;
+	indigo_dtos_r(ra, ap_precision ? "%02d:%02d:%05.2f" : "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal));
+	if (!strncmp(sexagesimal, "24", 2)) {
+		sexagesimal[0] = sexagesimal[1] = '0';
+	}
+	if (!meade_simple_reply_command(device, ":Sr%s#", sexagesimal) || *PRIVATE_DATA->response != '1') {
+		return false;
+	}
+	return meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, ap_precision ? "%+03d*%02d:%04.1f" : "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
+}
+
+static bool meade_slew(indigo_device *device, double ra, double dec) {
 	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 		if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 			meade_set_tracking(device, true);
 		}
 	}
-	// A GTOCP4 from P01-04 and every GTOCP5/6 take the right ascension to a hundredth and the declination to a
-	// tenth of a second.
-	bool ap_precision = MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_high_precision;
-	if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, ap_precision ? "%02d:%02d:%05.2f" : "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
-		return false;
-	}
-	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, ap_precision ? "%+03d*%02d:%04.1f" : "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
+	if (!meade_set_target(device, ra, dec)) {
 		return false;
 	}
 	if (!meade_simple_reply_command(device, ":MS#") || *PRIVATE_DATA->response != '0') {
@@ -1160,12 +1173,19 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 				indigo_send_message(device, ALERT_PROPERTY, "%s", message);
 			}
 		}
-		// A Gemini follows the code 1 to 7 with its reason, for example "6Outside Limits.#".
-		// Gemini Level 5 command description, :MS#.
-		if (MOUNT_TYPE_GEMINI_ITEM->sw.value && *PRIVATE_DATA->response >= '1' && *PRIVATE_DATA->response <= '7') {
+		// A Gemini follows the code 1 to 7 with its reason, for example "6Outside Limits.#"
+		// (Gemini Level 5 command description, :MS#), and so do the classic LX200, the
+		// Autostar, the 10micron and the Astro-Physics GTO, for example "1Object Below
+		// Horizon#", padded with spaces on a 10micron.
+		bool reason_follows = MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_CLASSIC_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value;
+		if (reason_follows && *PRIVATE_DATA->response >= '1' && *PRIVATE_DATA->response <= '7') {
 			char reason[64];
 			long length = indigo_uni_read_section2(PRIVATE_DATA->handle, reason, sizeof(reason) - 1, "#", "#", INDIGO_DELAY(0.5), INDIGO_DELAY(0.1));
-			if (length > 0) {
+			size_t size = length > 0 ? strlen(reason) : 0;
+			while (size > 0 && reason[size - 1] == ' ') {
+				reason[--size] = 0;
+			}
+			if (size > 0) {
 				indigo_send_message(device, ALERT_PROPERTY, "Slew refused: %s", reason);
 			}
 		}
@@ -1175,14 +1195,7 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 }
 
 static bool meade_sync(indigo_device *device, double ra, double dec) {
-	char sexagesimal[128];
-	// A GTOCP4 from P01-04 and every GTOCP5/6 take the right ascension to a hundredth and the declination to a
-	// tenth of a second.
-	bool ap_precision = MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_high_precision;
-	if (!meade_simple_reply_command(device, ":Sr%s#", indigo_dtos_r(ra, ap_precision ? "%02d:%02d:%05.2f" : "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
-		return false;
-	}
-	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos_r(dec, ap_precision ? "%+03d*%02d:%04.1f" : "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) || *PRIVATE_DATA->response != '1') {
+	if (!meade_set_target(device, ra, dec)) {
 		return false;
 	}
 	// A GTO servo controller recalibrates with :CMR#, which keeps the side of the pier it already knows. :CM#
@@ -2236,6 +2249,23 @@ static void meade_update_10microns_state(indigo_device *device) {
 // It is computed for the fastest guiding motion, westwards at (1 + guide speed) times the
 // sidereal rate, from the RA worm ratio <21, the encoder ticks per worm turn <27 and the guide
 // speed <150. The guider reads this as well, because it can be connected without the mount.
+// A Gemini has one guiding speed, which the mount shows as MOUNT_GUIDE_RATE and the guider as
+// GUIDER_RATE, so a change made through one device is published by the other one as well.
+static void gemini_show_mount_guide_rate(indigo_device *device, double rate) {
+	if (IS_CONNECTED && !MOUNT_GUIDE_RATE_PROPERTY->hidden) {
+		MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target = rate;
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.target = rate;
+		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
+	}
+}
+
+static void gemini_show_guider_rate(indigo_device *device, double rate) {
+	if (device != NULL && IS_CONNECTED && !GUIDER_RATE_PROPERTY->hidden) {
+		GUIDER_RATE_ITEM->number.value = GUIDER_RATE_ITEM->number.target = rate;
+		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
+	}
+}
+
 static void gemini_read_guiding(indigo_device *device) {
 	PRIVATE_DATA->gemini_level = 0;
 	PRIVATE_DATA->gemini_pulse_chunk = 0;
@@ -3718,6 +3748,12 @@ static void mount_connection_handler(indigo_device *device) {
 		//+ mount.on_disconnect
 		meade_classic_cancel_guides(device);
 		meade_stop(device);
+		// The stop ended every motion, so the next session starts without one: no direction
+		// left selected and no axis the next manual motion would stop first.
+		PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
+		PRIVATE_DATA->classicGoto = PRIVATE_DATA->goto_issued = false;
+		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+		MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
@@ -3862,6 +3898,13 @@ static void mount_zwo_max_slew_speed_handler(indigo_device *device) {
 	//+ mount.ZWO_MAX_SLEW_SPEED.on_change
 	if (!meade_simple_reply_command(device, ZWO_MAX_SLEW_SPEED_LOW_ITEM->sw.value ? ":SRl720#" : ":SRl1440#") || *PRIVATE_DATA->response != '1') {
 		ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		// A refused speed leaves the mount on the one it had, which the switch shows.
+		if (meade_command(device, ":GRl#")) {
+			int speed = atoi(PRIVATE_DATA->response);
+			if (speed == 720 || speed == 1440) {
+				indigo_set_switch(ZWO_MAX_SLEW_SPEED_PROPERTY, speed == 720 ? ZWO_MAX_SLEW_SPEED_LOW_ITEM : ZWO_MAX_SLEW_SPEED_HIGH_ITEM, true);
+			}
+		}
 	}
 	//- mount.ZWO_MAX_SLEW_SPEED.on_change
 	indigo_update_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
@@ -4156,6 +4199,9 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			PRIVATE_DATA->goto_issued = true;
 			PRIVATE_DATA->classicGoto = meade_host_timed_guiding(device);
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			// The slew light goes on with the coordinates that go BUSY, not a poll later.
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_send_message(device, ALERT_PROPERTY, "Slew failed");
@@ -4179,23 +4225,36 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 		meade_classic_cancel_guides(device);
 		if (meade_stop(device)) {
-			if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-				// Abort can overtake a queued reference-position request; cancel its start
-				// as well as settling an already running park/home operation.
-				indigo_cancel_pending_handler(device, mount_park_handler);
-				indigo_cancel_pending_handler(device, mount_home_handler);
-				PRIVATE_DATA->parking = PRIVATE_DATA->homing = false;
-				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-					meade_restore_park_switch(device);
-					MOUNT_STATE_PARK_ITEM->light.value = PRIVATE_DATA->parked ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
-				}
-				if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
-					MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
-					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
-				}
-				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+			// Abort can overtake a queued reference-position request; cancel its start
+			// as well as settling an already running park/home operation. A park or a
+			// home the stop interrupted is over, and nothing the driver expected from it
+			// may latch on a later poll.
+			indigo_cancel_pending_handler(device, mount_park_handler);
+			indigo_cancel_pending_handler(device, mount_home_handler);
+			PRIVATE_DATA->parking = PRIVATE_DATA->homing = false;
+			PRIVATE_DATA->gemini_park_expected = PRIVATE_DATA->oat_park_expected = PRIVATE_DATA->ap_parking = false;
+			if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+				meade_restore_park_switch(device);
+				MOUNT_STATE_PARK_ITEM->light.value = PRIVATE_DATA->parked ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
+				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
+				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
+			}
+			// An aborted goto did not reach its target, so it ends as a failed request.
+			// The values are the last position read, and the next poll publishes the
+			// position the mount stopped at as valid again.
+			bool goto_aborted = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
+			if (goto_aborted) {
+				PRIVATE_DATA->goto_issued = false;
+				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+			}
+			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+			if (goto_aborted) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, "Goto aborted");
 			}
 			PRIVATE_DATA->classicGoto = false;
 			PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
@@ -4385,6 +4444,8 @@ static void mount_guide_rate_handler(indigo_device *device) {
 	}
 	if (!meade_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target)) {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+		gemini_show_guider_rate(PRIVATE_DATA->guider_device, MOUNT_GUIDE_RATE_RA_ITEM->number.target);
 	}
 	//- mount.MOUNT_GUIDE_RATE.on_change
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
@@ -4856,6 +4917,8 @@ static void guider_rate_handler(indigo_device *device) {
 	//+ guider.GUIDER_RATE.on_change
 	if (!meade_set_guide_rate(device, (int)GUIDER_RATE_ITEM->number.value, (int)GUIDER_RATE_ITEM->number.value)) {
 		GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+		gemini_show_mount_guide_rate(device->master_device, GUIDER_RATE_ITEM->number.value);
 	}
 	//- guider.GUIDER_RATE.on_change
 	indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
@@ -4919,6 +4982,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ guider.on_attach
 		GUIDER_GUIDE_NORTH_ITEM->number.max = GUIDER_GUIDE_SOUTH_ITEM->number.max = GUIDER_GUIDE_EAST_ITEM->number.max = GUIDER_GUIDE_WEST_ITEM->number.max = 3000;
+		PRIVATE_DATA->guider_device = device;
 		//- guider.on_attach
 		GUIDER_RATE_PROPERTY->hidden = false;
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
