@@ -20,6 +20,8 @@
 
 #include <indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.h>
 
+#include <indigo/indigo_align.h>
+
 #include "serial_simulator_test_common.h"
 #include <errno.h>
 #include <sys/wait.h>
@@ -37,6 +39,7 @@
 #define ALT_SET_POSITION      "11 04"
 #define AZM_SET_POS_GUIDERATE "10 06"
 #define ALT_SET_POS_GUIDERATE "11 06"
+#define ALT_SLEW_DONE         "11 13"
 #define AZM_SET_NEG_GUIDERATE "10 07"
 #define ALT_SET_NEG_GUIDERATE "11 07"
 #define AZM_AUX_GUIDE         "10 26"
@@ -53,6 +56,7 @@
 #define AZM_SET_GUIDE_RATE    "10 46"
 #define ALT_SET_GUIDE_RATE    "11 46"
 #define AZM_GET_GUIDE_RATE    "10 47"
+#define ALT_GET_GUIDE_RATE    "11 47"
 #define AZM_GET_VER           "10 fe"
 #define ALT_GET_VER           "11 fe"
 
@@ -98,6 +102,19 @@ static bool fault(const char *destination_and_command, const char *action) {
 		return false;
 	}
 	fprintf(file, "%s %s\n", destination_and_command, action);
+	fclose(file);
+	return rename(temporary, fault_path) == 0;
+}
+
+// Arm a controller fault on the next count requests to a destination.
+static bool fault_times(const char *destination_and_command, const char *action, int count) {
+	char temporary[PATH_MAX + 8];
+	snprintf(temporary, sizeof(temporary), "%s.tmp", fault_path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s %d\n", destination_and_command, action, count);
 	fclose(file);
 	return rename(temporary, fault_path) == 0;
 }
@@ -217,6 +234,69 @@ static const char *rate_payload(double sidereal_multiple) {
 	return payload;
 }
 
+// Whether the journal starts with exactly these requests, in this order.
+static bool journal_starts_with(const char * const *expected, int count) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char line[256];
+	bool matches = true;
+	for (int i = 0; i < count && matches; i++) {
+		if (fgets(line, sizeof(line), file) == NULL) {
+			matches = false;
+			break;
+		}
+		line[strcspn(line, "\r\n")] = '\0';
+		matches = !strcasecmp(line, expected[i]);
+	}
+	fclose(file);
+	if (!matches) {
+		print_journal("The journal does not start with the expected requests");
+	}
+	return matches;
+}
+
+// The number of requests that move or stop an axis or write its position: gotos, rate moves, guide
+// rates and syncs. Polls and queries are left out.
+static int motion_requests(void) {
+	static const char *commands[] = { "02", "04", "06", "07", "17", "24", "25" };
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[256];
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+			if (strlen(line) >= 5 && !strncasecmp(line + 3, commands[i], 2)) {
+				count++;
+			}
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+// The 24 bit argument of the most recent request with this destination and command.
+static bool last_position_argument(const char *prefix, unsigned *value) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char line[256];
+	bool found = false;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		unsigned high, middle, low;
+		if (!strncasecmp(line, prefix, strlen(prefix)) && sscanf(line + strlen(prefix), " %x %x %x", &high, &middle, &low) == 3) {
+			*value = high << 16 | middle << 8 | low;
+			found = true;
+		}
+	}
+	fclose(file);
+	return found;
+}
+
 // ----------------------------------------------------------------- helpers
 
 static const char *device_name(void) {
@@ -276,6 +356,12 @@ static bool text_is(const char *property_name, const char *item_name, const char
 	return true;
 }
 
+// The distance between two right ascensions or hour angles, the short way round the clock.
+static double hours_apart(double a, double b) {
+	double difference = fmod(fabs(a - b), 24);
+	return difference > 12 ? 24 - difference : difference;
+}
+
 // The mount reports its position continuously, so a coordinate is only settled
 // once the property is no longer busy and the readback matches. The match has to
 // come from a publication the polling callback made after this call: the handler
@@ -292,7 +378,7 @@ static bool coordinates_are(double ra, double dec, double tolerance) {
 		indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 		indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 		indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
-		if (property != NULL && ra_item != NULL && dec_item != NULL && property->state == INDIGO_OK_STATE && fabs(ra_item->number.value - ra) <= tolerance && fabs(dec_item->number.value - dec) <= tolerance) {
+		if (property != NULL && ra_item != NULL && dec_item != NULL && property->state == INDIGO_OK_STATE && hours_apart(ra_item->number.value, ra) <= tolerance && fabs(dec_item->number.value - dec) <= tolerance) {
 			return true;
 		}
 		indigo_usleep(25000);
@@ -410,6 +496,11 @@ static void metadata(void) {
 	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar SE 6/8"));
 	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "3.6 / 3.6"));
 	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "3.6 / 3.6"));
+	// The connect handshake: both firmware versions, the model, the approach of both axes, the drive
+	// stopped on both axes, the declination axis first, then both autoguide rates read back, which a
+	// model with an autoguider port holds.
+	static const char *handshake[] = { "11 FE", "10 FE", "10 05", "10 FC", "11 FC", "11 06 00 00", "10 06 00 00", "10 47", "11 47" };
+	SERIAL_CHECK_TRUE(journal_starts_with(handshake, ARRAY_SIZE(handshake)));
 cleanup:
 	driver_stop();
 }
@@ -453,6 +544,24 @@ static void property_contract(void) {
 	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_POSITION_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_HOME_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	// Nor a clock, a custom rate, periodic error correction or a pointing model of its own.
+	static const char *absent_properties[] = {
+		MOUNT_HOME_SET_PROPERTY_NAME,
+		MOUNT_HOME_POSITION_PROPERTY_NAME,
+		UTC_TIME_PROPERTY_NAME,
+		MOUNT_SET_HOST_TIME_PROPERTY_NAME,
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME,
+		MOUNT_PEC_PROPERTY_NAME,
+		MOUNT_PEC_TRAINING_PROPERTY_NAME,
+		MOUNT_ALIGNMENT_MODE_PROPERTY_NAME,
+		MOUNT_RAW_COORDINATES_PROPERTY_NAME
+	};
+	assert_not_defined_properties(absent_properties, ARRAY_SIZE(absent_properties));
+	// The motor controller knows the sidereal, solar and lunar rates and nothing else.
+	SERIAL_CHECK_EQ_INT(3, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->count);
+	assert_property_has_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME);
+	assert_property_has_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME);
+	assert_property_has_item(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME);
 	// The reported state is read only, and only TRACK and SYNC are offered.
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_STATE_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
 	SERIAL_CHECK_EQ_INT(2, find_cached_property(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME)->count);
@@ -520,6 +629,8 @@ static void reconnect(void) {
 	SERIAL_CHECK_TRUE(connect_mount());
 	// The mount keeps its coordinates across the reconnect.
 	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+	// Nothing was published for a property that was not defined at the time.
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
 cleanup:
 	driver_stop();
 }
@@ -588,6 +699,9 @@ static void sync_command_failure(void) {
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fault(ALT_SET_POSITION, "silent"));
 	SERIAL_CHECK_TRUE(coordinates_change(3.5, 45, INDIGO_ALERT_STATE));
+	// A refused synchronization is not retried by the driver.
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(1, requests(ALT_SET_POSITION));
 	SERIAL_CHECK_TRUE(coordinates_change(3.5, 45, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(coordinates_are(3.5, 45, .05));
 cleanup:
@@ -607,6 +721,8 @@ static void abort_slew(void) {
 	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
 	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00"));
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	// The abort is a momentary action and reads OFF once it is done.
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, false));
 	// A fresh slew has to be accepted right after the abort.
 	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
@@ -614,11 +730,21 @@ cleanup:
 	driver_stop();
 }
 
+// An abort while nothing moves leaves the position and the tracking drive as they were.
 static void abort_while_idle(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	int starts = requests(AZM_SET_POS_GUIDERATE);
+	unsigned int tracking_revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, false));
+	// The stop writes the velocity register, so the drive is commanded again straight after it.
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SET_POS_GUIDERATE, starts + 1));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "FF FF"));
 	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(tracking_revision, property_revision(MOUNT_TRACKING_PROPERTY_NAME));
 cleanup:
 	driver_stop();
 }
@@ -723,6 +849,8 @@ static void tracking_failure(void) {
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
 	SERIAL_CHECK_TRUE(fault(AZM_SET_POS_GUIDERATE, "silent"));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_ALERT_STATE));
+	// The refused switch shows the drive the mount really has, and an immediate retry succeeds.
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -734,16 +862,30 @@ static void park_and_unpark(void) {
 	// The park position is the pole of the hemisphere the mount stands in.
 	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	// The mount is tracking when it is told to park, so the park has to stop the drive and say so.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
 	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	unsigned int moving = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	unsigned int arrived = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
+	// The coordinates are busy while the mount moves to the park position.
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, moving));
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, arrived));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
 	// A parked mount points at the pole and does not track.
 	SERIAL_CHECK_TRUE(number_is(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 90, 1));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// Unparking only releases the mount: nothing is moved, stopped or written.
+	int motions = motion_requests();
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	// No later poll parks the mount again.
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_EQ_INT(motions, motion_requests());
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
 cleanup:
 	driver_stop();
 }
@@ -756,8 +898,15 @@ static void abort_park(void) {
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00"));
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	// No later poll latches the mount as parked, and nothing is left busy.
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 cleanup:
 	driver_stop();
 }
@@ -1009,8 +1158,12 @@ static void coordinate_polling(void) {
 	int polls = requests(AZM_GET_POSITION);
 	SERIAL_CHECK_TRUE(polls >= 1);
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_POSITION, polls + 2));
+	// A failed poll is published as ALERT with the last valid position, and the next good poll
+	// restores OK.
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(fault(ALT_GET_POSITION, "silent"));
-	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 20, .05));
 	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
 	polls = requests(AZM_GET_POSITION);
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_POSITION, polls + 1));
@@ -1558,6 +1711,696 @@ cleanup:
 	driver_stop();
 }
 
+// ----------------------------------------------------------------- publication order
+
+// Every publication of the driver's devices while recording, in order, with what the mount state
+// lights and the tracking switch showed in it.
+typedef struct {
+	char device[INDIGO_NAME_SIZE];
+	char property[INDIGO_NAME_SIZE];
+	indigo_property_state state;
+	indigo_property_state slew, park, tracking_light;
+	bool tracking_on;
+} publication;
+
+#define MAX_PUBLICATIONS 1024
+
+static publication publications[MAX_PUBLICATIONS];
+static atomic_int publication_count;
+static atomic_bool recording;
+
+static indigo_result record_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	int index = atomic_load(&publication_count);
+	if (atomic_load(&recording) && index < MAX_PUBLICATIONS) {
+		publication *entry = publications + index;
+		memset(entry, 0, sizeof(*entry));
+		snprintf(entry->device, sizeof(entry->device), "%s", property->device);
+		snprintf(entry->property, sizeof(entry->property), "%s", property->name);
+		entry->state = property->state;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (property->type == INDIGO_LIGHT_VECTOR) {
+				if (!strcmp(item->name, MOUNT_STATE_SLEW_ITEM_NAME)) {
+					entry->slew = item->light.value;
+				} else if (!strcmp(item->name, MOUNT_STATE_PARK_ITEM_NAME)) {
+					entry->park = item->light.value;
+				} else if (!strcmp(item->name, MOUNT_STATE_TRACKING_ITEM_NAME)) {
+					entry->tracking_light = item->light.value;
+				}
+			} else if (property->type == INDIGO_SWITCH_VECTOR && !strcmp(item->name, MOUNT_TRACKING_ON_ITEM_NAME)) {
+				entry->tracking_on = item->sw.value;
+			}
+		}
+		atomic_store(&publication_count, index + 1);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void print_publications(void) {
+	int count = atomic_load(&publication_count);
+	for (int i = 0; i < count; i++) {
+		fprintf(stderr, "    %3d %s %s state %d slew %d park %d tracking %d on %d\n", i, publications[i].device, publications[i].property, publications[i].state, publications[i].slew, publications[i].park, publications[i].tracking_light, publications[i].tracking_on);
+	}
+}
+
+static void start_recording(void) {
+	atomic_store(&recording, false);
+	atomic_store(&publication_count, 0);
+	simulator_test_client.update_property = record_update;
+	atomic_store(&recording, true);
+}
+
+static void stop_recording(void) {
+	atomic_store(&recording, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+// The index of the first recorded publication of the property at or after from, or -1.
+static int next_publication(int from, const char *device, const char *property) {
+	int count = atomic_load(&publication_count);
+	for (int i = from < 0 ? 0 : from; i < count; i++) {
+		if (!strcmp(publications[i].device, device) && !strcmp(publications[i].property, property)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+// A light state, or -1 for any.
+static int next_mount_state(int from, int slew, int park) {
+	for (int i = next_publication(from, nexstaraux_mount.device_name, MOUNT_STATE_PROPERTY_NAME); i >= 0; i = next_publication(i + 1, nexstaraux_mount.device_name, MOUNT_STATE_PROPERTY_NAME)) {
+		if ((slew < 0 || (int)publications[i].slew == slew) && (park < 0 || (int)publications[i].park == park)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static int next_state(int from, const char *device, const char *property, indigo_property_state state) {
+	for (int i = next_publication(from, device, property); i >= 0; i = next_publication(i + 1, device, property)) {
+		if (publications[i].state == state) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+static bool wait_for_publication(const char *device, const char *property, indigo_property_state state) {
+	for (int i = 0; i < 400; i++) {
+		if (next_state(0, device, property, state) >= 0) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	fprintf(stderr, "    %s.%s was never published in state %d\n", device, property, state);
+	return false;
+}
+
+static bool wait_for_light(const char *item_name, indigo_property_state state) {
+	for (int i = 0; i < 400; i++) {
+		indigo_item *item = find_cached_item(MOUNT_STATE_PROPERTY_NAME, item_name);
+		if (item != NULL && item->light.value == state) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	indigo_item *item = find_cached_item(MOUNT_STATE_PROPERTY_NAME, item_name);
+	fprintf(stderr, "    MOUNT_STATE.%s never became %d (is %d)\n", item_name, state, item == NULL ? -1 : item->light.value);
+	return false;
+}
+
+static double cached_value(const char *property_name, const char *item_name) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	return item == NULL ? NAN : item->number.value;
+}
+
+// The lights of MOUNT_STATE follow the operations: BUSY while one runs, OK or IDLE once it is over,
+// published after the property that changed and after the follow-up work, the restart of the
+// tracking drive at the end of a goto, has been done.
+static void mount_state_lights(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	start_recording();
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	int slewing = next_mount_state(0, INDIGO_BUSY_STATE, -1);
+	int arrived = next_state(slewing, nexstaraux_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	int tracking = next_publication(slewing, nexstaraux_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME);
+	int settled = next_mount_state(slewing, INDIGO_IDLE_STATE, -1);
+	printf("    goto: slew light busy at %d, tracking restarted at %d, coordinates OK at %d, slew light idle at %d\n", slewing, tracking, arrived, settled);
+	if (!(slewing >= 0 && arrived > slewing && tracking > slewing && settled > slewing)) {
+		print_publications();
+	}
+	SERIAL_CHECK_TRUE(slewing >= 0 && arrived > slewing && tracking > slewing && settled > slewing);
+	SERIAL_CHECK_TRUE(publications[tracking].tracking_on && publications[tracking].state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(settled > arrived && settled > tracking);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, publications[settled].tracking_light);
+	// Park: both the slew and the park light go busy, the park light ends OK and the drive is off.
+	start_recording();
+	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_PARK_ITEM_NAME, INDIGO_OK_STATE));
+	int parking = next_mount_state(0, INDIGO_BUSY_STATE, INDIGO_BUSY_STATE);
+	int park_done = next_state(parking, nexstaraux_mount.device_name, MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	int park_light = next_mount_state(parking, INDIGO_IDLE_STATE, INDIGO_OK_STATE);
+	printf("    park: lights busy at %d, park OK at %d, lights settled at %d\n", parking, park_done, park_light);
+	SERIAL_CHECK_TRUE(parking >= 0 && park_done > parking && park_light > park_done);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, publications[park_light].tracking_light);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_PARK_ITEM_NAME, INDIGO_IDLE_STATE));
+cleanup:
+	stop_recording();
+	driver_stop();
+}
+
+// MOUNT_TRACKING keeps the client's setting while a goto runs, although the drive is stopped for the
+// slew, and the drive comes back at the rate the client selected.
+static void goto_keeps_tracking_setting(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "FF FD"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	int lunar = payload_requests(AZM_SET_POS_GUIDERATE, "FF FD");
+	int sidereal = payload_requests(AZM_SET_POS_GUIDERATE, "FF FF");
+	start_recording();
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
+	stop_recording();
+	int count = atomic_load(&publication_count);
+	for (int i = 0; i < count; i++) {
+		if (!strcmp(publications[i].property, MOUNT_TRACKING_PROPERTY_NAME) && !publications[i].tracking_on) {
+			fprintf(stderr, "    MOUNT_TRACKING was published OFF during the goto\n");
+			SERIAL_CHECK_TRUE(false);
+		}
+	}
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(AZM_SET_POS_GUIDERATE, "FF FD", lunar + 1));
+	SERIAL_CHECK_EQ_INT(sidereal, payload_requests(AZM_SET_POS_GUIDERATE, "FF FF"));
+cleanup:
+	stop_recording();
+	driver_stop();
+}
+
+// A goto refused at the first or the last command of its sequence ends ALERT, sends nothing after
+// the refused command, publishes the real position on the next poll and leaves the mount usable.
+static void goto_refused_mid_sequence(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	// The first command of the sequence stops the declination drive.
+	SERIAL_CHECK_TRUE(fault(ALT_SET_POS_GUIDERATE, "silent"));
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(0, requests(AZM_GOTO_FAST));
+	SERIAL_CHECK_EQ_INT(0, requests(ALT_GOTO_FAST));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(number_is(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10, .05));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	// The last one sends the declination goto; nothing polls the refused slew afterwards.
+	SERIAL_CHECK_TRUE(fault(ALT_GOTO_FAST, "silent"));
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_ALERT_STATE));
+	int done = requests(AZM_SLEW_DONE), slow = requests(AZM_GOTO_SLOW);
+	SERIAL_CHECK_EQ_INT(1, requests(AZM_GOTO_FAST));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_EQ_INT(done, requests(AZM_SLEW_DONE));
+	SERIAL_CHECK_EQ_INT(slow, requests(AZM_GOTO_SLOW));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10, .05));
+	// The next goto is taken and arrives.
+	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
+cleanup:
+	driver_stop();
+}
+
+// A goto whose status poll loses one answer is not left busy: the poll is retried and the goto ends
+// at its target.
+static void goto_survives_a_lost_status_reply(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault(AZM_SLEW_DONE, "silent"));
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// A second goto requested while one runs is ignored: one slew is sent and it ends at the first target.
+static void busy_goto_ignores_second_request(void) {
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const double second[] = { 4, 35 };
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(2, 13, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_FAST, 1));
+	SERIAL_CHECK_TRUE(indigo_change_number_property(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, second) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(coordinates_are(2, 13, .1));
+	SERIAL_CHECK_EQ_INT(1, requests(AZM_GOTO_FAST));
+	SERIAL_CHECK_EQ_INT(1, requests(ALT_GOTO_FAST));
+cleanup:
+	driver_stop();
+}
+
+// An abort that lands in the middle of a slow slew is answered at once, sends one stop per axis,
+// leaves the mount standing short of the target and the goto ALERT, never OK.
+static void abort_lands_mid_slew(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(coordinates_change(2, 40, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_FAST, 1));
+	indigo_usleep(1500000);
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	double answered = indigo_monotonic_time() - started;
+	printf("    the abort was answered after %.0f ms\n", answered * 1000);
+	SERIAL_CHECK_TRUE(answered < 2);
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	double first = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	double second = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	printf("    the slew stopped at declination %.4f and %.4f\n", first, second);
+	SERIAL_CHECK_TRUE(fabs(first - second) < 0.0001);
+	SERIAL_CHECK_TRUE(first > 10.5 && first < 39);
+	SERIAL_CHECK_EQ_INT(1, payload_requests(AZM_MOVE_POS, "00"));
+	SERIAL_CHECK_EQ_INT(1, payload_requests(ALT_MOVE_POS, "00"));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	driver_stop();
+}
+
+// Each manual direction moves the readback the right way, and a guide pulse on the declination axis
+// moves it the same way as manual motion, by the guide rate times the pulse length.
+static void motion_directions_read_back(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, INDIGO_OK_STATE));
+	static const struct { const char *property, *item; double sign; } directions[] = {
+		{ MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, 1 },
+		{ MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, -1 },
+		{ MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, -1 },
+		{ MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, 1 }
+	};
+	for (int i = 0; i < ARRAY_SIZE(directions); i++) {
+		bool dec = !strcmp(directions[i].property, MOUNT_MOTION_DEC_PROPERTY_NAME);
+		const char *item = dec ? MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME : MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME;
+		SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+		double before = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, item);
+		SERIAL_CHECK_TRUE(switch_change(directions[i].property, directions[i].item, INDIGO_BUSY_STATE));
+		indigo_usleep(1000000);
+		unsigned int stopped = property_state_revision(directions[i].property, INDIGO_OK_STATE);
+		SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, directions[i].property, directions[i].item, false) == INDIGO_OK);
+		SERIAL_CHECK_TRUE(state_seen(directions[i].property, INDIGO_OK_STATE, stopped));
+		SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+		double moved = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, item) - before;
+		if (!dec) {
+			moved = fmod(moved + 36, 24) - 12;
+		}
+		printf("    %s moved %s by %+.4f\n", directions[i].item, item, moved);
+		// MAX turns an axis four degrees a second, a quarter of an hour of right ascension.
+		SERIAL_CHECK_TRUE(moved * directions[i].sign > (dec ? 1 : 0.05));
+	}
+	// The default autoguide rate is half sidereal, so a pulse of a second turns the declination axis
+	// by 7.5 arc seconds.
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 50, 1));
+	double expected = 0.5 * 15.041067 / 3600;
+	static const struct { const char *item; double sign; } pulses[] = { { GUIDER_GUIDE_NORTH_ITEM_NAME, 1 }, { GUIDER_GUIDE_SOUTH_ITEM_NAME, -1 } };
+	for (int i = 0; i < ARRAY_SIZE(pulses); i++) {
+		SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+		double before = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		int stops = payload_requests(ALT_SET_POS_GUIDERATE, "00 00");
+		SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, pulses[i].item, 1000) == INDIGO_OK);
+		SERIAL_CHECK_TRUE(wait_for_payload_requests(ALT_SET_POS_GUIDERATE, "00 00", stops + 1));
+		SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+		double moved = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - before;
+		printf("    a 1000 ms %s pulse moved the declination by %+.5f, expected %+.5f\n", pulses[i].item, moved, pulses[i].sign * expected);
+		SERIAL_CHECK_TRUE(moved * pulses[i].sign > 0.8 * expected && moved * pulses[i].sign < 1.3 * expected);
+	}
+cleanup:
+	driver_stop();
+}
+
+// A parked mount refuses tracking, motion, gotos and guide pulses, each refused property keeps the
+// driver's own state, and nothing stays refused after the mount is unparked.
+static void parked_guards(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	int motions = motion_requests();
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 20));
+	// The guider shares the mount, so a parked mount is not guided either.
+	start_recording();
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_publication(nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	stop_recording();
+	SERIAL_CHECK_EQ_INT(motions, motion_requests());
+	// Unparked, every one of them is accepted again.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	int pulses = payload_requests(ALT_SET_POS_GUIDERATE, rate_payload(.5));
+	start_recording();
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(ALT_SET_POS_GUIDERATE, rate_payload(.5), pulses + 1));
+	SERIAL_CHECK_TRUE(wait_for_publication(nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_recording();
+	driver_stop();
+}
+
+// A park the controller never starts ends ALERT, shows the real unparked state, leaves nothing busy,
+// and the next park is taken.
+static void park_refused_by_controller(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_GOTO_FAST, "silent"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	// Not parked, so the mount still takes motion.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
+// Disconnecting while the mount moves stops it before the connection is closed, publishes nothing for
+// the deleted properties, and the next session starts clean: nothing busy, no motion selected, not
+// parked, and a goto after an abort while idle arrives.
+static void disconnect_stops_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	// A goto.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(2, 40, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_FAST, 1));
+	int azm_stops = payload_requests(AZM_MOVE_POS, "00"), alt_stops = payload_requests(ALT_MOVE_POS, "00");
+	disconnect_serial_device(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(AZM_MOVE_POS, "00", azm_stops + 1));
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(ALT_MOVE_POS, "00", alt_stops + 1));
+	int polls = requests(AZM_SLEW_DONE);
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(polls, requests(AZM_SLEW_DONE));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+	SERIAL_CHECK_TRUE(connect_mount());
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	// Manual motion.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	azm_stops = payload_requests(AZM_MOVE_POS, "00");
+	disconnect_serial_device(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(AZM_MOVE_POS, "00", azm_stops + 1));
+	SERIAL_CHECK_TRUE(connect_mount());
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_RA_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	// A park.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_FAST, 2));
+	alt_stops = payload_requests(ALT_MOVE_POS, "00");
+	disconnect_serial_device(&nexstaraux_mount);
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(ALT_MOVE_POS, "00", alt_stops + 1));
+	SERIAL_CHECK_TRUE(connect_mount());
+	// The interrupted park is not reported as a failure, and the mount is not parked.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	// Nothing of the interrupted operations survives into this session.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(2, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(2, 12, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(2, 12, .1));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+cleanup:
+	driver_stop();
+}
+
+// Disconnecting the guider while a pulse runs stops the pulsed axis, leaves the mount connected and
+// polling, and a pulse after the reconnect completes.
+static void guider_disconnect_during_pulse(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	int stops = payload_requests(ALT_SET_POS_GUIDERATE, "00 00");
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 3000) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POS_GUIDERATE, rate_payload(.5)));
+	double started = indigo_monotonic_time();
+	disconnect_serial_device(&nexstaraux_guider);
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(ALT_SET_POS_GUIDERATE, "00 00", stops + 1));
+	printf("    the pulsed axis was stopped %.0f ms after the disconnect was requested\n", (indigo_monotonic_time() - started) * 1000);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - started < 2.5);
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(switch_is(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(connect_guider());
+	unsigned int done = property_state_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, done));
+cleanup:
+	driver_stop();
+}
+
+// A guider connected alone does not poll the mount, and SHUTDOWN is refused while it is connected.
+static void guider_only_session(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_guider());
+	indigo_usleep(2000000);
+	SERIAL_CHECK_EQ_INT(0, requests(AZM_GET_POSITION));
+	SERIAL_CHECK_EQ_INT(0, requests(ALT_GET_POSITION));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, nexstaraux_guider.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+	unsigned int done = property_state_revision(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, done));
+cleanup:
+	driver_stop();
+}
+
+// A goto requested while a guide pulse runs on the declination axis still arrives, and the pulse ends.
+static void goto_during_guide_pulse(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	int stops = payload_requests(ALT_SET_POS_GUIDERATE, "00 00");
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POS_GUIDERATE, rate_payload(.5)));
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(ALT_SET_POS_GUIDERATE, "00 00", stops + 1));
+	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
+cleanup:
+	driver_stop();
+}
+
+// A failed restore of the tracking drive after an axis stop is retried; only when it keeps failing is
+// MOUNT_TRACKING switched OFF with ALERT, never left ON over a standing axis.
+static void tracking_restore_retried(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, INDIGO_OK_STATE));
+	// One lost answer: the restore is sent again and tracking stays on.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	int starts = payload_requests(AZM_SET_POS_GUIDERATE, "FF FF");
+	SERIAL_CHECK_TRUE(fault(AZM_SET_POS_GUIDERATE, "silent"));
+	unsigned int released = property_state_revision(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE, released));
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(AZM_SET_POS_GUIDERATE, "FF FF", starts + 2));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+	// Every answer lost: the axis stands, so tracking is reported OFF with ALERT.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	unsigned int lost = property_state_revision(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(fault_times(AZM_SET_POS_GUIDERATE, "silent", 10));
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE, lost));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_MOTION_RA_PROPERTY_NAME));
+	// Once the controller answers again, tracking can be turned back on.
+	unlink(fault_path);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	unlink(fault_path);
+	driver_stop();
+}
+
+// A failed initial readback marks only that property ALERT, and the connection completes.
+static void initial_readback_failure(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault(AZM_GET_GUIDE_RATE, "silent"));
+	SERIAL_CHECK_TRUE(connect_mount());
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	// The rate can be written and read back once the controller answers.
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The mount and its guider set the same autoguide rate, so a change on one is published on the other.
+static void guide_rate_shared_with_guider(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	watch_results_of(nexstaraux_guider.device_name, GUIDER_RATE_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_results(1));
+	stop_watching();
+	reset_simulator_context(&nexstaraux_guider);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 75, 1));
+	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, 50, 1));
+	watch_results_of(nexstaraux_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_results(1));
+	stop_watching();
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, 1));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 25, 1));
+cleanup:
+	stop_watching();
+	driver_stop();
+}
+
+// Targets given as hour angles from the sidereal time: west and east of the meridian and across the
+// point where the hour angle axis encoder wraps, with the epoch pinned to the mount's own.
+static void hour_angle_targets(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// The epoch stays at the J2000 default, so the requested coordinates reach the encoder unconverted.
+	SERIAL_CHECK_TRUE(number_is(MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, 0));
+	double longitude = cached_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	unsigned raw = 0;
+	// Three hours west: the encoder reads (3 + 12) / 24 of a turn.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	double ra = fmod(indigo_lst(NULL, longitude) - 3 + 24, 24);
+	SERIAL_CHECK_TRUE(coordinates_change(ra, 30, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_position_argument(AZM_SET_POSITION, &raw));
+	printf("    hour angle +3 h was written as %06X\n", raw);
+	SERIAL_CHECK_TRUE(abs((int)raw - 0xA00000) < 0x1000);
+	SERIAL_CHECK_TRUE(coordinates_are(ra, 30, .01));
+	// Three hours east, south of the equator.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	ra = fmod(indigo_lst(NULL, longitude) + 3, 24);
+	SERIAL_CHECK_TRUE(coordinates_change(ra, -20, INDIGO_BUSY_STATE));
+	// The BUSY echo is published before the handler sends the goto.
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
+	// The fast goto ends 2.5 degrees short on the side the axis approaches from, the positive one,
+	// and the slow approaches end at the target.
+	SERIAL_CHECK_TRUE(last_position_argument(AZM_GOTO_FAST, &raw));
+	printf("    hour angle -3 h was approached from %06X\n", raw);
+	SERIAL_CHECK_TRUE(abs((int)raw - (0x600000 - 0x1C71C)) < 0x1000);
+	SERIAL_CHECK_TRUE(coordinates_are(ra, -20, .1));
+	SERIAL_CHECK_TRUE(last_position_argument(AZM_GOTO_SLOW, &raw));
+	printf("    hour angle -3 h was sent as %06X\n", raw);
+	SERIAL_CHECK_TRUE(abs((int)raw - 0x600000) < 0x1000);
+	// Across the wrap of the encoder, from 11.8 h west to 11.8 h east.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	ra = fmod(indigo_lst(NULL, longitude) - 11.8 + 24, 24);
+	SERIAL_CHECK_TRUE(coordinates_change(ra, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(ra, 10, .1));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	ra = fmod(indigo_lst(NULL, longitude) + 11.8, 24);
+	SERIAL_CHECK_TRUE(coordinates_change(ra, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 2));
+	SERIAL_CHECK_TRUE(last_position_argument(AZM_GOTO_FAST, &raw));
+	printf("    hour angle -11.8 h was approached from %06X\n", raw);
+	SERIAL_CHECK_TRUE(abs((int)raw - (0x022222 - 0x1C71C)) < 0x1000);
+	SERIAL_CHECK_TRUE(coordinates_are(ra, 10, .1));
+	SERIAL_CHECK_TRUE(last_position_argument(AZM_GOTO_SLOW, &raw));
+	printf("    hour angle -11.8 h was sent as %06X\n", raw);
+	SERIAL_CHECK_TRUE(abs((int)raw - 0x022222) < 0x1000);
+cleanup:
+	driver_stop();
+}
+
+// On a wedge south of the equator the mount is the mirror image of the northern one: the tracking
+// drive turns the polar axis the negative way, so the axis reads minus the hour angle, and the
+// declination axis reads 90 degrees at the southern pole, half a turn from the declination. The
+// driver used to turn the drive negative but read the axis the northern way, so a tracking mount
+// south of the equator ran away from its target at twice the sidereal rate.
+static void southern_hemisphere(void) {
+	double drift = 0;
+	unsigned raw = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -33, INDIGO_OK_STATE));
+	double longitude = cached_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	// Three hours west of the meridian, sixty degrees south.
+	double ra = fmod(indigo_lst(NULL, longitude) - 3 + 24, 24);
+	SERIAL_CHECK_TRUE(coordinates_change(ra, -60, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_position_argument(AZM_SET_POSITION, &raw));
+	printf("    hour angle +3 h was written as %06X\n", raw);
+	SERIAL_CHECK_TRUE(abs((int)raw - 0xE00000) < 0x1000);
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POSITION, "55 55 55"));
+	SERIAL_CHECK_TRUE(coordinates_are(ra, -60, .01));
+	// The negative drive holds the right ascension.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_NEG_GUIDERATE, "FF FF"));
+	SERIAL_CHECK_TRUE(right_ascension_drift(TRACKING_WINDOW, &drift));
+	printf("    with tracking on south of the equator the mount lost %.5f h over %.0f s\n", drift, TRACKING_WINDOW);
+	SERIAL_CHECK_TRUE(drift < TRACKING_HELD);
+	// West is the direction of the drive, the negative one.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_NEG, "02"));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	// A goto arrives at a southern target and the park ends at the southern pole.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	ra = fmod(indigo_lst(NULL, longitude) + 2 + 24, 24);
+	SERIAL_CHECK_TRUE(coordinates_change(ra, -45, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(ra, -45, .1));
+	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -90, 1));
+cleanup:
+	driver_stop();
+}
+
 // ----------------------------------------------------------------- runner
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
@@ -1612,7 +2455,25 @@ int main(void) {
 		{ "goto_polls_gently", goto_polls_gently, "slow-slew" },
 		{ "controller_warning_acknowledged", controller_warning_acknowledged, "normal" },
 		{ "split_answer_keeps_the_mount_alive", split_answer_keeps_the_mount_alive, "normal" },
-		{ "late_answer_not_taken", late_answer_not_taken, "normal" }
+		{ "late_answer_not_taken", late_answer_not_taken, "normal" },
+		{ "southern_hemisphere", southern_hemisphere, "normal" },
+		{ "mount_state_lights", mount_state_lights, "normal" },
+		{ "goto_keeps_tracking_setting", goto_keeps_tracking_setting, "normal" },
+		{ "goto_refused_mid_sequence", goto_refused_mid_sequence, "normal" },
+		{ "goto_survives_a_lost_status_reply", goto_survives_a_lost_status_reply, "normal" },
+		{ "busy_goto_ignores_second_request", busy_goto_ignores_second_request, "slow-slew" },
+		{ "abort_lands_mid_slew", abort_lands_mid_slew, "slow-slew" },
+		{ "motion_directions_read_back", motion_directions_read_back, "normal" },
+		{ "parked_guards", parked_guards, "normal" },
+		{ "park_refused_by_controller", park_refused_by_controller, "normal" },
+		{ "disconnect_stops_motion", disconnect_stops_motion, "slow-slew" },
+		{ "guider_disconnect_during_pulse", guider_disconnect_during_pulse, "normal" },
+		{ "guider_only_session", guider_only_session, "normal" },
+		{ "goto_during_guide_pulse", goto_during_guide_pulse, "normal" },
+		{ "tracking_restore_retried", tracking_restore_retried, "normal" },
+		{ "initial_readback_failure", initial_readback_failure, "normal" },
+		{ "guide_rate_shared_with_guider", guide_rate_shared_with_guider, "normal" },
+		{ "hour_angle_targets", hour_angle_targets, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (mkdtemp(fixture_directory) == NULL) {

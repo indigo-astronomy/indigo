@@ -959,3 +959,70 @@ MIGRATION_STATUS.md hardware-free count 109 -> 118 (115 serial cases and the 3 o
 
 Simulated tests: **115 run, 115 passed** (second recorded run; the first recorded run had 22 failures,
 fixed as described in step 4). Hardware tests: **0 run, 0 passed**.
+
+## Mount test standard coverage (2026-10-04, 3.0.0.63)
+
+The suite was checked against the "Mount Drivers" chapter and the "Mount Driver Test Standard" of
+`indigo_test/DRIVER_TESTING_RULES.md` (and the guider standard for pulse guiding). Simulator additions:
+`--meridian <fll>` (initial `:GMT#` state) and the control line `@halt` (the controller ends a running slew
+where it is, as on a limit stop or a hand controller stop).
+
+Defects found by the new assertions and fixed in version 63 (`indigo_mount_ioptron.driver`, regenerated):
+
+1. RA just below the wrap point was rounded to 24 h (`Sr 24:00:00`, `Sr86400000`, `SRA129600000`) and refused
+   by the mount; `ioptron_device_ra()` rounds to the device unit and wraps to 0 (SYNC, GOTO, V1/V2 park).
+2. An aborted GOTO ended `MOUNT_EQUATORIAL_COORDINATES` OK; it now ends ALERT ("Slew aborted") and stays ALERT
+   while the mount decelerates; an abort while idle no longer touches the coordinate state.
+3. A GOTO the controller ended short of the target ended OK; completion now compares the readback with the
+   target (`RA_MIN_DIF`/`DEC_MIN_DIF`, judged on a readback taken after the status reported the end) and ends
+   ALERT with "Slew ended short of the target". The SLEW light returns to IDLE when the slew ends (it was
+   ALERT after a failed GOTO).
+4. A refused slew sent no reason; the controller's reason (`0`, HC8406 `1`/`2`) now reaches the client.
+5. Disconnect during a GOTO, park, homing or arrow motion left the mount moving; it now sends `:Q#` first.
+   HC8406 guider pulses (arrow motion stopped by the finalizer) are stopped with `:Qn#`/`:Qe#` when the guider
+   disconnects during a pulse.
+6. A park or homing the mount acknowledged but never started (or stopped short) stayed BUSY forever; it ends
+   ALERT after 5 s without motion (or when the motion stops) and shows unparked / AWAY.
+7. `MOUNT_PARK_SET.CURRENT` stayed ON after a successful set (momentary action).
+8. The meridian treatment was not read at connect (driver defaults published); `:GMT#` is read on protocol
+   3.0, and a refused meridian change shows the controller's setting.
+9. A refused tracking rate left the rejected rate displayed; the rate the mount uses is read back.
+10. `:RR` of a custom rate truncated (1.9 sent as `RR18999`); now rounded.
+11. A guide rate changed through the mount was not reflected on the guider and vice versa.
+12. The status poll republished `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_PARK`, `MOUNT_HOME` and
+    `MOUNT_SIDE_OF_PIER` every second; they are now published only when they change.
+
+| Rule | Test |
+| --- | --- |
+| Connect handshake order, no controller writes at connect | `ioptron_connect_handshake_order_0300`, `_8407` |
+| No update of an undefined property across connect/disconnect/reconnect | `ioptron_profile_*` |
+| RA rounding carry at the wrap point | `ioptron_coordinate_boundaries_8406/8407/0100/0205/0300` |
+| Aborted GOTO ALERT, never OK, stop sent once | `ioptron_goto_progress_abort_and_restart` |
+| Abort while idle keeps position, tracking and coordinate state | `ioptron_idle_abort_keeps_position_and_tracking` |
+| Frozen status keeps GOTO BUSY, slew ended short ALERT, next GOTO accepted | `ioptron_goto_completion_follows_slew_status` |
+| Refusal reason reaches the client | `ioptron_goto_below_altitude_limit_rejected`, `ioptron_goto_refusal_reason_8406` |
+| Disconnect during GOTO/park stops the mount, clean next session, interrupted park not failed | `ioptron_disconnect_during_motion_stops_mount` |
+| Park/home never started ends ALERT | `ioptron_park_and_home_never_started_alert` |
+| Park light and coordinates BUSY while parking, refused parked requests keep switches, unpark sends no motion and stays unparked | `ioptron_park_workflow_*` |
+| Homing keeps park state | `ioptron_home_workflow_*` |
+| Momentary PARK_SET | `ioptron_park_set_positions_0205/0300` |
+| Prime meridian / zero-degree signs, one-item site change resends the other, site kept across reconnect | `ioptron_site_signs_8407/0200/0300` |
+| Both ends of scaled guide and custom rate ranges on the wire | `ioptron_scaled_range_ends_0300` |
+| Meridian treatment read at connect, refused change shows device state | `ioptron_meridian_treatment_read_at_connect` |
+| Refused tracking rate shows device rate | `ioptron_track_rate_refusal_shows_device_rate_8407/0200/0300` |
+| External change published once | `ioptron_external_changes_published_once` |
+| RA pulse displacement, tracking kept on/off | `ioptron_guider_zero_requests_and_pulse_mechanics` |
+| Guider disconnect during HC8406 pulse | `ioptron_guider_disconnect_stops_hc8406_pulse` |
+| Guide rate shared by mount and guider | `ioptron_guide_rate_shared_by_mount_and_guider` |
+| Manual motion released when its client detaches | `ioptron_motion_released_when_client_detaches` |
+| SHUTDOWN refused while connected | `ioptron_shutdown_refused_while_connected` |
+
+Recorded run 2026-10-04 18:52 (mac arm64, simulator): 136/136 OK. Test cases 115 -> 136 (plus 3 opt-in TCP).
+
+Not covered, with reason: direction/sign per pier side and hemisphere (the mount maps `:mn`/`:ms` itself, the
+driver has no mapping); PEC refusal showing the device state (no PEC state readback in the protocol); a
+setting acknowledged but not kept (the simulated controller always keeps it, no readback after write in the
+protocol flow); requests versus poll for tracking/park/home (documented above with instrumented evidence, the
+window has no I/O); alignment, time-zone order (protocol does not mandate one) and device options the driver
+does not implement; driver-specific property names without `X_` prefix (`MOUNT_MERIDIAN_HANDLING`,
+`MOUNT_MERIDIAN_LIMIT`, `PROTOCOL_VERSION`) are a client-visible rename left for a separate decision.

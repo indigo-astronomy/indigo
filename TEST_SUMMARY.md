@@ -269,7 +269,7 @@
 |  | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
 |  | 2026-09-27 02:42 | 3.0.0.61 | linux x64 | simulator | 106 / 106 | ✅ OK |
-|  | 2026-10-03 22:08 | 3.0.0.62 | mac arm64 | simulator | 115 / 115 | ✅ OK |
+|  | 2026-10-04 18:52 | 3.0.0.63 | mac arm64 | simulator | 136 / 136 | ✅ OK |
 | mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 |  | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-09-23 11:17 | 3.0.0.60 | mac arm64 | OpenAstroTracker | 35 / 35 | ✅ OK |
@@ -298,12 +298,12 @@
 |  | 2026-09-24 05:44 | 3.0.0.18 | linux arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-24 11:00 | 3.0.0.18 | mac arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-26 23:13 | 3.0.0.22 | linux x64 | simulator | 42 / 42 | ✅ OK |
-|  | 2026-10-04 19:14 | 3.0.0.23 | mac arm64 | simulator | 49 / 49 | ✅ OK |
+|  | 2026-10-04 19:45 | 3.0.0.24 | mac arm64 | simulator | 67 / 67 | ✅ OK |
 | mount_pmc8 | 2026-09-24 23:45 | 3.0.0.12 | mac arm64 | iEXOS-100 | 38 / 38 | ✅ OK |
 |  | 2026-09-26 21:30 | 3.0.0.14 | linux arm64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-09-27 00:26 | 3.0.0.15 | linux x64 | simulator | 21 / 21 | ✅ OK |
-|  | 2026-09-27 23:06 | 3.0.0.15 | mac arm64 | simulator | 21 / 21 | ✅ OK |
 |  | 2026-09-30 19:56 | 3.0.0.15 | linux arm64 | Explore Scientific iEXOS-100 | 38 / 38 | ✅ OK |
+|  | 2026-10-04 19:05 | 3.0.0.16 | mac arm64 | simulator | 36 / 36 | ✅ OK |
 | mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |
 |  | 2026-09-27 12:23 | 3.0.0.21 | linux x64 | simulator | 18 / 18 | ✅ OK |
 |  | 2026-10-04 14:31 | 3.0.0.22 | mac arm64 | simulator | 24 / 24 | ✅ OK |
@@ -311,7 +311,7 @@
 |  | 2026-10-04 11:19 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-10-04 15:24 | 3.0.0.25 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | mount_starbook | 2026-09-27 12:08 | 3.0.0.11 | linux x64 | simulator | 13 / 13 | ✅ OK |
-|  | 2026-09-27 23:08 | 3.0.0.11 | mac arm64 | simulator | 13 / 13 | ✅ OK |
+|  | 2026-10-04 18:50 | 3.0.0.12 | mac arm64 | simulator | 26 / 26 | ✅ OK |
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
 |  | 2026-09-24 21:27 | 3.0.0.8 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-24 21:48 | 3.0.0.9 | mac arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |

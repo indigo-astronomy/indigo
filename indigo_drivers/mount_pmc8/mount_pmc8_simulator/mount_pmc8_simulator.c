@@ -25,8 +25,19 @@
 // --speed-scale shortens the long slews a test does not want to wait for; the rate the controller
 // reports while pointing stays the real one.
 //
+// --version-reply and --info-reply replace the ESGv and ESGi replies (other models and firmware
+// releases), --tracking-rate starts the controller with its drive running at that ESTr rate.
+//
 // Events ("<ready-file>.events"): "<monotonic seconds>\t<command>" for every command received, and
 // "REBOOT" when the controller reboots.
+//
+// Test control ("<ready-file>.control", consumed atomically):
+//   <command>\t<reply>[\t<count>]   reply override for the exact command (e.g. "ESGp0!"): DROP = no
+//                                   reply, DELAY:<ms> = delay then normal handling, CLEAR removes
+//                                   the rule, anything else is sent instead; count 0 = sticky
+//   @stall\t<axis>                  the points of the axis report their speed but never move
+//   @short\t<axis>                  the points of the axis end halfway to their target
+//   @normal\t<axis>                 ends @stall and @short
 
 #define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE 600
@@ -58,6 +69,9 @@ typedef struct {
 	bool iexos100;
 	double boot_seconds;
 	double speed_scale;
+	const char *version_reply;
+	const char *info_reply;
+	int tracking_rate;
 	const char *ready_file;
 } simulator_options;
 
@@ -70,9 +84,27 @@ typedef struct {
 	int direction[2];
 	int tracking_rate;
 	bool rate_is_tracking;
+	bool stalled[2];
 	double updated;
 	double booted;
 } simulator_state;
+
+typedef enum {
+	AXIS_NORMAL = 0,
+	AXIS_STALL,
+	AXIS_SHORT
+} axis_fault;
+
+#define MAX_RULES 16
+
+typedef struct {
+	char command[32];
+	char reply[96];
+	int count;
+} reply_rule;
+
+static reply_rule rules[MAX_RULES];
+static axis_fault faults[2];
 
 static simulator_options options = {
 	.headless = false,
@@ -81,6 +113,9 @@ static simulator_options options = {
 	.iexos100 = false,
 	.boot_seconds = 2.0,
 	.speed_scale = 1.0,
+	.version_reply = NULL,
+	.info_reply = NULL,
+	.tracking_rate = 0,
 	.ready_file = NULL
 };
 static simulator_state state = { 0 };
@@ -103,6 +138,9 @@ static void usage(const char *name) {
 	printf("  --model <exos2|iexos100> Identity strings to report (default exos2)\n");
 	printf("  --boot-seconds <s>      Silence after a reboot (default 2)\n");
 	printf("  --speed-scale <x>       Point faster than the real controller, for long test slews\n");
+	printf("  --version-reply <reply> ESGv reply to send instead of the model's one\n");
+	printf("  --info-reply <reply>    ESGi reply to send instead of the model's one\n");
+	printf("  --tracking-rate <hex>   Start with the drive running at this ESTr rate\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -136,6 +174,18 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.speed_scale = atof(argv[i]);
+		} else if (!strcmp(argv[i], "--version-reply") || !strcmp(argv[i], "--info-reply") || !strcmp(argv[i], "--tracking-rate")) {
+			if (i + 1 == argc) {
+				fprintf(stderr, "%s requires a value\n", argv[i]);
+				return false;
+			}
+			if (!strcmp(argv[i], "--version-reply")) {
+				options.version_reply = argv[++i];
+			} else if (!strcmp(argv[i], "--info-reply")) {
+				options.info_reply = argv[++i];
+			} else {
+				options.tracking_rate = (int)strtol(argv[++i], NULL, 16);
+			}
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -308,7 +358,9 @@ static double axis_speed(int axis) {
 static void update_motion(void) {
 	double now = serial_motion_time();
 	for (int axis = 0; axis < 2; axis++) {
-		if (state.pointing[axis]) {
+		if (state.pointing[axis] && state.stalled[axis]) {
+			// The axis reports its pointing speed and stands still.
+		} else if (state.pointing[axis]) {
 			state.position[axis] = serial_motion_update(&state.point[axis]);
 			if (state.point[axis].duration == 0) {
 				state.pointing[axis] = false;
@@ -322,9 +374,12 @@ static void update_motion(void) {
 
 static void stop_point(int axis) {
 	if (state.pointing[axis]) {
-		serial_motion_stop(&state.point[axis]);
-		state.position[axis] = state.point[axis].position;
+		if (!state.stalled[axis]) {
+			serial_motion_stop(&state.point[axis]);
+			state.position[axis] = state.point[axis].position;
+		}
 		state.pointing[axis] = false;
+		state.stalled[axis] = false;
 	}
 }
 
@@ -348,18 +403,119 @@ static void settle_point(int axis) {
 	}
 }
 
+static void add_rule(const char *command, const char *reply, int count) {
+	size_t command_length = strlen(command), reply_length = strlen(reply);
+	// A shortened rule would match the wrong command or answer the wrong bytes, so it is refused.
+	if (command_length >= sizeof(rules[0].command) || reply_length >= sizeof(rules[0].reply)) {
+		fprintf(stderr, "control: rule too long, command %zu of %zu bytes, reply %zu of %zu bytes\n", command_length, sizeof(rules[0].command), reply_length, sizeof(rules[0].reply));
+		return;
+	}
+	for (int i = 0; i < MAX_RULES; i++) {
+		if (rules[i].command[0] && !strcmp(rules[i].command, command)) {
+			rules[i].command[0] = 0;
+		}
+	}
+	if (!strcmp(reply, "CLEAR")) {
+		return;
+	}
+	for (int i = 0; i < MAX_RULES; i++) {
+		if (!rules[i].command[0]) {
+			memcpy(rules[i].command, command, command_length + 1);
+			memcpy(rules[i].reply, reply, reply_length + 1);
+			rules[i].count = count;
+			return;
+		}
+	}
+}
+
+// The test renames a complete file into place, so a request is never read half written.
+static void read_control(void) {
+	if (options.ready_file == NULL) {
+		return;
+	}
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.control", options.ready_file);
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return;
+	}
+	char line[256];
+	while (fgets(line, sizeof(line), file)) {
+		line[strcspn(line, "\r\n")] = 0;
+		char *value = strchr(line, '\t');
+		if (value == NULL) {
+			continue;
+		}
+		*value++ = 0;
+		char *count_text = strchr(value, '\t');
+		int count = 1;
+		if (count_text != NULL) {
+			*count_text++ = 0;
+			count = atoi(count_text);
+		}
+		int axis = atoi(value) ? 1 : 0;
+		if (!strcmp(line, "@stall")) {
+			faults[axis] = AXIS_STALL;
+		} else if (!strcmp(line, "@short")) {
+			faults[axis] = AXIS_SHORT;
+		} else if (!strcmp(line, "@normal")) {
+			faults[axis] = AXIS_NORMAL;
+		} else {
+			add_rule(line, value, count);
+		}
+	}
+	fclose(file);
+	unlink(path);
+}
+
+// The injected reply for the command: NULL for none (dropped), the command's own reply when no rule
+// replaces it (*handled false).
+static const char *apply_rule(const char *command, bool *handled) {
+	*handled = false;
+	for (int i = 0; i < MAX_RULES; i++) {
+		reply_rule *rule = rules + i;
+		if (!rule->command[0] || strcmp(rule->command, command)) {
+			continue;
+		}
+		static char reply[sizeof(rules[0].reply)];
+		snprintf(reply, sizeof(reply), "%s", rule->reply);
+		if (rule->count > 0 && --rule->count == 0) {
+			rule->command[0] = 0;
+		}
+		if (!strncmp(reply, "DELAY:", 6)) {
+			usleep((useconds_t)atoi(reply + 6) * 1000);
+			return NULL;
+		}
+		*handled = true;
+		return strcmp(reply, "DROP") ? reply : NULL;
+	}
+	return NULL;
+}
+
 static const char *build_response(const char *command, char *response, size_t response_size) {
 	if (options.trace) {
 		fprintf(stderr, "-> %s\n", command);
 	}
 	log_event(command);
+	read_control();
 	update_motion();
 	if (serial_motion_time() < state.booted) {
 		return NULL;
 	}
+	bool handled = false;
+	const char *injected = apply_rule(command, &handled);
+	if (handled) {
+		return injected;
+	}
 	if (!strcmp(command, "ESGv!")) {
+		if (options.version_reply != NULL) {
+			return options.version_reply;
+		}
 		return options.iexos100 ? "ESGvES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4!" : "ESGvES20200301 EXOS2 20!";
 	} else if (!strcmp(command, "ESGi!")) {
+		if (options.info_reply != NULL) {
+			return options.info_reply;
+		}
 		return options.iexos100 ? "ESGi1152000001040040000900060000001!" : "ESGi0000000000000000080000!";
 	} else if (!strcmp(command, "ESGx!")) {
 		snprintf(response, response_size, "ESGx%04X!", state.tracking_rate & 0xFFFF);
@@ -410,8 +566,10 @@ static const char *build_response(const char *command, char *response, size_t re
 		}
 		state.rate[axis] = 0;
 		serial_motion_sync(&state.point[axis], state.position[axis]);
-		serial_motion_start(&state.point[axis], target, point_speed[axis] * options.speed_scale);
+		double end = faults[axis] == AXIS_SHORT ? (state.position[axis] + target) / 2 : target;
+		serial_motion_start(&state.point[axis], end, point_speed[axis] * options.speed_scale);
 		state.pointing[axis] = true;
+		state.stalled[axis] = faults[axis] == AXIS_STALL;
 		snprintf(response, response_size, "ESGt%d%06X!", axis, target & 0xFFFFFF);
 		return response;
 	} else if (!strncmp(command, "ESSp", 4)) {
@@ -524,6 +682,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	state.updated = serial_motion_time();
+	if (options.tracking_rate != 0) {
+		state.tracking_rate = options.tracking_rate;
+		state.rate_is_tracking = true;
+		state.direction[0] = 1;
+	}
 	if (options.ready_file != NULL) {
 		char path[PATH_MAX];
 		snprintf(path, sizeof(path), "%s.events", options.ready_file);
@@ -592,6 +755,7 @@ int main(int argc, char *argv[]) {
 		}
 		struct timeval timeout = { 0, 100000 };
 		int selected = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
+		read_control();
 		if (selected < 0) {
 			if (errno == EINTR) {
 				continue;

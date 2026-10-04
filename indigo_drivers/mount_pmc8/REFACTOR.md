@@ -824,8 +824,64 @@ delay and run ahead of an overdue TIME finalizer, which they cancel.
 Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_pmc8` on Linux x64: 21/21.
 MIGRATION_STATUS.md hardware-free count 19 -> 21.
 
+## Mount Driver Test Standard coverage (2026-10-04)
+
+Version 16. The extended mount rules of `indigo_test/DRIVER_TESTING_RULES.md` were checked against the
+driver; the missing scenarios were added to `integration/test_mount_pmc8_simulator.c` and the
+simulator gained `--version-reply`, `--info-reply`, `--tracking-rate` and a control file
+(`<ready-file>.control`: per-command DROP/DELAY/reply overrides, `@stall`/`@short`/`@normal` per axis).
+
+### Defects fixed
+
+| ID | Impact | Fix | Regression |
+| --- | --- | --- | --- |
+| R1 | A GOTO whose point never ended (axis reporting its speed but not moving) stayed BUSY forever; a slew the controller ended away from the target reported OK. | Each pass gets a deadline (travel at half the 40000 counts/s point speed + 10 s, from a fresh position read); past it the point is ended with `ESPt300000` and the GOTO ends ALERT. After the third pass the position must be within 0xFFF counts of the pass target, otherwise ALERT. | `pmc8_mount_fails_a_stalled_or_short_goto` |
+| R2 | A failed position poll published nothing, so stale coordinates stayed OK. | The poll publishes the last valid coordinates ALERT; the next good poll restores OK (only an ALERT the poll itself set). | `pmc8_mount_reports_a_failed_poll` |
+| R3 | A park left the coordinates OK while moving; a park requested during a GOTO let the next GOTO pass point away from the park position. | Park cancels a pending GOTO finalizer, publishes the coordinates BUSY, OK/ALERT at completion. | `pmc8_mount_park_replaces_a_goto_and_guards_the_parked_mount`, `pmc8_mount_parks_and_unparks` |
+| R4 | Disconnecting the mount during a GOTO, park or manual motion sent no stop (only the serial reboot stopped the axes; TCP/UDP or a session kept open by the guider left them moving), and motion items stayed ON into the next session. | `on_disconnect` ends a running point (`ESPt300000`, bounded wait), stops moving axes and clears the motion items. | `pmc8_mount_stops_motion_when_disconnected` |
+| R5 | `MOUNT_ABORT_MOTION.ABORT_MOTION` stayed ON after the abort. | The item is reset before the final update. | `pmc8_mount_restores_tracking_after_manual_motion_and_abort` |
+| R6 | A controller naming no known model (firmware below 20) or without an information block (20 and later) was accepted with no model and the axis counts of the previous one. | Detection fails, the connection is retried and then refused with ALERT. | `pmc8_mount_refuses_an_unidentified_controller` |
+| R7 | An `ESGx` reply without a hexadecimal rate read as tracking OFF with OK. | The reply is validated; on connect a malformed reply leaves `MOUNT_TRACKING`/`MOUNT_TRACK_RATE` ALERT with their values, and the connection completes. | `pmc8_mount_publishes_the_controller_tracking_state_on_connect` |
+
+### Scenario-to-test mapping of the added cases
+
+| Rule area | Case |
+| --- | --- |
+| Negative capability contract (guide rate, park set/position, home, custom rate, alignment, PEC, state, UTC hidden; no SLEW item; three track rates; RO side of pier and RO mount type while connected), connect handshake `ESGv`/`ESGi`/`ESGx`, no `ESX`/`ESY`, site and side-of-pier requests send nothing, connection options stay defined, no update of undefined properties across reconnect | `pmc8_mount_pins_capabilities_and_connect_handshake` |
+| Model branches on both sides of firmware 20 (Titan by version string without `ESGi`, G-11 by `ESGi` code), per-model sidereal rate on the wire; forced model skips `ESGi` | `pmc8_mount_detects_models_on_both_sides_of_the_firmware_threshold`, `pmc8_mount_uses_manual_mount_type_without_autodetection` |
+| Unidentified controller refused | `pmc8_mount_refuses_an_unidentified_controller` |
+| Connect publishes the controller drive state (lunar, solar), malformed readback | `pmc8_mount_publishes_the_controller_tracking_state_on_connect` |
+| Exact signed 24 bit counts and readback on both pier sides and hemispheres (epoch pinned) | `pmc8_mount_encodes_coordinates_on_both_pier_sides_and_hemispheres` |
+| Busy GOTO ignores a second request | `pmc8_mount_keeps_the_first_goto_when_a_second_arrives` |
+| Stalled / short slew, recovery | `pmc8_mount_fails_a_stalled_or_short_goto` |
+| Rates on the wire, hemisphere direction, RA drift with drive off and hold with it on, GOTO resumes the selected rate | `pmc8_mount_tracks_at_the_selected_rates` |
+| Release/abort restores the drive, north raises DEC, slew-rate presets, idle abort changes nothing, momentary abort switch | `pmc8_mount_restores_tracking_after_manual_motion_and_abort` |
+| Park replaces a GOTO, coordinates BUSY during park, parked guards keep the driver state and send nothing, released after unpark | `pmc8_mount_park_replaces_a_goto_and_guards_the_parked_mount` |
+| Failed poll ALERT with last values, recovery | `pmc8_mount_reports_a_failed_poll` |
+| Disconnect during GOTO and manual motion | `pmc8_mount_stops_motion_when_disconnected` |
+| Manual motion released when its client detaches | `pmc8_mount_releases_motion_of_a_detached_client` |
+| Guider: independent RA/DEC completion, RA pulse on a tracking mount without stopping the axis, displacement = rate x duration on the wire, zero pulse, guide rate 10 %/90 %, guider-only session does not poll, disconnect during RA pulse restores the drive, pulse after reconnect | `pmc8_guider_completes_axes_independently_and_reconnects` |
+| GOTO during a guide pulse, guider survives the mount disconnect | `pmc8_guider_and_mount_share_the_connection` |
+
+### Not covered, with reason
+
+- Home, park set/position, PEC, alignment, `MOUNT_STATE`, time/site writes, meridian options: the
+  controller protocol has none of them (asserted undefined instead).
+- Refusal/status codes and warning replies: the protocol has none; a dropped reply is retried by the
+  transport loop.
+- A tracking rate the controller acknowledges but does not keep: no such controller behaviour is
+  known; the `ESTr` echo is not checked.
+- A persistently failing tracking restore at the end of a guide pulse is not propagated to
+  `MOUNT_TRACKING` (the guider finalizer ignores the result); guide pulses on a parked mount are not
+  refused. Both would be new driver behaviour, left for a decision.
+- Network variants (TCP/UDP lost replies, transport switch while connected): only the existing
+  connect cases.
+- Hardware: none of the version 16 changes ran on the iEXOS-100. The GOTO deadline and arrival
+  tolerance are derived from the measured point speed and the hardware slew accuracy (0.01 deg DEC,
+  0.002 h RA) but are unverified on hardware.
+
 ## Final test summary
 
-- Simulated: 21 cases run, 21 passed (`test_mount_pmc8_simulator`, Linux x64, version 15); the earlier
-  19/19 run was on macOS arm64 with version 12.
+- Simulated: 36 cases run, 36 passed (`test_mount_pmc8_simulator`, macOS arm64, version 16); earlier
+  21/21 on Linux x64 with version 15 and 19/19 on macOS arm64 with version 12.
 - Hardware: 38 cases run, 38 passed (`test_mount_pmc8_hw`, iEXOS-100 over serial, macOS arm64).
