@@ -190,20 +190,20 @@ Public behavior to preserve in the first greenfield version:
   - `MOUNT_ABORT_MOTION`;
   - `MOUNT_PEC`;
   - `MOUNT_PEC_TRAINING`;
-  - `POLARSCOPE` with `BRIGHTNESS`;
-  - `MOUNT_USE_ENCODERS` with `RA`, `DEC`;
-  - `MOUNT_AUTOHOME` with `AUTOHOME`;
-  - `MOUNT_AUTOHOME_SETTINGS` with `DEC_OFFSET`.
+  - `X_POLARSCOPE` with `BRIGHTNESS`;
+  - `X_MOUNT_USE_ENCODERS` with `RA`, `DEC`;
+  - `X_MOUNT_AUTOHOME` with `AUTOHOME`;
+  - `X_MOUNT_AUTOHOME_SETTINGS` with `DEC_OFFSET`.
 - Capability-dependent visibility to preserve:
-  - `MOUNT_OPERATING_MODE` visible only for AZ/EQ-capable mounts, with `POLAR` and `ALTAZ`;
-  - `MOUNT_USE_ENCODERS` visible only when axis encoders are supported;
+  - `X_MOUNT_OPERATING_MODE` visible only for AZ/EQ-capable mounts, with `POLAR` and `ALTAZ`;
+  - `X_MOUNT_USE_ENCODERS` visible only when axis encoders are supported;
   - `MOUNT_PEC` and `MOUNT_PEC_TRAINING` visible only when PPEC is supported;
-  - `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS` visible only when home indexers are supported;
-  - `POLARSCOPE` visible only when polarscope brightness control is supported.
+  - `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS` visible only when home indexers are supported;
+  - `X_POLARSCOPE` visible only when polarscope brightness control is supported.
 - Custom/non-standard behavior:
-  - non-standard `POLARSCOPE` brightness property;
-  - non-standard `MOUNT_USE_ENCODERS` property;
-  - non-standard `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS` properties;
+  - non-standard `X_POLARSCOPE` brightness property;
+  - non-standard `X_MOUNT_USE_ENCODERS` property;
+  - non-standard `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS` properties;
   - current simulator expects `MOUNT_CUSTOM_TRACKING_RATE` not to be defined.
 - Guider base/interface behavior:
   - expose `INDIGO_INTERFACE_GUIDER`;
@@ -378,22 +378,22 @@ Property attach/enumeration requirements:
 - Additional instances are visible only on the base device, matching current behavior.
 - Custom properties are defined only after connection and only when not hidden by capability detection.
 - Config save must persist:
-  - `POLARSCOPE`
-  - `MOUNT_OPERATING_MODE`
-  - `MOUNT_USE_ENCODERS`
-  - `MOUNT_AUTOHOME_SETTINGS`
+  - `X_POLARSCOPE`
+  - `X_MOUNT_OPERATING_MODE`
+  - `X_MOUNT_USE_ENCODERS`
+  - `X_MOUNT_AUTOHOME_SETTINGS`
   - guider `GUIDER_RATE`
 
 Custom property requirements:
 
-- `POLARSCOPE`
+- `X_POLARSCOPE`
   - Type: number.
   - Group: `MOUNT_MAIN_GROUP`.
   - Label: `Polarscope`.
   - Permission: read/write.
   - Default hidden.
   - Item `BRIGHTNESS`, label `Polarscope Brightness`, range `0..255`.
-- `MOUNT_OPERATING_MODE`
+- `X_MOUNT_OPERATING_MODE`
   - Type: switch.
   - Rule: one of many.
   - Group: `MOUNT_MAIN_GROUP`.
@@ -401,7 +401,7 @@ Custom property requirements:
   - Permission: read/write.
   - Default hidden.
   - Items: `POLAR` default on, `ALTAZ` default off.
-- `MOUNT_USE_ENCODERS`
+- `X_MOUNT_USE_ENCODERS`
   - Type: switch.
   - Rule: any of many.
   - Group: `MOUNT_MAIN_GROUP`.
@@ -409,7 +409,7 @@ Custom property requirements:
   - Permission: read/write.
   - Default hidden.
   - Items: `RA`, `DEC`.
-- `MOUNT_AUTOHOME`
+- `X_MOUNT_AUTOHOME`
   - Type: switch.
   - Rule: any of many.
   - Group: `MOUNT_MAIN_GROUP`.
@@ -417,7 +417,7 @@ Custom property requirements:
   - Permission: read/write.
   - Default hidden.
   - Item: `AUTOHOME`.
-- `MOUNT_AUTOHOME_SETTINGS`
+- `X_MOUNT_AUTOHOME_SETTINGS`
   - Type: number.
   - Group: `MOUNT_MAIN_GROUP`.
   - Label: `Auto home settings`.
@@ -523,11 +523,11 @@ Greenfield skeleton created:
 - Mount and guider logical devices are attached from the single source file and share one `synscan_private_data` instance.
 - Guider operations are scheduled onto the master mount device queue, matching the design decision for mount/guider serialization.
 - Custom SynScan properties are defined in the new source:
-  - `POLARSCOPE`
-  - `MOUNT_OPERATING_MODE`
-  - `MOUNT_USE_ENCODERS`
-  - `MOUNT_AUTOHOME`
-  - `MOUNT_AUTOHOME_SETTINGS`
+  - `X_POLARSCOPE`
+  - `X_MOUNT_OPERATING_MODE`
+  - `X_MOUNT_USE_ENCODERS`
+  - `X_MOUNT_AUTOHOME`
+  - `X_MOUNT_AUTOHOME_SETTINGS`
 - The public header `indigo_mount_synscan.h` was simplified to match the style of other modern drivers: it exposes the driver entry point and device names without pulling in mount/guider implementation headers.
 
 Old-source handling:
@@ -586,7 +586,7 @@ Build and validation:
 - `make -f ../../Makefile.drv` from `indigo_drivers/mount_synscan` succeeds with no compiler warnings.
 - The simulator integration binary builds.
 - The simulator integration test is still expected to fail because configuration, capability detection, property visibility updates and behavior handlers are not implemented yet.
-- Current simulator-test failure mode confirms that the next required work is configuration/property-definition behavior: connected enumeration does not yet expose capability-dependent properties such as `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `POLARSCOPE`, `MOUNT_USE_ENCODERS`, `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS`.
+- Current simulator-test failure mode confirms that the next required work is configuration/property-definition behavior: connected enumeration does not yet expose capability-dependent properties such as `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `X_POLARSCOPE`, `X_MOUNT_USE_ENCODERS`, `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS`.
 
 Important follow-up for UDP autodetection:
 
@@ -630,9 +630,9 @@ Queue handlers implemented or improved:
 
 - `MOUNT_ABORT_MOTION` runs on the queue and sends instant stop commands to both axes.
 - `MOUNT_GUIDE_RATE` runs on the queue and sends ST4 guide-rate commands to both axes.
-- `POLARSCOPE` runs on the queue and sends brightness commands.
-- `MOUNT_USE_ENCODERS` runs on the queue and sends extended encoder enable/disable commands.
-- `MOUNT_AUTOHOME_SETTINGS` and `MOUNT_OPERATING_MODE` now complete as OK queue updates.
+- `X_POLARSCOPE` runs on the queue and sends brightness commands.
+- `X_MOUNT_USE_ENCODERS` runs on the queue and sends extended encoder enable/disable commands.
+- `X_MOUNT_AUTOHOME_SETTINGS` and `X_MOUNT_OPERATING_MODE` now complete as OK queue updates.
 - Periodic mount polling runs with `indigo_execute_handler_in()` and updates raw/equatorial coordinates from SynScan axis positions.
 - `MOUNT_PARK` stops both axes, waits for idle state, saves the current park position through uni I/O file helpers and updates tracking/park state.
 - `MOUNT_HOME` slews both axes to the derived home positions and waits for completion.
@@ -642,7 +642,7 @@ Queue handlers implemented or improved:
 - `MOUNT_MOTION_RA` and `MOUNT_MOTION_DEC` run as anytime queue handlers for manual slew start/stop.
 - `MOUNT_PEC` enables/disables PPEC with SynScan extended setting commands.
 - `MOUNT_PEC_TRAINING` starts/stops PPEC training with SynScan extended setting commands.
-- `MOUNT_AUTOHOME` has a first greenfield queue implementation which resets home indexer state and initializes the RA/DEC home positions, including configured DEC offset.
+- `X_MOUNT_AUTOHOME` has a first greenfield queue implementation which resets home indexer state and initializes the RA/DEC home positions, including configured DEC offset.
 
 Step 5 continuation:
 
@@ -854,11 +854,11 @@ Cleanup completed:
 - Simulator sources and integration tests remain separate from the driver implementation.
 - `README.md` was updated for the current UDP autodetection wording, shared mount/guider connection model and guide-pulse overlap semantics.
 - `indigo_docs/PROPERTIES.md` was updated with the SynScan-specific optional properties:
-  - `POLARSCOPE`
-  - `MOUNT_OPERATING_MODE`
-  - `MOUNT_USE_ENCODERS`
-  - `MOUNT_AUTOHOME`
-  - `MOUNT_AUTOHOME_SETTINGS`
+  - `X_POLARSCOPE`
+  - `X_MOUNT_OPERATING_MODE`
+  - `X_MOUNT_USE_ENCODERS`
+  - `X_MOUNT_AUTOHOME`
+  - `X_MOUNT_AUTOHOME_SETTINGS`
 
 Validation:
 
@@ -946,12 +946,12 @@ Hardware testing was performed. The device is a Sky-Watcher AZ-GTi reached over 
 
 Controller capabilities as reported by the extended feature inquiry on this unit:
 
-- auxiliary encoders: supported, `MOUNT_USE_ENCODERS` defined;
-- AZ/EQ operating mode: supported, `MOUNT_OPERATING_MODE` defined;
+- auxiliary encoders: supported, `X_MOUNT_USE_ENCODERS` defined;
+- AZ/EQ operating mode: supported, `X_MOUNT_OPERATING_MODE` defined;
 - snap port: supported, `Mount SynScan (aux)` defines `CCD_EXPOSURE` and `CCD_ABORT_EXPOSURE`;
-- polarscope LED: not supported, `POLARSCOPE` stays hidden;
+- polarscope LED: not supported, `X_POLARSCOPE` stays hidden;
 - PPEC: not supported, `MOUNT_PEC` and `MOUNT_PEC_TRAINING` stay hidden;
-- home indexer: not supported on either axis, `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS` stay hidden.
+- home indexer: not supported on either axis, `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS` stay hidden.
 
 The capability gating was therefore exercised in both directions on one physical unit: four optional
 properties defined and four correctly withheld.
@@ -1003,7 +1003,7 @@ registered cases as follows.
 Scenarios that are not applicable or not covered on this unit, with the reason:
 
 - Autohome could not be exercised: this AZ-GTi reports no home indexer on either axis, so the
-  driver correctly withholds `MOUNT_AUTOHOME`. The case detects that and reports it as not
+  driver correctly withholds `X_MOUNT_AUTOHOME`. The case detects that and reports it as not
   applicable rather than passing silently. Autohome remains covered against the simulator by
   `synscan_mount_autohome_finds_home_index`.
 - PPEC and PPEC training could not be exercised for the same reason: the controller reports no
@@ -1748,7 +1748,7 @@ Version 12, findings TGT-003, TGT-004, TGT-072 and the mount_synscan parts of TG
 
 - TGT-003 / TGT-B05: `MOUNT_TRACKING` is written by `synscan_clear_tracking_state()` (park and home finalizers, `mount_motion_failed()`, abort, auto home) and by the slew finalizer when it starts tracking after a GOTO. The finalizers are `INDIGO_TASK_PRIORITY_TIME` tasks and run ahead of a queued tracking handler, so a request copied before them was overwritten, and they also published OK over the pending BUSY. The handler now reads the request with `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` when the axis command succeeded, and on failure shows the RA axis state (`ra_axis_mode`) with ALERT. The writers keep writing the value (the tracking light and `MOUNT_TRACK_RATE` read it as the current state) but set the state and publish only when the property is not BUSY. A tracking request queued before an abort is now carried out after it, as requested; before, the abort's write turned it into OFF by accident.
 - TGT-004: `synscan_ppec_training_timer` writes STOPPED when the mount ends training. A START copied while the timer came due was turned into STOP. The handler reads and applies the target, on failure shows the training state the mount last reported (`IN_PPEC_TRAINING` feature bits) with ALERT; the timer writes the value but publishes the state (OK or the read failure ALERT) only when no request is pending.
-- TGT-072: auto home turns the encoders off and writes `MOUNT_USE_ENCODERS`; an encoders request queued behind auto home was read as off. The handler sends the targets; the encoder state the mount accepted is kept in `PRIVATE_DATA->ra_encoder` / `dec_encoder` (also cleared by auto home) and written to the values, so a failed command shows the state still in effect with ALERT. Auto home still writes the values, which the coordinate readout uses.
+- TGT-072: auto home turns the encoders off and writes `X_MOUNT_USE_ENCODERS`; an encoders request queued behind auto home was read as off. The handler sends the targets; the encoder state the mount accepted is kept in `PRIVATE_DATA->ra_encoder` / `dec_encoder` (also cleared by auto home) and written to the values, so a failed command shows the state still in effect with ALERT. Auto home still writes the values, which the coordinate readout uses.
 - TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. A request copied while the previous pulse's finalizer ran, between the command that ends the pulse and the clearing of the values, was zeroed and the new handler dropped it with OK. The finalizers already cleared only `number.value`; the handlers now restore the values from the targets first, as in mount_simulator and mount_temma.
 
 Simulator: `--ppec-training-seconds <s>` ends PPEC training by itself `s` seconds after it started, as the mount does after one worm revolution; without it training never ends, as before.
@@ -1843,10 +1843,13 @@ Driver fixes (version 16):
 
 Not covered, with the reason:
 
-- Driver-specific properties without the `X_` prefix (`POLARSCOPE`, `MOUNT_USE_ENCODERS`, `MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE`): renaming changes the client-visible API and needs an owner decision.
 - GOTO "done" short of the target and the 300 s abandon bound: the simulator has no stall model, a 300 s case is not a regression test.
 - Tracking hold proved by RA drift: the simulator advances the axes at 200 ticks/s while it reports a 1000 Hz timer, so its tracking runs at a fifth of the rate.
 - Controller-reported faults (blocked bit of `:f`): the driver does not poll the status while idle; adding it is a behaviour change, not a minimal fix.
 - ST4 guide rate published as requested while the controller quantizes it to 1, 0.75, 0.5, 0.25 or 0.125.
 - Lost reply on serial: the driver treats it as transport loss by design (`synscan_mount_disconnects_after_serial_loss`); UDP retry is covered by `synscan_mount_survives_lost_udp_replies`.
 - Dialect/forced-model selection, time/site commands, meridian options: not implemented by this controller protocol.
+
+## Driver-specific property names (version 17, 2026-10-04)
+
+The driver-specific properties now carry the `X_` prefix, approved by the owner as a client-visible change with no backward-compatible alias: `POLARSCOPE` → `X_POLARSCOPE`, `MOUNT_USE_ENCODERS` → `X_MOUNT_USE_ENCODERS`, `MOUNT_AUTOHOME` → `X_MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS` → `X_MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE` → `X_MOUNT_OPERATING_MODE`. Item names are unchanged. The other custom-declared properties (`CCD_EXPOSURE`, `CCD_ABORT_EXPOSURE` on the aux device) are standard INDIGO names. Earlier sections of this file use the new names. The integration and hardware tests assert that the old names are not defined.

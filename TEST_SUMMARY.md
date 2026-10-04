@@ -318,7 +318,7 @@
 |  | 2026-09-26 22:41 | 3.0.0.13 | linux x64 | simulator | 24 / 24 | ✅ OK |
 |  | 2026-10-04 11:05 | 3.0.0.15 | mac arm64 | AZGTi | 18 / 18 | ✅ OK |
 |  | 2026-10-04 11:20 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
-|  | 2026-10-04 18:13 | 3.0.0.16 | mac arm64 | simulator | 46 / 46 | ✅ OK |
+|  | 2026-10-04 19:40 | 3.0.0.17 | mac arm64 | simulator | 46 / 46 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:16 | 3.0.0.22 | linux x64 | simulator | 15 / 15 | ✅ OK |
 |  | 2026-10-04 19:34 | 3.0.0.25 | mac arm64 | simulator | 28 / 28 | ✅ OK |
