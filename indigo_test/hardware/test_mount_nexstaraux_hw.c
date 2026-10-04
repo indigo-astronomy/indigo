@@ -499,8 +499,8 @@ static void nexstaraux_reports_its_identity(void) {
 	ASSERT_EQ_INT(INDIGO_INTERFACE_GUIDER, (int)(hw_device_interface(guider) & INDIGO_INTERFACE_GUIDER));
 }
 
-// Both motor controllers are asked for their firmware while connecting, and what they answer is
-// what the mount reports as its own version.
+// Both motor controllers are asked for their firmware and the azimuth controller for the model while
+// connecting, and what they answer is what the mount reports as its own.
 static void nexstaraux_reports_the_motor_controller_firmware(void) {
 	char vendor[INDIGO_VALUE_SIZE] = "", model[INDIGO_VALUE_SIZE] = "", firmware[INDIGO_VALUE_SIZE] = "", revision[INDIGO_VALUE_SIZE] = "";
 	ASSERT_TRUE(hw_text_item(mount, MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME, vendor, sizeof(vendor)));
@@ -508,7 +508,9 @@ static void nexstaraux_reports_the_motor_controller_firmware(void) {
 	ASSERT_TRUE(hw_text_item(mount, MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, firmware, sizeof(firmware)));
 	ASSERT_TRUE(hw_text_item(mount, INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, revision, sizeof(revision)));
 	ASSERT_STREQ("Celestron", vendor);
-	ASSERT_STREQ("NexStar AUX", model);
+	// The model is what the azimuth controller reports, or "NexStar AUX" when it does not answer.
+	printf("    the mount reports itself as %s\n", model);
+	ASSERT_TRUE(model[0] != '\0');
 	ASSERT_STREQ(firmware, revision);
 	unsigned alt_major = 0, alt_minor = 0, azm_major = 0, azm_minor = 0;
 	ASSERT_EQ_INT(4, sscanf(firmware, "%u.%u / %u.%u", &alt_major, &alt_minor, &azm_major, &azm_minor));
