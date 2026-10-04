@@ -47,6 +47,7 @@ typedef struct {
 #define SOLAR_SPEED (UNITS_PER_TURN / 86400.0)
 #define LUNAR_SPEED (UNITS_PER_TURN / 89428.0)
 #define DEGREES_PER_SECOND (UNITS_PER_TURN / 360.0)
+#define ARCSECONDS_PER_SECOND (UNITS_PER_TURN / 1296000.0)
 
 // The rates MC_MOVE_POS and MC_MOVE_NEG select, in units per second. These are the
 // rates of the NexStar hand controller's rate card: one to seven are multiples of
@@ -82,6 +83,11 @@ typedef struct {
 	bool slewing;
 	bool stalled;
 	uint8_t guide_rate;
+	// A pulse of MC_AUX_GUIDE is added to whatever the velocity register holds
+	// and ends on its own when its time is up.
+	double pulse_speed;
+	double pulse_until;
+	uint8_t approach;
 } axis_state;
 
 static simulator_options options = {
@@ -90,9 +96,16 @@ static simulator_options options = {
 	.ready_file = NULL,
 	.profile = "normal"
 };
-static axis_state azm = { 0x800000, 0x800000, 0x800000, 0, false, false, 0x80 };
-static axis_state alt = { 0x000000, 0x000000, 0x000000, 0, false, false, 0x80 };
+// The approach directions are the ones of the boot exchange in the protocol document:
+// positive on the azimuth axis and negative on the altitude axis.
+static axis_state azm = { 0x800000, 0x800000, 0x800000, 0, false, false, 0x80, 0, 0, 0 };
+static axis_state alt = { 0x000000, 0x000000, 0x000000, 0, false, false, 0x80, 0, 0, 1 };
 static bool answer_version = true;
+// Firmware 6.50 and newer implements MC_AUX_GUIDE. The model is what MC_GET_MODEL
+// answers; 12 is a NexStar SE 6/8, which has an autoguider port and stores the
+// autoguide rate.
+static uint8_t firmware_major = 3, firmware_minor = 6;
+static uint8_t model = 12;
 // A NexStar SE stops a goto at a limit and answers MC_SLEW_DONE with 0xff while the
 // axis stands short of the target, and it acknowledges MC_SET_AUTOGUIDE_RATE while
 // keeping the rate it had. Both are per model, so they are selectable and off by
@@ -114,12 +127,14 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after TCP setup\n");
 	printf("  --trace                 Log protocol packets\n");
-	printf("  --profile <name>        normal, no-version, slow-slew, stalling or deaf-guide-rate,\n");
-	printf("                          default is normal\n");
+	printf("  --profile <name>        normal, no-version, slow-slew, stalling, never-arrives,\n");
+	printf("                          deaf-guide-rate or aux-guide, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_NEXSTARAUX_EVENTS names a file receiving '<dst> <cmd> <data>' per request.\n");
-	printf("INDIGO_NEXSTARAUX_FAULT names a file holding '<dst> <cmd> <silent|garbage|close>'\n");
+	printf("INDIGO_NEXSTARAUX_FAULT names a file holding '<dst> <cmd> <action>', where action is\n");
+	printf("silent, garbage, close, aborted (MC_SLEW_DONE answers 0xfe) or warn<n> (a warning\n");
+	printf("report with data <n> is sent before the answer)\n");
 	printf("which is applied once to the next matching request and then removed.\n");
 }
 
@@ -181,7 +196,14 @@ static void apply_profile(void) {
 		// The axis gives up a third of the way and reports the goto as complete.
 		stall_after = 1.0 / 3.0;
 	} else if (!strcmp(options.profile, "deaf-guide-rate")) {
+		// A NexStar SE 4/5 has no autoguider port and keeps no autoguide rate.
 		store_guide_rate = false;
+		model = 11;
+	} else if (!strcmp(options.profile, "aux-guide")) {
+		// An Evolution with firmware that times guide pulses itself.
+		firmware_major = 7;
+		firmware_minor = 11;
+		model = 22;
 	} else if (!strcmp(options.profile, "never-arrives")) {
 		// The axis gives up and the controller keeps calling the goto unfinished.
 		stall_after = 1.0 / 3.0;
@@ -224,6 +246,17 @@ static void advance_axis(axis_state *axis, double elapsed) {
 		}
 	} else if (axis->speed != 0) {
 		axis->position += axis->speed * elapsed;
+	}
+	if (axis->pulse_until > 0) {
+		double current = now_seconds();
+		double pulse = fmin(elapsed, axis->pulse_until - (current - elapsed));
+		if (pulse > 0) {
+			axis->position += axis->pulse_speed * pulse;
+		}
+		if (current >= axis->pulse_until) {
+			axis->pulse_until = 0;
+			axis->pulse_speed = 0;
+		}
 	}
 	while (axis->position < 0) {
 		axis->position += UNITS_PER_TURN;
@@ -366,15 +399,16 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 			}
 			send_reply(dst, src, command, NULL, 0);
 			break;
+		case 0x05:
+			reply[0] = model;
+			send_reply(dst, src, command, reply, 1);
+			break;
 		case 0x06:
 		case 0x07:
 			// The guide rate writes the axis velocity register, so it cancels a
-			// slew the same way a rate move does. Sixteen bits carry one of the
-			// three named rates or a stop. The twenty four bit form carries the
-			// rate itself in a unit the protocol document does not state; the
-			// hand controller uses it only to stop an axis and no INDIGO driver
-			// sends another value, so the scale here is a placeholder that keeps
-			// zero meaning stop.
+			// slew the same way a rate move does. The twenty four bit form
+			// carries the rate in 1/1024 arcsecond per second; sixteen bits are
+			// its upper two bytes, except for the three named rates.
 			axis->slewing = false;
 			axis->target = axis->position;
 			axis->speed = 0;
@@ -382,7 +416,7 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 				double magnitude = 0;
 				uint16_t value = (uint16_t)((data[0] << 8) | data[1]);
 				if (data_length >= 3) {
-					magnitude = (((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | data[2]) / 1024.0;
+					magnitude = (((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | data[2]) / 1024.0 * ARCSECONDS_PER_SECOND;
 				} else if (value == 0xFFFF) {
 					magnitude = SIDEREAL_SPEED;
 				} else if (value == 0xFFFE) {
@@ -390,7 +424,7 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 				} else if (value == 0xFFFD) {
 					magnitude = LUNAR_SPEED;
 				} else {
-					magnitude = value / 1024.0;
+					magnitude = value / 4.0 * ARCSECONDS_PER_SECOND;
 				}
 				axis->speed = (command == 0x06 ? 1 : -1) * magnitude;
 			}
@@ -413,6 +447,32 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 			reply[0] = axis->slewing ? 0x00 : 0xFF;
 			send_reply(dst, src, command, reply, 1);
 			break;
+		case 0x26:
+			// Firmware older than 6.50 does not know the command and has nothing to answer.
+			if (firmware_major * 256 + firmware_minor < 6 * 256 + 50) {
+				break;
+			}
+			if (data_length >= 2) {
+				axis->pulse_speed = (int8_t)data[0] / 100.0 * SIDEREAL_SPEED;
+				axis->pulse_until = now_seconds() + data[1] / 100.0;
+			}
+			send_reply(dst, src, command, NULL, 0);
+			break;
+		case 0x27:
+			if (firmware_major * 256 + firmware_minor < 6 * 256 + 50) {
+				break;
+			}
+			reply[0] = axis->pulse_until > now_seconds() ? 1 : 0;
+			send_reply(dst, src, command, reply, 1);
+			break;
+		case 0x50:
+		case 0x51:
+			// The acknowledgement of a warning or error report needs no answer.
+			break;
+		case 0xFC:
+			reply[0] = axis->approach;
+			send_reply(dst, src, command, reply, 1);
+			break;
 		case 0x46:
 			// A controller that does not implement the setting still acknowledges it.
 			if (data_length >= 1 && store_guide_rate) {
@@ -428,8 +488,8 @@ static void handle_axis_command(uint8_t src, uint8_t dst, uint8_t command, const
 			if (!answer_version) {
 				break;
 			}
-			reply[0] = 3;
-			reply[1] = 6;
+			reply[0] = firmware_major;
+			reply[1] = firmware_minor;
 			send_reply(dst, src, command, reply, 2);
 			break;
 		default:
@@ -477,7 +537,24 @@ static void handle_packet(const uint8_t *packet, size_t length) {
 		if (!strcmp(fault, "silent")) {
 			return;
 		}
-		if (!strcmp(fault, "garbage")) {
+		if (!strcmp(fault, "aborted")) {
+			// The controller gave the goto up and says so.
+			axis_state *axis = axis_for(dst);
+			if (axis != NULL) {
+				advance_motion();
+				axis->slewing = false;
+				axis->speed = 0;
+				axis->target = axis->position;
+			}
+			uint8_t aborted = 0xFE;
+			send_reply(dst, src, command, &aborted, 1);
+			return;
+		}
+		if (!strncmp(fault, "warn", 4)) {
+			// A report the controller sends on its own, ahead of the answer.
+			uint8_t report = (uint8_t)atoi(fault + 4);
+			send_reply(dst, APP, 0x50, &report, 1);
+		} else if (!strcmp(fault, "garbage")) {
 			// An answer for a command nobody asked about, which the driver has
 			// to skip instead of accepting as its own reply.
 			uint8_t noise[3] = { 0xDE, 0xAD, 0xBE };

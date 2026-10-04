@@ -374,9 +374,7 @@ static bool guide_rate_of(int device, const char *property, const char *ra_item,
 	return hw_number_item(device, property, ra_item, ra) && hw_number_item(device, property, dec_item, dec);
 }
 
-// Writes both rates and reports which way the controller answered. Some motor controllers
-// acknowledge MC_SET_AUTOGUIDE_RATE and keep the value they had, which the driver reports as
-// ALERT; that is a limit of the mount, not a failure of the run.
+// Writes both rates and reports the state the driver published.
 static indigo_property_state write_guide_rates(int device, const char *property, const char *ra_item, const char *dec_item, double ra, double dec) {
 	static const char *items[2];
 	double values[2];
@@ -394,25 +392,6 @@ static indigo_property_state write_guide_rates(int device, const char *property,
 
 static bool set_guide_rates(int device, const char *property, const char *ra_item, const char *dec_item, double ra, double dec) {
 	return write_guide_rates(device, property, ra_item, dec_item, ra, dec) == INDIGO_OK_STATE;
-}
-
-// True once the mount has shown that it does not store the autoguide rate, so the scenarios that
-// follow report themselves as not applicable instead of writing the same refusal again.
-static bool guide_rate_is_stored = true;
-
-// The refusal is only meaningful if the driver also publishes what the controller is really
-// holding, and if the rate really did not change.
-static bool guide_rate_refusal_is_honest(int device, const char *property, const char *ra_item, const char *dec_item, double asked_ra, double asked_dec) {
-	double ra = 0, dec = 0;
-	if (!guide_rate_of(device, property, ra_item, dec_item, &ra, &dec)) {
-		return false;
-	}
-	printf("    the controller does not store the autoguide rate: %.2f%% / %.2f%% after %.0f / %.0f were written\n", ra, dec, asked_ra, asked_dec);
-	if (fabs(ra - asked_ra) <= 0.4 || fabs(dec - asked_dec) <= 0.4) {
-		fprintf(stderr, "    the rate was refused but the published value is the one that was asked for\n");
-		return false;
-	}
-	return true;
 }
 
 static const char *guide_directions[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
@@ -1036,25 +1015,20 @@ static void nexstaraux_aborts_a_park(void) {
 
 // ---------------------------------------------------------------- guide rates
 
-// The autoguide rate is a percentage of sidereal stored in the motor controller as a byte, so a
-// written rate has to come back from the controller as the same percentage.
+// The guide rate is the driver's own: a model without an autoguider port, such as this NexStar SE,
+// acknowledges MC_SET_AUTOGUIDE_RATE and keeps nothing, and it used to be refused for that. It has
+// to be taken on every model and survive a reconnect.
 static void nexstaraux_writes_the_mount_guide_rate(void) {
 	double ra = 0, dec = 0;
-	indigo_property_state answer = write_guide_rates(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 50, 75);
-	if (answer == INDIGO_ALERT_STATE) {
-		guide_rate_is_stored = false;
-		ASSERT_TRUE(guide_rate_refusal_is_honest(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 50, 75));
-		return;
-	}
-	ASSERT_EQ_INT(INDIGO_OK_STATE, answer);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, write_guide_rates(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 50, 75));
 	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(reconnect_mount(CONNECT_TIMEOUT));
 	ASSERT_TRUE(reconnect_guider(CONNECT_TIMEOUT));
 	ASSERT_TRUE(guide_rate_of(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, &ra, &dec));
-	printf("    the controllers report %.2f%% / %.2f%% after 50 / 75 were written\n", ra, dec);
-	// One percent of sidereal is 2.56 controller steps, so the readback of a written rate is
-	// within half a step of it.
+	printf("    the driver reports %.2f%% / %.2f%% after 50 / 75 were written\n", ra, dec);
+	// On a model with an autoguider port the rate is read back from the controller, where one
+	// percent of sidereal is 2.56 steps, so the readback is within half a step of it.
 	ASSERT_NEAR(50, ra, 0.4);
 	ASSERT_NEAR(75, dec, 0.4);
 }
@@ -1063,10 +1037,6 @@ static void nexstaraux_writes_the_mount_guide_rate(void) {
 // to survive the conversion into the byte the protocol carries.
 static void nexstaraux_writes_the_extreme_guide_rates(void) {
 	double ra = 0, dec = 0, minimum = 0, maximum = 0;
-	if (!guide_rate_is_stored) {
-		printf("    not run: this motor controller does not store the autoguide rate\n");
-		return;
-	}
 	ASSERT_TRUE(hw_number_item_range(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, &minimum, &maximum));
 	ASSERT_TRUE(set_guide_rates(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, maximum, maximum));
 	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
@@ -1074,23 +1044,16 @@ static void nexstaraux_writes_the_extreme_guide_rates(void) {
 	ASSERT_TRUE(reconnect_mount(CONNECT_TIMEOUT));
 	ASSERT_TRUE(reconnect_guider(CONNECT_TIMEOUT));
 	ASSERT_TRUE(guide_rate_of(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, &ra, &dec));
-	printf("    the controllers report %.2f%% / %.2f%% after the maximum %.0f%% was written\n", ra, dec, maximum);
+	printf("    the driver reports %.2f%% / %.2f%% after the maximum %.0f%% was written\n", ra, dec, maximum);
 	// The controller cannot store the full scale exactly, but it must store the fastest rate it
 	// has rather than wrap around to the slowest one.
 	ASSERT_TRUE(ra > maximum - 1 && dec > maximum - 1);
 	ASSERT_TRUE(set_guide_rates(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 50, 50));
 }
 
-// The guider device reads and writes the same two controller settings under its own property.
+// The guider device sets the same rates under its own property.
 static void nexstaraux_writes_the_guider_rate(void) {
 	double ra = 0, dec = 0;
-	if (!guide_rate_is_stored) {
-		// The guider writes the same two controller settings, so the refusal has to reach its own
-		// property as well rather than being published as a rate the mount is not holding.
-		ASSERT_EQ_INT(INDIGO_ALERT_STATE, write_guide_rates(guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, GUIDER_DEC_RATE_ITEM_NAME, 60, 40));
-		ASSERT_TRUE(guide_rate_refusal_is_honest(guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, GUIDER_DEC_RATE_ITEM_NAME, 60, 40));
-		return;
-	}
 	ASSERT_TRUE(set_guide_rates(guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, GUIDER_DEC_RATE_ITEM_NAME, 60, 40));
 	ASSERT_TRUE(hw_disconnect(guider, SHORT_TIMEOUT));
 	ASSERT_TRUE(reconnect_guider(CONNECT_TIMEOUT));
@@ -1098,7 +1061,7 @@ static void nexstaraux_writes_the_guider_rate(void) {
 	printf("    the guider reports %.2f%% / %.2f%% after 60 / 40 were written\n", ra, dec);
 	ASSERT_NEAR(60, ra, 0.4);
 	ASSERT_NEAR(40, dec, 0.4);
-	// Both logical devices read the same controller, so the mount sees what the guider wrote.
+	// Both logical devices guide at the same rates, so the mount sees what the guider wrote.
 	ASSERT_TRUE(hw_disconnect(mount, CONNECT_TIMEOUT));
 	ASSERT_TRUE(reconnect_mount(CONNECT_TIMEOUT));
 	ASSERT_TRUE(guide_rate_of(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, &ra, &dec));
@@ -1206,6 +1169,36 @@ static void nexstaraux_keeps_tracking_through_a_guide_pulse(void) {
 	}
 	ASSERT_TRUE(east < TRACKING_HELD_RA);
 	ASSERT_TRUE(drift < TRACKING_HELD_RA);
+}
+
+// A guide pulse adds the guide rate to the tracking drive: west runs it faster and lowers the right
+// ascension the mount points at, east runs it slower and raises it. A pulse used to be a rate move
+// at hand controller rate 1, which replaces the drive instead of adding to it, so both directions
+// slowed the axis down and moved the mount the same way.
+static void nexstaraux_guides_the_ra_axis_both_ways(void) {
+	double elapsed = 0, ra_rate = 0, dec_rate = 0;
+	ASSERT_TRUE(pointing_is_usable());
+	ASSERT_TRUE(set_tracking(false));
+	if (!rig_is_quiet()) {
+		return;
+	}
+	ASSERT_TRUE(guide_rate_of(guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, GUIDER_DEC_RATE_ITEM_NAME, &ra_rate, &dec_rate));
+	ASSERT_TRUE(set_guide_rates(guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, GUIDER_DEC_RATE_ITEM_NAME, 100, dec_rate));
+	ASSERT_TRUE(set_tracking(true));
+	ASSERT_TRUE(fresh_coordinates());
+	double before = current_ra();
+	ASSERT_TRUE(guide_pulse(3, 5000, &elapsed));
+	ASSERT_TRUE(fresh_coordinates());
+	double west = ra_difference(current_ra(), before);
+	before = current_ra();
+	ASSERT_TRUE(guide_pulse(2, 5000, &elapsed));
+	ASSERT_TRUE(fresh_coordinates());
+	double east = ra_difference(current_ra(), before);
+	ASSERT_TRUE(set_guide_rates(guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, GUIDER_DEC_RATE_ITEM_NAME, ra_rate, dec_rate));
+	printf("    5000 ms pulses at the sidereal rate moved the right ascension by %+.5f h west and %+.5f h east\n", west, east);
+	// The sidereal rate for five seconds is 75 arcseconds, 0.0014 h each way, so the two differ by
+	// about 0.0028 h; a drift common to both windows cancels in the difference.
+	ASSERT_TRUE(east - west > 0.0014);
 }
 
 // Software completion timing over the network transport, measured from the public request to the
@@ -1473,6 +1466,7 @@ int main(int argc, char **argv) {
 		{ "nexstaraux_replaces_a_guide_pulse_on_the_same_axis", nexstaraux_replaces_a_guide_pulse_on_the_same_axis },
 		{ "nexstaraux_moves_the_dec_axis_while_guiding", nexstaraux_moves_the_dec_axis_while_guiding },
 		{ "nexstaraux_keeps_tracking_through_a_guide_pulse", nexstaraux_keeps_tracking_through_a_guide_pulse },
+		{ "nexstaraux_guides_the_ra_axis_both_ways", nexstaraux_guides_the_ra_axis_both_ways },
 		{ "nexstaraux_measures_the_guide_pulse_duration", nexstaraux_measures_the_guide_pulse_duration },
 		{ "nexstaraux_shares_the_connection_with_the_guider", nexstaraux_shares_the_connection_with_the_guider },
 		{ "nexstaraux_refuses_an_unreachable_address", nexstaraux_refuses_an_unreachable_address },

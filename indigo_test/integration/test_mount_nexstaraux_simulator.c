@@ -38,6 +38,11 @@
 #define AZM_SET_POS_GUIDERATE "10 06"
 #define ALT_SET_POS_GUIDERATE "11 06"
 #define AZM_SET_NEG_GUIDERATE "10 07"
+#define ALT_SET_NEG_GUIDERATE "11 07"
+#define AZM_AUX_GUIDE         "10 26"
+#define ALT_AUX_GUIDE         "11 26"
+#define AZM_WARNING           "10 50"
+#define AZM_GET_MODEL         "10 05"
 #define AZM_SLEW_DONE         "10 13"
 #define AZM_GOTO_SLOW         "10 17"
 #define ALT_GOTO_SLOW         "11 17"
@@ -74,6 +79,9 @@ static const simulator_driver_case nexstaraux_guider = {
 #define TRACKING_WINDOW 12.0
 #define TRACKING_HELD 0.0008
 #define TRACKING_LOST 0.0020
+
+// The sidereal rate in arcseconds per second, the unit of the 24 bit axis rate being 1/1024 of it.
+#define SIDEREAL_ARCSEC (1296000.0 / 86164.0905)
 
 static external_serial_simulator fixture;
 static char fixture_directory[] = "/tmp/indigo-nexstaraux.XXXXXX";
@@ -163,6 +171,50 @@ static bool wait_for_payload(const char *prefix, const char *payload) {
 	snprintf(reason, sizeof(reason), "'%s' was never requested", expected);
 	print_journal(reason);
 	return false;
+}
+
+// The number of requests with exactly this destination, command and payload.
+static int payload_requests(const char *prefix, const char *payload) {
+	char expected[128];
+	snprintf(expected, sizeof(expected), "%s %s", prefix, payload);
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[256];
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		line[strcspn(line, "\r\n")] = '\0';
+		if (!strcasecmp(line, expected)) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static bool wait_for_payload_requests(const char *prefix, const char *payload, int expected) {
+	for (int i = 0; i < 200; i++) {
+		if (payload_requests(prefix, payload) >= expected) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	char reason[160];
+	snprintf(reason, sizeof(reason), "Fewer than %d '%s %s' requests", expected, prefix, payload);
+	print_journal(reason);
+	return false;
+}
+
+// The 24 bit payload of MC_SET_POS_GUIDERATE or MC_SET_NEG_GUIDERATE for a rate given as a
+// multiple of sidereal.
+static const char *rate_payload(double sidereal_multiple) {
+	static char payloads[4][16];
+	static int next = 0;
+	char *payload = payloads[next++ % 4];
+	unsigned value = (unsigned)round(fabs(sidereal_multiple) * SIDEREAL_ARCSEC * 1024);
+	snprintf(payload, 16, "%02X %02X %02X", (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
+	return payload;
 }
 
 // ----------------------------------------------------------------- helpers
@@ -353,7 +405,9 @@ static void metadata(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GET_VER, 1));
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_VER, 1));
 	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME, "Celestron"));
-	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar AUX"));
+	// The model is what the azimuth controller reports.
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GET_MODEL, 1));
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar SE 6/8"));
 	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "3.6 / 3.6"));
 	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "3.6 / 3.6"));
 cleanup:
@@ -433,7 +487,7 @@ static void handshake_timeout(void) {
 	SERIAL_CHECK_TRUE(!connect_mount());
 	SERIAL_CHECK_TRUE(!context.connected);
 	SERIAL_CHECK_TRUE(connect_mount());
-	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar AUX"));
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar SE 6/8"));
 cleanup:
 	driver_stop();
 }
@@ -497,11 +551,15 @@ static void slew_to_coordinates(void) {
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
-	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_FAST, 1));
+	// The fast goto ends 2.5 degrees short of the target on the side the axis approaches from,
+	// which for the declination axis of the simulator is the negative one: 37.5 degrees.
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_GOTO_FAST, "1A AA AA"));
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SLEW_DONE, 1));
-	// The second, slow approach is what finishes the slew.
-	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_SLOW, 1));
-	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_SLOW, 1));
+	// The slow approaches to the target itself are what finish the slew, three of them because
+	// the target moves on while the mount is not tracking.
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_GOTO_SLOW, "18 E3 8E"));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_SLOW, 3));
+	SERIAL_CHECK_TRUE(wait_for_requests(ALT_GOTO_SLOW, 3));
 	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
 	// Tracking is turned on when the mount arrives.
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
@@ -788,17 +846,28 @@ cleanup:
 	driver_stop();
 }
 
-// The motor controller of a NexStar SE acknowledges MC_SET_AUTOGUIDE_RATE and keeps the rate it
-// had. A rate the mount never took must not be published as the rate it guides at.
+// MC_SET_AUTOGUIDE_RATE is the rate of the autoguider port, and a mount without one, such as the
+// NexStar SE 4/5 of the hardware run, acknowledges it and keeps nothing. The rate the guider pulses
+// run at is the driver's own, so it is accepted there, is not written to the controller, and the
+// pulses run at it.
 static void guide_rate_not_stored(void) {
 	SERIAL_CHECK_TRUE(driver_start());
-	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_GUIDE_RATE, "C0"));
-	// What is published is what the controller is really holding, not what was asked for.
-	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, 1));
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar SE 4/5"));
+	// The controller holds no rate worth reading, so the driver starts at half sidereal.
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50, .1));
+	SERIAL_CHECK_TRUE(number_change(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 75, .1));
 	SERIAL_CHECK_TRUE(connect_guider());
-	SERIAL_CHECK_TRUE(number_change(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 75, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 50, 1));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, 30, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 75, .1));
+	SERIAL_CHECK_TRUE(number_is(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, 30, .1));
+	SERIAL_CHECK_EQ_INT(0, requests(AZM_SET_GUIDE_RATE));
+	SERIAL_CHECK_EQ_INT(0, requests(ALT_SET_GUIDE_RATE));
+	// The pulses run at the rates the driver holds.
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, rate_payload(.75)));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POS_GUIDERATE, rate_payload(.3)));
 cleanup:
 	driver_stop();
 }
@@ -879,9 +948,11 @@ static void tracking_survives_a_guide_pulse(void) {
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
 	int rates = requests(AZM_SET_POS_GUIDERATE);
 	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 300) == INDIGO_OK);
-	// The pulse stops the axis and then commands the tracking rate again.
-	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
-	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SET_POS_GUIDERATE, rates + 1));
+	// An east pulse runs the drive at half the guide rate slower, and its end commands the
+	// tracking rate again.
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, rate_payload(.5)));
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(AZM_SET_POS_GUIDERATE, "FF FF", 2));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SET_POS_GUIDERATE, rates + 2));
 	SERIAL_CHECK_TRUE(right_ascension_drift(TRACKING_WINDOW, &drift));
 	printf("    after a guide pulse the mount lost %.5f h over %.0f s\n", drift, TRACKING_WINDOW);
 	SERIAL_CHECK_TRUE(drift < TRACKING_HELD);
@@ -993,30 +1064,34 @@ cleanup:
 	driver_stop();
 }
 
-// Each pulse moves its own axis and stops that same axis when it expires.
+// Each pulse drives its own axis at the guide rate, half sidereal here, and gives that same axis
+// its rate back when it expires. With the mount not tracking, a west pulse turns the right
+// ascension axis the positive way, the way the sidereal drive turns it, and an east pulse the
+// negative way; a north pulse turns the declination axis the positive way.
 static void guider_pulses(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_guider());
 	unsigned int ra_done = property_state_revision(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 300, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "01"));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_NEG_GUIDERATE, rate_payload(.5)));
 	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, ra_done));
-	// The azimuth axis is the one that gets stopped, not the altitude axis.
-	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
-	SERIAL_CHECK_EQ_INT(0, requests(ALT_MOVE_POS));
+	// The azimuth axis is the one that gets its rate back, not the altitude axis.
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "00 00"));
+	SERIAL_CHECK_EQ_INT(0, requests(ALT_SET_NEG_GUIDERATE));
+	SERIAL_CHECK_EQ_INT(0, requests(AZM_MOVE_POS) + requests(AZM_MOVE_NEG));
 	SERIAL_CHECK_TRUE(number_is(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 0, 0));
 	ra_done = property_state_revision(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_NEG, "01"));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, rate_payload(.5)));
 	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, ra_done));
 	unsigned int dec_done = property_state_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "01"));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POS_GUIDERATE, rate_payload(.5)));
 	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_done));
-	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00"));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_POS_GUIDERATE, "00 00"));
 	dec_done = property_state_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_NEG, "01"));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_SET_NEG_GUIDERATE, rate_payload(.5)));
 	SERIAL_CHECK_TRUE(state_seen(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_done));
 	SERIAL_CHECK_TRUE(number_is(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0));
 
@@ -1040,7 +1115,7 @@ static void guider_pulses(void) {
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
 	indigo_usleep(500000);
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_NEG, "01"));
+	SERIAL_CHECK_TRUE(wait_for_payload_requests(ALT_SET_NEG_GUIDERATE, rate_payload(.5), 2));
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(number_is(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, 0));
 	SERIAL_CHECK_TRUE(number_is(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 0, 0));
@@ -1055,7 +1130,7 @@ cleanup:
 static void guider_pulse_failure(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_guider());
-	SERIAL_CHECK_TRUE(fault(AZM_MOVE_POS, "silent"));
+	SERIAL_CHECK_TRUE(fault(AZM_SET_NEG_GUIDERATE, "silent"));
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 200, INDIGO_ALERT_STATE));
 	unsigned int ra_done = property_state_revision(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 200, INDIGO_BUSY_STATE));
@@ -1102,40 +1177,148 @@ cleanup:
 	driver_stop();
 }
 
+// ----------------------------------------------------------------- AUX protocol audit
+
+// The right ascension the mount reports once the polling callback has published it again.
+static bool fresh_right_ascension(double *ra) {
+	if (!wait_for_fresh_coordinates()) {
+		return false;
+	}
+	indigo_item *item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	if (item == NULL) {
+		return false;
+	}
+	*ra = item->number.value;
+	return true;
+}
+
+// How far one guide pulse moves the right ascension of a tracking mount, in hours. The client
+// context stays on the mount, whose coordinates are watched, so the pulse is given its time.
+static bool right_ascension_moved_by_pulse(const char *item, double milliseconds, double *moved) {
+	double before = 0, after = 0;
+	if (!fresh_right_ascension(&before)) {
+		return false;
+	}
+	if (indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, item, milliseconds) != INDIGO_OK) {
+		return false;
+	}
+	indigo_usleep((unsigned)(milliseconds * 1000) + 700000);
+	if (!fresh_right_ascension(&after)) {
+		return false;
+	}
+	*moved = after - before;
+	return true;
+}
+
+// A guide pulse runs the drive faster for west and slower for east by the guide rate, so on a
+// tracking mount a west pulse lowers the right ascension the mount points at and an east pulse
+// raises it. A pulse used to be a rate move at hand controller rate 1, which replaces the drive
+// instead of adding to it: both directions then slowed the axis down and moved the mount the same
+// way, by 0.5 and 1.5 times sidereal.
+static void guide_pulse_direction(void) {
+	double west = 0, east = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(right_ascension_moved_by_pulse(GUIDER_GUIDE_WEST_ITEM_NAME, 6000, &west));
+	SERIAL_CHECK_TRUE(right_ascension_moved_by_pulse(GUIDER_GUIDE_EAST_ITEM_NAME, 6000, &east));
+	// Half sidereal for six seconds is 45 arcseconds of hour angle, 0.00084 h.
+	printf("    6000 ms pulses at half sidereal moved the right ascension by %+.5f h west and %+.5f h east\n", west, east);
+	SERIAL_CHECK_TRUE(west < -0.0005 && west > -0.0012);
+	SERIAL_CHECK_TRUE(east > 0.0005 && east < 0.0012);
+cleanup:
+	driver_stop();
+}
+
+// Motor controller firmware 6.50 and newer times a guide pulse itself: MC_AUX_GUIDE carries the
+// signed rate in percent of sidereal and the duration in 10 ms, and is added to the running drive,
+// so the end of the pulse needs no command. A pulse longer than the 2.55 s the command can carry
+// falls back to changing the axis rate.
+static void controller_timed_guide_pulses(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "Evolution"));
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "7.11 / 7.11"));
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_guider);
+	enumerate_simulator_device();
+	int rates = requests(AZM_SET_POS_GUIDERATE) + requests(AZM_SET_NEG_GUIDERATE);
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_AUX_GUIDE, "32 1E"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_AUX_GUIDE, "CE 1E"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_AUX_GUIDE, "32 1E"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(ALT_AUX_GUIDE, "CE 1E"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+	// The controller ended the pulses itself, nothing touched the axis rates.
+	SERIAL_CHECK_EQ_INT(rates, requests(AZM_SET_POS_GUIDERATE) + requests(AZM_SET_NEG_GUIDERATE));
+	SERIAL_CHECK_TRUE(number_change(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 3000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, rate_payload(.5)));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_payload(AZM_SET_POS_GUIDERATE, "00 00"));
+	SERIAL_CHECK_EQ_INT(2, requests(AZM_AUX_GUIDE));
+cleanup:
+	driver_stop();
+}
+
+// MC_SLEW_DONE answers 0xfe when the controller gave a goto up. That is not an arrival, and the
+// driver used to take it for one and go on to the slow approach.
+static void goto_aborted_by_mount(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(fault(AZM_SLEW_DONE, "aborted"));
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_EQ_INT(0, requests(AZM_GOTO_SLOW));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// The mount takes the next goto.
+	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
+cleanup:
+	driver_stop();
+}
+
+// Polling the controller in quick succession during a goto can make it miss the target, so the
+// goto is polled at most twice a second. It used to be polled ten times.
+static void goto_polls_gently(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(5, 50, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_SLEW_DONE, 1));
+	int polls = requests(AZM_SLEW_DONE);
+	indigo_usleep(4000000);
+	polls = requests(AZM_SLEW_DONE) - polls;
+	printf("    the goto was polled %d times in 4 s\n", polls);
+	SERIAL_CHECK_TRUE(polls >= 4 && polls <= 10);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// A motor controller reports a low battery or a slew limit on its own and expects the report to be
+// acknowledged by echoing the command back. The report arrives between a request and its answer,
+// so the answer still has to be found.
+static void controller_warning_acknowledged(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_GET_POSITION, "warn1"));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_WARNING, 1));
+	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+cleanup:
+	driver_stop();
+}
+
 // ----------------------------------------------------------------- requests racing a finalizer
-
-// The number of requests with exactly this destination, command and payload.
-static int payload_requests(const char *prefix, const char *payload) {
-	char expected[128];
-	snprintf(expected, sizeof(expected), "%s %s", prefix, payload);
-	FILE *file = fopen(event_path, "r");
-	if (file == NULL) {
-		return -1;
-	}
-	char line[256];
-	int count = 0;
-	while (fgets(line, sizeof(line), file) != NULL) {
-		line[strcspn(line, "\r\n")] = '\0';
-		if (!strcasecmp(line, expected)) {
-			count++;
-		}
-	}
-	fclose(file);
-	return count;
-}
-
-static bool wait_for_payload_requests(const char *prefix, const char *payload, int expected) {
-	for (int i = 0; i < 200; i++) {
-		if (payload_requests(prefix, payload) >= expected) {
-			return true;
-		}
-		indigo_usleep(25000);
-	}
-	char reason[160];
-	snprintf(reason, sizeof(reason), "Fewer than %d '%s %s' requests", expected, prefix, payload);
-	print_journal(reason);
-	return false;
-}
 
 static const char *lookup_name;
 static indigo_device *lookup_device;
@@ -1163,6 +1346,7 @@ static indigo_device *driver_device(const char *name) {
 // the queued change handler once the gate ends.
 static atomic_bool gate_entered, gate_release;
 static _Atomic(indigo_device *) gate_on_slow_goto;
+static atomic_int slow_goto_writes;
 
 static void gate_handler(indigo_device *device) {
 	atomic_store(&gate_entered, true);
@@ -1189,10 +1373,10 @@ static bool wait_for_gate(void) {
 }
 
 // The I/O layer logs every write on the debug level from the writing thread. The slew finalizer sends the slow approach
-// of the declination axis last and polls for its end 0.1 s later, so a gate queued from the log of that write holds the
-// queue before the finalizer can see the goto finish.
+// of the declination axis last and polls for its end 0.5 s later, so a gate queued from the log of the write of the
+// last of the three slow approaches holds the queue before the finalizer can see the goto finish.
 static void slow_goto_log_handler(indigo_log_levels level, const char *message) {
-	if (strstr(message, "<- 3B 06 20 11 17 ") != NULL) {
+	if (strstr(message, "<- 3B 06 20 11 17 ") != NULL && atomic_fetch_add(&slow_goto_writes, 1) == 2) {
 		indigo_device *device = atomic_exchange(&gate_on_slow_goto, NULL);
 		if (device != NULL) {
 			queue_gate(device);
@@ -1252,6 +1436,7 @@ static void tracking_request_survives_slew_end(void) {
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
 	indigo_device *mount = driver_device(nexstaraux_mount.device_name);
 	SERIAL_CHECK_TRUE(mount != NULL);
+	atomic_store(&slow_goto_writes, 0);
 	atomic_store(&gate_on_slow_goto, mount);
 	indigo_log_message_handler = slow_goto_log_handler;
 	indigo_set_log_level(INDIGO_LOG_DEBUG);
@@ -1289,8 +1474,9 @@ cleanup:
 // The gate holds the queue past the deadline of the first pulse, so its URGENT finalizer clears the values after the
 // next pulse was copied and before the handler of that pulse reads them.
 static bool pulse_survives_previous_finalizer(indigo_device *guider, const char *property_name, const char *first_item, const char *first_command, const char *next_item, const char *next_command) {
-	int first_pulses = payload_requests(first_command, "01");
-	if (indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, property_name, first_item, 200) != INDIGO_OK || !wait_for_payload_requests(first_command, "01", first_pulses + 1)) {
+	const char *pulse = rate_payload(.5);
+	int first_pulses = payload_requests(first_command, pulse);
+	if (indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, property_name, first_item, 200) != INDIGO_OK || !wait_for_payload_requests(first_command, pulse, first_pulses + 1)) {
 		return false;
 	}
 	queue_gate(guider);
@@ -1298,7 +1484,7 @@ static bool pulse_survives_previous_finalizer(indigo_device *guider, const char 
 		return false;
 	}
 	indigo_usleep(400000);
-	int next_pulses = payload_requests(next_command, "01");
+	int next_pulses = payload_requests(next_command, pulse);
 	watch_results_of(nexstaraux_guider.device_name, property_name);
 	bool requested = indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, property_name, next_item, 300) == INDIGO_OK;
 	double released = indigo_monotonic_time();
@@ -1306,7 +1492,7 @@ static bool pulse_survives_previous_finalizer(indigo_device *guider, const char 
 	if (!requested) {
 		return false;
 	}
-	if (!wait_for_payload_requests(next_command, "01", next_pulses + 1)) {
+	if (!wait_for_payload_requests(next_command, pulse, next_pulses + 1)) {
 		fprintf(stderr, "    %s: the %s pulse requested while the %s pulse ended was dropped\n", property_name, next_item, first_item);
 		return false;
 	}
@@ -1326,8 +1512,8 @@ static void guider_pulse_survives_previous_finalizer(void) {
 	SERIAL_CHECK_TRUE(connect_guider());
 	indigo_device *guider = driver_device(nexstaraux_guider.device_name);
 	SERIAL_CHECK_TRUE(guider != NULL);
-	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, AZM_MOVE_POS, GUIDER_GUIDE_WEST_ITEM_NAME, AZM_MOVE_NEG));
-	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, ALT_MOVE_POS, GUIDER_GUIDE_SOUTH_ITEM_NAME, ALT_MOVE_NEG));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, AZM_SET_NEG_GUIDERATE, GUIDER_GUIDE_WEST_ITEM_NAME, AZM_SET_POS_GUIDERATE));
+	SERIAL_CHECK_TRUE(pulse_survives_previous_finalizer(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, ALT_SET_POS_GUIDERATE, GUIDER_GUIDE_SOUTH_ITEM_NAME, ALT_SET_NEG_GUIDERATE));
 cleanup:
 	stop_watching();
 	atomic_store(&gate_release, true);
@@ -1381,7 +1567,12 @@ int main(void) {
 		{ "guider_rate", guider_rate, "normal" },
 		{ "shared_connection", shared_connection, "normal" },
 		{ "tracking_request_survives_slew_end", tracking_request_survives_slew_end, "normal" },
-		{ "guider_pulse_survives_previous_finalizer", guider_pulse_survives_previous_finalizer, "normal" }
+		{ "guider_pulse_survives_previous_finalizer", guider_pulse_survives_previous_finalizer, "normal" },
+		{ "guide_pulse_direction", guide_pulse_direction, "normal" },
+		{ "controller_timed_guide_pulses", controller_timed_guide_pulses, "aux-guide" },
+		{ "goto_aborted_by_mount", goto_aborted_by_mount, "normal" },
+		{ "goto_polls_gently", goto_polls_gently, "slow-slew" },
+		{ "controller_warning_acknowledged", controller_warning_acknowledged, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (mkdtemp(fixture_directory) == NULL) {

@@ -432,3 +432,111 @@ Both cases failed against the version 21 driver and pass with version 22. Record
 `tools/run_driver_test.py mount_nexstaraux` on Linux x64: 42/42. No hardware run for this change.
 
 Final test summary for this change: simulator suite 42 run / 42 passed; hardware 0 run / 0 passed.
+
+## AUX protocol audit (2026-10-04)
+
+The driver was compared command by command with the AUX motor controller protocol as other
+AUX-speaking control software uses it, and with `nexstar_aux_commands_10.pdf`. The facts the
+comparison rests on are stated here as protocol facts.
+
+### Protocol facts the driver did not use
+
+- **Rate unit.** The 24 bit form of `MC_SET_POS_GUIDERATE` / `MC_SET_NEG_GUIDERATE` (0x06 / 0x07)
+  carries the axis rate in 1/1024 arcsecond per second; the 16 bit form is the upper two bytes of
+  it, except for the named rates 0xFFFF (sidereal), 0xFFFE (solar) and 0xFFFD (lunar). The protocol
+  document's own alt-azimuth tracking example (`0x00 0x1d 0xef`, 7.5"/s) is consistent with it.
+- **Controller-timed guide pulses.** `MC_AUX_GUIDE` (0x26) takes a signed byte, the rate in percent
+  of sidereal added to the running drive, and an unsigned byte, the duration in units of 10 ms
+  (at most 2.55 s). `MC_IS_AUX_GUIDE_ACTIVE` (0x27) answers 1 while the pulse runs. Motor controller
+  firmware 6.50 and newer implements them; older firmware has to be guided by changing the axis
+  rate for the length of the pulse.
+- **Autoguide rate.** `MC_SET_AUTOGUIDE_RATE` (0x46) is the rate of the ST-4 autoguider port. Only
+  models with such a port store it; on the others (NexStar SE 4/5, SLT, GT, Evolution, ...) it is
+  acknowledged and discarded, which is exactly what the NexStar SE of the hardware run did. The
+  rate a computer-commanded pulse runs at is not a controller setting at all.
+- **Mount model.** `MC_GET_MODEL` (0x05) sent to the azimuth controller answers one byte, the model
+  number: 1, 2 NexStar GPS, 3 NexStar i, 4 NexStar SE, 5 CGE, 6 Advanced GT, 7 SLT, 8 Legend,
+  9 CPC, 10 NexStar GT, 11 NexStar SE 4/5, 12 NexStar SE 6/8, 13 CGE Pro, 14 CGEM, 15 LCM,
+  16 SkyProdigy, 17 CPC Deluxe, 18 NexStar GT, 19 StarSeeker GT, 20 AVX, 21 Cosmos GT,
+  22 Evolution, 23 CGX, 24 CGX-L, 25 AstroFi, 26 to 28 Sky-Watcher mounts on the AUX bus,
+  29 Origin. The models with an autoguider port are 5, 6, 9, 12, 13, 14, 17, 20, 23 and 24; the
+  models from 20 on slew fast enough that their goto approach point is 1 degree from the target
+  rather than 2.5.
+- **Goto approach.** `MC_GET_APPROACH` (0xFC) answers 0 for a positive and 1 for a negative
+  approach per axis. The motor controller does not apply it by itself: a goto is made as a fast goto
+  to a point 2.5 degrees (1 degree on the fast models) short of the target on the approach side,
+  followed by slow gotos to the target, so that every goto ends with the gears loaded the same way.
+  The slow goto is repeated (three passes in all) because the target moves on while the mount is
+  not tracking.
+- **`MC_SLEW_DONE` has three answers**: 0x00 running, 0xFF finished and 0xFE aborted.
+- **Polling rate.** The protocol document warns that polling the controller in quick succession
+  during a goto can make it miss its destination and keep rotating. Polling every 500 ms is safe.
+- **Unsolicited reports.** A motor controller sends `MC_SEND_WARNING` (0x50) with 0x00 for a low
+  battery and 0x01 for a slew limit that stopped the axis, and `MC_SEND_ERROR` (0x51); each is
+  acknowledged by echoing the command back to the controller with no data.
+
+### Defects and gaps found
+
+1. **Right ascension guide pulses moved the wrong way and at the wrong rate.** A pulse was an
+   `MC_MOVE_POS` / `MC_MOVE_NEG` rate move at hand controller rate 1, which writes the same
+   velocity register as the tracking drive. While a pulse ran, the axis turned at +-0.5 times
+   sidereal *instead of* the sidereal drive, so relative to the sky an east pulse slowed the axis by
+   0.5x and a west pulse slowed it by 1.5x: both directions moved the mount the same way. East was
+   also sent as the positive (westward) direction, the opposite of the INDIGO convention in which
+   a west pulse runs the drive faster. Declination pulses had the right sign but, like RA pulses,
+   ignored `GUIDER_RATE` and `MOUNT_GUIDE_RATE` entirely and always ran at 0.5x. No hardware case
+   measured the RA direction, which is how this survived the acceptance run. Source audit;
+   to be reproduced in the simulator and on the hardware.
+2. **The guide rate was refused on every mount without an autoguider port.** Because the setting is
+   only stored by models with an ST-4 port, the readback check made `MOUNT_GUIDE_RATE` and
+   `GUIDER_RATE` fail on the NexStar SE of the hardware run; the published rate was whatever the
+   controller held (0.39 percent on that mount).
+3. **An aborted goto was taken for a finished one.** 0xFE from `MC_SLEW_DONE` was treated as done.
+4. **The goto polled ten times a second.** `mount_slew_finalizer` re-ran every 100 ms.
+5. **No goto approach.** The fast goto went straight to the target and one slow goto followed, so
+   the final direction of motion, and with it the backlash, depended on where the mount came from.
+6. **Model and warnings.** `MOUNT_INFO` named every mount "NexStar AUX", and warning and error
+   reports of the controller were skipped silently.
+
+### Hardware decision
+
+Hardware testing will be performed on the Celestron NexStar SE with a NexStar+ hand controller over
+the SkyPortal WiFi module (motor controller firmware 5.20, so the rate-change guide path). Planned
+scenarios: the existing acceptance suite, plus a new case that measures the hour angle a west and an
+east RA pulse move with tracking on and asserts opposite signs, and the guide rate cases updated to
+the new semantics. The `MC_AUX_GUIDE` path cannot be exercised on this firmware and is covered by
+the simulator only.
+
+### Plan
+
+1. Simulator: correct 24 bit rate unit, `MC_GET_MODEL`, `MC_GET_APPROACH`, `MC_AUX_GUIDE` /
+   `MC_IS_AUX_GUIDE_ACTIVE` superimposed on the drive, profiles `aux-guide` (firmware 7.11,
+   Evolution) and a model without autoguider port for `deaf-guide-rate`, fault actions `aborted`
+   (`MC_SLEW_DONE` answers 0xFE) and `warn0` / `warn1` (unsolicited warning before the answer).
+2. Simulator tests: reproduce defects 1 to 6 against the version 22 driver, adjust the cases whose
+   expectations encode the old guiding and guide rate semantics.
+3. Driver: rate-based guiding with the `MC_AUX_GUIDE` path, guide rate kept by the driver and
+   written to the controller only on models with an autoguider port, model identification, approach
+   goto with three slow passes, 0xFE handling, 500 ms goto polling, warning reports. Version 23.
+4. Hardware suite: RA guide direction case, guide rate cases for the new semantics.
+5. Recorded simulator run and recorded hardware run through `tools/run_driver_test.py`.
+
+### Results (2026-10-04)
+
+- Steps 1 to 4 done. Against the version 22 driver the new and changed simulator cases failed as
+  expected: `guide_pulse_direction` measured +0.00249 h for a west and +0.00110 h for an east pulse
+  (both the same way), `goto_polls_gently` counted 37 polls in 4 s, `goto_aborted_by_mount`,
+  `controller_warning_acknowledged`, `controller_timed_guide_pulses`, `guide_rate_not_stored`,
+  `guider_pulses`, `metadata` and `slew_to_coordinates` failed on the missing behaviour.
+- Two further defects were found while fixing: the guide rate read on connect was written to the
+  item values but not their targets, so a request changing only the declination rate sent the
+  default right ascension rate (regression: `guide_rate_not_stored`); and a reply length byte
+  above 12 was read into the 16 byte reply buffer (source audit, now refused). A refused slow
+  approach also left the goto BUSY; it now ends in ALERT.
+- Version 23: recorded simulator run `tools/run_driver_test.py mount_nexstaraux`, mac arm64,
+  47/47 OK (west -0.00085 h, east +0.00082 h; 7 polls in 4 s).
+- Step 5 hardware run **not done**: the NexStar SE / SkyPortal module answered neither ARP nor its
+  UDP announcement from the Mac or from indigosky on 2026-10-04. The hardware suite is built
+  (37 cases, new `nexstaraux_guides_the_ra_axis_both_ways`) but unvalidated against version 23.
+
+Test summary for this change: simulated tests run 47, passed 47; hardware tests run 0, passed 0.
