@@ -315,7 +315,6 @@
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
 |  | 2026-09-24 21:27 | 3.0.0.8 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-24 21:48 | 3.0.0.9 | mac arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
-|  | 2026-09-24 22:07 | 3.0.0.9 | mac arm64 | SkyWatcher AZ-GTi | 16 / 16 | ✅ OK |
 |  | 2026-09-26 22:41 | 3.0.0.13 | linux x64 | simulator | 24 / 24 | ✅ OK |
 |  | 2026-10-04 10:57 | 3.0.0.15 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-10-04 11:02 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
