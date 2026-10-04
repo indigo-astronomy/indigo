@@ -40,6 +40,8 @@
 //                                   reply CLEAR removes the rule
 //   @status\t<digit|->              override the reported system status digit
 //   @close\t1                       close the current TCP client connection
+//   @halt\t1                        end a running slew where it is, as a mount that
+//                                   stops short of its target (limit, hand controller)
 // Events ("<ready-file>.events"): "<monotonic seconds>\t<command>" per command.
 
 #define _DEFAULT_SOURCE
@@ -195,6 +197,7 @@ static void usage(const char *name) {
 	printf("  --parked | --tracking | --away   initial mechanical state\n");
 	printf("  --track-mode <0-4>        initial tracking rate\n");
 	printf("  --guide <rrdd>            initial RA/DEC guide rate percent\n");
+	printf("  --meridian <fll>          initial meridian treatment (:GMT# digits)\n");
 	printf("  --slew-rate <deg/s>       simulated GOTO speed\n");
 	printf("  --altitude-limit <deg>    reject GOTO targets below this altitude\n");
 	printf("  --tcp                     serve an opt-in localhost TCP transport\n");
@@ -258,6 +261,10 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (!strcmp(arg, "--guide")) {
 			state.guide_ra = atoi(value) / 100;
 			state.guide_dec = atoi(value) % 100;
+			i++;
+		} else if (!strcmp(arg, "--meridian")) {
+			state.meridian_flip = atoi(value) / 100;
+			state.meridian_limit = atoi(value) % 100;
 			i++;
 		} else if (!strcmp(arg, "--slew-rate")) {
 			options.slew_deg_per_s = atof(value);
@@ -701,6 +708,10 @@ static void read_control(void) {
 		}
 		if (!strcmp(line, "@status")) {
 			state.status_override = *reply == '-' ? 0 : *reply;
+		} else if (!strcmp(line, "@halt")) {
+			update_motion();
+			stop_slew();
+			log_event("", "HALT");
 		} else if (!strcmp(line, "@close")) {
 			if (options.tcp && serial_fd >= 0) {
 				close(serial_fd);
