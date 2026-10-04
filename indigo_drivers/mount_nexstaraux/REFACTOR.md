@@ -540,3 +540,34 @@ the simulator only.
   (37 cases, new `nexstaraux_guides_the_ra_axis_both_ways`) but unvalidated against version 23.
 
 Test summary for this change: simulated tests run 47, passed 47; hardware tests run 0, passed 0.
+
+### Hardware runs and the transport defects they found (2026-10-04)
+
+The first hardware run of version 23 (mac arm64, NexStar SE answering model 11 "NexStar SE 4/5",
+firmware 5.20 / 5.20) passed 35 of 37. `nexstaraux_guides_the_ra_axis_both_ways` measured
+-0.00132 h for a 5 s west and +0.00122 h for a 5 s east pulse at the sidereal rate (expected
+-+0.0014 h), against both directions moving the same way before the fix. The two failures were the
+identity case, which still expected the model text "NexStar AUX" (the suite now prints the model
+and accepts what the mount reports), and `reinitializes`, where the WiFi module refused new
+sessions. A second full run passed 36 of 37: `keeps_tracking_through_a_guide_pulse` lost 0.00628 h
+of right ascension in the 30 s after a west pulse, a quarter of the sidereal drive missing, with
+the hand controller idle waiting for its alignment. It did not repeat in three further runs of the
+guider cases with a wire log, but one of them caught the transport defect behind it:
+
+- **A packet whose bytes arrived apart silenced the mount.** The module sent `3B 04` and the rest
+  of the answer more than a second later. `nexstaraux_read()` waited for the first byte and then
+  read the whole body with `indigo_uni_read()`, whose second `read()` timed out with EAGAIN; that
+  error latches on the handle, and every later request failed without reaching the mount while the
+  socket stayed valid. The read now takes only what has arrived after each wait, and the body of a
+  packet that has begun is given 3 s. Regression case `split_answer_keeps_the_mount_alive`, against
+  a new simulator fault `split` that pauses an answer for 1.5 s after its fourth byte; it failed
+  against the version 23 driver before this fix with the EAGAIN latch.
+- **A late answer was taken for the answer to the next request.** Answers are matched by command
+  and addresses only, so after a request timed out its late answer acknowledged the next request of
+  the same kind. For the rate restored at the end of a guide pulse that is exactly a pulse reported
+  complete while the drive was never set back, which matches the loss measured above. Every request
+  now discards what is waiting before it is sent. Regression case `late_answer_not_taken`, against a
+  new simulator fault `late` whose `MC_GET_POSITION` answer comes 1.5 s late and claims a quarter
+  turn: before the fix the driver published a declination of 90.000, now 20.000. A controller
+  report that arrives between requests is discarded with the rest; reports sent while a request
+  waits for its answer are still acknowledged.

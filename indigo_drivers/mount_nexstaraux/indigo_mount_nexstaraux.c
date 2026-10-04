@@ -195,12 +195,26 @@ static const nexstaraux_model nexstaraux_models[] = {
 
 // A bare read on a socket with a receive timeout reports the timeout as a
 // read error, which latches on the handle and silently fails every later
-// transfer. Waiting for data first keeps a missing answer recoverable.
-static bool nexstaraux_read(indigo_device *device, unsigned char *buffer, long length) {
-	if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(1)) <= 0) {
-		return false;
+// transfer. Only what has arrived is read, after waiting for it, so a missing
+// answer stays recoverable. That holds for a packet whose bytes arrive apart
+// too: a SkyPortal module sent the first two bytes of an answer and the rest
+// more than a second later, and a read of the whole packet timed out in the
+// middle and latched, which silenced the mount for the rest of the session.
+#define PACKET_TIMEOUT       3.0
+
+static bool nexstaraux_read(indigo_device *device, unsigned char *buffer, long length, double timeout) {
+	while (length > 0) {
+		if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(timeout)) <= 0) {
+			return false;
+		}
+		long count = indigo_uni_read_available(PRIVATE_DATA->handle, buffer, length);
+		if (count <= 0) {
+			return false;
+		}
+		buffer += count;
+		length -= count;
 	}
-	return indigo_uni_read(PRIVATE_DATA->handle, buffer, length) == length;
+	return true;
 }
 
 // A motor controller reports a low battery, a slew limit that stopped an axis, or an error on its
@@ -240,10 +254,15 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 		checksum += buffer[i];
 	}
 	buffer[length + 2] = (unsigned char)(((~checksum) + 1) & 0xFF);
+	// The answer to a request that timed out can still arrive, and it must not be taken for the
+	// answer to this one, which has the same command and addresses whenever it is the same request
+	// again: a tracking rate restored after a guide pulse would then be acknowledged by the answer
+	// to an earlier request while the rate itself was never set.
+	indigo_uni_discard(PRIVATE_DATA->handle);
 	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, length + 3) > 0) {
 		while (true) {
 			for (int i = 0; i < 10; i++) {
-				if (!nexstaraux_read(device, reply, 1)) {
+				if (!nexstaraux_read(device, reply, 1, 1)) {
 					return false;
 				}
 				if (*reply == 0x3b) {
@@ -253,7 +272,8 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 			if (*reply != 0x3b) {
 				return false;
 			}
-			if (!nexstaraux_read(device, reply + 1, 1)) {
+			// Once a packet has begun, the rest of it is given longer to arrive.
+			if (!nexstaraux_read(device, reply + 1, 1, PACKET_TIMEOUT)) {
 				return false;
 			}
 			// Every caller passes a 16 byte buffer, and no motor controller packet is longer.
@@ -261,7 +281,7 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 			if (reply[1] < 3 || reply[1] > 12) {
 				return false;
 			}
-			if (!nexstaraux_read(device, reply + 2, reply[1] + 1)) {
+			if (!nexstaraux_read(device, reply + 2, reply[1] + 1, PACKET_TIMEOUT)) {
 				return false;
 			}
 			// An answer to another request is skipped, not mistaken for this one.

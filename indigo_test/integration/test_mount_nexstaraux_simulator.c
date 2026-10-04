@@ -1318,6 +1318,44 @@ cleanup:
 	driver_stop();
 }
 
+// The bytes of an answer can arrive apart: a SkyPortal module sent the first two bytes and the rest
+// more than a second later. Reading the whole packet at once timed out in the middle, the timeout
+// latched on the handle, and every later request failed without reaching the mount.
+static void split_answer_keeps_the_mount_alive(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(AZM_GET_POSITION, "split"));
+	indigo_usleep(3000000);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_change(6, 25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(6, 25, .05));
+cleanup:
+	driver_stop();
+}
+
+// An answer that arrives after the driver gave its request up has the same command and addresses as
+// the answer to the next request of that kind, and must not be taken for it. Here the late answer
+// says the declination axis stands a quarter turn away, at 90 degrees.
+static void late_answer_not_taken(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(fault(ALT_GET_POSITION, "late"));
+	double until = indigo_monotonic_time() + 5;
+	double highest = -90;
+	while (indigo_monotonic_time() < until) {
+		indigo_item *dec = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		if (dec != NULL && dec->number.value > highest) {
+			highest = dec->number.value;
+		}
+		indigo_usleep(25000);
+	}
+	printf("    the highest declination published was %.3f\n", highest);
+	SERIAL_CHECK_TRUE(highest < 21);
+	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+cleanup:
+	driver_stop();
+}
+
 // ----------------------------------------------------------------- requests racing a finalizer
 
 static const char *lookup_name;
@@ -1572,7 +1610,9 @@ int main(void) {
 		{ "controller_timed_guide_pulses", controller_timed_guide_pulses, "aux-guide" },
 		{ "goto_aborted_by_mount", goto_aborted_by_mount, "normal" },
 		{ "goto_polls_gently", goto_polls_gently, "slow-slew" },
-		{ "controller_warning_acknowledged", controller_warning_acknowledged, "normal" }
+		{ "controller_warning_acknowledged", controller_warning_acknowledged, "normal" },
+		{ "split_answer_keeps_the_mount_alive", split_answer_keeps_the_mount_alive, "normal" },
+		{ "late_answer_not_taken", late_answer_not_taken, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (mkdtemp(fixture_directory) == NULL) {

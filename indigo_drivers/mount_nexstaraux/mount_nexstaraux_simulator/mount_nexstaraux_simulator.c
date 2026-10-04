@@ -120,6 +120,8 @@ static const char *simulator_name = "mount_nexstaraux";
 static volatile sig_atomic_t running = 1;
 static int server_fd = -1;
 static int client_fd = -1;
+// The next answer is sent in two parts with a pause between them.
+static bool split_next = false;
 
 static void usage(const char *name) {
 	printf("NexStar AUX mount TCP simulator\n");
@@ -133,8 +135,9 @@ static void usage(const char *name) {
 	printf("\n");
 	printf("INDIGO_NEXSTARAUX_EVENTS names a file receiving '<dst> <cmd> <data>' per request.\n");
 	printf("INDIGO_NEXSTARAUX_FAULT names a file holding '<dst> <cmd> <action>', where action is\n");
-	printf("silent, garbage, close, aborted (MC_SLEW_DONE answers 0xfe) or warn<n> (a warning\n");
-	printf("report with data <n> is sent before the answer)\n");
+	printf("silent, garbage, close, aborted (MC_SLEW_DONE answers 0xfe), warn<n> (a warning\n");
+	printf("report with data <n> is sent before the answer), split (the answer is sent in two\n");
+	printf("parts 1.5 s apart) or late (MC_GET_POSITION answers a quarter turn 1.5 s late)\n");
 	printf("which is applied once to the next matching request and then removed.\n");
 }
 
@@ -346,6 +349,16 @@ static void send_reply(uint8_t src, uint8_t dst, uint8_t command, const uint8_t 
 	}
 	packet[5 + data_length] = checksum(packet + 1, data_length + 4);
 	trace_packet("<-", packet, data_length + 6);
+	if (split_next) {
+		// A SkyPortal module was seen to send the start of an answer and the rest more
+		// than a second later. The pause falls inside the addresses and the command, so
+		// a read of the packet body finds part of it there and has to wait for the rest.
+		split_next = false;
+		write_all(client_fd, packet, 4);
+		usleep(1500000);
+		write_all(client_fd, packet + 4, data_length + 2);
+		return;
+	}
 	write_all(client_fd, packet, data_length + 6);
 }
 
@@ -550,7 +563,16 @@ static void handle_packet(const uint8_t *packet, size_t length) {
 			send_reply(dst, src, command, &aborted, 1);
 			return;
 		}
-		if (!strncmp(fault, "warn", 4)) {
+		if (!strcmp(fault, "split")) {
+			split_next = true;
+		} else if (!strcmp(fault, "late")) {
+			// An answer that comes after the driver gave the request up, and that has to be
+			// told apart from the answer to the next request of the same kind.
+			usleep(1500000);
+			uint8_t quarter[3] = { 0x40, 0x00, 0x00 };
+			send_reply(dst, src, command, quarter, 3);
+			return;
+		} else if (!strncmp(fault, "warn", 4)) {
 			// A report the controller sends on its own, ahead of the answer.
 			uint8_t report = (uint8_t)atoi(fault + 4);
 			send_reply(dst, APP, 0x50, &report, 1);
