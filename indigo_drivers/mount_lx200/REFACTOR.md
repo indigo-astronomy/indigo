@@ -2527,3 +2527,40 @@ none of the changed Meade paths and was not rerun.
 
 Simulated tests: **118 run, 118 passed** (second recorded run; the first recorded run failed as described above).
 Hardware tests: **0 run, 0 passed**.
+
+## Losmandy Gemini: tracking, unpark, clock, startup mode, slew reasons, Level 4 pulses, rates and park position (2026-10-04, 3.0.0.73)
+
+Found by a comparison of the Gemini path with the Gemini Level 5 command description and an independent Gemini
+driver. No Gemini is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX054 | FIXED | `:Gv#` reports the faster of the two axes, so `S` and `C` during a goto or a centering motion hide the tracking that goes on underneath. Only `T`/`G` were read as tracking, so `MOUNT_TRACKING` dropped to OFF on every goto. | `S` and `C` count as tracking as well; only `N` and the stall `!` do not. |
+| LX055 | FIXED | `:h?#` keeps answering 1 after `:hW#` woke the mount up. The poll read that as parked, so an unpark was undone by the next poll and the parked guards locked the client out. | Parked is `:h?#` = 1 while `:Gv#` reports `N`; a mount that moves is not parked. |
+| LX056 | FIXED | In Double Precision, which another client may leave the controller in with `:u#`, `:GL#` answers decimal hours. The parser read nothing, `meade_get_utc()` still answered true with a zero time, and every connection replaced the mount clock (and the site, when the driver had one) as if it were uninitialised. | Decimal hours are read; `meade_get_utc()` answers false when the clock cannot be read, and a Gemini whose clock could not be read is left alone. The simulator answers `:GL#`, `:Gt#` and `:Gg#` in decimal in Double Precision, as documented. |
+| LX057 | FIXED | A Gemini that was just switched on answers the ACK with `b` and waits for the startup mode, answering no `:GR#`; the open probe failed and the connection could not be made from a client. | `X_GEMINI_STARTUP` (COLD default, WARM, WARM_RESTART; defined while disconnected, persistent): when the `:GR#` probe fails for the DETECT or GEMINI type, the ACK is read; `B` and `S` are waited out, `b` is answered with `bC#`, `bW#` or `bR#`, and the connection continues once the ACK reports `G` or `A` (up to 120 s). |
+| LX058 | FIXED | A refused `:MS#` is followed by its reason (codes 1 to 7, for example `6Outside Limits.#`); only the generic "Slew failed" reached the client. | The reason is read and sent as "Slew refused: ...". |
+| LX059 | FIXED | `gemini_park_expected`, `gemini_park_failed` and `stalled` survived a reconnection, so a park interrupted by a disconnection was reported as failed in the next session. | Reset in `meade_init_mount()`. |
+| LX060 | FIXED | Gemini Level 4 cuts a `:Mg` pulse to 255 motor encoder ticks modulo 256; pulses up to 3000 ms were sent whole. | `gemini_read_guiding()` (mount and guider) reads the level from `:GV#` and, on Level 4, the worm ratio `<21`, the ticks per worm turn `<27` and the guiding speed `<150`, and computes the longest pulse that stays below 255 ticks for the fastest guiding motion (westwards, 1 + guiding speed). Longer pulses are sent in parts, each when the previous ends. `gemini_get()` reads native values and checks the reply checksum; `gemini_set()` no longer passes the command as a format string. |
+| LX061 | FIXED | The guiding speed (native 150) and the tracking rate (native 130) were neither shown nor read. | `MOUNT_GUIDE_RATE` and the guider's `GUIDER_RATE` show and set the one guiding speed of both axes (20 % to 80 %); `MOUNT_TRACK_RATE` is read from native 130 at connect (closed loop and comet read as sidereal), and the rate cache follows it. `MOUNT_INFO` shows the model and the `:GVN#` firmware. |
+| LX062 | FIXED | The park was always `:hC#`. | `X_GEMINI_PARK_POSITION` (STARTUP default, HOME, ZENITH) sends `:hC#`, `:hP#` or `:hZ#`; Level 4 refuses the zenith. |
+
+Simulator (`--model gemini`): `--gemini-startup` (ACK `b`, then `S` for 1.5 s after `bC#`), `--gemini-level 4`
+(`:GV#` 410), native gets `<130`, `<150`, `<21`, `<27` and sets `>131..134`, `>150` with checksum validation,
+`:h?#` 1 after `:hW#` until the mount moves, `:hZ#`, decimal `:GL#`/`:Gt#`/`:Gg#` in Double Precision.
+
+Tests: `lx200_gemini_tracking_survives_a_goto`, `lx200_gemini_unpark_stays_unparked`,
+`lx200_gemini_double_precision_clock_is_kept`, `lx200_gemini_startup_mode_is_selected` (also that the property is
+defined before a connection and comes back from the saved configuration), `lx200_gemini_slew_refusal_has_a_reason`,
+`lx200_gemini_park_positions`, `lx200_gemini_guide_and_tracking_rates` (mount and guider),
+`lx200_gemini_level4_pulse_is_split`, `lx200_gemini_reconnect_forgets_the_park`. The Gemini profile row now expects
+`MOUNT_INFO` with three items and `MOUNT_GUIDE_RATE`. The test client records driver messages.
+
+Not covered: no Gemini hardware. The Level 4 tick limit uses the fastest guiding motion as the worst case; the
+exact east/west prescaler behaviour of Level 4 is not modelled. The 120 s startup budget is a choice, not measured.
+
+MIGRATION_STATUS.md hardware-free count 122 -> 131.
+
+### Final test summary for this change
+
+Simulated tests: **127 run, 127 passed** (recorded run 2026-10-04 12:46, macOS arm64). Hardware tests: **0 run, 0 passed**.

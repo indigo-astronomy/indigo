@@ -344,7 +344,7 @@ static const lx_profile profiles[] = {
 	{ "meade", "MEADE", "Meade", "RG", "AP", true, true, false, true, false, 3 },
 	{ "onstep", "ONSTEP", "On-Step", "R1", "Te", true, true, true, true, false, 3 },
 	{ "10mic", "10MIC", "10Micron", "RG", "AP", true, true, true, true, false, 1 },
-	{ "gemini", "GEMINI", "Losmandy", "RG", NULL, true, true, false, true, false, 1 },
+	{ "gemini", "GEMINI", "Losmandy", "RG", NULL, true, true, false, true, true, 3 },
 	{ "stargo", "STARGO", "Avalon", "RG2", "X122", true, true, true, true, true, 2 },
 	{ "stargo2", "STARGO2", "Avalon", "RG", NULL, false, true, false, false, false, 2 },
 	{ "ap", "AP", "AstroPhysics", "RG", "RT2", true, true, false, true, false, 3 },
@@ -984,6 +984,365 @@ static void lx200_gemini_reads_double_precision(void) {
 	double drift = difftime(indigo_isogmtotime(clock->text.value), time(NULL));
 	printf("    the mount clock is %s, %.0f s from the host clock\n", clock->text.value, drift);
 	SERIAL_CHECK_TRUE(fabs(drift) < 300);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The messages the driver sent since the test cleared it, which is where a refusal reason
+// arrives; a reason is followed by the generic failure message of the handler.
+static char lx_last_message[1024];
+
+static indigo_result lx_record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (message != NULL) {
+		size_t length = strlen(lx_last_message);
+		snprintf(lx_last_message + length, sizeof(lx_last_message) - length, "%s\n", message);
+	}
+	return INDIGO_OK;
+}
+
+// connect_serial_device() with room for a Gemini that first goes through its startup: the
+// unanswered :GR# probe, the startup itself and the initialization take longer than its wait.
+static bool gemini_connect(const simulator_driver_case *device, const char *port) {
+	if (context.driver_case != device) {
+		reset_simulator_context(device);
+	}
+	enumerate_simulator_device();
+	if (port != NULL && indigo_change_text_property_1_raw(&simulator_test_client, device->device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port) != INDIGO_OK) {
+		return false;
+	}
+	if (indigo_change_switch_property_1(&simulator_test_client, device->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 300; i++) {
+		if (context.connected && !context.disconnected && context.last_connection_state == INDIGO_OK_STATE) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// A Gemini simulator with extra options and the given device connected to it; the startup mode
+// is selected before the connection when one is given.
+static bool start_gemini_device(external_serial_simulator *simulator, const simulator_driver_case *device, const char **options, const char *startup) {
+	const char *arguments[16] = { "--model", "gemini" };
+	int count = 2;
+	for (int i = 0; options != NULL && options[i] != NULL && count < 15; i++) {
+		arguments[count++] = options[i];
+	}
+	arguments[count] = NULL;
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(device)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	if (startup != NULL && indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, "X_GEMINI_STARTUP", startup, true) != INDIGO_OK) {
+		tear_down_serial_driver(device);
+		return false;
+	}
+	if (device != &lx200_mount && indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator->port) != INDIGO_OK) {
+		tear_down_serial_driver(device);
+		return false;
+	}
+	if (gemini_connect(device, device == &lx200_mount ? simulator->port : NULL)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	disconnect_serial_device(device);
+	tear_down_serial_driver(device);
+	return false;
+}
+
+static bool gemini_switch_value(const char *property, const char *item) {
+	indigo_item *found = find_cached_item(property, item);
+	return found != NULL && found->sw.value;
+}
+
+// :Gv# reports the faster of the two axes, so a slew hides the tracking underneath it. The
+// tracking switch may not drop to OFF while a goto runs.
+static void lx200_gemini_tracking_survives_a_goto(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, NULL, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(18, 70, INDIGO_BUSY_STATE));
+	int busy_polls = 0;
+	for (int i = 0; i < 100 && atomic_load(&mount_coordinates_state) == INDIGO_BUSY_STATE; i++) {
+		SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+		busy_polls++;
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(busy_polls > 5);
+	SERIAL_CHECK_TRUE(wait_for_mount_slew_end());
+	SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// :h?# keeps answering 1 after :hW# woke the mount up, so an unparked mount that tracks again
+// may not be read back as parked.
+static void lx200_gemini_unpark_stays_unparked(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, NULL, NULL));
+	online = true;
+	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hW", 0));
+	// Three polls, each of which reads :h?# 1 from the woken mount.
+	indigo_usleep(3000000);
+	SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!gemini_switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 20, INDIGO_BUSY_STATE));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The number of commands whose name starts with the given prefix, for commands that carry a
+// value the test does not spell out.
+static int prefixed_event_count(external_serial_simulator *simulator, const char *prefix) {
+	char path[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -1;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	char line[256];
+	int count = 0;
+	while (fgets(line, sizeof(line), file)) {
+		char *tab = strchr(line, '\t');
+		if (tab != NULL && !strncmp(tab + 1, prefix, strlen(prefix))) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+// In Double Precision :GL# answers decimal hours. The clock is replaced only when it is wrong:
+// the first session may set it, the second one reads a clock that is right and sets nothing.
+static void lx200_gemini_double_precision_clock_is_kept(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--double-precision", NULL };
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, options, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	int clock_writes = prefixed_event_count(&simulator, "SL");
+	SERIAL_CHECK_TRUE(clock_writes <= 1);
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(clock_writes, prefixed_event_count(&simulator, "SL"));
+	SERIAL_CHECK_EQ_INT(clock_writes, prefixed_event_count(&simulator, "SC"));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A Gemini that was just switched on waits for the startup mode and answers nothing else. The
+// mode is X_GEMINI_STARTUP, which exists before a connection, is cold start by default and
+// survives in the driver configuration.
+static void lx200_gemini_startup_mode_is_selected(void) {
+	static const char *modes[] = { NULL, "WARM", "WARM_RESTART" };
+	static const char *commands[] = { "bC", "bW", "bR" };
+	const char *options[] = { "--gemini-startup", NULL };
+	for (int i = 0; i < 3; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		if (i == 0) {
+			// The property is there before any connection, with cold start selected.
+			SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, (const char *[]) { "--model", "gemini", "--gemini-startup", NULL }));
+			SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+			online = true;
+			enumerate_simulator_device();
+			SERIAL_CHECK_TRUE(gemini_switch_value("X_GEMINI_STARTUP", "COLD"));
+			SERIAL_CHECK_TRUE(gemini_connect(&lx200_mount, simulator.port));
+		} else {
+			SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, options, modes[i]));
+			online = true;
+		}
+		assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "GEMINI", true);
+		for (int j = 0; j < 3; j++) {
+			SERIAL_CHECK_EQ_INT(i == j ? 1 : 0, event_count(&simulator, commands[j], NULL));
+		}
+		if (i == 1) {
+			// The selection is saved with the configuration and comes back with a new driver.
+			disconnect_serial_device(&lx200_mount);
+			SERIAL_CHECK_TRUE(save_configuration());
+			tear_down_serial_driver(&lx200_mount);
+			online = false;
+			SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+			online = true;
+			enumerate_simulator_device();
+			SERIAL_CHECK_TRUE(gemini_switch_value("X_GEMINI_STARTUP", "WARM"));
+			// The saved configuration also holds the detected mount type, which the following
+			// cases may not inherit.
+			SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, CONFIG_PROPERTY_NAME, CONFIG_REMOVE_ITEM_NAME, true) == INDIGO_OK);
+			indigo_usleep(500000);
+		}
+	cleanup:
+		if (online) {
+			stop_serial_driver(&lx200_mount);
+		}
+		stop_external_serial_simulator(&simulator);
+		if (!online) {
+			return;
+		}
+	}
+}
+
+// A Gemini follows a refused :MS# with its reason, which reaches the client.
+static void lx200_gemini_slew_refusal_has_a_reason(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, NULL, NULL));
+	online = true;
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "6Outside Limits.#"));
+	SERIAL_CHECK_TRUE(lx_coordinates(3, 10, INDIGO_ALERT_STATE));
+	for (int i = 0; i < 50 && strstr(lx_last_message, "Outside Limits") == NULL; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Outside Limits") != NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(3, 10, INDIGO_BUSY_STATE));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// X_GEMINI_PARK_POSITION chooses :hC#, :hP# or :hZ#.
+static void lx200_gemini_park_positions(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, NULL, NULL));
+	online = true;
+	static const char *positions[] = { "STARTUP", "HOME", "ZENITH" };
+	static const char *commands[] = { "hC", "hP", "hZ" };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_GEMINI_PARK_POSITION", positions[i], true, INDIGO_OK_STATE));
+		unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, commands[i], 0));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	}
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The guiding speed (native 150) is read at connect and set from MOUNT_GUIDE_RATE and from the
+// guider's GUIDER_RATE; the tracking rate (native 130) is read at connect, so a driver that starts
+// fresh shows the rate the mount runs at.
+static void lx200_gemini_guide_and_tracking_rates(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false, guider = false;
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, NULL, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_GUIDE_RATE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 50) < 0.5);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 60, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prefixed_event_count(&simulator, "150:0.6") == 1);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "133:u", 0));
+	disconnect_serial_device(&lx200_mount);
+	tear_down_serial_driver(&lx200_mount);
+	online = false;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 60) < 0.5);
+	disconnect_serial_device(&lx200_mount);
+	stop_serial_driver(&lx200_mount);
+	online = false;
+	// The guider shows the same speed and sets it the same way.
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_guider));
+	guider = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(indigo_change_text_property_1_raw(&simulator_test_client, lx200_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_guider, NULL));
+	SERIAL_CHECK_TRUE(has_defined_property(GUIDER_RATE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME) - 60) < 0.5);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 70, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prefixed_event_count(&simulator, "150:0.7") == 1);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	if (guider) {
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Gemini Level 4 cuts a :Mg pulse to 255 encoder ticks. With 0.2 arcsec per tick and the guiding
+// speed 0.5 the fastest motion, westwards at 1.5 times sidereal, makes 112.8 ticks a second, so
+// a pulse is sent in parts of at most 2260 ms, the next one when the previous ends.
+static void lx200_gemini_level4_pulse_is_split(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--gemini-level", "4", NULL };
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_guider, options, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 3000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mgn0740", 0));
+	double first = 0, second = 0;
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "Mgn2260", &first));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "Mgn0740", &second));
+	SERIAL_CHECK_TRUE(second - first > 2.2 && second - first < 2.6);
+	// A short pulse goes out whole.
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mgw0500", 0));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A park interrupted by a disconnection says nothing about the next session, which may not
+// report it as failed.
+static void lx200_gemini_reconnect_forgets_the_park(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_gemini_device(&simulator, &lx200_mount, NULL, NULL));
+	online = true;
+	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hC", 0));
+	// The disconnection stops the mount with :Q#, so :h?# answers 0 from then on.
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	*lx_last_message = 0;
+	indigo_usleep(6500000);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state != INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Park failed") == NULL);
 cleanup:
 	if (online) {
 		stop_serial_driver(&lx200_mount);
@@ -2876,6 +3235,7 @@ cleanup:
 	atomic_store(&stargo_gate_release, true);
 	stop_serial_driver(&lx200_mount);
 	simulator_test_client.update_property = timed_client_update;
+	simulator_test_client.send_message = lx_record_message;
 	stop_external_serial_simulator(&simulator);
 }
 
@@ -3399,12 +3759,14 @@ cleanup:
 	atomic_store(&stargo_gate_release, true);
 	if (online) { stop_serial_driver(&lx200_mount); }
 	simulator_test_client.update_property = timed_client_update;
+	simulator_test_client.send_message = lx_record_message;
 	stop_external_serial_simulator(&simulator);
 }
 
 int main(int argc, char **argv) {
 	setbuf(stdout, NULL);
 	simulator_test_client.update_property = timed_client_update;
+	simulator_test_client.send_message = lx_record_message;
 	const indigo_test_case tests[] = {
 		{ "lx200_guider_transport_failure_and_recovery", lx200_guider_transport_failure_and_recovery },
 		{ "lx200_classic_profile_rates_and_recovery", lx200_classic_profile_rates_and_recovery },
@@ -3431,6 +3793,15 @@ int main(int argc, char **argv) {
 		{ "lx200_park_meade", lx200_park_meade },
 		{ "lx200_park_10micron", lx200_park_10micron },
 		{ "lx200_park_gemini", lx200_park_gemini },
+		{ "lx200_gemini_tracking_survives_a_goto", lx200_gemini_tracking_survives_a_goto },
+		{ "lx200_gemini_unpark_stays_unparked", lx200_gemini_unpark_stays_unparked },
+		{ "lx200_gemini_double_precision_clock_is_kept", lx200_gemini_double_precision_clock_is_kept },
+		{ "lx200_gemini_startup_mode_is_selected", lx200_gemini_startup_mode_is_selected },
+		{ "lx200_gemini_slew_refusal_has_a_reason", lx200_gemini_slew_refusal_has_a_reason },
+		{ "lx200_gemini_park_positions", lx200_gemini_park_positions },
+		{ "lx200_gemini_guide_and_tracking_rates", lx200_gemini_guide_and_tracking_rates },
+		{ "lx200_gemini_level4_pulse_is_split", lx200_gemini_level4_pulse_is_split },
+		{ "lx200_gemini_reconnect_forgets_the_park", lx200_gemini_reconnect_forgets_the_park },
 		{ "lx200_park_stargo", lx200_park_stargo },
 		{ "lx200_park_ap", lx200_park_ap },
 		{ "lx200_park_nyx", lx200_park_nyx },
