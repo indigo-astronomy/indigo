@@ -1806,3 +1806,47 @@ Recorded runs: macOS arm64 29/29 (mount_synscan) and 20/20 (mount_simulator, for
 - Recorded simulator runs on indigosky (Linux arm64): mount_synscan 29/29, mount_simulator 20/20. The UDP autodetection case met the powered AZ-GTi there too.
 - Two hardware cases added to `hardware/test_mount_synscan_hw.c`: `synscan_resumes_tracking_after_manual_motion` (tracking on, W and E motion at centering rate, after each release tracking ON/OK and the reported RA holds within 0.01 degrees over 12 s) and `synscan_sync_adds_alignment_point` (sync 0.1 h and 1 degree away from the reported pointing, one alignment point, the synced coordinates still reported 3 s later, raw position unchanged, the points deleted afterwards). The existing `synscan_guides` checks tracking after RA pulse trains.
 - Recorded hardware run on the Sky-Watcher AZ-GTi (firmware 3.16) over UDP autodetection, macOS arm64: 18/18. After W/E release the RA drift was -0.00213 and +0.00188 degrees in 12 s (a stopped axis shows 0.050); the sync to RA +0.1 h, DEC -1 degree read back 3 s later within 0.0001 h and 0.00001 degrees with one alignment point. The session restored the starting pointing, tracking, park and home positions, and its alignment points live in the private test home only. The refused-command paths of SYNSCAN-D06 were not provoked on hardware.
+
+## Mount Driver Test Standard coverage (2026-10-04)
+
+Version 16. `integration/test_mount_synscan_simulator.c` extended against the Mount chapter of `indigo_test/DRIVER_TESTING_RULES.md`. Every new case was run against version 15 (red) and version 16 (green), single-case selection.
+
+| Rule | Test case | Version 15 |
+| --- | --- | --- |
+| `MOUNT_INFO` values, connect handshake trace, polarscope value, read-only `MOUNT_EPOCH`/`MOUNT_STATE`, undefined optional properties, connection options kept after disconnect, no update without definition across reconnect | `synscan_mount_reports_identity_and_handshake` | failed: polarscope published 255 after writing 0 |
+| Optional properties per feature bit, each with the gating bit missing | `synscan_mount_defines_options_from_feature_bits` | passed |
+| Direction of every manual motion on both pier sides in both hemispheres, readback moving the right way, north guide pulse with manual north's direction, tracking direction per hemisphere, GOTO arrival as hour angle from `MOUNT_LST_TIME` | `synscan_mount_moves_the_requested_way_on_both_pier_sides` | failed: north lowered DEC on the east side |
+| Slew-rate presets in step periods (low and high speed), reversal stops first, both axes at once, lunar rate on the running axis without a stop, ST4 guide rate codes at both ends | `synscan_mount_sends_rates_in_axis_units` | passed |
+| Abort mid-GOTO: answered in bounded time, `:L1`/`:L2` once, two equal fresh readbacks short of the target, GOTO ALERT, tracking resumed, next GOTO arrives | `synscan_mount_aborts_goto_mid_slew` | failed: tracking switched off |
+| Abort while idle keeps position and tracking; abort of manual motion stops both axes, releases the switches, keeps tracking; fresh motion | `synscan_mount_abort_keeps_tracking_and_releases_motion` | failed: tracking switched off |
+| Disconnect during GOTO / park stops the axes before the port closes; next session clean, park not reported failed | `synscan_mount_stops_goto_on_disconnect`, `synscan_mount_stops_park_on_disconnect` | failed: no stop sent |
+| Refusal at `:G1`, `:J1`, `:H2` of the GOTO sequence: ALERT with the controller's reason, no later motion command, real position kept, next GOTO accepted | `synscan_mount_refused_goto_ends_alert` | failed: no reason in the message |
+| Busy GOTO ignores a second request: one slew per axis, first target reached | `synscan_mount_ignores_goto_while_busy` | passed |
+| Park to `MOUNT_PARK_POSITION` read back with tracking off, unpark sends no motion, power cycle restores the parked position | `synscan_mount_parks_at_park_position_and_restores_it` | passed |
+| Refused park and park aborted on the way: ALERT, unparked, reason, park light, no re-latch | `synscan_mount_refused_or_aborted_park_stays_unparked` | failed: no reason in the message |
+| Failed (`!0`) and malformed (`=1`) position reply: ALERT with the last valid values, next poll OK; malformed first reading at connect marks only the coordinates | `synscan_mount_publishes_failed_poll_and_recovers` | failed: the malformed reading was decoded and published OK |
+| Aux shutter refused without a snap port, nothing defined, mount connects afterwards | `synscan_aux_refuses_connection_without_snap_port` | passed |
+| Guider pulses after the mount disconnected, no mount polling, no mount updates (decelerating axis) | `synscan_guider_keeps_pulsing_after_mount_disconnects` | failed: `:j` polls and four updates of undefined mount properties |
+| GOTO during a guide pulse arrives, pulse during a GOTO refused without a command, guider recovers | `synscan_guider_pulse_and_goto_share_the_axes` | failed: a pulse during the GOTO was accepted and drove the axis |
+| Manual motion released when its client detaches | `synscan_mount_releases_motion_of_detached_client` | passed |
+
+Driver fixes (version 16):
+
+- SYNSCAN-D07: manual N/S motion and DEC guide pulses always used the reverse direction for north, which moves south on the east side of the pier. The north direction now follows the side of pier (`synscan_dec_north_sign()`).
+- SYNSCAN-D08: the RA direction used a hemisphere flag cached only when tracking, GOTO or abort started; with the latitude changed after connecting, manual RA motion ran the wrong way. The hemisphere is read from the site at every rate conversion.
+- SYNSCAN-D09: abort switched tracking off and left the manual motion switches on. A tracking mount now returns to the tracking rate; the motion switches are cleared.
+- SYNSCAN-D10: disconnect during a GOTO, park, home or manual motion closed the port with the axes running. The axes are stopped first, motion and home switches cleared.
+- SYNSCAN-D11: refused GOTO/park/home published ALERT without the controller's reason; the `!n` code is now named in the message.
+- SYNSCAN-D12: replies of the wrong length were decoded (`=1` became a position); 24-bit, status and ratio replies are validated. A failed poll now publishes the coordinates ALERT with the last valid values; a bad first reading at connect marks only the coordinates instead of failing the connection.
+- SYNSCAN-D13: the polarscope probe wrote brightness 0 and published 255.
+- SYNSCAN-D14: guider finalizers stopped or re-rated axes a GOTO had taken over, guide pulses during a GOTO were accepted, and the DEC stop wait published mount properties while the mount was disconnected. Axes taken by a slew are left alone by the finalizer, pulses during a slew are refused, mount coordinates are published only while the mount is connected.
+
+Not covered, with the reason:
+
+- Driver-specific properties without the `X_` prefix (`POLARSCOPE`, `MOUNT_USE_ENCODERS`, `MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE`): renaming changes the client-visible API and needs an owner decision.
+- GOTO "done" short of the target and the 300 s abandon bound: the simulator has no stall model, a 300 s case is not a regression test.
+- Tracking hold proved by RA drift: the simulator advances the axes at 200 ticks/s while it reports a 1000 Hz timer, so its tracking runs at a fifth of the rate.
+- Controller-reported faults (blocked bit of `:f`): the driver does not poll the status while idle; adding it is a behaviour change, not a minimal fix.
+- ST4 guide rate published as requested while the controller quantizes it to 1, 0.75, 0.5, 0.25 or 0.125.
+- Lost reply on serial: the driver treats it as transport loss by design (`synscan_mount_disconnects_after_serial_loss`); UDP retry is covered by `synscan_mount_survives_lost_udp_replies`.
+- Dialect/forced-model selection, time/site commands, meridian options: not implemented by this controller protocol.
