@@ -24,7 +24,7 @@ driver nexstar {
 	label = "Nexstar Mount";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>, generator migration by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 Rumen G. Bogdanovski";
-	version = 47;
+	version = 48;
 	serial {
 		pattern {
 			vendor = "Prolific";
@@ -233,12 +233,12 @@ driver nexstar {
 				MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 			}
 			if (PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT) {
-				TRACKING_MODE_PROPERTY->hidden = true;
-				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+				X_TRACKING_MODE_PROPERTY->hidden = true;
+				indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 			} else {
-				TRACKING_MODE_PROPERTY->hidden = false;
+				X_TRACKING_MODE_PROPERTY->hidden = false;
 			}
-			TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			X_TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 			int mode = tc_get_tracking_mode(dev_id);
 			if (mode < 0) {
 				indigo_sleep(0.1);
@@ -250,16 +250,16 @@ driver nexstar {
 			} else if (mode == TC_TRACK_OFF) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				if (TRACKING_AUTO_ITEM->sw.value) {
-					TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+					X_TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_send_message(device, ALERT_PROPERTY, "Tracking mode can't be detected");
 				}
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				if (TRACKING_AUTO_ITEM->sw.value) {
 					if (mode == TC_TRACK_ALT_AZ) {
-						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+						indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
 					} else {
-						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+						indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 					}
 					indigo_send_message(device, IDLE_PROPERTY, "Tracking mode detected");
 				}
@@ -354,13 +354,13 @@ driver nexstar {
 							MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 						}
 					} else if (mode != TC_TRACK_OFF && MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
-						if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE && TRACKING_AUTO_ITEM->sw.value) {
+						if (!X_TRACKING_MODE_PROPERTY->hidden && X_TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE && TRACKING_AUTO_ITEM->sw.value) {
 							if (mode == TC_TRACK_ALT_AZ) {
-								indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+								indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
 							} else {
-								indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+								indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 							}
-							TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+							X_TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_send_message(device, IDLE_PROPERTY, "Tracking mode detected");
 						}
 						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
@@ -436,8 +436,8 @@ driver nexstar {
 				}
 				indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-				if (!TRACKING_MODE_PROPERTY->hidden) {
-					indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
+				if (!X_TRACKING_MODE_PROPERTY->hidden) {
+					indigo_update_property(device, X_TRACKING_MODE_PROPERTY, NULL);
 				}
 				if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
 					if (side_of_pier == 'W' && MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
@@ -894,8 +894,8 @@ driver nexstar {
 				bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
 				if (nexstar_set_tracking(device, on, TRACKING_EQ_ITEM->sw.value, TRACKING_AA_ITEM->sw.value)) {
 					indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
-					if (TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
-						TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+					if (X_TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
+						X_TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 					}
 				} else {
 					int tracking_mode = nexstar_get_tracking_mode(device);
@@ -904,35 +904,35 @@ driver nexstar {
 					}
 					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
+				indigo_update_property(device, X_TRACKING_MODE_PROPERTY, NULL);
 			}
 		}
-		switch TRACKING_MODE {
+		switch X_TRACKING_MODE {
 			persistent = true;
 			on_change {
-				if (IS_CONNECTED && !TRACKING_MODE_PROPERTY->hidden) {
+				if (IS_CONNECTED && !X_TRACKING_MODE_PROPERTY->hidden) {
 					// The status poll detects the mode while tracking is off and may overwrite the value between the copy of
 					// the request and this handler, the targets keep the requested mode. AUTO switches tracking off, so the
 					// poll detects the mode again. On failure the switch shows the mode the mount reports.
-					bool automatic = indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_AUTO_ITEM_NAME);
-					if (nexstar_set_tracking(device, !automatic && MOUNT_TRACKING_ON_ITEM->sw.value, indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM_NAME), indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM_NAME))) {
-						indigo_apply_switch_targets(TRACKING_MODE_PROPERTY);
+					bool automatic = indigo_get_switch_target(X_TRACKING_MODE_PROPERTY, TRACKING_AUTO_ITEM_NAME);
+					if (nexstar_set_tracking(device, !automatic && MOUNT_TRACKING_ON_ITEM->sw.value, indigo_get_switch_target(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM_NAME), indigo_get_switch_target(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM_NAME))) {
+						indigo_apply_switch_targets(X_TRACKING_MODE_PROPERTY);
 						if (automatic) {
 							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 						}
 					} else {
 						int tracking_mode = nexstar_get_tracking_mode(device);
 						if (tracking_mode == TC_TRACK_ALT_AZ) {
-							indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+							indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
 						} else if (tracking_mode > TC_TRACK_ALT_AZ) {
-							indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+							indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 						}
-						TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+						X_TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				}
 			}
-			name = "TRACKING_MODE";
+			name = "X_TRACKING_MODE";
 			group = MOUNT_MAIN_GROUP;
 			label = "Tracking mode";
 			perm = INDIGO_RW_PERM;
@@ -1270,31 +1270,31 @@ driver nexstar {
 				}
 			}
 		}
-		switch COMMAND_GUIDE_RATE {
+		switch X_COMMAND_GUIDE_RATE {
 			on_change {
 				if (GUIDE_50_ITEM->sw.value) {
 					PRIVATE_DATA->guide_rate = 1;
 				} else if (GUIDE_100_ITEM->sw.value) {
 					PRIVATE_DATA->guide_rate = 2;
 				}
-				COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+				X_COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER && PRIVATE_DATA->guide_rate == 1) {
-					indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 1x sidereal; physical correction unverified).");
+					indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 1x sidereal; physical correction unverified).");
 				} else if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER && PRIVATE_DATA->guide_rate == 2) {
-					indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 8x sidereal; physical correction unverified).");
+					indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 8x sidereal; physical correction unverified).");
 				} else if (NEXSTAR_MODERN_EQ_MODEL(PRIVATE_DATA->model_id) && PRIVATE_DATA->guide_rate == 1) {
-					indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 2x sidereal; physical correction unverified).");
+					indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 2x sidereal; physical correction unverified).");
 				} else if (NEXSTAR_MODERN_EQ_MODEL(PRIVATE_DATA->model_id) && PRIVATE_DATA->guide_rate == 2) {
-					indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 4x sidereal; physical correction unverified).");
+					indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 4x sidereal; physical correction unverified).");
 				} else if (PRIVATE_DATA->guide_rate == 1) {
-					indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
+					indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
 				} else if (PRIVATE_DATA->guide_rate == 2) {
-					indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
+					indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
 				} else {
-					indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
+					indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
 				}
 			}
-			name = "COMMAND_GUIDE_RATE";
+			name = "X_COMMAND_GUIDE_RATE";
 			group = GUIDER_MAIN_GROUP;
 			label = "Guide rate";
 			perm = INDIGO_RW_PERM;

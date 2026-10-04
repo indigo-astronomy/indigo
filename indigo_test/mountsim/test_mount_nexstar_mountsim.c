@@ -581,7 +581,8 @@ static void nexstar_model_identity_and_reconnect(void) {
 	indigo_item *identity = find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME);
 	SERIAL_CHECK_TRUE(identity != NULL && !strcmp(identity->text.value, model->name));
 	if (model->altaz) {
-		SERIAL_CHECK_TRUE(find_cached_property("TRACKING_MODE") != NULL);
+		SERIAL_CHECK_TRUE(find_cached_property("X_TRACKING_MODE") != NULL);
+		SERIAL_CHECK_TRUE(find_cached_property("TRACKING_MODE") == NULL);
 		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) == NULL);
 	} else if (!strcmp(model->selection, "SynScan")) {
 		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) == NULL);
@@ -601,7 +602,7 @@ static void nexstar_sync_has_fresh_device_readback(void) {
 	SERIAL_CHECK_TRUE(mountsim_attach(&session));
 	SERIAL_CHECK_TRUE(start_mount_fixture(session.port));
 	if (model->altaz) {
-		SERIAL_CHECK_TRUE(change_switch("TRACKING_MODE", "EQ", true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(change_switch("X_TRACKING_MODE", "EQ", true, INDIGO_OK_STATE));
 	}
 	SERIAL_CHECK_TRUE(fresh_coordinates());
 	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
@@ -708,7 +709,7 @@ static bool start_case(external_serial_simulator *session) {
 	if (!mountsim_attach(session) || !start_mount_fixture(session->port)) {
 		return false;
 	}
-	if (model->altaz && (!change_switch("TRACKING_MODE", "EQ", true, INDIGO_OK_STATE) || !find_cached_item("TRACKING_MODE", "EQ")->sw.value)) {
+	if (model->altaz && (!change_switch("X_TRACKING_MODE", "EQ", true, INDIGO_OK_STATE) || !find_cached_item("X_TRACKING_MODE", "EQ")->sw.value)) {
 		return false;
 	}
 	return change_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE) && fresh_coordinates();
@@ -893,7 +894,7 @@ static void nexstar_tracking_and_site_roundtrip(void) {
 	SERIAL_CHECK_TRUE(start_case(&session));
 	SERIAL_CHECK_TRUE(change_numbers(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48.125, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 342.75));
 	if (model->altaz) {
-		SERIAL_CHECK_TRUE(change_switch("TRACKING_MODE", "AUTO", true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(change_switch("X_TRACKING_MODE", "AUTO", true, INDIGO_OK_STATE));
 	}
 	SERIAL_CHECK_TRUE(fixture_disconnect(&nexstar_mount));
 	if (model->altaz) {
@@ -921,7 +922,7 @@ static void nexstar_tracking_and_site_roundtrip(void) {
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48.125, 0.001));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 342.75, 0.001));
 	if (model->altaz) {
-		SERIAL_CHECK_TRUE(find_cached_item("TRACKING_MODE", "EQ")->sw.value);
+		SERIAL_CHECK_TRUE(find_cached_item("X_TRACKING_MODE", "EQ")->sw.value);
 	}
 	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fresh_coordinates());
@@ -1154,16 +1155,18 @@ static void nexstar_guider_first_and_sibling_survival(void) {
 	if (!strcmp(model->selection, "AVX") || !strcmp(model->selection, "CGX")) {
 		reset_simulator_context(&nexstar_guider);
 		enumerate_simulator_device();
-		indigo_item *rate1 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_50");
-		indigo_item *rate2 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_100");
+		indigo_item *rate1 = find_cached_item("X_COMMAND_GUIDE_RATE", "GUIDE_50");
+		indigo_item *rate2 = find_cached_item("X_COMMAND_GUIDE_RATE", "GUIDE_100");
 		SERIAL_CHECK_TRUE(rate1 != NULL && rate2 != NULL);
+		SERIAL_CHECK_TRUE(find_cached_property("COMMAND_GUIDE_RATE") == NULL);
 		SERIAL_CHECK_TRUE(strstr(rate1->label, "2x sidereal") != NULL && strstr(rate2->label, "4x sidereal") != NULL);
 	} else if (!strcmp(model->selection, "SynScan")) {
 		reset_simulator_context(&nexstar_guider);
 		enumerate_simulator_device();
-		indigo_item *rate1 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_50");
-		indigo_item *rate2 = find_cached_item("COMMAND_GUIDE_RATE", "GUIDE_100");
+		indigo_item *rate1 = find_cached_item("X_COMMAND_GUIDE_RATE", "GUIDE_50");
+		indigo_item *rate2 = find_cached_item("X_COMMAND_GUIDE_RATE", "GUIDE_100");
 		SERIAL_CHECK_TRUE(rate1 != NULL && rate2 != NULL);
+		SERIAL_CHECK_TRUE(find_cached_property("COMMAND_GUIDE_RATE") == NULL);
 		SERIAL_CHECK_TRUE(strstr(rate1->label, "1x sidereal") != NULL && strstr(rate2->label, "8x sidereal") != NULL);
 	}
 	SERIAL_CHECK_TRUE(pulse(0, GUIDER_GUIDE_WEST_ITEM_NAME, 100, true));

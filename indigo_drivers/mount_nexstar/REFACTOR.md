@@ -1237,10 +1237,18 @@ Driver defects found by the new cases and fixed:
 - A park the controller refused (or whose tracking-off failed) cleared the parked flag but left the PARKED item on,
   so the parked guards kept refusing motion. The UNPARKED item is now selected.
 
-Gaps deliberately not covered: renaming the custom `TRACKING_MODE` / `COMMAND_GUIDE_RATE` properties to `X_`
-names (client-visible, needs approval); a bounded timeout for a slew that never completes (no driver policy, and a
+Gaps deliberately not covered: a bounded timeout for a slew that never completes (no driver policy, and a
 real-length timeout is too long for the suite); refusing guide pulses while parked (no such guard exists, behaviour
 change); MOUNT_STATE, home, PEC, custom track rates, dialect selection and network transports (not implemented);
 pier-side/hemisphere direction mapping (done by the hand controller); tracking-rate restore after RA motion (the
 simulator does not model per-axis tracking); manual motion ownership (framework, `test_detach_abort.c`).
 
+## Driver-specific property prefix (2026-10-04)
+
+Version 48. The two driver-specific properties lacked the `X_` prefix required for custom properties. With user
+approval they were renamed, without a backward-compatible alias: `TRACKING_MODE` -> `X_TRACKING_MODE` (mount) and
+`COMMAND_GUIDE_RATE` -> `X_COMMAND_GUIDE_RATE` (guider). Item names are unchanged. All other properties of the
+mount, guider and GPS devices are standard INDIGO properties. The persisted `TRACKING_MODE` value of an existing
+configuration is not migrated; the property starts at its default (AUTO) until saved again.
+
+The simulator, mountsim and hardware tests use the new names and assert that the old names are not defined.
