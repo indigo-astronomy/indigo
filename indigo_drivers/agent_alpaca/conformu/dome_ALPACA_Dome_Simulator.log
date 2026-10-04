@@ -1,0 +1,158 @@
+10:29:29.377 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 06 August 2026 12:47:41          
+10:29:29.377                                              
+10:29:29.378 Operating system is macOS 27.0.0, Processor is ARM 64bit, Application is 64bit.          
+10:29:29.378                                              
+10:29:29.378 Alpaca device:  (127.0.0.1:58713 Dome/2)          
+10:29:29.379                                              
+10:29:29.379 CreateDevice                        INFO     Creating Alpaca device: IP address: 127.0.0.1, IP Port: 58713, Alpaca device number: 2
+10:29:29.387 CreateDevice                        INFO     Alpaca device created OK
+10:29:29.387 CreateDevice                        INFO     Successfully created driver
+10:29:30.455 CreateDevice                        OK       Found a valid interface version: 1
+10:29:30.455 CreateDevice                        OK       Driver instance created successfully
+10:29:30.455                                              
+10:29:30.455 Connect to device                            
+10:29:32.093 Connected                           OK       Connected to device successfully using Connected = True
+10:29:32.093                                              
+10:29:32.099 Common Driver Methods                        
+10:29:32.099 InterfaceVersion                    OK       1
+10:29:32.100 Connected                           OK       True
+10:29:32.102 Description                         OK       ALPACA Dome Simulator
+10:29:32.103 DriverInfo                          OK       indigo_system_alpaca
+10:29:32.103 DriverVersion                       OK       3.0.0.1
+10:29:32.104 Name                                OK       ALPACA Dome Simulator
+10:29:32.104                                              
+10:29:32.104 SupportedActions                    INFO     Skipping test because SupportedActions is not a member of this interface version.
+10:29:32.104 Action                              INFO     Conform cannot test the Action method
+10:29:32.104                                              
+10:29:32.104 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+10:29:32.104                                              
+10:29:32.104 Can Properties                               
+10:29:32.106 CanFindHome                         OK       True
+10:29:32.106 CanPark                             OK       True
+10:29:32.107 CanSetAltitude                      OK       True
+10:29:32.107 CanSetAzimuth                       OK       True
+10:29:32.107 CanSetPark                          OK       False
+10:29:32.108 CanSetShutter                       OK       True
+10:29:32.108 CanSlave                            OK       False
+10:29:32.108 CanSyncAzimuth                      OK       True
+10:29:32.109                                              
+10:29:32.109 Pre-run Checks                               
+10:29:32.111 DomeSafety                                   Attempting to open shutter as some tests may fail if it is closed...
+10:29:33.619 DomeSafety                          OK       Shutter status: Open
+10:29:33.619                                              
+10:29:33.620 Properties                                   
+10:29:33.651 Altitude                            OK       0
+10:29:33.652 AtHome                              OK       False
+10:29:33.653 AtPark                              OK       True
+10:29:33.654 Azimuth                             OK       180
+10:29:33.654 ShutterStatus                       OK       Open
+10:29:33.655 Slaved Read                         OK       False
+10:29:33.667 Slaved Write                        OK       Optional member returned a NotImplementedException error.
+10:29:33.670 Slewing                             OK       False
+10:29:33.670                                              
+10:29:33.670 Methods                                      
+10:29:33.672 SlewToAltitude 0                    OK       Synchronous slew OK
+10:29:43.687 SlewToAltitude 0                    OK       Reached the required altitude: 0,0 within tolerance ±1 degrees. Reported altitude: 0,0 degrees
+10:29:44.198 SlewToAltitude 15                   OK       Asynchronous slew OK
+10:29:54.205 SlewToAltitude 15                   OK       Reached the required altitude: 15,0 within tolerance ±1 degrees. Reported altitude: 15,0 degrees
+10:29:54.716 SlewToAltitude 30                   OK       Asynchronous slew OK
+10:30:04.733 SlewToAltitude 30                   OK       Reached the required altitude: 30,0 within tolerance ±1 degrees. Reported altitude: 30,0 degrees
+10:30:05.243 SlewToAltitude 45                   OK       Asynchronous slew OK
+10:30:15.250 SlewToAltitude 45                   OK       Reached the required altitude: 45,0 within tolerance ±1 degrees. Reported altitude: 45,0 degrees
+10:30:15.760 SlewToAltitude 60                   OK       Asynchronous slew OK
+10:30:25.768 SlewToAltitude 60                   OK       Reached the required altitude: 60,0 within tolerance ±1 degrees. Reported altitude: 60,0 degrees
+10:30:26.276 SlewToAltitude 75                   OK       Asynchronous slew OK
+10:30:36.284 SlewToAltitude 75                   OK       Reached the required altitude: 75,0 within tolerance ±1 degrees. Reported altitude: 75,0 degrees
+10:30:36.793 SlewToAltitude 90                   OK       Asynchronous slew OK
+10:30:46.800 SlewToAltitude 90                   OK       Reached the required altitude: 90,0 within tolerance ±1 degrees. Reported altitude: 90,0 degrees
+10:30:46.803 SlewToAltitude                      OK       Invalid value exception correctly raised for slew to -10 degrees
+10:30:46.804 SlewToAltitude                      OK       Invalid value exception correctly raised for slew to 100 degrees
+10:30:51.816 SlewToAzimuth 0                     OK       Asynchronous slew OK
+10:31:01.823 SlewToAzimuth 0                     OK       Reached the required azimuth: 0,0 within tolerance ±1 degrees. Reported azimuth: 0,0
+10:31:03.329 SlewToAzimuth 45                    OK       Asynchronous slew OK
+10:31:13.335 SlewToAzimuth 45                    OK       Reached the required azimuth: 45,0 within tolerance ±1 degrees. Reported azimuth: 45,0
+10:31:14.843 SlewToAzimuth 90                    OK       Asynchronous slew OK
+10:31:24.848 SlewToAzimuth 90                    OK       Reached the required azimuth: 90,0 within tolerance ±1 degrees. Reported azimuth: 90,0
+10:31:26.356 SlewToAzimuth 135                   OK       Asynchronous slew OK
+10:31:36.361 SlewToAzimuth 135                   OK       Reached the required azimuth: 135,0 within tolerance ±1 degrees. Reported azimuth: 135,0
+10:31:37.865 SlewToAzimuth 180                   OK       Asynchronous slew OK
+10:31:47.871 SlewToAzimuth 180                   OK       Reached the required azimuth: 180,0 within tolerance ±1 degrees. Reported azimuth: 180,0
+10:31:49.379 SlewToAzimuth 225                   OK       Asynchronous slew OK
+10:31:59.385 SlewToAzimuth 225                   OK       Reached the required azimuth: 225,0 within tolerance ±1 degrees. Reported azimuth: 225,0
+10:32:00.894 SlewToAzimuth 270                   OK       Asynchronous slew OK
+10:32:10.898 SlewToAzimuth 270                   OK       Reached the required azimuth: 270,0 within tolerance ±1 degrees. Reported azimuth: 270,0
+10:32:12.409 SlewToAzimuth 315                   OK       Asynchronous slew OK
+10:32:22.416 SlewToAzimuth 315                   OK       Reached the required azimuth: 315,0 within tolerance ±1 degrees. Reported azimuth: 315,0
+10:32:22.419 SlewToAzimuth                       OK       Invalid value exception correctly raised for slew to -10 degrees
+10:32:22.420 SlewToAzimuth                       OK       Invalid value exception correctly raised for slew to 370 degrees
+10:32:22.422 AbortSlew                           OK       AbortSlew command issued successfully
+10:32:28.442 AbortSlew-Azimuth                   OK       AbortSlew stopped the mount from slewing in 0,5 seconds.
+10:32:31.467 AbortSlew-Altitude                  OK       AbortSlew stopped the mount from slewing in 0,5 seconds.
+10:32:31.983 SyncToAzimuth                       OK       Dome synced OK to within +- 1 degree
+10:32:32.490 SyncToAzimuth                       OK       Invalid value exception correctly raised for sync to -10 degrees
+10:32:32.490 SyncToAzimuth                       OK       Invalid value exception correctly raised for sync to 370 degrees
+10:32:34.001 CloseShutter                        OK       The shutter closed asynchronously
+10:32:45.506 CloseShutter                        OK       Shutter re-opened successfully for asynchronous close test
+10:32:57.523 CloseShutter                        OK       CloseShutter async method call completed successfully
+10:33:09.039 OpenShutter                         OK       The shutter opened asynchronously
+10:33:20.551 OpenShutter                         OK       Shutter re-closed successfully for asynchronous close test
+10:33:32.565 OpenShutter                         OK       OpenShutter async method call completed successfully
+10:33:47.578 FindHome                            OK       Dome homed successfully
+10:34:02.591 Park                                OK       Dome parked successfully
+10:34:12.598 SetPark                             OK       Optional member returned a NotImplementedException error.
+10:34:12.598                                              
+10:34:12.598 Post-run Checks                              
+10:34:12.599 DomeSafety                          INFO     Attempting to close shutter...
+10:34:14.105 DomeSafety                          OK       Shutter successfully closed
+10:34:14.106 DomeSafety                          INFO     Attempting to park dome...
+10:34:14.107 DomeSafety                          OK       Dome successfully parked
+10:34:14.107                                              
+10:34:14.107 Disconnect from device                       
+10:34:14.165 Connected                           OK       False
+10:34:14.165                                              
+10:34:14.166 Conformance test has finished                
+10:34:14.167                                              
+10:34:14.167 Congratulations, no errors, warnings or issues found: your driver passes ASCOM validation!!          
+10:34:14.168                                     
+10:34:14.168 Timing Summary                               See Help for further information.
+10:34:14.168 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+10:34:14.168 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+10:34:14.168 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+10:34:14.168 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+10:34:14.168                                              
+10:34:14.168 InterfaceVersion                             At 10:29:32.099 InterfaceVersion         0,000 seconds. ✓ (FAST)
+10:34:14.168 Connected                                    At 10:29:32.100 Connected                0,001 seconds. ✓ (FAST)
+10:34:14.168 Description                                  At 10:29:32.102 Description              0,001 seconds. ✓ (FAST)
+10:34:14.169 DriverInfo                                   At 10:29:32.103 DriverInfo               0,000 seconds. ✓ (FAST)
+10:34:14.169 DriverVersion                                At 10:29:32.103 DriverVersion            0,000 seconds. ✓ (FAST)
+10:34:14.169 Name                                         At 10:29:32.104 Name                     0,000 seconds. ✓ (FAST)
+10:34:14.169 CanFindHome                                  At 10:29:32.106 CanFindHome              0,001 seconds. ✓ (FAST)
+10:34:14.169 Altitude                                     At 10:29:33.651 Altitude                 0,026 seconds. ✓ (FAST)
+10:34:14.169 AtHome                                       At 10:29:33.652 AtHome                   0,001 seconds. ✓ (FAST)
+10:34:14.169 AtPark                                       At 10:29:33.653 AtPark                   0,001 seconds. ✓ (FAST)
+10:34:14.169 Azimuth                                      At 10:29:33.654 Azimuth                  0,001 seconds. ✓ (FAST)
+10:34:14.169 ShutterStatus                                At 10:29:33.654 ShutterStatus            0,001 seconds. ✓ (FAST)
+10:34:14.169 SlewToAltitude                               At 10:29:33.672 SlewToAltitude           0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAltitude                               At 10:29:43.688 SlewToAltitude           0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAltitude                               At 10:29:54.206 SlewToAltitude           0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAltitude                               At 10:30:04.734 SlewToAltitude           0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAltitude                               At 10:30:15.252 SlewToAltitude           0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAltitude                               At 10:30:25.769 SlewToAltitude           0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAltitude                               At 10:30:36.285 SlewToAltitude           0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:30:46.807 SlewToAzimuth            0,002 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:31:01.825 SlewToAzimuth            0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:31:13.335 SlewToAzimuth            0,000 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:31:24.848 SlewToAzimuth            0,000 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:31:36.362 SlewToAzimuth            0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:31:47.871 SlewToAzimuth            0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:31:59.385 SlewToAzimuth            0,000 seconds. ✓ (STANDARD)
+10:34:14.169 SlewToAzimuth                                At 10:32:10.901 SlewToAzimuth            0,003 seconds. ✓ (STANDARD)
+10:34:14.169 AbortSlew-Azimuth                            At 10:32:27.939 AbortSlew-Azimuth        0,001 seconds. ✓ (STANDARD)
+10:34:14.169 AbortSlew-Altitude                           At 10:32:30.953 AbortSlew-Altitude       0,001 seconds. ✓ (STANDARD)
+10:34:14.169 SyncToAzimuth                                At 10:32:31.981 SyncToAzimuth            0,513 seconds. ✓ (STANDARD)
+10:34:14.169 CloseShutter                                 At 10:32:32.496 CloseShutter             0,001 seconds. ✓ (STANDARD)
+10:34:14.169 OpenShutter                                  At 10:33:07.531 OpenShutter              0,001 seconds. ✓ (STANDARD)
+10:34:14.169 FindHome                                     At 10:33:42.571 FindHome                 0,001 seconds. ✓ (STANDARD)
+10:34:14.169 Park                                         At 10:33:57.586 Park                     0,003 seconds. ✓ (STANDARD)
+10:34:14.169                                              
+10:34:14.169 Congratulations, all members returned within their target response times!!          

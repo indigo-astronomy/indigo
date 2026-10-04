@@ -24,6 +24,8 @@
  \file alpaca_dome.c
  */
 
+#include <math.h>
+
 #include <indigo/indigo_dome_driver.h>
 
 #include "indigo_alpaca_common.h"
@@ -47,7 +49,7 @@ static indigo_alpaca_error alpaca_get_slewing(indigo_alpaca_device *device, int 
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	*value = device->dome.isshuttermoving || device->dome.isrotating || device->dome.isflapmoving;
+	*value = device->dome.isshuttermoving || device->dome.isrotating || device->dome.isflapmoving || device->dome.isparking || device->dome.ishoming;
 	//indigo_error("value = %d, isshuttermoving = %d , isrotating = %d, isflapmoving = %d", *value, device->dome.isshuttermoving, device->dome.isrotating, device->dome.isflapmoving);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
@@ -311,6 +313,9 @@ static indigo_alpaca_error alpaca_findhome(indigo_alpaca_device *device, int ver
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
+	// Slewing until DOME_HOME settles, so that a client does not read AtHome before the driver has started
+	device->dome.ishoming = true;
+	device->dome.homed = device->dome.athome = false;
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
@@ -332,6 +337,12 @@ static indigo_alpaca_error alpaca_park(indigo_alpaca_device *device, int version
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
+	if (device->dome.atpark) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_OK;
+	}
+	// Slewing until DOME_PARK settles, so that a client does not read AtPark before the driver has started
+	device->dome.isparking = true;
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
@@ -486,7 +497,18 @@ static indigo_alpaca_error alpaca_synctoazimuth(indigo_alpaca_device *device, in
 		azimuth
 	);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	// a client reads Azimuth right after SyncToAzimuth; the request ends when the driver reports the new azimuth
+	for (int i = 0; i < 30; i++) {
+		pthread_mutex_lock(&device->mutex);
+		double difference = fabs(device->dome.azimuth - azimuth);
+		bool synced = !device->dome.isrotating && (difference < 0.5 || difference > 359.5);
+		pthread_mutex_unlock(&device->mutex);
+		if (synced) {
+			return indigo_alpaca_error_OK;
+		}
+		indigo_usleep(500000);
+	}
+	return indigo_alpaca_error_ValueNotSet;
 }
 
 void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
@@ -501,6 +523,9 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 		}
 	} else if (!strcmp(property->name, DOME_PARK_PROPERTY_NAME)) {
 		alpaca_device->dome.canpark = true;
+		if (property->state != INDIGO_BUSY_STATE) {
+			alpaca_device->dome.isparking = false;
+		}
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -516,14 +541,26 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 		alpaca_device->dome.cansetpark = true;
 
 	} else if (!strcmp(property->name, DOME_HOME_PROPERTY_NAME)) {
+		// DOME_HOME is ON while the dome is at home (dome_beaver) or only while it searches for home (system_alpaca); a search that
+		// ended OK leaves the dome at home until it rotates
 		alpaca_device->dome.canfindhome = true;
+		if (property->state == INDIGO_BUSY_STATE) {
+			alpaca_device->dome.homed = false;
+		} else {
+			if (alpaca_device->dome.ishoming && property->state == INDIGO_OK_STATE) {
+				alpaca_device->dome.homed = true;
+			}
+			alpaca_device->dome.ishoming = false;
+		}
 		if (property->state == INDIGO_OK_STATE) {
+			bool home = false;
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, DOME_HOME_ITEM_NAME)) {
-					alpaca_device->dome.athome = item->sw.value;
+					home = item->sw.value;
 				}
 			}
+			alpaca_device->dome.athome = home || alpaca_device->dome.homed;
 		} else {
 			alpaca_device->dome.athome = false;
 		}
@@ -544,6 +581,8 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 		}
 		if (property->state == INDIGO_BUSY_STATE) {
 			alpaca_device->dome.isrotating = true;
+			alpaca_device->dome.homed = false;
+			alpaca_device->dome.athome = false;
 		} else {
 			alpaca_device->dome.isrotating = false;
 		}

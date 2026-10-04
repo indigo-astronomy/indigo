@@ -27,8 +27,19 @@
 #include <math.h>
 
 #include <indigo/indigo_mount_driver.h>
+#include <indigo/indigo_align.h>
 
 #include "indigo_alpaca_common.h"
+
+// MOUNT_EQUATORIAL_COORDINATES is J2000 on the INDIGO bus, and MOUNT_EPOCH tells the equinox of the telescope, which is what
+// EquatorialSystem reports; RightAscension, Declination and the targets are in that system on the Alpaca side.
+static void to_indigo(indigo_alpaca_device *device, double *ra, double *dec) {
+	indigo_eq_to_j2k(device->mount.epochknown ? device->mount.epoch : 2000, ra, dec);
+}
+
+static void from_indigo(indigo_alpaca_device *device, double *ra, double *dec) {
+	indigo_j2k_to_eq(device->mount.epochknown ? device->mount.epoch : 2000, ra, dec);
+}
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 3;
@@ -110,7 +121,8 @@ static indigo_alpaca_error alpaca_pulseguide(indigo_alpaca_device *device, int v
 	}
 	indigo_alpaca_device *guider = device->guider_device;
 	pthread_mutex_unlock(&device->mutex);
-	if (guider == NULL) {
+	// as CanPulseGuide: a guider that has no guide properties (not connected) can not guide
+	if (guider == NULL || !guider->guider.canpulseguide) {
 		return indigo_alpaca_error_NotImplemented;
 	}
 	if (device->mount.atpark) {
@@ -508,6 +520,11 @@ static indigo_alpaca_error alpaca_park(indigo_alpaca_device *device, int version
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
+	// Park of a parked telescope is harmless in Alpaca; a driver may keep MOUNT_PARK busy for it and ignore an Unpark sent meanwhile
+	if (device->mount.atpark) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_OK;
+	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
@@ -525,6 +542,10 @@ static indigo_alpaca_error alpaca_unpark(indigo_alpaca_device *device, int versi
 	}
 	if (!device->mount.canunpark) {
 		device->mount.atpark = false;
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_OK;
+	}
+	if (!device->mount.atpark) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_OK;
 	}
@@ -549,7 +570,8 @@ static indigo_alpaca_error alpaca_slewtotarget(indigo_alpaca_device *device, int
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-	const double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
+	double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
+	to_indigo(device, values, values + 1);
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
@@ -572,7 +594,8 @@ static indigo_alpaca_error alpaca_slewtotargetasync(indigo_alpaca_device *device
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-	const double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
+	double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
+	to_indigo(device, values, values + 1);
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
@@ -615,7 +638,8 @@ static indigo_alpaca_error alpaca_synctotarget(indigo_alpaca_device *device, int
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-	const double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
+	double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
+	to_indigo(device, values, values + 1);
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
@@ -644,7 +668,8 @@ static indigo_alpaca_error alpaca_slewtocoordinates(indigo_alpaca_device *device
 	device->mount.targetdeclination = declination;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-	const double values[] = { rightascension, declination };
+	double values[] = { rightascension, declination };
+	to_indigo(device, values, values + 1);
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
@@ -673,7 +698,8 @@ static indigo_alpaca_error alpaca_slewtocoordinatesasync(indigo_alpaca_device *d
 	device->mount.targetdeclination = declination;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-	const double values[] = { rightascension, declination };
+	double values[] = { rightascension, declination };
+	to_indigo(device, values, values + 1);
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
@@ -702,7 +728,8 @@ static indigo_alpaca_error alpaca_synctocoordinates(indigo_alpaca_device *device
 	device->mount.targetdeclination = declination;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-	const double values[] = { rightascension, declination };
+	double values[] = { rightascension, declination };
+	to_indigo(device, values, values + 1);
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
@@ -765,6 +792,8 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, MOUNT_EPOCH_ITEM_NAME)) {
+					alpaca_device->mount.epoch = item->number.value;
+					alpaca_device->mount.epochknown = true;
 					switch ((int)item->number.value) {
 						case 0:
 							alpaca_device->mount.equatorialsystem = 1;
@@ -806,14 +835,19 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 		alpaca_device->mount.slewing = property->state == INDIGO_BUSY_STATE;
 		alpaca_device->mount.coordinates_failed = property->state == INDIGO_ALERT_STATE;
 		alpaca_device->mount.coordinates_updates++;
+		double ra = alpaca_device->mount.rightascension, dec = alpaca_device->mount.declination;
+		to_indigo(alpaca_device, &ra, &dec);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
-				alpaca_device->mount.rightascension = item->number.value;
+				ra = item->number.value;
 			} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
-				alpaca_device->mount.declination = item->number.value;
+				dec = item->number.value;
 			}
 		}
+		from_indigo(alpaca_device, &ra, &dec);
+		alpaca_device->mount.rightascension = ra;
+		alpaca_device->mount.declination = dec;
 	} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
