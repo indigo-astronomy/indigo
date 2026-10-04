@@ -22,7 +22,7 @@ driver temma {
 	label = "Takahashi Temma Mount";
 	author = "";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 23;
+	version = 24;
 	serial {
 	}
 	include {
@@ -43,6 +43,7 @@ driver temma {
 		bool is_busy, start_tracking, stop_tracking;
 		unsigned char mount_motion_mask, guider_motion_mask;
 		bool mount_high_speed;
+		bool standby, high_voltage;
 		char response[128];
 	}
 	code {
@@ -144,16 +145,30 @@ driver temma {
 
 		// STN-ON and STN-OFF answer with the standby state the mount now holds, not with an
 		// acknowledgement. Standby on means the motors are off, so tracking is STN-OFF.
+		// The reply is remembered as the state the mount holds, so a refused request can show it.
 		static bool temma_set_standby(indigo_device *device, bool standby) {
 			if (!temma_command(device, true, standby ? "STN-ON" : "STN-OFF")) {
 				return false;
+			}
+			if (!strcmp(PRIVATE_DATA->response, "stn-on") || !strcmp(PRIVATE_DATA->response, "stn-off")) {
+				PRIVATE_DATA->standby = !strcmp(PRIVATE_DATA->response, "stn-on");
 			}
 			return !strcmp(PRIVATE_DATA->response, standby ? "stn-on" : "stn-off");
 		}
 
 		// v1 and v2 answer with a version line of their own, for example "v1  Power 23.5v".
 		static bool temma_set_high_speed(indigo_device *device, bool high) {
-			return temma_command(device, true, high ? "v2" : "v1") && PRIVATE_DATA->response[0] == 'v';
+			if (!temma_command(device, true, high ? "v2" : "v1") || PRIVATE_DATA->response[0] != 'v') {
+				return false;
+			}
+			PRIVATE_DATA->high_voltage = high;
+			return true;
+		}
+
+		// A refused request publishes the position the mount reported last, not the rejected target.
+		static void temma_restore_position(indigo_device *device) {
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
 		}
 
 		static unsigned char temma_motion_byte(indigo_device *device) {
@@ -191,15 +206,18 @@ driver temma {
 			if (sscanf(PRIVATE_DATA->response + 1, "%02d%02d%02d", &degrees, &minutes, &fraction) != 3 || degrees > 23 || minutes > 59) {
 				return false;
 			}
-			PRIVATE_DATA->current_ra = degrees + minutes / 60.0 + fraction / 6000.0;
+			// The last valid position is kept until the whole reply has been validated.
+			double ra = degrees + minutes / 60.0 + fraction / 6000.0;
 			if (sscanf(PRIVATE_DATA->response + 8, "%02d%02d%01d", &degrees, &minutes, &fraction) != 3 || degrees > 90 || minutes > 59 || (degrees == 90 && (minutes != 0 || fraction != 0))) {
 				return false;
 			}
-			PRIVATE_DATA->current_dec = degrees + minutes / 60.0 + fraction / 600.0;
+			double dec = degrees + minutes / 60.0 + fraction / 600.0;
 			if (PRIVATE_DATA->response[7] == '-') {
-				PRIVATE_DATA->current_dec = -PRIVATE_DATA->current_dec;
+				dec = -dec;
 			}
-			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &PRIVATE_DATA->current_ra, &PRIVATE_DATA->current_dec);
+			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+			PRIVATE_DATA->current_ra = ra;
+			PRIVATE_DATA->current_dec = dec;
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
 			// F says the automatic introduction has just finished, not which side the mount is
@@ -263,7 +281,8 @@ driver temma {
 			if (!temma_set_standby(device, false) || !temma_set_lst(device)) {
 				return false;
 			}
-			if (!MOUNT_TRACKING_ON_ITEM->sw.value) {
+			// A tracking request pending in the queue keeps its values, its handler decides the tracking.
+			if (!MOUNT_TRACKING_ON_ITEM->sw.value && MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
@@ -273,6 +292,7 @@ driver temma {
 
 		static void mount_goto_finalizer(indigo_device *device) {
 			if (!IS_CONNECTED || !temma_update_position(device) || !temma_command(device, true, "s") || (strcmp(PRIVATE_DATA->response, "s0") && strcmp(PRIVATE_DATA->response, "s1"))) {
+				temma_restore_position(device);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else if (PRIVATE_DATA->response[1] == '1') {
 				indigo_update_coordinates(device, NULL);
@@ -378,6 +398,8 @@ driver temma {
 				// The mount keeps neither the sidereal time nor the latitude over a power cycle.
 				connection_result = temma_set_high_speed(device, false) && temma_set_lst(device) && temma_set_latitude(device);
 				if (connection_result) {
+					// v1 is what the mount runs with now, whatever the previous session selected.
+					indigo_set_switch(HIGH_SPEED_PROPERTY, HIGH_SPEED_LOW_ITEM, true);
 					PRIVATE_DATA->mount_motion_mask = PRIVATE_DATA->guider_motion_mask = 0;
 					PRIVATE_DATA->mount_high_speed = false;
 					temma_update_position(device);
@@ -388,6 +410,12 @@ driver temma {
 							CORRECTION_SPEED_RA_ITEM->number.value = ra_correction;
 							CORRECTION_SPEED_DEC_ITEM->number.value = dec_correction;
 						}
+					}
+					// STN-COD reports the standby the mount holds, so tracking starts from the mount's state.
+					PRIVATE_DATA->standby = !MOUNT_TRACKING_ON_ITEM->sw.value;
+					if (temma_command(device, true, "STN-COD") && (!strcmp(PRIVATE_DATA->response, "stn-on") || !strcmp(PRIVATE_DATA->response, "stn-off"))) {
+						PRIVATE_DATA->standby = !strcmp(PRIVATE_DATA->response, "stn-on");
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->standby ? MOUNT_TRACKING_OFF_ITEM : MOUNT_TRACKING_ON_ITEM, true);
 					}
 				}
 			}
@@ -404,6 +432,9 @@ driver temma {
 			}
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			// the relay mask is cleared, so the next session starts with both axes released
+			MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
+			MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 		}
 		on_attach {
 			MOUNT_PARK_PROPERTY->count = 1;
@@ -412,6 +443,8 @@ driver temma {
 			MOUNT_PARK_SET_PROPERTY->hidden = false;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 			MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+			// LL and LK are the only tracking rates the mount has: sidereal and solar.
+			MOUNT_TRACK_RATE_PROPERTY->count = 2;
 			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		}
 		// on_detach { }
@@ -446,7 +479,12 @@ driver temma {
 		}
 		switch HIGH_SPEED {
 			on_change {
-				HIGH_SPEED_PROPERTY->state = temma_set_high_speed(device, HIGH_SPEED_HIGH_ITEM->sw.value) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				HIGH_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+				if (!temma_set_high_speed(device, HIGH_SPEED_HIGH_ITEM->sw.value)) {
+					// the configuration the mount confirmed last
+					indigo_set_switch(HIGH_SPEED_PROPERTY, PRIVATE_DATA->high_voltage ? HIGH_SPEED_HIGH_ITEM : HIGH_SPEED_LOW_ITEM, true);
+					HIGH_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			// on_attach { }
 			// on_detach { }
@@ -519,6 +557,7 @@ driver temma {
 					indigo_update_coordinates(device, NULL);
 					indigo_execute_handler_in(device, 0.1, mount_goto_finalizer);
 				} else {
+					temma_restore_position(device);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_coordinates(device, NULL);
 				}
@@ -569,7 +608,13 @@ driver temma {
 		inherited MOUNT_TRACKING {
 			hidden = false;
 			on_change {
-				MOUNT_TRACKING_PROPERTY->state = temma_set_standby(device, !MOUNT_TRACKING_ON_ITEM->sw.value) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				// the client's request supersedes the tracking a running GOTO would set at its end
+				PRIVATE_DATA->start_tracking = PRIVATE_DATA->stop_tracking = false;
+				if (!temma_set_standby(device, !MOUNT_TRACKING_ON_ITEM->sw.value)) {
+					// the standby state the mount reported, or the last one it confirmed
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->standby ? MOUNT_TRACKING_OFF_ITEM : MOUNT_TRACKING_ON_ITEM, true);
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			// on_attach { }
 			// on_detach { }
