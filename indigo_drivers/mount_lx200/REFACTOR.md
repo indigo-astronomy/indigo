@@ -2564,3 +2564,27 @@ MIGRATION_STATUS.md hardware-free count 122 -> 131.
 ### Final test summary for this change
 
 Simulated tests: **127 run, 127 passed** (recorded run 2026-10-04 12:46, macOS arm64). Hardware tests: **0 run, 0 passed**.
+
+## Avalon StarGO: rates, meridian flip flag, longitude, sidereal time and the goto ramp (2026-10-04, 3.0.0.74)
+
+Found by a review of the StarGO command set. No StarGO is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX063 | FIXED | The StarGO knows the slew rates only as `:RG#`, `:RC#`, `:RM#` and `:RS#` without an argument; the driver sent `:RG2#`, `:RC0#`, `:RC1#` and `:RC3#`, so a rate change did not take. | The StarGO uses the argument-less commands of the last branch of `meade_set_slew_rate()`. |
+| LX064 | FIXED | The init sent `:TTSFd#` as "disable meridian flip"; the flag `d` is "force meridian flip", so every connection forced the flip regardless of the mount configuration. | Not sent; the flag stays as the mount configuration sets it. |
+| LX065 | FIXED | The StarGO keeps the longitude signed and positive to the east; the driver wrote and read it west positive like the LX200, so the site was mirrored across the prime meridian. | `:Sg±DDD*MM:SS#` east positive (−180 .. +180) and `:Gg#` read back east positive. |
+| LX066 | FIXED | The StarGO has no calendar and no clock command; it keeps the local sidereal time, which `:X32HHMMSS#` sets. The driver never sent it, so the sidereal time the mount computes gotos from was whatever the last session left. | `stargo_sync_lst()` sends it at connect, on every site change and every 22 s while no goto runs. |
+| LX067 | FIXED | `:X34#` reports per axis 0 stopped, 1 tracking and above 1 moving; 2 to 4 are the ramp at the start of a goto. Only 5 was read as slewing, so a goto could be published as finished while the motors ramped up. | Any digit above 1 is motion. |
+
+Simulator (`--model stargo`): `:X34#` reports 2 for the first 1.5 s of a goto, `:Gt#`/`:Gg#` mark the degrees with `t`/`g`,
+and the hour angle reads the longitude east positive. Test `lx200_stargo_site_time_and_ramp`; the StarGO profile row
+now expects `:RG#`, `:RC#`, `:RM#` and `:RS#`.
+
+Not covered: no StarGO hardware. The 22 s sidereal time interval is a choice, not a measurement.
+
+MIGRATION_STATUS.md hardware-free count 131 -> 132.
+
+### Final test summary for this change
+
+Simulated tests: **128 run, 128 passed** (recorded run 2026-10-04 13:21, macOS arm64). Hardware tests: **0 run, 0 passed**.

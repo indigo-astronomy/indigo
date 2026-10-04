@@ -422,6 +422,8 @@ static bool meade_silent;
 // Gemini: the startup state the ACK reports (b while waiting for the startup mode, S during a
 // cold start, 0 once ready), the guiding speed (native 150), and :h?# answering 1 after :hW#
 // woke a parked mount up, until the mount moves again.
+// When the last StarGO goto started, for the ramp its :X34# motion digits report.
+static double stargo_slew_started = -100;
 static char gemini_boot;
 static double gemini_boot_ready_at;
 static double gemini_guide_speed = 0.5;
@@ -573,6 +575,10 @@ static char pier_side(void) {
 	}
 	double longitude = atof(degrees) + (*minutes ? atof(minutes + 1) / 60.0 : 0);
 	if (*state.longitude == '-') {
+		longitude = -longitude;
+	}
+	if (options.model == MODEL_STARGO) {
+		// A StarGO keeps the longitude positive to the east.
 		longitude = -longitude;
 	}
 	double hour_angle = fmod(18.697374558 + 24.06570982441908 * (days + hours / 24.0) - longitude / 15.0 - state.ra_cs / 360000.0, 24.0);
@@ -896,7 +902,10 @@ static void handle_command(const char *command) {
 		snprintf(response, sizeof(response), "%c0%c%c000000000W#", state.slewing ? '2' : state.tracking ? '1' : '0', state.parked ? 'P' : parking_requested ? 'I' : 'p', state.at_home ? 'H' : 'x');
 		write_response(response);
 	} else if (!strcmp(command, "X34")) {
-		snprintf(response, sizeof(response), "m%d%d#", state.slewing || manual_ra ? 5 : state.tracking ? 1 : 0, state.slewing || manual_dec ? 5 : 0);
+		// The motion digit of an axis is 0 stopped, 1 tracking and above 1 moving: 2 to 4 while
+		// the motor ramps up at the start of a goto, 5 at full speed.
+		int moving = serial_motion_time() - stargo_slew_started < 1.5 ? 2 : 5;
+		snprintf(response, sizeof(response), "m%d%d#", state.slewing ? moving : manual_ra ? 5 : state.tracking ? 1 : 0, state.slewing ? moving : manual_dec ? 5 : 0);
 		write_response(response);
 	} else if (!strcmp(command, "X38")) {
 		write_response(state.parked ? "p2#" : parking_requested ? "pB#" : "p0#");
@@ -1145,6 +1154,10 @@ static void handle_command(const char *command) {
 		write_response("1");
 	} else if (!strcmp(command, "Gg")) {
 		snprintf(response, sizeof(response), "%s#", state.longitude);
+		if (options.model == MODEL_STARGO && strchr(response, '*')) {
+			// A StarGO marks the degrees of the longitude with g.
+			*strchr(response, '*') = 'g';
+		}
 		if (model_is_double_precision()) {
 			snprintf(response, sizeof(response), "%+.6f#", site_degrees(state.longitude));
 		}
@@ -1163,6 +1176,10 @@ static void handle_command(const char *command) {
 		write_response("1");
 	} else if (!strcmp(command, "Gt")) {
 		snprintf(response, sizeof(response), "%s#", state.latitude);
+		if (options.model == MODEL_STARGO && strchr(response, '*')) {
+			// A StarGO marks the degrees of the latitude with t.
+			*strchr(response, '*') = 't';
+		}
 		if (model_is_double_precision()) {
 			snprintf(response, sizeof(response), "%+.6f#", site_degrees(state.latitude));
 		}
@@ -1228,6 +1245,7 @@ static void handle_command(const char *command) {
 		write_response("M31 EX GAL MAG 3.5 SZ178.0'#");
 	} else if (!strcmp(command, "MS")) {
 		gemini_park_reported = false;
+		stargo_slew_started = serial_motion_time();
 		// A NYX-101 answers a goto issued while one of its pulses is still running with the
 		// "already in motion" error instead of starting the slew.
 		if (options.model == MODEL_NYX && serial_motion_time() < guide_pulse_until) {

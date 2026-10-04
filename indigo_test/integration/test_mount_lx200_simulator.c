@@ -345,7 +345,7 @@ static const lx_profile profiles[] = {
 	{ "onstep", "ONSTEP", "On-Step", "R1", "Te", true, true, true, true, false, 3 },
 	{ "10mic", "10MIC", "10Micron", "RG", "AP", true, true, true, true, false, 1 },
 	{ "gemini", "GEMINI", "Losmandy", "RG", NULL, true, true, false, true, true, 3 },
-	{ "stargo", "STARGO", "Avalon", "RG2", "X122", true, true, true, true, true, 2 },
+	{ "stargo", "STARGO", "Avalon", "RG", "X122", true, true, true, true, true, 2 },
 	{ "stargo2", "STARGO2", "Avalon", "RG", NULL, false, true, false, false, false, 2 },
 	{ "ap", "AP", "AstroPhysics", "RG", "RT2", true, true, false, true, false, 3 },
 	{ "agotino", "AGOTINO", "aGotino", NULL, NULL, false, false, false, false, false, 3 },
@@ -421,13 +421,12 @@ static void check_profile(int index) {
 		const char *rate_items[] = { MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
 		const char *classic_rates[] = { "RC", "RM", "RS" };
 		const char *onstep_rates[] = { "R4", "R7", "R9" };
-		const char *stargo_rates[] = { "RC0", "RC1", "RC3" };
 		const char *ap_rates[] = { "RC1", "RC2", "RC3" };
 		for (int rate = 0; rate < 3; rate++) {
 			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
 			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, rate_items[rate], true, INDIGO_OK_STATE));
 			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
-			const char *command = !strcmp(profile->guide_command, "R1") ? onstep_rates[rate] : !strcmp(profile->model, "stargo") ? stargo_rates[rate] : !strcmp(profile->model, "ap") ? ap_rates[rate] : classic_rates[rate];
+			const char *command = !strcmp(profile->guide_command, "R1") ? onstep_rates[rate] : !strcmp(profile->model, "ap") ? ap_rates[rate] : classic_rates[rate];
 			SERIAL_CHECK_TRUE(wait_event(&simulator, command, 0));
 		}
 		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
@@ -1343,6 +1342,43 @@ static void lx200_gemini_reconnect_forgets_the_park(void) {
 	indigo_usleep(6500000);
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state != INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Park failed") == NULL);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A StarGO keeps the longitude positive to the east and has no clock: the driver gives it the
+// local sidereal time with :X32HHMMSS# at connect and with every site change, leaves the
+// "force meridian flip" flag of the mount configuration alone, and reads its :X34# motion
+// digits 2 to 4 of the ramp at the start of a goto as motion.
+static void lx200_stargo_site_time_and_ramp(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "stargo", "STARGO"));
+	online = true;
+	SERIAL_CHECK_TRUE(prefixed_event_count(&simulator, "X32") >= 1);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "TTSFd", NULL));
+	int synced = prefixed_event_count(&simulator, "X32");
+	static const char *location_items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	static const double location_values[] = { 41.5, 12.5 };
+	unsigned int revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 2, location_items, location_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sg+012*30:00", 0));
+	SERIAL_CHECK_TRUE(prefixed_event_count(&simulator, "X32") > synced);
+	// The site comes back east positive from a new session.
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - 12.5) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - 41.5) < 0.01);
+	// A goto stays busy through the ramp and ends at the target.
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(14, 60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_mount_slew_end());
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 14) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 60) < 0.01);
 cleanup:
 	if (online) {
 		stop_serial_driver(&lx200_mount);
@@ -3793,6 +3829,7 @@ int main(int argc, char **argv) {
 		{ "lx200_park_meade", lx200_park_meade },
 		{ "lx200_park_10micron", lx200_park_10micron },
 		{ "lx200_park_gemini", lx200_park_gemini },
+		{ "lx200_stargo_site_time_and_ramp", lx200_stargo_site_time_and_ramp },
 		{ "lx200_gemini_tracking_survives_a_goto", lx200_gemini_tracking_survives_a_goto },
 		{ "lx200_gemini_unpark_stays_unparked", lx200_gemini_unpark_stays_unparked },
 		{ "lx200_gemini_double_precision_clock_is_kept", lx200_gemini_double_precision_clock_is_kept },

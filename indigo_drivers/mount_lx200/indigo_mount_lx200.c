@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000049
+#define DRIVER_VERSION       0x0300004A
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -353,6 +353,8 @@ typedef struct {
 	// which cuts a :Mg pulse to 255 encoder ticks, the longest pulse that stays below it and
 	// the part of each axis' pulse still to be sent.
 	int gemini_level;
+	// StarGO: when the sidereal time was last given to the controller.
+	double stargo_lst_synced;
 	char gemini_velocity;
 	int gemini_pulse_chunk, gemini_remaining_ns, gemini_remaining_we;
 	char gemini_direction_ns, gemini_direction_we;
@@ -905,12 +907,19 @@ static bool meade_get_site(indigo_device *device, double *latitude, double *long
 		if (MOUNT_TYPE_ESP32GO_ITEM->sw.value) {
 			str_replace(PRIVATE_DATA->response, (char)0xE1, '*');
 		}
-		// LX200 protocol returns negative longitude for the east, INDIGO publishes it east
-		// positive in 0 .. 360, where a site on the prime meridian is 0 and never 360.
-		*longitude = fmod(360 - fmod(indigo_stod(PRIVATE_DATA->response) + 360, 360), 360);
+		if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
+			// A StarGO keeps the longitude signed and positive to the east.
+			*longitude = fmod(indigo_stod(PRIVATE_DATA->response) + 360, 360);
+		} else {
+			// LX200 protocol returns negative longitude for the east, INDIGO publishes it east
+			// positive in 0 .. 360, where a site on the prime meridian is 0 and never 360.
+			*longitude = fmod(360 - fmod(indigo_stod(PRIVATE_DATA->response) + 360, 360), 360);
+		}
 	}
 	return true;
 }
+
+static void stargo_sync_lst(indigo_device *device, double longitude);
 
 static bool meade_set_site(indigo_device *device, double latitude, double longitude, double elevation) {
 	char sexagesimal[128];
@@ -927,12 +936,20 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 	} else {
 		result = meade_simple_reply_command(device, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	}
+	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
+		// A StarGO takes the longitude signed and positive to the east, -180 .. +180, and
+		// computes the sidereal time from it.
+		double east = fmod(longitude + 360, 360);
+		if (east > 180) {
+			east -= 360;
+		}
+		meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(east, "%+04d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
+		stargo_sync_lst(device, longitude);
+		return true; // the StarGO does not confirm the site
+	}
 	// LX200 protocol expects negative longitude for the east
 	longitude = fmod(360 - fmod(longitude + 360, 360), 360);
-	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%+04d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
-		result = true; // ignore result for Avalon StarGO
-	} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+	if (MOUNT_TYPE_OAT_ITEM->sw.value) {
 		// An OpenAstroTracker answers an unsigned longitude with 0 and keeps the site it
 		// had; it accepts the same value written as :SgsDDD*MM#. Firmware v1.13.20.
 		result = meade_simple_reply_command(device, ":Sg%s#", indigo_dtos_r(longitude, "%+04d*%02d", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
@@ -1497,21 +1514,9 @@ static bool meade_get_tracking_rate(indigo_device *device) {
 }
 
 static bool meade_set_slew_rate(indigo_device *device) {
-	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
-			PRIVATE_DATA->lastSlewRate = 'g';
-			return meade_no_reply_command(device, ":RG2#");
-		} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
-			PRIVATE_DATA->lastSlewRate = 'c';
-			return meade_no_reply_command(device, ":RC0#");
-		} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
-			PRIVATE_DATA->lastSlewRate = 'm';
-			return meade_no_reply_command(device, ":RC1#");
-		} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
-			PRIVATE_DATA->lastSlewRate = 's';
-			return meade_no_reply_command(device, ":RC3#");
-		}
-	} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
+	// A StarGO knows the rates only as :RG#, :RC#, :RM# and :RS# without an argument, which the
+	// last branch sends.
+	if (MOUNT_TYPE_AP_ITEM->sw.value) {
 		// :RS# only sets the GOTO speed of a GTO servo controller, the N-S-E-W rate is the centering rate,
 		// :RC1# 64x, :RC2# 600x and :RC3# 1200x.
 		if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
@@ -2328,6 +2333,16 @@ static void meade_update_gemini_state(indigo_device *device) {
 	}
 }
 
+// A StarGO has no calendar and no clock command; it keeps the local sidereal time, which
+// :X32HHMMSS# sets, and the longitude it computes the sidereal time on from.
+static void stargo_sync_lst(indigo_device *device, double longitude) {
+	time_t utc = time(NULL);
+	double lst = indigo_lst(&utc, longitude);
+	long seconds = ((long)llround(lst * 3600.0) % 86400L + 86400L) % 86400L;
+	meade_no_reply_command(device, ":X32%02ld%02ld%02ld#", seconds / 3600, seconds / 60 % 60, seconds % 60);
+	PRIVATE_DATA->stargo_lst_synced = indigo_monotonic_time();
+}
+
 static void meade_init_stargo_mount(indigo_device *device) {
 	MOUNT_HOME_PROPERTY->hidden = false;
 	MOUNT_INFO_PROPERTY->count = 2;
@@ -2344,12 +2359,22 @@ static void meade_init_stargo_mount(indigo_device *device) {
 			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
-	meade_simple_reply_command(device, ":TTSFd#"); // disable meridian flip
+	// :TTSFd# would set the "force meridian flip" flag, which is the mount configuration's
+	// business and is left alone. The sidereal time is the only time the StarGO keeps, and
+	// it gets it from the client.
+	stargo_sync_lst(device, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 }
 
 static void meade_update_stargo_state(indigo_device *device) {
+	// The sidereal time drifts unless it is synchronised now and then, every 22 s while the
+	// mount does not slew.
+	if (indigo_monotonic_time() - PRIVATE_DATA->stargo_lst_synced > 22 && !PRIVATE_DATA->goto_issued) {
+		stargo_sync_lst(device, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	}
 	if (meade_command(device, ":X34#")) {
-		PRIVATE_DATA->slewing = (PRIVATE_DATA->response[1] == '5' || PRIVATE_DATA->response[2] == '5');
+		// The motion digit of each axis is 0 stopped, 1 tracking and above 1 moving, through
+		// the acceleration, the slew and the deceleration.
+		PRIVATE_DATA->slewing = (PRIVATE_DATA->response[1] > '1' || PRIVATE_DATA->response[2] > '1');
 		// Each StarGO motor has its own status digit; RA tracking also continues during DEC motion (m15).
 		PRIVATE_DATA->tracking = PRIVATE_DATA->response[1] == '1';
 	}
