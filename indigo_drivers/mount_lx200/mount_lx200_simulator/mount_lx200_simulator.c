@@ -86,6 +86,9 @@ typedef struct {
 	// on and waits for the startup mode. Gemini Level 5 command description.
 	int gemini_level;
 	bool gemini_startup;
+	// ZWO AM: the :GV# firmware. 1.1.1 adds the :GAT# tracking status, 1.2.4 the meridian
+	// settings :GTa#/:STa# and the calibration reset :NSC#.
+	int zwo_firmware;
 	simulator_model model;
 } simulator_options;
 
@@ -147,6 +150,7 @@ static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
+	.zwo_firmware = 0x010204,
 	.model = MODEL_MEADE
 };
 static simulator_state state = {
@@ -204,6 +208,7 @@ static void usage(const char *name) {
 	printf("  --meade-silent-park     Meade: answer nothing at all after :hP#\n");
 	printf("  --gemini-level <4|5>    Gemini software level, 5 by default\n");
 	printf("  --gemini-startup        Gemini: wait for the startup mode (bC#, bW#, bR#) first\n");
+	printf("  --zwo-firmware <x.y.z>  ZWO AM :GV# answer, 1.2.4 by default; :GAT# needs 1.1.1, :GTa#, :STa# and :NSC# 1.2.4\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -312,6 +317,13 @@ static bool parse_args(int argc, char *argv[]) {
 			options.gemini_level = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--gemini-startup")) {
 			options.gemini_startup = true;
+		} else if (!strcmp(argv[i], "--zwo-firmware")) {
+			int major, minor, patch;
+			if (++i == argc || sscanf(argv[i], "%d.%d.%d", &major, &minor, &patch) != 3) {
+				fprintf(stderr, "--zwo-firmware requires a version like 1.2.4\n");
+				return false;
+			}
+			options.zwo_firmware = (major << 16) | (minor << 8) | patch;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -511,7 +523,12 @@ static void read_control(void) {
 		if (fgets(line, sizeof(line), file)) {
 			line[strcspn(line, "\r\n")] = 0;
 			char *tab = strchr(line, '\t');
-			if (tab != NULL) {
+			if (!strcmp(line, "zwo-meridian-stop")) {
+				// The ZWO AM reaches the meridian limit without automatic flip: tracking stops and
+				// :GAT# reports e8 until tracking is started again.
+				state.tracking = false;
+				state.tracking_error = 8;
+			} else if (tab != NULL) {
 				*tab++ = 0;
 				size_t command_length = strlen(line), reply_length = strlen(tab);
 				// A shortened fault rule would match the wrong command or answer the wrong bytes, and
@@ -864,6 +881,7 @@ static void handle_command(const char *command) {
 		state.tracking = strcmp(command, "MT0") != 0;
 		if (state.tracking) {
 			state.standby = false;
+			state.tracking_error = 0;
 		}
 		write_response("1");
 	} else if (!strcmp(command, "Td")) {
@@ -1006,24 +1024,39 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GVP")) {
 		snprintf(response, sizeof(response), "%s#", options.model == MODEL_MEADE && options.meade_product != NULL ? options.meade_product : products[options.model]);
 		write_response(response);
+	} else if (!strcmp(command, "GV") && model_is_zwo()) {
+		snprintf(response, sizeof(response), "%d.%d.%d#", options.zwo_firmware >> 16, (options.zwo_firmware >> 8) & 0xFF, options.zwo_firmware & 0xFF);
+		write_response(response);
 	} else if (!strcmp(command, "GV")) {
-		write_response(options.model == MODEL_GEMINI ? (options.gemini_level == 4 ? "410#" : "512#") : options.model == MODEL_ASI ? "1.2.4#" : "1.0.0#");
-	} else if (options.model == MODEL_ASI && !strcmp(command, "GTa")) {
+		write_response(options.model == MODEL_GEMINI ? (options.gemini_level == 4 ? "410#" : "512#") : "1.0.0#");
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010204 && !strcmp(command, "GTa")) {
 		// meridian settings: auto-flip, track-past, signed degree limit
 		snprintf(response, sizeof(response), "%c%c%+03d#", state.meridian_flip ? '1' : '0', state.meridian_track ? '1' : '0', state.meridian_limit);
 		write_response(response);
-	} else if (options.model == MODEL_ASI && !strncmp(command, "STa", 3) && strlen(command) == 8) {
-		state.meridian_flip = command[3] != '0';
-		state.meridian_track = command[4] != '0';
-		state.meridian_limit = atoi(command + 5);
-		write_response("1");
-	} else if (options.model == MODEL_ASI && !strcmp(command, "GRl")) {
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010204 && !strncmp(command, "STa", 3)) {
+		// flip and track digits, then the signed limit in degrees, -15 to 15
+		int limit = strlen(command) == 8 && (command[5] == '+' || command[5] == '-') ? atoi(command + 5) : 99;
+		if (limit < -15 || limit > 15) {
+			write_response("0");
+		} else {
+			state.meridian_flip = command[3] != '0';
+			state.meridian_track = command[4] != '0';
+			state.meridian_limit = limit;
+			write_response("1");
+		}
+	} else if (model_is_zwo() && !strcmp(command, "GRl")) {
 		snprintf(response, sizeof(response), "%d#", state.max_slew_speed);
 		write_response(response);
-	} else if (options.model == MODEL_ASI && !strncmp(command, "SRl", 3)) {
-		state.max_slew_speed = atoi(command + 3);
-		write_response("1");
-	} else if (options.model == MODEL_ASI && !strcmp(command, "GAT")) {
+	} else if (model_is_zwo() && !strncmp(command, "SRl", 3)) {
+		// only the two speeds of the AM series
+		int speed = atoi(command + 3);
+		if (speed == 720 || speed == 1440) {
+			state.max_slew_speed = speed;
+			write_response("1");
+		} else {
+			write_response("0");
+		}
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010101 && !strcmp(command, "GAT")) {
 		// tracking status: "0", "1" or "e<code>"
 		if (state.tracking_error) {
 			snprintf(response, sizeof(response), "e%d#", state.tracking_error);
@@ -1031,7 +1064,7 @@ static void handle_command(const char *command) {
 			snprintf(response, sizeof(response), "%d#", state.tracking ? 1 : 0);
 		}
 		write_response(response);
-	} else if (options.model == MODEL_ASI && !strcmp(command, "NSC")) {
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010204 && !strcmp(command, "NSC")) {
 		state.alignment_points = 0;
 		write_response("1");
 	} else if (!strcmp(command, "GVF")) {

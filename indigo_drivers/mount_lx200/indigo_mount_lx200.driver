@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 74;
+	version = 75;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -123,6 +123,8 @@ driver lx200 {
 		int gemini_level;
 		// StarGO: when the sidereal time was last given to the controller.
 		double stargo_lst_synced;
+		// ZWO AM: the firmware version from :GV# as 0xMMmmpp, and the last :GAT# error code.
+		int zwo_firmware, zwo_tracking_error;
 		char gemini_velocity;
 		int gemini_pulse_chunk, gemini_remaining_ns, gemini_remaining_we;
 		char gemini_direction_ns, gemini_direction_we;
@@ -2468,6 +2470,31 @@ driver lx200 {
 		}
 	}
 
+	// :GTa# answers ft±nn#: f automatic flip at the limit, t tracking past the meridian (0 or 1)
+	// and the limit in degrees past the meridian, negative before it.
+	static bool zwo_get_meridian(indigo_device *device, bool *flip, bool *track, int *limit) {
+		if (!meade_command(device, ":GTa#") || strlen(PRIVATE_DATA->response) != 5 || (PRIVATE_DATA->response[2] != '+' && PRIVATE_DATA->response[2] != '-')) {
+			return false;
+		}
+		*flip = PRIVATE_DATA->response[0] != '0';
+		*track = PRIVATE_DATA->response[1] != '0';
+		*limit = atoi(PRIVATE_DATA->response + 2);
+		return true;
+	}
+
+	static bool zwo_set_meridian(indigo_device *device, bool flip, bool track, int limit) {
+		if (limit < -15 || limit > 15) {
+			return false;
+		}
+		return meade_simple_reply_command(device, ":STa%c%c%+03d#", flip ? '1' : '0', track ? '1' : '0', limit) && *PRIVATE_DATA->response == '1';
+	}
+
+	// The error codes of the ZWO protocol, as :GAT# reports them. Firmware 1.1.1 and later.
+	static const char *zwo_tracking_error(int code) {
+		static const char *messages[] = { "", "Parameter out of range", "Format error", "Homing, slewing or goto in progress", "Mount is moving", "Target is below the horizon", "Target is below the altitude limit", "Time and site are not set", "Meridian reached, tracking stopped", "Sync point is on the other side of the meridian", "Altitude inverted", "Sync near the pole refused", "Sync too far from the current position" };
+		return code > 0 && code < 13 ? messages[code] : "";
+	}
+
 	static void meade_init_zwo_mount(indigo_device *device) {
 		MOUNT_MODE_PROPERTY->hidden = false;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
@@ -2479,9 +2506,36 @@ driver lx200 {
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		ZWO_BUZZER_PROPERTY->hidden = false;
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "ZWO");
+		PRIVATE_DATA->zwo_firmware = 0;
+		PRIVATE_DATA->zwo_tracking_error = 0;
 		if (meade_command(device, ":GV#")) {
 			strcpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 			strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
+			int major = 0, minor = 0, patch = 0;
+			if (sscanf(PRIVATE_DATA->response, "%d.%d.%d", &major, &minor, &patch) == 3) {
+				PRIVATE_DATA->zwo_firmware = (major << 16) | (minor << 8) | patch;
+			}
+		}
+		// Firmware 1.2.4 and later keeps the meridian behaviour in :GTa# (flip at the limit, track
+		// past the meridian, the limit in degrees) and clears the multi-star calibration with :NSC#.
+		if (PRIVATE_DATA->zwo_firmware >= 0x010204) {
+			bool flip, track;
+			int limit;
+			if (zwo_get_meridian(device, &flip, &track, &limit)) {
+				ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
+				ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
+				ZWO_MERIDIAN_LIMIT_ITEM->number.value = ZWO_MERIDIAN_LIMIT_ITEM->number.target = limit;
+				ZWO_MERIDIAN_PROPERTY->hidden = ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = false;
+			}
+			MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = false;
+		}
+		// The highest slew speed, 720 or 1440 times sidereal.
+		if (meade_command(device, ":GRl#")) {
+			int speed = atoi(PRIVATE_DATA->response);
+			if (speed == 720 || speed == 1440) {
+				indigo_set_switch(ZWO_MAX_SLEW_SPEED_PROPERTY, speed == 720 ? ZWO_MAX_SLEW_SPEED_LOW_ITEM : ZWO_MAX_SLEW_SPEED_HIGH_ITEM, true);
+				ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = false;
+			}
 		}
 		MOUNT_GUIDE_RATE_DEC_ITEM->number.min = MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
 		MOUNT_GUIDE_RATE_DEC_ITEM->number.max = MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
@@ -2509,6 +2563,16 @@ driver lx200 {
 	}
 
 	static void meade_update_zwo_state(indigo_device *device) {
+		// The tracking status carries the reason tracking stopped, for example at the meridian.
+		if (PRIVATE_DATA->zwo_firmware >= 0x010101 && meade_command(device, ":GAT#")) {
+			int code = *PRIVATE_DATA->response == 'e' ? atoi(PRIVATE_DATA->response + 1) : 0;
+			if (code != PRIVATE_DATA->zwo_tracking_error && code > 0 && *zwo_tracking_error(code)) {
+				indigo_send_message(device, ALERT_PROPERTY, "%s", zwo_tracking_error(code));
+			} else if (PRIVATE_DATA->zwo_tracking_error == 8 && code == 0) {
+				indigo_send_message(device, OK_PROPERTY, "Tracking can be started again");
+			}
+			PRIVATE_DATA->zwo_tracking_error = code;
+		}
 		if (meade_command(device, ":GU#")) {
 			if (strchr(PRIVATE_DATA->response, 'N') == NULL) {
 				PRIVATE_DATA->slewing = true;
@@ -2908,6 +2972,9 @@ driver lx200 {
 		PRIVATE_DATA->gemini_velocity = 0;
 		PRIVATE_DATA->gemini_remaining_ns = PRIVATE_DATA->gemini_remaining_we = 0;
 		GEMINI_PARK_POSITION_PROPERTY->hidden = true;
+		ZWO_MERIDIAN_PROPERTY->hidden = ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = true;
+		// Only the ZWO AM clears its own calibration, otherwise the reset is about the host side points.
+		MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 		if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 			meade_init_meade_mount(device);
 			meade_update_meade_state(device);
@@ -3450,6 +3517,80 @@ driver lx200 {
 			item ZWO_BUZZER_HIGH {
 				name = "HIGH";
 				label = "High";
+				value = false;
+			}
+		}
+		switch ZWO_MERIDIAN {
+			name = "X_ZWO_MERIDIAN";
+			group = MOUNT_ADVANCED_GROUP;
+			label = "Action at meridian";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			hidden = true;
+			on_change {
+				if (!zwo_set_meridian(device, ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value, ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value, (int)ZWO_MERIDIAN_LIMIT_ITEM->number.value)) {
+					ZWO_MERIDIAN_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				bool flip, track;
+				int limit;
+				if (zwo_get_meridian(device, &flip, &track, &limit)) {
+					ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
+					ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
+				}
+			}
+			item ZWO_MERIDIAN_AUTO_FLIP {
+				name = "AUTO_FLIP_AT_LIMIT";
+				label = "Flip automatically at the limit";
+				value = false;
+			}
+			item ZWO_MERIDIAN_TRACK_PASSED {
+				name = "TRACK_PASSED_MERIDIAN";
+				label = "Track past the meridian up to the limit";
+				value = false;
+			}
+		}
+		number ZWO_MERIDIAN_LIMIT {
+			name = "X_ZWO_MERIDIAN_LIMIT";
+			group = MOUNT_ADVANCED_GROUP;
+			label = "Meridian limit";
+			hidden = true;
+			on_change {
+				if (!zwo_set_meridian(device, ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value, ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value, (int)ZWO_MERIDIAN_LIMIT_ITEM->number.value)) {
+					ZWO_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				bool flip, track;
+				int limit;
+				if (zwo_get_meridian(device, &flip, &track, &limit)) {
+					ZWO_MERIDIAN_LIMIT_ITEM->number.value = ZWO_MERIDIAN_LIMIT_ITEM->number.target = limit;
+				}
+			}
+			item ZWO_MERIDIAN_LIMIT {
+				name = "LIMIT";
+				label = "Limit past the meridian (°, negative before it)";
+				value = 0;
+				min = -15;
+				max = 15;
+				step = 1;
+			}
+		}
+		switch ZWO_MAX_SLEW_SPEED {
+			name = "X_ZWO_MAX_SLEW_SPEED";
+			group = MOUNT_ADVANCED_GROUP;
+			label = "Max slew speed";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			hidden = true;
+			on_change {
+				if (!meade_simple_reply_command(device, ZWO_MAX_SLEW_SPEED_LOW_ITEM->sw.value ? ":SRl720#" : ":SRl1440#") || *PRIVATE_DATA->response != '1') {
+					ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item ZWO_MAX_SLEW_SPEED_LOW {
+				name = "LOW";
+				label = "720x sidereal";
+				value = false;
+			}
+			item ZWO_MAX_SLEW_SPEED_HIGH {
+				name = "HIGH";
+				label = "1440x sidereal";
 				value = false;
 			}
 		}
@@ -4033,6 +4174,26 @@ driver lx200 {
 				if (!meade_pec(device, MOUNT_PEC_ENABLED_ITEM->sw.value)) {
 					MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+			}
+		}
+		inherited MOUNT_ALIGNMENT_RESET {
+			hidden = true;
+			reject_change {
+				condition = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Alignment data can't be reset while the mount is slewing";
+			}
+			on_change {
+				if (MOUNT_ALIGNMENT_RESET_ITEM->sw.value) {
+					if (MOUNT_TYPE_ZWO_ITEM->sw.value && PRIVATE_DATA->zwo_firmware >= 0x010204) {
+						// The multi-star calibration of the controller.
+						if (!meade_simple_reply_command(device, ":NSC#") || *PRIVATE_DATA->response != '1') {
+							MOUNT_ALIGNMENT_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+					}
+					MOUNT_CONTEXT->alignment_point_count = 0;
+					indigo_mount_update_alignment_points(device);
+				}
+				MOUNT_ALIGNMENT_RESET_ITEM->sw.value = false;
 			}
 		}
 		inherited MOUNT_GUIDE_RATE {

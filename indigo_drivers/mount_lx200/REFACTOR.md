@@ -2588,3 +2588,26 @@ MIGRATION_STATUS.md hardware-free count 131 -> 132.
 ### Final test summary for this change
 
 Simulated tests: **128 run, 128 passed** (recorded run 2026-10-04 13:21, macOS arm64). Hardware tests: **0 run, 0 passed**.
+
+## ZWO AM: meridian settings, maximum slew speed, calibration reset and tracking status (2026-10-04, 3.0.0.75)
+
+Found by comparing the ZWO branch with the dedicated ZWO AM driver, which has these functions. No ZWO mount is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX068 | FIXED | The meridian behaviour of firmware 1.2.4 (`:GTa#`/`:STa#`: automatic flip at the limit, tracking past the meridian, the limit in degrees) could not be read or set. | `X_ZWO_MERIDIAN` and `X_ZWO_MERIDIAN_LIMIT`, read at connect, written as one `:STa#` and read back. |
+| LX069 | FIXED | The highest slew speed (`:GRl#`/`:SRl720#`/`:SRl1440#`) could not be chosen. | `X_ZWO_MAX_SLEW_SPEED`, shown when `:GRl#` answers 720 or 1440. |
+| LX070 | FIXED | `MOUNT_ALIGNMENT_RESET` cleared only the host side points; the multi-star calibration of the mount stayed. | On firmware 1.2.4 and later also `:NSC#`, and the property is shown there. |
+| LX071 | FIXED | When the mount stopped tracking on its own, for example at the meridian limit without a flip, the client learned only that tracking was off. | From firmware 1.1.1 every poll reads `:GAT#`; a new error code is sent as an alert message with the text of the protocol, and the end of a meridian stop as an OK message. |
+
+The firmware version from `:GV#` gates the commands: 1.1.1 for `:GAT#`, 1.2.4 for `:GTa#`, `:STa#` and `:NSC#`.
+
+Simulator (`--model zwo`): the ZWO commands are answered for `zwo` as well as `asi`; `--zwo-firmware x.y.z` (1.2.4 by default) sets the `:GV#` answer and withholds the commands the firmware does not have; `:STa#` refuses a limit outside −15 to 15 and `:SRl#` any speed but 720 and 1440; the control line `zwo-meridian-stop` stops tracking with `e8` until tracking is started again. Tests `lx200_zwo_meridian_slew_speed_and_alignment` and `lx200_zwo_old_firmware`. The shared simulator still passes the mount_asi simulator test.
+
+Not covered: no ZWO hardware. `:GRl#`/`:SRl#` are not in the published ZWO protocol document; the firmware levels come from the ZWO AM driver.
+
+MIGRATION_STATUS.md hardware-free count 132 -> 134.
+
+### Final test summary for this change
+
+Simulated tests: **130 run, 130 passed** (recorded run 2026-10-04 14:11, macOS arm64). Hardware tests: **0 run, 0 passed**.

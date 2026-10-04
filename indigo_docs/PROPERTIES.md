@@ -1371,9 +1371,9 @@ Source: `indigo_drivers/mount_ioptron/indigo_mount_ioptron.c`.
 
 ### mount_lx200
 
-Custom properties: `X_ALTITUDE_LIMITS`, `X_AP_PARK_POSITION`, `X_AP_SYNC_MODE`, `X_GEMINI_PARK_POSITION`, `X_GEMINI_STARTUP`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`.
+Custom properties: `X_ALTITUDE_LIMITS`, `X_AP_PARK_POSITION`, `X_AP_SYNC_MODE`, `X_GEMINI_PARK_POSITION`, `X_GEMINI_STARTUP`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`, `X_ZWO_MAX_SLEW_SPEED`, `X_ZWO_MERIDIAN`, `X_ZWO_MERIDIAN_LIMIT`.
 
-Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `GUIDER_RATE`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `GUIDER_RATE`, `MOUNT_ALIGNMENT_RESET`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
 `X_MOUNT_TYPE.CLASSIC` explicitly selects the original Meade LX200 Classic. It uses the documented quartz/manual tracking-frequency commands, exposes time/location and motion, and hides unsupported adjustable guide-rate, tracking-switch, park and home properties. Its guider uses host-timed `RG` plus directional `M`/`Q` commands at the fixed controller guide speed, with independent axes and replacement/zero-stop semantics. Guiding conflicts with manual motion or a driver GOTO are rejected. `GENERIC` retains its existing compatibility behavior.
 
@@ -1386,6 +1386,12 @@ Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AU
 `X_GEMINI_PARK_POSITION` (Losmandy Gemini only, persistent) chooses where `MOUNT_PARK` parks: `STARTUP` (default) the counterweight-down startup position with `:hC#`, `HOME` the home position with `:hP#`, `ZENITH` the zenith with `:hZ#`, which Level 4 refuses.
 
 On a Gemini, `MOUNT_GUIDE_RATE` and the guider's `GUIDER_RATE` show and set the one guiding speed of both axes (20 % to 80 % of the sidereal rate), and `MOUNT_TRACK_RATE` is read from the mount at connect.
+
+`X_ZWO_MERIDIAN` (ZWO AM, firmware 1.2.4 and later) sets what the mount does at the meridian: `AUTO_FLIP_AT_LIMIT` flips automatically at the limit, `TRACK_PASSED_MERIDIAN` keeps tracking past the meridian up to the limit. `X_ZWO_MERIDIAN_LIMIT.LIMIT` is that limit in degrees past the meridian (−15 to 15, negative before it). Both are read from the mount at connect.
+
+`X_ZWO_MAX_SLEW_SPEED` (ZWO AM) chooses the highest slew speed: `LOW` 720 times and `HIGH` 1440 times the sidereal rate.
+
+On a ZWO AM with firmware 1.2.4 and later, `MOUNT_ALIGNMENT_RESET` also clears the multi-star calibration of the mount with `:NSC#`. From firmware 1.1.1 the driver reads why tracking stopped and sends it as a message, for example when the mount reaches the meridian limit without an automatic flip.
 
 Source: `indigo_drivers/mount_lx200/indigo_mount_lx200.c`.
 

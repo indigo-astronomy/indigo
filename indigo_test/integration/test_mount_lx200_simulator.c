@@ -254,6 +254,24 @@ static bool wait_event(external_serial_simulator *simulator, const char *command
 	return false;
 }
 
+// One control line, a fault rule "command<TAB>reply" or an event of the simulator.
+static bool send_control(external_serial_simulator *simulator, const char *line) {
+	char path[PATH_MAX], temporary[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.control", simulator->ready_file, NULL)) {
+		return false;
+	}
+	if (!simulator_fixture_path(temporary, sizeof(temporary), "%s.inject", simulator->ready_file, NULL)) {
+		return false;
+	}
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s\n", line);
+	fclose(file);
+	return rename(temporary, path) == 0;
+}
+
 static bool inject_reply(external_serial_simulator *simulator, const char *command, const char *reply) {
 	char path[PATH_MAX], temporary[PATH_MAX];
 	if (!simulator_fixture_path(path, sizeof(path), "%s.control", simulator->ready_file, NULL)) {
@@ -2489,6 +2507,86 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static bool start_zwo_firmware(external_serial_simulator *simulator, const char *firmware) {
+	const char *arguments[] = { "--model", "zwo", "--zwo-firmware", firmware, NULL };
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(&lx200_mount)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	if (connect_serial_device(&lx200_mount, simulator->port)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	disconnect_serial_device(&lx200_mount);
+	tear_down_serial_driver(&lx200_mount);
+	return false;
+}
+
+// Firmware 1.2.4 keeps the meridian behaviour in :GTa#, takes it with :STa# and clears the
+// calibration with :NSC#; :GRl#/:SRl# choose the highest slew speed and :GAT# tells why tracking stopped.
+static void lx200_zwo_meridian_slew_speed_and_alignment(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "zwo", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "1.2.4"));
+	SERIAL_CHECK_TRUE(cached_switch_value("X_ZWO_MERIDIAN", "AUTO_FLIP_AT_LIMIT"));
+	SERIAL_CHECK_TRUE(!cached_switch_value("X_ZWO_MERIDIAN", "TRACK_PASSED_MERIDIAN"));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_ZWO_MERIDIAN_LIMIT", "LIMIT")) < 0.001);
+	SERIAL_CHECK_TRUE(cached_switch_value("X_ZWO_MAX_SLEW_SPEED", "LOW"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_MERIDIAN", "TRACK_PASSED_MERIDIAN", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa11+00", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_ZWO_MERIDIAN_LIMIT", "LIMIT", -7, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa11-07", 0));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_ZWO_MERIDIAN_LIMIT", "LIMIT") + 7) < 0.001);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_MERIDIAN", "AUTO_FLIP_AT_LIMIT", false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa01-07", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_ZWO_MAX_SLEW_SPEED", "HIGH", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "SRl1440", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "NSC", 0));
+	SERIAL_CHECK_TRUE(!cached_switch_value(MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME));
+	// The mount stops at the limit; the reason comes with :GAT#, and goes once tracking starts again.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(send_control(&simulator, "zwo-meridian-stop"));
+	for (int i = 0; i < 100 && strstr(lx_last_message, "Meridian reached") == NULL; i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Meridian reached, tracking stopped") != NULL);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	for (int i = 0; i < 100 && strstr(lx_last_message, "Tracking can be started again") == NULL; i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Tracking can be started again") != NULL);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Before 1.2.4 there are no meridian settings and no calibration reset, before 1.1.1 no :GAT#.
+static void lx200_zwo_old_firmware(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_zwo_firmware(&simulator, "1.0.0"));
+	online = true;
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "1.0.0"));
+	SERIAL_CHECK_TRUE(find_cached_property("X_ZWO_MERIDIAN") == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property("X_ZWO_MERIDIAN_LIMIT") == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_ALIGNMENT_RESET_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(cached_switch_value("X_ZWO_MAX_SLEW_SPEED", "LOW"));
+	// Two more polls, each of which would have asked :GAT# on a newer firmware.
+	for (int i = 0; i < 2; i++) {
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "GR", event_count(&simulator, "GR", NULL)));
+	}
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "GTa", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "GAT", NULL));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_nyx_options_and_wifi_failures(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -3852,6 +3950,8 @@ int main(int argc, char **argv) {
 		{ "lx200_guider_ap_duration_commands", lx200_guider_ap_duration_commands },
 		{ "lx200_disconnect_cancels_pulses_and_reconnects", lx200_disconnect_cancels_pulses_and_reconnects },
 		{ "lx200_zwo_rates_and_buzzer", lx200_zwo_rates_and_buzzer },
+		{ "lx200_zwo_meridian_slew_speed_and_alignment", lx200_zwo_meridian_slew_speed_and_alignment },
+		{ "lx200_zwo_old_firmware", lx200_zwo_old_firmware },
 		{ "lx200_nyx_options_and_wifi_failures", lx200_nyx_options_and_wifi_failures },
 		{ "lx200_nyx_park_light_follows_the_mount", lx200_nyx_park_light_follows_the_mount },
 		{ "lx200_nyx_park_commands_report_refusals", lx200_nyx_park_commands_report_refusals },

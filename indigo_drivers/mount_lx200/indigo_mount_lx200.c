@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300004A
+#define DRIVER_VERSION       0x0300004B
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -202,6 +202,28 @@ typedef enum {
 #define ZWO_BUZZER_LOW_ITEM_NAME       "LOW"
 #define ZWO_BUZZER_HIGH_ITEM_NAME      "HIGH"
 
+#define ZWO_MERIDIAN_PROPERTY               (PRIVATE_DATA->zwo_meridian_property)
+#define ZWO_MERIDIAN_AUTO_FLIP_ITEM         (ZWO_MERIDIAN_PROPERTY->items + 0)
+#define ZWO_MERIDIAN_TRACK_PASSED_ITEM      (ZWO_MERIDIAN_PROPERTY->items + 1)
+
+#define ZWO_MERIDIAN_PROPERTY_NAME          "X_ZWO_MERIDIAN"
+#define ZWO_MERIDIAN_AUTO_FLIP_ITEM_NAME    "AUTO_FLIP_AT_LIMIT"
+#define ZWO_MERIDIAN_TRACK_PASSED_ITEM_NAME "TRACK_PASSED_MERIDIAN"
+
+#define ZWO_MERIDIAN_LIMIT_PROPERTY      (PRIVATE_DATA->zwo_meridian_limit_property)
+#define ZWO_MERIDIAN_LIMIT_ITEM          (ZWO_MERIDIAN_LIMIT_PROPERTY->items + 0)
+
+#define ZWO_MERIDIAN_LIMIT_PROPERTY_NAME "X_ZWO_MERIDIAN_LIMIT"
+#define ZWO_MERIDIAN_LIMIT_ITEM_NAME     "LIMIT"
+
+#define ZWO_MAX_SLEW_SPEED_PROPERTY       (PRIVATE_DATA->zwo_max_slew_speed_property)
+#define ZWO_MAX_SLEW_SPEED_LOW_ITEM       (ZWO_MAX_SLEW_SPEED_PROPERTY->items + 0)
+#define ZWO_MAX_SLEW_SPEED_HIGH_ITEM      (ZWO_MAX_SLEW_SPEED_PROPERTY->items + 1)
+
+#define ZWO_MAX_SLEW_SPEED_PROPERTY_NAME  "X_ZWO_MAX_SLEW_SPEED"
+#define ZWO_MAX_SLEW_SPEED_LOW_ITEM_NAME  "LOW"
+#define ZWO_MAX_SLEW_SPEED_HIGH_ITEM_NAME "HIGH"
+
 #define NYX_WIFI_AP_PROPERTY           (PRIVATE_DATA->nyx_wifi_ap_property)
 #define NYX_WIFI_AP_SSID_ITEM          (NYX_WIFI_AP_PROPERTY->items + 0)
 #define NYX_WIFI_AP_PASSWORD_ITEM      (NYX_WIFI_AP_PROPERTY->items + 1)
@@ -309,6 +331,9 @@ typedef struct {
 	indigo_property *ap_sync_mode_property;
 	indigo_property *ap_park_position_property;
 	indigo_property *zwo_buzzer_property;
+	indigo_property *zwo_meridian_property;
+	indigo_property *zwo_meridian_limit_property;
+	indigo_property *zwo_max_slew_speed_property;
 	indigo_property *nyx_wifi_ap_property;
 	indigo_property *nyx_wifi_cl_property;
 	indigo_property *nyx_wifi_reset_property;
@@ -355,6 +380,8 @@ typedef struct {
 	int gemini_level;
 	// StarGO: when the sidereal time was last given to the controller.
 	double stargo_lst_synced;
+	// ZWO AM: the firmware version from :GV# as 0xMMmmpp, and the last :GAT# error code.
+	int zwo_firmware, zwo_tracking_error;
 	char gemini_velocity;
 	int gemini_pulse_chunk, gemini_remaining_ns, gemini_remaining_we;
 	char gemini_direction_ns, gemini_direction_we;
@@ -2705,6 +2732,31 @@ static void meade_update_agotino_state(indigo_device *device) {
 	}
 }
 
+// :GTa# answers ft±nn#: f automatic flip at the limit, t tracking past the meridian (0 or 1)
+// and the limit in degrees past the meridian, negative before it.
+static bool zwo_get_meridian(indigo_device *device, bool *flip, bool *track, int *limit) {
+	if (!meade_command(device, ":GTa#") || strlen(PRIVATE_DATA->response) != 5 || (PRIVATE_DATA->response[2] != '+' && PRIVATE_DATA->response[2] != '-')) {
+		return false;
+	}
+	*flip = PRIVATE_DATA->response[0] != '0';
+	*track = PRIVATE_DATA->response[1] != '0';
+	*limit = atoi(PRIVATE_DATA->response + 2);
+	return true;
+}
+
+static bool zwo_set_meridian(indigo_device *device, bool flip, bool track, int limit) {
+	if (limit < -15 || limit > 15) {
+		return false;
+	}
+	return meade_simple_reply_command(device, ":STa%c%c%+03d#", flip ? '1' : '0', track ? '1' : '0', limit) && *PRIVATE_DATA->response == '1';
+}
+
+// The error codes of the ZWO protocol, as :GAT# reports them. Firmware 1.1.1 and later.
+static const char *zwo_tracking_error(int code) {
+	static const char *messages[] = { "", "Parameter out of range", "Format error", "Homing, slewing or goto in progress", "Mount is moving", "Target is below the horizon", "Target is below the altitude limit", "Time and site are not set", "Meridian reached, tracking stopped", "Sync point is on the other side of the meridian", "Altitude inverted", "Sync near the pole refused", "Sync too far from the current position" };
+	return code > 0 && code < 13 ? messages[code] : "";
+}
+
 static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = false;
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
@@ -2716,9 +2768,36 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	ZWO_BUZZER_PROPERTY->hidden = false;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "ZWO");
+	PRIVATE_DATA->zwo_firmware = 0;
+	PRIVATE_DATA->zwo_tracking_error = 0;
 	if (meade_command(device, ":GV#")) {
 		strcpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 		strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
+		int major = 0, minor = 0, patch = 0;
+		if (sscanf(PRIVATE_DATA->response, "%d.%d.%d", &major, &minor, &patch) == 3) {
+			PRIVATE_DATA->zwo_firmware = (major << 16) | (minor << 8) | patch;
+		}
+	}
+	// Firmware 1.2.4 and later keeps the meridian behaviour in :GTa# (flip at the limit, track
+	// past the meridian, the limit in degrees) and clears the multi-star calibration with :NSC#.
+	if (PRIVATE_DATA->zwo_firmware >= 0x010204) {
+		bool flip, track;
+		int limit;
+		if (zwo_get_meridian(device, &flip, &track, &limit)) {
+			ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
+			ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
+			ZWO_MERIDIAN_LIMIT_ITEM->number.value = ZWO_MERIDIAN_LIMIT_ITEM->number.target = limit;
+			ZWO_MERIDIAN_PROPERTY->hidden = ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = false;
+		}
+		MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = false;
+	}
+	// The highest slew speed, 720 or 1440 times sidereal.
+	if (meade_command(device, ":GRl#")) {
+		int speed = atoi(PRIVATE_DATA->response);
+		if (speed == 720 || speed == 1440) {
+			indigo_set_switch(ZWO_MAX_SLEW_SPEED_PROPERTY, speed == 720 ? ZWO_MAX_SLEW_SPEED_LOW_ITEM : ZWO_MAX_SLEW_SPEED_HIGH_ITEM, true);
+			ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = false;
+		}
 	}
 	MOUNT_GUIDE_RATE_DEC_ITEM->number.min = MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
 	MOUNT_GUIDE_RATE_DEC_ITEM->number.max = MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
@@ -2746,6 +2825,16 @@ static void meade_init_zwo_mount(indigo_device *device) {
 }
 
 static void meade_update_zwo_state(indigo_device *device) {
+	// The tracking status carries the reason tracking stopped, for example at the meridian.
+	if (PRIVATE_DATA->zwo_firmware >= 0x010101 && meade_command(device, ":GAT#")) {
+		int code = *PRIVATE_DATA->response == 'e' ? atoi(PRIVATE_DATA->response + 1) : 0;
+		if (code != PRIVATE_DATA->zwo_tracking_error && code > 0 && *zwo_tracking_error(code)) {
+			indigo_send_message(device, ALERT_PROPERTY, "%s", zwo_tracking_error(code));
+		} else if (PRIVATE_DATA->zwo_tracking_error == 8 && code == 0) {
+			indigo_send_message(device, OK_PROPERTY, "Tracking can be started again");
+		}
+		PRIVATE_DATA->zwo_tracking_error = code;
+	}
 	if (meade_command(device, ":GU#")) {
 		if (strchr(PRIVATE_DATA->response, 'N') == NULL) {
 			PRIVATE_DATA->slewing = true;
@@ -3145,6 +3234,9 @@ static void meade_init_mount(indigo_device *device) {
 	PRIVATE_DATA->gemini_velocity = 0;
 	PRIVATE_DATA->gemini_remaining_ns = PRIVATE_DATA->gemini_remaining_we = 0;
 	GEMINI_PARK_POSITION_PROPERTY->hidden = true;
+	ZWO_MERIDIAN_PROPERTY->hidden = ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = true;
+	// Only the ZWO AM clears its own calibration, otherwise the reset is about the host side points.
+	MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 		meade_init_meade_mount(device);
 		meade_update_meade_state(device);
@@ -3600,6 +3692,9 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AP_SYNC_MODE_PROPERTY, NULL);
 			indigo_define_property(device, AP_PARK_POSITION_PROPERTY, NULL);
 			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
+			indigo_define_property(device, ZWO_MERIDIAN_PROPERTY, NULL);
+			indigo_define_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
+			indigo_define_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
@@ -3634,6 +3729,9 @@ static void mount_connection_handler(indigo_device *device) {
 			AP_SYNC_MODE_PROPERTY,
 			AP_PARK_POSITION_PROPERTY,
 			ZWO_BUZZER_PROPERTY,
+			ZWO_MERIDIAN_PROPERTY,
+			ZWO_MERIDIAN_LIMIT_PROPERTY,
+			ZWO_MAX_SLEW_SPEED_PROPERTY,
 			NYX_WIFI_AP_PROPERTY,
 			NYX_WIFI_CL_PROPERTY,
 			NYX_WIFI_RESET_PROPERTY,
@@ -3657,6 +3755,7 @@ static void mount_connection_handler(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY,
 			MOUNT_TRACK_RATE_PROPERTY,
 			MOUNT_PEC_PROPERTY,
+			MOUNT_ALIGNMENT_RESET_PROPERTY,
 			MOUNT_GUIDE_RATE_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
@@ -3675,6 +3774,9 @@ static void mount_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AP_SYNC_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, AP_PARK_POSITION_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
+		indigo_delete_property(device, ZWO_MERIDIAN_PROPERTY, NULL);
+		indigo_delete_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
+		indigo_delete_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
@@ -3722,6 +3824,47 @@ static void mount_zwo_buzzer_handler(indigo_device *device) {
 	}
 	//- mount.ZWO_BUZZER.on_change
 	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
+}
+
+static void mount_zwo_meridian_handler(indigo_device *device) {
+	ZWO_MERIDIAN_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ZWO_MERIDIAN.on_change
+	if (!zwo_set_meridian(device, ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value, ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value, (int)ZWO_MERIDIAN_LIMIT_ITEM->number.value)) {
+		ZWO_MERIDIAN_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	bool flip, track;
+	int limit;
+	if (zwo_get_meridian(device, &flip, &track, &limit)) {
+		ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
+		ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
+	}
+	//- mount.ZWO_MERIDIAN.on_change
+	indigo_update_property(device, ZWO_MERIDIAN_PROPERTY, NULL);
+}
+
+static void mount_zwo_meridian_limit_handler(indigo_device *device) {
+	ZWO_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ZWO_MERIDIAN_LIMIT.on_change
+	if (!zwo_set_meridian(device, ZWO_MERIDIAN_AUTO_FLIP_ITEM->sw.value, ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value, (int)ZWO_MERIDIAN_LIMIT_ITEM->number.value)) {
+		ZWO_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	bool flip, track;
+	int limit;
+	if (zwo_get_meridian(device, &flip, &track, &limit)) {
+		ZWO_MERIDIAN_LIMIT_ITEM->number.value = ZWO_MERIDIAN_LIMIT_ITEM->number.target = limit;
+	}
+	//- mount.ZWO_MERIDIAN_LIMIT.on_change
+	indigo_update_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
+}
+
+static void mount_zwo_max_slew_speed_handler(indigo_device *device) {
+	ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.ZWO_MAX_SLEW_SPEED.on_change
+	if (!meade_simple_reply_command(device, ZWO_MAX_SLEW_SPEED_LOW_ITEM->sw.value ? ":SRl720#" : ":SRl1440#") || *PRIVATE_DATA->response != '1') {
+		ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- mount.ZWO_MAX_SLEW_SPEED.on_change
+	indigo_update_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 }
 
 static void mount_nyx_wifi_ap_handler(indigo_device *device) {
@@ -4216,6 +4359,24 @@ static void mount_pec_handler(indigo_device *device) {
 	indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
 }
 
+static void mount_alignment_reset_handler(indigo_device *device) {
+	MOUNT_ALIGNMENT_RESET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_ALIGNMENT_RESET.on_change
+	if (MOUNT_ALIGNMENT_RESET_ITEM->sw.value) {
+		if (MOUNT_TYPE_ZWO_ITEM->sw.value && PRIVATE_DATA->zwo_firmware >= 0x010204) {
+			// The multi-star calibration of the controller.
+			if (!meade_simple_reply_command(device, ":NSC#") || *PRIVATE_DATA->response != '1') {
+				MOUNT_ALIGNMENT_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		}
+		MOUNT_CONTEXT->alignment_point_count = 0;
+		indigo_mount_update_alignment_points(device);
+	}
+	MOUNT_ALIGNMENT_RESET_ITEM->sw.value = false;
+	//- mount.MOUNT_ALIGNMENT_RESET.on_change
+	indigo_update_property(device, MOUNT_ALIGNMENT_RESET_PROPERTY, NULL);
+}
+
 static void mount_guide_rate_handler(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_GUIDE_RATE.on_change
@@ -4311,6 +4472,26 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(ZWO_BUZZER_LOW_ITEM, ZWO_BUZZER_LOW_ITEM_NAME, "Low", false);
 		indigo_init_switch_item(ZWO_BUZZER_HIGH_ITEM, ZWO_BUZZER_HIGH_ITEM_NAME, "High", false);
 		ZWO_BUZZER_PROPERTY->hidden = true;
+		ZWO_MERIDIAN_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_MERIDIAN_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Action at meridian", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (ZWO_MERIDIAN_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(ZWO_MERIDIAN_AUTO_FLIP_ITEM, ZWO_MERIDIAN_AUTO_FLIP_ITEM_NAME, "Flip automatically at the limit", false);
+		indigo_init_switch_item(ZWO_MERIDIAN_TRACK_PASSED_ITEM, ZWO_MERIDIAN_TRACK_PASSED_ITEM_NAME, "Track past the meridian up to the limit", false);
+		ZWO_MERIDIAN_PROPERTY->hidden = true;
+		ZWO_MERIDIAN_LIMIT_PROPERTY = indigo_init_number_property(NULL, device->name, ZWO_MERIDIAN_LIMIT_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian limit", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (ZWO_MERIDIAN_LIMIT_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(ZWO_MERIDIAN_LIMIT_ITEM, ZWO_MERIDIAN_LIMIT_ITEM_NAME, "Limit past the meridian (°, negative before it)", -15, 15, 1, 0);
+		ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = true;
+		ZWO_MAX_SLEW_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_MAX_SLEW_SPEED_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Max slew speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (ZWO_MAX_SLEW_SPEED_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(ZWO_MAX_SLEW_SPEED_LOW_ITEM, ZWO_MAX_SLEW_SPEED_LOW_ITEM_NAME, "720x sidereal", false);
+		indigo_init_switch_item(ZWO_MAX_SLEW_SPEED_HIGH_ITEM, ZWO_MAX_SLEW_SPEED_HIGH_ITEM_NAME, "1440x sidereal", false);
+		ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = true;
 		NYX_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_AP_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (NYX_WIFI_AP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -4384,6 +4565,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_TRACKING_PROPERTY->hidden = false;
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 		MOUNT_PEC_PROPERTY->hidden = true;
+		MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = true;
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
@@ -4398,6 +4580,9 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(AP_SYNC_MODE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(AP_PARK_POSITION_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_BUZZER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_MERIDIAN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_MERIDIAN_LIMIT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_MAX_SLEW_SPEED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
@@ -4441,6 +4626,15 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ZWO_BUZZER_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ZWO_BUZZER_PROPERTY, mount_zwo_buzzer_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ZWO_MERIDIAN_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ZWO_MERIDIAN_PROPERTY, mount_zwo_meridian_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ZWO_MERIDIAN_LIMIT_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ZWO_MERIDIAN_LIMIT_PROPERTY, mount_zwo_meridian_limit_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ZWO_MAX_SLEW_SPEED_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ZWO_MAX_SLEW_SPEED_PROPERTY, mount_zwo_max_slew_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(NYX_WIFI_AP_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(NYX_WIFI_AP_PROPERTY, mount_nyx_wifi_ap_handler);
@@ -4524,6 +4718,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_REJECT_CHANGE_IF(IS_PARKED, MOUNT_PEC_PROPERTY, "Mount is parked!");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PEC_PROPERTY, mount_pec_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_RESET_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ALIGNMENT_RESET_PROPERTY, "Alignment data can't be reset while the mount is slewing");
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_ALIGNMENT_RESET_PROPERTY, mount_alignment_reset_handler);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_GUIDE_RATE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GUIDE_RATE_PROPERTY, mount_guide_rate_handler);
 		return INDIGO_OK;
@@ -4551,6 +4749,9 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(AP_SYNC_MODE_PROPERTY);
 	indigo_release_property(AP_PARK_POSITION_PROPERTY);
 	indigo_release_property(ZWO_BUZZER_PROPERTY);
+	indigo_release_property(ZWO_MERIDIAN_PROPERTY);
+	indigo_release_property(ZWO_MERIDIAN_LIMIT_PROPERTY);
+	indigo_release_property(ZWO_MAX_SLEW_SPEED_PROPERTY);
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
 	indigo_release_property(NYX_WIFI_CL_PROPERTY);
 	indigo_release_property(NYX_WIFI_RESET_PROPERTY);
