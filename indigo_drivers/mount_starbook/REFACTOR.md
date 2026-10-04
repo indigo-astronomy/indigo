@@ -125,3 +125,94 @@ Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_starbo
 ### Final test summary for this change
 
 Simulated tests: **13 run, 13 passed** (recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Mount testing rules coverage (2026-10-04)
+
+Version 12. The test was checked against the extended "Mount Driver Test Standard" and the guider standard in
+`indigo_test/DRIVER_TESTING_RULES.md`. No hardware run for this change.
+
+### Driver defects fixed
+
+- Coordinate encoding truncated instead of rounding, so the largest sub-unit values were sent as `60.000` minutes
+  (RA `7h59.9996m` became `7+60.000`), RA just below 24 h was never wrapped, and the low precision DEC dropped a
+  minute to floating point error (`48 08'` was sent as `+48+07`). Coordinates are now rounded in the unit sent with
+  carry into the hour/degree, 24 h wraps to 0 h, DEC is clamped to the pole and a value that rounds to zero is sent
+  with `+`.
+- `/SETPLACE` truncated minutes the same way (`N48+08` read from the mount was written back as `N48+7`), and an INDIGO
+  longitude above 180 degrees (INDIGO is 0 to 360 east) was sent as `E289+30` instead of `W70+30`. The readback
+  published negative longitudes; it now publishes 0 to 360 degrees.
+- A malformed `/GETPLACE` reply at connect failed the whole connection. It now marks only `GEOGRAPHIC_COORDINATES` and
+  `X_STARBOOK_TIMEZONE` ALERT; the next site or time zone write reads the site again first, so the combined
+  `/SETPLACE` never resends unknown values.
+- `X_STARBOOK_TIMEZONE` sent `/SETPLACE` on an old StarBook outside INIT, which the site write already refused; it
+  now ends ALERT without a command as well.
+- `MOUNT_PARK_POSITION` and `MOUNT_PARK_SET` were defined although park is only `/STOP` and never uses a position;
+  they are hidden now.
+- A refused GOTO/SYNC (and the refused START before it) published ALERT with the requested target as the position,
+  because the change copied it into the values. The handler restores the mount's last read position, and a SYNC
+  publishes OK with the position read back from the mount.
+- `MOUNT_TRACKING` and `MOUNT_SIDE_OF_PIER` were republished on every poll although nothing changed:
+  `indigo_set_switch()` (indigo_libs/indigo_bus.c) compares the previous value of every other item of a one-of-many
+  switch with the value being set instead of with false, so it marks them for update each time. The poll now sets the
+  switch only when the reported item is not already on. The framework function itself is unchanged.
+- Disconnecting during manual motion left the motion items ON (and a GOTO BUSY) in the next session, although the
+  disconnect had stopped the mount. The disconnect now clears them.
+
+### Simulator additions
+
+`--tracking`, `--pierside`, `--place`, `--init` (INIT state that refuses GOTO/ALIGN/MOVE until START) and
+`--goto-polls`; a GOTO now moves the position towards the target on each status poll, so an abort lands mid-slew.
+Runtime control commands `fault <path> <body>` (repeatable to fail several requests), `drop <path>`, `track <n>`
+and `pierside <n>` next to `delay`.
+
+### New cases
+
+- `starbook_connect_publishes_device_state_and_capabilities`: non-default device state at connect (tracking off, west
+  of pier, south-western site, time zone), identity fields, negative capability contract (no track/guide rate, home,
+  park position/set, legacy unprefixed names; two coordinate-set items; one park item; read-only epoch, tracking and
+  pier side), read-only requests send nothing and change no revision, hand-controller changes published once,
+  disconnect/reconnect with no update of an undefined property.
+- `starbook_firmware_thresholds_select_commands`: 2.70/2.71/4.19 on both sides of both thresholds, commands a firmware
+  lacks never sent while polling, low precision GOTO string and readback, old firmware refuses site, time zone, UTC
+  and host time outside INIT without a command.
+- `starbook_init_state_start_precedes_motion`: START?INIT=OFF precedes the GOTO, a refused START sends no GOTO and keeps
+  the position, plain START on 2.70 before motion, UTC accepted in INIT on 2.70.
+- `starbook_goto_refusals_report_reason_and_recover`: BELOW HORIZON, ILLEGAL STATE, FORMAT and an unknown error each
+  end ALERT with the reason in the message after one GOTO, position kept, dropped reply, double NEAR SUN, SYNC not
+  repeated on NEAR SUN, next GOTO accepted.
+- `starbook_goto_busy_poll_and_abort_mid_slew`: a poll in flight does not complete a GOTO, a second GOTO while BUSY is
+  not sent, abort mid-slew sends one STOP, ends ALERT, two equal fresh readbacks short of the target.
+- `starbook_poll_faults_publish_alert_and_recover`: malformed status, out-of-range DEC, tracking and clock replies
+  mark only their property ALERT with the last values and recover; a reply lost during a GOTO does not leave it BUSY.
+- `starbook_guider_zero_failure_axes_and_disconnect`: zero pulses send nothing, refused pulse ALERT and recovery,
+  simultaneous RA/DEC with independent completion, guider-only session never polls the mount, disconnect with a
+  pulse pending and reconnect without stale BUSY.
+- `starbook_goto_during_guide_pulse`: GOTO accepted and completed while a guide pulse runs.
+- `starbook_disconnect_during_motion_stops_mount`: release and STOP before the session ends, no request after
+  disconnect, motion items off and nothing BUSY after reconnect, for manual motion and a GOTO.
+- `starbook_manual_motion_released_when_owner_detaches`: motion of a detached client is released with the all-off
+  `/MOVE`.
+- `starbook_momentary_switches_and_host_time`: reset, host time, abort and park return to off; host time sent as host
+  local time; refused park ALERT and retry; park never latches.
+- `starbook_coordinate_encoding_rounds_and_carries`: carries, 24 h wrap, negative zero degree, both poles, both
+  precisions.
+- `starbook_site_write_keeps_combined_values`: malformed site at connect, re-read before the time zone write,
+  minute carry, prime meridian on both sides, west sign, reconnect readback in INDIGO units, refused write and retry.
+
+Existing cases extended: SYNC readback asserted on later polls without a GOTO command; manual motion checks that
+north raises DEC and east raises RA on the polled readback.
+
+### Not covered, with reason
+
+- A GOTO the controller reports done short of the target ends OK: the driver ends on `GOTO=0` without comparing the
+  position, and the tolerance a real StarBook keeps after its pointing model is unknown without hardware.
+- The 600 s GOTO deadline is not exercised (too long for the suite).
+- Abort and park send `/STOP`, which stops tracking on the simulator; whether the real StarBook keeps tracking after
+  `/STOP` is not documented, so "abort while idle keeps tracking" is not asserted.
+- An unknown refusal reaches the client as "UNKNOWN", not the controller's text, because the message is used as a
+  format string.
+- Not applicable: track/guide rate, home, PEC, alignment controls, pier-side writes (read-only), transports other than
+  HTTP/TCP, meridian options.
+
+Recorded run `python3 tools/run_driver_test.py mount_starbook` on macOS arm64: 26/26 OK (13 existing + 13 new cases).
+Hardware tests: 0 run, 0 passed.
