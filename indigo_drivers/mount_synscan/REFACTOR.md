@@ -1780,3 +1780,23 @@ Regression tests in `integration/test_mount_synscan_simulator.c`:
 The first recorded run (motion and sync routing fixed, alignment mode not yet) was 26/25 Failed: `synscan_mount_sync_adds_alignment_point` saw no alignment point, which exposed D05. The tracking test was not run against version 13. Recorded run after the D05 fix, `tools/run_driver_test.py mount_synscan`: 26/26 on macOS arm64. With the model active, connecting with a saved `.alignment` file shows the framework's `indigo_mount_load_alignment_points()` updating `MOUNT_ALIGNMENT_SELECT_POINTS`/`DELETE_POINTS` before they are defined (diagnostic only). Linux and hardware were not run for this change.
 
 Final test summary for this change: simulated tests run 26, passed 26 (macOS arm64); hardware tests run 0, passed 0.
+
+## Guide pulse failure path, alignment point reload, follow-up (2026-10-04)
+
+Version 15.
+
+- SYNSCAN-D06, a refused RA guide pulse left tracking ON on an idle axis. When the step period that starts or ends an RA pulse was refused, the axis was marked idle while `MOUNT_TRACKING` stayed ON. Both paths now forget the cached axis configuration and put RA back on the tracking rate with the full stop, mode, period and start sequence (`synscan_restore_tracking()`); only if that fails too is tracking switched OFF with ALERT (`synscan_tracking_lost()`, on the mount device). A pulse whose end needed the restore still finishes OK, a pulse whose start was refused ends ALERT with tracking restored. The E/W release path uses the same two helpers, so a failed restart there is retried the same way before tracking is given up.
+- Simulator: `<ready-file>.fault` holding `<command prefix> <reply> <count>` answers the next matching commands with the reply, such as `!0`, without executing them, as a controller refusing a command does. The file is rewritten with the remaining count and removed when used up.
+- Framework, `indigo_libs/indigo_mount_driver.c`: with a saved `.alignment` file, `MOUNT_ALIGNMENT_SELECT_POINTS` and `MOUNT_ALIGNMENT_DELETE_POINTS` were updated before they were defined, on the `CONFIG LOAD` the bus sends at attach and again on connection. The connection now only reads the points (the properties are defined right after), and `indigo_mount_load_alignment_points()` publishes only while connected, as a delete and define because the number of points can change. Every mount driver passes through this code; only SynScan (alignment on by default) and mount_simulator write alignment points in their suites.
+- `synscan_mount_connects_with_udp_autodetection`: the discovery broadcast reaches every SynScan WiFi mount on the network, and with the simulator dropping its first replies a powered AZ-GTi answered first, so the case connected to it and failed the property completeness check. The case now checks that the detected address belongs to this machine and otherwise reports that the simulator was not exercised and checks no further. The recorded macOS run of this change met that situation.
+
+Regression tests in `integration/test_mount_synscan_simulator.c`:
+
+- `synscan_guider_restores_tracking_after_refused_pulse_end`: one refused `:I1` at the end of a 1000 ms pulse; the pulse ends OK, the command log shows a start after the last stop at the tracking period, tracking ON/OK.
+- `synscan_guider_stops_tracking_when_pulse_end_keeps_failing`: every `:I1` refused from the end of the pulse on; the pulse ends ALERT, the axis stays stopped, tracking OFF with ALERT and the tracking light ALERT.
+- `synscan_guider_restores_tracking_after_refused_pulse_start`: the `:I1` starting a 300 ms pulse refused once; the pulse ends ALERT, tracking restored and ON/OK.
+- `synscan_mount_sync_adds_alignment_point` additionally reconnects and checks the saved point is back with no property updated before its definition.
+
+Red runs of the 3.0.0.14 tests on indigosky (Linux arm64), driver with one fix reverted at a time, test binary run directly and not recorded: without the E/W fix `synscan_mount_resumes_tracking_after_ra_motion` failed (`start > stop`, last start before the last stop, period left at the manual rate); without the sync routing fix and, separately, without the alignment mode order fix `synscan_mount_sync_adds_alignment_point` failed (no alignment point). The guide pulse tests were not run against version 14.
+
+Recorded runs: macOS arm64 29/29 (mount_synscan) and 20/20 (mount_simulator, for the framework change).

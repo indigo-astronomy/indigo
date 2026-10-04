@@ -141,6 +141,7 @@ static void usage(const char *name) {
 	printf("  --stop-lag <n>          Report an axis as still running for n status queries after a stop\n");
 	printf("  --ppec-training-seconds <s>  End PPEC training by itself s seconds after it started, as the\n");
 	printf("                          mount does after one worm revolution (default: never)\n");
+	printf("  The tests inject refused commands through <ready-file>.fault, \"<prefix> <reply> <count>\"\n");
 	printf("  --model-code <hex>      Motor controller model code for :e replies\n");
 	printf("  --ra-features <hex>     Override RA axis feature bits for :q1000100 replies\n");
 	printf("  --dec-features <hex>    Override DEC axis feature bits for :q2000100 replies\n");
@@ -372,8 +373,48 @@ static uint8_t parse_8(const char *buffer) {
 	return (HEX(buffer[0]) << 4) | HEX(buffer[1]);
 }
 
+// Fault injection for tests, "<ready-file>.fault": "<command prefix> <reply> <count>". The next <count> commands
+// starting with the prefix are answered with <reply>, e.g. "!0", and not executed, as a controller that refuses a
+// command does. The file is rewritten with the remaining count and removed when it is used up.
+static char fault_path[PATH_MAX];
+static char fault_reply[16];
+
+static const char *injected_fault(const char *command) {
+	if (fault_path[0] == '\0') {
+		return NULL;
+	}
+	FILE *file = fopen(fault_path, "r");
+	if (file == NULL) {
+		return NULL;
+	}
+	char prefix[16] = "";
+	int count = 0;
+	int fields = fscanf(file, "%15s %15s %d", prefix, fault_reply, &count);
+	fclose(file);
+	if (fields != 3 || count <= 0 || strncmp(command, prefix, strlen(prefix))) {
+		return NULL;
+	}
+	if (--count == 0) {
+		unlink(fault_path);
+	} else {
+		char temporary[PATH_MAX + 8];
+		snprintf(temporary, sizeof(temporary), "%s.sim", fault_path);
+		file = fopen(temporary, "w");
+		if (file != NULL) {
+			fprintf(file, "%s %s %d\n", prefix, fault_reply, count);
+			fclose(file);
+			rename(temporary, fault_path);
+		}
+	}
+	return fault_reply;
+}
+
 static char *process_command(char *buffer) {
 	record_event(buffer);
+	const char *fault = injected_fault(buffer);
+	if (fault != NULL) {
+		return (char *)fault;
+	}
 	if (buffer[0] != ':') {
 		return "!3";
 	}
@@ -818,6 +859,7 @@ int main(int argc, char *argv[]) {
 	if (options.ready_file != NULL) {
 		char path[PATH_MAX];
 		snprintf(path, sizeof(path), "%s.events", options.ready_file);
+		snprintf(fault_path, sizeof(fault_path), "%s.fault", options.ready_file);
 		events = fopen(path, "w");
 	}
 

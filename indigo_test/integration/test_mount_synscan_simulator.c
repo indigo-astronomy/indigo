@@ -23,6 +23,9 @@
 #include "serial_simulator_test_common.h"
 #include "abort_queue_test_common.h"
 #include <dirent.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 
@@ -883,6 +886,13 @@ static void synscan_mount_sync_adds_alignment_point(void) {
 	printf("    synced to %.4f h %.4f deg, after the next poll %.4f h %.4f deg\n", coordinate_values[0], coordinate_values[1], synced_ra, synced_dec);
 	SERIAL_CHECK_TRUE(ra_error < 0.01);
 	SERIAL_CHECK_TRUE(fabs(synced_dec - coordinate_values[1]) < 0.01);
+	// the saved point comes back with the next connection, defined with it, never updated before its definition
+	int undefined_updates = updates_without_define();
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, NULL));
+	SERIAL_CHECK_TRUE(wait_for_synscan_alignment_point_count(1));
+	SERIAL_CHECK_EQ_INT(undefined_updates, updates_without_define());
 
 cleanup:
 	if (context.connected) {
@@ -894,6 +904,121 @@ cleanup:
 		stop_serial_driver(&synscan_mount);
 	}
 	stop_external_serial_simulator(&simulator);
+}
+
+// The simulator answers the next <count> commands starting with <prefix> with <reply> instead of executing them.
+static bool write_synscan_fault(external_serial_simulator *simulator, const char *prefix, const char *reply, int count) {
+	char path[PATH_MAX], temporary[PATH_MAX + 8];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.fault", simulator->ready_file, NULL)) {
+		return false;
+	}
+	snprintf(temporary, sizeof(temporary), "%s.tmp", path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s %d\n", prefix, reply, count);
+	fclose(file);
+	return rename(temporary, path) == 0;
+}
+
+static bool synscan_fault_pending(external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	return simulator_fixture_path(path, sizeof(path), "%s.fault", simulator->ready_file, NULL) && access(path, F_OK) == 0;
+}
+
+static void remove_synscan_fault(external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	if (simulator_fixture_path(path, sizeof(path), "%s.fault", simulator->ready_file, NULL)) {
+		unlink(path);
+	}
+}
+
+typedef enum {
+	GUIDE_RA_FAULT_AT_END_RECOVERED,
+	GUIDE_RA_FAULT_AT_END_PERSISTENT,
+	GUIDE_RA_FAULT_AT_START_RECOVERED
+} guide_ra_fault;
+
+// A refused step period at either end of an RA guide pulse left the RA axis idle while MOUNT_TRACKING still said
+// ON. The driver now puts RA back on the tracking rate with the full stop, mode, period and start sequence, and
+// only when that fails too switches tracking OFF with ALERT, so the switch and the axis agree.
+static void guide_ra_with_fault(guide_ra_fault mode) {
+	external_serial_simulator simulator = { 0 };
+	bool mount_connected = false, guider_connected = false;
+	char tracking_period[32] = "", resumed_period[32] = "";
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	mount_connected = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", tracking_period, sizeof(tracking_period), NULL) > 0);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_guider, NULL));
+	guider_connected = true;
+	if (mode == GUIDE_RA_FAULT_AT_START_RECOVERED) {
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":I1", "!0", 1));
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300));
+		SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	} else {
+		int periods = count_synscan_commands(&simulator, 0, ":I1", NULL, 0, NULL);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 1000));
+		// BUSY is published when the request is accepted, the guide rate is set when the period command is logged;
+		// only the command that ends the pulse is refused
+		bool started = false;
+		for (int i = 0; i < 50 && !started; i++) {
+			indigo_usleep(10000);
+			started = count_synscan_commands(&simulator, 0, ":I1", NULL, 0, NULL) > periods;
+		}
+		SERIAL_CHECK_TRUE(started);
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":I1", "!0", mode == GUIDE_RA_FAULT_AT_END_PERSISTENT ? 100 : 1));
+		SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, mode == GUIDE_RA_FAULT_AT_END_PERSISTENT ? INDIGO_ALERT_STATE : INDIGO_OK_STATE));
+	}
+	int stop = last_synscan_command_line(&simulator, ":K1");
+	int start = last_synscan_command_line(&simulator, ":J1");
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", resumed_period, sizeof(resumed_period), NULL) > 0);
+	printf("    last stop at line %d, last start at line %d, last period %s (tracking %s)\n", stop, start, resumed_period, tracking_period);
+	SERIAL_CHECK_TRUE(stop >= 0);
+	// the mount device's own view of the tracking state, published before the guider's final state
+	reset_simulator_context(&synscan_mount);
+	enumerate_simulator_device();
+	if (mode == GUIDE_RA_FAULT_AT_END_PERSISTENT) {
+		remove_synscan_fault(&simulator);
+		SERIAL_CHECK_TRUE(start < stop);
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_ALERT_STATE));
+	} else {
+		SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+		SERIAL_CHECK_TRUE(start > stop);
+		SERIAL_CHECK_TRUE(!strcmp(tracking_period, resumed_period));
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_OK_STATE));
+	}
+
+cleanup:
+	remove_synscan_fault(&simulator);
+	if (guider_connected) {
+		disconnect_serial_device(&synscan_guider);
+	}
+	if (mount_connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_guider_restores_tracking_after_refused_pulse_end(void) {
+	guide_ra_with_fault(GUIDE_RA_FAULT_AT_END_RECOVERED);
+}
+
+static void synscan_guider_stops_tracking_when_pulse_end_keeps_failing(void) {
+	guide_ra_with_fault(GUIDE_RA_FAULT_AT_END_PERSISTENT);
+}
+
+static void synscan_guider_restores_tracking_after_refused_pulse_start(void) {
+	guide_ra_with_fault(GUIDE_RA_FAULT_AT_START_RECOVERED);
 }
 
 static void synscan_aux_passes_shutter_compliance_checks(void) {
@@ -1005,6 +1130,33 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// True when the host of a detected "synscan://<host>:<port>" URL is an address of this machine, where the simulator listens.
+static bool synscan_port_is_local(const char *port) {
+	char host[INDIGO_VALUE_SIZE];
+	if (strncmp(port, "synscan://", 10)) {
+		return false;
+	}
+	snprintf(host, sizeof(host), "%s", port + 10);
+	host[strcspn(host, ":")] = 0;
+	if (!strcmp(host, "127.0.0.1") || !strcmp(host, "localhost")) {
+		return true;
+	}
+	struct ifaddrs *addresses = NULL;
+	bool local = false;
+	if (getifaddrs(&addresses) == 0) {
+		for (struct ifaddrs *address = addresses; address != NULL && !local; address = address->ifa_next) {
+			if (address->ifa_addr != NULL && address->ifa_addr->sa_family == AF_INET) {
+				char text[INET_ADDRSTRLEN];
+				if (inet_ntop(AF_INET, &((struct sockaddr_in *)address->ifa_addr)->sin_addr, text, sizeof(text)) != NULL && !strcmp(text, host)) {
+					local = true;
+				}
+			}
+		}
+		freeifaddrs(addresses);
+	}
+	return local;
+}
+
 static void synscan_mount_connects_with_udp_autodetection(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -1030,6 +1182,14 @@ static void synscan_mount_connects_with_udp_autodetection(void) {
 		SERIAL_CHECK_TRUE(connected);
 	}
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	// The broadcast reaches every SynScan WiFi mount on the network, and the simulator drops its first replies, so a
+	// real mount powered on nearby answers first. Then this case cannot isolate the simulator and checks no further.
+	indigo_item *port = find_cached_item(DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME);
+	SERIAL_CHECK_TRUE(port != NULL);
+	if (!synscan_port_is_local(port->text.value)) {
+		printf("    a SynScan mount on the network answered the broadcast before the simulator, the simulator was not exercised\n");
+		goto cleanup;
+	}
 	assert_serial_mount_class_property_completeness();
 
 cleanup:
@@ -1369,6 +1529,9 @@ int main(void) {
 		{ "synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates", synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates },
 		{ "synscan_guider_guides_ra_without_stopping_tracking", synscan_guider_guides_ra_without_stopping_tracking },
 		{ "synscan_guider_pulse_survives_previous_finalizer", synscan_guider_pulse_survives_previous_finalizer },
+		{ "synscan_guider_restores_tracking_after_refused_pulse_end", synscan_guider_restores_tracking_after_refused_pulse_end },
+		{ "synscan_guider_stops_tracking_when_pulse_end_keeps_failing", synscan_guider_stops_tracking_when_pulse_end_keeps_failing },
+		{ "synscan_guider_restores_tracking_after_refused_pulse_start", synscan_guider_restores_tracking_after_refused_pulse_start },
 		{ "synscan_aux_passes_shutter_compliance_checks", synscan_aux_passes_shutter_compliance_checks },
 		{ "synscan_mount_disconnects_after_serial_loss", synscan_mount_disconnects_after_serial_loss },
 		{ "synscan_mount_reports_failed_serial_connection", synscan_mount_reports_failed_serial_connection },

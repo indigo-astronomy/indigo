@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -858,6 +858,29 @@ static void synscan_clear_tracking_state(indigo_device *device) {
 	}
 }
 
+// Puts RA back on the tracking rate after a failed command left the axis in an unknown state: the cached axis
+// configuration is forgotten, so the axis is stopped and gets the full mode, period and start sequence.
+static bool synscan_restore_tracking(indigo_device *device, double rate) {
+	synscan_invalidate_axis_config(device, SYNSCAN_AXIS_RA);
+	if (!synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, rate)) {
+		return false;
+	}
+	PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
+	return true;
+}
+
+// RA could not be put back on the tracking rate, the switch shows that the mount does not track; device is the mount.
+static void synscan_tracking_lost(indigo_device *device, const char *message) {
+	PRIVATE_DATA->current_tracking_rate = 0;
+	PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+	// A pending request owns the state, its handler reads the target and publishes the result
+	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, message);
+	}
+}
+
 static long synscan_position_to_steps(long zero, long total, double position) {
 	if (position > 0.75) {
 		position -= 1.0;
@@ -1640,7 +1663,16 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 	bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->guide_ra_resume_rate);
 	PRIVATE_DATA->guide_ra_deadline = 0;
 	PRIVATE_DATA->guide_ra_direction = 0;
-	PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
+	if (ok) {
+		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
+	} else {
+		// the pulse ran its time, it failed only if the axis cannot be put back on the tracking rate
+		ok = synscan_restore_tracking(device, PRIVATE_DATA->guide_ra_resume_rate);
+		if (!ok) {
+			synscan_tracking_lost(device->master_device, "Failed to resume tracking after RA guide pulse.");
+		}
+		synscan_update_mount_state(device->master_device);
+	}
 	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -1937,20 +1969,14 @@ static void mount_motion_ra_handler(indigo_device *device) {
 		// Manual motion only interrupts tracking, the switch stays on, so RA goes back to the tracking rate.
 		// If it cannot, the switch is turned off to show the axis is not tracking.
 		if (MOUNT_TRACKING_ON_ITEM->sw.value && !PRIVATE_DATA->parked) {
-			if (ok) {
-				PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
-				PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
-				ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
-			}
-			if (ok) {
+			PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+			PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+			if (ok && synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate)) {
 				PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
 			} else {
-				PRIVATE_DATA->current_tracking_rate = 0;
-				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-				// A pending request owns the state, its handler reads the target and publishes the result
-				if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
-					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Failed to resume tracking after manual motion.");
+				ok = synscan_restore_tracking(device, PRIVATE_DATA->current_tracking_rate);
+				if (!ok) {
+					synscan_tracking_lost(device, "Failed to resume tracking after manual motion.");
 				}
 			}
 		}
@@ -2448,7 +2474,16 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	PRIVATE_DATA->guide_ra_direction = direction;
 	PRIVATE_DATA->guide_ra_resume_rate = tracking_rate;
 	bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, guide_rate);
-	PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_GUIDING : SYNSCAN_AXIS_IDLE;
+	if (ok) {
+		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_GUIDING;
+	} else {
+		PRIVATE_DATA->guide_ra_deadline = 0;
+		PRIVATE_DATA->guide_ra_direction = 0;
+		if (!synscan_restore_tracking(device, tracking_rate)) {
+			synscan_tracking_lost(device->master_device, "Failed to resume tracking after RA guide pulse.");
+		}
+		synscan_update_mount_state(device->master_device);
+	}
 	GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, ok ? NULL : "Failed to start RA guide pulse.");
 	if (ok) {
