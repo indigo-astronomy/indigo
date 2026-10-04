@@ -15,7 +15,7 @@ Driver: `indigo_mount_ioptron` (generated from `indigo_mount_ioptron.driver`,
 defect fixes below). Exposes a **mount** logical device and a **guider** logical
 device sharing the same serial connection. Protocol dialects (enum
 `protocol_type`): `HC_8406`, `HC_8407`, `V1_0`, `V2_0`, `V2_5`, `V3_0`, chosen
-either by the persistent `PROTOCOL_VERSION` switch or by autodetection
+either by the persistent `X_PROTOCOL_VERSION` switch or by autodetection
 (`:MountInfo#` product code + `:FW1#` firmware matched against the `PRODUCTS`
 table, with `:GLS#` length as a fallback discriminator). Serial transactions run
 on the shared device queue; polling (`mount_timer_callback`) and guide-pulse
@@ -119,7 +119,7 @@ electrical timing) is documented as a gap, not claimed.
   manual motion (`:m..#`) + abort, park/unpark, home + home-search, reconnect:
   `ioptron_hc8406_profile`, `ioptron_hc8407_profile`, `ioptron_protocol_1_profile`,
   `ioptron_protocol_2_profile`, `ioptron_protocol_25_profile`, `ioptron_protocol_3_profile`.
-- Manual `PROTOCOL_VERSION` selection of every dialect: `ioptron_forced_protocol_selection`.
+- Manual `X_PROTOCOL_VERSION` selection of every dialect: `ioptron_forced_protocol_selection`.
 - GOTO progress, abort mid-slew (not reaching target), fresh GOTO after abort:
   `ioptron_goto_progress_abort_and_restart`.
 - Failed slew reply, dropped slew reply, failed SYNC, each recovering:
@@ -149,7 +149,7 @@ see guider note below). No iOptron hardware was available.
    failure. Fix: return `true` on a successful `:SE?#` and derive `slewing` from the
    reply (matching the other dialects). Regression: `ioptron_hc8406_profile` and
    `ioptron_forced_protocol_selection` connect the idle 8406 dialect.
-3. **PROTOCOL_VERSION only defined after connect** (fixed, user-directed). The
+3. **PROTOCOL_VERSION (now `X_PROTOCOL_VERSION`) only defined after connect** (fixed, user-directed). The
    persistent protocol switch was defined in the connection handler, so a dialect
    could not be selected before connecting (required for the non-autodetectable HC
    controllers). Fix: `always_defined = true` on the `MOUNT_PROTOCOL` switch;
@@ -187,9 +187,7 @@ Remaining observations (not changed): 8406 `:STRn#` orders solar/lunar
 differently from INDIGO but `MOUNT_TRACK_RATE` stays hidden on 8406; 2.5
 meridian handling is implemented but hidden because product support cannot be
 distinguished; CEM60/iEQ45Pro fw 171001 → 3.0 rows are undocumented in the
-bundled PDFs; `PROTOCOL_VERSION`, `MOUNT_MERIDIAN_HANDLING` and
-`MOUNT_MERIDIAN_LIMIT` predate the `X_` naming rule and are kept for
-compatibility; `indigo_uni_is_valid()` probes TCP with a zero-length `send()`
+bundled PDFs; `indigo_uni_is_valid()` probes TCP with a zero-length `send()`
 that does not report a peer close, so a lost `ieq://` session is not
 auto-disconnected (commands fail with ALERT and a manual reconnect works;
 framework change out of scope); guide-pulse completion is published ~50 ms
@@ -338,7 +336,7 @@ bundled documents.
 
 | Acceptance area | Cases |
 | --- | --- |
-| Metadata, base properties, always-defined `PROTOCOL_VERSION` | `ioptron_driver_metadata_and_base_properties` |
+| Metadata, base properties, always-defined `X_PROTOCOL_VERSION` | `ioptron_driver_metadata_and_base_properties` |
 | Dialect profiles: identity, visibility/counts, initial guide rate, exact SYNC/GOTO commands, J2000 readback, tracking after GOTO, disconnect/reconnect, zero protocol violations | `ioptron_profile_8406/8407/0100/0200/0205/0300` |
 | Manual dialect selection and wrong-dialect rollback | `ioptron_forced_protocol_selection` |
 | Product table and firmware/status fallbacks, encoders, SmartEQ, AZ Mount Pro | `ioptron_detect_*` (12) |
@@ -1024,5 +1022,13 @@ driver has no mapping); PEC refusal showing the device state (no PEC state readb
 setting acknowledged but not kept (the simulated controller always keeps it, no readback after write in the
 protocol flow); requests versus poll for tracking/park/home (documented above with instrumented evidence, the
 window has no I/O); alignment, time-zone order (protocol does not mandate one) and device options the driver
-does not implement; driver-specific property names without `X_` prefix (`MOUNT_MERIDIAN_HANDLING`,
-`MOUNT_MERIDIAN_LIMIT`, `PROTOCOL_VERSION`) are a client-visible rename left for a separate decision.
+does not implement.
+
+## Custom property names (3.0.0.64)
+
+The driver-specific properties now carry the required `X_` prefix (user-approved client-visible rename, no
+backward-compatible alias): `PROTOCOL_VERSION` -> `X_PROTOCOL_VERSION`, `MOUNT_MERIDIAN_HANDLING` ->
+`X_MOUNT_MERIDIAN_HANDLING`, `MOUNT_MERIDIAN_LIMIT` -> `X_MOUNT_MERIDIAN_LIMIT`. Items are unchanged. A saved
+protocol selection stored under the old name is not loaded; select the dialect again and save the
+configuration. The integration (`ioptron_driver_metadata_and_base_properties` and the per-dialect profiles)
+and MountSim (`ioptron_park_home_options`) tests assert that the unprefixed names are never defined.

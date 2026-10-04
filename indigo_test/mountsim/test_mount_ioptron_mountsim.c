@@ -325,9 +325,12 @@ static void ioptron_park_home_options(void) {
 		SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_ITEM_NAME, 1.001, INDIGO_OK_STATE));
 		SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_CUSTOM_ITEM_NAME, true, INDIGO_OK_STATE));
 	}
-	if (has_defined_property("MOUNT_MERIDIAN_HANDLING")) {
-		SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, "MOUNT_MERIDIAN_HANDLING", "FLIP", true, INDIGO_OK_STATE));
-		SERIAL_CHECK_TRUE(io_number(&ioptron_mount, "MOUNT_MERIDIAN_LIMIT", "LIMIT", 5, INDIGO_OK_STATE));
+	// the custom properties carry the X_ prefix, the unprefixed names are never defined
+	SERIAL_CHECK_TRUE(has_defined_property("X_PROTOCOL_VERSION"));
+	SERIAL_CHECK_TRUE(!has_defined_property("PROTOCOL_VERSION") && !has_defined_property("MOUNT_MERIDIAN_HANDLING") && !has_defined_property("MOUNT_MERIDIAN_LIMIT"));
+	if (has_defined_property("X_MOUNT_MERIDIAN_HANDLING")) {
+		SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, "X_MOUNT_MERIDIAN_HANDLING", "FLIP", true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(io_number(&ioptron_mount, "X_MOUNT_MERIDIAN_LIMIT", "LIMIT", 5, INDIGO_OK_STATE));
 		SERIAL_CHECK_TRUE(last_command(":SMT105") > 0);
 	}
 	if (has_defined_property(MOUNT_PEC_PROPERTY_NAME)) {

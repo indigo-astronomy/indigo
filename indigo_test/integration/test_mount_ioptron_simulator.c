@@ -28,9 +28,21 @@
 #define MOUNT_IOPTRON_SIMULATOR_EXECUTABLE "build/integration/mount_ioptron_simulator"
 #endif
 
-#define PROTOCOL_PROPERTY           "PROTOCOL_VERSION"
-#define MERIDIAN_HANDLING_PROPERTY  "MOUNT_MERIDIAN_HANDLING"
-#define MERIDIAN_LIMIT_PROPERTY     "MOUNT_MERIDIAN_LIMIT"
+#define PROTOCOL_PROPERTY           "X_PROTOCOL_VERSION"
+#define MERIDIAN_HANDLING_PROPERTY  "X_MOUNT_MERIDIAN_HANDLING"
+#define MERIDIAN_LIMIT_PROPERTY     "X_MOUNT_MERIDIAN_LIMIT"
+
+// Names the driver used before its custom properties got the X_ prefix, no client may see them any more.
+static const char *ioptron_unprefixed_properties[] = { "PROTOCOL_VERSION", "MOUNT_MERIDIAN_HANDLING", "MOUNT_MERIDIAN_LIMIT" };
+
+static void assert_no_unprefixed_properties(void) {
+	for (int i = 0; i < (int)ARRAY_SIZE(ioptron_unprefixed_properties); i++) {
+		SERIAL_CHECK_TRUE(!has_defined_property(ioptron_unprefixed_properties[i]));
+		SERIAL_CHECK_TRUE(find_cached_property(ioptron_unprefixed_properties[i]) == NULL);
+	}
+cleanup:
+	return;
+}
 
 static const simulator_driver_case ioptron_mount = {
 	"iOptron Mount",
@@ -678,6 +690,8 @@ static void check_profile(int index) {
 	SERIAL_CHECK_EQ_INT(d->home_count, property_count(MOUNT_HOME_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(d->side_of_pier, has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(d->meridian, has_defined_property(MERIDIAN_HANDLING_PROPERTY));
+	SERIAL_CHECK_EQ_INT(d->meridian, has_defined_property(MERIDIAN_LIMIT_PROPERTY));
+	assert_no_unprefixed_properties();
 	SERIAL_CHECK_EQ_INT(d->pec, has_defined_property(MOUNT_PEC_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(d->custom_rate, has_defined_property(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_SLEW_RATE_PROPERTY_NAME));
@@ -756,6 +770,7 @@ static void ioptron_driver_metadata_and_base_properties(void) {
 	SERIAL_CHECK_TRUE(switch_value(PROTOCOL_PROPERTY, "AUTO"));
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
 	SERIAL_CHECK_TRUE(find_cached_property(MERIDIAN_HANDLING_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
 	reset_simulator_context(&ioptron_guider);
 	enumerate_simulator_device();
 	SERIAL_CHECK_TRUE(has_defined_property(CONNECTION_PROPERTY_NAME));

@@ -23,7 +23,7 @@ driver ioptron {
 	label = "iOptron Mount";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 63;
+	version = 64;
 	serial {
 		configurable_speed = true;
 	}
@@ -2105,7 +2105,7 @@ driver ioptron {
 			}
 			// on_attach { }
 			// on_detach { }
-			name = "MOUNT_MERIDIAN_HANDLING";
+			name = "X_MOUNT_MERIDIAN_HANDLING";
 			group = MOUNT_MAIN_GROUP;
 			label = "Meridian handling";
 			// asynchronous_change = false;
@@ -2131,7 +2131,7 @@ driver ioptron {
 			}
 			// on_attach { }
 			// on_detach { }
-			name = "MOUNT_MERIDIAN_LIMIT";
+			name = "X_MOUNT_MERIDIAN_LIMIT";
 			group = MOUNT_MAIN_GROUP;
 			label = "Meridian limit";
 			// asynchronous_change = false;
@@ -2181,7 +2181,7 @@ driver ioptron {
 			// on_change { }
 			// on_attach { }
 			// on_detach { }
-			name = "PROTOCOL_VERSION";
+			name = "X_PROTOCOL_VERSION";
 			group = MAIN_GROUP;
 			label = "Mount protocol version";
 			// asynchronous_change = false;
