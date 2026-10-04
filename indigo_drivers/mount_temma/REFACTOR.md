@@ -334,8 +334,14 @@ Deliberately not covered:
 - **GOTO that never completes.** `mount_goto_finalizer` has no deadline, and the park's 600 s deadline is too long for a test. This is a missing timeout and is reported, not fixed.
 - **"Done" short of the target.** Temma reports `s0` without a position check, and adding a position comparison is a design change.
 - **Direction bits per pier side and hemisphere, RA drift and decelerating axes.** The driver passes relay bits through unchanged and the simulator does not model axis motion.
-- **`MOUNT_GUIDE_RATE`.** It is visible but sends nothing. The controller's guide rate is `X_TEMMA_CORRECTION_SPEED` (`LA`/`LB`). Mapping or hiding the property is a contract decision left to the owner.
+- **`MOUNT_GUIDE_RATE`.** It was visible but sent nothing. Hidden in 3.0.0.25, see below.
 - **Poll versus request races for polled settings.** The poll writes only coordinates and the read-only side of pier, and a tracking request during a park is refused.
 - **Transports, extra logical devices and hot-plug.** The driver has none of them.
 
 Portable suite: 28 cases, 23 on Linux. Final test summary for this change: simulator suite 28 run / 28 passed (macOS arm64, `run_driver_test.py`, driver 3.0.0.24); hardware 0 run / 0 passed.
+
+## Guide rate property hidden (2026-10-04)
+
+Driver version 3.0.0.25. `MOUNT_GUIDE_RATE` was defined and writable but had no device effect: the driver has no handler for it, so a write falls through to the base mount handler, which only copies the value and publishes OK. No command reaches the controller; the old contract test wrote 55 and checked only the OK state, never the trace. Nothing reads the value: the guider pulses (`GUIDER_GUIDE_RA`/`GUIDER_GUIDE_DEC`) only set relay bits, and `GUIDER_RATE` stays hidden on the guider device. The controller's guide-pulse speed is `X_TEMMA_CORRECTION_SPEED` (`LA`/`LB`), which remains the only guide-rate control.
+
+The property is now hidden, so it is not defined. The contract in `integration/test_mount_temma_simulator.c` and `mountsim/test_mount_temma_mountsim.c` asserts that `MOUNT_GUIDE_RATE` is not defined and no longer writes it. Clients that read the standard property, for example the Alpaca bridge's guide-rate values, no longer find it on this mount.

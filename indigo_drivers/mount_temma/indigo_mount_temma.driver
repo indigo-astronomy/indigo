@@ -22,7 +22,7 @@ driver temma {
 	label = "Takahashi Temma Mount";
 	author = "";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 24;
+	version = 25;
 	serial {
 	}
 	include {
@@ -672,6 +672,12 @@ driver temma {
 			// on_detach { }
 		}
 		inherited MOUNT_UTC_TIME {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_GUIDE_RATE {
 			hidden = true;
 			// on_change { }
 			// on_attach { }

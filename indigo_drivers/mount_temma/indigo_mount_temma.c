@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000018
+#define DRIVER_VERSION       0x03000019
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -542,6 +542,7 @@ static void mount_connection_handler(indigo_device *device) {
 			MOUNT_MOTION_RA_PROPERTY,
 			MOUNT_SET_HOST_TIME_PROPERTY,
 			MOUNT_UTC_TIME_PROPERTY,
+			MOUNT_GUIDE_RATE_PROPERTY,
 			MOUNT_PARK_POSITION_PROPERTY,
 			MOUNT_PARK_SET_PROPERTY,
 			MOUNT_SIDE_OF_PIER_PROPERTY,
@@ -834,6 +835,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_MOTION_RA_PROPERTY->hidden = false;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = true;
+		MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
