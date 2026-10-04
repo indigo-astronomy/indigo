@@ -22,8 +22,14 @@
 // AM-specific commands. It runs against the shared LX200 simulator's "asi" profile, which is the
 // "zwo" profile with those extra commands and a firmware revision high enough to unlock the
 // meridian and alignment-reset features.
+//
+// The simulator logs every command it receives to <ready file>.events and takes one fault rule at
+// a time from <ready file>.control ("command<TAB>reply", where the reply DROP answers nothing), so
+// the cases below check the exact wire traffic and inject refusals and lost replies.
 
 #include <math.h>
+#include <pthread.h>
+#include <signal.h>
 
 #include <indigo_drivers/mount_asi/indigo_mount_asi.h>
 
@@ -62,6 +68,11 @@ static bool start_asi_simulator(external_serial_simulator *simulator, const char
 	return start_external_serial_simulator_with_args(simulator, MOUNT_ASI_SIMULATOR_EXECUTABLE, arguments);
 }
 
+static bool start_asi_simulator_with_firmware(external_serial_simulator *simulator, const char *firmware) {
+	const char *arguments[] = { "--model", "asi", "--zwo-firmware", firmware, NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_ASI_SIMULATOR_EXECUTABLE, arguments);
+}
+
 static bool set_switch(const simulator_driver_case *device, const char *property, const char *item) {
 	return indigo_change_switch_property_1(&simulator_test_client, device->device_name, property, item, true) == INDIGO_OK;
 }
@@ -84,6 +95,266 @@ static const char *cached_text(const char *property_name, const char *item_name)
 static bool cached_switch(const char *property_name, const char *item_name) {
 	indigo_item *item = find_cached_item(property_name, item_name);
 	return item != NULL && item->sw.value;
+}
+
+// -------------------------------------------------------------------------------- fresh requests
+
+// Every request waits for a publication made after it, never for a cached pre-request state.
+static bool asi_switch(const simulator_driver_case *device, const char *property, const char *item, bool value, indigo_property_state state) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_switch_property_1(&simulator_test_client, device->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
+}
+
+static bool asi_number(const simulator_driver_case *device, const char *property, const char *item, double value, indigo_property_state state) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_number_property_1(&simulator_test_client, device->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
+}
+
+// The coordinate handler publishes BUSY before its result, while a poll may publish OK at any
+// time, so the result is the first publication in the requested state after that BUSY.
+static bool asi_coordinates(double ra, double dec, indigo_property_state state) {
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	if (!set_coordinates(ra, dec) || !wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision)) {
+		return false;
+	}
+	if (state == INDIGO_BUSY_STATE) {
+		return true;
+	}
+	return wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, state, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+}
+
+static bool asi_site(double latitude, double longitude, indigo_property_state state) {
+	unsigned int revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	const double values[] = { latitude, longitude };
+	return indigo_change_number_property(&simulator_test_client, asi_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK && wait_for_property_state_seen_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, state, revision);
+}
+
+static bool wait_for_switch_value(const char *property_name, const char *item_name, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *item = find_cached_item(property_name, item_name);
+		if (item != NULL && item->sw.value == value) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+static double coordinate(const char *item_name) {
+	return cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, item_name);
+}
+
+// -------------------------------------------------------------------------------- messages
+
+// Refusal reasons reach the client either with a property update or as a standalone message.
+static pthread_mutex_t asi_message_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char asi_messages[4096];
+
+static void record_message(const char *message) {
+	if (message != NULL && *message) {
+		pthread_mutex_lock(&asi_message_mutex);
+		size_t length = strlen(asi_messages);
+		snprintf(asi_messages + length, sizeof(asi_messages) - length, "%s\n", message);
+		pthread_mutex_unlock(&asi_message_mutex);
+	}
+}
+
+static void clear_messages(void) {
+	pthread_mutex_lock(&asi_message_mutex);
+	*asi_messages = 0;
+	pthread_mutex_unlock(&asi_message_mutex);
+}
+
+static bool wait_for_message(const char *text) {
+	for (int i = 0; i < 100; i++) {
+		pthread_mutex_lock(&asi_message_mutex);
+		bool found = strstr(asi_messages, text) != NULL;
+		pthread_mutex_unlock(&asi_message_mutex);
+		if (found) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	fprintf(stderr, "Missing message '%s', received:\n%s", text, asi_messages);
+	return false;
+}
+
+static indigo_result asi_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	record_message(message);
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static indigo_result asi_client_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	record_message(message);
+	return INDIGO_OK;
+}
+
+// -------------------------------------------------------------------------------- simulator event log
+
+#define MAX_EVENTS 16384
+
+static char event_lines[MAX_EVENTS][48];
+
+// Loads the commands the simulator received, in order, and answers how many there are.
+static int load_events(external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return 0;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	char line[256];
+	int count = 0;
+	while (count < MAX_EVENTS && fgets(line, sizeof(line), file)) {
+		char *tab = strchr(line, '\t');
+		if (tab != NULL) {
+			tab++;
+			tab[strcspn(tab, "\r\n")] = 0;
+			snprintf(event_lines[count++], sizeof(event_lines[0]), "%s", tab);
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static int event_mark(external_serial_simulator *simulator) {
+	return load_events(simulator);
+}
+
+static int count_since(external_serial_simulator *simulator, int from, const char *command) {
+	int total = load_events(simulator), count = 0;
+	for (int i = from; i < total; i++) {
+		if (!strcmp(event_lines[i], command)) {
+			count++;
+		}
+	}
+	return count;
+}
+
+static int prefixed_count_since(external_serial_simulator *simulator, int from, const char *prefix) {
+	int total = load_events(simulator), count = 0;
+	for (int i = from; i < total; i++) {
+		if (!strncmp(event_lines[i], prefix, strlen(prefix))) {
+			count++;
+		}
+	}
+	return count;
+}
+
+// A command sent without waiting for a reply reaches the log after the driver has moved on, so
+// counts that must not grow any more are taken once the log has stopped growing.
+static int settled_count_since(external_serial_simulator *simulator, int from, const char *command) {
+	int count = count_since(simulator, from, command);
+	for (int i = 0; i < 40; i++) {
+		indigo_usleep(50000);
+		int again = count_since(simulator, from, command);
+		if (again == count) {
+			return count;
+		}
+		count = again;
+	}
+	return count;
+}
+
+static bool wait_command_since(external_serial_simulator *simulator, int from, const char *command) {
+	for (int i = 0; i < 500; i++) {
+		if (count_since(simulator, from, command) > 0) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Missing command :%s#\n", command);
+	return false;
+}
+
+// The commands appear in this order after the mark; polls may be interleaved between them.
+static bool in_order_since(external_serial_simulator *simulator, int from, const char * const *commands, int count) {
+	int total = load_events(simulator), matched = 0;
+	for (int i = from; i < total && matched < count; i++) {
+		if (!strcmp(event_lines[i], commands[matched])) {
+			matched++;
+		}
+	}
+	if (matched < count) {
+		fprintf(stderr, "Command :%s# missing or out of order, received since the mark:", commands[matched]);
+		for (int i = from; i < total; i++) {
+			fprintf(stderr, " %s", event_lines[i]);
+		}
+		fprintf(stderr, "\n");
+	}
+	return matched == count;
+}
+
+static bool wait_in_order_since(external_serial_simulator *simulator, int from, const char * const *commands, int count) {
+	for (int i = 0; i < 100; i++) {
+		int total = load_events(simulator), matched = 0;
+		for (int j = from; j < total && matched < count; j++) {
+			if (!strcmp(event_lines[j], commands[matched])) {
+				matched++;
+			}
+		}
+		if (matched == count) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return in_order_since(simulator, from, commands, count);
+}
+
+// A steady mount publishes nothing (unchanged updates are suppressed), so freshness is proven on
+// the controller side: a whole position poll, from :GR# to :GG#, ran after this call. The poll
+// publishes what changed before it reads the clock, so the cache then holds that readback.
+static bool wait_for_fresh_poll(external_serial_simulator *simulator) {
+	int mark = event_mark(simulator);
+	static const char *poll[] = { "GR", "GG" };
+	for (int i = 0; i < 150; i++) {
+		int total = load_events(simulator), matched = 0;
+		for (int j = mark; j < total && matched < 2; j++) {
+			if (!strcmp(event_lines[j], poll[matched])) {
+				matched++;
+			}
+		}
+		if (matched == 2) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "No complete position poll\n");
+	return false;
+}
+
+// One fault rule: the next command equal to it gets the reply instead, DROP answers nothing.
+static bool inject_reply(external_serial_simulator *simulator, const char *command, const char *reply) {
+	char path[PATH_MAX], temporary[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.control", simulator->ready_file, NULL)) {
+		return false;
+	}
+	if (!simulator_fixture_path(temporary, sizeof(temporary), "%s.inject", simulator->ready_file, NULL)) {
+		return false;
+	}
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	if (reply == NULL) {
+		fprintf(file, "%s\n", command);
+	} else {
+		fprintf(file, "%s\t%s\n", command, reply);
+	}
+	fclose(file);
+	return rename(temporary, path) == 0;
+}
+
+static bool send_control(external_serial_simulator *simulator, const char *event) {
+	return inject_reply(simulator, event, NULL);
+}
+
+// Pins MOUNT_EPOCH to J2000 so the driver sends and reads back the requested values unconverted.
+static bool pin_epoch(void) {
+	return asi_number(&asi_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE);
 }
 
 // -------------------------------------------------------------------------------- metadata
@@ -132,10 +403,144 @@ static void metadata_and_visible_properties(void) {
 	};
 	assert_defined_properties(firmware_gated, ARRAY_SIZE(firmware_gated));
 	// PARK is deliberately hidden: it leaves AM mounts in a state only the vendor app recovers.
-	assert_not_defined_property(MOUNT_PARK_PROPERTY_NAME);
+	// Nothing the controller lacks is defined either: no park set/position, home set/position,
+	// custom tracking rate, PEC or alignment point controls.
+	static const char *absent[] = {
+		MOUNT_PARK_PROPERTY_NAME,
+		MOUNT_PARK_SET_PROPERTY_NAME,
+		MOUNT_PARK_POSITION_PROPERTY_NAME,
+		MOUNT_HOME_SET_PROPERTY_NAME,
+		MOUNT_HOME_POSITION_PROPERTY_NAME,
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME,
+		MOUNT_PEC_PROPERTY_NAME,
+		MOUNT_PEC_TRAINING_PROPERTY_NAME,
+		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME,
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME,
+		"BUZZER",
+		"MERIDIAN",
+		"MAX_SLEW_SPEED"
+	};
+	assert_not_defined_properties(absent, ARRAY_SIZE(absent));
 	SERIAL_CHECK_TRUE(!strcmp(cached_text(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME), "ZWO"));
 	SERIAL_CHECK_TRUE(!strcmp(cached_text(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME), "AM5"));
 	SERIAL_CHECK_TRUE(!strcmp(cached_text(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME), "1.2.4"));
+	// The controller syncs and slews; it has no third coordinate action.
+	indigo_property *on_set = find_cached_property(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(on_set != NULL && on_set->count == 2);
+	assert_property_has_item(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME);
+	assert_property_has_item(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME);
+	// One guide rate for both axes, 10 to 90 percent of sidereal, read from :Ggr# (0.5).
+	indigo_item *guide_ra = find_cached_item(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME);
+	SERIAL_CHECK_TRUE(guide_ra != NULL && guide_ra->number.min == 10 && guide_ra->number.max == 90 && fabs(guide_ra->number.value - 50) < .01);
+	// The device-reported properties are read-only, and the controller reports equatorial mode.
+	indigo_property *mode = find_cached_property(ASI_MOUNT_MODE_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(mode != NULL && mode->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(cached_switch(ASI_MOUNT_MODE_PROPERTY_NAME, "EQUATORIAL"));
+	indigo_property *pier = find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(pier != NULL && pier->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A request to a read-only device-reported property sends nothing and changes nothing.
+static void read_only_properties_ignore_requests(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	bool east = cached_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME);
+	const char *side = east ? MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME : MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME;
+	unsigned int pier_revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	unsigned int mode_revision = property_revision(ASI_MOUNT_MODE_PROPERTY_NAME);
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, asi_mount.device_name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, side, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, asi_mount.device_name, ASI_MOUNT_MODE_PROPERTY_NAME, "ALTAZ", true));
+	// Two polls later nothing has changed and only poll traffic reached the controller.
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_EQ_INT((int)pier_revision, (int)property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT((int)mode_revision, (int)property_revision(ASI_MOUNT_MODE_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) == east);
+	SERIAL_CHECK_TRUE(cached_switch(ASI_MOUNT_MODE_PROPERTY_NAME, "EQUATORIAL"));
+	static const char *poll[] = { "GR", "GD", "GU", "Gm", "GC", "GL", "GG", "GAT" };
+	int total = load_events(&simulator);
+	for (int i = mark; i < total; i++) {
+		bool known = false;
+		for (int j = 0; j < ARRAY_SIZE(poll); j++) {
+			known = known || !strcmp(event_lines[i], poll[j]);
+		}
+		if (!known) {
+			fprintf(stderr, "Unexpected command :%s#\n", event_lines[i]);
+		}
+		SERIAL_CHECK_TRUE(known);
+	}
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Firmware below 1.2.4 has no :GTa#, :STa# or :NSC#: the properties stay undefined and the
+// commands are never sent, polling included.
+static void firmware_1_2_3_hides_meridian_and_alignment_reset(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator_with_firmware(&simulator, "1.2.3"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(!strcmp(cached_text(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME), "1.2.3"));
+	static const char *gated[] = {
+		ASI_MERIDIAN_PROPERTY_NAME,
+		ASI_MERIDIAN_LIMIT_PROPERTY_NAME,
+		MOUNT_ALIGNMENT_RESET_PROPERTY_NAME,
+		MOUNT_PARK_PROPERTY_NAME
+	};
+	assert_not_defined_properties(gated, ARRAY_SIZE(gated));
+	static const char *kept[] = { ASI_BUZZER_PROPERTY_NAME, ASI_MAX_SLEW_SPEED_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME };
+	assert_defined_properties(kept, ARRAY_SIZE(kept));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, 0, "GTa"));
+	SERIAL_CHECK_EQ_INT(0, prefixed_count_since(&simulator, 0, "STa"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, 0, "NSC"));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A fresh driver instance publishes what the controller holds, not its own defaults.
+static void connect_reads_the_controller_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	// Move the controller away from every default the driver starts with.
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, ASI_MAX_SLEW_SPEED_PROPERTY_NAME, "HIGH", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_number(&asi_mount, ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT", -5, INDIGO_OK_STATE));
+	const char *meridian_items[] = { "AUTO_FLIP_AT_LIMIT", "TRACK_PASSED_MERIDIAN" };
+	const bool meridian_values[] = { false, true };
+	unsigned int revision = property_revision(ASI_MERIDIAN_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property(&simulator_test_client, asi_mount.device_name, ASI_MERIDIAN_PROPERTY_NAME, 2, meridian_items, meridian_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(ASI_MERIDIAN_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	// The controller tracks after a GOTO.
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	stop_serial_driver(&asi_mount);
+	online = false;
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(cached_switch(ASI_MAX_SLEW_SPEED_PROPERTY_NAME, "HIGH"));
+	SERIAL_CHECK_TRUE(!cached_switch(ASI_MERIDIAN_PROPERTY_NAME, "AUTO_FLIP_AT_LIMIT"));
+	SERIAL_CHECK_TRUE(cached_switch(ASI_MERIDIAN_PROPERTY_NAME, "TRACK_PASSED_MERIDIAN"));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT") + 5) < .01);
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
 	stop_external_serial_simulator(&simulator);
@@ -167,6 +572,132 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// SYNC and GOTO send the exact sexagesimal strings: the largest sub-unit values, a negative
+// declination with a zero whole-degree part and the pole. The readback is taken from a poll made
+// after the request, not from the handler's echo.
+static void goto_and_sync_send_exact_coordinate_strings(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	// A negative declination whose whole degrees are zero keeps its sign; SYNC never slews.
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_coordinates(5.5, -0.5, INDIGO_OK_STATE));
+	static const char *sync_negative[] = { "Sr05:30:00", "Sd-00*30:00", "CM" };
+	SERIAL_CHECK_TRUE(in_order_since(&simulator, mark, sync_negative, ARRAY_SIZE(sync_negative)));
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, "MS"));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "CM"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 5.5) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 0.5) < 1 / 3600.0);
+	// The largest second and minute values are sent as 59, never rounded up to 60.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_coordinates(12 + 59 / 60.0 + 59 / 3600.0, -(45 + 59 / 60.0 + 59 / 3600.0), INDIGO_OK_STATE));
+	static const char *sync_largest[] = { "Sr12:59:59", "Sd-45*59:59", "CM" };
+	SERIAL_CHECK_TRUE(in_order_since(&simulator, mark, sync_largest, ARRAY_SIZE(sync_largest)));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - (12 + 59 / 60.0 + 59 / 3600.0)) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + (45 + 59 / 60.0 + 59 / 3600.0)) < 1 / 3600.0);
+	// A second fraction that rounds up carries into the minutes.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_coordinates(3 + 14 / 60.0 + 59.7 / 3600.0, 20 + 29 / 60.0 + 59.7 / 3600.0, INDIGO_OK_STATE));
+	static const char *sync_carry[] = { "Sr03:15:00", "Sd+20*30:00", "CM" };
+	SERIAL_CHECK_TRUE(in_order_since(&simulator, mark, sync_carry, ARRAY_SIZE(sync_carry)));
+	// GOTO sends target, then the slew, and reaches the pole.
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_coordinates(7.25, 90, INDIGO_BUSY_STATE));
+	static const char *slew[] = { "Sr07:15:00", "Sd+90*00:00", "MS" };
+	SERIAL_CHECK_TRUE(wait_in_order_since(&simulator, mark, slew, ARRAY_SIZE(slew)));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "CM"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 90) < 1 / 3600.0);
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A refused or unanswered command of the GOTO sequence ends the request ALERT, sends nothing
+// after it, keeps the real position, passes the controller's reason on and leaves the next GOTO
+// working.
+static void goto_refusals_report_the_reason_and_recover(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double ra = coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	// :MS# answered with error 5, below the horizon.
+	clear_messages();
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "e5#"));
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_message("below horizon"));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "MS"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1 / 3600.0);
+	// The target right ascension refused: no declination and no slew follow.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sr08:00:00", "0"));
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "Sr08:00:00"));
+	SERIAL_CHECK_EQ_INT(0, prefixed_count_since(&simulator, mark, "Sd"));
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, "MS"));
+	// The target declination unanswered: the request times out ALERT and no slew follows.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sd+30*00:00", "DROP"));
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "Sd+30*00:00"));
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, "MS"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1 / 3600.0);
+	// The next GOTO is accepted and arrives.
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 8) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 30) < 1 / 3600.0);
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A refused SYNC ends ALERT with the controller's reason, is not retried and moves nothing.
+static void sync_refusal_is_reported_and_not_retried(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	clear_messages();
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "CM", "e3#"));
+	SERIAL_CHECK_TRUE(asi_coordinates(10, -20, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_message("not initialized"));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "CM"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "MS"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(asi_coordinates(10, -20, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 20) < 1 / 3600.0);
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void abort_stops_a_running_slew(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -183,12 +714,87 @@ static void abort_stops_a_running_slew(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(set_coordinates(12, 80));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	int mark = event_mark(&simulator);
 	SERIAL_CHECK_TRUE(set_switch(&asi_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
-	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
-	printf("Declination after abort: %g (target was 80)\n", dec);
+	// The stop is sent exactly once.
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Q"));
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	// Two fresh readbacks agree: the mount stands, short of the target.
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double again = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	printf("Declination after abort: %g, %g (target was 80)\n", dec, again);
+	SERIAL_CHECK_TRUE(fabs(dec - again) < 1 / 3600.0);
 	SERIAL_CHECK_TRUE(fabs(dec - 80) > 1);
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// An abort while idle sends the stop and leaves position and tracking as they were.
+static void abort_while_idle_keeps_position_and_tracking(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	// The controller tracks after a GOTO; a tracking request could race the driver's poll (a known
+	// driver defect), so the GOTO is the deterministic way to a tracking mount.
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double ra = coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Q"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "Td"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Disconnecting during a GOTO sends the stop while the port is still open; after reconnect no
+// stale BUSY survives and the motion items read OFF.
+static void disconnect_during_goto_sends_the_stop(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_coordinates(0, -80, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_coordinates(12, 80, INDIGO_BUSY_STATE));
+	int mark = event_mark(&simulator);
+	disconnect_serial_device(&asi_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Q"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&asi_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(fabs(dec - 80) > 1);
+	indigo_property *coordinates = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(coordinates != NULL && coordinates->state == INDIGO_OK_STATE);
+	static const char *motion[] = { MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME };
+	for (int i = 0; i < ARRAY_SIZE(motion); i++) {
+		SERIAL_CHECK_TRUE(!cached_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, motion[i]));
+	}
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_DEC_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_RA_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
 	stop_external_serial_simulator(&simulator);
@@ -202,17 +808,28 @@ static void tracking_rates_and_motion(void) {
 	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
 	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
 	online = true;
-	SERIAL_CHECK_TRUE(set_switch(&asi_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	int mark = 0;
+	// Only the request's completion is checked: which of :Te#/:Td# goes out depends on whether a
+	// poll overwrites the pending request first (a known driver defect).
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
 	const char *rates[] = { MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME };
+	const char *rate_commands[] = { "TL", "TS", "TQ" };
 	for (int i = 0; i < ARRAY_SIZE(rates); i++) {
-		SERIAL_CHECK_TRUE(set_switch(&asi_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i]));
-		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACK_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+		mark = event_mark(&simulator);
+		SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, rates[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, rate_commands[i]));
 	}
+	// Slew-rate presets go out as the AM numeric rates with the next motion.
 	const char *slew_rates[] = { MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+	const char *slew_commands[] = { "R1", "R4", "R7", "R9" };
 	for (int i = 0; i < ARRAY_SIZE(slew_rates); i++) {
-		SERIAL_CHECK_TRUE(set_switch(&asi_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, slew_rates[i]));
-		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_SLEW_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, slew_rates[i], true, INDIGO_OK_STATE));
+		mark = event_mark(&simulator);
+		SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+		const char *expected[] = { slew_commands[i], "Mn" };
+		SERIAL_CHECK_TRUE(wait_in_order_since(&simulator, mark, expected, 2));
+		SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "Qn"));
 	}
 	const char *motion[] = { MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME };
 	for (int i = 0; i < ARRAY_SIZE(motion); i++) {
@@ -228,8 +845,223 @@ static void tracking_rates_and_motion(void) {
 		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, asi_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, ra_motion[i], false));
 		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
 	}
-	SERIAL_CHECK_TRUE(set_switch(&asi_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool wait_for_coordinate_beyond(external_serial_simulator *simulator, const char *item_name, double reference, double delta) {
+	for (int i = 0; i < 50; i++) {
+		if (!wait_for_fresh_poll(simulator)) {
+			return false;
+		}
+		double value = coordinate(item_name);
+		if (delta > 0 ? value > reference + delta : value < reference + delta) {
+			return true;
+		}
+	}
+	fprintf(stderr, "%s stayed at %g, reference %g, delta %g\n", item_name, coordinate(item_name), reference, delta);
+	return false;
+}
+
+// Every direction sends its own command and moves the readback the right way; a reversal stops
+// the old direction first; diagonal motion releases each axis once.
+static void manual_motion_directions_move_the_readback(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	// North raises the declination.
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	static const char *north[] = { "R4", "Mn" };
+	SERIAL_CHECK_TRUE(wait_in_order_since(&simulator, mark, north, ARRAY_SIZE(north)));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_beyond(&simulator, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec, 0.3));
+	// Reversal to south stops north first, then lowers the declination.
+	dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	static const char *reversal[] = { "Qn", "Ms" };
+	SERIAL_CHECK_TRUE(wait_in_order_since(&simulator, mark, reversal, ARRAY_SIZE(reversal)));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_beyond(&simulator, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec, -0.3));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Qs"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "R4"));
+	// East raises the right ascension, west lowers it.
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	double ra = coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "Me"));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_beyond(&simulator, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, 0.005));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "Qe"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	ra = coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "Mw"));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_beyond(&simulator, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, -0.005));
+	// Both axes at once; releasing each one stops exactly that axis.
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Qw"));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "Qn"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "Qs"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "Qe"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	ra = coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1 / 3600.0);
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 1 / 3600.0);
+	// Fresh movement after the stop.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "Ms"));
+	SERIAL_CHECK_TRUE(wait_for_coordinate_beyond(&simulator, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec, -0.3));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The meridian stop the controller reports through :GAT# reaches the client with its reason,
+// tracking reads OFF, and the reason is reported once.
+static void meridian_stop_is_reported_once(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	clear_messages();
+	SERIAL_CHECK_TRUE(send_control(&simulator, "zwo-meridian-stop"));
+	SERIAL_CHECK_TRUE(wait_for_message("Meridian reached"));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// The reason is reported once, not on every poll.
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	pthread_mutex_lock(&asi_message_mutex);
+	char *first = strstr(asi_messages, "Meridian reached");
+	bool once = first != NULL && strstr(first + 1, "Meridian reached") == NULL;
+	pthread_mutex_unlock(&asi_message_mutex);
+	SERIAL_CHECK_TRUE(once);
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// -------------------------------------------------------------------------------- home
+
+// Homing sends :hC#, publishes the coordinates BUSY while moving and ends at the home position
+// with MOUNT_HOME ON; a GOTO leaves home; an abort of a running homing sends the stop and no
+// later poll latches home again.
+static void home_and_abort_of_homing(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	// The simulator starts at home, which the first poll reports.
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(asi_coordinates(8, -30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	int mark = event_mark(&simulator);
+	unsigned int busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "hC"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, busy));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 90) < 1 / 3600.0);
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "hP"));
+	// Leave home, start homing again and abort it on the way.
+	SERIAL_CHECK_TRUE(asi_coordinates(8, -80, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, busy));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Q"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_HOME_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 90) > 1);
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "hC"));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// -------------------------------------------------------------------------------- site and time
+
+// The site goes out as LX200 west-positive longitude, a fresh driver reads it back as INDIGO
+// east-positive longitude; a refused latitude ends ALERT without the longitude write.
+static void site_is_written_and_read_back(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_site(-33.5, 350, INDIGO_OK_STATE));
+	static const char *west[] = { "St-33*30", "Sg010*00" };
+	SERIAL_CHECK_TRUE(in_order_since(&simulator, mark, west, ARRAY_SIZE(west)));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_site(48.5, 17.1, INDIGO_OK_STATE));
+	static const char *east[] = { "St+48*30", "Sg342*54" };
+	SERIAL_CHECK_TRUE(in_order_since(&simulator, mark, east, ARRAY_SIZE(east)));
+	stop_serial_driver(&asi_mount);
+	online = false;
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - 48.5) < .01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - 17.1) < .01);
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "St+10*00", "0"));
+	SERIAL_CHECK_TRUE(asi_site(10, 17.1, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "St+10*00"));
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, "Sg342*54"));
+	SERIAL_CHECK_TRUE(asi_site(48.5, 17.1, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Host time goes out as local date, UTC offset and local time and releases its switch. (UTC_TIME
+// writes are not covered: a poll overwrites the pending request, a known driver defect.)
+static void host_time_sets_the_controller_clock(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(1, prefixed_count_since(&simulator, mark, "SC"));
+	SERIAL_CHECK_EQ_INT(1, prefixed_count_since(&simulator, mark, "SG"));
+	SERIAL_CHECK_EQ_INT(1, prefixed_count_since(&simulator, mark, "SL"));
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
 	stop_external_serial_simulator(&simulator);
@@ -243,17 +1075,28 @@ static void guide_rate_buzzer_and_max_slew_speed(void) {
 	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
 	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
 	online = true;
-	SERIAL_CHECK_TRUE(set_number(&asi_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 70));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
-	const char *buzzer[] = { "OFF", "LOW", "HIGH" };
-	for (int i = 0; i < ARRAY_SIZE(buzzer); i++) {
-		SERIAL_CHECK_TRUE(set_switch(&asi_mount, ASI_BUZZER_PROPERTY_NAME, buzzer[i]));
-		SERIAL_CHECK_TRUE(wait_for_property_state(ASI_BUZZER_PROPERTY_NAME, INDIGO_OK_STATE));
+	// One rate for both axes, sent as a fraction of sidereal; both ends of the range.
+	const double guide_rates[] = { 70, 10, 90 };
+	const char *guide_commands[] = { "Rg0.7", "Rg0.1", "Rg0.9" };
+	for (int i = 0; i < ARRAY_SIZE(guide_rates); i++) {
+		int mark = event_mark(&simulator);
+		SERIAL_CHECK_TRUE(asi_number(&asi_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, guide_rates[i], INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, guide_commands[i]));
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - guide_rates[i]) < .01);
 	}
-	const char *speeds[] = { "LOW", "HIGH" };
+	const char *buzzer[] = { "OFF", "LOW", "HIGH" };
+	const char *buzzer_commands[] = { "SBu0", "SBu1", "SBu2" };
+	for (int i = 0; i < ARRAY_SIZE(buzzer); i++) {
+		int mark = event_mark(&simulator);
+		SERIAL_CHECK_TRUE(asi_switch(&asi_mount, ASI_BUZZER_PROPERTY_NAME, buzzer[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, buzzer_commands[i]));
+	}
+	const char *speeds[] = { "HIGH", "LOW" };
+	const char *speed_commands[] = { "SRl1440", "SRl720" };
 	for (int i = 0; i < ARRAY_SIZE(speeds); i++) {
-		SERIAL_CHECK_TRUE(set_switch(&asi_mount, ASI_MAX_SLEW_SPEED_PROPERTY_NAME, speeds[i]));
-		SERIAL_CHECK_TRUE(wait_for_property_state(ASI_MAX_SLEW_SPEED_PROPERTY_NAME, INDIGO_OK_STATE));
+		int mark = event_mark(&simulator);
+		SERIAL_CHECK_TRUE(asi_switch(&asi_mount, ASI_MAX_SLEW_SPEED_PROPERTY_NAME, speeds[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, speed_commands[i]));
 	}
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
@@ -270,11 +1113,26 @@ static void meridian_settings_round_trip(void) {
 	SERIAL_CHECK_TRUE(cached_switch(ASI_MERIDIAN_PROPERTY_NAME, "AUTO_FLIP_AT_LIMIT"));
 	SERIAL_CHECK_TRUE(!cached_switch(ASI_MERIDIAN_PROPERTY_NAME, "TRACK_PASSED_MERIDIAN"));
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT")) < .01);
-	SERIAL_CHECK_TRUE(set_number(&asi_mount, ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT", 10));
-	SERIAL_CHECK_TRUE(wait_for_property_state(ASI_MERIDIAN_LIMIT_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value(ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT", 10, .01));
-	SERIAL_CHECK_TRUE(set_switch(&asi_mount, ASI_MERIDIAN_PROPERTY_NAME, "TRACK_PASSED_MERIDIAN"));
-	SERIAL_CHECK_TRUE(wait_for_property_state(ASI_MERIDIAN_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The limit rewrite carries the current flip and track-past flags along.
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_number(&asi_mount, ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT", 10, INDIGO_OK_STATE));
+	static const char *limit[] = { "GTa", "STa10+10", "GTa" };
+	SERIAL_CHECK_TRUE(in_order_since(&simulator, mark, limit, ARRAY_SIZE(limit)));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT") - 10) < .01);
+	// Both ends of the range on the wire.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_number(&asi_mount, ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT", -15, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "STa10-15"));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_number(&asi_mount, ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT", 15, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "STa10+15"));
+	// The flag rewrite keeps the limit.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, ASI_MERIDIAN_PROPERTY_NAME, "TRACK_PASSED_MERIDIAN", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "STa11+15"));
+	SERIAL_CHECK_TRUE(cached_switch(ASI_MERIDIAN_PROPERTY_NAME, "AUTO_FLIP_AT_LIMIT"));
+	SERIAL_CHECK_TRUE(cached_switch(ASI_MERIDIAN_PROPERTY_NAME, "TRACK_PASSED_MERIDIAN"));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(ASI_MERIDIAN_LIMIT_PROPERTY_NAME, "LIMIT") - 15) < .01);
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
 	stop_external_serial_simulator(&simulator);
@@ -286,8 +1144,16 @@ static void alignment_reset_is_accepted(void) {
 	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
 	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
 	online = true;
-	SERIAL_CHECK_TRUE(set_switch(&asi_mount, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, INDIGO_OK_STATE));
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "NSC"));
+	// A momentary action switch returns to OFF.
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME));
+	// A refusal ends ALERT and the retry succeeds.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "NSC", "0"));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME, true, INDIGO_OK_STATE));
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
 	stop_external_serial_simulator(&simulator);
@@ -304,20 +1170,69 @@ static void guider_pulses_complete(void) {
 	assert_device_interface(INDIGO_INTERFACE_GUIDER);
 	const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
 	const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	const char *commands[] = { "Mgn0200", "Mgs0200", "Mge0200", "Mgw0200" };
+	// An AM mount takes pulses up to three seconds.
 	for (int i = 0; i < ARRAY_SIZE(items); i++) {
-		SERIAL_CHECK_TRUE(set_number(&asi_guider, properties[i], items[i], 200));
-		SERIAL_CHECK_TRUE(wait_for_property_state(properties[i], INDIGO_OK_STATE));
-		SERIAL_CHECK_TRUE(wait_for_number_item_value(properties[i], items[i], 0, .01));
+		indigo_item *item = find_cached_item(properties[i], items[i]);
+		SERIAL_CHECK_TRUE(item != NULL && item->number.max == 3000);
 	}
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		int mark = event_mark(&simulator);
+		SERIAL_CHECK_TRUE(asi_number(&asi_guider, properties[i], items[i], 200, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(properties[i], items[i], 0, .01));
+		SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, commands[i]));
+	}
+	// The longest pulse keeps its four digits.
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_number(&asi_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 3000, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Mgw3000"));
+	// A zero request completes at once and sends nothing.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_number(&asi_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, prefixed_count_since(&simulator, mark, "Mg"));
 cleanup:
 	if (online) { stop_serial_driver(&asi_guider); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A guider-only session does not poll the mount, and the guider keeps pulsing after the mount
+// that shares its connection disconnects.
+static void guider_survives_the_mount_and_does_not_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_up = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&asi_guider, &asi_mount, simulator.port));
+	driver_up = true;
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, 0, "GR"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, 0, "GU"));
+	// The mount joins, then leaves; the shared port stays open for the guider.
+	SERIAL_CHECK_TRUE(connect_serial_device(&asi_mount, NULL));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	int mark = event_mark(&simulator);
+	disconnect_serial_device(&asi_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, "Q"));
+	reset_simulator_context(&asi_guider);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(cached_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_number(&asi_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Mgs0300"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "GR"));
+cleanup:
+	if (driver_up) {
+		reset_simulator_context(&asi_guider);
+		enumerate_simulator_device();
+		stop_serial_driver(&asi_guider);
+	}
 	stop_external_serial_simulator(&simulator);
 }
 
 // -------------------------------------------------------------------------------- lifecycle
 
 // asi_detect_mount() only accepts an "AM<digit>" product string, so every other LX200 profile has
-// to be refused.
+// to be refused, and no mount property is left defined.
 static void foreign_mount_is_refused(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "meade"));
@@ -325,6 +1240,19 @@ static void foreign_mount_is_refused(void) {
 	SERIAL_CHECK_TRUE(!connect_serial_device(&asi_mount, simulator.port));
 	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(!context.connected);
+	static const char *mount_properties[] = {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME,
+		MOUNT_TRACKING_PROPERTY_NAME,
+		MOUNT_HOME_PROPERTY_NAME,
+		ASI_BUZZER_PROPERTY_NAME,
+		ASI_MAX_SLEW_SPEED_PROPERTY_NAME,
+		ASI_MERIDIAN_PROPERTY_NAME,
+		ASI_MOUNT_MODE_PROPERTY_NAME
+	};
+	assert_not_defined_properties(mount_properties, ARRAY_SIZE(mount_properties));
+	// Only the identification was attempted.
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, 0, "GV"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, 0, "GR"));
 cleanup:
 	tear_down_serial_driver(&asi_mount);
 	stop_external_serial_simulator(&simulator);
@@ -338,26 +1266,100 @@ static void reconnect_restores_the_session(void) {
 	online = true;
 	disconnect_serial_device(&asi_mount);
 	SERIAL_CHECK_TRUE(!context.connected);
+	// The connection-time properties are gone and no poll publishes anything any more.
+	static const char *connected_only[] = { ASI_BUZZER_PROPERTY_NAME, ASI_MAX_SLEW_SPEED_PROPERTY_NAME, ASI_MERIDIAN_PROPERTY_NAME, ASI_MERIDIAN_LIMIT_PROPERTY_NAME, ASI_MOUNT_MODE_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME };
+	for (int i = 0; i < ARRAY_SIZE(connected_only); i++) {
+		SERIAL_CHECK_TRUE(find_cached_property(connected_only[i]) == NULL);
+	}
+	int mark = event_mark(&simulator);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "GR"));
 	SERIAL_CHECK_TRUE(connect_serial_device(&asi_mount, simulator.port));
 	SERIAL_CHECK_TRUE(has_defined_property(ASI_BUZZER_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!strcmp(cached_text(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME), "AM5"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// SHUTDOWN is refused while a device is connected, and the connection survives it.
+static void shutdown_is_refused_while_connected(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_mount_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A request after the controller is gone ends ALERT (or the driver has already disconnected
+// every device), never a stale BUSY.
+static void transport_loss_is_reported(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	kill(simulator.pid, SIGTERM);
+	waitpid(simulator.pid, NULL, 0);
+	simulator.pid = 0;
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	indigo_change_switch_property_1(&simulator_test_client, asi_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	bool resolved = false;
+	for (int i = 0; i < 150 && !resolved; i++) {
+		resolved = !context.connected || property_state_revision(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE) > revision;
+		if (!resolved) {
+			indigo_usleep(100000);
+		}
+	}
+	SERIAL_CHECK_TRUE(resolved);
+	if (context.connected) {
+		indigo_property *tracking = find_cached_property(MOUNT_TRACKING_PROPERTY_NAME);
+		SERIAL_CHECK_TRUE(tracking != NULL && tracking->state != INDIGO_BUSY_STATE);
+	}
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
 	stop_external_serial_simulator(&simulator);
 }
 
 int main(void) {
+	simulator_test_client.update_property = asi_client_update;
+	simulator_test_client.send_message = asi_client_message;
 	const indigo_test_case tests[] = {
 		{ "metadata_and_visible_properties", metadata_and_visible_properties },
+		{ "read_only_properties_ignore_requests", read_only_properties_ignore_requests },
+		{ "firmware_1_2_3_hides_meridian_and_alignment_reset", firmware_1_2_3_hides_meridian_and_alignment_reset },
+		{ "connect_reads_the_controller_state", connect_reads_the_controller_state },
 		{ "slew_reports_busy_then_reaches_the_target", slew_reports_busy_then_reaches_the_target },
+		{ "goto_and_sync_send_exact_coordinate_strings", goto_and_sync_send_exact_coordinate_strings },
+		{ "goto_refusals_report_the_reason_and_recover", goto_refusals_report_the_reason_and_recover },
+		{ "sync_refusal_is_reported_and_not_retried", sync_refusal_is_reported_and_not_retried },
 		{ "abort_stops_a_running_slew", abort_stops_a_running_slew },
+		{ "abort_while_idle_keeps_position_and_tracking", abort_while_idle_keeps_position_and_tracking },
+		{ "disconnect_during_goto_sends_the_stop", disconnect_during_goto_sends_the_stop },
 		{ "tracking_rates_and_motion", tracking_rates_and_motion },
+		{ "manual_motion_directions_move_the_readback", manual_motion_directions_move_the_readback },
+		{ "meridian_stop_is_reported_once", meridian_stop_is_reported_once },
+		{ "home_and_abort_of_homing", home_and_abort_of_homing },
+		{ "site_is_written_and_read_back", site_is_written_and_read_back },
+		{ "host_time_sets_the_controller_clock", host_time_sets_the_controller_clock },
 		{ "guide_rate_buzzer_and_max_slew_speed", guide_rate_buzzer_and_max_slew_speed },
 		{ "meridian_settings_round_trip", meridian_settings_round_trip },
 		{ "alignment_reset_is_accepted", alignment_reset_is_accepted },
 		{ "guider_pulses_complete", guider_pulses_complete },
+		{ "guider_survives_the_mount_and_does_not_poll", guider_survives_the_mount_and_does_not_poll },
 		{ "foreign_mount_is_refused", foreign_mount_is_refused },
-		{ "reconnect_restores_the_session", reconnect_restores_the_session }
+		{ "reconnect_restores_the_session", reconnect_restores_the_session },
+		{ "shutdown_is_refused_while_connected", shutdown_is_refused_while_connected },
+		{ "transport_loss_is_reported", transport_loss_is_reported }
 	};
 	return indigo_run_tests("ZWO AM mount simulator integration tests", tests, ARRAY_SIZE(tests));
 }
