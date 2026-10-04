@@ -29,6 +29,17 @@
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
 #define RX_MAX 128
+#define MAX_FAULTS 8
+
+// A one-shot reply override: the next command that matches gets the reply instead of its own,
+// or nothing at all when the reply is NULL. A command ending with '*' matches every command that
+// starts with the rest of it.
+typedef struct {
+	char command[32];
+	char reply[64];
+	bool drop;
+	bool armed;
+} simulator_fault;
 
 typedef struct {
 	bool headless;
@@ -36,8 +47,10 @@ typedef struct {
 	const char *ready_file;
 	const char *malformed_reply_command;
 	const char *trace_file;
-	const char *fault_command;
-	const char *fault_reply;
+	simulator_fault faults[MAX_FAULTS];
+	bool standby;
+	unsigned correction_ra;
+	unsigned correction_dec;
 	// How many E replies after a GOTO carry F instead of the side of the mount. The manual says
 	// the first four do; 0 keeps the well behaved mount that always reports its side.
 	int introduction_readings;
@@ -66,7 +79,10 @@ static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
-	.introduction_readings = 0
+	.introduction_readings = 0,
+	.standby = false,
+	.correction_ra = 90,
+	.correction_dec = 90
 };
 
 static simulator_state state = {
@@ -102,9 +118,27 @@ static void usage(const char *name) {
 	printf("  --malformed-reply <cmd> Return a malformed reply for a protocol command\n");
 	printf("  --fault-reply <cmd> <r> Return one reply override for a protocol command\n");
 	printf("  --drop-reply <cmd>      Drop one reply for a protocol command\n");
+	printf("  --standby               Start in standby, with the motors off\n");
+	printf("  --correction <ra> <dec> Start with these correction speeds in percent\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("Test control: a line \"side E\" or \"side W\" in <ready-file>.control changes the side of the\n");
-	printf("mount the way the hand controller does; the file is consumed when it is read.\n");
+	printf("mount the way the hand controller does, \"fault <cmd> <reply>\" and \"drop <cmd>\" arm a one-shot\n");
+	printf("reply override like the options above; the file is consumed when it is read.\n");
+}
+
+static bool add_fault(const char *command, const char *reply) {
+	for (int i = 0; i < MAX_FAULTS; i++) {
+		simulator_fault *fault = options.faults + i;
+		if (!fault->armed) {
+			snprintf(fault->command, sizeof(fault->command), "%s", command);
+			snprintf(fault->reply, sizeof(fault->reply), "%s", reply == NULL ? "" : reply);
+			fault->drop = reply == NULL;
+			fault->armed = true;
+			return true;
+		}
+	}
+	fprintf(stderr, "too many reply overrides\n");
+	return false;
 }
 
 static bool parse_args(int argc, char *argv[]) {
@@ -146,15 +180,27 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "--fault-reply requires a command and reply\n");
 				return false;
 			}
-			options.fault_command = argv[++i];
-			options.fault_reply = argv[++i];
+			if (!add_fault(argv[i + 1], argv[i + 2])) {
+				return false;
+			}
+			i += 2;
 		} else if (!strcmp(argv[i], "--drop-reply")) {
 			if (++i == argc) {
 				fprintf(stderr, "--drop-reply requires a command\n");
 				return false;
 			}
-			options.fault_command = argv[i];
-			options.fault_reply = NULL;
+			if (!add_fault(argv[i], NULL)) {
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--standby")) {
+			options.standby = true;
+		} else if (!strcmp(argv[i], "--correction")) {
+			if (i + 2 >= argc) {
+				fprintf(stderr, "--correction requires two speeds\n");
+				return false;
+			}
+			options.correction_ra = (unsigned)atoi(argv[++i]);
+			options.correction_dec = (unsigned)atoi(argv[++i]);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -249,19 +295,23 @@ static void record_command(const unsigned char *command, size_t length) {
 }
 
 static bool inject_fault(const char *command) {
-	if (options.fault_command == NULL) {
-		return false;
+	for (int i = 0; i < MAX_FAULTS; i++) {
+		simulator_fault *fault = options.faults + i;
+		if (!fault->armed) {
+			continue;
+		}
+		size_t length = strlen(fault->command);
+		bool wildcard = length > 0 && fault->command[length - 1] == '*';
+		if ((wildcard && strncmp(command, fault->command, length - 1)) || (!wildcard && strcmp(command, fault->command))) {
+			continue;
+		}
+		fault->armed = false;
+		if (!fault->drop) {
+			send_line(fault->reply);
+		}
+		return true;
 	}
-	size_t length = strlen(options.fault_command);
-	bool wildcard = length > 0 && options.fault_command[length - 1] == '*';
-	if ((wildcard && strncmp(command, options.fault_command, length - 1)) || (!wildcard && strcmp(command, options.fault_command))) {
-		return false;
-	}
-	options.fault_command = NULL;
-	if (options.fault_reply != NULL) {
-		send_line(options.fault_reply);
-	}
-	return true;
+	return false;
 }
 
 // The side flag of the mount can be changed from the hand controller while a client is
@@ -282,6 +332,17 @@ static void read_control(void) {
 		line[strcspn(line, "\r\n")] = 0;
 		if (!strcmp(line, "side E") || !strcmp(line, "side W")) {
 			state.telescope_side = line[5];
+			serial_simulator_trace_line(options.trace, "control", line);
+		} else if (!strncmp(line, "fault ", 6)) {
+			char *command = line + 6;
+			char *reply = strchr(command, ' ');
+			if (reply != NULL) {
+				*reply++ = 0;
+				add_fault(command, reply);
+				serial_simulator_trace_line(options.trace, "control", line);
+			}
+		} else if (!strncmp(line, "drop ", 5)) {
+			add_fault(line + 5, NULL);
 			serial_simulator_trace_line(options.trace, "control", line);
 		}
 	}
@@ -510,6 +571,9 @@ int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
 		return 2;
 	}
+	state.motors_on = !options.standby;
+	state.correction_ra = options.correction_ra;
+	state.correction_dec = options.correction_dec;
 	char port[PATH_MAX];
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
 	if (serial_fd < 0) {

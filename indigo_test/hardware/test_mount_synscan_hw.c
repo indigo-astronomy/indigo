@@ -65,16 +65,16 @@ static char park_folder[] = "/tmp/indigo-synscan-hw-park-XXXXXX";
 #define GUIDER_DEVICE_NAME "Mount SynScan (guider)"
 #define AUX_DEVICE_NAME "Mount SynScan (aux)"
 
-#define MOUNT_POLARSCOPE_PROPERTY_NAME "POLARSCOPE"
+#define MOUNT_POLARSCOPE_PROPERTY_NAME "X_POLARSCOPE"
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME "BRIGHTNESS"
-#define MOUNT_USE_ENCODERS_PROPERTY_NAME "MOUNT_USE_ENCODERS"
+#define MOUNT_USE_ENCODERS_PROPERTY_NAME "X_MOUNT_USE_ENCODERS"
 #define MOUNT_USE_RA_ENCODER_ITEM_NAME "RA"
 #define MOUNT_USE_DEC_ENCODER_ITEM_NAME "DEC"
-#define MOUNT_AUTOHOME_PROPERTY_NAME "MOUNT_AUTOHOME"
+#define MOUNT_AUTOHOME_PROPERTY_NAME "X_MOUNT_AUTOHOME"
 #define MOUNT_AUTOHOME_ITEM_NAME "AUTOHOME"
-#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME "MOUNT_AUTOHOME_SETTINGS"
+#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME "DEC_OFFSET"
-#define MOUNT_OPERATING_MODE_PROPERTY_NAME "MOUNT_OPERATING_MODE"
+#define MOUNT_OPERATING_MODE_PROPERTY_NAME "X_MOUNT_OPERATING_MODE"
 
 // A network round trip plus the motor controller's own reply latency, with room for one retry.
 #define SHORT_TIMEOUT 15.0
@@ -685,6 +685,11 @@ static void synscan_reports_identity_and_capabilities(void) {
 	ASSERT_TRUE(property_defined(guider, GUIDER_GUIDE_RA_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(guider, GUIDER_RATE_PROPERTY_NAME));
+	// the driver-specific properties carry the X_ prefix, the old names are gone
+	static const char *old_names[] = { "POLARSCOPE", "MOUNT_USE_ENCODERS", "MOUNT_AUTOHOME", "MOUNT_AUTOHOME_SETTINGS", "MOUNT_OPERATING_MODE" };
+	for (int i = 0; i < ARRAY_SIZE(old_names); i++) {
+		ASSERT_FALSE(property_defined(mount, old_names[i]));
+	}
 }
 
 static void synscan_reads_coordinates_and_state(void) {

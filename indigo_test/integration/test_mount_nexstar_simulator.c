@@ -27,16 +27,18 @@
 #define MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE "build/integration/mount_nexstar_simulator"
 #endif
 
-#define NEXSTAR_MOUNT_DEVICE_NAME        "Mount Nexstar"
-#define NEXSTAR_GUIDER_DEVICE_NAME       "Mount Nexstar (guider)"
-#define NEXSTAR_GPS_DEVICE_NAME          "Mount Nexstar (gps)"
-#define TRACKING_MODE_PROPERTY_NAME      "TRACKING_MODE"
-#define TRACKING_EQ_ITEM_NAME            "EQ"
-#define TRACKING_AA_ITEM_NAME            "AA"
-#define TRACKING_AUTO_ITEM_NAME          "AUTO"
-#define COMMAND_GUIDE_RATE_PROPERTY_NAME "COMMAND_GUIDE_RATE"
-#define GUIDE_50_ITEM_NAME               "GUIDE_50"
-#define GUIDE_100_ITEM_NAME              "GUIDE_100"
+#define NEXSTAR_MOUNT_DEVICE_NAME            "Mount Nexstar"
+#define NEXSTAR_GUIDER_DEVICE_NAME           "Mount Nexstar (guider)"
+#define NEXSTAR_GPS_DEVICE_NAME              "Mount Nexstar (gps)"
+#define X_TRACKING_MODE_PROPERTY_NAME        "X_TRACKING_MODE"
+#define TRACKING_EQ_ITEM_NAME                "EQ"
+#define TRACKING_AA_ITEM_NAME                "AA"
+#define TRACKING_AUTO_ITEM_NAME              "AUTO"
+#define X_COMMAND_GUIDE_RATE_PROPERTY_NAME   "X_COMMAND_GUIDE_RATE"
+#define GUIDE_50_ITEM_NAME                   "GUIDE_50"
+#define GUIDE_100_ITEM_NAME                  "GUIDE_100"
+#define OLD_TRACKING_MODE_PROPERTY_NAME      "TRACKING_MODE"
+#define OLD_COMMAND_GUIDE_RATE_PROPERTY_NAME "COMMAND_GUIDE_RATE"
 
 static const simulator_driver_case nexstar_mount = {
 	"NexStar Mount",
@@ -979,9 +981,9 @@ static void nexstar_binary_firmware_hash_keeps_se_capabilities(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
 	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "NexStar 4/5 SE"));
 	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "NexStar  5.35"));
-	SERIAL_CHECK_TRUE(find_cached_item(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME) != NULL);
-	SERIAL_CHECK_TRUE(select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
-	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(find_cached_item(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME) != NULL);
+	SERIAL_CHECK_TRUE(select_mount_switch(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) == NULL);
 cleanup:
 	if (context.connected) {
@@ -1000,16 +1002,17 @@ static void nexstar_tracking_mode_is_exposed_for_altaz_models(void) {
 	SERIAL_CHECK_TRUE(start_nexstar_simulator_model(&simulator, "12"));
 	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-	assert_property_has_items(TRACKING_MODE_PROPERTY_NAME, tracking_mode_items, ARRAY_SIZE(tracking_mode_items));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, TRACKING_MODE_PROPERTY_NAME, TRACKING_AA_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(TRACKING_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_AA_ITEM_NAME, true));
+	assert_property_has_items(X_TRACKING_MODE_PROPERTY_NAME, tracking_mode_items, ARRAY_SIZE(tracking_mode_items));
+	SERIAL_CHECK_TRUE(find_cached_property(OLD_TRACKING_MODE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, X_TRACKING_MODE_PROPERTY_NAME, TRACKING_AA_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_TRACKING_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_AA_ITEM_NAME, true));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
-	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME));
-	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(select_mount_switch(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(select_mount_switch(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
 cleanup:
 	if (context.connected) {
@@ -1023,8 +1026,8 @@ static void nexstar_tracking_change_survives_poll_in_flight(void) {
 	SERIAL_CHECK_TRUE(start_nexstar_simulator_model(&simulator, "12"));
 	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-	SERIAL_CHECK_TRUE(select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
-	SERIAL_CHECK_TRUE(wait_for_switch_item_value(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(select_mount_switch(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME, true));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "54 02", 1));
@@ -1103,7 +1106,7 @@ static bool wait_for_results(int expected) {
 // Tracking is off and the poll asks the mount for its tracking mode on every pass; the next query is answered late,
 // after the hand controller started EQ tracking, so a request copied now races the poll's detection.
 static bool detect_tracking_started_on_hand_controller(const external_serial_simulator *simulator) {
-	if (!select_mount_switch(TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME) || !select_mount_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) || !wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) || !wait_for_simulator_event_count(simulator, "54 00", 1)) {
+	if (!select_mount_switch(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_EQ_ITEM_NAME) || !select_mount_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME) || !wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true) || !wait_for_simulator_event_count(simulator, "54 00", 1)) {
 		return false;
 	}
 	indigo_usleep(200000);
@@ -1118,11 +1121,11 @@ static void nexstar_tracking_mode_request_survives_detection(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(detect_tracking_started_on_hand_controller(&simulator));
-	unsigned int revision = property_revision(TRACKING_MODE_PROPERTY_NAME);
-	watch_results_of(nexstar_mount.device_name, TRACKING_MODE_PROPERTY_NAME);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state_after(TRACKING_MODE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
-	SERIAL_CHECK_TRUE(find_cached_item(TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME)->sw.value);
+	unsigned int revision = property_revision(X_TRACKING_MODE_PROPERTY_NAME);
+	watch_results_of(nexstar_mount.device_name, X_TRACKING_MODE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, X_TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(X_TRACKING_MODE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(find_cached_item(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME)->sw.value);
 	// AUTO switches tracking off, so the poll detects the mode again once tracking is started.
 	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "54 00", 1));
 	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54 02"));
@@ -1130,7 +1133,7 @@ static void nexstar_tracking_mode_request_survives_detection(void) {
 	// Only the handler published a result, the poll left the pending request alone.
 	indigo_usleep(300000);
 	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
-	SERIAL_CHECK_TRUE(find_cached_item(TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_item(X_TRACKING_MODE_PROPERTY_NAME, TRACKING_AUTO_ITEM_NAME)->sw.value);
 cleanup:
 	stop_watching();
 	if (context.connected) {
@@ -1386,10 +1389,11 @@ static void nexstar_celestron_guider_passes_serial_compliance_checks(void) {
 	assert_device_interface(INDIGO_INTERFACE_GUIDER);
 	assert_property_has_items(GUIDER_GUIDE_DEC_PROPERTY_NAME, guide_pulse_dec_items, ARRAY_SIZE(guide_pulse_dec_items));
 	assert_property_has_items(GUIDER_GUIDE_RA_PROPERTY_NAME, guide_pulse_ra_items, ARRAY_SIZE(guide_pulse_ra_items));
-	assert_property_has_items(COMMAND_GUIDE_RATE_PROPERTY_NAME, command_guide_rate_items, ARRAY_SIZE(command_guide_rate_items));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_guider.device_name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_100_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(COMMAND_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_switch_item_value(COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_100_ITEM_NAME, true));
+	assert_property_has_items(X_COMMAND_GUIDE_RATE_PROPERTY_NAME, command_guide_rate_items, ARRAY_SIZE(command_guide_rate_items));
+	SERIAL_CHECK_TRUE(find_cached_property(OLD_COMMAND_GUIDE_RATE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_guider.device_name, X_COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_100_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_COMMAND_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(X_COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDE_100_ITEM_NAME, true));
 	unsigned int revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 300));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
@@ -1539,7 +1543,7 @@ static bool capabilities_match(const char * const *arguments, bool guide_rate, b
 	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments));
 	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
 	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
-	printf("    %s %s %s: guide rate %d, side of pier %d, tracking mode %d\n", arguments[1], arguments[3], arguments[5], find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) != NULL, find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) != NULL, find_cached_property(TRACKING_MODE_PROPERTY_NAME) != NULL);
+	printf("    %s %s %s: guide rate %d, side of pier %d, tracking mode %d\n", arguments[1], arguments[3], arguments[5], find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) != NULL, find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) != NULL, find_cached_property(X_TRACKING_MODE_PROPERTY_NAME) != NULL);
 	SERIAL_CHECK_EQ_INT(guide_rate, find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) != NULL);
 	// The connect reads both axes once; a model without the command never gets it.
 	SERIAL_CHECK_EQ_INT(guide_rate ? 2 : 0, count_guide_rate_reads(&simulator));
@@ -1548,7 +1552,7 @@ static bool capabilities_match(const char * const *arguments, bool guide_rate, b
 	if (!side_of_pier) {
 		SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "70"));
 	}
-	SERIAL_CHECK_EQ_INT(tracking_mode, find_cached_property(TRACKING_MODE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(tracking_mode, find_cached_property(X_TRACKING_MODE_PROPERTY_NAME) != NULL);
 	ok = true;
 cleanup:
 	if (context.connected) {
@@ -1571,7 +1575,7 @@ static void nexstar_capability_contract_follows_model(void) {
 		MOUNT_PEC_TRAINING_PROPERTY_NAME,
 		MOUNT_STATE_PROPERTY_NAME,
 		MOUNT_RAW_COORDINATES_PROPERTY_NAME,
-		TRACKING_MODE_PROPERTY_NAME
+		X_TRACKING_MODE_PROPERTY_NAME
 	};
 	static const char *coordinates_set_items[] = { MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME };
 	external_serial_simulator simulator = { 0 };

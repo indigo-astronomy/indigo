@@ -34,16 +34,16 @@ static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 #define MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE "build/integration/mount_synscan_simulator"
 #endif
 
-#define MOUNT_POLARSCOPE_PROPERTY_NAME             "POLARSCOPE"
+#define MOUNT_POLARSCOPE_PROPERTY_NAME             "X_POLARSCOPE"
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME      "BRIGHTNESS"
-#define MOUNT_USE_ENCODERS_PROPERTY_NAME           "MOUNT_USE_ENCODERS"
+#define MOUNT_USE_ENCODERS_PROPERTY_NAME           "X_MOUNT_USE_ENCODERS"
 #define MOUNT_USE_RA_ENCODER_ITEM_NAME             "RA"
 #define MOUNT_USE_DEC_ENCODER_ITEM_NAME            "DEC"
-#define MOUNT_AUTOHOME_PROPERTY_NAME               "MOUNT_AUTOHOME"
+#define MOUNT_AUTOHOME_PROPERTY_NAME               "X_MOUNT_AUTOHOME"
 #define MOUNT_AUTOHOME_ITEM_NAME                   "AUTOHOME"
-#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "MOUNT_AUTOHOME_SETTINGS"
+#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME        "DEC_OFFSET"
-#define MOUNT_OPERATING_MODE_PROPERTY_NAME         "MOUNT_OPERATING_MODE"
+#define MOUNT_OPERATING_MODE_PROPERTY_NAME         "X_MOUNT_OPERATING_MODE"
 
 // The driver exposes a mount device and a guider device that share one
 // connection (the guider reuses the mount/master connection). Each logical
@@ -265,6 +265,11 @@ static void synscan_mount_passes_serial_compliance_checks(void) {
 	assert_property_has_items(MOUNT_AUTOHOME_PROPERTY_NAME, autohome_items, ARRAY_SIZE(autohome_items));
 	assert_property_has_items(MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME, autohome_settings_items, ARRAY_SIZE(autohome_settings_items));
 	assert_not_defined_property(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME);
+	// the driver-specific properties carry the X_ prefix, the old names are gone
+	assert_not_defined_property("POLARSCOPE");
+	assert_not_defined_property("MOUNT_USE_ENCODERS");
+	assert_not_defined_property("MOUNT_AUTOHOME");
+	assert_not_defined_property("MOUNT_AUTOHOME_SETTINGS");
 
 	double guide_rate = bounded_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50);
 	SERIAL_CHECK_TRUE(!isnan(guide_rate));
@@ -1949,6 +1954,8 @@ static void synscan_mount_defines_options_from_feature_bits(void) {
 	assert_not_defined_property(MOUNT_AUTOHOME_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_OPERATING_MODE_PROPERTY_NAME) != NULL);
 	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, find_cached_property(MOUNT_OPERATING_MODE_PROPERTY_NAME)->perm);
+	assert_not_defined_property("MOUNT_OPERATING_MODE");
+	assert_not_defined_property("MOUNT_USE_ENCODERS");
 
 cleanup:
 	if (driver_started) {

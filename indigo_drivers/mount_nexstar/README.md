@@ -33,9 +33,11 @@ To export the mount over the network one can use Nexbridge https://sourceforge.n
 
 This driver uses libnexstar library https://sourceforge.net/projects/libnexstar/
 
-A non-standard switch property "Tracking mode" is provided by this driver for fork mounts. It is set to "auto" by default and in such case driver tries to guess the mode from tracking mode reported by the hand controller. If the mount is not tracking, error is reported.
+A non-standard switch property "Tracking mode" (`X_TRACKING_MODE`, items `EQ`, `AA`, `AUTO`) is provided by this driver for fork mounts. It is set to "auto" by default and in such case driver tries to guess the mode from tracking mode reported by the hand controller. If the mount is not tracking, error is reported.
 
-A non-standard switch property "Guider rate" is provided by this driver.
+A non-standard switch property "Guide rate" (`X_COMMAND_GUIDE_RATE`, items `GUIDE_50`, `GUIDE_100`) is provided by this driver on the guider device.
+
+Up to version 47 these two properties were named `TRACKING_MODE` and `COMMAND_GUIDE_RATE`; clients using the old names must switch to the `X_` names.
 
 ## Testing
 
@@ -49,4 +51,4 @@ A non-standard switch property "Guider rate" is provided by this driver.
 2026-09-24 21:25 3.0.0.41 mac arm64 Celestron GPS (NexStar+ 5.35, detection only) 1/1 OK
 2026-09-24 21:57 3.0.0.42 mac arm64 Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) 12/12 OK
 2026-09-27 00:04 3.0.0.46 linux x64 simulator 23/23 OK
-2026-10-04 18:39 3.0.0.47 mac arm64 simulator 38/38 OK
+2026-10-04 19:36 3.0.0.48 mac arm64 simulator 38/38 OK

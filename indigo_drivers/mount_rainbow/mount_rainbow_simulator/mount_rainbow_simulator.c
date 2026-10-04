@@ -32,6 +32,10 @@ typedef struct {
 	long firmware;
 	// a mount left in the LX200 protocol (:AL#) answers no Rainbow command until :AR#
 	bool lx200_protocol;
+	// the state the mount is in when the driver connects
+	bool tracking;
+	char tracking_rate;
+	const char *guide_rate;
 } simulator_options;
 
 typedef enum {
@@ -67,6 +71,8 @@ typedef struct {
 	double target_alt;
 	double target_az;
 	bool rainbow_protocol;
+	// the completion (:MM0#) of the running slew is lost
+	bool lose_completion;
 } simulator_state;
 
 typedef struct {
@@ -128,6 +134,9 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --firmware <version>    Simulate a six-digit firmware version\n");
 	printf("  --lx200-protocol        Start in the LX200 protocol, Rainbow commands need :AR#\n");
+	printf("  --tracking              Start with the tracking on\n");
+	printf("  --track-rate <0-3>      Start with this tracking rate (sidereal, solar, lunar, guide speed)\n");
+	printf("  --guide-rate <D.D>      Start with this guide speed\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -144,6 +153,20 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--lx200-protocol")) {
 			options.lx200_protocol = true;
+		} else if (!strcmp(argv[i], "--tracking")) {
+			options.tracking = true;
+		} else if (!strcmp(argv[i], "--track-rate")) {
+			if (++i == argc || argv[i][0] < '0' || argv[i][0] > '3' || argv[i][1] != 0) {
+				fprintf(stderr, "--track-rate requires 0 to 3\n");
+				return false;
+			}
+			options.tracking_rate = argv[i][0];
+		} else if (!strcmp(argv[i], "--guide-rate")) {
+			if (++i == argc) {
+				fprintf(stderr, "--guide-rate requires a speed\n");
+				return false;
+			}
+			options.guide_rate = argv[i];
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -283,6 +306,7 @@ static void stop_all(void) {
 	serial_motion_stop(&state.ra);
 	serial_motion_stop(&state.dec);
 	state.operation = OPERATION_NONE;
+	state.lose_completion = false;
 	state.manual_ra = false;
 	state.manual_dec = false;
 }
@@ -296,6 +320,11 @@ static bool consume_injection(const char *command) {
 	}
 	if (!strcmp(injection.action, "DROP")) {
 		record_event("DROP", command);
+	} else if (!strcmp(injection.action, "NOCOMPLETE")) {
+		// the command is executed, only the completion of the slew it starts is lost
+		record_event("NOCOMPLETE", command);
+		state.lose_completion = true;
+		return false;
 	} else if (!strncmp(injection.action, "DELAY:", 6)) {
 		usleep((useconds_t)atoi(injection.action + 6) * 1000);
 		record_event("DELAY", command);
@@ -475,7 +504,12 @@ static void check_operation_completion(void) {
 			state.tracking = true;
 		}
 		state.operation = OPERATION_NONE;
-		write_response(":MM0#");
+		if (state.lose_completion) {
+			state.lose_completion = false;
+			record_event("LOST", ":MM0#");
+		} else {
+			write_response(":MM0#");
+		}
 	} else if (state.operation == OPERATION_PARK) {
 		state.parked = true;
 		state.tracking = false;
@@ -566,6 +600,13 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 	state.rainbow_protocol = !options.lx200_protocol;
+	state.tracking = options.tracking;
+	if (options.tracking_rate != 0) {
+		state.tracking_rate = options.tracking_rate;
+	}
+	if (options.guide_rate != NULL) {
+		snprintf(state.guide_rate, sizeof(state.guide_rate), "%s", options.guide_rate);
+	}
 	char port[PATH_MAX];
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
 	if (serial_fd < 0) {

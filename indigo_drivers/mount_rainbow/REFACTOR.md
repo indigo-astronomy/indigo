@@ -286,3 +286,66 @@ The MountSim suite was not run; its RST135 model may still use the old north/sou
 ### Final test summary for this change
 
 Simulated tests: **24 run, 24 passed** (second recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Mount testing rules coverage (3.0.0.23, 2026-10-04)
+
+The suite was checked against the "Mount Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (compliance scenarios
+and every row of the Mount Driver Test Standard, the Guider standard for pulse guiding). Every new assertion was first
+run against 3.0.0.22; the defects it found are fixed below.
+
+### Found defects and changes
+
+- `:MML#`, `:MMU#` and `:MME#` all reached the client as "Slew rejected or interrupted"; the message now names the
+  reason (target below / above the altitude limit, slew canceled at the mount).
+- An abort of a running GOTO or park published `MOUNT_EQUATORIAL_COORDINATES` OK; it now ends ALERT (an idle abort
+  stays OK).
+- A lost `:MM0#` left the GOTO or park BUSY for the 600 s deadline. A `:CL0#` after the poll reported the slew moving
+  (`:CL1#`) now ends it the same way; a `:CL0#` that was in flight when the slew started still does not.
+- `MOUNT_TRACKING` and `MOUNT_TRACK_RATE` were republished with every one-second poll; they are now published only when
+  the reported state changes.
+- A target just below 24 h was sent as `:Sr24:00:00.0#` and synced as `:Ck360.000...#`; it is 0 h / 0 degrees now.
+- The prime meridian read back from `:Gg+000*00'00#` was published as longitude 360; it is 0 now.
+- A disconnect during manual motion closed the port with the axis still moving; it sends `:Q#` first now and clears
+  the motion items.
+- A connection failed when any initialization reply was lost; only the identity (`:AV#`) is required now, a lost reply
+  to another query leaves just its property ALERT. The `:AV#` probe in open is repeated (3 attempts) after a missing
+  reply; a wrong reply is still refused.
+
+### Simulator
+
+`--tracking`, `--track-rate <0-3>` and `--guide-rate <D.D>` start the mount in a non-default state; the injection
+action `NOCOMPLETE` executes a slew command but loses its `:MM0#` (event `LOST`).
+
+### Scenario-to-test mapping (additions)
+
+| Rule | Test |
+| --- | --- |
+| Connect publishes device state, no clock/site/setting writes, no unknown commands, placeholder `:CT3#` keeps the rate, unchanged state not republished, external change published once, guide speed range ends on the wire | `rainbow_connect_publishes_device_state` |
+| Identity probe retry after a missing reply, lost initial readback marks only its property | `rainbow_connect_recovers_from_lost_initial_replies` |
+| Refused identity leaves no mount property defined | `rainbow_rejects_non_rainbow_transport` |
+| GOTO prerequisite sequence (rate, `:CtA#`, target, `:MS#`), stale `:CL0#` in flight, request while BUSY ignored and original target reached, tracking at the selected rate after the slew, targets as hour angles on both sides of the meridian, largest sub-unit, DEC pole clamp, 24 h / 360 degrees wrap for GOTO and SYNC, negative zero-degree DEC | `rainbow_goto_sequence_completion_and_encoding` |
+| Controller reason in the client message, coordinates keep the real position | `rainbow_goto_ack_prefix_and_error_recovery` |
+| Abort mid-slew: one stop, ALERT, two equal readbacks short of the target; idle abort keeps position and tracking; momentary item OFF | `rainbow_abort_stops_slew_once` |
+| Lost completion of GOTO and park | `rainbow_lost_slew_completion_ends_by_status` |
+| West/east RA direction, simultaneous axes, independent stop, reversal, disconnect stops motion, no stale motion after reconnect | `rainbow_manual_motion_axes_are_independent` |
+| Manual motion released when its client detaches | `rainbow_manual_motion_released_when_client_detaches` |
+| Park: coordinates BUSY while moving, tracking OFF when parked, GOTO/tracking/motion refused without a command showing the device state, unpark sends no motion, guard does not latch | `rainbow_park_slews_to_park_position` |
+| Park interrupted by disconnect: no stale BUSY, not reported failed | `rainbow_park_abort_and_pending_disconnect` |
+| One-item location change resends the other, prime meridian write and readback | `rainbow_location_partial_change_and_prime_meridian` |
+| Time zone before clock, host-time momentary item | `rainbow_writes_location_and_time` |
+| Legacy firmware: no axis stops, clock writes end ALERT without a command | `rainbow_uses_legacy_firmware_protocol` |
+| Guider: zero pulse, item reset, independent axes, same-axis replacement with one stop | `rainbow_guider_pulse_zero_replacement_and_axes` |
+| Guider with the mount: both connection orders, no pulse during a slew or while parked (accepted after unpark), SHUTDOWN refused, guider-only session does not poll, guider disconnect mid-pulse stops the axis | `rainbow_guider_shares_connection_with_mount` |
+
+### Not covered, with reason
+
+- Slew that never completes: the GOTO/park/home deadline is 600 s and not configurable, too long for an automated case.
+- A completed slew with lost `:MM0#` that ends between two polls (no `:CL1#` seen) still waits for the deadline.
+- Rejection of `:Sr#`/`:Sd#`: the protocol documents only the `1` acknowledgement; the driver does not read it.
+- A setting acknowledged but not kept (published with the device value and ALERT): the driver does not read settings
+  back in its handlers; the next poll shows the device value with OK (tracking, rate) and the guide speed is not polled.
+- RA drift with tracking off, guide pulse displacement and tracking restore after an RA pulse: the simulator does not
+  model the sky drift or the guide speed.
+- Pier side, hemisphere-dependent direction, alignment, PEC, `MOUNT_STATE`, custom rate, home/park-set position
+  workflows: not implemented by the driver (`MOUNT_PARK_SET` CURRENT is framework behaviour).
+- Network (`rainbow://`, TCP 7100) transport: opt-in socket tests are out of the normal integration target.

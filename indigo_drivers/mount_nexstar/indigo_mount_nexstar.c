@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002F
+#define DRIVER_VERSION       0x03000030
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -72,31 +72,31 @@
 
 #pragma mark - Property definitions
 
-#define TRACKING_MODE_PROPERTY         (PRIVATE_DATA->tracking_mode_property)
-#define TRACKING_EQ_ITEM               (TRACKING_MODE_PROPERTY->items + 0)
-#define TRACKING_AA_ITEM               (TRACKING_MODE_PROPERTY->items + 1)
-#define TRACKING_AUTO_ITEM             (TRACKING_MODE_PROPERTY->items + 2)
+#define X_TRACKING_MODE_PROPERTY       (PRIVATE_DATA->x_tracking_mode_property)
+#define TRACKING_EQ_ITEM               (X_TRACKING_MODE_PROPERTY->items + 0)
+#define TRACKING_AA_ITEM               (X_TRACKING_MODE_PROPERTY->items + 1)
+#define TRACKING_AUTO_ITEM             (X_TRACKING_MODE_PROPERTY->items + 2)
 
-#define TRACKING_MODE_PROPERTY_NAME    "TRACKING_MODE"
+#define X_TRACKING_MODE_PROPERTY_NAME  "X_TRACKING_MODE"
 #define TRACKING_EQ_ITEM_NAME          "EQ"
 #define TRACKING_AA_ITEM_NAME          "AA"
 #define TRACKING_AUTO_ITEM_NAME        "AUTO"
 
-#define COMMAND_GUIDE_RATE_PROPERTY      (PRIVATE_DATA->command_guide_rate_property)
-#define GUIDE_50_ITEM                    (COMMAND_GUIDE_RATE_PROPERTY->items + 0)
-#define GUIDE_100_ITEM                   (COMMAND_GUIDE_RATE_PROPERTY->items + 1)
+#define X_COMMAND_GUIDE_RATE_PROPERTY      (PRIVATE_DATA->x_command_guide_rate_property)
+#define GUIDE_50_ITEM                      (X_COMMAND_GUIDE_RATE_PROPERTY->items + 0)
+#define GUIDE_100_ITEM                     (X_COMMAND_GUIDE_RATE_PROPERTY->items + 1)
 
-#define COMMAND_GUIDE_RATE_PROPERTY_NAME "COMMAND_GUIDE_RATE"
-#define GUIDE_50_ITEM_NAME               "GUIDE_50"
-#define GUIDE_100_ITEM_NAME              "GUIDE_100"
+#define X_COMMAND_GUIDE_RATE_PROPERTY_NAME "X_COMMAND_GUIDE_RATE"
+#define GUIDE_50_ITEM_NAME                 "GUIDE_50"
+#define GUIDE_100_ITEM_NAME                "GUIDE_100"
 
 #pragma mark - Private data definition
 
 typedef struct {
 	int count;
 	indigo_uni_handle *handle;
-	indigo_property *tracking_mode_property;
-	indigo_property *command_guide_rate_property;
+	indigo_property *x_tracking_mode_property;
+	indigo_property *x_command_guide_rate_property;
 	//+ data
 	char response[18];
 	bool initialized;
@@ -282,12 +282,12 @@ static bool nexstar_configure_mount(indigo_device *device) {
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	}
 	if (PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT) {
-		TRACKING_MODE_PROPERTY->hidden = true;
-		indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+		X_TRACKING_MODE_PROPERTY->hidden = true;
+		indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 	} else {
-		TRACKING_MODE_PROPERTY->hidden = false;
+		X_TRACKING_MODE_PROPERTY->hidden = false;
 	}
-	TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	X_TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	int mode = tc_get_tracking_mode(dev_id);
 	if (mode < 0) {
 		indigo_sleep(0.1);
@@ -299,16 +299,16 @@ static bool nexstar_configure_mount(indigo_device *device) {
 	} else if (mode == TC_TRACK_OFF) {
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 		if (TRACKING_AUTO_ITEM->sw.value) {
-			TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			X_TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_send_message(device, ALERT_PROPERTY, "Tracking mode can't be detected");
 		}
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		if (TRACKING_AUTO_ITEM->sw.value) {
 			if (mode == TC_TRACK_ALT_AZ) {
-				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+				indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
 			} else {
-				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+				indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 			}
 			indigo_send_message(device, IDLE_PROPERTY, "Tracking mode detected");
 		}
@@ -403,13 +403,13 @@ static void nexstar_update_position(indigo_device *device) {
 					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			} else if (mode != TC_TRACK_OFF && MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
-				if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE && TRACKING_AUTO_ITEM->sw.value) {
+				if (!X_TRACKING_MODE_PROPERTY->hidden && X_TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE && TRACKING_AUTO_ITEM->sw.value) {
 					if (mode == TC_TRACK_ALT_AZ) {
-						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+						indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
 					} else {
-						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+						indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 					}
-					TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+					X_TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_send_message(device, IDLE_PROPERTY, "Tracking mode detected");
 				}
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
@@ -485,8 +485,8 @@ static void nexstar_update_position(indigo_device *device) {
 		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-		if (!TRACKING_MODE_PROPERTY->hidden) {
-			indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
+		if (!X_TRACKING_MODE_PROPERTY->hidden) {
+			indigo_update_property(device, X_TRACKING_MODE_PROPERTY, NULL);
 		}
 		if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
 			if (side_of_pier == 'W' && MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
@@ -1004,7 +1004,7 @@ static void mount_connection_handler(indigo_device *device) {
 			//- mount.on_connect
 		}
 		if (connection_result) {
-			indigo_define_property(device, TRACKING_MODE_PROPERTY, NULL);
+			indigo_define_property(device, X_TRACKING_MODE_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -1036,7 +1036,7 @@ static void mount_connection_handler(indigo_device *device) {
 			MOUNT_SET_HOST_TIME_PROPERTY,
 			MOUNT_UTC_TIME_PROPERTY,
 			MOUNT_TRACKING_PROPERTY,
-			TRACKING_MODE_PROPERTY,
+			X_TRACKING_MODE_PROPERTY,
 			MOUNT_GUIDE_RATE_PROPERTY,
 			MOUNT_SLEW_RATE_PROPERTY,
 			MOUNT_MOTION_DEC_PROPERTY,
@@ -1050,7 +1050,7 @@ static void mount_connection_handler(indigo_device *device) {
 				cancelled_properties[i]->state = INDIGO_OK_STATE;
 			}
 		}
-		indigo_delete_property(device, TRACKING_MODE_PROPERTY, NULL);
+		indigo_delete_property(device, X_TRACKING_MODE_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			nexstar_close(device);
 		}
@@ -1130,8 +1130,8 @@ static void mount_tracking_handler(indigo_device *device) {
 	bool on = indigo_get_switch_target(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM_NAME);
 	if (nexstar_set_tracking(device, on, TRACKING_EQ_ITEM->sw.value, TRACKING_AA_ITEM->sw.value)) {
 		indigo_apply_switch_targets(MOUNT_TRACKING_PROPERTY);
-		if (TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
-			TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (X_TRACKING_MODE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			X_TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
 		int tracking_mode = nexstar_get_tracking_mode(device);
@@ -1140,37 +1140,37 @@ static void mount_tracking_handler(indigo_device *device) {
 		}
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
+	indigo_update_property(device, X_TRACKING_MODE_PROPERTY, NULL);
 	//- mount.MOUNT_TRACKING.on_change
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
 
-static void mount_tracking_mode_handler(indigo_device *device) {
-	TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-	//+ mount.TRACKING_MODE.on_change
-	if (IS_CONNECTED && !TRACKING_MODE_PROPERTY->hidden) {
+static void mount_x_tracking_mode_handler(indigo_device *device) {
+	X_TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.X_TRACKING_MODE.on_change
+	if (IS_CONNECTED && !X_TRACKING_MODE_PROPERTY->hidden) {
 		// The status poll detects the mode while tracking is off and may overwrite the value between the copy of
 		// the request and this handler, the targets keep the requested mode. AUTO switches tracking off, so the
 		// poll detects the mode again. On failure the switch shows the mode the mount reports.
-		bool automatic = indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_AUTO_ITEM_NAME);
-		if (nexstar_set_tracking(device, !automatic && MOUNT_TRACKING_ON_ITEM->sw.value, indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM_NAME), indigo_get_switch_target(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM_NAME))) {
-			indigo_apply_switch_targets(TRACKING_MODE_PROPERTY);
+		bool automatic = indigo_get_switch_target(X_TRACKING_MODE_PROPERTY, TRACKING_AUTO_ITEM_NAME);
+		if (nexstar_set_tracking(device, !automatic && MOUNT_TRACKING_ON_ITEM->sw.value, indigo_get_switch_target(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM_NAME), indigo_get_switch_target(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM_NAME))) {
+			indigo_apply_switch_targets(X_TRACKING_MODE_PROPERTY);
 			if (automatic) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			}
 		} else {
 			int tracking_mode = nexstar_get_tracking_mode(device);
 			if (tracking_mode == TC_TRACK_ALT_AZ) {
-				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+				indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
 			} else if (tracking_mode > TC_TRACK_ALT_AZ) {
-				indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+				indigo_set_switch(X_TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 			}
-			TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			X_TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
-	//- mount.TRACKING_MODE.on_change
-	indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
+	//- mount.X_TRACKING_MODE.on_change
+	indigo_update_property(device, X_TRACKING_MODE_PROPERTY, NULL);
 }
 
 static void mount_guide_rate_handler(indigo_device *device) {
@@ -1354,8 +1354,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_TRACKING_PROPERTY->hidden = false;
-		TRACKING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, TRACKING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Tracking mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (TRACKING_MODE_PROPERTY == NULL) {
+		X_TRACKING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_TRACKING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Tracking mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_TRACKING_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(TRACKING_EQ_ITEM, TRACKING_EQ_ITEM_NAME, "EQ mode", false);
@@ -1376,7 +1376,7 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		INDIGO_DEFINE_MATCHING_PROPERTY(TRACKING_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_TRACKING_MODE_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
@@ -1407,8 +1407,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_TRACKING_PROPERTY, "Mount is parked!");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACKING_PROPERTY, mount_tracking_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(TRACKING_MODE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(TRACKING_MODE_PROPERTY, mount_tracking_mode_handler);
+	} else if (indigo_property_match_changeable(X_TRACKING_MODE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_TRACKING_MODE_PROPERTY, mount_x_tracking_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_GUIDE_RATE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GUIDE_RATE_PROPERTY, mount_guide_rate_handler);
@@ -1437,7 +1437,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, TRACKING_MODE_PROPERTY);
+			indigo_save_property(device, NULL, X_TRACKING_MODE_PROPERTY);
 		}
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -1448,7 +1448,7 @@ static indigo_result mount_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		mount_connection_handler(device);
 	}
-	indigo_release_property(TRACKING_MODE_PROPERTY);
+	indigo_release_property(X_TRACKING_MODE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
@@ -1479,7 +1479,7 @@ static void guider_connection_handler(indigo_device *device) {
 			//- guider.on_connect
 		}
 		if (connection_result) {
-			indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+			indigo_define_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -1501,14 +1501,14 @@ static void guider_connection_handler(indigo_device *device) {
 		indigo_property *cancelled_properties[] = {
 			GUIDER_GUIDE_RA_PROPERTY,
 			GUIDER_GUIDE_DEC_PROPERTY,
-			COMMAND_GUIDE_RATE_PROPERTY,
+			X_COMMAND_GUIDE_RATE_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
 			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
 				cancelled_properties[i]->state = INDIGO_OK_STATE;
 			}
 		}
-		indigo_delete_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+		indigo_delete_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			nexstar_close(device);
 		}
@@ -1564,32 +1564,32 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	//- guider.GUIDER_GUIDE_DEC.on_change
 }
 
-static void guider_command_guide_rate_handler(indigo_device *device) {
-	COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	//+ guider.COMMAND_GUIDE_RATE.on_change
+static void guider_x_command_guide_rate_handler(indigo_device *device) {
+	X_COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ guider.X_COMMAND_GUIDE_RATE.on_change
 	if (GUIDE_50_ITEM->sw.value) {
 		PRIVATE_DATA->guide_rate = 1;
 	} else if (GUIDE_100_ITEM->sw.value) {
 		PRIVATE_DATA->guide_rate = 2;
 	}
-	COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	X_COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER && PRIVATE_DATA->guide_rate == 1) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 1x sidereal; physical correction unverified).");
+		indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 1x sidereal; physical correction unverified).");
 	} else if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER && PRIVATE_DATA->guide_rate == 2) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 8x sidereal; physical correction unverified).");
+		indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 8x sidereal; physical correction unverified).");
 	} else if (NEXSTAR_MODERN_EQ_MODEL(PRIVATE_DATA->model_id) && PRIVATE_DATA->guide_rate == 1) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 2x sidereal; physical correction unverified).");
+		indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 1 selected (manual nominal 2x sidereal; physical correction unverified).");
 	} else if (NEXSTAR_MODERN_EQ_MODEL(PRIVATE_DATA->model_id) && PRIVATE_DATA->guide_rate == 2) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 4x sidereal; physical correction unverified).");
+		indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Fixed HC rate 2 selected (manual nominal 4x sidereal; physical correction unverified).");
 	} else if (PRIVATE_DATA->guide_rate == 1) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
+		indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
 	} else if (PRIVATE_DATA->guide_rate == 2) {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
+		indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
 	} else {
-		indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
+		indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
 	}
-	//- guider.COMMAND_GUIDE_RATE.on_change
-	indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+	//- guider.X_COMMAND_GUIDE_RATE.on_change
+	indigo_update_property(device, X_COMMAND_GUIDE_RATE_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (guider)
@@ -1604,8 +1604,8 @@ static indigo_result guider_attach(indigo_device *device) {
 		//- guider.on_attach
 		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
-		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (COMMAND_GUIDE_RATE_PROPERTY == NULL) {
+		X_COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_COMMAND_GUIDE_RATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(GUIDE_50_ITEM, GUIDE_50_ITEM_NAME, "50% sidereal", true);
@@ -1618,7 +1618,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		INDIGO_DEFINE_MATCHING_PROPERTY(COMMAND_GUIDE_RATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_COMMAND_GUIDE_RATE_PROPERTY);
 	}
 	return indigo_guider_enumerate_properties(device, client, property);
 }
@@ -1641,8 +1641,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		//- guider.GUIDER_GUIDE_DEC.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE_ANYTIME(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(COMMAND_GUIDE_RATE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(COMMAND_GUIDE_RATE_PROPERTY, guider_command_guide_rate_handler);
+	} else if (indigo_property_match_changeable(X_COMMAND_GUIDE_RATE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_COMMAND_GUIDE_RATE_PROPERTY, guider_x_command_guide_rate_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
@@ -1653,7 +1653,7 @@ static indigo_result guider_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		guider_connection_handler(device);
 	}
-	indigo_release_property(COMMAND_GUIDE_RATE_PROPERTY);
+	indigo_release_property(X_COMMAND_GUIDE_RATE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }

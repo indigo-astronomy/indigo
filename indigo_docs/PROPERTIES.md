@@ -1363,7 +1363,7 @@ Source: `indigo_drivers/mount_asi/indigo_mount_asi.c`.
 
 ### mount_ioptron
 
-Custom properties: `MOUNT_MERIDIAN_HANDLING`, `MOUNT_MERIDIAN_LIMIT`, `PROTOCOL_VERSION`.
+Custom properties: `X_MOUNT_MERIDIAN_HANDLING`, `X_MOUNT_MERIDIAN_LIMIT`, `X_PROTOCOL_VERSION`.
 
 Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_CUSTOM_TRACKING_RATE`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
@@ -1403,11 +1403,11 @@ Source: `indigo_drivers/mount_mxhd/indigo_mount_mxhd.c`.
 
 ### mount_nexstar
 
-Custom properties: `COMMAND_GUIDE_RATE`, `TRACKING_MODE`.
+Custom properties: `X_COMMAND_GUIDE_RATE`, `X_TRACKING_MODE`.
 
-On Advanced VX, `COMMAND_GUIDE_RATE` retains its legacy `GUIDE_50` and `GUIDE_100` item names for client compatibility, while its displayed item labels describe the actual fixed hand-control indices 1 and 2 (manual nominal 2x and 4x sidereal). These command rates are separate from `MOUNT_GUIDE_RATE`, which configures the ST4 autoguide percentage.
+On Advanced VX, `X_COMMAND_GUIDE_RATE` retains its legacy `GUIDE_50` and `GUIDE_100` item names for client compatibility, while its displayed item labels describe the actual fixed hand-control indices 1 and 2 (manual nominal 2x and 4x sidereal). These command rates are separate from `MOUNT_GUIDE_RATE`, which configures the ST4 autoguide percentage.
 
-On SynScan V4 hand controllers, `COMMAND_GUIDE_RATE` selects fixed HC motion indices 1 and 2 (manual nominal 1x and 8x sidereal). `MOUNT_GUIDE_RATE` is hidden because SynScan serial protocol 3.3 does not define the Celestron ST4-rate read/write commands used by that property.
+On SynScan V4 hand controllers, `X_COMMAND_GUIDE_RATE` selects fixed HC motion indices 1 and 2 (manual nominal 1x and 8x sidereal). `MOUNT_GUIDE_RATE` is hidden because SynScan serial protocol 3.3 does not define the Celestron ST4-rate read/write commands used by that property.
 
 Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_ABORT_MOTION`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET` (CURRENT reads mechanical axes from the HC and stores the inverse park-command encoding, including signed DEC), `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
@@ -1445,7 +1445,7 @@ Source: `indigo_drivers/mount_starbook/indigo_mount_starbook.driver`.
 
 ### mount_synscan
 
-Custom properties: `MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE`, `MOUNT_USE_ENCODERS`, `POLARSCOPE`.
+Custom properties: `X_MOUNT_AUTOHOME`, `X_MOUNT_AUTOHOME_SETTINGS`, `X_MOUNT_OPERATING_MODE`, `X_MOUNT_USE_ENCODERS`, `X_POLARSCOPE`.
 
 Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_ALIGNMENT_DELETE_POINTS`, `MOUNT_ALIGNMENT_MODE`, `MOUNT_ALIGNMENT_SELECT_POINTS`, `MOUNT_EPOCH`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_POSITION`, `MOUNT_HOME_SET`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `MOUNT_RAW_COORDINATES`, `MOUNT_SIDE_OF_PIER`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`.
 
