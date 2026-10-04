@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -1836,11 +1836,8 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		return;
 	}
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
-	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_OK_STATE, NULL);
-	} else if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
+	// A sync never reaches this handler, so a request that did not claim the slew is refused.
+	if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	} else {
 		long ra_target = 0;
@@ -1937,6 +1934,26 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	} else {
 		ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, NULL);
 		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+		// Manual motion only interrupts tracking, the switch stays on, so RA goes back to the tracking rate.
+		// If it cannot, the switch is turned off to show the axis is not tracking.
+		if (MOUNT_TRACKING_ON_ITEM->sw.value && !PRIVATE_DATA->parked) {
+			if (ok) {
+				PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+				PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+				ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
+			}
+			if (ok) {
+				PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
+			} else {
+				PRIVATE_DATA->current_tracking_rate = 0;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				// A pending request owns the state, its handler reads the target and publishes the result
+				if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Failed to resume tracking after manual motion.");
+				}
+			}
+		}
 	}
 	if (!ok) {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2169,8 +2186,10 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
 		//+ mount.MOUNT_ALIGNMENT_MODE.on_attach
-		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+		// Select before hiding: the switch clears only the visible items, and a CONTROLLER item left on
+		// behind the count bypasses the alignment model.
 		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
+		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
 		//- mount.MOUNT_ALIGNMENT_MODE.on_attach
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
 		//+ mount.MOUNT_ALIGNMENT_SELECT_POINTS.on_attach
@@ -2262,6 +2281,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
 		//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
+		// The controller has no sync of its own, a sync is an alignment point of the framework's model;
+		// the parked mount guard above already refused it on a parked mount.
+		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+			return indigo_mount_change_property(device, client, property);
+		}
 		// Claim the slew before the poll can republish OK over the accepted BUSY state.
 		if (!MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 			PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;

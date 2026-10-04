@@ -752,6 +752,150 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Returns the line of the last command in the simulator's command log that starts with `prefix`,
+// -1 when there is none and -2 when the log cannot be read.
+static int last_synscan_command_line(external_serial_simulator *simulator, const char *prefix) {
+	char path[PATH_MAX];
+	int last = -1, line_number = 0;
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -2;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return -2;
+	}
+	char line[256];
+	while (fgets(line, sizeof(line), file)) {
+		char *command = strchr(line, '\t');
+		if (command == NULL) {
+			continue;
+		}
+		if (!strncmp(command + 1, prefix, strlen(prefix))) {
+			last = line_number;
+		}
+		line_number++;
+	}
+	fclose(file);
+	return last;
+}
+
+// Forum report (A1 v6 beta, EQ8-R Pro): releasing an E/W arrow stopped the RA axis and left it
+// stopped, while the tracking switch still said on. The release has to put RA back on the tracking
+// rate: the axis is started again after it was stopped, at the tracking step period.
+static void synscan_mount_resumes_tracking_after_ra_motion(void) {
+	external_serial_simulator simulator = { 0 };
+	char tracking_period[32] = "", resumed_period[32] = "";
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", tracking_period, sizeof(tracking_period), NULL) > 0);
+
+	for (int pass = 0; pass < 2; pass++) {
+		const char *item = pass == 0 ? MOUNT_MOTION_WEST_ITEM_NAME : MOUNT_MOTION_EAST_ITEM_NAME;
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, item, true));
+		// the slew light stays BUSY for as long as the manual motion runs
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, item, false));
+		// the release handler publishes the idle slew light last, after it has restarted tracking
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+		int stop = last_synscan_command_line(&simulator, ":K1");
+		int start = last_synscan_command_line(&simulator, ":J1");
+		SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", resumed_period, sizeof(resumed_period), NULL) > 0);
+		printf("    %s release: last stop at line %d, last start at line %d, period %s (tracking %s)\n", item, stop, start, resumed_period, tracking_period);
+		SERIAL_CHECK_TRUE(stop >= 0);
+		SERIAL_CHECK_TRUE(start > stop);
+		SERIAL_CHECK_TRUE(!strcmp(tracking_period, resumed_period));
+		SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME)->light.value);
+	}
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static int synscan_alignment_point_count(void) {
+	indigo_property *property = find_cached_property(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
+	return property == NULL ? 0 : property->count;
+}
+
+static bool wait_for_synscan_alignment_point_count(int count) {
+	for (int i = 0; i < 100; i++) {
+		if (synscan_alignment_point_count() == count) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// Forum report (A1 v6 beta, EQ8-R Pro): a manual sync copied the coordinates and added no alignment
+// point, so the next poll recomputed them from the raw position and the sync was gone. The controller
+// has no sync of its own, the sync has to become a point of the alignment model and hold across polls.
+static void synscan_mount_sync_adds_alignment_point(void) {
+	const char *coordinate_items[] = {
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
+	};
+	double coordinate_values[2];
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	double raw_ra = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
+	SERIAL_CHECK_TRUE(!isnan(ra) && !isnan(dec) && !isnan(raw_ra));
+	// far enough from the raw position that a recomputation without the point cannot pass for the synced one
+	coordinate_values[0] = fmod(ra + 1, 24);
+	coordinate_values[1] = dec > 0 ? dec - 5 : dec + 5;
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, coordinate_values));
+	SERIAL_CHECK_TRUE(wait_for_synscan_alignment_point_count(1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// tracking is off, so the raw RA follows the sidereal time; a new raw RA proves a poll after the sync
+	raw_ra = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
+	bool polled = false;
+	for (int i = 0; i < 100 && !polled; i++) {
+		indigo_usleep(100000);
+		polled = fabs(cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME) - raw_ra) > 1e-6;
+	}
+	SERIAL_CHECK_TRUE(polled);
+	double synced_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double synced_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	double ra_error = fabs(synced_ra - coordinate_values[0]);
+	if (ra_error > 12) {
+		ra_error = 24 - ra_error;
+	}
+	printf("    synced to %.4f h %.4f deg, after the next poll %.4f h %.4f deg\n", coordinate_values[0], coordinate_values[1], synced_ra, synced_dec);
+	SERIAL_CHECK_TRUE(ra_error < 0.01);
+	SERIAL_CHECK_TRUE(fabs(synced_dec - coordinate_values[1]) < 0.01);
+
+cleanup:
+	if (context.connected) {
+		// the points are saved in the private configuration folder, leave none behind for the other cases
+		if (synscan_alignment_point_count() > 0) {
+			indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true);
+			ASSERT_TRUE(wait_for_synscan_alignment_point_count(0));
+		}
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void synscan_aux_passes_shutter_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -1212,6 +1356,8 @@ int main(void) {
 		{ "synscan_mount_hides_autohome_without_both_home_indexers", synscan_mount_hides_autohome_without_both_home_indexers },
 		{ "synscan_mount_uses_aux_encoders_for_coordinates", synscan_mount_uses_aux_encoders_for_coordinates },
 		{ "synscan_mount_tracks_after_coordinate_slew_when_requested", synscan_mount_tracks_after_coordinate_slew_when_requested },
+		{ "synscan_mount_resumes_tracking_after_ra_motion", synscan_mount_resumes_tracking_after_ra_motion },
+		{ "synscan_mount_sync_adds_alignment_point", synscan_mount_sync_adds_alignment_point },
 		{ "synscan_mount_reports_home_state_after_home", synscan_mount_reports_home_state_after_home },
 		{ "synscan_mount_stops_tracking_after_home", synscan_mount_stops_tracking_after_home },
 		{ "synscan_mount_autohome_finds_home_index", synscan_mount_autohome_finds_home_index },

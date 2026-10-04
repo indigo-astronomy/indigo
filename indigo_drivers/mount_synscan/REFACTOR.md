@@ -1763,3 +1763,20 @@ Regression tests in `integration/test_mount_synscan_simulator.c`:
 All four failed against the version 11 driver and pass with version 12 on Linux x64; recorded run `tools/run_driver_test.py mount_synscan` 24/24 on Linux x64. macOS and hardware were not run for this change.
 
 Final test summary for this change: simulated tests run 24, passed 24 (Linux x64); hardware tests run 0, passed 0.
+
+## Manual motion and sync, forum report (2026-10-04)
+
+Version 14. Reported on the INDIGO forum against A1 v6 beta with an EQ8-R Pro. Both reported defects confirmed in the source, the third found while reproducing the second.
+
+- SYNSCAN-D03, releasing an E/W arrow stopped tracking. The stop branch of `MOUNT_MOTION_RA` stopped the RA axis and set it idle, while `MOUNT_TRACKING` stayed ON, so the client showed tracking on a mount that was not tracking (Dec does not track, N/S was unaffected). The stop branch now puts RA back on the tracking rate (`synscan_tracking_rate()`, as the tracking handler does) when tracking is on and the mount is not parked; if the stop or the restart fails, tracking is switched OFF with ALERT, or left to a pending tracking request to publish. The release a client detach issues (`indigo_mount_commit_motion_client()`) passes through the same handler. Abort keeps clearing tracking on purpose (`synscan_clear_tracking_state()`, as before). The RA guide pulse already returns to the tracking rate; its failure path still leaves the tracking switch ON with the axis idle, which is not changed here.
+- SYNSCAN-D04, a manual sync added no alignment point and was undone by the next poll. Every `MOUNT_EQUATORIAL_COORDINATES` change went to the driver's handler, which for a sync only copied the target to the value; the next poll recomputed the coordinates from the raw position. A sync now goes to `indigo_mount_change_property()` from `on_change_request` unless the alignment mode is CONTROLLER (the generated parked guard refuses it on a parked mount first), as in mount_simulator and the 2.0 driver. The handler's sync branch is gone; the slew claim still excludes a sync.
+- SYNSCAN-D05, the alignment model was never applied. `on_attach` limited `MOUNT_ALIGNMENT_MODE` to two items before selecting NEAREST_POINT; `indigo_set_switch()` clears only the visible items, so the hidden CONTROLLER item stayed on and `indigo_raw_to_translated()` / `indigo_translated_to_raw()` passed the raw coordinates through. Introduced by the 3.0 refactoring, which swapped the order of the 2.0 driver. The switch is set before the count again.
+
+Regression tests in `integration/test_mount_synscan_simulator.c`:
+
+- `synscan_mount_resumes_tracking_after_ra_motion`: tracking on, then W and E motion started (slew light BUSY) and released (slew light IDLE, published last by the release handler). After each release the simulator's command log has a `:J1` after the last `:K1`, the last `:I1` is the tracking period, and tracking is ON/OK with the tracking light OK.
+- `synscan_mount_sync_adds_alignment_point`: a sync 1 h and 5 degrees away from the current position adds one alignment point, and after a poll (shown by a new raw RA, tracking is off) the coordinates are still the synced ones. The points are deleted at the end, they are saved in the private configuration folder.
+
+The first recorded run (motion and sync routing fixed, alignment mode not yet) was 26/25 Failed: `synscan_mount_sync_adds_alignment_point` saw no alignment point, which exposed D05. The tracking test was not run against version 13. Recorded run after the D05 fix, `tools/run_driver_test.py mount_synscan`: 26/26 on macOS arm64. With the model active, connecting with a saved `.alignment` file shows the framework's `indigo_mount_load_alignment_points()` updating `MOUNT_ALIGNMENT_SELECT_POINTS`/`DELETE_POINTS` before they are defined (diagnostic only). Linux and hardware were not run for this change.
+
+Final test summary for this change: simulated tests run 26, passed 26 (macOS arm64); hardware tests run 0, passed 0.

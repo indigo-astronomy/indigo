@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	serial {
 		configurable_speed = true;
 	}
@@ -1603,8 +1603,10 @@ driver synscan {
 		}
 		inherited MOUNT_ALIGNMENT_MODE {
 			on_attach {
-				MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+				// Select before hiding: the switch clears only the visible items, and a CONTROLLER item left on
+				// behind the count bypasses the alignment model.
 				indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
+				MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
 			}
 		}
 		inherited MOUNT_ALIGNMENT_SELECT_POINTS {
@@ -1681,17 +1683,19 @@ driver synscan {
 		inherited MOUNT_EQUATORIAL_COORDINATES {
 			preserve_values = true;
 			on_change_request {
+				// The controller has no sync of its own, a sync is an alignment point of the framework's model;
+				// the parked mount guard above already refused it on a parked mount.
+				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+					return indigo_mount_change_property(device, client, property);
+				}
 				// Claim the slew before the poll can republish OK over the accepted BUSY state.
 				if (!MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
 				}
 			}
 			on_change {
-				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_OK_STATE, NULL);
-				} else if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
+				// A sync never reaches this handler, so a request that did not claim the slew is refused.
+				if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
 					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				} else {
 					long ra_target = 0;
@@ -1778,6 +1782,26 @@ driver synscan {
 				} else {
 					ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, NULL);
 					PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+					// Manual motion only interrupts tracking, the switch stays on, so RA goes back to the tracking rate.
+					// If it cannot, the switch is turned off to show the axis is not tracking.
+					if (MOUNT_TRACKING_ON_ITEM->sw.value && !PRIVATE_DATA->parked) {
+						if (ok) {
+							PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+							PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+							ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
+						}
+						if (ok) {
+							PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
+						} else {
+							PRIVATE_DATA->current_tracking_rate = 0;
+							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+							// A pending request owns the state, its handler reads the target and publishes the result
+							if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+								MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+								indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Failed to resume tracking after manual motion.");
+							}
+						}
+					}
 				}
 				if (!ok) {
 					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
