@@ -22,7 +22,7 @@ driver rainbow {
 	label = "RainbowAstro Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, generator migration by OpenAI Codex";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 22;
+	version = 23;
 	serial {
 	}
 	include {
@@ -39,6 +39,8 @@ driver rainbow {
 		unsigned long version;
 		bool reader_running;
 		bool goto_active;
+		// the status poll reported the running GOTO or park moving (:CL1#), so its :CL0# ends it if :MM0# is lost
+		bool goto_moving;
 		// a park is a slew to the park position that ends with :MM0#, tracking is switched off then
 		bool parking;
 		// shared with the guider, which refuses pulses on a parked mount
@@ -139,7 +141,13 @@ driver rainbow {
 			char response[128];
 			bool result = rainbow_write(device, network ? ":AW#:AR#" : ":AU#:AR#");
 			indigo_usleep(20000);
-			result = result && indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && rainbow_write(device, ":AV#") && rainbow_response(device, response, sizeof(response)) && !strncmp(response, ":AV", 3);
+			// the probe is repeated after a missing reply, a wrong one is refused
+			bool replied = false;
+			for (int attempt = 0; result && !replied && attempt < 3; attempt++) {
+				result = indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && rainbow_write(device, ":AV#");
+				replied = result && rainbow_response(device, response, sizeof(response));
+			}
+			result = result && replied && !strncmp(response, ":AV", 3);
 			if (result) {
 				// a guider connected without the mount needs the version for its axis stops
 				PRIVATE_DATA->version = atol(response + 3);
@@ -184,6 +192,26 @@ driver rainbow {
 			pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 		}
 
+		// :MM0#, or :CL0# after :CL1#, ends the running GOTO or park
+		static void rainbow_slew_completed(indigo_device *device) {
+			PRIVATE_DATA->goto_active = PRIVATE_DATA->goto_moving = false;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			if (IS_CONNECTED) {
+				indigo_update_coordinates(device, NULL);
+			}
+			if (PRIVATE_DATA->parking) {
+				// the park position is reached, a parked mount does not track
+				PRIVATE_DATA->parking = false;
+				bool stopped = rainbow_write(device, ":CtL#");
+				PRIVATE_DATA->parked = MOUNT_PARK_PARKED_ITEM->sw.value = stopped;
+				MOUNT_PARK_UNPARKED_ITEM->sw.value = !stopped;
+				MOUNT_PARK_PROPERTY->state = stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				if (IS_CONNECTED) {
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, stopped ? "Parked" : "Tracking could not be stopped");
+				}
+			}
+		}
+
 		static void rainbow_process_message(indigo_device *device, const char *response) {
 			if (!strncmp(response, ":GR", 3)) {
 				PRIVATE_DATA->ra = indigo_stod(response + 3);
@@ -197,28 +225,18 @@ driver rainbow {
 				if (IS_CONNECTED) {
 					indigo_update_coordinates(device, NULL);
 				}
+			} else if (!strcmp(response, ":CL0#")) {
+				// a :CL0# to a poll sent before the slew started comes before any :CL1# and is ignored
+				if (PRIVATE_DATA->goto_moving) {
+					rainbow_slew_completed(device);
+				}
 			} else if (!strcmp(response, ":MM0#")) {
-				PRIVATE_DATA->goto_active = false;
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED) {
-					indigo_update_coordinates(device, NULL);
-				}
-				if (PRIVATE_DATA->parking) {
-					// the park position is reached, a parked mount does not track
-					PRIVATE_DATA->parking = false;
-					bool stopped = rainbow_write(device, ":CtL#");
-					PRIVATE_DATA->parked = MOUNT_PARK_PARKED_ITEM->sw.value = stopped;
-					MOUNT_PARK_UNPARKED_ITEM->sw.value = !stopped;
-					MOUNT_PARK_PROPERTY->state = stopped ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-					if (IS_CONNECTED) {
-						indigo_update_property(device, MOUNT_PARK_PROPERTY, stopped ? "Parked" : "Tracking could not be stopped");
-					}
-				}
+				rainbow_slew_completed(device);
 			} else if (PRIVATE_DATA->goto_active && (!strcmp(response, ":MML#") || !strcmp(response, ":MMU#") || !strcmp(response, ":MME#"))) {
-				PRIVATE_DATA->goto_active = false;
+				PRIVATE_DATA->goto_active = PRIVATE_DATA->goto_moving = false;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				if (IS_CONNECTED) {
-					indigo_update_coordinates(device, "Slew rejected or interrupted");
+					indigo_update_coordinates(device, response[3] == 'L' ? "Target below the altitude limit" : response[3] == 'U' ? "Target above the altitude limit" : "Slew canceled at the mount");
 				}
 				if (PRIVATE_DATA->parking) {
 					PRIVATE_DATA->parking = false;
@@ -229,6 +247,7 @@ driver rainbow {
 					}
 				}
 			} else if (!strcmp(response, ":CL1#")) {
+				PRIVATE_DATA->goto_moving = PRIVATE_DATA->goto_active;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (IS_CONNECTED) {
 					indigo_update_coordinates(device, NULL);
@@ -284,7 +303,8 @@ driver rainbow {
 				if (longitude < 0) {
 					longitude += 360;
 				}
-				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 360 - longitude;
+				// the prime meridian is 0, not 360
+				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude == 0 ? 0 : 360 - longitude;
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
@@ -298,8 +318,8 @@ driver rainbow {
 				MOUNT_INFO_PROPERTY->state = INDIGO_OK_STATE;
 			} else if (!strcmp(response, ":AT0#") || !strcmp(response, ":AT1#")) {
 				PRIVATE_DATA->tracking = !strcmp(response, ":AT1#");
-				// a pending MOUNT_TRACKING request is shown by its handler
-				if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+				// a pending MOUNT_TRACKING request is shown by its handler, an unchanged state is not republished
+				if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE && (MOUNT_TRACKING_PROPERTY->state != INDIGO_OK_STATE || MOUNT_TRACKING_ON_ITEM->sw.value != PRIVATE_DATA->tracking)) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->tracking ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
 					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 					if (IS_CONNECTED) {
@@ -309,8 +329,8 @@ driver rainbow {
 			} else if (!strncmp(response, ":CT", 3) && response[3] >= '0' && response[3] <= '2') {
 				// :CT3# is the guide speed used as the tracking rate, which has no item
 				PRIVATE_DATA->track_rate = response[3] - '0';
-				// a pending MOUNT_TRACK_RATE request is shown by its handler
-				if (MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
+				// a pending MOUNT_TRACK_RATE request is shown by its handler, an unchanged rate is not republished
+				if (MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE && (MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_OK_STATE || !MOUNT_TRACK_RATE_PROPERTY->items[PRIVATE_DATA->track_rate].sw.value)) {
 					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_PROPERTY->items + PRIVATE_DATA->track_rate, true);
 					MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 					if (IS_CONNECTED) {
@@ -427,21 +447,24 @@ driver rainbow {
 			indigo_execute_handler_in(device, 1, mount_timer_callback);
 		}
 		on_connect {
-			PRIVATE_DATA->goto_active = PRIVATE_DATA->parking = false;
+			PRIVATE_DATA->goto_active = PRIVATE_DATA->goto_moving = PRIVATE_DATA->parking = false;
 			INDIGO_COPY_VALUE(PRIVATE_DATA->utc_time, MOUNT_UTC_ITEM->text.value);
 			INDIGO_COPY_VALUE(PRIVATE_DATA->utc_offset, MOUNT_UTC_OFFSET_ITEM->text.value);
 			rainbow_clear_messages(device);
 			PRIVATE_DATA->reader_running = true;
 			indigo_set_timer(device, 0, rainbow_reader, &PRIVATE_DATA->reader);
+			// only the identity is required, a lost reply to another query leaves just its property in ALERT
 			connection_result = rainbow_sync_command(device, ":AV#", MOUNT_INFO_PROPERTY);
-			connection_result = rainbow_sync_command(device, ":AT#", MOUNT_TRACKING_PROPERTY) && connection_result;
-			connection_result = rainbow_sync_command(device, ":Ct?#", MOUNT_TRACK_RATE_PROPERTY) && connection_result;
-			connection_result = rainbow_sync_command(device, ":CU0#", MOUNT_GUIDE_RATE_PROPERTY) && connection_result;
-			connection_result = rainbow_sync_command(device, ":Gt#:Gg#", MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY) && connection_result;
-			connection_result = rainbow_sync_command(device, ":GR#:GD#:CL#", MOUNT_EQUATORIAL_COORDINATES_PROPERTY) && connection_result;
-			connection_result = rainbow_sync_command(device, ":AT#", MOUNT_TRACKING_PROPERTY) && connection_result;
-			connection_result = rainbow_sync_command(device, ":Ct?#", MOUNT_TRACK_RATE_PROPERTY) && connection_result;
-			connection_result = rainbow_sync_command(device, PRIVATE_DATA->version >= 200625 ? ":GC#:GG#:GL#" : ":GL#", MOUNT_UTC_TIME_PROPERTY) && connection_result;
+			if (connection_result) {
+				rainbow_sync_command(device, ":AT#", MOUNT_TRACKING_PROPERTY);
+				rainbow_sync_command(device, ":Ct?#", MOUNT_TRACK_RATE_PROPERTY);
+				rainbow_sync_command(device, ":CU0#", MOUNT_GUIDE_RATE_PROPERTY);
+				rainbow_sync_command(device, ":Gt#:Gg#", MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
+				rainbow_sync_command(device, ":GR#:GD#:CL#", MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
+				rainbow_sync_command(device, ":AT#", MOUNT_TRACKING_PROPERTY);
+				rainbow_sync_command(device, ":Ct?#", MOUNT_TRACK_RATE_PROPERTY);
+				rainbow_sync_command(device, PRIVATE_DATA->version >= 200625 ? ":GC#:GG#:GL#" : ":GL#", MOUNT_UTC_TIME_PROPERTY);
+			}
 			// the mount does not report a park, it is known only from a park made in this session
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 			PRIVATE_DATA->parked = false;
@@ -454,9 +477,12 @@ driver rainbow {
 			}
 		}
 		on_disconnect {
-			if (PRIVATE_DATA->goto_active || MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE || MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			// a running GOTO, park, homing or manual motion is stopped before the port closes
+			bool manual = MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value;
+			if (PRIVATE_DATA->goto_active || manual || MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE || MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 				rainbow_write(device, ":Q#");
 			}
+			MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 			PRIVATE_DATA->goto_active = PRIVATE_DATA->parking = false;
 			PRIVATE_DATA->reader_running = false;
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->reader);
@@ -496,6 +522,7 @@ driver rainbow {
 					MOUNT_HOME_ITEM->sw.value = false;
 					indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 					PRIVATE_DATA->goto_active = PRIVATE_DATA->parking = true;
+					PRIVATE_DATA->goto_moving = false;
 					indigo_update_coordinates(device, NULL);
 					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 					if (rainbow_write(device, command)) {
@@ -574,8 +601,12 @@ driver rainbow {
 				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 				indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+				// a value just below 24 h would be rounded up to 24 h, or 360 degrees
+				if (ra >= 24 - 0.05 / 3600) {
+					ra = 0;
+				}
 				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-					snprintf(command, sizeof(command), ":Ck%07.3f%+07.3f#", ra * 15, dec);
+					snprintf(command, sizeof(command), ":Ck%07.3f%+07.3f#", ra * 15 >= 360 - 0.0005 ? 0 : ra * 15, dec);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = rainbow_write(device, command) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 					indigo_update_coordinates(device, NULL);
 				} else {
@@ -583,6 +614,7 @@ driver rainbow {
 					bool ok = rainbow_write(device, rate_command);
 					snprintf(command, sizeof(command), ":CtA#:Sr%s#:Sd%s#:MS#", indigo_dtos_r(ra, "%02d:%02d:%04.1f", ra_string, sizeof(ra_string)), indigo_dtos_r(dec, "%+03d*%02d:%04.1f", dec_string, sizeof(dec_string)));
 					PRIVATE_DATA->goto_active = true;
+					PRIVATE_DATA->goto_moving = false;
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 					if (MOUNT_HOME_ITEM->sw.value) {
 						MOUNT_HOME_ITEM->sw.value = false;
@@ -607,6 +639,8 @@ driver rainbow {
 				indigo_cancel_pending_handler(device, mount_park_finalizer);
 				indigo_cancel_pending_handler(device, mount_home_finalizer);
 				bool ok = rainbow_write(device, ":Q#");
+				// an aborted GOTO or park did not reach its target
+				bool slewing = PRIVATE_DATA->goto_active;
 				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 					MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -623,7 +657,7 @@ driver rainbow {
 				MOUNT_MOTION_DEC_PROPERTY->state = MOUNT_MOTION_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = ok && !slewing ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, ok ? "Aborted" : "Abort failed");
 				MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 				MOUNT_ABORT_MOTION_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
