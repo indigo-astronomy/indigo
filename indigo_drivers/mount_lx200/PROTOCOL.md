@@ -98,7 +98,7 @@ the dialect from the product name; a mount that does not answer `:GVP#` is probe
 | Product name | — | `:GVP#` → `<string>#` (e.g. `Autostar#`, `LX2001#` for the LX200GPS) ✓ | `:GVP#` → `Losmandy Gemini#` ✓ | `:GVP#` → `10micron GM1000HPS#`, `10micron GM2000QCI#`, … ✓ | — (no reply; autodetection then tries `:V#`) ✓ | `:GVP#` → `Avalon#` ✓ | — |
 | Firmware number | — | `:GVN#` → `dd.d#` (e.g. `43Eg#`) ✓ | `:GVN#` → `l.vv#` (level, version) ✓ | `:GVN#` → `<string>#` | — | `:GVN#` → `nn.n#` | — |
 | Firmware date / time | — | `:GVD#` → `mmm dd yyyy#`<br>`:GVT#` → `HH:MM:SS#` | `:GVD#` → `mm dd yyyy#`<br>`:GVT#` → `hh:mm:ss#` (L4: `hh mm ss#`) | `:GVD#` → `mmm dd yyyy#`<br>`:GVT#` → `HH:MM:SS#` | — | `:GVD#` → `d` followed by eight characters `#` | — |
-| Other version and identity queries | — | `:GVF#` → `<model>\|<…>#` ✓‡ | `:GV#` → `<l><vv>#` (level digit, two-digit version) ✓ | `:GVZ#` → `Q-TYPE2012#`, `PRE2012#`, `UNKNOWN#`<br>`:V#` → `G#`<br>`:GETID#` → 20-digit id `#` | `:V#` → servo version `#` (e.g. `VCP4-P02-15#` on a GTOCP4‡) ✓ | `:GW#` → `PT0#` equatorial, `AT0#` alt-az<br>`:X05#` → `U#` USB, `B#` Bluetooth<br>`:X46r#` → `c1#` configured, `c0#` not configured<br>`:X29#` → firmware TCB `#`<br>`:GVF#` | — |
+| Other version and identity queries | — | `:GVF#` → `<model>`&#124;`<…>#` ✓‡ | `:GV#` → `<l><vv>#` (level digit, two-digit version) ✓ | `:GVZ#` → `Q-TYPE2012#`, `PRE2012#`, `UNKNOWN#`<br>`:V#` → `G#`<br>`:GETID#` → 20-digit id `#` | `:V#` → servo version `#` (e.g. `VCP4-P02-15#` on a GTOCP4‡) ✓ | `:GW#` → `PT0#` equatorial, `AT0#` alt-az<br>`:X05#` → `U#` USB, `B#` Bluetooth<br>`:X46r#` → `c1#` configured, `c0#` not configured<br>`:X29#` → firmware TCB `#`<br>`:GVF#` | — |
 | Reset, restart, initialize | — | `:I#` (LX200GPS: restart initialization)<br>`0x04` (EOT) firmware downloader | native `>65533:` cold-start reboot, `>65534:` / `>65535:` reboot | `:shutdown#` → `0`/`1` | `:de#`, `:dn#` transparent feed-through to the keypad → ∅ | `:XFF#` restart the controller, `:XFE#` restart into the firmware loader → ∅<br>`:X461#` / `:X460#` set / clear the configured flag | — |
 
 ### 1B
@@ -160,7 +160,7 @@ the dialect from the product name; a mount that does not answer `:GVP#` is probe
 | Target declination | `:Gd#` → `sDD*MM'SS#`; `:GdH#` (X) | `:Gd#`; `:GdH#` → high precision | `:Gd#` → `sDD*MM:SS#` | `:Gd#` → `sDD*MM'SS#`; `:GdL#` → `sVV.VVVVV#` | — | `:Gd#` → `sDD*MM'SS#` | — | — |
 | Altitude / azimuth | `:GA#` → `sDD*MM'SS#`, `:GZ#` → `DDD*MM'SS#`; `:GAH#`, `:GZH#` (X) | `:GA#` → `sDD*MM:SS#`, `:GZ#` → `DDD*MM.SS#`; `:GAH#`, `:GZH#` | `:GA#` → `sDD*MM:SS#`<br>`:GZ#` → `DDD*MM:SS#`<br>`:GMZA#` → `DDD*MM:SS&sDD*MM:SS#` | `:GA#` → `sDD*MM'SS#`<br>`:GZ#` → `DDD*MM'SS#` | — | — | see `:Gx#` | — |
 | Target altitude / azimuth | `:Gal#`, `:GaH#`, `:Gz#`, `:GzH#` (X) | `:Gal#` → `sDD:MM:SS#`, `:GaH#`, `:Gz#` → `DDD*MM:SS#`, `:GzH#` | `:GMeq#` → target `HH:MM:SS&sDD*MM:SS#` | — | — | — | — | — |
-| Other position queries | `:GX40#`/`:GX41#` axis angles `DDD*MM:SS#`, `:GX42#`/`:GX43#` decimal, `:GX44#`/`:GX45#` encoder counts (X) | `:GX94#` motor position in steps | — | — | — | `:XGAA#` → `azpos\|altpos#`<br>`:XGCn.nn*m.mm#` → `ralong,declong#` | — | — |
+| Other position queries | `:GX40#`/`:GX41#` axis angles `DDD*MM:SS#`, `:GX42#`/`:GX43#` decimal, `:GX44#`/`:GX45#` encoder counts (X) | `:GX94#` motor position in steps | — | — | — | `:XGAA#` → `azpos`&#124;`altpos#`<br>`:XGCn.nn*m.mm#` → `ralong,declong#` | — | — |
 
 ## 4. Target, slew and sync
 
@@ -192,7 +192,7 @@ the dialect from the product name; a mount that does not answer `:GVP#` is probe
 | Sync to target | `:CM#` → `N/A#` (X: or `E1#` … `E9#`) ✓ | `:CM#` → `N/A#` or `E<n>#` (code as `:MS#`) ✓ | `:CM#` → `N/A#` or `e<n>#` ✓ | `:CM#` → `N/A#` ✓ | `:CM#` → `0#` ✓ | `:CM#` → `NONE#` ✓ | `:CM#` → `sync#` ✓ | `:CM#` → `<string>#` ✓ |
 | Other syncs | `:CS#` → ∅ (refused syncs fail silently) | `:CS#` → ∅ | `:SMMCHH:MM:SS&sDD*MM:SS#` set target and sync → `N/A#` / `e<n>#` | `:CS#` → ∅<br>`:CA#` sync to alt/az target, `:CU#` sync to user target → `N/A#` | — | `:SYsDD*MM:SS.HH:MM:SS#` sync to the given coordinates → `1`/`0` | — | — |
 | Stop all motion | `:Q#` → ∅ ✓ | `:Q#` → ∅ ✓ | `:Q#` → ∅ ✓ | `:Q#` → ∅ ✓ | `:Q#` (any `:Q…#`) → ∅ ✓[^agotino] | `:Q#` → ∅, stops all motors including tracking ✓ | `:Q#` → ∅ ✓ | `:Q#` → ∅ ✓ |
-| Slew progress (distance bars) | `:D#` → `{0x7F}#` while moving, `#` otherwise | — | — | `:D#` → `{0x7F}#` | `:D#` → `{0x7F}#` while slewing, `#` idle ✓ | `:D#` → `\|#` slewing, `#` idle | `:D#` → `\|#` while an axis slews, `#` idle | — |
+| Slew progress (distance bars) | `:D#` → `{0x7F}#` while moving, `#` otherwise | — | — | `:D#` → `{0x7F}#` | `:D#` → `{0x7F}#` while slewing, `#` idle ✓ | `:D#` → &#124;`#` slewing, `#` idle | `:D#` → &#124;`#` while an axis slews, `#` idle | — |
 
 ## 5. Motion and rates
 
@@ -306,7 +306,7 @@ the dialect from the product name; a mount that does not answer `:GVP#` is probe
 | Sleep / wake | — | — | — | — | — | — | — | — |
 | Goto home | `:hC#` → ∅ ✓ | `:hC#` → ∅ ✓ | `:hC#` → ∅ (mechanical zero position) ✓ | `:hC#` → `0`/`1` ✓ | — | `:hF#` → ∅ (keeps tracking) ✓<br>`:MHRxn#` / `:MHDxn#` Hall sensor homing → `1`/`0` | `:hP#` (see Park) ✓ | — |
 | Set or reset home | `:hF#` reset the mount at home (cold start) → ∅ ✓<br>`:hA0#` / `:hA1#` automatic home at boot, `:hC1,n#` / `:hC2,n#` home offsets, `:hC1,R#` / `:hC2,R#` sense reversal (X) | `:hF#` reset at home (cold start) → ∅ ✓ | — | `:hB#` current position becomes home ✓, `:hF#` sync at home, `:hb#` reset the home definition → `0`/`1` | — | `:SHP#` current position becomes home → `1`; `:hZ#` AZ/ALT home → `1`; `:XSHRnnn#` / `:XSHDnnn#` Hall offsets | `:hS#` stores the current position as home → ∅ ✓ | — |
-| Home status | `:GU#` flags `H` at home, `h` homing ✓; `:h?#` → `hasSense,axis1Offset,axis2Offset#` (X) | `:GU#` flags `H`, `h` ✓ | `:GU#` flag `H` ✓; `:Gh#` → `1` homing has succeeded, `0` it never has[^conflict] | `:GXI#` fourth character `H`‡ ✓ | — | `:GX#` state `Homing` ✓; `:XGAH#` → `rastate\|decstate#` | `:GU#` second character `P` ✓ | — |
+| Home status | `:GU#` flags `H` at home, `h` homing ✓; `:h?#` → `hasSense,axis1Offset,axis2Offset#` (X) | `:GU#` flags `H`, `h` ✓ | `:GU#` flag `H` ✓; `:Gh#` → `1` homing has succeeded, `0` it never has[^conflict] | `:GXI#` fourth character `H`‡ ✓ | — | `:GX#` state `Homing` ✓; `:XGAH#` → `rastate`&#124;`decstate#` | `:GU#` second character `P` ✓ | — |
 
 ## 9. Site, date and time
 
