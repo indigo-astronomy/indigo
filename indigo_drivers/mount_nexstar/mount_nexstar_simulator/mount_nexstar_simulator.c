@@ -79,6 +79,8 @@ typedef struct {
 	double motion_duration;
 	uint8_t ra_guide_rate;
 	uint8_t dec_guide_rate;
+	bool stalled;
+	double next_goto_duration;
 } simulator_state;
 
 static simulator_options options = {
@@ -132,13 +134,17 @@ static void usage(const char *name) {
 	printf("  --gps-firmware <major.minor> GPS accessory firmware version\n");
 	printf("  --gps-no-fix           GPS accessory present without a satellite fix\n");
 	printf("  --unaligned             Report the mount as not aligned\n");
+	printf("  --tracking-mode <n>     Initial tracking mode (0 off, 1 alt-az, 2 EQ north, 3 EQ south)\n");
+	printf("  --guide-rates <ra,dec>  Initial ST4 guide rate bytes (0-255)\n");
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR\n");
 	printf("  and every command is recorded in <ready-file>.events. Actions: drop, short,\n");
 	printf("  malformed, delay (answer 500 ms late), track (hand controller starts EQ\n");
-	printf("  tracking, answer 500 ms late) and close.\n");
+	printf("  tracking, answer 500 ms late), ignore (acknowledge without applying),\n");
+	printf("  stall (the goto starts but the axes do not move), halt (the goto ends where\n");
+	printf("  the axes are), slow (the goto takes 10 s) and close.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -205,6 +211,21 @@ static bool parse_args(int argc, char *argv[]) {
 			options.gps_linked = false;
 		} else if (!strcmp(argv[i], "--unaligned")) {
 			state.aligned = false;
+		} else if (!strcmp(argv[i], "--tracking-mode")) {
+			int mode;
+			if (++i == argc || sscanf(argv[i], "%d", &mode) != 1 || mode < 0 || mode > 3) {
+				fprintf(stderr, "--tracking-mode requires 0 to 3\n");
+				return false;
+			}
+			state.tracking_mode = (uint8_t)mode;
+		} else if (!strcmp(argv[i], "--guide-rates")) {
+			int ra, dec;
+			if (++i == argc || sscanf(argv[i], "%d,%d", &ra, &dec) != 2 || ra < 0 || ra > 255 || dec < 0 || dec > 255) {
+				fprintf(stderr, "--guide-rates requires two byte values\n");
+				return false;
+			}
+			state.ra_guide_rate = (uint8_t)ra;
+			state.dec_guide_rate = (uint8_t)dec;
 		} else if (!strcmp(argv[i], "--model-id")) {
 			if (++i == argc) {
 				fprintf(stderr, "--model-id requires a numeric value\n");
@@ -339,6 +360,27 @@ static bool apply_control(const uint8_t *command, size_t length) {
 		usleep(500000);
 		return false;
 	}
+	if (!strcmp(action, "ignore")) {
+		// The controller acknowledges the command but keeps its previous setting
+		static const uint8_t reply[] = { '#' };
+		write_all(reply, sizeof(reply));
+		return true;
+	}
+	if (!strcmp(action, "stall")) {
+		// The goto is accepted and reported in progress, but the axes never move
+		state.stalled = true;
+		return false;
+	}
+	if (!strcmp(action, "halt")) {
+		// The goto ends where the axes are, short of the target, as when it is cancelled on the hand controller
+		state.stalled = false;
+		state.slewing = false;
+		return false;
+	}
+	if (!strcmp(action, "slow")) {
+		state.next_goto_duration = 10;
+		return false;
+	}
 	if (!strcmp(action, "close")) {
 		running = 0;
 		close(serial_fd);
@@ -418,7 +460,7 @@ static void update_manual_motion(double now) {
 static void update_motion(void) {
 	double now = now_seconds();
 	update_manual_motion(now);
-	if (!state.slewing) {
+	if (!state.slewing || state.stalled) {
 		return;
 	}
 	double elapsed = now - state.motion_start;
@@ -443,7 +485,8 @@ static void start_motion(uint32_t target_ra, uint32_t target_dec) {
 	state.target_ra = target_ra;
 	state.target_dec = target_dec;
 	state.motion_start = now_seconds();
-	state.motion_duration = GOTO_DURATION_SECONDS;
+	state.motion_duration = state.next_goto_duration > 0 ? state.next_goto_duration : GOTO_DURATION_SECONDS;
+	state.next_goto_duration = 0;
 	state.slewing = true;
 }
 
@@ -568,6 +611,7 @@ static void handle_command(const uint8_t *command, size_t length) {
 			break;
 		case 'M':
 			state.slewing = false;
+			state.stalled = false;
 			state.ra_rate = 0;
 			state.dec_rate = 0;
 			state.ra_direction = 0;

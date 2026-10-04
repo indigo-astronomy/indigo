@@ -280,6 +280,117 @@ static bool select_mount_switch(const char *property_name, const char *item_name
 	return indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, property_name, item_name, true) == INDIGO_OK && wait_for_property_state_after(property_name, INDIGO_OK_STATE, revision);
 }
 
+static char recorded_messages[2048];
+
+static indigo_result record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (message != NULL) {
+		size_t length = strlen(recorded_messages);
+		snprintf(recorded_messages + length, sizeof(recorded_messages) - length, "%s\n", message);
+	}
+	return INDIGO_OK;
+}
+
+static void record_messages(void) {
+	recorded_messages[0] = '\0';
+	simulator_test_client.send_message = record_message;
+}
+
+static void stop_recording_messages(void) {
+	simulator_test_client.send_message = NULL;
+}
+
+// The bytes of the last recorded command that starts with the given byte, the count of them or 0 if there is none.
+static int read_last_command(const external_serial_simulator *simulator, unsigned int first, unsigned int *bytes, int size) {
+	char path[PATH_MAX], line[256];
+	nexstar_simulator_path(simulator, "events", path, sizeof(path));
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	int found = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		unsigned int parsed[32];
+		int count = 0;
+		char *cursor = strchr(line, ' ');
+		while (cursor != NULL && count < 32) {
+			char *end;
+			unsigned long value = strtoul(cursor, &end, 16);
+			if (end == cursor) {
+				break;
+			}
+			parsed[count++] = (unsigned int)value;
+			cursor = end;
+		}
+		if (count > 0 && count <= size && parsed[0] == first) {
+			memcpy(bytes, parsed, count * sizeof(unsigned int));
+			found = count;
+		}
+	}
+	fclose(file);
+	return found;
+}
+
+// The two 32-bit hexadecimal fields of the last precise 'r', 's' or 'b' command.
+static bool read_last_precise_command(const external_serial_simulator *simulator, char command, uint32_t *first, uint32_t *second) {
+	unsigned int bytes[18];
+	if (read_last_command(simulator, (unsigned char)command, bytes, 18) != 18 || bytes[9] != ',') {
+		return false;
+	}
+	char text[18];
+	for (int i = 0; i < 17; i++) {
+		text[i] = (char)bytes[i + 1];
+	}
+	text[8] = text[17] = '\0';
+	*first = (uint32_t)strtoul(text, NULL, 16);
+	*second = (uint32_t)strtoul(text + 9, NULL, 16);
+	return true;
+}
+
+static bool request_coordinates(double ra, double dec) {
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	return indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK;
+}
+
+static bool coordinates_are(double ra, double dec, double tolerance) {
+	return wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, tolerance) && wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec, tolerance);
+}
+
+// SYNC, confirmed by a poll made after the request.
+static bool sync_to(const external_serial_simulator *simulator, double ra, double dec) {
+	if (!select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME)) {
+		return false;
+	}
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	if (!request_coordinates(ra, dec) || !wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision)) {
+		return false;
+	}
+	int polls = count_simulator_events(simulator, "65");
+	return wait_for_simulator_event_count(simulator, "65", polls + 1) && coordinates_are(ra, dec, 0.001) && select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME);
+}
+
+static bool goto_and_arrive(double ra, double dec) {
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	if (!request_coordinates(ra, dec) || !wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision)) {
+		return false;
+	}
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	return wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision) && coordinates_are(ra, dec, 0.01);
+}
+
+static bool wait_for_polls(const external_serial_simulator *simulator, int count) {
+	int polls = count_simulator_events(simulator, "65");
+	return wait_for_simulator_event_count(simulator, "65", polls + count);
+}
+
+static int count_guide_rate_reads(const external_serial_simulator *simulator) {
+	return count_simulator_events(simulator, "50 01 10 47") + count_simulator_events(simulator, "50 01 11 47");
+}
+
+static int count_guide_rate_writes(const external_serial_simulator *simulator) {
+	return count_simulator_events(simulator, "50 02 10 46") + count_simulator_events(simulator, "50 02 11 46");
+}
+
 static void assert_nexstar_mount_properties(void) {
 	static const char *properties[] = {
 		MOUNT_INFO_PROPERTY_NAME,
@@ -620,9 +731,19 @@ static void nexstar_mount_rejects_coordinates_when_unaligned(void) {
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	clear_simulator_events(&simulator);
+	record_messages();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, coordinate_values));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// The controller's reason reaches the client, no goto is sent and the coordinates keep the real position.
+	SERIAL_CHECK_TRUE(strstr(recorded_messages, "not aligned") != NULL);
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "72"));
+	SERIAL_CHECK_TRUE(coordinates_are(ra, dec, 0.000001));
 cleanup:
+	stop_recording_messages();
 	if (context.connected) {
 		stop_serial_driver(&nexstar_mount);
 	}
@@ -1411,6 +1532,702 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// One model: the optional controls the driver defines and the capability commands it sends, polling included.
+static bool capabilities_match(const char * const *arguments, bool guide_rate, bool side_of_pier, bool tracking_mode) {
+	external_serial_simulator simulator = { 0 };
+	bool ok = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	printf("    %s %s %s: guide rate %d, side of pier %d, tracking mode %d\n", arguments[1], arguments[3], arguments[5], find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) != NULL, find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) != NULL, find_cached_property(TRACKING_MODE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(guide_rate, find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME) != NULL);
+	// The connect reads both axes once; a model without the command never gets it.
+	SERIAL_CHECK_EQ_INT(guide_rate ? 2 : 0, count_guide_rate_reads(&simulator));
+	SERIAL_CHECK_EQ_INT(0, count_guide_rate_writes(&simulator));
+	SERIAL_CHECK_EQ_INT(side_of_pier, find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME) != NULL);
+	if (!side_of_pier) {
+		SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "70"));
+	}
+	SERIAL_CHECK_EQ_INT(tracking_mode, find_cached_property(TRACKING_MODE_PROPERTY_NAME) != NULL);
+	ok = true;
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	return ok;
+}
+
+// Negative capability contract: optional controls follow the model and firmware on both sides of their thresholds,
+// commands the controller lacks are never sent, and the read-only side of pier ignores requests.
+static void nexstar_capability_contract_follows_model(void) {
+	static const char *absent[] = {
+		MOUNT_TRACK_RATE_PROPERTY_NAME,
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME,
+		MOUNT_HOME_PROPERTY_NAME,
+		MOUNT_HOME_SET_PROPERTY_NAME,
+		MOUNT_HOME_POSITION_PROPERTY_NAME,
+		MOUNT_PEC_PROPERTY_NAME,
+		MOUNT_PEC_TRAINING_PROPERTY_NAME,
+		MOUNT_STATE_PROPERTY_NAME,
+		MOUNT_RAW_COORDINATES_PROPERTY_NAME,
+		TRACKING_MODE_PROPERTY_NAME
+	};
+	static const char *coordinates_set_items[] = { MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	driver_started = true;
+	// Advanced VX: an equatorial mount with ST4 rates and side of pier, no tracking mode selection.
+	assert_not_defined_properties(absent, ARRAY_SIZE(absent));
+	indigo_property *coordinates_set = find_cached_property(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(coordinates_set != NULL);
+	SERIAL_CHECK_EQ_INT(2, coordinates_set->count);
+	assert_property_has_items(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, coordinates_set_items, ARRAY_SIZE(coordinates_set_items));
+	indigo_property *side_of_pier = find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(side_of_pier != NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, side_of_pier->perm);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME)->sw.value);
+	// The pier side is device-reported: a request changes nothing.
+	unsigned int revision = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(revision, property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+	stop_serial_driver(&nexstar_mount);
+	driver_started = false;
+	stop_external_serial_simulator(&simulator);
+	// NexStar HC firmware thresholds: ST4 rates from 3.1 on an equatorial model, side of pier from 4.15.
+	const char *below_rates[] = { "--dialect", "celestron", "--hc-type", "nexstar", "--firmware", "3.0", "--model-id", "20", NULL };
+	const char *rates_only[] = { "--dialect", "celestron", "--hc-type", "nexstar", "--firmware", "3.1", "--model-id", "20", NULL };
+	const char *below_pier[] = { "--dialect", "celestron", "--hc-type", "nexstar", "--firmware", "4.14", "--model-id", "20", NULL };
+	const char *full[] = { "--dialect", "celestron", "--hc-type", "nexstar", "--firmware", "4.15", "--model-id", "20", NULL };
+	// An alt-az model has neither, but selects its tracking mode.
+	const char *altaz[] = { "--dialect", "celestron", "--hc-type", "starsense", "--firmware", "4.15", "--model-id", "12", NULL };
+	// Sky-Watcher SynScan has no ST4 rate passthrough.
+	const char *skywatcher[] = { "--dialect", "skywatcher", "--hc-type", "nexstar", "--model-id", "0", NULL };
+	SERIAL_CHECK_TRUE(capabilities_match(below_rates, false, false, false));
+	SERIAL_CHECK_TRUE(capabilities_match(rates_only, true, false, false));
+	SERIAL_CHECK_TRUE(capabilities_match(below_pier, true, false, false));
+	SERIAL_CHECK_TRUE(capabilities_match(full, true, true, false));
+	SERIAL_CHECK_TRUE(capabilities_match(altaz, false, false, true));
+	SERIAL_CHECK_TRUE(capabilities_match(skywatcher, false, true, false));
+	// A Sky-Watcher controller has no GPS accessory bus, so the GPS device is never attached.
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "skywatcher"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	driver_started = true;
+	reset_simulator_context(&nexstar_gps);
+	enumerate_simulator_device();
+	indigo_usleep(200000);
+	SERIAL_CHECK_TRUE(!has_defined_property(CONNECTION_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "50 01 B0"));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Connect publishes the controller's tracking and ST4 rates, both ends of the rate range reach the wire and come
+// back after a reconnect, and a setting the controller acknowledges but does not keep is reported with ALERT.
+static void nexstar_connect_reads_device_state_and_guide_rates(void) {
+	const char *arguments[] = { "--dialect", "celestron", "--tracking-mode", "0", "--guide-rates", "64,192", NULL };
+	const char *rate_items[] = { MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME };
+	const double rate_ends[] = { 1, 100 };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
+	// Rate bytes 64 and 192 are 25 % and 75 % of sidereal; the driver adds its documented one percent offset.
+	SERIAL_CHECK_EQ_INT(26, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(76, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME));
+	// A refused tracking request shows the tracking the controller really has, and a retry succeeds.
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "T"));
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "54 02"));
+	// Both ends of the 1-100 % range: rate byte 0 and 255.
+	clear_simulator_events(&simulator);
+	revision = property_revision(MOUNT_GUIDE_RATE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, 2, rate_items, rate_ends));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "50 02 10 46 00"));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "50 02 11 46 FF"));
+	SERIAL_CHECK_EQ_INT(1, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(100, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME));
+	// The rates live in the controller: a reconnect reads them back.
+	disconnect_serial_device(&nexstar_mount);
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(2, count_guide_rate_reads(&simulator));
+	SERIAL_CHECK_EQ_INT(1, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(100, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+	// Acknowledged but not kept: the device value is published with ALERT.
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "ignore", "P46"));
+	revision = property_revision(MOUNT_GUIDE_RATE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy_after(MOUNT_GUIDE_RATE_PROPERTY_NAME, revision));
+	printf("    an ignored rate write ended %s with RA rate %.0f\n", find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME)->state == INDIGO_ALERT_STATE ? "ALERT" : "OK", cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(1, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "50 02 10 46"));
+	// An immediate retry is sent again and succeeds: 49 % is rate byte 126.
+	clear_simulator_events(&simulator);
+	revision = property_revision(MOUNT_GUIDE_RATE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "50 02 10 46 7E"));
+	SERIAL_CHECK_EQ_INT(50, (int)cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A refusal or a lost reply at each command of the GOTO sequence (alignment check, goto) ends ALERT, sends no later
+// command and keeps the real position; the next GOTO is accepted. SYNC is not retried.
+static void nexstar_goto_refusals_stop_the_sequence(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+	const char *steps[] = { "J", "r" };
+	for (int i = 0; i < ARRAY_SIZE(steps); i++) {
+		clear_simulator_events(&simulator);
+		SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", steps[i]));
+		unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+		SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4A"));
+		SERIAL_CHECK_EQ_INT(i, count_simulator_events(&simulator, "72"));
+		SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+		SERIAL_CHECK_TRUE(coordinates_are(3, 20, 0.001));
+	}
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(goto_and_arrive(5, 35));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "72"));
+	// MOUNT_TRACKING keeps the client's setting through the GOTO; the controller resumes tracking by itself.
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54"));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "s"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(7, 40));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "73"));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "72"));
+	SERIAL_CHECK_TRUE(coordinates_are(5, 35, 0.001));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 7, 40));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// GOTO completion comes from the controller's slew status: frozen readback keeps it BUSY, and a slew the controller
+// ends short of the target ends ALERT.
+static void nexstar_goto_completion_follows_slew_status(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "stall", "r"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "72", 1));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 3));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, 0.001));
+	record_messages();
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "halt", "L"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	printf("    messages: %s", recorded_messages);
+	SERIAL_CHECK_TRUE(strstr(recorded_messages, "short of the target") != NULL);
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, 0.001));
+	SERIAL_CHECK_TRUE(goto_and_arrive(5, 35));
+cleanup:
+	stop_recording_messages();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An abort that lands mid-slew stops the mount short of the target with one stop command and ends the GOTO ALERT;
+// an abort while idle leaves position and tracking alone.
+static void nexstar_abort_lands_mid_slew(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "slow", "r"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(9, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	// The request echo carries the target, so the slew is seen on fresh polls.
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) > 3.05);
+	clear_simulator_events(&simulator);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	unsigned int abort_revision = property_revision(MOUNT_ABORT_MOTION_PROPERTY_NAME);
+	double requested = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, abort_revision));
+	printf("    abort answered in %.0f ms\n", (indigo_monotonic_time() - requested) * 1000);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - requested < 3);
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4D"));
+	// Two polls after the stop read the same position, short of the target.
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	printf("    stopped at %.4f h %.4f deg on the way from 3 h 20 deg to 9 h 50 deg\n", ra, dec);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == ra);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) == dec);
+	SERIAL_CHECK_TRUE(ra > 3.01 && ra < 8.99 && dec > 20.01 && dec < 49.99);
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4D"));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54"));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(goto_and_arrive(10, -15));
+	// Abort while idle: position and tracking stay, the coordinates stay OK.
+	clear_simulator_events(&simulator);
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(10, -15, 0.01));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54"));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A coordinate poll in flight when a GOTO is copied must not complete it: the property stays BUSY until the handler
+// has sent the goto, and exactly one result is published, at the target.
+static void nexstar_poll_in_flight_does_not_complete_goto(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "delay", "L"));
+	SERIAL_CHECK_TRUE(wait_for_control_consumed(&simulator));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	watch_results_of(nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "72", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(coordinates_are(5, 35, 0.01));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	printf("    %d results published for one GOTO\n", atomic_load(&watch_results));
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "72"));
+cleanup:
+	stop_watching();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Disconnecting during a GOTO or a manual motion stops the mount before the transport closes; after the reconnect
+// the motion items read OFF and nothing is left BUSY.
+static void nexstar_disconnect_stops_goto_and_motion(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "slow", "r"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(9, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "72", 1));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	clear_simulator_events(&simulator);
+	disconnect_serial_device(&nexstar_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	printf("    stop commands sent on disconnect during GOTO: %d\n", count_simulator_events(&simulator, "4D"));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4D"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	SERIAL_CHECK_TRUE(ra > 3.01 && ra < 8.99);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME));
+	revision = property_revision(MOUNT_MOTION_RA_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "50 02 10 24 09", 1));
+	clear_simulator_events(&simulator);
+	disconnect_serial_device(&nexstar_mount);
+	printf("    RA stops sent on disconnect during manual motion: %d\n", count_simulator_events(&simulator, "50 02 10 24 00"));
+	SERIAL_CHECK_TRUE(count_simulator_events(&simulator, "50 02 10 24 00") >= 1);
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_MOTION_RA_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool motion_moves(const external_serial_simulator *simulator, const char *property_name, const char *item_name, const char *coordinate, int sign) {
+	double before = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, coordinate);
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, property_name, item_name, true) != INDIGO_OK || !wait_for_property_state_after(property_name, INDIGO_BUSY_STATE, revision) || !wait_for_polls(simulator, 2)) {
+		return false;
+	}
+	revision = property_revision(property_name);
+	if (indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, property_name, item_name, false) != INDIGO_OK || !wait_for_property_state_after(property_name, INDIGO_OK_STATE, revision) || !wait_for_polls(simulator, 1)) {
+		return false;
+	}
+	double after = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, coordinate);
+	printf("    %s %s: %s %.4f -> %.4f\n", property_name, item_name, coordinate, before, after);
+	return sign * (after - before) > 0.01;
+}
+
+// Slew-rate presets reach the wire as fixed rates 2, 4, 6 and 9, and the readback moves the right way for every
+// direction: east raises RA, west lowers it, north raises DEC, south lowers it.
+static void nexstar_manual_motion_rates_and_directions(void) {
+	static const char *presets[] = { MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+	static const char *commands[] = { "50 02 11 24 02", "50 02 11 24 04", "50 02 11 24 06", "50 02 11 24 09" };
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 6, 10));
+	for (int i = 0; i < ARRAY_SIZE(presets); i++) {
+		SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, presets[i]));
+		clear_simulator_events(&simulator);
+		unsigned int revision = property_revision(MOUNT_MOTION_DEC_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+		SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, commands[i], 1));
+		revision = property_revision(MOUNT_MOTION_DEC_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
+		SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+		SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, commands[i]));
+		SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "50 02 11 24 00"));
+	}
+	SERIAL_CHECK_TRUE(motion_moves(&simulator, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(motion_moves(&simulator, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, -1));
+	SERIAL_CHECK_TRUE(motion_moves(&simulator, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(motion_moves(&simulator, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -1));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// While parked, tracking and motion requests are refused without a command and keep the driver's state; unpark sends
+// no motion command and the guards do not latch; a park the controller never acknowledges shows the real unparked state.
+static void nexstar_park_guards_and_unpark(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
+	clear_simulator_events(&simulator);
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
+	revision = property_revision(MOUNT_MOTION_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54") + count_simulator_events(&simulator, "62") + count_simulator_events(&simulator, "72") + count_simulator_events(&simulator, "4D") + count_simulator_events(&simulator, "50 02 10 2") + count_simulator_events(&simulator, "50 02 11 2"));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
+	// The guards are gone after unpark.
+	revision = property_revision(MOUNT_MOTION_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "50 02 11 24", 1));
+	revision = property_revision(MOUNT_MOTION_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	// A park the controller never acknowledges ends ALERT, unparked and not BUSY, also after later polls.
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "b"));
+	revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Requests a site and checks the 'W' command (latitude d m s sign, longitude d m s sign) that reaches the controller.
+static bool site_is_sent(const external_serial_simulator *simulator, double latitude, double longitude, const unsigned int *expected) {
+	const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	double values[] = { latitude, longitude };
+	unsigned int bytes[9];
+	clear_simulator_events(simulator);
+	unsigned int revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	if (indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 2, items, values) != INDIGO_OK || !wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision)) {
+		return false;
+	}
+	if (read_last_command(simulator, 'W', bytes, 9) != 9) {
+		return false;
+	}
+	printf("    %.6f %.6f sent as %u %u %u %u %u %u %u %u\n", latitude, longitude, bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8]);
+	for (int i = 0; i < 8; i++) {
+		if (bytes[i + 1] != expected[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// The site for both hemispheres and both sides of the prime meridian, a seconds value that carries into the minutes
+// and degrees, and its readback after a reconnect.
+static void nexstar_site_encoding_and_prime_meridian(void) {
+	static const unsigned int south_west[] = { 33, 30, 0, 1, 17, 6, 0, 1 };
+	static const unsigned int carry[] = { 33, 30, 0, 1, 18, 0, 0, 0 };
+	static const unsigned int east_of_greenwich[] = { 51, 28, 38, 0, 0, 30, 0, 0 };
+	static const unsigned int west_of_greenwich[] = { 51, 28, 38, 0, 0, 30, 0, 1 };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_hc(&simulator, "nexstar"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(site_is_sent(&simulator, -33.5, 342.9, south_west));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -33.5, 0.0001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 342.9, 0.0001));
+	// 17 deg 59 min 59.97 s rounds to 18 deg 0 min 0 s, never to 60 seconds.
+	SERIAL_CHECK_TRUE(site_is_sent(&simulator, -33.5, 17 + 59.0 / 60 + 59.97 / 3600, carry));
+	SERIAL_CHECK_TRUE(site_is_sent(&simulator, 51 + 28.0 / 60 + 38.0 / 3600, 0.5, east_of_greenwich));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 0.5, 0.0001));
+	SERIAL_CHECK_TRUE(site_is_sent(&simulator, 51 + 28.0 / 60 + 38.0 / 3600, 359.5, west_of_greenwich));
+	disconnect_serial_device(&nexstar_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 51 + 28.0 / 60 + 38.0 / 3600, 0.0001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 359.5, 0.0001));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// With MOUNT_EPOCH pinned to J2000, a SYNC just below the RA wrap and at a small negative declination is sent as
+// 32-bit fractions of a turn that never wrap to zero, and the poll reads the same values back.
+static void nexstar_coordinate_encoding_at_wrap_points(void) {
+	external_serial_simulator simulator = { 0 };
+	uint32_t ra = 0, dec = 0;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, 0));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 23.99999, -0.5));
+	SERIAL_CHECK_TRUE(read_last_precise_command(&simulator, 's', &ra, &dec));
+	printf("    RA 23.99999 h DEC -0.5 deg sent as %08X,%08X\n", ra, dec);
+	SERIAL_CHECK_TRUE(ra > 0xFFFF0000u);
+	SERIAL_CHECK_TRUE(fabs(ra * 24.0 / 4294967296.0 - 23.99999) < 0.000001);
+	SERIAL_CHECK_TRUE(fabs(dec * 360.0 / 4294967296.0 - 360 + 0.5) < 0.000001);
+	SERIAL_CHECK_TRUE(coordinates_are(23.99999, -0.5, 0.000001));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 0.00001, 0.5));
+	SERIAL_CHECK_TRUE(read_last_precise_command(&simulator, 's', &ra, &dec));
+	printf("    RA 0.00001 h DEC 0.5 deg sent as %08X,%08X\n", ra, dec);
+	SERIAL_CHECK_TRUE(ra < 0x00010000u);
+	SERIAL_CHECK_TRUE(coordinates_are(0.00001, 0.5, 0.000001));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A guider-only session does not poll the mount, and SHUTDOWN is refused while the guider or the mount is
+// connected, without dropping the connection.
+static void nexstar_guider_only_session_and_shutdown_guard(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false, guider_connected = false, mount_connected = false;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&nexstar_guider, &nexstar_mount, simulator.port));
+	driver_started = guider_connected = true;
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(pulse_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100));
+	indigo_usleep(1000000);
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "65") + count_simulator_events(&simulator, "4C") + count_simulator_events(&simulator, "77"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, nexstar_mount.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(pulse_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_mount, NULL));
+	mount_connected = true;
+	disconnect_serial_device(&nexstar_guider);
+	guider_connected = false;
+	reset_simulator_context(&nexstar_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, nexstar_mount.entry(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_TRUE(find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME)->sw.value);
+cleanup:
+	if (guider_connected) {
+		disconnect_serial_device(&nexstar_guider);
+	}
+	if (mount_connected) {
+		disconnect_serial_device(&nexstar_mount);
+	}
+	if (driver_started) {
+		tear_down_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Without a GPS accessory the GPS device refuses its connection with ALERT and defines nothing, and the mount keeps
+// polling.
+static void nexstar_gps_refuses_without_accessory(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	driver_started = true;
+	reset_simulator_context(&nexstar_gps);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(has_defined_property(CONNECTION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "PFE"));
+	unsigned int revision = property_revision(CONNECTION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_gps.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(!has_defined_property(GPS_STATUS_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(GEOGRAPHIC_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "50 01 B0 37"));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GOTO requested while a guide pulse runs on the shared connection: a refusal (a lost reply, waited out for 5 s)
+// ends ALERT without disturbing the pulse, and the retried GOTO completes at its target once the pulse has ended.
+static void nexstar_goto_during_guide_pulse(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false, guider_connected = false;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nexstar_guider, NULL));
+	guider_connected = true;
+	reset_simulator_context(&nexstar_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nexstar_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 8000));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "50 02 10 24 01", 1));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "r"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "50 02 10 24 00"));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "72", 2));
+	// The pulse still ends on time with its own stop.
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "50 02 10 24 00", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(5, 35, 0.01));
+	double started = 0, stopped = 0;
+	SERIAL_CHECK_TRUE(read_guide_event_times(&simulator, 0x10, 0x24, &started, &stopped));
+	printf("    pulse ran %.0f ms with a GOTO requested during it\n", (stopped - started) * 1000);
+	SERIAL_CHECK_TRUE((stopped - started) * 1000 > 7900 && (stopped - started) * 1000 < 9000);
+cleanup:
+	if (guider_connected) {
+		disconnect_serial_device(&nexstar_guider);
+	}
+	if (driver_started) {
+		disconnect_serial_device(&nexstar_mount);
+		tear_down_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The poll reads the site late and a site request is copied meanwhile: the handler sends the requested site and
+// exactly one result is published.
+static void nexstar_location_request_survives_poll(void) {
+	static const unsigned int expected[] = { 49, 0, 0, 0, 18, 0, 0, 0 };
+	const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	double values[] = { 49, 18 };
+	unsigned int bytes[9];
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator_hc(&simulator, "nexstar"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	clear_simulator_events(&simulator);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "delay", "w"));
+	SERIAL_CHECK_TRUE(wait_for_control_consumed(&simulator));
+	unsigned int revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	watch_results_of(nexstar_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 2, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "57"));
+	SERIAL_CHECK_EQ_INT(9, read_last_command(&simulator, 'W', bytes, 9));
+	for (int i = 0; i < 8; i++) {
+		SERIAL_CHECK_EQ_INT(expected[i], bytes[i + 1]);
+	}
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&watch_results));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - 49) < 0.0001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - 18) < 0.0001);
+cleanup:
+	stop_watching();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 #ifdef MOUNT_NEXSTAR_TIMING_BENCHMARK
 
 #define TIMING_SAMPLE_COUNT 4
@@ -1557,7 +2374,22 @@ int main(void) {
 		{ "nexstar_tracking_mode_request_survives_detection", nexstar_tracking_mode_request_survives_detection },
 		{ "nexstar_tracking_request_survives_detection_round_trip", nexstar_tracking_request_survives_detection_round_trip },
 		{ "nexstar_utc_request_survives_poll", nexstar_utc_request_survives_poll },
-		{ "nexstar_guider_pulse_survives_previous_finalizer", nexstar_guider_pulse_survives_previous_finalizer }
+		{ "nexstar_guider_pulse_survives_previous_finalizer", nexstar_guider_pulse_survives_previous_finalizer },
+		{ "nexstar_capability_contract_follows_model", nexstar_capability_contract_follows_model },
+		{ "nexstar_connect_reads_device_state_and_guide_rates", nexstar_connect_reads_device_state_and_guide_rates },
+		{ "nexstar_goto_refusals_stop_the_sequence", nexstar_goto_refusals_stop_the_sequence },
+		{ "nexstar_goto_completion_follows_slew_status", nexstar_goto_completion_follows_slew_status },
+		{ "nexstar_abort_lands_mid_slew", nexstar_abort_lands_mid_slew },
+		{ "nexstar_poll_in_flight_does_not_complete_goto", nexstar_poll_in_flight_does_not_complete_goto },
+		{ "nexstar_disconnect_stops_goto_and_motion", nexstar_disconnect_stops_goto_and_motion },
+		{ "nexstar_manual_motion_rates_and_directions", nexstar_manual_motion_rates_and_directions },
+		{ "nexstar_park_guards_and_unpark", nexstar_park_guards_and_unpark },
+		{ "nexstar_site_encoding_and_prime_meridian", nexstar_site_encoding_and_prime_meridian },
+		{ "nexstar_coordinate_encoding_at_wrap_points", nexstar_coordinate_encoding_at_wrap_points },
+		{ "nexstar_guider_only_session_and_shutdown_guard", nexstar_guider_only_session_and_shutdown_guard },
+		{ "nexstar_gps_refuses_without_accessory", nexstar_gps_refuses_without_accessory },
+		{ "nexstar_goto_during_guide_pulse", nexstar_goto_during_guide_pulse },
+		{ "nexstar_location_request_survives_poll", nexstar_location_request_survives_poll }
 	};
 	return indigo_run_tests("NexStar mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }
