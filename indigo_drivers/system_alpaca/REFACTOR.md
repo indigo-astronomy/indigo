@@ -954,6 +954,10 @@ The user reported that with a Pegasus NYX-101 the first slew through the mount a
 - **Askar-WAF focuser** (Alpaca server 1.0.7, IFocuserV2, absolute, MaxStep 1000000), a run by another user on Linux x64 (2026-10-03 23:35, recorded in that user's checkout): everything passed except `focuser_..._absolute_move` (a move to 984 ended at 986), HW-5; deterministic suite 318 / 318 OK after the fix (22:44).
 - **Not covered on hardware:** every class except the telescope (no such Alpaca device available), camera gain, offset, readout modes and guiding (the OmniSim camera has none), dome slaving, a relative focuser, broadcast discovery, Linux.
 
+### 7.12 ConformU through agent_alpaca (2026-10-04)
+
+`tools/alpaca_omnisim_conformu.py` runs ConformU on every OmniSim device twice: directly and through `system_alpaca` → `agent_alpaca`. A problem only the second run has is a loss in the INDIGO path. It found CHAIN-1 and CHAIN-2 here and AGENT-26 to AGENT-32 in the agent (`../agent_alpaca/REFACTOR.md`, sections 12 and 13). The bridge starts from a written configuration: discovery disabled, OmniSim as the only server.
+
 ## 8. Found defects
 
 All were originally found **by source audit only**. Under decision D8 they were fixed on 2026-09-24 and verified:
@@ -1092,6 +1096,13 @@ Found by the hardware suite (2026-10-03, section 7.11):
 | HW-3 | `mount_move_axis()` | On the NYX-101 NORTH moved south and WEST moved east. | The NYX's MoveAxis works in sky directions (positive primary east, positive secondary south, both pier sides). | `X_ALPACA_MOUNT_AXES` = `SKY`; no model name in the driver. | `mount_manual_motion_sky_axes`, `mount_axes_and_settle_defaults` |
 | HW-4 | goto, park, home, flip and MoveAxis handlers | On the NYX-101 a command right after a slew was accepted, ignored and reported as done. | The NYX ignores motion commands for about 1.5 s after a slew. | `X_ALPACA_SETTLE_TIME`: the command waits, BUSY and abortable, until that time has passed. | `mount_nyx_settle_after_slew` |
 | HW-5 | `focuser_move_finalizer()` | On the Askar-WAF focuser (Alpaca server 1.0.7) a move to 984 ended OK at 986; the next poll showed 984. Found by a user's hardware run on Linux x64. | The Askar reports IsMoving false before Position has settled at the target, and the move ended with the Position read together with that IsMoving. | When IsMoving turns false at a Position other than the target, an absolute move stays BUSY until Position is the target, IsMoving is true again, or `FOCUSER_MOVE_SETTLE_TIME` (3 s) has passed; it then ends OK at the Position read last, as before. | `focuser_position_settles_after_ismoving` |
+
+Found through `agent_alpaca` and ConformU (2026-10-04, section 7.12):
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| CHAIN-1 | `guider_finalize()` | A client that read the coordinates as soon as a pulse was reported over saw where the pulse started; ConformU through the agent found up to 13″ of motion on the wrong axis and pulses 6″ short (34 issues on OmniSim, none directly on OmniSim). | The coordinates of the telescope were read by the next regular poll tick, up to a second after the guider property became OK. | A pulse that is over is followed by `system_alpaca_poll_now()`, which reads the state of the primary device and serves it to its `on_poll` before the property is completed. It only notes a lost connection; the regular tick handles it, because the caller is a handler of the guider that the loss takes away. | `guider_completion`: DEC of the mount equals the simulated declination when the north pulse is reported OK. |
+| CHAIN-2 | `dome_apply_status()`, `dome_motion_finalizer()` | `DOME_HOME` went OFF at the end of a successful search, so a client could not tell that the dome was at home (`agent_alpaca` reported AtHome false after FindHome). | The item was used as a trigger only; `dome_beaver`, the other INDIGO driver with `DOME_HOME`, keeps it ON while the dome is at home. | The item is ON while AtHome is true, outside a search that runs; a search that ends at home leaves it ON. | `dome_park_home`: ON after the search, OFF after the park that leaves home. |
 
 Observations outside the driver, not changed (D10) and reported to the user:
 

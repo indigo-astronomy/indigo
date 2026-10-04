@@ -33,6 +33,8 @@
  The finalizer of an axis runs when the duration has passed since PulseGuide returned, which is the earliest time at which the pulse
  is certainly over, and then reads IsPulseGuiding; a PulseGuide that took at least as long as the pulse is checked at once.
  While IsPulseGuiding is true the finalizer repeats in the rhythm of the active polling, for at most GUIDER_GRACE seconds.
+ A pulse that is over is followed by a poll tick of the primary device (system_alpaca_poll_now()) before the property is completed,
+ so the coordinates of a telescope already show the pulse when a client sees it end.
  A device without IsPulseGuiding completes by the duration alone. IsPulseGuiding is one flag for both axes: while the pulse of the
  other axis still has time to run it says nothing about this axis, so the axis completes by its duration.
 
@@ -190,6 +192,10 @@ static void guider_finalize(indigo_device *device, guider_axis *axis, guider_axi
 			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, system_alpaca_poll_interval(true), finalizer);
 			return;
 		}
+	}
+	if (result == ALPACA_OK && !guiding) {
+		// a client reads the coordinates as soon as the pulse is reported over; the next regular poll may be a second away
+		system_alpaca_poll_now(device);
 	}
 	guider_complete(device, axis, property, result == ALPACA_OK && guiding ? ALPACA_TIMED_OUT : result, "Guiding", reason);
 }

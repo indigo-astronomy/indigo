@@ -428,6 +428,13 @@ extern bool system_alpaca_attach_secondary(indigo_device *device, const alpaca_c
  */
 extern bool system_alpaca_is_active(indigo_device *device);
 
+/** Read the state of the primary device now and serve it to its on_poll, on its handler queue (the queue the caller runs on, for the
+ secondary device too). The regular ticks go on as before, and a lost connection is noted and left to them. For an operation whose
+ end changes what the primary device polls, so that the state is published before the operation is reported as finished (the guider
+ reads the coordinates of the telescope after a pulse).
+ */
+extern void system_alpaca_poll_now(indigo_device *device);
+
 /** Lock of the device, shared by the primary and the secondary device. It guards what a bus thread (change_property) and the handler
  queue of the device both touch: the state and the requested values of the properties a client can change, and the class data a
  bus callback reads or writes. It is recursive. It is never held across a request to the device or a call of the bus
