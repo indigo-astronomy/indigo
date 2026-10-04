@@ -1429,7 +1429,9 @@ Source: `indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver`; generated output i
 
 ### mount_rainbow
 
-Driver-specific use of existing properties: `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_SET_HOST_TIME`, `UTC_TIME`.
+Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+`MOUNT_PARK` slews to `MOUNT_PARK_POSITION` by its altitude and azimuth and stops tracking there; unparking starts tracking. `MOUNT_HOME` finds the mechanical origin of the mount. `MOUNT_TRACK_RATE` offers sidereal, solar and lunar, `MOUNT_GUIDE_RATE` 10 to 100 %. The guider device pulses at the guide rate.
 
 Source: `indigo_drivers/mount_rainbow/indigo_mount_rainbow.c`.
 

@@ -306,7 +306,7 @@
 |  | 2026-09-30 19:56 | 3.0.0.15 | linux arm64 | Explore Scientific iEXOS-100 | 38 / 38 | ✅ OK |
 | mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |
 |  | 2026-09-27 12:23 | 3.0.0.21 | linux x64 | simulator | 18 / 18 | ✅ OK |
-|  | 2026-09-27 23:07 | 3.0.0.21 | mac arm64 | simulator | 18 / 18 | ✅ OK |
+|  | 2026-10-04 14:31 | 3.0.0.22 | mac arm64 | simulator | 24 / 24 | ✅ OK |
 | mount_simulator | 2026-09-26 22:40 | 3.0.0.23 | linux x64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-10-04 11:19 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-10-04 11:15 | 3.0.0.24 | mac arm64 | simulator | 20 / 20 | ✅ OK |

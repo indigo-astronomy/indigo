@@ -119,7 +119,7 @@
 | mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 23 / 12 | ⏰ TODO - make libnexstar for Windows |
 | mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 42 / 36 | |
 | mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 21 / 38 | |
-| mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 18 / 0 | |
+| mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 24 / 0 | |
 | mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 37 / 0 | |
 | mount_starbook          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | |
 | mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 29 / 16 | |

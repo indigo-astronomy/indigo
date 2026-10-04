@@ -231,3 +231,58 @@ ASan/UBSan build (the Makefile's sanitize target is arm64 only), regeneration by
 ### Final test summary for this change
 
 Simulated: 18 run / 18 passed. Hardware: 0 run / 0 passed.
+
+## Protocol review: direction, guiding, park, home and connection (3.0.0.22, 2026-10-04)
+
+The driver was reviewed against the bundled protocol sheet `RainbowAstro_200629.pdf`.
+
+### Found defects and changes
+
+- North and south were swapped. The protocol sheet defines `:Ms#` as "manual DEC + move" and `:Mn#` as "DEC -",
+  so north is `:Ms#`. `MOUNT_MOTION_DEC`
+  NORTH now sends `:Ms#` (stop `:Qs#`), SOUTH `:Mn#` (stop `:Qn#`). The portable simulator already moved the
+  declination up on `:Ms#`; no test had checked the direction.
+- No pulse guiding. A guider device now pulses with `:RG#` and the direction command and ends the pulse with the
+  stop of that axis (`:Qs#`, `:Qn#`, `:Qw#`, `:Qe#`), or `:Q#` on firmware older than 200625. Pulses are refused
+  during a slew and while parked. Writes of the mount and the guider share a mutex; the guider reads the firmware
+  version from the `:AV#` probe, so it works without the mount device connected.
+- The interface and the protocol were never selected. The connection now sends `:AU#` (serial) or `:AW#` (network)
+  and `:AR#` before the `:AV#` probe; a mount left in the LX200 protocol (`:AL#`) does not answer `:AV#` otherwise.
+- The network default port was 4030; the WiFi module of the mount listens on 7100, which is the default now.
+- Park was the homing command. `:Ch#` finds the mechanical origin, so it is `MOUNT_HOME` now (`:CHO#` success,
+  `:CH0#` / `:CH<#` RA / DEC failure, abort and timeout end it in ALERT). `MOUNT_PARK` has PARKED and UNPARKED: a
+  park converts `MOUNT_PARK_POSITION` (hour angle, declination; `MOUNT_PARK_SET` sets it) to altitude and azimuth,
+  slews with `:Sa#`, `:Sz#`, `:MA#` and sends `:CtL#` on `:MM0#`; `:MML#`, `:MMU#`, `:MME#` end it in ALERT.
+  Unpark sends `:CtA#`. The mount does not report a park, so a connection starts unparked.
+- `MOUNT_TRACK_RATE` showed King and custom rates the driver could not set (King sent sidereal); it now has
+  sidereal, solar and lunar. `MOUNT_GUIDE_RATE` is limited to the documented 0.1x to 1.0x (10 to 100 %).
+
+Not taken over: side of pier (`:CG3#`, `:CY#`, reply layout not documented), forced meridian flip (`:Af0#`, `:Af1#`),
+star alignment (`:CN`), slew speed setup (`:Cu1=` to `:Cu3=`), and the status queries for motors, temperatures
+and voltage (`:GY#`, `:CP#`, `:CT#`, `:Cv#`).
+
+### Simulator
+
+`:AR#` / `:AL#` select the protocol and `--lx200-protocol` starts in LX200, where every other command is ignored;
+`:AU#` and `:AW#` are accepted; `:Sa#`, `:Sz#`, `:MA#` slew to an altitude and azimuth through the site latitude
+and the local sidereal time of the mount clock, without changing the tracking, and refuse a negative altitude
+with `:MML#`.
+
+### Tests
+
+Changed: `rainbow_driver_info_and_property_inventory` (park, park position, park set, home, three track rates,
+guide rate limits), `rainbow_manual_motion_covers_all_rates_axes_and_stops` (north `:Ms#`),
+`rainbow_park_abort_and_pending_disconnect` (`:MA#`). Replaced `rainbow_park_reports_success_and_failure` by
+`rainbow_park_slews_to_park_position`. New: `rainbow_park_follows_park_position`,
+`rainbow_home_finds_mechanical_origin`, `rainbow_north_raises_declination`, `rainbow_selects_rainbow_protocol`,
+`rainbow_guider_pulses_every_direction`, `rainbow_guider_uses_global_stop_on_legacy_firmware`.
+
+First recorded run (2026-10-04 14:29): 24/22 Failed. Both park cases timed out on the unpark: the generated
+MOUNT_PARK handler does not publish the property, and the unpark branch did not either. It does now.
+
+Second recorded run (2026-10-04 14:31) on macOS arm64: 24/24 OK. MIGRATION_STATUS.md hardware-free count 18 -> 24.
+The MountSim suite was not run; its RST135 model may still use the old north/south mapping and park semantics.
+
+### Final test summary for this change
+
+Simulated tests: **24 run, 24 passed** (second recorded run). Hardware tests: **0 run, 0 passed**.
