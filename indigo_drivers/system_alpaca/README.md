@@ -78,3 +78,4 @@ Driver is developed and tested with simulators only:
 2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX mount, firmware 10.28x 20/15 Failed
 2026-10-03 21:56 3.0.0.1 linux arm64 OnStepX rotator, firmware 10.28x 9/6 Failed
 2026-10-03 22:44 3.0.0.1 mac arm64 simulator 318/318 OK
+2026-10-04 01:18 3.0.0.1 linux x64 Askar-WAF Focuser 8/8 OK

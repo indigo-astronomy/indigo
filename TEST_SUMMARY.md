@@ -342,6 +342,7 @@
 |  | 2026-10-03 21:56 | 3.0.0.1 | linux arm64 | OnStepX mount, firmware 10.28x | 20 / 15 | ❌ Failed |
 |  | 2026-10-03 21:56 | 3.0.0.1 | linux arm64 | OnStepX rotator, firmware 10.28x | 9 / 6 | ❌ Failed |
 |  | 2026-10-03 22:44 | 3.0.0.1 | mac arm64 | simulator | 318 / 318 | ✅ OK |
+|  | 2026-10-04 01:18 | 3.0.0.1 | linux x64 | Askar-WAF Focuser | 8 / 8 | ✅ OK |
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.17 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
 |  | 2026-09-30 19:13 | 3.0.0.17 | linux arm64 | EFW | 16 / 16 | ✅ OK |
