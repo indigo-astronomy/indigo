@@ -309,7 +309,7 @@
 |  | 2026-10-04 14:31 | 3.0.0.22 | mac arm64 | simulator | 24 / 24 | ✅ OK |
 | mount_simulator | 2026-09-26 22:40 | 3.0.0.23 | linux x64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-10-04 11:19 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
-|  | 2026-10-04 11:15 | 3.0.0.24 | mac arm64 | simulator | 20 / 20 | ✅ OK |
+|  | 2026-10-04 15:24 | 3.0.0.25 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | mount_starbook | 2026-09-27 12:08 | 3.0.0.11 | linux x64 | simulator | 13 / 13 | ✅ OK |
 |  | 2026-09-27 23:08 | 3.0.0.11 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
