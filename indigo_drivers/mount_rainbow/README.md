@@ -32,4 +32,4 @@ Driver is developed and tested with simulator
 
 2026-09-23 14:04 3.0.0.18 mac arm64 MountSim 2.3 (RainbowAstro RST135) 13/13 OK
 2026-09-27 12:23 3.0.0.21 linux x64 simulator 18/18 OK
-2026-10-04 19:23 3.0.0.23 mac arm64 simulator 34/34 OK
+2026-10-04 21:09 3.0.0.24 mac arm64 simulator 39/39 OK

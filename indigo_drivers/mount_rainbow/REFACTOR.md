@@ -349,3 +349,75 @@ action `NOCOMPLETE` executes a slew command but loses its `:MM0#` (event `LOST`)
 - Pier side, hemisphere-dependent direction, alignment, PEC, `MOUNT_STATE`, custom rate, home/park-set position
   workflows: not implemented by the driver (`MOUNT_PARK_SET` CURRENT is framework behaviour).
 - Network (`rainbow://`, TCP 7100) transport: opt-in socket tests are out of the normal integration target.
+
+## Protocol review: coordinate range, collisions, side of pier and status (3.0.0.24, 2026-10-04)
+
+The driver was reviewed once more against the Rainbow protocol as the mount uses it, including the queries that the
+protocol sheet does not document, and against the vendor's release notes, which list collisions of a pulse or a manual
+move with homing and slewing as fixed defects. No hardware test was made; everything below is simulator-validated only.
+
+### Found defects and changes
+
+- A right ascension reported beyond 24 h or below 0 h (`:GR25:00:00.0#`) was published as it was. It wraps into
+  [0, 24) now. A declination reported beyond a pole (`:GD+95*...#`) is mirrored back over it (85 degrees), the right
+  ascension stays as reported. Found by source audit, reproduced by `rainbow_wraps_and_folds_reported_coordinates`.
+- Nothing prevented operations that drive the same axes from overlapping. While the mount searched for home (`:Ch#`),
+  a GOTO, sync, park and manual move were sent; while a guiding pulse ran, a GOTO, park, homing or manual move was sent
+  and the pulse's axis stop (`:Qn#`, `:Qs#`, ...) could stop it; a GOTO or park accepted a manual move and homing; a
+  manual move accepted homing and pulses; a pulse was accepted during a search for home. Each of these is refused now
+  with a reason (`reject_change` on the mount properties, a refusal in the guider handlers); a sync during a pulse and
+  a stop request are still accepted. The guider and the mount share the state through `homing`, `manual_motion`,
+  `pulse_ra` and `pulse_dec` in the private data. Found by source audit, covered by
+  `rainbow_refuses_motion_while_searching_for_home` and `rainbow_refuses_collisions_with_manual_motion_and_pulses`.
+- The tracking-rate reply was matched by its first digit, so the temperature reply `:CT25.5|30.2|29.8#` would have
+  been read as the lunar rate (`:CT2#`). A rate reply must now be `:CT<0-2>#`; a reply with `|` is the temperatures.
+  Covered by `rainbow_reports_side_of_pier_and_status` (rate unchanged and not republished over several polls).
+
+### New capabilities
+
+- `MOUNT_SIDE_OF_PIER` (read-only): `:CG3#` gives the DEC axis angle of the aligned mount, `:CY#` the current DEC axis
+  angle (7 characters), a separator and the RA axis angle; the OTA is west of the pier when the DEC axis is more than
+  90 degrees from its aligned position. A forced meridian flip (`:Af0#`, `:Af1#`) is not supported, so the property is
+  not writable.
+- `X_RAINBOW_POWER` (`:Cv#` input voltage, `:CP<DEC>|<RA>#` motor power in percent), `X_RAINBOW_TEMPERATURE`
+  (`:CT<board>|<RA>|<DEC>#`) and the light property `X_RAINBOW_STATUS` (`:GY#` characters 1, 3 and 4 are the telescope
+  control system, the DEC and the RA motor, `O` is fine; `:GHO#` the home sensor was found).
+- These queries are sent once at connect (`:CG3#:CY#:Cv#:CP#:CT#:GY#:GH#`, up to 1 s); only the answered ones are
+  polled each second, the properties of the others stay hidden (`HOME` is left out of `X_RAINBOW_STATUS` when `:GH#` is
+  not answered). Values are published only when they change.
+
+Not taken over: forced meridian flip (`:Af0#`, `:Af1#`), star alignment (`:CN`), slew speed setup (`:Cu1=` to `:Cu3=`),
+the auto-resume query (`:CR#`), `:SPH#` and `:SPE#` (meaning unknown), the mount's own altitude and azimuth (`:GA#`,
+`:GZ#`; INDIGO computes them).
+
+### Simulator
+
+`:CG3#` answers `:CG3000.00000#`; `:CY#` reports the DEC axis angle within 90 degrees of the alignment east of the pier
+and beyond it west of the pier, which a GOTO or altitude/azimuth slew to a target east of the meridian selects, and the
+RA axis angle from the hour angle; `:Cv#`, `:CP#`, `:CT#` and `:GY#` answer fixed healthy values; `:GH#` reports the
+home sensor found after a completed homing (it reported the park state before). `--no-diagnostics` ignores all seven
+queries. The Arduino sketch `mount_rainbow_simulator.ino` was not changed.
+
+### Tests
+
+New: `rainbow_wraps_and_folds_reported_coordinates`, `rainbow_reports_side_of_pier_and_status` (initial values,
+read-only side of pier, no republishing on unchanged polls, changed temperature and power, a motor needing a check,
+west/east from injected and from simulated axis angles after GOTOs on both sides of the meridian, home sensor found by
+homing), `rainbow_hides_unanswered_status_queries` (no property, one probe each, nothing polled, also after a
+reconnect), `rainbow_refuses_motion_while_searching_for_home`, `rainbow_refuses_collisions_with_manual_motion_and_pulses`.
+Changed: `rainbow_driver_info_and_property_inventory` (side of pier and the three status properties are defined),
+`rainbow_home_finds_mechanical_origin` (the abort case loses `:Ch#`; the mount was already at home and could answer
+`:CHO#` before the abort, which failed under the sanitizer build).
+
+The sanitizer build (`make -C indigo_test test-mount-rainbow-simulator-sanitize`) passed twice after that change.
+Recorded run (2026-10-04 21:09) on macOS arm64: 39/39 OK. MIGRATION_STATUS.md hardware-free count 34 -> 39.
+
+### Not covered, with reason
+
+- The meaning of the `:CY#` separator character and of `:GY#` character 2 is not known; the driver ignores both.
+- Whether a mount reports a declination beyond a pole with the right ascension of the other side is not known; the
+  driver keeps the right ascension as reported.
+
+### Final test summary for this change
+
+Simulated tests: **39 run, 39 passed** (recorded run). Hardware tests: **0 run, 0 passed**.

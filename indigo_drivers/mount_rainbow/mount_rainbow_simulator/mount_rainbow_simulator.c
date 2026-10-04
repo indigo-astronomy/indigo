@@ -36,6 +36,8 @@ typedef struct {
 	bool tracking;
 	char tracking_rate;
 	const char *guide_rate;
+	// a mount without the side of pier, power, temperature and motor status queries
+	bool no_diagnostics;
 } simulator_options;
 
 typedef enum {
@@ -73,6 +75,10 @@ typedef struct {
 	bool rainbow_protocol;
 	// the completion (:MM0#) of the running slew is lost
 	bool lose_completion;
+	// the OTA is west of the pier after a slew to a target east of the meridian
+	bool pier_west;
+	// the home sensor was found (:Ch#)
+	bool homed;
 } simulator_state;
 
 typedef struct {
@@ -137,6 +143,7 @@ static void usage(const char *name) {
 	printf("  --tracking              Start with the tracking on\n");
 	printf("  --track-rate <0-3>      Start with this tracking rate (sidereal, solar, lunar, guide speed)\n");
 	printf("  --guide-rate <D.D>      Start with this guide speed\n");
+	printf("  --no-diagnostics        Ignore the side of pier, power, temperature and motor status queries\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -153,6 +160,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--lx200-protocol")) {
 			options.lx200_protocol = true;
+		} else if (!strcmp(argv[i], "--no-diagnostics")) {
+			options.no_diagnostics = true;
 		} else if (!strcmp(argv[i], "--tracking")) {
 			options.tracking = true;
 		} else if (!strcmp(argv[i], "--track-rate")) {
@@ -342,6 +351,16 @@ static bool consume_injection(const char *command) {
 	return true;
 }
 
+// a slew to a target east of the meridian ends with the OTA west of the pier
+static void select_pier_side(double ra) {
+	double ha = fmod(local_sidereal_time() - ra + 36.0, 24.0) - 12.0;
+	state.pier_west = ha < 0;
+}
+
+static bool diagnostic_query(const char *command) {
+	return !strcmp(command, "CG3") || !strcmp(command, "CY") || !strcmp(command, "Cv") || !strcmp(command, "CP") || !strcmp(command, "CT") || !strcmp(command, "GY") || !strcmp(command, "GH");
+}
+
 static void handle_command(const char *command) {
 	char response[128];
 	serial_simulator_trace_line(options.trace, "->", command);
@@ -359,7 +378,9 @@ static void handle_command(const char *command) {
 		record_event("IGNORED", command);
 		return;
 	}
-	if (!strcmp(command, "AU") || !strcmp(command, "AW")) {
+	if (options.no_diagnostics && diagnostic_query(command)) {
+		record_event("IGNORED", command);
+	} else if (!strcmp(command, "AU") || !strcmp(command, "AW")) {
 		// the interface the replies go to, there is only one here
 	} else if (!strcmp(command, "GL")) {
 		snprintf(response, sizeof(response), ":GL%02d:%02d:%02d#", state.time_hour, state.time_minute, state.time_second);
@@ -405,6 +426,7 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "MS")) {
 		serial_motion_start(&state.ra, state.target_ra, 4.0 * 3600000.0);
 		serial_motion_start(&state.dec, state.target_dec, 15.0 * 3600000.0);
+		select_pier_side(state.target_ra / 3600000.0);
 		state.operation = OPERATION_GOTO;
 		state.parked = false;
 	} else if (!strncmp(command, "Sa", 2)) {
@@ -421,6 +443,7 @@ static void handle_command(const char *command) {
 			double ra = fmod(local_sidereal_time() - ha + 24.0, 24.0);
 			serial_motion_start(&state.ra, ra * 3600000.0, 4.0 * 3600000.0);
 			serial_motion_start(&state.dec, dec * 180 / M_PI * 3600000.0, 15.0 * 3600000.0);
+			select_pier_side(ra);
 			state.operation = OPERATION_ALTAZ;
 		}
 	} else if (!strcmp(command, "Ch")) {
@@ -484,7 +507,27 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "AH")) {
 		write_response(state.operation == OPERATION_PARK ? ":AH1#" : ":AH0#");
 	} else if (!strcmp(command, "GH")) {
-		write_response(state.parked ? ":GHO#" : ":GH0#");
+		write_response(state.homed ? ":GHO#" : ":GH0#");
+	} else if (!strcmp(command, "CG3")) {
+		// the DEC axis angle of the aligned mount
+		write_response(":CG3000.00000#");
+	} else if (!strcmp(command, "CY")) {
+		// the DEC and RA axis angles, the DEC axis turns past 90 degrees from the aligned position west of the pier
+		double dec = serial_motion_update(&state.dec) / 3600000.0, ra = serial_motion_update(&state.ra) / 3600000.0;
+		double dec_axis = state.pier_west ? 180 - (90 - dec) / 2 : (90 - dec) / 2;
+		double ra_axis = fmod((local_sidereal_time() - ra) * 15 + 720, 360);
+		snprintf(response, sizeof(response), ":CY%07.3f|%07.3f#", dec_axis, ra_axis);
+		write_response(response);
+	} else if (!strcmp(command, "Cv")) {
+		write_response(":Cv12.3#");
+	} else if (!strcmp(command, "CP")) {
+		// DEC and RA motor power in percent
+		write_response(":CP45.0|50.0#");
+	} else if (!strcmp(command, "CT")) {
+		// main board, RA and DEC motor temperatures
+		write_response(":CT25.5|30.2|29.8#");
+	} else if (!strcmp(command, "GY")) {
+		write_response(":GYOOOO#");
 	} else {
 		record_event("UNKNOWN", command);
 	}
@@ -512,6 +555,7 @@ static void check_operation_completion(void) {
 		}
 	} else if (state.operation == OPERATION_PARK) {
 		state.parked = true;
+		state.homed = true;
 		state.tracking = false;
 		state.operation = OPERATION_NONE;
 		write_response(":CHO#");

@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_mount_rainbow"
 #define DRIVER_LABEL         "RainbowAstro Mount"
 #define MOUNT_DEVICE_NAME    "RainbowAstro Mount"
@@ -56,11 +56,48 @@
 
 //- define
 
+#pragma mark - Property definitions
+
+#define X_RAINBOW_POWER_PROPERTY          (PRIVATE_DATA->x_rainbow_power_property)
+#define X_RAINBOW_POWER_VOLTAGE_ITEM      (X_RAINBOW_POWER_PROPERTY->items + 0)
+#define X_RAINBOW_POWER_RA_ITEM           (X_RAINBOW_POWER_PROPERTY->items + 1)
+#define X_RAINBOW_POWER_DEC_ITEM          (X_RAINBOW_POWER_PROPERTY->items + 2)
+
+#define X_RAINBOW_POWER_PROPERTY_NAME     "X_RAINBOW_POWER"
+#define X_RAINBOW_POWER_VOLTAGE_ITEM_NAME "VOLTAGE"
+#define X_RAINBOW_POWER_RA_ITEM_NAME      "RA_MOTOR"
+#define X_RAINBOW_POWER_DEC_ITEM_NAME     "DEC_MOTOR"
+
+#define X_RAINBOW_TEMPERATURE_PROPERTY        (PRIVATE_DATA->x_rainbow_temperature_property)
+#define X_RAINBOW_TEMPERATURE_BOARD_ITEM      (X_RAINBOW_TEMPERATURE_PROPERTY->items + 0)
+#define X_RAINBOW_TEMPERATURE_RA_ITEM         (X_RAINBOW_TEMPERATURE_PROPERTY->items + 1)
+#define X_RAINBOW_TEMPERATURE_DEC_ITEM        (X_RAINBOW_TEMPERATURE_PROPERTY->items + 2)
+
+#define X_RAINBOW_TEMPERATURE_PROPERTY_NAME   "X_RAINBOW_TEMPERATURE"
+#define X_RAINBOW_TEMPERATURE_BOARD_ITEM_NAME "BOARD"
+#define X_RAINBOW_TEMPERATURE_RA_ITEM_NAME    "RA_MOTOR"
+#define X_RAINBOW_TEMPERATURE_DEC_ITEM_NAME   "DEC_MOTOR"
+
+#define X_RAINBOW_STATUS_PROPERTY            (PRIVATE_DATA->x_rainbow_status_property)
+#define X_RAINBOW_STATUS_TCS_ITEM            (X_RAINBOW_STATUS_PROPERTY->items + 0)
+#define X_RAINBOW_STATUS_RA_MOTOR_ITEM       (X_RAINBOW_STATUS_PROPERTY->items + 1)
+#define X_RAINBOW_STATUS_DEC_MOTOR_ITEM      (X_RAINBOW_STATUS_PROPERTY->items + 2)
+#define X_RAINBOW_STATUS_HOME_ITEM           (X_RAINBOW_STATUS_PROPERTY->items + 3)
+
+#define X_RAINBOW_STATUS_PROPERTY_NAME       "X_RAINBOW_STATUS"
+#define X_RAINBOW_STATUS_TCS_ITEM_NAME       "TCS"
+#define X_RAINBOW_STATUS_RA_MOTOR_ITEM_NAME  "RA_MOTOR"
+#define X_RAINBOW_STATUS_DEC_MOTOR_ITEM_NAME "DEC_MOTOR"
+#define X_RAINBOW_STATUS_HOME_ITEM_NAME      "HOME"
+
 #pragma mark - Private data definition
 
 typedef struct {
 	int count;
 	indigo_uni_handle *handle;
+	indigo_property *x_rainbow_power_property;
+	indigo_property *x_rainbow_temperature_property;
+	indigo_property *x_rainbow_status_property;
 	//+ data
 	indigo_timer *reader;
 	struct tm utc;
@@ -86,6 +123,21 @@ typedef struct {
 	bool tracking;
 	int track_rate;
 	char utc_time[INDIGO_VALUE_SIZE], utc_offset[INDIGO_VALUE_SIZE];
+	// shared with the guider, a pulse is refused while the mount searches for home or moves manually,
+	// and a GOTO, park, home or manual move is refused while a pulse runs
+	bool homing;
+	bool manual_motion;
+	bool pulse_ra;
+	bool pulse_dec;
+	// the DEC axis angle of the aligned mount (:CG3#), the side of pier is read from :CY# against it
+	double dec_axis_alignment;
+	bool dec_axis_alignment_known;
+	// queries answered only by some mounts, set by their first reply and polled only then
+	bool side_of_pier_supported;
+	bool power_supported;
+	bool temperature_supported;
+	bool status_supported;
+	bool home_sensor_supported;
 	//- data
 } rainbow_private_data;
 
@@ -143,6 +195,39 @@ static bool rainbow_sync_command(indigo_device *device, const char *command, ind
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Failed to set %s", property->name);
 	return false;
+}
+
+// true if the request switches the named item on, or any item for a NULL name
+static bool rainbow_requested(indigo_property *property, const char *name) {
+	for (int i = 0; i < property->count; i++) {
+		if (property->items[i].sw.value && (name == NULL || !strcmp(property->items[i].name, name))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static void rainbow_set_number(indigo_item *item, double value, bool *changed) {
+	if (item->number.value != value) {
+		item->number.value = value;
+		*changed = true;
+	}
+}
+
+static void rainbow_set_light(indigo_item *item, indigo_property_state state, bool *changed) {
+	if (item->light.value != state) {
+		item->light.value = state;
+		*changed = true;
+	}
+}
+
+static void rainbow_publish_status(indigo_device *device, indigo_property *property, bool changed) {
+	if (changed || property->state != INDIGO_OK_STATE) {
+		property->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED && !property->hidden) {
+			indigo_update_property(device, property, NULL);
+		}
+	}
 }
 
 static bool rainbow_set_utc(indigo_device *device, time_t seconds, int utc_offset) {
@@ -247,9 +332,17 @@ static void rainbow_slew_completed(indigo_device *device) {
 
 static void rainbow_process_message(indigo_device *device, const char *response) {
 	if (!strncmp(response, ":GR", 3)) {
-		PRIVATE_DATA->ra = indigo_stod(response + 3);
+		// the mount may report the right ascension beyond 24 h or below 0 h
+		double ra = fmod(indigo_stod(response + 3), 24);
+		PRIVATE_DATA->ra = ra < 0 ? ra + 24 : ra;
 	} else if (!strncmp(response, ":GD", 3)) {
 		double ra = PRIVATE_DATA->ra, dec = indigo_stod(response + 3);
+		// a declination reported beyond a pole is mirrored back over it, the right ascension stays as reported
+		if (dec > 90) {
+			dec = 180 - dec;
+		} else if (dec < -90) {
+			dec = -180 - dec;
+		}
 		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
@@ -288,6 +381,7 @@ static void rainbow_process_message(indigo_device *device, const char *response)
 	} else if (!strncmp(response, ":CH", 3)) {
 		// :CHO# the mechanical origin was found, :CH0# the RA and :CH<# the DEC axis failed to find it
 		bool found = !strcmp(response, ":CHO#");
+		PRIVATE_DATA->homing = false;
 		MOUNT_HOME_ITEM->sw.value = found;
 		MOUNT_HOME_PROPERTY->state = found ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		if (IS_CONNECTED) {
@@ -359,7 +453,18 @@ static void rainbow_process_message(indigo_device *device, const char *response)
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			}
 		}
-	} else if (!strncmp(response, ":CT", 3) && response[3] >= '0' && response[3] <= '2') {
+	} else if (!strncmp(response, ":CT", 3) && strchr(response, '|') != NULL) {
+		// :CT<board>|<RA motor>|<DEC motor># are the temperatures, not a tracking rate
+		double board, ra, dec;
+		if (sscanf(response + 3, "%lf|%lf|%lf", &board, &ra, &dec) == 3) {
+			bool changed = false;
+			PRIVATE_DATA->temperature_supported = true;
+			rainbow_set_number(X_RAINBOW_TEMPERATURE_BOARD_ITEM, board, &changed);
+			rainbow_set_number(X_RAINBOW_TEMPERATURE_RA_ITEM, ra, &changed);
+			rainbow_set_number(X_RAINBOW_TEMPERATURE_DEC_ITEM, dec, &changed);
+			rainbow_publish_status(device, X_RAINBOW_TEMPERATURE_PROPERTY, changed);
+		}
+	} else if (!strncmp(response, ":CT", 3) && response[3] >= '0' && response[3] <= '2' && response[4] == '#') {
 		// :CT3# is the guide speed used as the tracking rate, which has no item
 		PRIVATE_DATA->track_rate = response[3] - '0';
 		// a pending MOUNT_TRACK_RATE request is shown by its handler, an unchanged rate is not republished
@@ -368,6 +473,55 @@ static void rainbow_process_message(indigo_device *device, const char *response)
 			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 			if (IS_CONNECTED) {
 				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			}
+		}
+	} else if (!strncmp(response, ":Cv", 3)) {
+		bool changed = false;
+		PRIVATE_DATA->power_supported = true;
+		rainbow_set_number(X_RAINBOW_POWER_VOLTAGE_ITEM, atof(response + 3), &changed);
+		rainbow_publish_status(device, X_RAINBOW_POWER_PROPERTY, changed);
+	} else if (!strncmp(response, ":CP", 3)) {
+		// :CP<DEC motor>|<RA motor># is the motor power in percent
+		double dec, ra;
+		if (sscanf(response + 3, "%lf|%lf", &dec, &ra) == 2) {
+			bool changed = false;
+			PRIVATE_DATA->power_supported = true;
+			rainbow_set_number(X_RAINBOW_POWER_RA_ITEM, ra, &changed);
+			rainbow_set_number(X_RAINBOW_POWER_DEC_ITEM, dec, &changed);
+			rainbow_publish_status(device, X_RAINBOW_POWER_PROPERTY, changed);
+		}
+	} else if (!strncmp(response, ":GY", 3) && strlen(response) >= 8) {
+		// :GY<TCS>?<DEC motor><RA motor>#, 'O' is fine, anything else needs a check
+		bool changed = false;
+		PRIVATE_DATA->status_supported = true;
+		rainbow_set_light(X_RAINBOW_STATUS_TCS_ITEM, response[3] == 'O' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, &changed);
+		rainbow_set_light(X_RAINBOW_STATUS_DEC_MOTOR_ITEM, response[5] == 'O' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, &changed);
+		rainbow_set_light(X_RAINBOW_STATUS_RA_MOTOR_ITEM, response[6] == 'O' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, &changed);
+		rainbow_publish_status(device, X_RAINBOW_STATUS_PROPERTY, changed);
+	} else if (!strncmp(response, ":GH", 3) && strlen(response) >= 5) {
+		// :GHO# the home sensor was found
+		bool changed = false;
+		PRIVATE_DATA->home_sensor_supported = true;
+		rainbow_set_light(X_RAINBOW_STATUS_HOME_ITEM, response[3] == 'O' ? INDIGO_OK_STATE : INDIGO_IDLE_STATE, &changed);
+		if (PRIVATE_DATA->status_supported) {
+			rainbow_publish_status(device, X_RAINBOW_STATUS_PROPERTY, changed);
+		}
+	} else if (!strncmp(response, ":CG3", 4)) {
+		PRIVATE_DATA->dec_axis_alignment = atof(response[4] == '=' ? response + 5 : response + 4);
+		PRIVATE_DATA->dec_axis_alignment_known = true;
+	} else if (!strncmp(response, ":CY", 3) && PRIVATE_DATA->dec_axis_alignment_known && strlen(response) >= 11) {
+		// :CY<DEC axis angle, 7 characters><separator><RA axis angle, 7 characters>#, the OTA is west of the pier
+		// when the DEC axis is turned more than 90 degrees from its aligned position
+		char angle[8];
+		memcpy(angle, response + 3, 7);
+		angle[7] = 0;
+		indigo_item *side = atof(angle) - PRIVATE_DATA->dec_axis_alignment > 90 ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM;
+		PRIVATE_DATA->side_of_pier_supported = true;
+		if (!side->sw.value || MOUNT_SIDE_OF_PIER_PROPERTY->state != INDIGO_OK_STATE) {
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side, true);
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
+			if (IS_CONNECTED && !MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			}
 		}
 	} else if (!strncmp(response, ":CU0=", 5)) {
@@ -424,6 +578,7 @@ static void mount_home_finalizer(indigo_device *device) {
 		return;
 	}
 	if (indigo_monotonic_time() >= PRIVATE_DATA->home_deadline) {
+		PRIVATE_DATA->homing = false;
 		MOUNT_HOME_ITEM->sw.value = false;
 		MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Homing timed out");
@@ -456,6 +611,7 @@ static bool rainbow_stop_pulse(indigo_device *device, const char *axis_stop) {
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
 	bool ok = rainbow_stop_pulse(device, GUIDER_GUIDE_NORTH_ITEM->number.value > 0 ? ":Qs#" : ":Qn#");
+	PRIVATE_DATA->pulse_dec = false;
 	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -464,6 +620,7 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
 	bool ok = rainbow_stop_pulse(device, GUIDER_GUIDE_WEST_ITEM->number.value > 0 ? ":Qw#" : ":Qe#");
+	PRIVATE_DATA->pulse_ra = false;
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
@@ -482,6 +639,21 @@ static void mount_timer_callback(indigo_device *device) {
 	rainbow_write(device, PRIVATE_DATA->version >= 200625 ? ":GC#:GG#:GL#" : ":GL#");
 	rainbow_write(device, ":AT#");
 	rainbow_write(device, ":Ct?#");
+	if (PRIVATE_DATA->side_of_pier_supported) {
+		rainbow_write(device, ":CY#");
+	}
+	if (PRIVATE_DATA->power_supported) {
+		rainbow_write(device, ":Cv#:CP#");
+	}
+	if (PRIVATE_DATA->temperature_supported) {
+		rainbow_write(device, ":CT#");
+	}
+	if (PRIVATE_DATA->status_supported) {
+		rainbow_write(device, ":GY#");
+	}
+	if (PRIVATE_DATA->home_sensor_supported) {
+		rainbow_write(device, ":GH#");
+	}
 	indigo_execute_handler_in(device, 1, mount_timer_callback);
 	//- mount.on_timer
 }
@@ -498,6 +670,9 @@ static void mount_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ mount.on_connect
 			PRIVATE_DATA->goto_active = PRIVATE_DATA->goto_moving = PRIVATE_DATA->parking = false;
+			PRIVATE_DATA->homing = PRIVATE_DATA->manual_motion = false;
+			PRIVATE_DATA->dec_axis_alignment_known = false;
+			PRIVATE_DATA->side_of_pier_supported = PRIVATE_DATA->power_supported = PRIVATE_DATA->temperature_supported = PRIVATE_DATA->status_supported = PRIVATE_DATA->home_sensor_supported = false;
 			INDIGO_COPY_VALUE(PRIVATE_DATA->utc_time, MOUNT_UTC_ITEM->text.value);
 			INDIGO_COPY_VALUE(PRIVATE_DATA->utc_offset, MOUNT_UTC_OFFSET_ITEM->text.value);
 			rainbow_clear_messages(device);
@@ -514,7 +689,20 @@ static void mount_connection_handler(indigo_device *device) {
 				rainbow_sync_command(device, ":AT#", MOUNT_TRACKING_PROPERTY);
 				rainbow_sync_command(device, ":Ct?#", MOUNT_TRACK_RATE_PROPERTY);
 				rainbow_sync_command(device, PRIVATE_DATA->version >= 200625 ? ":GC#:GG#:GL#" : ":GL#", MOUNT_UTC_TIME_PROPERTY);
+				// side of pier, power, temperatures and motor status are answered only by some mounts, the
+				// properties of the unanswered queries stay hidden
+				if (rainbow_write(device, ":CG3#:CY#:Cv#:CP#:CT#:GY#:GH#")) {
+					for (int i = 0; i < 100 && !(PRIVATE_DATA->side_of_pier_supported && PRIVATE_DATA->power_supported && PRIVATE_DATA->temperature_supported && PRIVATE_DATA->status_supported && PRIVATE_DATA->home_sensor_supported); i++) {
+						indigo_usleep(10000);
+						rainbow_process_messages(device);
+					}
+				}
 			}
+			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = !PRIVATE_DATA->side_of_pier_supported;
+			X_RAINBOW_POWER_PROPERTY->hidden = !PRIVATE_DATA->power_supported;
+			X_RAINBOW_TEMPERATURE_PROPERTY->hidden = !PRIVATE_DATA->temperature_supported;
+			X_RAINBOW_STATUS_PROPERTY->hidden = !PRIVATE_DATA->status_supported;
+			X_RAINBOW_STATUS_PROPERTY->count = PRIVATE_DATA->home_sensor_supported ? 4 : 3;
 			// the mount does not report a park, it is known only from a park made in this session
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 			PRIVATE_DATA->parked = false;
@@ -528,6 +716,9 @@ static void mount_connection_handler(indigo_device *device) {
 			//- mount.on_connect
 		}
 		if (connection_result) {
+			indigo_define_property(device, X_RAINBOW_POWER_PROPERTY, NULL);
+			indigo_define_property(device, X_RAINBOW_TEMPERATURE_PROPERTY, NULL);
+			indigo_define_property(device, X_RAINBOW_STATUS_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -548,6 +739,7 @@ static void mount_connection_handler(indigo_device *device) {
 		}
 		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 		PRIVATE_DATA->goto_active = PRIVATE_DATA->parking = false;
+		PRIVATE_DATA->homing = PRIVATE_DATA->manual_motion = false;
 		PRIVATE_DATA->reader_running = false;
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->reader);
 		rainbow_clear_messages(device);
@@ -568,6 +760,10 @@ static void mount_connection_handler(indigo_device *device) {
 			MOUNT_UTC_TIME_PROPERTY,
 			MOUNT_TRACKING_PROPERTY,
 			MOUNT_TRACK_RATE_PROPERTY,
+			MOUNT_SIDE_OF_PIER_PROPERTY,
+			X_RAINBOW_POWER_PROPERTY,
+			X_RAINBOW_TEMPERATURE_PROPERTY,
+			X_RAINBOW_STATUS_PROPERTY,
 			MOUNT_GUIDE_RATE_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
@@ -575,6 +771,9 @@ static void mount_connection_handler(indigo_device *device) {
 				cancelled_properties[i]->state = INDIGO_OK_STATE;
 			}
 		}
+		indigo_delete_property(device, X_RAINBOW_POWER_PROPERTY, NULL);
+		indigo_delete_property(device, X_RAINBOW_TEMPERATURE_PROPERTY, NULL);
+		indigo_delete_property(device, X_RAINBOW_STATUS_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			rainbow_close(device);
 		}
@@ -635,6 +834,7 @@ static void mount_home_handler(indigo_device *device) {
 		MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		if (rainbow_write(device, ":Ch#")) {
+			PRIVATE_DATA->homing = true;
 			PRIVATE_DATA->home_deadline = indigo_monotonic_time() + 600;
 			indigo_execute_handler_in(device, 0.2, mount_home_finalizer);
 		} else {
@@ -728,6 +928,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Homing aborted");
 	}
 	PRIVATE_DATA->goto_active = PRIVATE_DATA->parking = false;
+	PRIVATE_DATA->homing = PRIVATE_DATA->manual_motion = false;
 	MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 	MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 	MOUNT_MOTION_DEC_PROPERTY->state = MOUNT_MOTION_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -762,6 +963,7 @@ static void mount_motion_dec_handler(indigo_device *device) {
 	if (!rainbow_write(device, command)) {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	PRIVATE_DATA->manual_motion = MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value;
 	//- mount.MOUNT_MOTION_DEC.on_change
 	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 	indigo_mount_commit_motion_client(device, MOUNT_MOTION_DEC_PROPERTY);
@@ -786,6 +988,7 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	if (!rainbow_write(device, command)) {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	PRIVATE_DATA->manual_motion = MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value;
 	//- mount.MOUNT_MOTION_RA.on_change
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 	indigo_mount_commit_motion_client(device, MOUNT_MOTION_RA_PROPERTY);
@@ -915,6 +1118,42 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_TRACKING_PROPERTY->hidden = false;
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
+		//+ mount.MOUNT_SIDE_OF_PIER.on_attach
+		// read from the axis angles, the forced meridian flip is not supported
+		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
+		//- mount.MOUNT_SIDE_OF_PIER.on_attach
+		X_RAINBOW_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, X_RAINBOW_POWER_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Power", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		if (X_RAINBOW_POWER_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(X_RAINBOW_POWER_VOLTAGE_ITEM, X_RAINBOW_POWER_VOLTAGE_ITEM_NAME, "Input voltage [V]", 0, 50, 0, 0);
+		strcpy(X_RAINBOW_POWER_VOLTAGE_ITEM->number.format, "%.1f");
+		indigo_init_number_item(X_RAINBOW_POWER_RA_ITEM, X_RAINBOW_POWER_RA_ITEM_NAME, "RA motor power [%]", 0, 100, 0, 0);
+		strcpy(X_RAINBOW_POWER_RA_ITEM->number.format, "%.0f");
+		indigo_init_number_item(X_RAINBOW_POWER_DEC_ITEM, X_RAINBOW_POWER_DEC_ITEM_NAME, "DEC motor power [%]", 0, 100, 0, 0);
+		strcpy(X_RAINBOW_POWER_DEC_ITEM->number.format, "%.0f");
+		X_RAINBOW_POWER_PROPERTY->hidden = true;
+		X_RAINBOW_TEMPERATURE_PROPERTY = indigo_init_number_property(NULL, device->name, X_RAINBOW_TEMPERATURE_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Temperature", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		if (X_RAINBOW_TEMPERATURE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(X_RAINBOW_TEMPERATURE_BOARD_ITEM, X_RAINBOW_TEMPERATURE_BOARD_ITEM_NAME, "Main board [\u00B0C]", -50, 150, 0, 0);
+		strcpy(X_RAINBOW_TEMPERATURE_BOARD_ITEM->number.format, "%.1f");
+		indigo_init_number_item(X_RAINBOW_TEMPERATURE_RA_ITEM, X_RAINBOW_TEMPERATURE_RA_ITEM_NAME, "RA motor [\u00B0C]", -50, 150, 0, 0);
+		strcpy(X_RAINBOW_TEMPERATURE_RA_ITEM->number.format, "%.1f");
+		indigo_init_number_item(X_RAINBOW_TEMPERATURE_DEC_ITEM, X_RAINBOW_TEMPERATURE_DEC_ITEM_NAME, "DEC motor [\u00B0C]", -50, 150, 0, 0);
+		strcpy(X_RAINBOW_TEMPERATURE_DEC_ITEM->number.format, "%.1f");
+		X_RAINBOW_TEMPERATURE_PROPERTY->hidden = true;
+		X_RAINBOW_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, X_RAINBOW_STATUS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Mount status", INDIGO_OK_STATE, 4);
+		if (X_RAINBOW_STATUS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_light_item(X_RAINBOW_STATUS_TCS_ITEM, X_RAINBOW_STATUS_TCS_ITEM_NAME, "Telescope control system", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_RAINBOW_STATUS_RA_MOTOR_ITEM, X_RAINBOW_STATUS_RA_MOTOR_ITEM_NAME, "RA motor", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_RAINBOW_STATUS_DEC_MOTOR_ITEM, X_RAINBOW_STATUS_DEC_MOTOR_ITEM_NAME, "DEC motor", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_RAINBOW_STATUS_HOME_ITEM, X_RAINBOW_STATUS_HOME_ITEM_NAME, "Home found", INDIGO_IDLE_STATE);
+		X_RAINBOW_STATUS_PROPERTY->hidden = true;
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
@@ -923,6 +1162,11 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAINBOW_POWER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAINBOW_TEMPERATURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAINBOW_STATUS_PROPERTY);
+	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
 
@@ -931,9 +1175,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_PROCESS_CONNECT(mount_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->homing, MOUNT_PARK_PROPERTY, "Mount is searching for home");
+		INDIGO_REJECT_CHANGE_IF((PRIVATE_DATA->pulse_ra || PRIVATE_DATA->pulse_dec) && rainbow_requested(property, MOUNT_PARK_PARKED_ITEM_NAME), MOUNT_PARK_PROPERTY, "Guiding pulse in progress");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->goto_active, MOUNT_HOME_PROPERTY, "Mount is slewing");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->manual_motion, MOUNT_HOME_PROPERTY, "Mount is moving");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pulse_ra || PRIVATE_DATA->pulse_dec, MOUNT_HOME_PROPERTY, "Guiding pulse in progress");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
@@ -941,6 +1190,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->homing, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is searching for home");
+		INDIGO_REJECT_CHANGE_IF((PRIVATE_DATA->pulse_ra || PRIVATE_DATA->pulse_dec) && !MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Guiding pulse in progress");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
@@ -948,11 +1199,17 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->homing && rainbow_requested(property, NULL), MOUNT_MOTION_DEC_PROPERTY, "Mount is searching for home");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->goto_active && rainbow_requested(property, NULL), MOUNT_MOTION_DEC_PROPERTY, "Mount is slewing");
+		INDIGO_REJECT_CHANGE_IF((PRIVATE_DATA->pulse_ra || PRIVATE_DATA->pulse_dec) && rainbow_requested(property, NULL), MOUNT_MOTION_DEC_PROPERTY, "Guiding pulse in progress");
 		indigo_mount_record_motion_client(device, client, property);
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_DEC_PROPERTY, mount_motion_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_RA_PROPERTY, "Mount is parked!");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->homing && rainbow_requested(property, NULL), MOUNT_MOTION_RA_PROPERTY, "Mount is searching for home");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->goto_active && rainbow_requested(property, NULL), MOUNT_MOTION_RA_PROPERTY, "Mount is slewing");
+		INDIGO_REJECT_CHANGE_IF((PRIVATE_DATA->pulse_ra || PRIVATE_DATA->pulse_dec) && rainbow_requested(property, NULL), MOUNT_MOTION_RA_PROPERTY, "Guiding pulse in progress");
 		indigo_mount_record_motion_client(device, client, property);
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
 		return INDIGO_OK;
@@ -990,6 +1247,9 @@ static indigo_result mount_detach(indigo_device *device) {
 	pthread_mutex_destroy(&PRIVATE_DATA->message_mutex);
 	pthread_mutex_destroy(&PRIVATE_DATA->write_mutex);
 	//- mount.on_detach
+	indigo_release_property(X_RAINBOW_POWER_PROPERTY);
+	indigo_release_property(X_RAINBOW_TEMPERATURE_PROPERTY);
+	indigo_release_property(X_RAINBOW_STATUS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
@@ -1027,6 +1287,7 @@ static void guider_connection_handler(indigo_device *device) {
 		if (GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
 			rainbow_stop_pulse(device, GUIDER_GUIDE_WEST_ITEM->number.value > 0 ? ":Qw#" : ":Qe#");
 		}
+		PRIVATE_DATA->pulse_ra = PRIVATE_DATA->pulse_dec = false;
 		//- guider.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -1054,12 +1315,14 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target;
 	double north = GUIDER_GUIDE_NORTH_ITEM->number.value, south = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-	if (PRIVATE_DATA->goto_active || PRIVATE_DATA->parked) {
+	PRIVATE_DATA->pulse_dec = false;
+	if (PRIVATE_DATA->goto_active || PRIVATE_DATA->parked || PRIVATE_DATA->homing || PRIVATE_DATA->manual_motion) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, PRIVATE_DATA->parked ? "No guiding while parked" : "No guiding during a slew");
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, PRIVATE_DATA->parked ? "No guiding while parked" : PRIVATE_DATA->homing ? "No guiding while searching for home" : PRIVATE_DATA->manual_motion ? "No guiding during a manual move" : "No guiding during a slew");
 	} else if (north > 0 || south > 0) {
 		if (rainbow_write(device, north > 0 ? ":RG#:Ms#" : ":RG#:Mn#")) {
+			PRIVATE_DATA->pulse_dec = true;
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, (north > 0 ? north : south) / 1000.0, guider_guide_dec_finalizer);
@@ -1081,12 +1344,14 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.target;
 	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target;
 	double west = GUIDER_GUIDE_WEST_ITEM->number.value, east = GUIDER_GUIDE_EAST_ITEM->number.value;
-	if (PRIVATE_DATA->goto_active || PRIVATE_DATA->parked) {
+	PRIVATE_DATA->pulse_ra = false;
+	if (PRIVATE_DATA->goto_active || PRIVATE_DATA->parked || PRIVATE_DATA->homing || PRIVATE_DATA->manual_motion) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, PRIVATE_DATA->parked ? "No guiding while parked" : "No guiding during a slew");
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, PRIVATE_DATA->parked ? "No guiding while parked" : PRIVATE_DATA->homing ? "No guiding while searching for home" : PRIVATE_DATA->manual_motion ? "No guiding during a manual move" : "No guiding during a slew");
 	} else if (west > 0 || east > 0) {
 		if (rainbow_write(device, west > 0 ? ":RG#:Mw#" : ":RG#:Me#")) {
+			PRIVATE_DATA->pulse_ra = true;
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, (west > 0 ? west : east) / 1000.0, guider_guide_ra_finalizer);

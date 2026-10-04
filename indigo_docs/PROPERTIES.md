@@ -1429,9 +1429,15 @@ Source: `indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver`; generated output i
 
 ### mount_rainbow
 
-Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+Custom properties: `X_RAINBOW_POWER`, `X_RAINBOW_STATUS`, `X_RAINBOW_TEMPERATURE`.
+
+Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
 `MOUNT_PARK` slews to `MOUNT_PARK_POSITION` by its altitude and azimuth and stops tracking there; unparking starts tracking. `MOUNT_HOME` finds the mechanical origin of the mount. `MOUNT_TRACK_RATE` offers sidereal, solar and lunar, `MOUNT_GUIDE_RATE` 10 to 100 %. The guider device pulses at the guide rate.
+
+While the mount searches for home, a GOTO, sync, park and manual move are refused; while a guiding pulse runs, a GOTO, park, homing and manual move are refused (a sync is accepted); a GOTO or park refuses a manual move and homing, a manual move refuses homing. The guider refuses a pulse during a slew, a manual move, a search for home and while parked.
+
+The following are read-only and defined only on a mount that answers their queries at connect. `MOUNT_SIDE_OF_PIER` is read from the axis angles (`:CG3#`, `:CY#`). `X_RAINBOW_POWER` has the input voltage `VOLTAGE` [V] and the motor power `RA_MOTOR`, `DEC_MOTOR` [%]. `X_RAINBOW_TEMPERATURE` has the temperatures `BOARD`, `RA_MOTOR` and `DEC_MOTOR` [°C]. `X_RAINBOW_STATUS` is a light property: `TCS` (telescope control system), `RA_MOTOR` and `DEC_MOTOR` are OK, or ALERT when the mount asks for a check; `HOME`, shown when the mount reports its home sensor, is OK once home was found.
 
 Source: `indigo_drivers/mount_rainbow/indigo_mount_rainbow.c`.
 
