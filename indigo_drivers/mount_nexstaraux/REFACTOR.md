@@ -686,3 +686,23 @@ were merged into one driver; every behaviour of both is kept. Where they met:
   sync would have written 0xA00000 and the tracking mount would have run away at twice the sidereal
   rate. This follows the mounting geometry and is consistent with the drive direction; it has not
   been run on a mount in the southern hemisphere, which no bench here has.
+
+### Hardware run of version 24 (2026-10-04)
+
+`MOUNT_NEXSTARAUX_HW_URL=nexstar://192.168.111.156:2000 python3 tools/run_driver_test.py
+mount_nexstaraux --hw`, mac arm64, Celestron NexStar SE (model 11, NexStar SE 4/5, motor controllers
+5.20 / 5.20, no autoguider port) over the SkyPortal WiFi module, hand controller idle waiting for its
+alignment: **37/37 OK**. The two park cases report themselves as not run (opt-in `HW_PARK=1`).
+
+- Tracking: 0.00891 h lost with tracking off and 0.00023 h with it on over 30 s; 0.00000 h after
+  manual motion, 0.00004 h after a slew, 0.00023 h / 0.00014 h after an east / west pulse.
+- GOTO of 3.092 degrees arrived 0.015 degrees from the target.
+- RA guiding: 5 s pulses at the sidereal rate moved the right ascension by -0.00155 h west and
+  +0.00140 h east (expected -+0.0014 h).
+- Guide pulse completion timing (software, request to published completion over WiFi, 48 pulses of
+  50 to 500 ms): signed error min 65.5, mean 127.6, median 120.6, p95 195.6, p99 231.1, max 231.1,
+  sd 43.3 ms. Earlier runs the same evening measured means of 42.5 ms and 101.6 ms with the same
+  pulse logic, so most of the spread is the module; the discard before each request adds up to
+  10 ms to every request, two per pulse.
+
+Test summary for version 24: simulated tests run 67, passed 67; hardware tests run 37, passed 37.
