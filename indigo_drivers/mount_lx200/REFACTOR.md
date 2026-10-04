@@ -78,6 +78,7 @@ commands, property deletion on disconnect and successful reconnection.
 | Initialization and loss | `initialization_rollback_and_reconnect`, `transport_loss_and_fresh_session`, `secondary_capability_rejection`; open/detection failures, supported missing-name fallback, rollback, new session after loss, unsupported secondary capability rejection |
 | Existing compliance | `mount_passes_serial_compliance_checks`, `guider_passes_serial_compliance_checks`, `focuser_passes_serial_compliance_checks`, `aux_passes_serial_compliance_checks`; original bus lifecycle/transport acceptance |
 | TCP (explicit opt-in) | `tcp_redundant_guider_connection_balances_close`, `tcp_mount_commands_and_reconnect`, `tcp_guider_keepalive_and_shared_ownership`; socket command/reconnect, guider-first keepalive, shared ownership and redundant-connect last-close |
+| Mount test standard (2026-10-04) | `goto_abort_ends_alert_and_idle_abort_keeps_state`, `onstep_park_and_home_abort_settle`, `disconnect_stops_motion_and_reconnect_is_clean`, `connect_publishes_the_device_state`, `coordinate_encoding_at_wrap_points`, `meade_goto_refusals_stop_the_sequence`, `shutdown_refused_while_connected`, `onstep_tracking_request_survives_status_poll`, `zwo_refused_settings_show_the_device_state`, `gemini_guide_rate_is_shared_by_mount_and_guider`; see "Mount test standard gap closure" below |
 
 Custom property inventory audited against declarations and handlers:
 X_MOUNT_MODE, X_MOUNT_TYPE, X_ZWO_BUZZER, X_NYX_WIFI_AP, X_NYX_WIFI_CL,
@@ -2363,3 +2364,295 @@ Validation on macOS arm64: recorded run `python3 tools/run_driver_test.py mount_
 ### Final test summary for this change
 
 Simulated tests: **103 run, 103 passed** (recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Astro-Physics GTO: recalibration, detection, side of pier and centering rates (2026-10-03, 3.0.0.70)
+
+Baseline: version 69, last recorded run on macOS arm64 103/103 (2026-10-01). No Astro-Physics hardware is
+available; no hardware test is planned or claimed. Sources: `AstroPhysics-GTOCP4.pdf` (GTOCP3/GTOCP4
+command language) and the Astro-Physics V2 ASCOM driver manual 5.70.
+
+### Audit of version 69 (source audit)
+
+1. `meade_sync()` sends `:CM#` to an Astro-Physics controller. `:CM#` redefines which side of the pier the
+   telescope is on and assumes the user placed it on the correct side; a sync on the wrong side of the
+   meridian leaves the controller disoriented and later slews can drive the telescope into the pier. The
+   documented recalibration `:CMR#` keeps the known side of the pier and is what Astro-Physics recommends
+   for every sync after the initial calibration.
+2. The profile cannot be detected: a GTO controller does not answer `:GVP#`, so detection fails and the type
+   has to be selected by hand. A GTOCP4 or later answers `:V#` with its version (e.g. `VCP4-P02-15`), which
+   the driver did not read at all; `MOUNT_INFO` showed only the vendor.
+3. `MOUNT_SIDE_OF_PIER` stayed hidden although the controller reports the side with `:pS#` (`East#`/`West#`).
+4. Manual motion rates fell through to the generic `:RG#`/`:RC#`/`:RM#`/`:RS#`. `:RM#` is not an Astro-Physics
+   command and `:RS#` only sets the GOTO speed, so FIND and MAX left the N-S-E-W rate unchanged.
+
+### Changes
+
+- Sync sends `:CMR#` by default. The persistent `X_AP_SYNC_MODE` switch (`RCAL`/`SYNC`), shown only for the
+  Astro-Physics profile, selects `:CM#` for an initial calibration.
+- Detection: when `:GVP#` gets no answer, a `:V#` reply starting with `VCP` selects the Astro-Physics profile.
+  The connection reads `:V#` for every Astro-Physics controller: `MOUNT_INFO` firmware is the reply and the
+  model is `GTOCPn` for a `VCPn-...` reply (earlier boxes answer with a chip revision and keep the model
+  `Unknown`). `MOUNT_INFO` now has three items for this profile.
+- Status poll: `meade_update_ap_state()` reads `:pS#` into `MOUNT_SIDE_OF_PIER`, which is now defined.
+- Rates: GUIDE `:RG#`, CENTERING `:RC1#` (64x), FIND `:RC2#` (600x), MAX `:RC3#` (1200x).
+- Simulator (`--model ap`): no `:GVP#` reply, `:V#` answers `VCP4-P02-15#`, `:pS#` from the hour angle,
+  `:CM#` and `:CMR#` answer the documented 32 character `Coordinates     matched.        #`, `:RC0#`-`:RC3#`
+  select the centering rate, timed `:Mnxxx#` pulses move the axes at the guide rate. The other models,
+  including the one `mount_asi` uses, are unchanged.
+
+### Tests (103 -> 106 cases)
+
+- `lx200_ap_profile`: the sync is `:CMR#`, the rates are `:RC1#`/`:RC2#`/`:RC3#`, `MOUNT_INFO` has 3 items.
+- `lx200_ap_detected_by_version` (new): detection through `:V#`, model `GTOCP4`, firmware `VCP4-P02-15`.
+- `lx200_ap_side_of_pier` (new): `MOUNT_SIDE_OF_PIER` follows injected `West#` and `East#` replies.
+- `lx200_ap_sync_mode` (new): `RCAL` sends `:CMR#` and no `:CM#`, `SYNC` sends `:CM#` and no `:CMR#`, both
+  move the reported coordinates.
+
+First recorded run (2026-10-03 23:13): 106/104 Failed.
+
+- `lx200_ap_detected_by_version`: `meade_command()` reports a timeout as a successful exchange with an empty
+  reply, so an unanswered `:GVP#` reached the "unknown product" branch and the mount was detected as
+  GENERIC. The `:V#` check now runs there, for an empty product only, before the generic detection.
+- `lx200_ap_sync_mode`: the second sync was never sent. Without a status query the AP profile infers a slew
+  from a coordinate jump larger than 2', so the poll after a sync shows `MOUNT_EQUATORIAL_COORDINATES` BUSY
+  for one cycle and a request made then is dropped by the framework's BUSY guard. This is the existing
+  behaviour of the profile; the case now waits for the poll to settle before the second sync. A status query
+  would remove the false slew and is left for a follow-up.
+
+Second recorded run (2026-10-03 23:27): 106/104 Failed. `lx200_initialization_rollback_and_reconnect`
+detects a GENERIC mount whose `:GVP#` is dropped; the extra `:V#` waited the full 3 s reply timeout and the
+connection missed the 5 s limit of the case, and `lx200_manual_abort_completes_both_axes` failed because the
+driver was still attached. `meade_detect_ap_mount()` now probes `:V#` with a 0.5 s timeout; a GTO controller
+answers within milliseconds, so autodetection of other mounts without `:GVP#` is only 0.5 s slower.
+
+MIGRATION_STATUS.md hardware-free count 107 -> 110.
+
+Third recorded run (2026-10-03 23:39) on macOS arm64: 106/106 OK. `mount_asi`, which shares the simulator,
+uses none of the changed `--model ap` paths and was not rerun.
+
+### Final test summary for this change
+
+Simulated tests: **106 run, 106 passed** (third recorded run; the first two recorded runs failed as described
+above). Hardware tests: **0 run, 0 passed**.
+
+## Astro-Physics GTO: status, precision, King rate, firmware parks and long pulses (2026-10-04, 3.0.0.71)
+
+The Astro-Physics profile now follows what the servo controller reports instead of guessing.
+
+- `:V#` sets the controller generation: `VCPn-...` is a GTOCPn (4 and later), a revision letter from `S` on is
+  a GTOCP3, anything else a GTOCP2. `MOUNT_INFO` model follows.
+- Status: a GTOCP3 and later is polled with `:GOS#`. Position 1 gives the park state (`P`), 2 the tracking
+  and its rate (`0` lunar, `1` solar, `2` sidereal, `T` King, `9` stopped), 4 a slew (`S`), 11 a fault. A
+  motor stall or servo fault ends the coordinates in ALERT; every new fault is sent as a message once. This
+  replaces the coordinate-jump heuristic, which stays for a GTOCP2 and for a status that cannot be read, so a
+  sync no longer shows a false slew.
+- Precision: a GTOCP4 from P01-04 and every GTOCP5/6 get `:Sr` with hundredths of a second and `:Sd` with
+  tenths of an arcsecond.
+- King rate: a GTOCP4 from P02-08 and every GTOCP5/6 show the `KING` item of `MOUNT_TRACK_RATE`; it is set with
+  `:RT8#` then `:RT2#`, and sidereal sends `:RT3#` before `:RT2#`. Every `:RTn#` but `:RT9#` starts tracking,
+  so a rate chosen while tracking is off is applied when tracking is switched on.
+- Firmware parks: shown as `X_AP_PARK_POSITION` on a GTOCP5/6, and on a GTOCP3/4 whose `:G_E#` has bit 7 set
+  or a GTOCP4 whose `:G_S#` answers 160. Park 1 to 5 send `:Q#`, `:RD0#`, `:RT9#` and `$Kn#`; `MOUNT_PARK`
+  stays busy until `:GOS#` reports the mount parked. `CURRENT` keeps `:KA#`.
+- Pulses: a GTOCP4 and later times `:M<d><ms>#` up to 99999 ms, an earlier controller is limited to 999 ms.
+
+Simulator (`--model ap`): `:GOS#` from its own state, `:RT0/1/2/3/8/9#`, `:G_E#` (128 for a `VCP` version),
+`:G_S#`, `:RD0#`, `$K1#` to `$K5#` as a slew to the park position, `:KA#` parks in place, `--ap-version`
+chooses the `:V#` answer, and `:Sr`/`:Sd` accept fractional seconds.
+
+Tests: `lx200_ap_profile` expects the high precision coordinates and changes the tracking rates while tracking.
+New: `lx200_ap_status_reports_a_fault`, `lx200_ap_king_rate`, `lx200_ap_firmware_park`, `lx200_ap_long_pulse`,
+`lx200_ap_gtocp3`, `lx200_ap_gtocp3_pulse_limit`.
+
+First recorded run (2026-10-04 00:01): 112/109 Failed.
+
+- `lx200_ap_long_pulse`: a guider connected without the mount never read `:V#`, so the 99999 ms limit was not
+  known and the pulse was cut to 999 ms. The version is now read by `meade_read_ap_version()`, which the guider
+  connection calls as well.
+- `lx200_ap_king_rate`, `lx200_ap_firmware_park`: the cases waited for fresh `MOUNT_EQUATORIAL_COORDINATES`
+  publications, which a steady mount does not make. They now wait for two `:GOS#` polls on the simulator side.
+
+MIGRATION_STATUS.md hardware-free count 110 -> 116.
+
+Second recorded run (2026-10-04 00:12) on macOS arm64: 112/112 OK. `mount_asi`, which shares the simulator,
+uses none of the changed `--model ap` paths and was not rerun.
+
+### Final test summary for this change
+
+Simulated tests: **112 run, 112 passed** (second recorded run; the first recorded run failed as described
+above). Hardware tests: **0 run, 0 passed**.
+
+## Meade: tracking rate, products, late sync, missing :GW#, old Autostar guiding and silent park (2026-10-04, 3.0.0.72)
+
+Found by a comparison with an independent Meade-only ASCOM driver and its documented firmware workarounds.
+No Meade mount is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX048 | FIXED | An Autostar answers `:GT#` with one decimal, `60.1` on the sidereal rate. The shared threshold read 60.1 as the king rate (`<= 60.14`), which is the fourth item of a property that shows three, so no visible rate was selected after connect. | The Meade branch of `meade_get_tracking_rate()` reads below 59 as lunar, below 60.05 as solar and anything above as sidereal; an empty reply is not decoded. The 10micron and TeenAstro thresholds are unchanged. |
+| LX049 | FIXED | Detection accepted only a `:GVP#` starting with `LX` or `Autostar`. `Audiostar`, `RCX400` and the LXD600, which answers `:GVP#` and `:GVN#` with `6.12S`, fell into GENERIC without tracking switch, park, focuser or the distance bar. | `meade_is_meade_product()` adds them. An LXD600 has no long format and no park: the park is hidden and `:P#` is not sent on every poll; its model is shown as LXD600. |
+| LX050 | FIXED | An older Autostar synchronises but sends the reply to `:CM#` only after the next command, so nothing came back in time and the sync was reported as failed. | For Meade the reply is read with `meade_counted_command()`, which tells no reply (0) from a bare `#` (1). On no reply the ACK byte is sent and any answer is the sync; a bare `#` stays a failure as before. |
+| LX051 | FIXED | Firmware that does not answer `:GW#` (Autostar before 43Eg, LX200GPS 4G0m) cost the 3 s timeout on every poll, was published as alt-az and read as not tracking, and tracking on sent `:AP#` on the empty reply, which switches an alt-az ETX or LX90 to polar. | `:GW#` is asked once at connect. Without a reply the ACK byte gives the alignment (`A`, `P`, `G`, or `L` for an alt-az mount that does not track) and the polls read the tracking from it. Tracking on sends `:AA#` or `:AP#` for the alignment read at connect and is refused when it is not known. |
+| LX052 | FIXED | `:Mg` was sent to every Meade. Autostar firmware before 31Ee ignores it, so every pulse was reported as done while the mount stood still. The Autostar II models (LX200GPS, LX800, RCX400) take a guide rate with `:RgSS.S#`, which the driver never sent and hid. | `meade_read_meade_firmware()` (also called by the guider connection, which can come up without the mount) decides from `:GVP#` and `:GVN#`. Old Autostar firmware is guided host-timed with `:RG#` and `:M?#`/`:Q?#` like the classic LX200, through `meade_host_timed_guiding()`, which replaces the classic-only gates. The Autostar II models show `MOUNT_GUIDE_RATE`, one rate for both axes, sent as arc seconds per second. |
+| LX053 | FIXED | An Autostar sent to its park position stops answering anything until it is switched off. The poll then ran into the 3 s timeout on every command and the position stayed in ALERT. | When `:D#` gets no reply at all while the park is busy, the mount is parked (`meade_park_silent`): nothing is sent to it until the next connection, the last position stands, guide pulses are refused, and the client is told to switch the mount off. A bare `#` keeps the previous completion. |
+
+Simulator (`--model meade`): `:GT#` answers with one decimal; `:AA#` starts tracking. New options: `--meade-product`,
+`--meade-firmware` (before 31Ee `:Mg` is ignored), `--meade-no-gw` (the ACK answers `L` while not tracking),
+`--meade-late-sync` and `--meade-silent-park`. The changes are limited to the Meade model except `:AA#`, which
+`mount_asi` does not send.
+
+Tests: `lx200_meade_tracking_rate_has_one_decimal`, `lx200_meade_products_are_detected`,
+`lx200_meade_late_sync_reply_is_accepted`, `lx200_meade_without_gw_uses_the_ack`,
+`lx200_meade_old_autostar_guides_host_timed` and `lx200_meade_silent_park_is_parked`.
+
+The first recorded run (2026-10-04 00:28) failed 118/115:
+
+- `lx200_coordinate_command_failures_recover` injects a bare `#` as the `:CM#` reply and expects the sync to fail;
+  the first version of LX050 sent the ACK on any empty reply and accepted it. Fixed by counting the `#`.
+- `lx200_meade_old_autostar_guides_host_timed` connected the guider with a port of its own; the secondary
+  devices share the port of the mount device. Test fixture fixed.
+- `lx200_meade_silent_park_is_parked` took the park state from the cache before the driver had asked the `:D#`
+  that goes unanswered. The case now waits for that `:D#` and a park publication after it.
+
+Not covered: no Meade hardware. The firmware facts above (`60.1`, the late `:CM#`, no `:GW#` before 43Eg and on
+4G0m, no `:Mg` before 31Ee, the silent Autostar after `:hP#`, `6.12S`) come from that driver's documented field
+reports and are not measured here. Whether the Autostar II `:Rg` takes `SS.S` with a leading zero is taken from
+the protocol description.
+
+MIGRATION_STATUS.md hardware-free count 116 -> 122.
+
+Second recorded run (2026-10-04 00:44) on macOS arm64: 118/118 OK. `mount_asi`, which shares the simulator, uses
+none of the changed Meade paths and was not rerun.
+
+### Final test summary for this change
+
+Simulated tests: **118 run, 118 passed** (second recorded run; the first recorded run failed as described above).
+Hardware tests: **0 run, 0 passed**.
+
+## Losmandy Gemini: tracking, unpark, clock, startup mode, slew reasons, Level 4 pulses, rates and park position (2026-10-04, 3.0.0.73)
+
+Found by a comparison of the Gemini path with the Gemini Level 5 command description and an independent Gemini
+driver. No Gemini is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX054 | FIXED | `:Gv#` reports the faster of the two axes, so `S` and `C` during a goto or a centering motion hide the tracking that goes on underneath. Only `T`/`G` were read as tracking, so `MOUNT_TRACKING` dropped to OFF on every goto. | `S` and `C` count as tracking as well; only `N` and the stall `!` do not. |
+| LX055 | FIXED | `:h?#` keeps answering 1 after `:hW#` woke the mount up. The poll read that as parked, so an unpark was undone by the next poll and the parked guards locked the client out. | Parked is `:h?#` = 1 while `:Gv#` reports `N`; a mount that moves is not parked. |
+| LX056 | FIXED | In Double Precision, which another client may leave the controller in with `:u#`, `:GL#` answers decimal hours. The parser read nothing, `meade_get_utc()` still answered true with a zero time, and every connection replaced the mount clock (and the site, when the driver had one) as if it were uninitialised. | Decimal hours are read; `meade_get_utc()` answers false when the clock cannot be read, and a Gemini whose clock could not be read is left alone. The simulator answers `:GL#`, `:Gt#` and `:Gg#` in decimal in Double Precision, as documented. |
+| LX057 | FIXED | A Gemini that was just switched on answers the ACK with `b` and waits for the startup mode, answering no `:GR#`; the open probe failed and the connection could not be made from a client. | `X_GEMINI_STARTUP` (COLD default, WARM, WARM_RESTART; defined while disconnected, persistent): when the `:GR#` probe fails for the DETECT or GEMINI type, the ACK is read; `B` and `S` are waited out, `b` is answered with `bC#`, `bW#` or `bR#`, and the connection continues once the ACK reports `G` or `A` (up to 120 s). |
+| LX058 | FIXED | A refused `:MS#` is followed by its reason (codes 1 to 7, for example `6Outside Limits.#`); only the generic "Slew failed" reached the client. | The reason is read and sent as "Slew refused: ...". |
+| LX059 | FIXED | `gemini_park_expected`, `gemini_park_failed` and `stalled` survived a reconnection, so a park interrupted by a disconnection was reported as failed in the next session. | Reset in `meade_init_mount()`. |
+| LX060 | FIXED | Gemini Level 4 cuts a `:Mg` pulse to 255 motor encoder ticks modulo 256; pulses up to 3000 ms were sent whole. | `gemini_read_guiding()` (mount and guider) reads the level from `:GV#` and, on Level 4, the worm ratio `<21`, the ticks per worm turn `<27` and the guiding speed `<150`, and computes the longest pulse that stays below 255 ticks for the fastest guiding motion (westwards, 1 + guiding speed). Longer pulses are sent in parts, each when the previous ends. `gemini_get()` reads native values and checks the reply checksum; `gemini_set()` no longer passes the command as a format string. |
+| LX061 | FIXED | The guiding speed (native 150) and the tracking rate (native 130) were neither shown nor read. | `MOUNT_GUIDE_RATE` and the guider's `GUIDER_RATE` show and set the one guiding speed of both axes (20 % to 80 %); `MOUNT_TRACK_RATE` is read from native 130 at connect (closed loop and comet read as sidereal), and the rate cache follows it. `MOUNT_INFO` shows the model and the `:GVN#` firmware. |
+| LX062 | FIXED | The park was always `:hC#`. | `X_GEMINI_PARK_POSITION` (STARTUP default, HOME, ZENITH) sends `:hC#`, `:hP#` or `:hZ#`; Level 4 refuses the zenith. |
+
+Simulator (`--model gemini`): `--gemini-startup` (ACK `b`, then `S` for 1.5 s after `bC#`), `--gemini-level 4`
+(`:GV#` 410), native gets `<130`, `<150`, `<21`, `<27` and sets `>131..134`, `>150` with checksum validation,
+`:h?#` 1 after `:hW#` until the mount moves, `:hZ#`, decimal `:GL#`/`:Gt#`/`:Gg#` in Double Precision.
+
+Tests: `lx200_gemini_tracking_survives_a_goto`, `lx200_gemini_unpark_stays_unparked`,
+`lx200_gemini_double_precision_clock_is_kept`, `lx200_gemini_startup_mode_is_selected` (also that the property is
+defined before a connection and comes back from the saved configuration), `lx200_gemini_slew_refusal_has_a_reason`,
+`lx200_gemini_park_positions`, `lx200_gemini_guide_and_tracking_rates` (mount and guider),
+`lx200_gemini_level4_pulse_is_split`, `lx200_gemini_reconnect_forgets_the_park`. The Gemini profile row now expects
+`MOUNT_INFO` with three items and `MOUNT_GUIDE_RATE`. The test client records driver messages.
+
+Not covered: no Gemini hardware. The Level 4 tick limit uses the fastest guiding motion as the worst case; the
+exact east/west prescaler behaviour of Level 4 is not modelled. The 120 s startup budget is a choice, not measured.
+
+MIGRATION_STATUS.md hardware-free count 122 -> 131.
+
+### Final test summary for this change
+
+Simulated tests: **127 run, 127 passed** (recorded run 2026-10-04 12:46, macOS arm64). Hardware tests: **0 run, 0 passed**.
+
+## Avalon StarGO: rates, meridian flip flag, longitude, sidereal time and the goto ramp (2026-10-04, 3.0.0.74)
+
+Found by a review of the StarGO command set. No StarGO is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX063 | FIXED | The StarGO knows the slew rates only as `:RG#`, `:RC#`, `:RM#` and `:RS#` without an argument; the driver sent `:RG2#`, `:RC0#`, `:RC1#` and `:RC3#`, so a rate change did not take. | The StarGO uses the argument-less commands of the last branch of `meade_set_slew_rate()`. |
+| LX064 | FIXED | The init sent `:TTSFd#` as "disable meridian flip"; the flag `d` is "force meridian flip", so every connection forced the flip regardless of the mount configuration. | Not sent; the flag stays as the mount configuration sets it. |
+| LX065 | FIXED | The StarGO keeps the longitude signed and positive to the east; the driver wrote and read it west positive like the LX200, so the site was mirrored across the prime meridian. | `:Sg±DDD*MM:SS#` east positive (−180 .. +180) and `:Gg#` read back east positive. |
+| LX066 | FIXED | The StarGO has no calendar and no clock command; it keeps the local sidereal time, which `:X32HHMMSS#` sets. The driver never sent it, so the sidereal time the mount computes gotos from was whatever the last session left. | `stargo_sync_lst()` sends it at connect, on every site change and every 22 s while no goto runs. |
+| LX067 | FIXED | `:X34#` reports per axis 0 stopped, 1 tracking and above 1 moving; 2 to 4 are the ramp at the start of a goto. Only 5 was read as slewing, so a goto could be published as finished while the motors ramped up. | Any digit above 1 is motion. |
+
+Simulator (`--model stargo`): `:X34#` reports 2 for the first 1.5 s of a goto, `:Gt#`/`:Gg#` mark the degrees with `t`/`g`,
+and the hour angle reads the longitude east positive. Test `lx200_stargo_site_time_and_ramp`; the StarGO profile row
+now expects `:RG#`, `:RC#`, `:RM#` and `:RS#`.
+
+Not covered: no StarGO hardware. The 22 s sidereal time interval is a choice, not a measurement.
+
+MIGRATION_STATUS.md hardware-free count 131 -> 132.
+
+### Final test summary for this change
+
+Simulated tests: **128 run, 128 passed** (recorded run 2026-10-04 13:21, macOS arm64). Hardware tests: **0 run, 0 passed**.
+
+## ZWO AM: meridian settings, maximum slew speed, calibration reset and tracking status (2026-10-04, 3.0.0.75)
+
+Found by comparing the ZWO branch with the dedicated ZWO AM driver, which has these functions. No ZWO mount is available, so everything below is simulator backed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX068 | FIXED | The meridian behaviour of firmware 1.2.4 (`:GTa#`/`:STa#`: automatic flip at the limit, tracking past the meridian, the limit in degrees) could not be read or set. | `X_ZWO_MERIDIAN` and `X_ZWO_MERIDIAN_LIMIT`, read at connect, written as one `:STa#` and read back. |
+| LX069 | FIXED | The highest slew speed (`:GRl#`/`:SRl720#`/`:SRl1440#`) could not be chosen. | `X_ZWO_MAX_SLEW_SPEED`, shown when `:GRl#` answers 720 or 1440. |
+| LX070 | FIXED | `MOUNT_ALIGNMENT_RESET` cleared only the host side points; the multi-star calibration of the mount stayed. | On firmware 1.2.4 and later also `:NSC#`, and the property is shown there. |
+| LX071 | FIXED | When the mount stopped tracking on its own, for example at the meridian limit without a flip, the client learned only that tracking was off. | From firmware 1.1.1 every poll reads `:GAT#`; a new error code is sent as an alert message with the text of the protocol, and the end of a meridian stop as an OK message. |
+
+The firmware version from `:GV#` gates the commands: 1.1.1 for `:GAT#`, 1.2.4 for `:GTa#`, `:STa#` and `:NSC#`.
+
+Simulator (`--model zwo`): the ZWO commands are answered for `zwo` as well as `asi`; `--zwo-firmware x.y.z` (1.2.4 by default) sets the `:GV#` answer and withholds the commands the firmware does not have; `:STa#` refuses a limit outside −15 to 15 and `:SRl#` any speed but 720 and 1440; the control line `zwo-meridian-stop` stops tracking with `e8` until tracking is started again. Tests `lx200_zwo_meridian_slew_speed_and_alignment` and `lx200_zwo_old_firmware`. The shared simulator still passes the mount_asi simulator test.
+
+Not covered: no ZWO hardware. `:GRl#`/`:SRl#` are not in the published ZWO protocol document; the firmware levels come from the ZWO AM driver.
+
+MIGRATION_STATUS.md hardware-free count 132 -> 134.
+
+### Final test summary for this change
+
+Simulated tests: **130 run, 130 passed** (recorded run 2026-10-04 14:11, macOS arm64). Hardware tests: **0 run, 0 passed**.
+
+## Mount test standard gap closure (2026-10-04, 3.0.0.76)
+
+The suite was checked against the extended mount chapter of `indigo_test/DRIVER_TESTING_RULES.md`, with the OnStep, Meade, Astro-Physics, ZWO and Gemini profiles standing for their dialect families. Every new assertion that failed was a driver defect; all of them were repaired in this change.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX072 | FIXED | An abort that landed in a running goto left `MOUNT_EQUATORIAL_COORDINATES` to the next poll, which published it OK, so a goto that never reached its target ended like one that did. | The abort publishes the coordinates ALERT ("Goto aborted") with the last position read and clears the goto; the next valid poll publishes OK as after any refused goto. |
+| LX073 | FIXED | An abort of a running park or home settled `MOUNT_PARK`/`MOUNT_HOME` on a StarGO only. On every other controller the property stayed BUSY for good, because the poll only ends a park that arrives. | The settling (cancel a queued park/home, restore the switch, OK, lights) applies to every dialect, and the park the driver was waiting for on a Gemini, an OpenAstroTracker or an Astro-Physics firmware park is forgotten, so no later poll latches it. |
+| LX074 | FIXED | `MOUNT_STATE.SLEW` went BUSY only on the poll after a goto was accepted, not with the coordinates that went BUSY. | The goto handler publishes the light before the coordinates; the abort turns it off before the ALERT. |
+| LX075 | FIXED | A disconnect during manual motion stopped the mount but kept the motion items ON and the remembered direction, so the next session showed a motion that was not running and its first manual motion stopped a direction the mount was no longer moving in. | The disconnect clears the motion items, the remembered directions and the goto flags. |
+| LX076 | FIXED | A right ascension that rounds up to 24 h went out as `:Sr24:00:00#` (and `24:00:00.00` on a GTOCP4), which no controller takes. | `meade_set_target()` sends both target commands for goto and sync and writes 24 h as 00 h. |
+| LX077 | FIXED | A refused `:MS#` reached the client with its reason on a Gemini only; the Autostar, classic LX200, 10micron and Astro-Physics replies carry the same "code + reason#" and the reason was discarded. | The reason is read for all five dialects, trailing padding removed, and sent as "Slew refused: ...". |
+| LX078 | FIXED | A refused `:SRl#` left `X_ZWO_MAX_SLEW_SPEED` on the rejected item. | The refusal reads `:GRl#` back and shows the speed the mount has. |
+| LX079 | FIXED | A Gemini guiding speed set through `MOUNT_GUIDE_RATE` or through `GUIDER_RATE` was shown only by the device it was set on. | A change through either device is published by the other one while it is connected. |
+
+New cases:
+
+| Case | Rule items |
+| --- | --- |
+| `lx200_goto_abort_ends_alert_and_idle_abort_keeps_state` | Abort mid-slew: one stop, fresh ALERT, two equal fresh readbacks short of the target, next goto taken; idle abort keeps position and tracking; `MOUNT_STATE.SLEW` BUSY/IDLE in the same update as the coordinates; abort item OFF. |
+| `lx200_onstep_park_and_home_abort_settle` | Abort of a running park and home: stop sent once, not BUSY, not parked/homed, no re-latch, homing leaves the park state; park ends with tracking OFF; unpark sends no motion command. |
+| `lx200_disconnect_stops_motion_and_reconnect_is_clean` | Disconnect during goto and manual motion sends the stop; after reconnect no stale BUSY, motion items OFF, the next motion is fresh. |
+| `lx200_connect_publishes_the_device_state` | Tracking on the lunar rate, preferred pier side, meridian limit and a parked mount are published from the controller by a new session; the parked guard holds. |
+| `lx200_coordinate_encoding_at_wrap_points` | Meade and GTOCP4 precision: largest legal values, carries below 24 h and +90, negative declination with zero degrees, the south pole. |
+| `lx200_meade_goto_refusals_stop_the_sequence` | Refusal or lost reply at `:Sr#`, `:Sd#` and `:MS#`: ALERT, no later command, real position kept, the reason reaches the client, next goto taken. |
+| `lx200_shutdown_refused_while_connected` | SHUTDOWN refused with the mount or only the guider connected, connection and operation survive. |
+| `lx200_onstep_tracking_request_survives_status_poll` | A tracking request copied during the `:GU#` round trip: the requested command is sent once, the opposite never. |
+| `lx200_zwo_refused_settings_show_the_device_state` | Refused `:SRl#` and `:STa#` end ALERT showing the device state, immediate retry succeeds; guide rate at both ends of its range on the wire. |
+| `lx200_gemini_guide_rate_is_shared_by_mount_and_guider` | Guide rate set through either device reaches the controller at both range ends and is shown by the other device. |
+
+Extended cases: every profile case (`check_profile`) asserts that no update is published for an undefined property across connect, disconnect and reconnect; `lx200_park_rejects_motion_and_unpark_recovers` asserts that each parked refusal leaves the property on the mount state and sends nothing; `lx200_manual_reversal_and_axis_stops` asserts that north raises and south lowers the declination read back; `lx200_onstep_options_and_partial_failures` asserts that the park-set and home-set actions read OFF once done.
+
+Deliberately not covered:
+
+- A goto that never completes, or a "done" short of the target, is not ended ALERT by the driver: completion comes from each dialect's slew status, there is no goto timeout and no arrival check. Adding them is a behaviour change across fourteen dialects and their hardware evidence; left as a known gap.
+- A wrong forced `X_MOUNT_TYPE` is not refused. The forced type is the documented way to connect controllers that cannot be identified (StarGO2, GTOCP3), so the driver does not verify it.
+- Deceleration before a stop, RA drift with tracking off and hold with tracking on: the shared `serial_motion.h` stops at once and the simulator does not model the sky. The two equal readbacks after an abort are taken on the immediate stop.
+- Manual motion ownership on client detach stays with `integration/test_detach_abort.c`, which already runs against this driver.
+- Hemisphere and pier-side direction mapping: the LX200 commands are direction names the controller maps itself; the driver owns no sign.
+
+### Final test summary for this change
+
+Simulated tests: **140 run, 140 passed** (recorded run 2026-10-04 18:20, macOS arm64, driver 3.0.0.76). Hardware tests: **0 run, 0 passed**.

@@ -292,6 +292,7 @@ static bool connect_serial_device(const simulator_driver_case *device_case, cons
 static void disconnect_serial_device(const simulator_driver_case *device_case) {
 	if (context.driver_case != device_case) {
 		reset_simulator_context(device_case);
+		enumerate_simulator_device();
 	}
 	indigo_change_switch_property_1(&simulator_test_client, device_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
 	wait_for_simulator_connection_state(false);

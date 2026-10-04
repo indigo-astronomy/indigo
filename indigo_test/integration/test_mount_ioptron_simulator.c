@@ -28,9 +28,21 @@
 #define MOUNT_IOPTRON_SIMULATOR_EXECUTABLE "build/integration/mount_ioptron_simulator"
 #endif
 
-#define PROTOCOL_PROPERTY           "PROTOCOL_VERSION"
-#define MERIDIAN_HANDLING_PROPERTY  "MOUNT_MERIDIAN_HANDLING"
-#define MERIDIAN_LIMIT_PROPERTY     "MOUNT_MERIDIAN_LIMIT"
+#define PROTOCOL_PROPERTY           "X_PROTOCOL_VERSION"
+#define MERIDIAN_HANDLING_PROPERTY  "X_MOUNT_MERIDIAN_HANDLING"
+#define MERIDIAN_LIMIT_PROPERTY     "X_MOUNT_MERIDIAN_LIMIT"
+
+// Names the driver used before its custom properties got the X_ prefix, no client may see them any more.
+static const char *ioptron_unprefixed_properties[] = { "PROTOCOL_VERSION", "MOUNT_MERIDIAN_HANDLING", "MOUNT_MERIDIAN_LIMIT" };
+
+static void assert_no_unprefixed_properties(void) {
+	for (int i = 0; i < (int)ARRAY_SIZE(ioptron_unprefixed_properties); i++) {
+		SERIAL_CHECK_TRUE(!has_defined_property(ioptron_unprefixed_properties[i]));
+		SERIAL_CHECK_TRUE(find_cached_property(ioptron_unprefixed_properties[i]) == NULL);
+	}
+cleanup:
+	return;
+}
 
 static const simulator_driver_case ioptron_mount = {
 	"iOptron Mount",
@@ -213,6 +225,44 @@ static bool sim_status(external_serial_simulator *simulator, const char *digit) 
 	return sim_control(simulator, line);
 }
 
+// Reads the recorded commands in order, skipping transport markers, into commands; returns the count.
+static int read_commands(external_serial_simulator *simulator, char commands[][32], int capacity) {
+	char path[PATH_MAX];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -1;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	char line[256];
+	int count = 0;
+	while (count < capacity && fgets(line, sizeof(line), file)) {
+		char *command = strchr(line, '\t');
+		if (command == NULL) {
+			continue;
+		}
+		command++;
+		command[strcspn(command, "\r\n")] = 0;
+		if (!strcmp(command, "CONNECT") || !strcmp(command, "CLOSE") || !strcmp(command, "HALT")) {
+			continue;
+		}
+		snprintf(commands[count++], 32, "%s", command);
+	}
+	fclose(file);
+	return count;
+}
+
+// Index of the first recorded command equal to text at or after start, -1 if there is none.
+static int command_index(char commands[][32], int count, const char *text, int start) {
+	for (int i = start; i < count; i++) {
+		if (!strcmp(commands[i], text)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 // ------------------------------------------------------------------ property helpers
 
 // libindigo exports a legacy macOS clock_gettime shim using wall time; use the
@@ -234,8 +284,66 @@ static atomic_uint_fast64_t coordinates_ok_after;
 static atomic_uint_fast64_t abort_alerted;
 // Last published MOUNT_EQUATORIAL_COORDINATES state, for cases whose property cache tracks the guider.
 static atomic_int mount_coordinates_state;
+// The mount device, taken from its own publications, so a case can fence its queue.
+static _Atomic(indigo_device *) mount_device;
+// Messages the mount sent, counted and the last one kept.
+static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char last_mount_message[INDIGO_VALUE_SIZE];
+static atomic_int mount_messages;
+
+static indigo_result capture_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (device != NULL && !strcmp(device->name, ioptron_mount.device_name) && message != NULL && *message) {
+		pthread_mutex_lock(&message_mutex);
+		snprintf(last_mount_message, sizeof(last_mount_message), "%s", message);
+		pthread_mutex_unlock(&message_mutex);
+		atomic_fetch_add(&mount_messages, 1);
+	}
+	return INDIGO_OK;
+}
+
+// Waits for a mount message newer than the count read before the request that contains text.
+static bool wait_mount_message(int before, const char *text) {
+	for (int i = 0; i < 100; i++) {
+		if (atomic_load(&mount_messages) > before) {
+			pthread_mutex_lock(&message_mutex);
+			bool found = strstr(last_mount_message, text) != NULL;
+			pthread_mutex_unlock(&message_mutex);
+			if (found) {
+				return true;
+			}
+		}
+		indigo_usleep(50000);
+	}
+	pthread_mutex_lock(&message_mutex);
+	fprintf(stderr, "  no mount message containing '%s', last one '%s'\n", text, last_mount_message);
+	pthread_mutex_unlock(&message_mutex);
+	return false;
+}
+
+static atomic_int fence_passes;
+
+static void fence_handler(indigo_device *device) {
+	atomic_fetch_add(&fence_passes, 1);
+}
+
+// Returns once every handler queued on the mount before the call has finished.
+static bool fence_mount_queue(void) {
+	indigo_device *device = atomic_load(&mount_device);
+	if (device == NULL) {
+		return false;
+	}
+	int before = atomic_load(&fence_passes);
+	indigo_execute_handler(device, fence_handler);
+	for (int i = 0; i < 500 && atomic_load(&fence_passes) == before; i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&fence_passes) > before;
+}
 
 static indigo_result timed_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (device != NULL && !strcmp(property->device, ioptron_mount.device_name)) {
+		atomic_store(&mount_device, device);
+	}
 	if (!strcmp(property->device, ioptron_guider.device_name)) {
 		int axis = !strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ? 0 : !strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ? 1 : -1;
 		if (axis >= 0 && property->state == INDIGO_OK_STATE) {
@@ -357,6 +465,9 @@ static double number_value(const char *property, const char *item) {
 	indigo_item *cached = find_cached_item(property, item);
 	return cached != NULL ? cached->number.value : NAN;
 }
+
+#define DEC_VALUE() number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)
+#define RA_VALUE() number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)
 
 // Waits until value - reference exceeds delta (or falls below -delta when delta < 0).
 static bool wait_number_change(const char *property, const char *item, double reference, double delta) {
@@ -579,6 +690,8 @@ static void check_profile(int index) {
 	SERIAL_CHECK_EQ_INT(d->home_count, property_count(MOUNT_HOME_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(d->side_of_pier, has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(d->meridian, has_defined_property(MERIDIAN_HANDLING_PROPERTY));
+	SERIAL_CHECK_EQ_INT(d->meridian, has_defined_property(MERIDIAN_LIMIT_PROPERTY));
+	assert_no_unprefixed_properties();
 	SERIAL_CHECK_EQ_INT(d->pec, has_defined_property(MOUNT_PEC_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(d->custom_rate, has_defined_property(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_SLEW_RATE_PROPERTY_NAME));
@@ -624,6 +737,8 @@ static void check_profile(int index) {
 	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
 	SERIAL_CHECK_TRUE(io_sync(6.5, -12.25, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+	// Across connect, disconnect and reconnect nothing is published for a property that is not defined.
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
 cleanup:
 	io_close(&fixture);
 }
@@ -655,6 +770,7 @@ static void ioptron_driver_metadata_and_base_properties(void) {
 	SERIAL_CHECK_TRUE(switch_value(PROTOCOL_PROPERTY, "AUTO"));
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
 	SERIAL_CHECK_TRUE(find_cached_property(MERIDIAN_HANDLING_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
 	reset_simulator_context(&ioptron_guider);
 	enumerate_simulator_device();
 	SERIAL_CHECK_TRUE(has_defined_property(CONNECTION_PROPERTY_NAME));
@@ -791,6 +907,52 @@ static void ioptron_detect_hae29_aa_mode_is_altaz(void) { check_detection(18); }
 static void ioptron_detect_haz31_altaz_without_home_search(void) { check_detection(19); }
 
 // ------------------------------------------------------------------ connection lifecycle
+
+// The connect handshake follows a reference trace up to the first status poll: identification, the
+// readback of the device state, and no command that writes a setting of the controller (clock, site,
+// rates, meridian treatment, PEC) other clients may depend on.
+static void check_connect_handshake(const char *protocol, const char * const *expected, int expected_count, const char *first_poll) {
+	io_fixture fixture = { 0 };
+	char commands[64][32];
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, protocol, NULL, TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, first_poll, 0));
+	int count = read_commands(&fixture.simulator, commands, 64);
+	int poll = command_index(commands, count, first_poll, expected_count);
+	SERIAL_CHECK_TRUE(poll >= 0);
+	bool same = poll == expected_count;
+	for (int i = 0; same && i < expected_count; i++) {
+		same = !strcmp(commands[i], expected[i]);
+	}
+	if (!same) {
+		fprintf(stderr, "  connect handshake of protocol %s:", protocol);
+		for (int i = 0; i < count && i <= poll; i++) {
+			fprintf(stderr, " %s", commands[i]);
+		}
+		fprintf(stderr, "\n");
+	}
+	SERIAL_CHECK_TRUE(same);
+	static const char *writes[] = { "SUT", "SL", "SC", "SG", "SDS", "St", "Sg", "SLA", "SLO", "SMT", "SPP", "SPR", "RT", "RR", "RG", "SR", "ST", "SPA", "SPH" };
+	for (int i = 0; i < count; i++) {
+		for (int j = 0; j < ARRAY_SIZE(writes); j++) {
+			if (!strncmp(commands[i], writes[j], strlen(writes[j]))) {
+				fprintf(stderr, "  connect wrote %s\n", commands[i]);
+				SERIAL_CHECK_TRUE(false);
+			}
+		}
+	}
+cleanup:
+	io_close(&fixture);
+}
+
+static void ioptron_connect_handshake_order_0300(void) {
+	static const char *expected[] = { "V", "MountInfo", "MountInfo", "FW1", "GLS", "AG", "GTR", "GMT", "GLS" };
+	check_connect_handshake("0300", expected, ARRAY_SIZE(expected), "GEP");
+}
+
+static void ioptron_connect_handshake_order_8407(void) {
+	static const char *expected[] = { "V", "MountInfo", "FW1", "QT", "AG", "AP", "AH", "AT", "SE?" };
+	check_connect_handshake("8407", expected, ARRAY_SIZE(expected), "GR");
+}
 
 static void ioptron_initialization_rollback_and_reconnect(void) {
 	io_fixture fixture = { 0 };
@@ -929,17 +1091,21 @@ cleanup:
 	io_close(&fixture);
 }
 
-static void check_boundaries(int index, const char *ra_command, const char *dec_command) {
+// The last target lies just below the RA wrap point: rounding to the device unit carries into the
+// next hour, which must wrap to 0 instead of sending 24 hours or 60 seconds.
+static void check_boundaries(int index, const char *ra_command, const char *dec_command, const char *wrap_command) {
 	const ioptron_dialect *d = dialects + index;
 	io_fixture fixture = { 0 };
-	static const double targets[][2] = { { 23.99, -0.5 }, { 0.02, 89.5 }, { 12.0, -89.5 } };
+	static const double targets[][2] = { { 23.99, -0.5 }, { 0.02, 89.5 }, { 12.0, -89.5 }, { 23.99999999, 45.0 } };
 	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, TRACKING_ARGS));
 	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		SERIAL_CHECK_TRUE(io_sync(targets[i][0], targets[i][1], INDIGO_OK_STATE));
 		if (i == 0) {
 			SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, ra_command, 0));
 			SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, dec_command, 0));
+		} else if (i == 3) {
+			SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, wrap_command, 0));
 		}
 		SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, targets[i][1], 0.001));
 		double ra = number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
@@ -951,10 +1117,11 @@ cleanup:
 	io_close(&fixture);
 }
 
-static void ioptron_coordinate_boundaries_8407(void) { check_boundaries(I8407, "Sr 23:59:24", "Sd -00*30:00"); }
-static void ioptron_coordinate_boundaries_0100(void) { check_boundaries(I0100, "Sr 23:59:24", "Sd -00*30:00"); }
-static void ioptron_coordinate_boundaries_0205(void) { check_boundaries(I0205, "Sr86364000", "Sd-00180000"); }
-static void ioptron_coordinate_boundaries_0300(void) { check_boundaries(I0300, "SRA129546000", "Sd-00180000"); }
+static void ioptron_coordinate_boundaries_8406(void) { check_boundaries(I8406, "Sr 23:59:24.0", "Sd -00*30:00", "Sr 00:00:00.0"); }
+static void ioptron_coordinate_boundaries_8407(void) { check_boundaries(I8407, "Sr 23:59:24", "Sd -00*30:00", "Sr 00:00:00"); }
+static void ioptron_coordinate_boundaries_0100(void) { check_boundaries(I0100, "Sr 23:59:24", "Sd -00*30:00", "Sr 00:00:00"); }
+static void ioptron_coordinate_boundaries_0205(void) { check_boundaries(I0205, "Sr86364000", "Sd-00180000", "Sr00000000"); }
+static void ioptron_coordinate_boundaries_0300(void) { check_boundaries(I0300, "SRA129546000", "Sd-00180000", "SRA000000000"); }
 
 static void ioptron_goto_progress_abort_and_restart(void) {
 	io_fixture fixture = { 0 };
@@ -969,13 +1136,20 @@ static void ioptron_goto_progress_abort_and_restart(void) {
 	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10.0, 3.0));
 	SERIAL_CHECK_TRUE(number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) < 39.0);
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	unsigned int coordinates = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	unsigned int ok_before = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "Q", 0));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// An aborted GOTO ends ALERT, it never reports the target as reached.
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates));
 	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
 	indigo_usleep(2500000);
 	SERIAL_CHECK_TRUE(number_stays(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 0.01, 1500));
 	SERIAL_CHECK_TRUE(number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) < 39.0);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(ok_before, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The stop is sent once.
+	SERIAL_CHECK_EQ_INT(1, event_count(&fixture.simulator, "Q"));
 	SERIAL_CHECK_TRUE(io_goto(6.0, 12.0, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "MS1", 1));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 12.0, 0.002));
@@ -1071,10 +1245,148 @@ static void ioptron_goto_below_altitude_limit_rejected(void) {
 	double lst = number_value(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME);
 	SERIAL_CHECK_TRUE(isfinite(lst));
 	int slews = event_count(&fixture.simulator, "MS1");
+	int messages = atomic_load(&mount_messages);
 	SERIAL_CHECK_TRUE(io_goto(lst, -60.0, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "MS1", slews));
+	// The reason the controller gives for the refusal reaches the client.
+	SERIAL_CHECK_TRUE(wait_mount_message(messages, "altitude limit"));
 	SERIAL_CHECK_TRUE(io_goto(lst, 60.0, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 60.0, 0.002));
+cleanup:
+	io_close(&fixture);
+}
+
+// HC8406 answers a refused :MS# with a reason code and text instead of the 0 of the later protocols.
+static void ioptron_goto_refusal_reason_8406(void) {
+	io_fixture fixture = { 0 };
+	const char *limited[] = { "--tracking", "--altitude-limit", "0", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "8406", NULL, limited));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	indigo_usleep(1500000);
+	double lst = number_value(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME);
+	SERIAL_CHECK_TRUE(isfinite(lst));
+	int messages = atomic_load(&mount_messages);
+	SERIAL_CHECK_TRUE(io_goto(lst, -60.0, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_mount_message(messages, "below the horizon"));
+	SERIAL_CHECK_TRUE(io_goto(lst, 60.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 60.0, 0.002));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(&fixture.simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+// Completion comes from the controller's slew status: a frozen status keeps the GOTO BUSY at the
+// target, and a slew the controller ends short of the target finishes ALERT.
+static void ioptron_goto_completion_follows_slew_status(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *slow[] = { "--tracking", "--slew-rate", "5", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, slow));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_sync(6.0, 10.0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(sim_status(simulator, "2"));
+	SERIAL_CHECK_TRUE(io_goto(6.0, 12.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 12.0, 0.002));
+	unsigned int ok_before = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(ok_before, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(sim_status(simulator, "-"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The controller ends the next slew where it is, 20 degrees short of the target.
+	SERIAL_CHECK_TRUE(io_goto(6.0, 40.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 12.0, 3.0));
+	unsigned int coordinates = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	ok_before = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	int messages = atomic_load(&mount_messages);
+	SERIAL_CHECK_TRUE(sim_control(simulator, "@halt\t1"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates));
+	SERIAL_CHECK_TRUE(wait_mount_message(messages, "short of the target"));
+	SERIAL_CHECK_TRUE(DEC_VALUE() < 30.0);
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(ok_before, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The next GOTO is accepted and completes.
+	SERIAL_CHECK_TRUE(io_goto(6.0, 22.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 22.0, 0.002));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+// An abort while nothing moves leaves position, tracking and the coordinate state alone.
+static void ioptron_idle_abort_keeps_position_and_tracking(void) {
+	io_fixture fixture = { 0 };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_sync(6.0, 10.0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10.0, 0.002));
+	SERIAL_CHECK_TRUE(wait_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	double ra = RA_VALUE();
+	int stops = event_count(&fixture.simulator, "Q");
+	unsigned int alert_before = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "Q", stops));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count(&fixture.simulator, "Q"));
+	SERIAL_CHECK_EQ_INT(0, event_count(&fixture.simulator, "ST0"));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(alert_before, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(RA_VALUE() - ra) < 0.0003);
+	SERIAL_CHECK_TRUE(fabs(DEC_VALUE() - 10.0) < 0.002);
+	SERIAL_CHECK_TRUE(number_stays(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 0.0003, 1500));
+cleanup:
+	io_close(&fixture);
+}
+
+// Disconnecting while the mount slews or parks stops it before the port closes; the next session
+// starts with nothing BUSY and an interrupted park is not reported as failed.
+static void ioptron_disconnect_during_motion_stops_mount(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *slow[] = { "--tracking", "--slew-rate", "5", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, slow));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_sync(6.0, 10.0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_goto(6.0, 40.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "MS1", 0));
+	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10.0, 2.0));
+	disconnect_serial_device(&ioptron_mount);
+	fixture.mount = false;
+	SERIAL_CHECK_TRUE(wait_event(simulator, "Q", 0));
+	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(!switch_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME) && !switch_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME));
+	SERIAL_CHECK_TRUE(!switch_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME) && !switch_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(DEC_VALUE() < 39.0);
+	SERIAL_CHECK_TRUE(number_stays(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 0.01, 1500));
+	// A park interrupted by disconnect.
+	int stops = event_count(simulator, "Q");
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "MP1", 0));
+	indigo_usleep(1000000);
+	disconnect_serial_device(&ioptron_mount);
+	fixture.mount = false;
+	SERIAL_CHECK_TRUE(wait_event(simulator, "Q", stops));
+	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, light_value(MOUNT_STATE_PARK_ITEM_NAME));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(DEC_VALUE() < 89.0);
+	// Disconnecting with nothing moving sends no stop.
+	stops = event_count(simulator, "Q");
+	disconnect_serial_device(&ioptron_mount);
+	fixture.mount = false;
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(stops, event_count(simulator, "Q"));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
 cleanup:
 	io_close(&fixture);
 }
@@ -1129,9 +1441,6 @@ static void ioptron_side_of_pier_8407(void) { check_side_of_pier(I8407); }
 static void ioptron_side_of_pier_0300(void) { check_side_of_pier(I0300); }
 
 // ------------------------------------------------------------------ manual motion
-
-#define DEC_VALUE() number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)
-#define RA_VALUE() number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)
 
 static void check_manual_motion(int index) {
 	const ioptron_dialect *d = dialects + index;
@@ -1410,7 +1719,9 @@ static void check_park(int index) {
 	const ioptron_dialect *d = dialects + index;
 	io_fixture fixture = { 0 };
 	external_serial_simulator *simulator = &fixture.simulator;
-	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, TRACKING_ARGS));
+	// 20 deg/s keeps the park slew longer than a status poll.
+	const char *slow[] = { "--tracking", "--slew-rate", "20", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, slow));
 	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
 	if (d->park_count == 1) {
 		SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
@@ -1420,8 +1731,13 @@ static void check_park(int index) {
 		SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
 		goto cleanup;
 	}
+	unsigned int coordinates = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	// The park light is BUSY while the mount parks.
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_PARK_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(simulator, d->park_command, 0));
+	// The coordinates are BUSY while the mount moves to the park position.
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates));
 	if (index == I0100) {
 		SERIAL_CHECK_TRUE(wait_event(simulator, "Sd +90*00:00", 0));
 	} else if (index == I0200) {
@@ -1431,20 +1747,29 @@ static void check_park(int index) {
 	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
 	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_PARK_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
-	// Parked: GOTO, manual motion and tracking are rejected without device commands.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// Parked: GOTO, manual motion and tracking are rejected without device commands, and the refused
+	// switches keep showing the mount's state.
 	int slews = event_count(simulator, d->goto_command);
 	int moves = event_count(simulator, d->move_north);
 	int enables = event_count(simulator, "ST1");
 	SERIAL_CHECK_TRUE(io_goto(8.5, 20, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!switch_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
 	indigo_usleep(300000);
 	SERIAL_CHECK_EQ_INT(slews, event_count(simulator, d->goto_command));
 	SERIAL_CHECK_EQ_INT(moves, event_count(simulator, d->move_north));
 	SERIAL_CHECK_EQ_INT(enables, event_count(simulator, "ST1"));
+	// Unpark sends no motion command and stays unparked across polls.
+	int motions = prefix_count(simulator, "M") + prefix_count(simulator, "m");
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(simulator, d->unpark_command, 0));
 	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_PARK_ITEM_NAME, INDIGO_IDLE_STATE));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(motions + 1, prefix_count(simulator, "M") + prefix_count(simulator, "m"));
 	SERIAL_CHECK_TRUE(io_goto(8.5, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 20, 0.002));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
@@ -1487,6 +1812,40 @@ cleanup:
 	io_close(&fixture);
 }
 
+// A park or home the controller acknowledges but never starts ends ALERT within a bounded time and shows
+// the real state, the next request works.
+static void ioptron_park_and_home_never_started_alert(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(inject(simulator, "MP1", "1", 1));
+	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_PARK_ITEM_NAME, INDIGO_IDLE_STATE));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(inject(simulator, "MH", "1", 1));
+	revision = property_revision(MOUNT_HOME_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_HOME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_HOME_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
 static void check_park_set(int index) {
 	const ioptron_dialect *d = dialects + index;
 	io_fixture fixture = { 0 };
@@ -1511,6 +1870,9 @@ static void check_park_set(int index) {
 		int heights = prefix_count(simulator, "SPH");
 		int azimuths = prefix_count(simulator, "SPA");
 		SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+		// A momentary action switch returns to all items OFF once the action completed.
+		SERIAL_CHECK_TRUE(!switch_value(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
+		SERIAL_CHECK_TRUE(!switch_value(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_DEFAULT_ITEM_NAME));
 		SERIAL_CHECK_TRUE(wait_event(simulator, "GAC", 0));
 		SERIAL_CHECK_TRUE(wait_prefix(simulator, "SPH", heights));
 		SERIAL_CHECK_TRUE(wait_prefix(simulator, "SPA", azimuths));
@@ -1550,6 +1912,9 @@ static void check_home(int index) {
 	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_HOME_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 90, 0.01));
 	SERIAL_CHECK_TRUE(wait_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// Homing does not change the park state.
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, light_value(MOUNT_STATE_PARK_ITEM_NAME));
 	SERIAL_CHECK_TRUE(io_goto(8.5, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME, true));
@@ -1638,6 +2003,142 @@ cleanup:
 	io_close(&fixture);
 }
 
+// A longitude just west of the prime meridian, given as 359.75, and a latitude with a zero whole-degree part
+// keep their negative sign; a change of the latitude alone resends the current longitude; the site survives
+// a reconnect in the driver, which has no site readback.
+static void check_site_signs(int index, const char *latitude, const char *longitude, const char *latitude_alone) {
+	const ioptron_dialect *d = dialects + index;
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, NULL));
+	SERIAL_CHECK_TRUE(io_site(-0.5, 359.75, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, latitude, 0));
+	SERIAL_CHECK_TRUE(wait_event(simulator, longitude, 0));
+	int longitudes = event_count(simulator, longitude);
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 10.25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, latitude_alone, 0));
+	SERIAL_CHECK_TRUE(wait_event(simulator, longitude, longitudes));
+	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
+	SERIAL_CHECK_TRUE(fabs(number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - 10.25) < 0.0001);
+	SERIAL_CHECK_TRUE(fabs(number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - 359.75) < 0.0001);
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+static void ioptron_site_signs_8407(void) { check_site_signs(I8407, "St -00*30:00", "Sg -000*15:00", "St +10*15:00"); }
+static void ioptron_site_signs_0200(void) { check_site_signs(I0200, "St-001800", "Sg-000900", "St+036900"); }
+static void ioptron_site_signs_0300(void) { check_site_signs(I0300, "SLA-00180000", "SLO-00090000", "SLA+03690000"); }
+
+// Both ends of the driver-scaled guide and custom tracking rate ranges on the wire.
+static void ioptron_scaled_range_ends_0300(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(io_numbers(&ioptron_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 1, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "RG0110", 0));
+	SERIAL_CHECK_TRUE(io_numbers(&ioptron_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 90, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 99, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "RG9099", 0));
+	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
+	SERIAL_CHECK_TRUE(fabs(number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 90) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 99) < 0.01);
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_ITEM_NAME, 0.1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_CUSTOM_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "RR01000", 0));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_ITEM_NAME, 1.9, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_CUSTOM_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "RR19000", 0));
+	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
+	SERIAL_CHECK_TRUE(fabs(number_value(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_ITEM_NAME) - 1.9) < 0.0001);
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_CUSTOM_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+// The meridian treatment the controller keeps is published at connect; a refused change shows the
+// controller's setting with ALERT and an immediate retry succeeds.
+static void ioptron_meridian_treatment_read_at_connect(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *arguments[] = { "--tracking", "--meridian", "112", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, arguments));
+	SERIAL_CHECK_TRUE(switch_value(MERIDIAN_HANDLING_PROPERTY, "FLIP"));
+	SERIAL_CHECK_TRUE(fabs(number_value(MERIDIAN_LIMIT_PROPERTY, "LIMIT") - 12) < 0.01);
+	SERIAL_CHECK_TRUE(inject(simulator, "SMT012", "0", 1));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MERIDIAN_HANDLING_PROPERTY, "STOP", true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MERIDIAN_HANDLING_PROPERTY, "FLIP"));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MERIDIAN_HANDLING_PROPERTY, "STOP", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "SMT012", 0));
+	SERIAL_CHECK_TRUE(switch_value(MERIDIAN_HANDLING_PROPERTY, "STOP"));
+	SERIAL_CHECK_TRUE(inject(simulator, "SMT005", "0", 1));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MERIDIAN_LIMIT_PROPERTY, "LIMIT", 5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(number_value(MERIDIAN_LIMIT_PROPERTY, "LIMIT") - 12) < 0.01);
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MERIDIAN_LIMIT_PROPERTY, "LIMIT", 5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
+	SERIAL_CHECK_TRUE(switch_value(MERIDIAN_HANDLING_PROPERTY, "STOP"));
+	SERIAL_CHECK_TRUE(fabs(number_value(MERIDIAN_LIMIT_PROPERTY, "LIMIT") - 5) < 0.01);
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+// A refused tracking rate shows the rate the controller still uses.
+static void check_track_rate_refusal(int index, const char *command) {
+	const ioptron_dialect *d = dialects + index;
+	io_fixture fixture = { 0 };
+	const char *arguments[] = { "--tracking", "--track-mode", "1", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, arguments));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(inject(&fixture.simulator, command, "0", 1));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(&fixture.simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+static void ioptron_track_rate_refusal_shows_device_rate_8407(void) { check_track_rate_refusal(I8407, "RT2"); }
+static void ioptron_track_rate_refusal_shows_device_rate_0200(void) { check_track_rate_refusal(I0200, "RT2"); }
+static void ioptron_track_rate_refusal_shows_device_rate_0300(void) { check_track_rate_refusal(I0300, "RT2"); }
+
+// A tracking or pier side change made outside the driver is published once, not on every poll.
+static void ioptron_external_changes_published_once(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(wait_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	int polls = event_count(simulator, "GLS");
+	SERIAL_CHECK_TRUE(wait_event(simulator, "GLS", polls + 1));
+	unsigned int tracking = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	unsigned int park = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	unsigned int home = property_revision(MOUNT_HOME_PROPERTY_NAME);
+	unsigned int pier = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME);
+	unsigned int lights = property_revision(MOUNT_STATE_PROPERTY_NAME);
+	polls = event_count(simulator, "GLS");
+	SERIAL_CHECK_TRUE(wait_event(simulator, "GLS", polls + 2));
+	SERIAL_CHECK_TRUE(fence_mount_queue());
+	SERIAL_CHECK_EQ_INT(tracking, property_revision(MOUNT_TRACKING_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(park, property_revision(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(home, property_revision(MOUNT_HOME_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(pier, property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(lights, property_revision(MOUNT_STATE_PROPERTY_NAME));
+	// The hand controller stops tracking.
+	SERIAL_CHECK_TRUE(sim_status(simulator, "0"));
+	SERIAL_CHECK_TRUE(wait_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	polls = event_count(simulator, "GLS");
+	SERIAL_CHECK_TRUE(wait_event(simulator, "GLS", polls + 2));
+	SERIAL_CHECK_TRUE(fence_mount_queue());
+	SERIAL_CHECK_EQ_INT(tracking + 1, property_revision(MOUNT_TRACKING_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(lights + 1, property_revision(MOUNT_STATE_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(park, property_revision(MOUNT_PARK_PROPERTY_NAME));
+cleanup:
+	io_close(&fixture);
+}
+
 static void ioptron_settings_translation_8406(void) { check_settings(I8406); }
 static void ioptron_settings_translation_8407(void) { check_settings(I8407); }
 static void ioptron_settings_translation_0100(void) { check_settings(I0100); }
@@ -1712,6 +2213,28 @@ static void ioptron_guider_zero_requests_and_pulse_mechanics(void) {
 	SERIAL_CHECK_TRUE(wait_event(simulator, "ZE03000", 0));
 	// 3 s at 0.9x sidereal = 40.6 arcsec.
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10.0 + 3 * 0.9 * 15.041067 / 3600, 0.001));
+	// An RA pulse on a tracking mount moves RA by guide rate x duration and ends back at the tracking
+	// rate: the readback holds afterwards and tracking was never switched.
+	SERIAL_CHECK_TRUE(wait_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	indigo_usleep(1200000);
+	double ra = RA_VALUE();
+	int switches = prefix_count(simulator, "ST");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 3000));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "ZQ03000", 0));
+	// 3 s at 0.9x sidereal west = -40.6 arcsec = -0.000752 h.
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra - 3 * 0.9 * 15.041067 / 3600 / 15, 0.00005));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(number_stays(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 0.00003, 1500));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(switches, prefix_count(simulator, "ST"));
+	// With tracking off the pulse leaves tracking off.
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	switches = prefix_count(simulator, "ST");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 500));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "ZS00500", 0));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(switches, prefix_count(simulator, "ST"));
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
 	fixture.guider = true;
 cleanup:
 	io_close(&fixture);
@@ -2022,6 +2545,115 @@ cleanup:
 	io_close(&fixture);
 }
 
+// HC8406 has no timed pulses: a pulse is arrow motion at guide speed that the finalizer stops. A guider
+// disconnected during the pulse stops the axis itself instead of leaving the mount moving.
+static void ioptron_guider_disconnect_stops_hc8406_pulse(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "8406", NULL));
+	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 3000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "Mn", 0));
+	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 3000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "Me", 0));
+	double started = indigo_monotonic_time();
+	disconnect_serial_device(&ioptron_guider);
+	fixture.guider = false;
+	SERIAL_CHECK_TRUE(wait_event(simulator, "Qn", 0));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "Qe", 0));
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - started < 2);
+	fixture.guider = connect_serial_device(&ioptron_guider, NULL);
+	SERIAL_CHECK_TRUE(fixture.guider);
+	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+// The guide rate is one controller setting: a change through the mount shows on the guider and the other
+// way round.
+static void ioptron_guide_rate_shared_by_mount_and_guider(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", TRACKING_ARGS));
+	fixture.mount = connect_serial_device(&ioptron_mount, NULL);
+	SERIAL_CHECK_TRUE(fixture.mount);
+	SERIAL_CHECK_TRUE(io_numbers(&ioptron_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 30, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 70, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "RG3070", 0));
+	reset_simulator_context(&ioptron_guider);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(fabs(number_value(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME) - 30) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(number_value(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME) - 70) < 0.01);
+	SERIAL_CHECK_TRUE(io_numbers(&ioptron_guider, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 60, GUIDER_DEC_RATE_ITEM_NAME, 40, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "RG6040", 0));
+	reset_simulator_context(&ioptron_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(fabs(number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 60) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 40) < 0.01);
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+static indigo_client motion_owner = {
+	"iOptron motion owner", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false, false
+};
+
+static void no_action(void) {
+}
+
+// Manual motion started by a client is released when that client detaches: the bus aborts it and the
+// driver sends the axis stop.
+static void ioptron_motion_released_when_client_detaches(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	bool attached = false;
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, TRACKING_ARGS));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_attach_client(&motion_owner));
+	attached = true;
+	unsigned int revision = property_revision(MOUNT_MOTION_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&motion_owner, ioptron_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "mn", 0));
+	// The handler has registered the motion once the queue passed it.
+	SERIAL_CHECK_TRUE(fence_mount_queue());
+	int stops = event_count(simulator, "qD");
+	arm_log_trigger("Aborting 'iOptron Mount'.MOUNT_MOTION_DEC", no_action);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_detach_client(&motion_owner));
+	attached = false;
+	SERIAL_CHECK_TRUE(wait_for_log_trigger());
+	disarm_log_trigger();
+	SERIAL_CHECK_TRUE(wait_event(simulator, "qD", stops));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!switch_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(number_stays(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 0.01, 1500));
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count(simulator, "qD"));
+cleanup:
+	disarm_log_trigger();
+	if (attached) {
+		indigo_detach_client(&motion_owner);
+	}
+	io_close(&fixture);
+}
+
+// SHUTDOWN is refused while the mount or the guider is connected and the connection survives.
+static void ioptron_shutdown_refused_while_connected(void) {
+	io_fixture fixture = { 0 };
+	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(indigo_mount_ioptron(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK);
+	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 50, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&ioptron_guider);
+	fixture.guider = false;
+	fixture.mount = connect_serial_device(&ioptron_mount, NULL);
+	SERIAL_CHECK_TRUE(fixture.mount);
+	SERIAL_CHECK_TRUE(indigo_mount_ioptron(INDIGO_DRIVER_SHUTDOWN, NULL) != INDIGO_OK);
+	SERIAL_CHECK_TRUE(io_sync(8, 20, INDIGO_OK_STATE));
+cleanup:
+	io_close(&fixture);
+}
+
 static void ioptron_shared_connection_orders_and_last_close(void) {
 	for (int order = 0; order < 2; order++) {
 		io_fixture fixture = { 0 };
@@ -2220,6 +2852,7 @@ cleanup:
 
 int main(int argc, char **argv) {
 	simulator_test_client.update_property = timed_client_update;
+	simulator_test_client.send_message = capture_message;
 	const indigo_test_case tests[] = {
 		{ "ioptron_driver_metadata_and_base_properties", ioptron_driver_metadata_and_base_properties },
 		{ "ioptron_profile_8406", ioptron_profile_8406 },
@@ -2251,6 +2884,8 @@ int main(int argc, char **argv) {
 		{ "ioptron_detect_haz31_altaz_without_home_search", ioptron_detect_haz31_altaz_without_home_search },
 		{ "ioptron_initialization_rollback_and_reconnect", ioptron_initialization_rollback_and_reconnect },
 		{ "ioptron_configured_baudrate_requires_product_reply", ioptron_configured_baudrate_requires_product_reply },
+		{ "ioptron_connect_handshake_order_0300", ioptron_connect_handshake_order_0300 },
+		{ "ioptron_connect_handshake_order_8407", ioptron_connect_handshake_order_8407 },
 		{ "ioptron_initial_state_8407", ioptron_initial_state_8407 },
 		{ "ioptron_initial_state_0100", ioptron_initial_state_0100 },
 		{ "ioptron_initial_state_0200", ioptron_initial_state_0200 },
@@ -2258,6 +2893,7 @@ int main(int argc, char **argv) {
 		{ "ioptron_initial_state_0300", ioptron_initial_state_0300 },
 		{ "ioptron_initial_readback_failures_alert", ioptron_initial_readback_failures_alert },
 		{ "ioptron_epoch_jnow_translation", ioptron_epoch_jnow_translation },
+		{ "ioptron_coordinate_boundaries_8406", ioptron_coordinate_boundaries_8406 },
 		{ "ioptron_coordinate_boundaries_8407", ioptron_coordinate_boundaries_8407 },
 		{ "ioptron_coordinate_boundaries_0100", ioptron_coordinate_boundaries_0100 },
 		{ "ioptron_coordinate_boundaries_0205", ioptron_coordinate_boundaries_0205 },
@@ -2267,6 +2903,10 @@ int main(int argc, char **argv) {
 		{ "ioptron_goto_completion_waits_for_slew_command", ioptron_goto_completion_waits_for_slew_command },
 		{ "ioptron_goto_rejections_recover", ioptron_goto_rejections_recover },
 		{ "ioptron_goto_below_altitude_limit_rejected", ioptron_goto_below_altitude_limit_rejected },
+		{ "ioptron_goto_refusal_reason_8406", ioptron_goto_refusal_reason_8406 },
+		{ "ioptron_goto_completion_follows_slew_status", ioptron_goto_completion_follows_slew_status },
+		{ "ioptron_idle_abort_keeps_position_and_tracking", ioptron_idle_abort_keeps_position_and_tracking },
+		{ "ioptron_disconnect_during_motion_stops_mount", ioptron_disconnect_during_motion_stops_mount },
 		{ "ioptron_malformed_readback_8406", ioptron_malformed_readback_8406 },
 		{ "ioptron_malformed_readback_8407", ioptron_malformed_readback_8407 },
 		{ "ioptron_malformed_readback_0100", ioptron_malformed_readback_0100 },
@@ -2304,6 +2944,7 @@ int main(int argc, char **argv) {
 		{ "ioptron_park_workflow_0205", ioptron_park_workflow_0205 },
 		{ "ioptron_park_workflow_0300", ioptron_park_workflow_0300 },
 		{ "ioptron_park_and_home_abort", ioptron_park_and_home_abort },
+		{ "ioptron_park_and_home_never_started_alert", ioptron_park_and_home_never_started_alert },
 		{ "ioptron_park_set_hidden_0200", ioptron_park_set_hidden_0200 },
 		{ "ioptron_park_set_positions_0205", ioptron_park_set_positions_0205 },
 		{ "ioptron_park_set_positions_0300", ioptron_park_set_positions_0300 },
@@ -2316,6 +2957,15 @@ int main(int argc, char **argv) {
 		{ "ioptron_settings_translation_0200", ioptron_settings_translation_0200 },
 		{ "ioptron_settings_translation_0205", ioptron_settings_translation_0205 },
 		{ "ioptron_settings_translation_0300", ioptron_settings_translation_0300 },
+		{ "ioptron_site_signs_8407", ioptron_site_signs_8407 },
+		{ "ioptron_site_signs_0200", ioptron_site_signs_0200 },
+		{ "ioptron_site_signs_0300", ioptron_site_signs_0300 },
+		{ "ioptron_scaled_range_ends_0300", ioptron_scaled_range_ends_0300 },
+		{ "ioptron_meridian_treatment_read_at_connect", ioptron_meridian_treatment_read_at_connect },
+		{ "ioptron_track_rate_refusal_shows_device_rate_8407", ioptron_track_rate_refusal_shows_device_rate_8407 },
+		{ "ioptron_track_rate_refusal_shows_device_rate_0200", ioptron_track_rate_refusal_shows_device_rate_0200 },
+		{ "ioptron_track_rate_refusal_shows_device_rate_0300", ioptron_track_rate_refusal_shows_device_rate_0300 },
+		{ "ioptron_external_changes_published_once", ioptron_external_changes_published_once },
 		{ "ioptron_guider_commands_8406", ioptron_guider_commands_8406 },
 		{ "ioptron_guider_commands_8407", ioptron_guider_commands_8407 },
 		{ "ioptron_guider_commands_0100", ioptron_guider_commands_0100 },
@@ -2329,6 +2979,10 @@ int main(int argc, char **argv) {
 		{ "ioptron_guider_older_firmware_uses_m_pulses", ioptron_guider_older_firmware_uses_m_pulses },
 		{ "ioptron_guider_altaz_mount_rejects_pulses", ioptron_guider_altaz_mount_rejects_pulses },
 		{ "ioptron_guider_disconnect_cancels_pulse_and_reconnects", ioptron_guider_disconnect_cancels_pulse_and_reconnects },
+		{ "ioptron_guider_disconnect_stops_hc8406_pulse", ioptron_guider_disconnect_stops_hc8406_pulse },
+		{ "ioptron_guide_rate_shared_by_mount_and_guider", ioptron_guide_rate_shared_by_mount_and_guider },
+		{ "ioptron_motion_released_when_client_detaches", ioptron_motion_released_when_client_detaches },
+		{ "ioptron_shutdown_refused_while_connected", ioptron_shutdown_refused_while_connected },
 		{ "ioptron_shared_connection_orders_and_last_close", ioptron_shared_connection_orders_and_last_close },
 		{ "ioptron_guider_only_detection_8406", ioptron_guider_only_detection_8406 },
 		{ "ioptron_guider_only_detection_0200", ioptron_guider_only_detection_0200 },

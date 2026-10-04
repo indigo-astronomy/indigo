@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300003E
+#define DRIVER_VERSION       0x03000040
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -45,6 +45,8 @@
 
 #define RA_MIN_DIF           0.1
 #define DEC_MIN_DIF          0.1
+// a park or home the mount acknowledged but did not start within this time [s] failed
+#define START_TIMEOUT        5.0
 
 typedef enum {
 	UNKNOWN = 0,
@@ -194,14 +196,14 @@ static mount_type PRODUCTS[] = {
 #define MOUNT_MERIDIAN_STOP_ITEM              (MOUNT_MERIDIAN_HANDLING_PROPERTY->items + 0)
 #define MOUNT_MERIDIAN_FLIP_ITEM              (MOUNT_MERIDIAN_HANDLING_PROPERTY->items + 1)
 
-#define MOUNT_MERIDIAN_HANDLING_PROPERTY_NAME "MOUNT_MERIDIAN_HANDLING"
+#define MOUNT_MERIDIAN_HANDLING_PROPERTY_NAME "X_MOUNT_MERIDIAN_HANDLING"
 #define MOUNT_MERIDIAN_STOP_ITEM_NAME         "STOP"
 #define MOUNT_MERIDIAN_FLIP_ITEM_NAME         "FLIP"
 
 #define MOUNT_MERIDIAN_LIMIT_PROPERTY      (PRIVATE_DATA->mount_meridian_limit_property)
 #define MOUNT_MERIDIAN_LIMIT_ITEM          (MOUNT_MERIDIAN_LIMIT_PROPERTY->items + 0)
 
-#define MOUNT_MERIDIAN_LIMIT_PROPERTY_NAME "MOUNT_MERIDIAN_LIMIT"
+#define MOUNT_MERIDIAN_LIMIT_PROPERTY_NAME "X_MOUNT_MERIDIAN_LIMIT"
 #define MOUNT_MERIDIAN_LIMIT_ITEM_NAME     "LIMIT"
 
 #define MOUNT_PROTOCOL_PROPERTY        (PRIVATE_DATA->mount_protocol_property)
@@ -213,7 +215,7 @@ static mount_type PRODUCTS[] = {
 #define PROTOCOL_0205_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 5)
 #define PROTOCOL_0300_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 6)
 
-#define MOUNT_PROTOCOL_PROPERTY_NAME   "PROTOCOL_VERSION"
+#define MOUNT_PROTOCOL_PROPERTY_NAME   "X_PROTOCOL_VERSION"
 #define PROTOCOL_AUTO_ITEM_NAME        "AUTO"
 #define PROTOCOL_8406_ITEM_NAME        "8406"
 #define PROTOCOL_8407_ITEM_NAME        "8407"
@@ -249,6 +251,11 @@ typedef struct {
 	int utc_offset;
 	bool slewing, tracking, parked, homed;
 	bool goto_issued, coordinates_failed;
+	bool goto_target_valid, goto_settling, stopping;
+	double goto_target_ra, goto_target_dec;
+	bool park_moving, home_moving;
+	double park_deadline, home_deadline;
+	indigo_device *mount_device, *guider_device;
 	//- data
 } ioptron_private_data;
 
@@ -694,6 +701,13 @@ static bool ioptron_set_site(indigo_device *device, double latitude, double long
 	return false;
 }
 
+// Rounds RA to the device resolution (units per hour) and wraps it into [0, 24), so a value just below the
+// wrap point is never sent as 24 hours or as 60 seconds.
+static double ioptron_device_ra(double ra, double units_per_hour) {
+	ra = fmod(round(ra * units_per_hour) / units_per_hour, 24.0);
+	return ra < 0 ? ra + 24.0 : ra;
+}
+
 static bool ioptron_park(indigo_device *device) {
 	char sexagesimal[128];
 	if (PRIVATE_DATA->protocol == HC_8406) {
@@ -706,7 +720,7 @@ static bool ioptron_park(indigo_device *device) {
 		}
 	} else if (PRIVATE_DATA->protocol == V1_0) {
 		double ra = MOUNT_LST_TIME_ITEM->number.value;
-		if (ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1') {
+		if (ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ioptron_device_ra(ra, 3600), "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1') {
 			double dec = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0 ? 90.0 : -90.0;
 			if (ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos_r(dec, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1') {
 				if (ioptron_simple_reply_command(device, ":MP1#") && *PRIVATE_DATA->response == '1') {
@@ -716,7 +730,7 @@ static bool ioptron_park(indigo_device *device) {
 		}
 	} else if (PRIVATE_DATA->protocol == V2_0) {
 		double ra = MOUNT_LST_TIME_ITEM->number.value;
-		if (ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1') {
+		if (ioptron_simple_reply_command(device, ":Sr%08.0f#", ioptron_device_ra(ra, 3600000) * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1') {
 			double dec = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0 ? 90.0 : -90.0;
 			if (ioptron_simple_reply_command(device, ":Sd%+09.0f#", dec * 60 * 60 * 100) && *PRIVATE_DATA->response == '1') {
 				if (ioptron_simple_reply_command(device, ":MP1#") && *PRIVATE_DATA->response == '1') {
@@ -900,7 +914,7 @@ static bool ioptron_set_tracking_rate(indigo_device *device, char tracking_rate,
 				} else if (PRIVATE_DATA->protocol == V2_0) {
 					result = fabs(custom_tracking_rate - 1) <= 0.01 && ioptron_simple_reply_command(device, ":RR%+08.4f#", custom_tracking_rate - 1) && *PRIVATE_DATA->response == '1';
 				} else if (PRIVATE_DATA->protocol >= V2_5) {
-					result = ioptron_simple_reply_command(device, ":RR%05d#", (int)(custom_tracking_rate * 1e4)) && *PRIVATE_DATA->response == '1';
+					result = ioptron_simple_reply_command(device, ":RR%05ld#", lround(custom_tracking_rate * 1e4)) && *PRIVATE_DATA->response == '1';
 				}
 				if (result) {
 					PRIVATE_DATA->last_custom_tracking_rate = custom_tracking_rate;
@@ -916,13 +930,13 @@ static bool ioptron_slew(indigo_device *device, double ra, double dec) {
 	char sexagesimal[128];
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8406) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ioptron_device_ra(ra, 36000), "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ioptron_device_ra(ra, 3600), "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
-		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ioptron_device_ra(ra, 3600000) * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V3_0) {
-		result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ra * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ioptron_device_ra(ra, 5400000) * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 	}
 	if (result) {
 		if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
@@ -932,12 +946,26 @@ static bool ioptron_slew(indigo_device *device, double ra, double dec) {
 		}
 	}
 	if (result) {
+		bool replied = false;
 		if (PRIVATE_DATA->protocol == HC_8406) {
-			result = ioptron_simple_reply_command(device, ":MS#") && *PRIVATE_DATA->response == '0';
+			replied = ioptron_simple_reply_command(device, ":MS#");
+			result = replied && *PRIVATE_DATA->response == '0';
 		} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
-			result = ioptron_simple_reply_command(device, ":MS#") && *PRIVATE_DATA->response == '1';
+			replied = ioptron_simple_reply_command(device, ":MS#");
+			result = replied && *PRIVATE_DATA->response == '1';
 		} else if (PRIVATE_DATA->protocol == V3_0) {
-			result = ioptron_simple_reply_command(device, ":MS1#") && *PRIVATE_DATA->response == '1';
+			replied = ioptron_simple_reply_command(device, ":MS1#");
+			result = replied && *PRIVATE_DATA->response == '1';
+		}
+		if (replied && !result) {
+			// HC8406 answers 1 (below the horizon) or 2 (above the upper limit) with a text, the later protocols 0.
+			if (PRIVATE_DATA->protocol == HC_8406 && *PRIVATE_DATA->response == '1') {
+				indigo_send_message(device, ALERT_PROPERTY, "Slew refused by the mount, the target is below the horizon");
+			} else if (PRIVATE_DATA->protocol == HC_8406 && *PRIVATE_DATA->response == '2') {
+				indigo_send_message(device, ALERT_PROPERTY, "Slew refused by the mount, the target is above the upper limit");
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Slew refused by the mount, the target is below the altitude limit or beyond the mechanical limits");
+			}
 		}
 	}
 	return result;
@@ -947,13 +975,13 @@ static bool ioptron_sync(indigo_device *device, double ra, double dec) {
 	char sexagesimal[128];
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8406) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ioptron_device_ra(ra, 36000), "%02d:%02d:%04.1f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
-		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ra, "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos_r(ioptron_device_ra(ra, 3600), "%02d:%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
-		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ioptron_device_ra(ra, 3600000) * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V3_0) {
-		result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ra * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
+		result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ioptron_device_ra(ra, 5400000) * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 	}
 	if (result) {
 		if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
@@ -1197,6 +1225,37 @@ static bool ioptron_apply_track_rate(indigo_device *device, char code) {
 	return false;
 }
 
+// Reads the tracking rate the mount uses into MOUNT_TRACK_RATE.
+static bool ioptron_read_track_rate(indigo_device *device) {
+	switch (PRIVATE_DATA->protocol) {
+		case HC_8407:
+			return ioptron_simple_reply_command(device, ":QT#") && strlen(PRIVATE_DATA->response) == 1 && ioptron_apply_track_rate(device, *PRIVATE_DATA->response);
+		case V1_0:
+		case V2_0:
+			return ioptron_command(device, ":GAS#") && strlen(PRIVATE_DATA->response) == 6 && ioptron_apply_track_rate(device, PRIVATE_DATA->response[2]);
+		case V2_5:
+			return ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19 && ioptron_apply_track_rate(device, PRIVATE_DATA->response[15]);
+		case V3_0:
+			return ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23 && ioptron_apply_track_rate(device, PRIVATE_DATA->response[19]);
+		default:
+			return false;
+	}
+}
+
+// Reads the meridian treatment the mount keeps (:GMT# "<flip><limit>") into MOUNT_MERIDIAN_HANDLING and MOUNT_MERIDIAN_LIMIT.
+static bool ioptron_read_meridian_handling(indigo_device *device) {
+	if (PRIVATE_DATA->protocol != V3_0 || PRIVATE_DATA->altaz || !ioptron_command(device, ":GMT#") || strlen(PRIVATE_DATA->response) != 3 || !ioptron_digits(PRIVATE_DATA->response, 3) || PRIVATE_DATA->response[0] > '1') {
+		return false;
+	}
+	int limit = atoi(PRIVATE_DATA->response + 1);
+	if (limit > MOUNT_MERIDIAN_LIMIT_ITEM->number.max) {
+		return false;
+	}
+	indigo_set_switch(MOUNT_MERIDIAN_HANDLING_PROPERTY, PRIVATE_DATA->response[0] == '1' ? MOUNT_MERIDIAN_FLIP_ITEM : MOUNT_MERIDIAN_STOP_ITEM, true);
+	MOUNT_MERIDIAN_LIMIT_ITEM->number.value = MOUNT_MERIDIAN_LIMIT_ITEM->number.target = limit;
+	return true;
+}
+
 static bool ioptron_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	if (!ioptron_command(device, ":AG#")) {
 		return false;
@@ -1298,7 +1357,7 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;
-			if (!ioptron_simple_reply_command(device, ":QT#") || strlen(PRIVATE_DATA->response) != 1 || !ioptron_apply_track_rate(device, *PRIVATE_DATA->response)) {
+			if (!ioptron_read_track_rate(device)) {
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			if (ioptron_get_guide_rate(device, &guide_ra, &guide_dec)) {
@@ -1315,7 +1374,7 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;
-			if (!ioptron_command(device, ":GAS#") || strlen(PRIVATE_DATA->response) != 6 || !ioptron_apply_track_rate(device, PRIVATE_DATA->response[2])) {
+			if (!ioptron_read_track_rate(device)) {
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
@@ -1335,7 +1394,7 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;
-			if (!ioptron_command(device, ":GAS#") || strlen(PRIVATE_DATA->response) != 6 || !ioptron_apply_track_rate(device, PRIVATE_DATA->response[2])) {
+			if (!ioptron_read_track_rate(device)) {
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
@@ -1359,7 +1418,7 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;
-			if (!ioptron_command(device, ":GLS#") || strlen(PRIVATE_DATA->response) != 19 || !ioptron_apply_track_rate(device, PRIVATE_DATA->response[15])) {
+			if (!ioptron_read_track_rate(device)) {
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
@@ -1388,7 +1447,7 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = PRIVATE_DATA->altaz;
 			MOUNT_PEC_PROPERTY->hidden = PRIVATE_DATA->has_encoders || !PRIVATE_DATA->has_pec;
 			MOUNT_PEC_TRAINING_PROPERTY->hidden = PRIVATE_DATA->has_encoders || !PRIVATE_DATA->has_pec;
-			if (!ioptron_command(device, ":GLS#") || strlen(PRIVATE_DATA->response) != 23 || !ioptron_apply_track_rate(device, PRIVATE_DATA->response[19])) {
+			if (!ioptron_read_track_rate(device)) {
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			if (!PRIVATE_DATA->altaz) {
@@ -1413,6 +1472,9 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 			MOUNT_MERIDIAN_HANDLING_PROPERTY->hidden = PRIVATE_DATA->altaz;
 			MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = PRIVATE_DATA->altaz;
+			if (!PRIVATE_DATA->altaz && !ioptron_read_meridian_handling(device)) {
+				MOUNT_MERIDIAN_HANDLING_PROPERTY->state = MOUNT_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		}
 	} else {
 		return false;
@@ -1513,9 +1575,60 @@ static bool ioptron_init_guider(indigo_device *device) {
 	return true;
 }
 
+// The guide rate is one controller setting shared by the mount and the guider device: a change accepted
+// through one of them is published by the other one too. Both devices run on the mount's queue.
+static void ioptron_publish_guider_rate(indigo_device *device, int ra, int dec) {
+	if (device != NULL && IS_CONNECTED && !GUIDER_RATE_PROPERTY->hidden) {
+		GUIDER_RATE_ITEM->number.value = GUIDER_RATE_ITEM->number.target = ra;
+		if (GUIDER_RATE_PROPERTY->count > 1) {
+			GUIDER_DEC_RATE_ITEM->number.value = GUIDER_DEC_RATE_ITEM->number.target = dec;
+		}
+		GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_RATE_PROPERTY, NULL);
+	}
+}
+
+static void ioptron_publish_mount_guide_rate(indigo_device *device, int ra, int dec) {
+	if (device != NULL && IS_CONNECTED && !MOUNT_GUIDE_RATE_PROPERTY->hidden) {
+		MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target = ra;
+		if (MOUNT_GUIDE_RATE_PROPERTY->count > 1) {
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.target = dec;
+		}
+		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
+	}
+}
+
+// A fingerprint of the state and item values of a switch or light property (at most 15 items), so the
+// status poll publishes a property only when the mount reported a change.
+static unsigned ioptron_fingerprint(indigo_property *property) {
+	unsigned fingerprint = property->state;
+	for (int i = 0; i < property->count && i < 15; i++) {
+		fingerprint = (fingerprint << 2) | (property->type == INDIGO_LIGHT_VECTOR ? property->items[i].light.value : property->items[i].sw.value);
+	}
+	return fingerprint;
+}
+
+// True when the readback is within RA_MIN_DIF / DEC_MIN_DIF degrees of the target of the last GOTO.
+static bool ioptron_at_target(indigo_device *device) {
+	double ra_difference = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - PRIVATE_DATA->goto_target_ra);
+	if (ra_difference > 12) {
+		ra_difference = 24 - ra_difference;
+	}
+	double dec_difference = fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - PRIVATE_DATA->goto_target_dec);
+	return ra_difference * 15 * cos(PRIVATE_DATA->goto_target_dec * M_PI / 180) <= RA_MIN_DIF && dec_difference <= DEC_MIN_DIF;
+}
+
 static void ioptron_update_mount_state(indigo_device *device) {
+	indigo_property *polled[] = { MOUNT_STATE_PROPERTY, MOUNT_TRACKING_PROPERTY, MOUNT_PARK_PROPERTY, MOUNT_HOME_PROPERTY, MOUNT_SIDE_OF_PIER_PROPERTY };
+	unsigned fingerprints[5];
+	for (int i = 0; i < 5; i++) {
+		fingerprints[i] = ioptron_fingerprint(polled[i]);
+	}
+	const char *coordinates_message = NULL, *park_message = NULL, *home_message = NULL;
 	double ra = 0, dec = 0;
-	if (ioptron_get_coordinates(device, &ra, &dec)) {
+	bool coordinates_read = ioptron_get_coordinates(device, &ra, &dec);
+	if (coordinates_read) {
 		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
@@ -1532,18 +1645,37 @@ static void ioptron_update_mount_state(indigo_device *device) {
 	}
 	if (ioptron_get_state(device)) {
 		if (PRIVATE_DATA->slewing) {
-			// a running slew (driver or hand controller initiated) completes when it stops
-			PRIVATE_DATA->goto_issued = true;
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+			if (!PRIVATE_DATA->stopping) {
+				// a running slew (driver or hand controller initiated) completes when it stops, an aborted
+				// one keeps its ALERT while the mount decelerates
+				PRIVATE_DATA->goto_issued = true;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			}
 		} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->goto_issued) {
 			// a GOTO was accepted but its slew command has not been sent yet
 		} else {
-			PRIVATE_DATA->goto_issued = false;
-			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
-				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				 MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->stopping = false;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+				// the controller reports the end of the slew, the readback decides whether it reached the target
+				if (!coordinates_read) {
+					PRIVATE_DATA->coordinates_failed = true;
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else if (PRIVATE_DATA->goto_target_valid && !ioptron_at_target(device) && !PRIVATE_DATA->goto_settling) {
+					// the coordinates were read before the status, judge the arrival on the next readback
+					PRIVATE_DATA->goto_settling = true;
+				} else if (PRIVATE_DATA->goto_target_valid && !ioptron_at_target(device)) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					coordinates_message = "Slew ended short of the target";
+				} else {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+				PRIVATE_DATA->goto_issued = false;
+				PRIVATE_DATA->goto_target_valid = false;
+				PRIVATE_DATA->goto_settling = false;
 			}
 		}
 		if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) { // to avoid race never change tracking state if BUSY
@@ -1562,6 +1694,16 @@ static void ioptron_update_mount_state(indigo_device *device) {
 			} else if (MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
 				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			} else if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+				if (PRIVATE_DATA->slewing) {
+					PRIVATE_DATA->park_moving = true;
+				} else if (PRIVATE_DATA->park_moving || indigo_monotonic_time() > PRIVATE_DATA->park_deadline) {
+					// the mount stopped before it parked, or acknowledged the park and never started it
+					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+					MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+					MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+					park_message = "Park did not complete";
+				}
 			}
 		} else { // otherwise mirror state reported by mount
 			if (PRIVATE_DATA->parked) {
@@ -1575,6 +1717,14 @@ static void ioptron_update_mount_state(indigo_device *device) {
 		if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with this exception
 			if (PRIVATE_DATA->homed) {
 				MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
+			} else if (PRIVATE_DATA->slewing) {
+				PRIVATE_DATA->home_moving = true;
+			} else if (PRIVATE_DATA->home_moving || indigo_monotonic_time() > PRIVATE_DATA->home_deadline) {
+				// the mount stopped before it reached home, or acknowledged homing and never started it
+				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
+				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
+				home_message = "Homing did not complete";
 			}
 		} else { // otherwise mirror state reported by mount
 			if (!PRIVATE_DATA->homed) {
@@ -1591,13 +1741,17 @@ static void ioptron_update_mount_state(indigo_device *device) {
 		indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+	// Changes are published once, an unchanged property is not republished by every poll.
+	const char *messages[] = { NULL, NULL, park_message, home_message, NULL };
+	for (int i = 0; i < 5; i++) {
+		if (messages[i] != NULL) {
+			indigo_update_property(device, polled[i], "%s", messages[i]);
+		} else if (ioptron_fingerprint(polled[i]) != fingerprints[i]) {
+			indigo_update_property(device, polled[i], NULL);
+		}
+	}
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-	indigo_update_coordinates(device, NULL);
+	indigo_update_coordinates(device, coordinates_message);
 }
 
 //- code
@@ -1667,6 +1821,16 @@ static void mount_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ mount.on_disconnect
+		// A slew, park, homing or arrow motion still running is stopped before the port closes.
+		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE || MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE || MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE || MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+			ioptron_stop(device);
+		}
+		PRIVATE_DATA->goto_issued = PRIVATE_DATA->goto_target_valid = PRIVATE_DATA->stopping = false;
+		PRIVATE_DATA->last_motion_ra = PRIVATE_DATA->last_motion_dec = 0;
+		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+		MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
+		//- mount.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			MOUNT_PARK_SET_PROPERTY,
@@ -1719,8 +1883,8 @@ static void mount_park_set_handler(indigo_device *device) {
 			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (MOUNT_PARK_SET_CURRENT_ITEM->sw.value) {
+		MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
 		if (!ioptron_park_set_current(device)) {
-			MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
 			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -1748,6 +1912,8 @@ static void mount_park_handler(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->park_moving = false;
+			PRIVATE_DATA->park_deadline = indigo_monotonic_time() + START_TIMEOUT;
 		}
 		MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
 	} else {
@@ -1772,6 +1938,8 @@ static void mount_home_handler(indigo_device *device) {
 	// of the request and this handler, the targets keep the request. A failure shows the home state the mount
 	// last reported.
 	indigo_apply_switch_targets(MOUNT_HOME_PROPERTY);
+	PRIVATE_DATA->home_moving = false;
+	PRIVATE_DATA->home_deadline = indigo_monotonic_time() + START_TIMEOUT;
 	if (MOUNT_HOME_ITEM->sw.value) {
 		MOUNT_HOME_ITEM->sw.value = false;
 		if (!ioptron_home(device)) {
@@ -1836,12 +2004,18 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		if (!rate_set) {
 			indigo_send_message(device, BUSY_PROPERTY, "Failed to set tracking rate before slew, continuing with slew anyway");
 		}
+		PRIVATE_DATA->stopping = false;
 		if (ioptron_slew(device, ra, dec)) {
 			PRIVATE_DATA->goto_issued = true;
+			PRIVATE_DATA->goto_target_valid = true;
+			PRIVATE_DATA->goto_settling = false;
+			PRIVATE_DATA->goto_target_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+			PRIVATE_DATA->goto_target_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+		PRIVATE_DATA->goto_target_valid = false;
 		if (ioptron_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -1872,7 +2046,10 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		}
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 		PRIVATE_DATA->goto_issued = false;
+		PRIVATE_DATA->goto_target_valid = false;
 		if (ioptron_stop(device)) {
+			// the status poll keeps an aborted slew ALERT while the mount decelerates
+			PRIVATE_DATA->stopping = true;
 			PRIVATE_DATA->last_motion_dec = 0;
 			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
 			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
@@ -1881,8 +2058,11 @@ static void mount_abort_motion_handler(indigo_device *device) {
 			MOUNT_MOTION_WEST_ITEM->sw.value = false;
 			MOUNT_MOTION_EAST_ITEM->sw.value = false;
 			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_OK_STATE, NULL);
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_coordinates(device, NULL);
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+				// an aborted slew never reached its target, an abort while idle leaves the coordinates alone
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, "Slew aborted");
+			}
 		} else {
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -2031,7 +2211,9 @@ static void mount_tracking_handler(indigo_device *device) {
 static void mount_guide_rate_handler(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_GUIDE_RATE.on_change
-	if (!ioptron_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.value, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.value)) {
+	if (ioptron_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.value, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.value)) {
+		ioptron_publish_guider_rate(PRIVATE_DATA->guider_device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.value, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.value);
+	} else {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.MOUNT_GUIDE_RATE.on_change
@@ -2092,6 +2274,8 @@ static void mount_meridian_handling_handler(indigo_device *device) {
 	MOUNT_MERIDIAN_HANDLING_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_MERIDIAN_HANDLING.on_change
 	if (!ioptron_set_meridian_handling(device,  MOUNT_MERIDIAN_FLIP_ITEM->sw.value, (int)MOUNT_MERIDIAN_LIMIT_ITEM->number.target)) {
+		// a refused change shows the treatment the mount keeps
+		ioptron_read_meridian_handling(device);
 		MOUNT_MERIDIAN_HANDLING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.MOUNT_MERIDIAN_HANDLING.on_change
@@ -2102,6 +2286,8 @@ static void mount_meridian_limit_handler(indigo_device *device) {
 	MOUNT_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_MERIDIAN_LIMIT.on_change
 	if (!ioptron_set_meridian_handling(device,  MOUNT_MERIDIAN_FLIP_ITEM->sw.value, (int)MOUNT_MERIDIAN_LIMIT_ITEM->number.target)) {
+		// a refused change shows the treatment the mount keeps
+		ioptron_read_meridian_handling(device);
 		MOUNT_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.MOUNT_MERIDIAN_LIMIT.on_change
@@ -2124,6 +2310,8 @@ static void mount_track_rate_handler(indigo_device *device) {
 		rate_set = ioptron_set_tracking_rate(device, 4, MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
 	}
 	if (!rate_set) {
+		// a refused rate shows the rate the mount still uses
+		ioptron_read_track_rate(device);
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- mount.MOUNT_TRACK_RATE.on_change
@@ -2147,6 +2335,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		//+ mount.on_attach
+		PRIVATE_DATA->mount_device = device;
 		INFO_PROPERTY->count = 6;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		MOUNT_TRACK_RATE_PROPERTY->count = 5;
@@ -2326,6 +2515,17 @@ static void guider_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ guider.on_disconnect
+		// HC8406 pulses are arrow motion stopped by the finalizer, which the disconnect has just cancelled.
+		if (PRIVATE_DATA->protocol == HC_8406) {
+			if (GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+				ioptron_no_reply_command(device, ":Qn#");
+			}
+			if (GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+				ioptron_no_reply_command(device, ":Qe#");
+			}
+		}
+		//- guider.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			GUIDER_GUIDE_DEC_PROPERTY,
@@ -2393,7 +2593,9 @@ static void guider_guide_ra_handler(indigo_device *device) {
 static void guider_rate_handler(indigo_device *device) {
 	GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_RATE.on_change
-	if (!ioptron_set_guide_rate(device, (int)GUIDER_RATE_ITEM->number.value, (int)GUIDER_DEC_RATE_ITEM->number.value)) {
+	if (ioptron_set_guide_rate(device, (int)GUIDER_RATE_ITEM->number.value, (int)GUIDER_DEC_RATE_ITEM->number.value)) {
+		ioptron_publish_mount_guide_rate(PRIVATE_DATA->mount_device, (int)GUIDER_RATE_ITEM->number.value, (int)GUIDER_DEC_RATE_ITEM->number.value);
+	} else {
 		GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- guider.GUIDER_RATE.on_change
@@ -2406,6 +2608,9 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		//+ guider.on_attach
+		PRIVATE_DATA->guider_device = device;
+		//- guider.on_attach
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 		GUIDER_RATE_PROPERTY->hidden = false;

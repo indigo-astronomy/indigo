@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0300000B
+#define DRIVER_VERSION 0x0300000D
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -1125,8 +1125,10 @@ static void pair_guider(indigo_alpaca_device *alpaca_device) {
 		}
 		if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT) && IS_DEVICE_TYPE(other, INDIGO_INTERFACE_GUIDER) && !IS_DEVICE_TYPE(other, INDIGO_INTERFACE_MOUNT) && is_mount_guider(alpaca_device, other)) {
 			alpaca_device->guider_device = other;
+			indigo_alpaca_connect_paired_guider(alpaca_device, other);
 		} else if (IS_DEVICE_TYPE(other, INDIGO_INTERFACE_MOUNT) && is_mount_guider(other, alpaca_device)) {
 			other->guider_device = alpaca_device;
+			indigo_alpaca_connect_paired_guider(other, alpaca_device);
 		}
 	}
 	pthread_mutex_unlock(&alpaca_devices_mutex);
@@ -1273,7 +1275,8 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 					other->guider_device = NULL;
 				}
 			}
-			// a request may still use the record, it is freed when the last user leaves
+			// a request may still use the record, it is freed when the last user leaves; a device that is gone is disconnected
+			alpaca_device->connected = alpaca_device->connection_busy = false;
 			alpaca_device->next = alpaca_released_devices;
 			alpaca_released_devices = alpaca_device;
 			break;

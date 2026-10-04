@@ -190,20 +190,20 @@ Public behavior to preserve in the first greenfield version:
   - `MOUNT_ABORT_MOTION`;
   - `MOUNT_PEC`;
   - `MOUNT_PEC_TRAINING`;
-  - `POLARSCOPE` with `BRIGHTNESS`;
-  - `MOUNT_USE_ENCODERS` with `RA`, `DEC`;
-  - `MOUNT_AUTOHOME` with `AUTOHOME`;
-  - `MOUNT_AUTOHOME_SETTINGS` with `DEC_OFFSET`.
+  - `X_POLARSCOPE` with `BRIGHTNESS`;
+  - `X_MOUNT_USE_ENCODERS` with `RA`, `DEC`;
+  - `X_MOUNT_AUTOHOME` with `AUTOHOME`;
+  - `X_MOUNT_AUTOHOME_SETTINGS` with `DEC_OFFSET`.
 - Capability-dependent visibility to preserve:
-  - `MOUNT_OPERATING_MODE` visible only for AZ/EQ-capable mounts, with `POLAR` and `ALTAZ`;
-  - `MOUNT_USE_ENCODERS` visible only when axis encoders are supported;
+  - `X_MOUNT_OPERATING_MODE` visible only for AZ/EQ-capable mounts, with `POLAR` and `ALTAZ`;
+  - `X_MOUNT_USE_ENCODERS` visible only when axis encoders are supported;
   - `MOUNT_PEC` and `MOUNT_PEC_TRAINING` visible only when PPEC is supported;
-  - `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS` visible only when home indexers are supported;
-  - `POLARSCOPE` visible only when polarscope brightness control is supported.
+  - `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS` visible only when home indexers are supported;
+  - `X_POLARSCOPE` visible only when polarscope brightness control is supported.
 - Custom/non-standard behavior:
-  - non-standard `POLARSCOPE` brightness property;
-  - non-standard `MOUNT_USE_ENCODERS` property;
-  - non-standard `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS` properties;
+  - non-standard `X_POLARSCOPE` brightness property;
+  - non-standard `X_MOUNT_USE_ENCODERS` property;
+  - non-standard `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS` properties;
   - current simulator expects `MOUNT_CUSTOM_TRACKING_RATE` not to be defined.
 - Guider base/interface behavior:
   - expose `INDIGO_INTERFACE_GUIDER`;
@@ -378,22 +378,22 @@ Property attach/enumeration requirements:
 - Additional instances are visible only on the base device, matching current behavior.
 - Custom properties are defined only after connection and only when not hidden by capability detection.
 - Config save must persist:
-  - `POLARSCOPE`
-  - `MOUNT_OPERATING_MODE`
-  - `MOUNT_USE_ENCODERS`
-  - `MOUNT_AUTOHOME_SETTINGS`
+  - `X_POLARSCOPE`
+  - `X_MOUNT_OPERATING_MODE`
+  - `X_MOUNT_USE_ENCODERS`
+  - `X_MOUNT_AUTOHOME_SETTINGS`
   - guider `GUIDER_RATE`
 
 Custom property requirements:
 
-- `POLARSCOPE`
+- `X_POLARSCOPE`
   - Type: number.
   - Group: `MOUNT_MAIN_GROUP`.
   - Label: `Polarscope`.
   - Permission: read/write.
   - Default hidden.
   - Item `BRIGHTNESS`, label `Polarscope Brightness`, range `0..255`.
-- `MOUNT_OPERATING_MODE`
+- `X_MOUNT_OPERATING_MODE`
   - Type: switch.
   - Rule: one of many.
   - Group: `MOUNT_MAIN_GROUP`.
@@ -401,7 +401,7 @@ Custom property requirements:
   - Permission: read/write.
   - Default hidden.
   - Items: `POLAR` default on, `ALTAZ` default off.
-- `MOUNT_USE_ENCODERS`
+- `X_MOUNT_USE_ENCODERS`
   - Type: switch.
   - Rule: any of many.
   - Group: `MOUNT_MAIN_GROUP`.
@@ -409,7 +409,7 @@ Custom property requirements:
   - Permission: read/write.
   - Default hidden.
   - Items: `RA`, `DEC`.
-- `MOUNT_AUTOHOME`
+- `X_MOUNT_AUTOHOME`
   - Type: switch.
   - Rule: any of many.
   - Group: `MOUNT_MAIN_GROUP`.
@@ -417,7 +417,7 @@ Custom property requirements:
   - Permission: read/write.
   - Default hidden.
   - Item: `AUTOHOME`.
-- `MOUNT_AUTOHOME_SETTINGS`
+- `X_MOUNT_AUTOHOME_SETTINGS`
   - Type: number.
   - Group: `MOUNT_MAIN_GROUP`.
   - Label: `Auto home settings`.
@@ -523,11 +523,11 @@ Greenfield skeleton created:
 - Mount and guider logical devices are attached from the single source file and share one `synscan_private_data` instance.
 - Guider operations are scheduled onto the master mount device queue, matching the design decision for mount/guider serialization.
 - Custom SynScan properties are defined in the new source:
-  - `POLARSCOPE`
-  - `MOUNT_OPERATING_MODE`
-  - `MOUNT_USE_ENCODERS`
-  - `MOUNT_AUTOHOME`
-  - `MOUNT_AUTOHOME_SETTINGS`
+  - `X_POLARSCOPE`
+  - `X_MOUNT_OPERATING_MODE`
+  - `X_MOUNT_USE_ENCODERS`
+  - `X_MOUNT_AUTOHOME`
+  - `X_MOUNT_AUTOHOME_SETTINGS`
 - The public header `indigo_mount_synscan.h` was simplified to match the style of other modern drivers: it exposes the driver entry point and device names without pulling in mount/guider implementation headers.
 
 Old-source handling:
@@ -586,7 +586,7 @@ Build and validation:
 - `make -f ../../Makefile.drv` from `indigo_drivers/mount_synscan` succeeds with no compiler warnings.
 - The simulator integration binary builds.
 - The simulator integration test is still expected to fail because configuration, capability detection, property visibility updates and behavior handlers are not implemented yet.
-- Current simulator-test failure mode confirms that the next required work is configuration/property-definition behavior: connected enumeration does not yet expose capability-dependent properties such as `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `POLARSCOPE`, `MOUNT_USE_ENCODERS`, `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS`.
+- Current simulator-test failure mode confirms that the next required work is configuration/property-definition behavior: connected enumeration does not yet expose capability-dependent properties such as `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `X_POLARSCOPE`, `X_MOUNT_USE_ENCODERS`, `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS`.
 
 Important follow-up for UDP autodetection:
 
@@ -630,9 +630,9 @@ Queue handlers implemented or improved:
 
 - `MOUNT_ABORT_MOTION` runs on the queue and sends instant stop commands to both axes.
 - `MOUNT_GUIDE_RATE` runs on the queue and sends ST4 guide-rate commands to both axes.
-- `POLARSCOPE` runs on the queue and sends brightness commands.
-- `MOUNT_USE_ENCODERS` runs on the queue and sends extended encoder enable/disable commands.
-- `MOUNT_AUTOHOME_SETTINGS` and `MOUNT_OPERATING_MODE` now complete as OK queue updates.
+- `X_POLARSCOPE` runs on the queue and sends brightness commands.
+- `X_MOUNT_USE_ENCODERS` runs on the queue and sends extended encoder enable/disable commands.
+- `X_MOUNT_AUTOHOME_SETTINGS` and `X_MOUNT_OPERATING_MODE` now complete as OK queue updates.
 - Periodic mount polling runs with `indigo_execute_handler_in()` and updates raw/equatorial coordinates from SynScan axis positions.
 - `MOUNT_PARK` stops both axes, waits for idle state, saves the current park position through uni I/O file helpers and updates tracking/park state.
 - `MOUNT_HOME` slews both axes to the derived home positions and waits for completion.
@@ -642,7 +642,7 @@ Queue handlers implemented or improved:
 - `MOUNT_MOTION_RA` and `MOUNT_MOTION_DEC` run as anytime queue handlers for manual slew start/stop.
 - `MOUNT_PEC` enables/disables PPEC with SynScan extended setting commands.
 - `MOUNT_PEC_TRAINING` starts/stops PPEC training with SynScan extended setting commands.
-- `MOUNT_AUTOHOME` has a first greenfield queue implementation which resets home indexer state and initializes the RA/DEC home positions, including configured DEC offset.
+- `X_MOUNT_AUTOHOME` has a first greenfield queue implementation which resets home indexer state and initializes the RA/DEC home positions, including configured DEC offset.
 
 Step 5 continuation:
 
@@ -854,11 +854,11 @@ Cleanup completed:
 - Simulator sources and integration tests remain separate from the driver implementation.
 - `README.md` was updated for the current UDP autodetection wording, shared mount/guider connection model and guide-pulse overlap semantics.
 - `indigo_docs/PROPERTIES.md` was updated with the SynScan-specific optional properties:
-  - `POLARSCOPE`
-  - `MOUNT_OPERATING_MODE`
-  - `MOUNT_USE_ENCODERS`
-  - `MOUNT_AUTOHOME`
-  - `MOUNT_AUTOHOME_SETTINGS`
+  - `X_POLARSCOPE`
+  - `X_MOUNT_OPERATING_MODE`
+  - `X_MOUNT_USE_ENCODERS`
+  - `X_MOUNT_AUTOHOME`
+  - `X_MOUNT_AUTOHOME_SETTINGS`
 
 Validation:
 
@@ -946,12 +946,12 @@ Hardware testing was performed. The device is a Sky-Watcher AZ-GTi reached over 
 
 Controller capabilities as reported by the extended feature inquiry on this unit:
 
-- auxiliary encoders: supported, `MOUNT_USE_ENCODERS` defined;
-- AZ/EQ operating mode: supported, `MOUNT_OPERATING_MODE` defined;
+- auxiliary encoders: supported, `X_MOUNT_USE_ENCODERS` defined;
+- AZ/EQ operating mode: supported, `X_MOUNT_OPERATING_MODE` defined;
 - snap port: supported, `Mount SynScan (aux)` defines `CCD_EXPOSURE` and `CCD_ABORT_EXPOSURE`;
-- polarscope LED: not supported, `POLARSCOPE` stays hidden;
+- polarscope LED: not supported, `X_POLARSCOPE` stays hidden;
 - PPEC: not supported, `MOUNT_PEC` and `MOUNT_PEC_TRAINING` stay hidden;
-- home indexer: not supported on either axis, `MOUNT_AUTOHOME` and `MOUNT_AUTOHOME_SETTINGS` stay hidden.
+- home indexer: not supported on either axis, `X_MOUNT_AUTOHOME` and `X_MOUNT_AUTOHOME_SETTINGS` stay hidden.
 
 The capability gating was therefore exercised in both directions on one physical unit: four optional
 properties defined and four correctly withheld.
@@ -1003,7 +1003,7 @@ registered cases as follows.
 Scenarios that are not applicable or not covered on this unit, with the reason:
 
 - Autohome could not be exercised: this AZ-GTi reports no home indexer on either axis, so the
-  driver correctly withholds `MOUNT_AUTOHOME`. The case detects that and reports it as not
+  driver correctly withholds `X_MOUNT_AUTOHOME`. The case detects that and reports it as not
   applicable rather than passing silently. Autohome remains covered against the simulator by
   `synscan_mount_autohome_finds_home_index`.
 - PPEC and PPEC training could not be exercised for the same reason: the controller reports no
@@ -1748,7 +1748,7 @@ Version 12, findings TGT-003, TGT-004, TGT-072 and the mount_synscan parts of TG
 
 - TGT-003 / TGT-B05: `MOUNT_TRACKING` is written by `synscan_clear_tracking_state()` (park and home finalizers, `mount_motion_failed()`, abort, auto home) and by the slew finalizer when it starts tracking after a GOTO. The finalizers are `INDIGO_TASK_PRIORITY_TIME` tasks and run ahead of a queued tracking handler, so a request copied before them was overwritten, and they also published OK over the pending BUSY. The handler now reads the request with `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` when the axis command succeeded, and on failure shows the RA axis state (`ra_axis_mode`) with ALERT. The writers keep writing the value (the tracking light and `MOUNT_TRACK_RATE` read it as the current state) but set the state and publish only when the property is not BUSY. A tracking request queued before an abort is now carried out after it, as requested; before, the abort's write turned it into OFF by accident.
 - TGT-004: `synscan_ppec_training_timer` writes STOPPED when the mount ends training. A START copied while the timer came due was turned into STOP. The handler reads and applies the target, on failure shows the training state the mount last reported (`IN_PPEC_TRAINING` feature bits) with ALERT; the timer writes the value but publishes the state (OK or the read failure ALERT) only when no request is pending.
-- TGT-072: auto home turns the encoders off and writes `MOUNT_USE_ENCODERS`; an encoders request queued behind auto home was read as off. The handler sends the targets; the encoder state the mount accepted is kept in `PRIVATE_DATA->ra_encoder` / `dec_encoder` (also cleared by auto home) and written to the values, so a failed command shows the state still in effect with ALERT. Auto home still writes the values, which the coordinate readout uses.
+- TGT-072: auto home turns the encoders off and writes `X_MOUNT_USE_ENCODERS`; an encoders request queued behind auto home was read as off. The handler sends the targets; the encoder state the mount accepted is kept in `PRIVATE_DATA->ra_encoder` / `dec_encoder` (also cleared by auto home) and written to the values, so a failed command shows the state still in effect with ALERT. Auto home still writes the values, which the coordinate readout uses.
 - TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. A request copied while the previous pulse's finalizer ran, between the command that ends the pulse and the clearing of the values, was zeroed and the new handler dropped it with OK. The finalizers already cleared only `number.value`; the handlers now restore the values from the targets first, as in mount_simulator and mount_temma.
 
 Simulator: `--ppec-training-seconds <s>` ends PPEC training by itself `s` seconds after it started, as the mount does after one worm revolution; without it training never ends, as before.
@@ -1763,3 +1763,93 @@ Regression tests in `integration/test_mount_synscan_simulator.c`:
 All four failed against the version 11 driver and pass with version 12 on Linux x64; recorded run `tools/run_driver_test.py mount_synscan` 24/24 on Linux x64. macOS and hardware were not run for this change.
 
 Final test summary for this change: simulated tests run 24, passed 24 (Linux x64); hardware tests run 0, passed 0.
+
+## Manual motion and sync, forum report (2026-10-04)
+
+Version 14. Reported on the INDIGO forum against A1 v6 beta with an EQ8-R Pro. Both reported defects confirmed in the source, the third found while reproducing the second.
+
+- SYNSCAN-D03, releasing an E/W arrow stopped tracking. The stop branch of `MOUNT_MOTION_RA` stopped the RA axis and set it idle, while `MOUNT_TRACKING` stayed ON, so the client showed tracking on a mount that was not tracking (Dec does not track, N/S was unaffected). The stop branch now puts RA back on the tracking rate (`synscan_tracking_rate()`, as the tracking handler does) when tracking is on and the mount is not parked; if the stop or the restart fails, tracking is switched OFF with ALERT, or left to a pending tracking request to publish. The release a client detach issues (`indigo_mount_commit_motion_client()`) passes through the same handler. Abort keeps clearing tracking on purpose (`synscan_clear_tracking_state()`, as before). The RA guide pulse already returns to the tracking rate; its failure path still leaves the tracking switch ON with the axis idle, which is not changed here.
+- SYNSCAN-D04, a manual sync added no alignment point and was undone by the next poll. Every `MOUNT_EQUATORIAL_COORDINATES` change went to the driver's handler, which for a sync only copied the target to the value; the next poll recomputed the coordinates from the raw position. A sync now goes to `indigo_mount_change_property()` from `on_change_request` unless the alignment mode is CONTROLLER (the generated parked guard refuses it on a parked mount first), as in mount_simulator and the 2.0 driver. The handler's sync branch is gone; the slew claim still excludes a sync.
+- SYNSCAN-D05, the alignment model was never applied. `on_attach` limited `MOUNT_ALIGNMENT_MODE` to two items before selecting NEAREST_POINT; `indigo_set_switch()` clears only the visible items, so the hidden CONTROLLER item stayed on and `indigo_raw_to_translated()` / `indigo_translated_to_raw()` passed the raw coordinates through. Introduced by the 3.0 refactoring, which swapped the order of the 2.0 driver. The switch is set before the count again.
+
+Regression tests in `integration/test_mount_synscan_simulator.c`:
+
+- `synscan_mount_resumes_tracking_after_ra_motion`: tracking on, then W and E motion started (slew light BUSY) and released (slew light IDLE, published last by the release handler). After each release the simulator's command log has a `:J1` after the last `:K1`, the last `:I1` is the tracking period, and tracking is ON/OK with the tracking light OK.
+- `synscan_mount_sync_adds_alignment_point`: a sync 1 h and 5 degrees away from the current position adds one alignment point, and after a poll (shown by a new raw RA, tracking is off) the coordinates are still the synced ones. The points are deleted at the end, they are saved in the private configuration folder.
+
+The first recorded run (motion and sync routing fixed, alignment mode not yet) was 26/25 Failed: `synscan_mount_sync_adds_alignment_point` saw no alignment point, which exposed D05. The tracking test was not run against version 13. Recorded run after the D05 fix, `tools/run_driver_test.py mount_synscan`: 26/26 on macOS arm64. With the model active, connecting with a saved `.alignment` file shows the framework's `indigo_mount_load_alignment_points()` updating `MOUNT_ALIGNMENT_SELECT_POINTS`/`DELETE_POINTS` before they are defined (diagnostic only). Linux and hardware were not run for this change.
+
+Final test summary for this change: simulated tests run 26, passed 26 (macOS arm64); hardware tests run 0, passed 0.
+
+## Guide pulse failure path, alignment point reload, follow-up (2026-10-04)
+
+Version 15.
+
+- SYNSCAN-D06, a refused RA guide pulse left tracking ON on an idle axis. When the step period that starts or ends an RA pulse was refused, the axis was marked idle while `MOUNT_TRACKING` stayed ON. Both paths now forget the cached axis configuration and put RA back on the tracking rate with the full stop, mode, period and start sequence (`synscan_restore_tracking()`); only if that fails too is tracking switched OFF with ALERT (`synscan_tracking_lost()`, on the mount device). A pulse whose end needed the restore still finishes OK, a pulse whose start was refused ends ALERT with tracking restored. The E/W release path uses the same two helpers, so a failed restart there is retried the same way before tracking is given up.
+- Simulator: `<ready-file>.fault` holding `<command prefix> <reply> <count>` answers the next matching commands with the reply, such as `!0`, without executing them, as a controller refusing a command does. The file is rewritten with the remaining count and removed when used up.
+- Framework, `indigo_libs/indigo_mount_driver.c`: with a saved `.alignment` file, `MOUNT_ALIGNMENT_SELECT_POINTS` and `MOUNT_ALIGNMENT_DELETE_POINTS` were updated before they were defined, on the `CONFIG LOAD` the bus sends at attach and again on connection. The connection now only reads the points (the properties are defined right after), and `indigo_mount_load_alignment_points()` publishes only while connected, as a delete and define because the number of points can change. Every mount driver passes through this code; only SynScan (alignment on by default) and mount_simulator write alignment points in their suites.
+- `synscan_mount_connects_with_udp_autodetection`: the discovery broadcast reaches every SynScan WiFi mount on the network, and with the simulator dropping its first replies a powered AZ-GTi answered first, so the case connected to it and failed the property completeness check. The case now checks that the detected address belongs to this machine and otherwise reports that the simulator was not exercised and checks no further. The recorded macOS run of this change met that situation.
+
+Regression tests in `integration/test_mount_synscan_simulator.c`:
+
+- `synscan_guider_restores_tracking_after_refused_pulse_end`: one refused `:I1` at the end of a 1000 ms pulse; the pulse ends OK, the command log shows a start after the last stop at the tracking period, tracking ON/OK.
+- `synscan_guider_stops_tracking_when_pulse_end_keeps_failing`: every `:I1` refused from the end of the pulse on; the pulse ends ALERT, the axis stays stopped, tracking OFF with ALERT and the tracking light ALERT.
+- `synscan_guider_restores_tracking_after_refused_pulse_start`: the `:I1` starting a 300 ms pulse refused once; the pulse ends ALERT, tracking restored and ON/OK.
+- `synscan_mount_sync_adds_alignment_point` additionally reconnects and checks the saved point is back with no property updated before its definition.
+
+Red runs of the 3.0.0.14 tests on indigosky (Linux arm64), driver with one fix reverted at a time, test binary run directly and not recorded: without the E/W fix `synscan_mount_resumes_tracking_after_ra_motion` failed (`start > stop`, last start before the last stop, period left at the manual rate); without the sync routing fix and, separately, without the alignment mode order fix `synscan_mount_sync_adds_alignment_point` failed (no alignment point). The guide pulse tests were not run against version 14.
+
+Recorded runs: macOS arm64 29/29 (mount_synscan) and 20/20 (mount_simulator, for the framework change).
+
+### Linux and hardware runs of version 15
+
+- Recorded simulator runs on indigosky (Linux arm64): mount_synscan 29/29, mount_simulator 20/20. The UDP autodetection case met the powered AZ-GTi there too.
+- Two hardware cases added to `hardware/test_mount_synscan_hw.c`: `synscan_resumes_tracking_after_manual_motion` (tracking on, W and E motion at centering rate, after each release tracking ON/OK and the reported RA holds within 0.01 degrees over 12 s) and `synscan_sync_adds_alignment_point` (sync 0.1 h and 1 degree away from the reported pointing, one alignment point, the synced coordinates still reported 3 s later, raw position unchanged, the points deleted afterwards). The existing `synscan_guides` checks tracking after RA pulse trains.
+- Recorded hardware run on the Sky-Watcher AZ-GTi (firmware 3.16) over UDP autodetection, macOS arm64: 18/18. After W/E release the RA drift was -0.00213 and +0.00188 degrees in 12 s (a stopped axis shows 0.050); the sync to RA +0.1 h, DEC -1 degree read back 3 s later within 0.0001 h and 0.00001 degrees with one alignment point. The session restored the starting pointing, tracking, park and home positions, and its alignment points live in the private test home only. The refused-command paths of SYNSCAN-D06 were not provoked on hardware.
+
+## Mount Driver Test Standard coverage (2026-10-04)
+
+Version 16. `integration/test_mount_synscan_simulator.c` extended against the Mount chapter of `indigo_test/DRIVER_TESTING_RULES.md`. Every new case was run against version 15 (red) and version 16 (green), single-case selection.
+
+| Rule | Test case | Version 15 |
+| --- | --- | --- |
+| `MOUNT_INFO` values, connect handshake trace, polarscope value, read-only `MOUNT_EPOCH`/`MOUNT_STATE`, undefined optional properties, connection options kept after disconnect, no update without definition across reconnect | `synscan_mount_reports_identity_and_handshake` | failed: polarscope published 255 after writing 0 |
+| Optional properties per feature bit, each with the gating bit missing | `synscan_mount_defines_options_from_feature_bits` | passed |
+| Direction of every manual motion on both pier sides in both hemispheres, readback moving the right way, north guide pulse with manual north's direction, tracking direction per hemisphere, GOTO arrival as hour angle from `MOUNT_LST_TIME` | `synscan_mount_moves_the_requested_way_on_both_pier_sides` | failed: north lowered DEC on the east side |
+| Slew-rate presets in step periods (low and high speed), reversal stops first, both axes at once, lunar rate on the running axis without a stop, ST4 guide rate codes at both ends | `synscan_mount_sends_rates_in_axis_units` | passed |
+| Abort mid-GOTO: answered in bounded time, `:L1`/`:L2` once, two equal fresh readbacks short of the target, GOTO ALERT, tracking resumed, next GOTO arrives | `synscan_mount_aborts_goto_mid_slew` | failed: tracking switched off |
+| Abort while idle keeps position and tracking; abort of manual motion stops both axes, releases the switches, keeps tracking; fresh motion | `synscan_mount_abort_keeps_tracking_and_releases_motion` | failed: tracking switched off |
+| Disconnect during GOTO / park stops the axes before the port closes; next session clean, park not reported failed | `synscan_mount_stops_goto_on_disconnect`, `synscan_mount_stops_park_on_disconnect` | failed: no stop sent |
+| Refusal at `:G1`, `:J1`, `:H2` of the GOTO sequence: ALERT with the controller's reason, no later motion command, real position kept, next GOTO accepted | `synscan_mount_refused_goto_ends_alert` | failed: no reason in the message |
+| Busy GOTO ignores a second request: one slew per axis, first target reached | `synscan_mount_ignores_goto_while_busy` | passed |
+| Park to `MOUNT_PARK_POSITION` read back with tracking off, unpark sends no motion, power cycle restores the parked position | `synscan_mount_parks_at_park_position_and_restores_it` | passed |
+| Refused park and park aborted on the way: ALERT, unparked, reason, park light, no re-latch | `synscan_mount_refused_or_aborted_park_stays_unparked` | failed: no reason in the message |
+| Failed (`!0`) and malformed (`=1`) position reply: ALERT with the last valid values, next poll OK; malformed first reading at connect marks only the coordinates | `synscan_mount_publishes_failed_poll_and_recovers` | failed: the malformed reading was decoded and published OK |
+| Aux shutter refused without a snap port, nothing defined, mount connects afterwards | `synscan_aux_refuses_connection_without_snap_port` | passed |
+| Guider pulses after the mount disconnected, no mount polling, no mount updates (decelerating axis) | `synscan_guider_keeps_pulsing_after_mount_disconnects` | failed: `:j` polls and four updates of undefined mount properties |
+| GOTO during a guide pulse arrives, pulse during a GOTO refused without a command, guider recovers | `synscan_guider_pulse_and_goto_share_the_axes` | failed: a pulse during the GOTO was accepted and drove the axis |
+| Manual motion released when its client detaches | `synscan_mount_releases_motion_of_detached_client` | passed |
+
+Driver fixes (version 16):
+
+- SYNSCAN-D07: manual N/S motion and DEC guide pulses always used the reverse direction for north, which moves south on the east side of the pier. The north direction now follows the side of pier (`synscan_dec_north_sign()`).
+- SYNSCAN-D08: the RA direction used a hemisphere flag cached only when tracking, GOTO or abort started; with the latitude changed after connecting, manual RA motion ran the wrong way. The hemisphere is read from the site at every rate conversion.
+- SYNSCAN-D09: abort switched tracking off and left the manual motion switches on. A tracking mount now returns to the tracking rate; the motion switches are cleared.
+- SYNSCAN-D10: disconnect during a GOTO, park, home or manual motion closed the port with the axes running. The axes are stopped first, motion and home switches cleared.
+- SYNSCAN-D11: refused GOTO/park/home published ALERT without the controller's reason; the `!n` code is now named in the message.
+- SYNSCAN-D12: replies of the wrong length were decoded (`=1` became a position); 24-bit, status and ratio replies are validated. A failed poll now publishes the coordinates ALERT with the last valid values; a bad first reading at connect marks only the coordinates instead of failing the connection.
+- SYNSCAN-D13: the polarscope probe wrote brightness 0 and published 255.
+- SYNSCAN-D14: guider finalizers stopped or re-rated axes a GOTO had taken over, guide pulses during a GOTO were accepted, and the DEC stop wait published mount properties while the mount was disconnected. Axes taken by a slew are left alone by the finalizer, pulses during a slew are refused, mount coordinates are published only while the mount is connected.
+
+Not covered, with the reason:
+
+- GOTO "done" short of the target and the 300 s abandon bound: the simulator has no stall model, a 300 s case is not a regression test.
+- Tracking hold proved by RA drift: the simulator advances the axes at 200 ticks/s while it reports a 1000 Hz timer, so its tracking runs at a fifth of the rate.
+- Controller-reported faults (blocked bit of `:f`): the driver does not poll the status while idle; adding it is a behaviour change, not a minimal fix.
+- ST4 guide rate published as requested while the controller quantizes it to 1, 0.75, 0.5, 0.25 or 0.125.
+- Lost reply on serial: the driver treats it as transport loss by design (`synscan_mount_disconnects_after_serial_loss`); UDP retry is covered by `synscan_mount_survives_lost_udp_replies`.
+- Dialect/forced-model selection, time/site commands, meridian options: not implemented by this controller protocol.
+
+## Driver-specific property names (version 17, 2026-10-04)
+
+The driver-specific properties now carry the `X_` prefix, approved by the owner as a client-visible change with no backward-compatible alias: `POLARSCOPE` → `X_POLARSCOPE`, `MOUNT_USE_ENCODERS` → `X_MOUNT_USE_ENCODERS`, `MOUNT_AUTOHOME` → `X_MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS` → `X_MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE` → `X_MOUNT_OPERATING_MODE`. Item names are unchanged. The other custom-declared properties (`CCD_EXPOSURE`, `CCD_ABORT_EXPOSURE` on the aux device) are standard INDIGO names. Earlier sections of this file use the new names. The integration and hardware tests assert that the old names are not defined.

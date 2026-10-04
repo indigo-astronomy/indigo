@@ -24,6 +24,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <ctype.h>
+#include <strings.h>
 #include <errno.h>
 #include <math.h>
 #include <signal.h>
@@ -68,6 +69,26 @@ typedef struct {
 	// offset with minutes and seconds. Gemini Level 5 command description, :u# and :GG#.
 	bool double_precision;
 	const char *ready_file;
+	// The :V# answer of an Astro-Physics GTO servo controller: VCPn-Pxx-yy from the GTOCP4 on, a revision
+	// letter on a GTOCP3. It decides the coordinate precision, the King rate, the firmware park positions
+	// and the longest timed pulse.
+	const char *ap_version;
+	// Meade controllers: the :GVP# product (Autostar by default; LX2001 is the LX200GPS, and an
+	// LXD600 answers 6.12S) and the :GVN# firmware (43Eg). Autostar firmware before 31Ee ignores
+	// :Mg. Firmware that does not answer :GW# at all, an Autostar that sends the reply to :CM#
+	// only after the next command arrives, and one that stops answering anything after :hP#.
+	const char *meade_product;
+	const char *meade_firmware;
+	bool meade_no_gw;
+	bool meade_late_sync;
+	bool meade_silent_park;
+	// Gemini: the software level :GV# reports (4 or 5), and a controller that was just switched
+	// on and waits for the startup mode. Gemini Level 5 command description.
+	int gemini_level;
+	bool gemini_startup;
+	// ZWO AM: the :GV# firmware. 1.1.1 adds the :GAT# tracking status, 1.2.4 the meridian
+	// settings :GTa#/:STa# and the calibration reset :NSC#.
+	int zwo_firmware;
 	simulator_model model;
 } simulator_options;
 
@@ -129,6 +150,7 @@ static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
+	.zwo_firmware = 0x010204,
 	.model = MODEL_MEADE
 };
 static simulator_state state = {
@@ -178,6 +200,15 @@ static void usage(const char *name) {
 	printf("  --park-fails            Accept the Gemini park but keep answering :h?# with 0\n");
 	printf("  --double-precision      Answer Gemini coordinates as decimals and :GG# extended\n");
 	printf("  --model <name>          a supported LX200 profile\n");
+	printf("  --ap-version <version>  Astro-Physics :V# answer, VCP4-P02-15 by default\n");
+	printf("  --meade-product <name>  Meade :GVP# answer, Autostar by default\n");
+	printf("  --meade-firmware <ver>  Meade :GVN# answer, 43Eg by default; before 31Ee :Mg is ignored\n");
+	printf("  --meade-no-gw           Meade firmware that does not answer :GW#\n");
+	printf("  --meade-late-sync       Meade: send the :CM# reply only after the next command\n");
+	printf("  --meade-silent-park     Meade: answer nothing at all after :hP#\n");
+	printf("  --gemini-level <4|5>    Gemini software level, 5 by default\n");
+	printf("  --gemini-startup        Gemini: wait for the startup mode (bC#, bW#, bR#) first\n");
+	printf("  --zwo-firmware <x.y.z>  ZWO AM :GV# answer, 1.2.4 by default; :GAT# needs 1.1.1, :GTa#, :STa# and :NSC# 1.2.4\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -256,6 +287,43 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "--model requires a supported LX200 profile\n");
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--ap-version")) {
+			if (++i == argc) {
+				fprintf(stderr, "--ap-version requires a version\n");
+				return false;
+			}
+			options.ap_version = argv[i];
+		} else if (!strcmp(argv[i], "--meade-product") || !strcmp(argv[i], "--meade-firmware")) {
+			if (i + 1 == argc) {
+				fprintf(stderr, "%s requires a value\n", argv[i]);
+				return false;
+			}
+			if (!strcmp(argv[i], "--meade-product")) {
+				options.meade_product = argv[++i];
+			} else {
+				options.meade_firmware = argv[++i];
+			}
+		} else if (!strcmp(argv[i], "--meade-no-gw")) {
+			options.meade_no_gw = true;
+		} else if (!strcmp(argv[i], "--meade-late-sync")) {
+			options.meade_late_sync = true;
+		} else if (!strcmp(argv[i], "--meade-silent-park")) {
+			options.meade_silent_park = true;
+		} else if (!strcmp(argv[i], "--gemini-level")) {
+			if (++i == argc || (atoi(argv[i]) != 4 && atoi(argv[i]) != 5)) {
+				fprintf(stderr, "--gemini-level requires 4 or 5\n");
+				return false;
+			}
+			options.gemini_level = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--gemini-startup")) {
+			options.gemini_startup = true;
+		} else if (!strcmp(argv[i], "--zwo-firmware")) {
+			int major, minor, patch;
+			if (++i == argc || sscanf(argv[i], "%d.%d.%d", &major, &minor, &patch) != 3) {
+				fprintf(stderr, "--zwo-firmware requires a version like 1.2.4\n");
+				return false;
+			}
+			options.zwo_firmware = (major << 16) | (minor << 8) | patch;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -342,7 +410,8 @@ static void set_target_ra(const char *text) {
 	if (text[5] == '.') {
 		state.target_ra_cs = atol(text) * 360000L + (long)(atof(text + 3) * 6000.0);
 	} else {
-		state.target_ra_cs += atol(text + 6) * 100L;
+		// A GTOCP4 from P01-04 on sends hundredths of a second.
+		state.target_ra_cs += lround(atof(text + 6) * 100.0);
 	}
 }
 
@@ -350,7 +419,7 @@ static void set_target_dec(const char *text) {
 	long degrees = atol(text);
 	long value = labs(degrees) * 3600L + atol(text + 4) * 60L;
 	if (text[6] == '\'' || text[6] == ':') {
-		value += atol(text + 7);
+		value += lround(atof(text + 7));
 	}
 	state.target_dec_as = text[0] == '-' ? -value : value;
 }
@@ -358,6 +427,19 @@ static void set_target_dec(const char *text) {
 static serial_motion ra_motion, dec_motion, focus_motion;
 static int manual_ra, manual_dec;
 static bool parking_requested, homing_requested;
+// The :CM# reply of a --meade-late-sync Autostar waiting for the next command, and a
+// --meade-silent-park Autostar that stopped answering after :hP#.
+static char meade_pending_reply[64];
+static bool meade_silent;
+// Gemini: the startup state the ACK reports (b while waiting for the startup mode, S during a
+// cold start, 0 once ready), the guiding speed (native 150), and :h?# answering 1 after :hW#
+// woke a parked mount up, until the mount moves again.
+// When the last StarGO goto started, for the ramp its :X34# motion digits report.
+static double stargo_slew_started = -100;
+static char gemini_boot;
+static double gemini_boot_ready_at;
+static double gemini_guide_speed = 0.5;
+static bool gemini_park_reported;
 // When the pulse a :Mg[d][n]# command started ends. A NYX-101 counts a running pulse as motion
 // and refuses :MS# with error 8 until it is over; observed on firmware 1.32.1, see
 // indigo_drivers/mount_lx200/REFACTOR.md.
@@ -441,7 +523,12 @@ static void read_control(void) {
 		if (fgets(line, sizeof(line), file)) {
 			line[strcspn(line, "\r\n")] = 0;
 			char *tab = strchr(line, '\t');
-			if (tab != NULL) {
+			if (!strcmp(line, "zwo-meridian-stop")) {
+				// The ZWO AM reaches the meridian limit without automatic flip: tracking stops and
+				// :GAT# reports e8 until tracking is started again.
+				state.tracking = false;
+				state.tracking_error = 8;
+			} else if (tab != NULL) {
 				*tab++ = 0;
 				size_t command_length = strlen(line), reply_length = strlen(tab);
 				// A shortened fault rule would match the wrong command or answer the wrong bytes, and
@@ -472,6 +559,15 @@ static bool store_site_value(char *field, size_t size, const char *value) {
 	return true;
 }
 
+// A stored site value such as +48*30 or 017*06 as signed decimal degrees.
+static double site_degrees(const char *value) {
+	double sign = *value == '-' ? -1 : 1;
+	const char *digits = value + (*value == '-' || *value == '+' ? 1 : 0);
+	int degrees = 0, minutes = 0;
+	sscanf(digits, "%d%*c%d", &degrees, &minutes);
+	return sign * (degrees + minutes / 60.0);
+}
+
 // The side of the pier :Gm# reports, in the sense every mount driver publishes it and ASCOM defines it: E while the
 // mount points west of the meridian (hour angle 0 to 12 h, the normal pointing state), W while it points east of it.
 // The hour angle comes from the date, the local time, the UTC offset and the longitude the client has set, with the
@@ -498,6 +594,10 @@ static char pier_side(void) {
 	if (*state.longitude == '-') {
 		longitude = -longitude;
 	}
+	if (options.model == MODEL_STARGO) {
+		// A StarGO keeps the longitude positive to the east.
+		longitude = -longitude;
+	}
 	double hour_angle = fmod(18.697374558 + 24.06570982441908 * (days + hours / 24.0) - longitude / 15.0 - state.ra_cs / 360000.0, 24.0);
 	if (hour_angle < 0) {
 		hour_angle += 24;
@@ -509,6 +609,7 @@ static char pier_side(void) {
 }
 
 static void start_reference_motion(bool parking) {
+	gemini_park_reported = false;
 	manual_ra = manual_dec = 0;
 	state.tracking = false;
 	state.parked = state.at_home = false;
@@ -549,6 +650,183 @@ static bool agotino_dispatch(const char *command) {
 	return *command == 'Q';
 }
 
+// The requests a GTO servo controller (GTOCP3/GTOCP4) answers differently from the shared implementation.
+// It has no :GVP# and leaves it unanswered, identifies itself with :V#, reports the side of the pier with
+// :pS#, answers both the sync (:CM#) and the recalibration (:CMR#) with the fixed 32 character string,
+// selects the centering rate with :RC0# to :RC3# and takes timed pulses as :Mnxxx#. Answers true when the
+// request was handled.
+// The King correction of a GTO servo controller, switched on with :RT8# and off with :RT3#.
+static bool ap_king;
+
+static bool ap_controller_is_cp4_or_later(void) {
+	const char *version = options.ap_version != NULL ? options.ap_version : "VCP4-P02-15";
+	return !strncmp(version, "VCP", 3);
+}
+
+static bool ap_dispatch(const char *command) {
+	char response[64];
+	if (!strcmp(command, "GVP")) {
+		return true;
+	}
+	if (!strcmp(command, "V")) {
+		snprintf(response, sizeof(response), "%s#", options.ap_version != NULL ? options.ap_version : "VCP4-P02-15");
+		write_response(response);
+		return true;
+	}
+	if (!strcmp(command, "GOS")) {
+		// Park, tracking rate, slewing, guide, move and slew rate indices, PEM, fault and the axis direction
+		// flags of the GTO status.
+		char rate = !state.tracking ? '9' : state.tracking_rate == 'L' ? '0' : state.tracking_rate == 'S' ? '1' : ap_king ? 'T' : '2';
+		snprintf(response, sizeof(response), "%c%c0%c00212O0000#", state.parked ? 'P' : '0', rate, state.slewing ? 'S' : '0');
+		write_response(response);
+		return true;
+	}
+	if (!strncmp(command, "RT", 2) && command[2] && command[3] == 0) {
+		switch (command[2]) {
+			case '0': state.tracking_rate = 'L'; state.tracking = true; break;
+			case '1': state.tracking_rate = 'S'; state.tracking = true; break;
+			case '2': state.tracking_rate = 'Q'; state.tracking = true; break;
+			case '3': ap_king = false; break;
+			case '8': ap_king = true; break;
+			case '9': state.tracking = false; break;
+		}
+		return true;
+	}
+	// Bit 7 of the extended status flags the firmware park positions of a GTOCP3/4.
+	if (!strcmp(command, "G_E")) {
+		write_response(ap_controller_is_cp4_or_later() ? "128#" : "0#");
+		return true;
+	}
+	if (!strcmp(command, "G_S")) {
+		write_response("0#");
+		return true;
+	}
+	if (!strcmp(command, "RD0")) {
+		write_response("1");
+		return true;
+	}
+	// :KA# parks where the mount stands, the slew to a park position is the job of the client.
+	if (!strcmp(command, "KA")) {
+		state.tracking = false;
+		state.parked = true;
+		return true;
+	}
+	if (command[0] == '$' && command[1] == 'K' && command[2] >= '1' && command[2] <= '5' && command[3] == 0) {
+		state.tracking = false;
+		start_reference_motion(true);
+		return true;
+	}
+	if (!strcmp(command, "pS")) {
+		write_response(pier_side() == 'E' ? "East#" : "West#");
+		return true;
+	}
+	if (!strcmp(command, "CM") || !strcmp(command, "CMR")) {
+		serial_motion_sync(&ra_motion, state.target_ra_cs);
+		serial_motion_sync(&dec_motion, state.target_dec_as);
+		state.parked = false;
+		snprintf(response, sizeof(response), "Coordinates     matched.        #");
+		write_response(response);
+		return true;
+	}
+	if (!strncmp(command, "RC", 2) && command[2] >= '0' && command[2] <= '3' && command[3] == 0) {
+		state.slew_rate = command[2] == '3' ? 'S' : command[2] == '2' ? 'M' : 'C';
+		return true;
+	}
+	if (command[0] == 'M' && command[1] && strchr("nsew", command[1]) && isdigit((unsigned char)command[2])) {
+		guide_pulse_until = serial_motion_time() + atoi(command + 2) / 1000.0;
+		guide_ra_rate = guide_dec_rate = 0;
+		if (command[1] == 'n' || command[1] == 's') {
+			guide_dec_rate = (command[1] == 'n' ? 1 : -1) * GUIDE_RATE * SIDEREAL_ARCSEC_PER_SECOND;
+		} else {
+			guide_ra_rate = (command[1] == 'e' ? 1 : -1) * GUIDE_RATE * 100;
+		}
+		return true;
+	}
+	return false;
+}
+
+static char gemini_checksum(const char *text, size_t length) {
+	unsigned char checksum = 0;
+	for (size_t i = 0; i < length; i++) {
+		checksum ^= (unsigned char)text[i];
+	}
+	return (char)(checksum % 128 + 64);
+}
+
+// The Gemini parts that differ from the shared implementation: the startup, during which the
+// controller takes nothing but the startup mode, and the native commands <id:<checksum># and
+// >id:<value><checksum>#, which it ignores when the checksum is wrong. The buffer starts at the
+// < of a get; the > of a set resets it, so a set arrives as id:<value><checksum>. Answers true
+// when the command was handled here.
+static bool gemini_handle(const char *command) {
+	if (gemini_boot) {
+		if (gemini_boot == 'b' && (!strcmp(command, "bC") || !strcmp(command, "bW") || !strcmp(command, "bR"))) {
+			gemini_boot = command[1] == 'C' ? 'S' : 0;
+			gemini_boot_ready_at = serial_motion_time() + 1.5;
+		}
+		return true;
+	}
+	size_t length = strlen(command);
+	if (command[0] == '<') {
+		if (length < 4 || command[length - 2] != ':' || gemini_checksum(command, length - 1) != command[length - 1]) {
+			return true;
+		}
+		char value[32] = "";
+		switch (atoi(command + 1)) {
+			case 130:
+				snprintf(value, sizeof(value), "%d", state.tracking_rate == 'K' ? 132 : state.tracking_rate == 'L' ? 133 : state.tracking_rate == 'S' ? 134 : 131);
+				break;
+			case 150:
+				snprintf(value, sizeof(value), "%.1f", gemini_guide_speed);
+				break;
+			case 21:
+				// RA worm gear ratio and encoder ticks per worm turn, 0.2 arcsec per tick.
+				strcpy(value, "360");
+				break;
+			case 27:
+				strcpy(value, "18000");
+				break;
+		}
+		char response[48];
+		snprintf(response, sizeof(response), "%s%c#", value, gemini_checksum(value, strlen(value)));
+		write_response(*value ? response : "#");
+		return true;
+	}
+	int id = atoi(command);
+	const char *colon = strchr(command, ':');
+	if (colon != NULL && id >= 131 && id <= 150 && length >= 2) {
+		char signed_command[64];
+		snprintf(signed_command, sizeof(signed_command), ">%.*s", (int)(length - 1), command);
+		if (gemini_checksum(signed_command, strlen(signed_command)) != command[length - 1]) {
+			return true;
+		}
+		if (id == 150) {
+			gemini_guide_speed = atof(colon + 1);
+		} else if (id >= 131 && id <= 134) {
+			state.tracking_rate = id == 131 ? 'Q' : id == 132 ? 'K' : id == 133 ? 'L' : 'S';
+		}
+		return true;
+	}
+	return false;
+}
+
+// Autostar firmware before 31Ee has no :Mg pulse and ignores it.
+static bool meade_has_pulse_guiding(void) {
+	const char *firmware = options.meade_firmware;
+	if (firmware == NULL || !isdigit((unsigned char)firmware[0]) || !isdigit((unsigned char)firmware[1])) {
+		return true;
+	}
+	int major = (firmware[0] - '0') * 10 + firmware[1] - '0';
+	return major > 31 || (major == 31 && strcasecmp(firmware + 2, "Ee") >= 0);
+}
+
+static void meade_flush_pending_reply(void) {
+	if (*meade_pending_reply) {
+		write_response(meade_pending_reply);
+		*meade_pending_reply = 0;
+	}
+}
+
 static void handle_command(const char *command) {
 	char response[128] = { 0 };
 	update_motion();
@@ -556,6 +834,18 @@ static void handle_command(const char *command) {
 	if (events != NULL) {
 		fprintf(events, "%.9f\t%s\n", serial_motion_time(), command);
 		fflush(events);
+	}
+	if (options.model == MODEL_GEMINI && gemini_handle(command)) {
+		return;
+	}
+	if (options.model == MODEL_MEADE) {
+		if (meade_silent) {
+			return;
+		}
+		meade_flush_pending_reply();
+		if ((!strncmp(command, "Mg", 2) && !meade_has_pulse_guiding()) || (!strcmp(command, "GW") && options.meade_no_gw)) {
+			return;
+		}
 	}
 	if (*fault_command && !strcmp(command, fault_command)) {
 		*fault_command = 0;
@@ -580,6 +870,9 @@ static void handle_command(const char *command) {
 	if (options.trace) {
 		fprintf(stderr, "-> :%s#\n", command);
 	}
+	if (options.model == MODEL_AP && ap_dispatch(command)) {
+		return;
+	}
 	if (!strncmp(command, "192", 3)) {
 		state.tracking = true;
 	} else if (!strncmp(command, "191", 3)) {
@@ -588,6 +881,7 @@ static void handle_command(const char *command) {
 		state.tracking = strcmp(command, "MT0") != 0;
 		if (state.tracking) {
 			state.standby = false;
+			state.tracking_error = 0;
 		}
 		write_response("1");
 	} else if (!strcmp(command, "Td")) {
@@ -626,7 +920,10 @@ static void handle_command(const char *command) {
 		snprintf(response, sizeof(response), "%c0%c%c000000000W#", state.slewing ? '2' : state.tracking ? '1' : '0', state.parked ? 'P' : parking_requested ? 'I' : 'p', state.at_home ? 'H' : 'x');
 		write_response(response);
 	} else if (!strcmp(command, "X34")) {
-		snprintf(response, sizeof(response), "m%d%d#", state.slewing || manual_ra ? 5 : state.tracking ? 1 : 0, state.slewing || manual_dec ? 5 : 0);
+		// The motion digit of an axis is 0 stopped, 1 tracking and above 1 moving: 2 to 4 while
+		// the motor ramps up at the start of a goto, 5 at full speed.
+		int moving = serial_motion_time() - stargo_slew_started < 1.5 ? 2 : 5;
+		snprintf(response, sizeof(response), "m%d%d#", state.slewing ? moving : manual_ra ? 5 : state.tracking ? 1 : 0, state.slewing ? moving : manual_dec ? 5 : 0);
 		write_response(response);
 	} else if (!strcmp(command, "X38")) {
 		write_response(state.parked ? "p2#" : parking_requested ? "pB#" : "p0#");
@@ -725,26 +1022,41 @@ static void handle_command(const char *command) {
 		}
 		if (!strcmp(command, "X361")) { write_response("pA#"); }
 	} else if (!strcmp(command, "GVP")) {
-		snprintf(response, sizeof(response), "%s#", products[options.model]);
+		snprintf(response, sizeof(response), "%s#", options.model == MODEL_MEADE && options.meade_product != NULL ? options.meade_product : products[options.model]);
+		write_response(response);
+	} else if (!strcmp(command, "GV") && model_is_zwo()) {
+		snprintf(response, sizeof(response), "%d.%d.%d#", options.zwo_firmware >> 16, (options.zwo_firmware >> 8) & 0xFF, options.zwo_firmware & 0xFF);
 		write_response(response);
 	} else if (!strcmp(command, "GV")) {
-		write_response(options.model == MODEL_ASI ? "1.2.4#" : "1.0.0#");
-	} else if (options.model == MODEL_ASI && !strcmp(command, "GTa")) {
+		write_response(options.model == MODEL_GEMINI ? (options.gemini_level == 4 ? "410#" : "512#") : "1.0.0#");
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010204 && !strcmp(command, "GTa")) {
 		// meridian settings: auto-flip, track-past, signed degree limit
 		snprintf(response, sizeof(response), "%c%c%+03d#", state.meridian_flip ? '1' : '0', state.meridian_track ? '1' : '0', state.meridian_limit);
 		write_response(response);
-	} else if (options.model == MODEL_ASI && !strncmp(command, "STa", 3) && strlen(command) == 8) {
-		state.meridian_flip = command[3] != '0';
-		state.meridian_track = command[4] != '0';
-		state.meridian_limit = atoi(command + 5);
-		write_response("1");
-	} else if (options.model == MODEL_ASI && !strcmp(command, "GRl")) {
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010204 && !strncmp(command, "STa", 3)) {
+		// flip and track digits, then the signed limit in degrees, -15 to 15
+		int limit = strlen(command) == 8 && (command[5] == '+' || command[5] == '-') ? atoi(command + 5) : 99;
+		if (limit < -15 || limit > 15) {
+			write_response("0");
+		} else {
+			state.meridian_flip = command[3] != '0';
+			state.meridian_track = command[4] != '0';
+			state.meridian_limit = limit;
+			write_response("1");
+		}
+	} else if (model_is_zwo() && !strcmp(command, "GRl")) {
 		snprintf(response, sizeof(response), "%d#", state.max_slew_speed);
 		write_response(response);
-	} else if (options.model == MODEL_ASI && !strncmp(command, "SRl", 3)) {
-		state.max_slew_speed = atoi(command + 3);
-		write_response("1");
-	} else if (options.model == MODEL_ASI && !strcmp(command, "GAT")) {
+	} else if (model_is_zwo() && !strncmp(command, "SRl", 3)) {
+		// only the two speeds of the AM series
+		int speed = atoi(command + 3);
+		if (speed == 720 || speed == 1440) {
+			state.max_slew_speed = speed;
+			write_response("1");
+		} else {
+			write_response("0");
+		}
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010101 && !strcmp(command, "GAT")) {
 		// tracking status: "0", "1" or "e<code>"
 		if (state.tracking_error) {
 			snprintf(response, sizeof(response), "e%d#", state.tracking_error);
@@ -752,13 +1064,20 @@ static void handle_command(const char *command) {
 			snprintf(response, sizeof(response), "%d#", state.tracking ? 1 : 0);
 		}
 		write_response(response);
-	} else if (options.model == MODEL_ASI && !strcmp(command, "NSC")) {
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010204 && !strcmp(command, "NSC")) {
 		state.alignment_points = 0;
 		write_response("1");
 	} else if (!strcmp(command, "GVF")) {
 		write_response(options.model == MODEL_ONSTEP ? "OnStep 4.24j#" : "ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
 	} else if (!strcmp(command, "GVN")) {
-		write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : model_is_oat() ? "v1.13.20#" : model_is_esp32go() ? "06.9#" : "43Eg#");
+		if (options.model == MODEL_GEMINI) {
+			write_response(options.gemini_level == 4 ? "4.10#" : "5.12#");
+		} else if (options.model == MODEL_MEADE && options.meade_firmware != NULL) {
+			snprintf(response, sizeof(response), "%s#", options.meade_firmware);
+			write_response(response);
+		} else {
+			write_response(options.model == MODEL_NYX ? "1.35#" : model_is_agotino() ? "230312#" : model_is_oat() ? "v1.13.20#" : model_is_esp32go() ? "06.9#" : "43Eg#");
+		}
 	} else if (!strcmp(command, "GVD")) {
 		write_response("Apr 03 2007#");
 	} else if (!strcmp(command, "GVT")) {
@@ -821,7 +1140,12 @@ static void handle_command(const char *command) {
 		clock_set_at = time(NULL);
 		write_response("1");
 	} else if (!strcmp(command, "GL")) {
-		snprintf(response, sizeof(response), "%02d:%02d:%02d#", state.time_hour, state.time_minute, state.time_second);
+		if (model_is_double_precision()) {
+			// Double Precision answers decimal hours. Gemini Level 5 command description, :GL#.
+			snprintf(response, sizeof(response), "%+.6f#", state.time_hour + state.time_minute / 60.0 + state.time_second / 3600.0);
+		} else {
+			snprintf(response, sizeof(response), "%02d:%02d:%02d#", state.time_hour, state.time_minute, state.time_second);
+		}
 		write_response(response);
 	} else if (!strcmp(command, "GS")) {
 		write_response("12:00:00#");
@@ -834,6 +1158,9 @@ static void handle_command(const char *command) {
 			write_response(response);
 		} else if (model_is_zwo()) {
 			write_response(state.tracking_rate == 'L' ? "1#" : state.tracking_rate == 'S' ? "2#" : "0#");
+		} else if (options.model == MODEL_MEADE) {
+			// An Autostar answers with one decimal, 60.1 on the sidereal rate.
+			write_response(state.tracking_rate == 'L' ? "57.9#" : state.tracking_rate == 'S' ? "60.0#" : "60.1#");
 		} else if ((options.model == MODEL_NYX || options.model == MODEL_ONSTEP) && !state.tracking) {
 			write_response("0#");
 		} else if (state.tracking_rate == 'L') {
@@ -860,6 +1187,13 @@ static void handle_command(const char *command) {
 		write_response("1");
 	} else if (!strcmp(command, "Gg")) {
 		snprintf(response, sizeof(response), "%s#", state.longitude);
+		if (options.model == MODEL_STARGO && strchr(response, '*')) {
+			// A StarGO marks the degrees of the longitude with g.
+			*strchr(response, '*') = 'g';
+		}
+		if (model_is_double_precision()) {
+			snprintf(response, sizeof(response), "%+.6f#", site_degrees(state.longitude));
+		}
 		if (model_is_esp32go()) {
 			// lxprintlong1() marks the degrees the same way as every other angle. Without the
 			// 0xE1 the driver's indigo_stod() stops at it and the arcminutes of the site are
@@ -875,6 +1209,13 @@ static void handle_command(const char *command) {
 		write_response("1");
 	} else if (!strcmp(command, "Gt")) {
 		snprintf(response, sizeof(response), "%s#", state.latitude);
+		if (options.model == MODEL_STARGO && strchr(response, '*')) {
+			// A StarGO marks the degrees of the latitude with t.
+			*strchr(response, '*') = 't';
+		}
+		if (model_is_double_precision()) {
+			snprintf(response, sizeof(response), "%+.6f#", site_degrees(state.latitude));
+		}
 		if (model_is_esp32go()) {
 			esp32go_degree_mark(response);
 		}
@@ -930,8 +1271,14 @@ static void handle_command(const char *command) {
 		serial_motion_sync(&ra_motion, state.target_ra_cs);
 		serial_motion_sync(&dec_motion, state.target_dec_as);
 		state.parked = false;
+		if (options.model == MODEL_MEADE && options.meade_late_sync) {
+			snprintf(meade_pending_reply, sizeof(meade_pending_reply), "M31 EX GAL MAG 3.5 SZ178.0'#");
+			return;
+		}
 		write_response("M31 EX GAL MAG 3.5 SZ178.0'#");
 	} else if (!strcmp(command, "MS")) {
+		gemini_park_reported = false;
+		stargo_slew_started = serial_motion_time();
 		// A NYX-101 answers a goto issued while one of its pulses is still running with the
 		// "already in motion" error instead of starting the slew.
 		if (options.model == MODEL_NYX && serial_motion_time() < guide_pulse_until) {
@@ -977,7 +1324,7 @@ static void handle_command(const char *command) {
 		// :AP# and :AL# reach telescope->track alone. The tracking loop recomputes the motor
 		// speed from track_speed on its next pass, so neither command starts or stops the
 		// tracking motor and :GU# keeps reporting what it reported before.
-	} else if (!strcmp(command, "AP") || !strcmp(command, "X122")) {
+	} else if (!strcmp(command, "AP") || !strcmp(command, "AA") || !strcmp(command, "X122")) {
 		state.tracking = true;
 	} else if (!strcmp(command, "AL") || !strcmp(command, "X120")) {
 		state.tracking = false;
@@ -997,7 +1344,7 @@ static void handle_command(const char *command) {
 		start_reference_motion(false);
 	} else if (model_is_esp32go() && !strcmp(command, "hS")) {
 		// set_home() stores the position the mount stands on, without a reply.
-	} else if (!strcmp(command, "hP") || !strcmp(command, "hC") || !strcmp(command, "X362") || !strcmp(command, "Ch") || !strcmp(command, "KA")) {
+	} else if (!strcmp(command, "hP") || !strcmp(command, "hC") || (options.model == MODEL_GEMINI && !strcmp(command, "hZ")) || !strcmp(command, "X362") || !strcmp(command, "Ch") || !strcmp(command, "KA")) {
 		if (!strcmp(command, "hP") && options.model == MODEL_NYX && state.standby) {
 			write_response("0");
 			return;
@@ -1007,16 +1354,20 @@ static void handle_command(const char *command) {
 			return;
 		}
 		start_reference_motion(strcmp(command, "hC") != 0 || options.model == MODEL_GEMINI);
+		if (options.model == MODEL_MEADE && options.meade_silent_park && !strcmp(command, "hP")) {
+			meade_silent = true;
+		}
 		// OnStepX documents :hP# with a 0/1 reply and :hC# with none, and the NYX firmware that
 		// derives from it does the same. A simulator that answers the home command anyway hides
 		// a driver that waits for a reply the mount never sends.
 		if (model_is_zwo() || ((options.model == MODEL_ONSTEP || options.model == MODEL_NYX) && !strcmp(command, "hP"))) { write_response("1"); }
 	} else if (!strcmp(command, "PO") || !strcmp(command, "hW") || !strcmp(command, "X370")) {
+		gemini_park_reported = options.model == MODEL_GEMINI && state.parked;
 		state.tracking = true;
 		state.slewing = false;
 		state.parked = false;
 	} else if (!strcmp(command, "h?")) {
-		write_response(state.parked ? "1" : parking_requested ? "2" : "0");
+		write_response(state.parked || gemini_park_reported ? "1" : parking_requested ? "2" : "0");
 	} else if (options.model == MODEL_CLASSIC && !strncmp(command, "ST", 2)) {
 		state.classic_frequency = atof(command + 2);
 		write_response("1");
@@ -1103,7 +1454,19 @@ static void handle_command(const char *command) {
 
 static void handle_byte(char ch, char *buffer, size_t *length) {
 	if ((unsigned char)ch == 6) {
-		write_response("P");
+		if (options.model == MODEL_MEADE && meade_silent) {
+			return;
+		}
+		meade_flush_pending_reply();
+		if (options.model == MODEL_GEMINI) {
+			if (gemini_boot == 'S' && serial_motion_time() >= gemini_boot_ready_at) {
+				gemini_boot = 0;
+			}
+			write_response(gemini_boot == 'b' ? "b#" : gemini_boot == 'S' ? "S#" : "G#");
+			return;
+		}
+		// Firmware without :GW# reports the alignment only here, L while it is not tracking.
+		write_response(options.model == MODEL_MEADE && options.meade_no_gw && !state.tracking ? "L" : "P");
 		return;
 	}
 	if ((ch == ':' && *length == 0) || ch == '>') {
@@ -1125,6 +1488,7 @@ int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
 		return 2;
 	}
+	gemini_boot = options.model == MODEL_GEMINI && options.gemini_startup ? 'b' : 0;
 	char port[PATH_MAX];
 	if (options.tcp) {
 		listen_fd = socket(AF_INET, SOCK_STREAM, 0);

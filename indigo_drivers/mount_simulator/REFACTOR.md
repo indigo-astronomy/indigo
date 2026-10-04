@@ -281,3 +281,29 @@ Tests: `mount_alignment_model_is_frozen_during_slew` creates one alignment point
 Not covered: a request that arrives in the few statements between the generated handler prologue, which sets the state to OK, and the handler setting it to BUSY again is not refused. The case waits for the first reported motion before it sends its requests for that reason.
 
 Validation on macOS arm64: the new case 25/25 in isolation, `test_mount_simulator` 20/20 through `tools/run_driver_test.py`. Hardware 0 run / 0 passed.
+
+## Mount test standard coverage (2026-10-04)
+
+Version 25. The suite was checked against the "Mount Drivers" chapter and the "Mount Driver Test Standard" of `indigo_test/DRIVER_TESTING_RULES.md`. The new assertions found six driver defects, all fixed in `indigo_mount_simulator.driver`:
+
+- The SLEW light went IDLE before the coordinates were OK and before the follow-up work was published: tracking restarted after a GOTO, PARK or HOME OK. `position_handler` now publishes `MOUNT_STATE` once, after the coordinates, with the SLEW light and the PARK/HOME/TRACKING lights of the finished slew in the same update.
+- With tracking off, a controller SYNC and manual RA motion moved the raw RA without moving the hour angle the position update derives it from, so the next update put the mount back where it was. Both now shift the hour angle by the RA they changed; guide pulses already did.
+- The end of a park or homing replaced the hour angle of the park/home position with the one at the end of the slew, so a parked mount sat a slew duration (a few seconds of RA) east of the park position. The hour angle is now taken from the current LST only at the end of a GOTO started with tracking off.
+- `MOUNT_ABORT_MOTION` was refused with "Mount is parked" as soon as a park was requested, because the guard checked the PARKED switch, which a park request sets before the slew. The abort code for a running park was unreachable. The guard now refuses only a completed park.
+- A park or homing interrupted by a disconnect was published ALERT in the next session, and the SLEW and HOME lights stayed BUSY. Disconnect now leaves both OK, unparked/not at home, with idle lights.
+- `MOUNT_LST_TIME` was defined as 0 h at connect and corrected only by the first position update a second later; a GOTO computed from it in that second went to the wrong hour angle. It is now set at connect.
+
+| Rule | Test |
+| --- | --- |
+| Negative capability contract (read-only epoch and state, no SLEW coordinate action, track-rate count), momentary abort switch OFF | `mount_passes_mount_compliance_checks` |
+| Connect publishes the device's state (parked first session; unparked, position, tracking, slew and track rate after reconnect), valid LST at connect, no update of an undefined property | `mount_reconnect_publishes_device_state` |
+| Disconnect during GOTO, park and homing: nothing published after it, next session not BUSY, not parked/at home, not ALERT; motion items OFF; fresh GOTO | `mount_disconnect_during_slew_park_and_home` |
+| MOUNT_STATE SLEW light BUSY during GOTO/park/homing and IDLE only after coordinates OK and follow-up work, PARK/HOME light in the same update | `mount_state_lights_follow_slew_completion` |
+| Tracking: RA held with tracking on, hour angle held with tracking off; SYNC, manual motion and guide pulse with tracking off keep their displacement; pulse displacement = guide rate × duration | `mount_tracking_off_keeps_sync_motion_and_pulses` |
+| Park/home to the positions their properties hold (hour angle and Dec), tracking off after park, unpark moves nothing, aborted park/homing not parked/at home and not re-latched, homing leaves park state | `mount_park_and_home_positions_and_abort` |
+| Aborted GOTO ends ALERT short of the target and stays there; abort while idle leaves position, coordinate state and tracking unchanged | `mount_abort_allows_fresh_goto` |
+| Request versus finalizer: tracking request pending when a GOTO or a homing ends | `mount_tracking_request_survives_slew_end`, `mount_tracking_request_survives_home_end` |
+| GOTO during a guide pulse of the guider sibling | `mount_goto_during_guide_pulse` |
+| Manual motion ownership (mount_simulator cases) | `integration/test_detach_abort.c`, `simulator_*` cases; all row items covered, unchanged |
+
+Not applicable or deliberately not covered: every transport, protocol, reply-parsing, detection, baud and polling-failure item (the simulator has no transport); track rates other than sidereal and custom rate values (accepted but not modelled in the motion); `MOUNT_GUIDE_RATE` sharing with the guider (the guider uses its own `GUIDER_RATE`, the mount's guide rate is framework-held and unused); park/home set-current (framework); alignment math (framework). A guide pulse sent while the mount is parked or slewing completes OK without moving the mount; the test of a pulse during a GOTO asserts only that the GOTO lands on its target and the pulse completes.

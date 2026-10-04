@@ -30,11 +30,21 @@ typedef struct {
 	bool trace;
 	const char *ready_file;
 	long firmware;
+	// a mount left in the LX200 protocol (:AL#) answers no Rainbow command until :AR#
+	bool lx200_protocol;
+	// the state the mount is in when the driver connects
+	bool tracking;
+	char tracking_rate;
+	const char *guide_rate;
+	// a mount without the side of pier, power, temperature and motor status queries
+	bool no_diagnostics;
 } simulator_options;
 
 typedef enum {
 	OPERATION_NONE,
 	OPERATION_GOTO,
+	// :MA# slews to an altitude and azimuth and leaves the tracking as it was
+	OPERATION_ALTAZ,
 	OPERATION_PARK
 } simulator_operation;
 
@@ -60,6 +70,15 @@ typedef struct {
 	char tracking_rate;
 	char slew_rate;
 	char guide_rate[8];
+	double target_alt;
+	double target_az;
+	bool rainbow_protocol;
+	// the completion (:MM0#) of the running slew is lost
+	bool lose_completion;
+	// the OTA is west of the pier after a slew to a target east of the meridian
+	bool pier_west;
+	// the home sensor was found (:Ch#)
+	bool homed;
 } simulator_state;
 
 typedef struct {
@@ -96,7 +115,8 @@ static simulator_state state = {
 	.manual_dec = false,
 	.tracking_rate = '0',
 	.slew_rate = 'M',
-	.guide_rate = "0.3"
+	.guide_rate = "0.3",
+	.rainbow_protocol = true
 };
 
 static const char *simulator_name = "mount_rainbow";
@@ -119,6 +139,11 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --firmware <version>    Simulate a six-digit firmware version\n");
+	printf("  --lx200-protocol        Start in the LX200 protocol, Rainbow commands need :AR#\n");
+	printf("  --tracking              Start with the tracking on\n");
+	printf("  --track-rate <0-3>      Start with this tracking rate (sidereal, solar, lunar, guide speed)\n");
+	printf("  --guide-rate <D.D>      Start with this guide speed\n");
+	printf("  --no-diagnostics        Ignore the side of pier, power, temperature and motor status queries\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -133,6 +158,24 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
+		} else if (!strcmp(argv[i], "--lx200-protocol")) {
+			options.lx200_protocol = true;
+		} else if (!strcmp(argv[i], "--no-diagnostics")) {
+			options.no_diagnostics = true;
+		} else if (!strcmp(argv[i], "--tracking")) {
+			options.tracking = true;
+		} else if (!strcmp(argv[i], "--track-rate")) {
+			if (++i == argc || argv[i][0] < '0' || argv[i][0] > '3' || argv[i][1] != 0) {
+				fprintf(stderr, "--track-rate requires 0 to 3\n");
+				return false;
+			}
+			options.tracking_rate = argv[i][0];
+		} else if (!strcmp(argv[i], "--guide-rate")) {
+			if (++i == argc) {
+				fprintf(stderr, "--guide-rate requires a speed\n");
+				return false;
+			}
+			options.guide_rate = argv[i];
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -210,6 +253,29 @@ static void set_target_dec(const char *text) {
 	state.target_dec = degrees < 0 || *text == '-' ? -value : value;
 }
 
+// sDD*MM:SS.S and DDD*MM:SS.S of :Sa# and :Sz#, the separators are not checked
+static double parse_dms(const char *text) {
+	double degrees = fabs(atof(text));
+	const char *minutes = strpbrk(text, "*:'");
+	const char *seconds = minutes == NULL ? NULL : strpbrk(minutes + 1, "*:'");
+	double value = degrees + (minutes == NULL ? 0 : atof(minutes + 1) / 60.0) + (seconds == NULL ? 0 : atof(seconds + 1) / 3600.0);
+	return *text == '-' ? -value : value;
+}
+
+// Local sidereal time in hours from the mount clock (local time, UTC offset east positive) and the site longitude
+// (east negative in the protocol).
+static double local_sidereal_time(void) {
+	int year = state.date_year, month = state.date_month;
+	if (month <= 2) {
+		year--;
+		month += 12;
+	}
+	double jd = floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + state.date_day + 2 - floor(year / 100.0) + floor(year / 400.0) - 1524.5;
+	jd += (state.time_hour - state.time_offset + state.time_minute / 60.0 + state.time_second / 3600.0) / 24.0;
+	double lst = fmod(18.697374558 + 24.06570982441908 * (jd - 2451545.0) - parse_dms(state.longitude) / 15.0, 24.0);
+	return lst < 0 ? lst + 24.0 : lst;
+}
+
 static bool motion_active(void) {
 	serial_motion_update(&state.ra);
 	serial_motion_update(&state.dec);
@@ -249,6 +315,7 @@ static void stop_all(void) {
 	serial_motion_stop(&state.ra);
 	serial_motion_stop(&state.dec);
 	state.operation = OPERATION_NONE;
+	state.lose_completion = false;
 	state.manual_ra = false;
 	state.manual_dec = false;
 }
@@ -262,6 +329,11 @@ static bool consume_injection(const char *command) {
 	}
 	if (!strcmp(injection.action, "DROP")) {
 		record_event("DROP", command);
+	} else if (!strcmp(injection.action, "NOCOMPLETE")) {
+		// the command is executed, only the completion of the slew it starts is lost
+		record_event("NOCOMPLETE", command);
+		state.lose_completion = true;
+		return false;
 	} else if (!strncmp(injection.action, "DELAY:", 6)) {
 		usleep((useconds_t)atoi(injection.action + 6) * 1000);
 		record_event("DELAY", command);
@@ -279,6 +351,16 @@ static bool consume_injection(const char *command) {
 	return true;
 }
 
+// a slew to a target east of the meridian ends with the OTA west of the pier
+static void select_pier_side(double ra) {
+	double ha = fmod(local_sidereal_time() - ra + 36.0, 24.0) - 12.0;
+	state.pier_west = ha < 0;
+}
+
+static bool diagnostic_query(const char *command) {
+	return !strcmp(command, "CG3") || !strcmp(command, "CY") || !strcmp(command, "Cv") || !strcmp(command, "CP") || !strcmp(command, "CT") || !strcmp(command, "GY") || !strcmp(command, "GH");
+}
+
 static void handle_command(const char *command) {
 	char response[128];
 	serial_simulator_trace_line(options.trace, "->", command);
@@ -286,7 +368,21 @@ static void handle_command(const char *command) {
 	if (consume_injection(command)) {
 		return;
 	}
-	if (!strcmp(command, "GL")) {
+	if (!strcmp(command, "AR")) {
+		state.rainbow_protocol = true;
+		return;
+	} else if (!strcmp(command, "AL")) {
+		state.rainbow_protocol = false;
+		return;
+	} else if (!state.rainbow_protocol) {
+		record_event("IGNORED", command);
+		return;
+	}
+	if (options.no_diagnostics && diagnostic_query(command)) {
+		record_event("IGNORED", command);
+	} else if (!strcmp(command, "AU") || !strcmp(command, "AW")) {
+		// the interface the replies go to, there is only one here
+	} else if (!strcmp(command, "GL")) {
 		snprintf(response, sizeof(response), ":GL%02d:%02d:%02d#", state.time_hour, state.time_minute, state.time_second);
 		write_response(response);
 	} else if (!strncmp(command, "SL", 2)) {
@@ -330,8 +426,26 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "MS")) {
 		serial_motion_start(&state.ra, state.target_ra, 4.0 * 3600000.0);
 		serial_motion_start(&state.dec, state.target_dec, 15.0 * 3600000.0);
+		select_pier_side(state.target_ra / 3600000.0);
 		state.operation = OPERATION_GOTO;
 		state.parked = false;
+	} else if (!strncmp(command, "Sa", 2)) {
+		state.target_alt = parse_dms(command + 2);
+	} else if (!strncmp(command, "Sz", 2)) {
+		state.target_az = parse_dms(command + 2);
+	} else if (!strcmp(command, "MA")) {
+		if (state.target_alt < 0) {
+			write_response(":MML#");
+		} else {
+			double latitude = parse_dms(state.latitude) * M_PI / 180, alt = state.target_alt * M_PI / 180, az = state.target_az * M_PI / 180;
+			double dec = asin(sin(latitude) * sin(alt) + cos(latitude) * cos(alt) * cos(az));
+			double ha = atan2(-sin(az) * cos(alt), sin(alt) * cos(latitude) - cos(alt) * cos(az) * sin(latitude)) * 12 / M_PI;
+			double ra = fmod(local_sidereal_time() - ha + 24.0, 24.0);
+			serial_motion_start(&state.ra, ra * 3600000.0, 4.0 * 3600000.0);
+			serial_motion_start(&state.dec, dec * 180 / M_PI * 3600000.0, 15.0 * 3600000.0);
+			select_pier_side(ra);
+			state.operation = OPERATION_ALTAZ;
+		}
 	} else if (!strcmp(command, "Ch")) {
 		serial_motion_start(&state.ra, 0, 12.0 * 3600000.0);
 		serial_motion_start(&state.dec, 90.0 * 3600000.0, 30.0 * 3600000.0);
@@ -393,7 +507,27 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "AH")) {
 		write_response(state.operation == OPERATION_PARK ? ":AH1#" : ":AH0#");
 	} else if (!strcmp(command, "GH")) {
-		write_response(state.parked ? ":GHO#" : ":GH0#");
+		write_response(state.homed ? ":GHO#" : ":GH0#");
+	} else if (!strcmp(command, "CG3")) {
+		// the DEC axis angle of the aligned mount
+		write_response(":CG3000.00000#");
+	} else if (!strcmp(command, "CY")) {
+		// the DEC and RA axis angles, the DEC axis turns past 90 degrees from the aligned position west of the pier
+		double dec = serial_motion_update(&state.dec) / 3600000.0, ra = serial_motion_update(&state.ra) / 3600000.0;
+		double dec_axis = state.pier_west ? 180 - (90 - dec) / 2 : (90 - dec) / 2;
+		double ra_axis = fmod((local_sidereal_time() - ra) * 15 + 720, 360);
+		snprintf(response, sizeof(response), ":CY%07.3f|%07.3f#", dec_axis, ra_axis);
+		write_response(response);
+	} else if (!strcmp(command, "Cv")) {
+		write_response(":Cv12.3#");
+	} else if (!strcmp(command, "CP")) {
+		// DEC and RA motor power in percent
+		write_response(":CP45.0|50.0#");
+	} else if (!strcmp(command, "CT")) {
+		// main board, RA and DEC motor temperatures
+		write_response(":CT25.5|30.2|29.8#");
+	} else if (!strcmp(command, "GY")) {
+		write_response(":GYOOOO#");
 	} else {
 		record_event("UNKNOWN", command);
 	}
@@ -408,12 +542,20 @@ static void check_operation_completion(void) {
 	if (state.ra.duration > 0 || state.dec.duration > 0) {
 		return;
 	}
-	if (state.operation == OPERATION_GOTO) {
-		state.tracking = true;
+	if (state.operation == OPERATION_GOTO || state.operation == OPERATION_ALTAZ) {
+		if (state.operation == OPERATION_GOTO) {
+			state.tracking = true;
+		}
 		state.operation = OPERATION_NONE;
-		write_response(":MM0#");
+		if (state.lose_completion) {
+			state.lose_completion = false;
+			record_event("LOST", ":MM0#");
+		} else {
+			write_response(":MM0#");
+		}
 	} else if (state.operation == OPERATION_PARK) {
 		state.parked = true;
+		state.homed = true;
 		state.tracking = false;
 		state.operation = OPERATION_NONE;
 		write_response(":CHO#");
@@ -500,6 +642,14 @@ static void run_loop(void) {
 int main(int argc, char *argv[]) {
 	if (!parse_args(argc, argv)) {
 		return 2;
+	}
+	state.rainbow_protocol = !options.lx200_protocol;
+	state.tracking = options.tracking;
+	if (options.tracking_rate != 0) {
+		state.tracking_rate = options.tracking_rate;
+	}
+	if (options.guide_rate != NULL) {
+		snprintf(state.guide_rate, sizeof(state.guide_rate), "%s", options.guide_rate);
 	}
 	char port[PATH_MAX];
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));

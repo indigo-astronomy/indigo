@@ -1,0 +1,90 @@
+10:34:56.796 ASCOM Universal Device Conformance Checker Version 4.5.0.53834, Build time: Thu 06 August 2026 12:47:41          
+10:34:56.796                                              
+10:34:56.797 Operating system is macOS 27.0.0, Processor is ARM 64bit, Application is 64bit.          
+10:34:56.797                                              
+10:34:56.797 Alpaca device:  (127.0.0.1:58713 Focuser/4)          
+10:34:56.797                                              
+10:34:56.798 CreateDevice                        INFO     Creating Alpaca device: IP address: 127.0.0.1, IP Port: 58713, Alpaca device number: 4
+10:34:56.805 CreateDevice                        INFO     Alpaca device created OK
+10:34:56.805 CreateDevice                        INFO     Successfully created driver
+10:34:57.896 CreateDevice                        OK       Found a valid interface version: 3
+10:34:57.896 CreateDevice                        OK       Driver instance created successfully
+10:34:57.896                                              
+10:34:57.896 Connect to device                            
+10:34:59.538 Connected                           OK       Connected to device successfully using Connected = True
+10:34:59.538                                              
+10:34:59.543 Common Driver Methods                        
+10:34:59.544 InterfaceVersion                    OK       3
+10:34:59.544 Connected                           OK       True
+10:34:59.546 Description                         OK       ALPACA Focuser Simulator - 0
+10:34:59.547 DriverInfo                          OK       indigo_system_alpaca
+10:34:59.547 DriverVersion                       OK       3.0.0.1
+10:34:59.547 Name                                OK       ALPACA Focuser Simulator - 0
+10:34:59.547                                              
+10:34:59.549 SupportedActions                    OK       Driver returned an empty action list
+10:34:59.549 Action                              INFO     Conform cannot test the Action method
+10:34:59.549                                              
+10:34:59.549 DeviceState                         INFO     DeviceState tests omitted - DeviceState is not a member of this interface version.
+10:34:59.549                                              
+10:34:59.549 Properties                                   
+10:34:59.550 Absolute                            OK       True
+10:34:59.551 IsMoving                            OK       False
+10:34:59.562 MaxStep                             OK       50000
+10:34:59.563 MaxIncrement                        OK       50000
+10:34:59.563 Position                            OK       25000
+10:34:59.581 StepSize                            OK       Optional member returned a NotImplementedException error.
+10:34:59.583 TempCompAvailable                   OK       True
+10:34:59.583 TempComp Read                       OK       False
+10:34:59.584 TempComp Write                      OK       Successfully turned temperature compensation on
+10:35:09.703 TempComp Write                      OK       Successfully turned temperature compensation off
+10:35:09.707 Temperature                         OK       10,81
+10:35:09.707                                              
+10:35:09.707 Methods                                      
+10:35:09.712 Halt                                OK       Focuser halted OK
+10:35:23.223 Move - TempComp False               OK       Absolute move OK
+10:35:50.740 Move - TempComp True V3             OK       Absolute move OK
+10:37:08.257 Move - To 0                         OK       Reported position: 0.
+10:37:08.260 Move - Below 0                      OK       Movement below 0 was not permitted. (Actually moved to 0)
+10:38:11.268 Move - To MidPoint                  OK       Reported position: 25000.
+10:39:14.776 Move - To MaxStep                   OK       Reported position: 50000.
+10:39:14.779 Move - Above MaxStep                OK       Movement above MaxStep was not permitted. (Actually moved to 50000)
+10:39:14.780                                              
+10:39:14.780 Disconnect from device                       
+10:39:14.834 Connected                           OK       False
+10:39:14.834                                              
+10:39:14.834 Conformance test has finished                
+10:39:14.834                                              
+10:39:14.834 Congratulations, no errors, warnings or issues found: your driver passes ASCOM validation!!          
+10:39:14.834                                     
+10:39:14.834 Timing Summary                               See Help for further information.
+10:39:14.834 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+10:39:14.834 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+10:39:14.834 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+10:39:14.834 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+10:39:14.834                                              
+10:39:14.834 InterfaceVersion                             At 10:34:59.544 InterfaceVersion         0,000 seconds. ✓ (FAST)
+10:39:14.834 Connected                                    At 10:34:59.544 Connected                0,001 seconds. ✓ (FAST)
+10:39:14.834 Description                                  At 10:34:59.546 Description              0,001 seconds. ✓ (FAST)
+10:39:14.834 DriverInfo                                   At 10:34:59.547 DriverInfo               0,000 seconds. ✓ (FAST)
+10:39:14.834 DriverVersion                                At 10:34:59.547 DriverVersion            0,000 seconds. ✓ (FAST)
+10:39:14.834 Name                                         At 10:34:59.547 Name                     0,000 seconds. ✓ (FAST)
+10:39:14.834 SupportedActions                             At 10:34:59.549 SupportedActions         0,001 seconds. ✓ (FAST)
+10:39:14.835 Absolute                                     At 10:34:59.550 Absolute                 0,001 seconds. ✓ (FAST)
+10:39:14.835 IsMoving                                     At 10:34:59.551 IsMoving                 0,000 seconds. ✓ (FAST)
+10:39:14.835 MaxStep                                      At 10:34:59.562 MaxStep                  0,011 seconds. ✓ (FAST)
+10:39:14.835 MaxIncrement                                 At 10:34:59.563 MaxIncrement             0,000 seconds. ✓ (FAST)
+10:39:14.835 Position                                     At 10:34:59.563 Position                 0,000 seconds. ✓ (FAST)
+10:39:14.835 TempCompAvailable                            At 10:34:59.583 TempCompAvailable        0,001 seconds. ✓ (FAST)
+10:39:14.835 TempComp Read                                At 10:34:59.583 TempComp Read            0,000 seconds. ✓ (FAST)
+10:39:14.835 TempComp Write                               At 10:34:59.584 TempComp Write           0,000 seconds. ✓ (STANDARD)
+10:39:14.835 Temperature                                  At 10:35:09.707 Temperature              0,003 seconds. ✓ (FAST)
+10:39:14.835 Halt                                         At 10:35:09.712 Halt                     0,002 seconds. ✓ (STANDARD)
+10:39:14.835 Move to 30080                                At 10:35:09.717 Move to 30080            0,001 seconds. ✓ (STANDARD)
+10:39:14.835 Move to 30080                                At 10:35:37.236 Move to 30080            0,502 seconds. ✓ (STANDARD)
+10:39:14.835 Move to 0                                    At 10:36:04.753 Move to 0                0,001 seconds. ✓ (STANDARD)
+10:39:14.835 Move to -10                                  At 10:37:08.259 Move to -10              0,000 seconds. ✓ (STANDARD)
+10:39:14.835 Move to 25000                                At 10:37:08.261 Move to 25000            0,000 seconds. ✓ (STANDARD)
+10:39:14.835 Move to 50000                                At 10:38:11.269 Move to 50000            0,001 seconds. ✓ (STANDARD)
+10:39:14.835 Move to 50010                                At 10:39:14.777 Move to 50010            0,001 seconds. ✓ (STANDARD)
+10:39:14.835                                              
+10:39:14.835 Congratulations, all members returned within their target response times!!          

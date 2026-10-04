@@ -63,6 +63,9 @@ typedef struct {
 	bool east;
 	bool west;
 	int goto_polls;
+	double target_ra;
+	double target_dec;
+	bool init;
 } simulator_state;
 
 static simulator_options options = {
@@ -99,8 +102,19 @@ static simulator_state state = {
 	.south = false,
 	.east = false,
 	.west = false,
-	.goto_polls = 0
+	.goto_polls = 0,
+	.target_ra = 6.0,
+	.target_dec = 45.0,
+	.init = false
 };
+
+// Number of status polls a GOTO takes, the position moves towards the target on each of them.
+static int goto_poll_count = 4;
+// One-shot replies armed at runtime through the control file.
+static char runtime_fault_path[256] = "";
+static char runtime_fault_reply[256] = "";
+static int runtime_fault_count = 0;
+static char runtime_drop_path[256] = "";
 
 static const char *simulator_name = "mount_starbook";
 static volatile sig_atomic_t running = 1;
@@ -116,9 +130,18 @@ static void usage(const char *name) {
 	printf("  --version <number>      Select simulated firmware version\n");
 	printf("  --fault-reply <path> <body>  Replace one matching response body\n");
 	printf("  --drop-reply <path>     Drop one matching HTTP response\n");
-	printf("  Runtime control is read from <ready-file>.control as 'delay <path> <ms>': the\n");
-	printf("  next request matching <path> (a trailing '*' matches a prefix) consumes the\n");
-	printf("  file and is answered <ms> milliseconds late.\n");
+	printf("  --tracking <0|1>        Initial tracking state (default 1)\n");
+	printf("  --pierside <0|1>        Initial side of pier, 0 east, 1 west (default 0)\n");
+	printf("  --place <lon> <lat> <tz>  Initial site, e.g. W070+30 S33+15 -4\n");
+	printf("  --init                  Start in the INIT state, GOTO/ALIGN/MOVE are refused until START\n");
+	printf("  --goto-polls <count>    Status polls a GOTO takes (default 4)\n");
+	printf("  Runtime control is read from <ready-file>.control, one command per file:\n");
+	printf("    'delay <path> <ms>'   the next request matching <path> (a trailing '*' matches a\n");
+	printf("                          prefix) consumes the file and is answered <ms> ms late\n");
+	printf("    'fault <path> <body>' the next matching request is answered with <body>; the same\n");
+	printf("                          command sent again while armed fails one more request\n");
+	printf("    'drop <path>'         the next matching request gets no response\n");
+	printf("    'track <0|1>', 'pierside <0|1>'  changed by the hand controller at the next request\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -145,6 +168,23 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (!strcmp(argv[i], "--drop-reply")) {
 			if (++i == argc) return false;
 			options.drop_path = argv[i];
+		} else if (!strcmp(argv[i], "--tracking")) {
+			if (++i == argc) return false;
+			state.track_state = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--pierside")) {
+			if (++i == argc) return false;
+			state.pierside = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--place")) {
+			if (i + 3 >= argc) return false;
+			snprintf(state.longitude, sizeof(state.longitude), "%s", argv[++i]);
+			snprintf(state.latitude, sizeof(state.latitude), "%s", argv[++i]);
+			state.timezone = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "--init")) {
+			state.init = true;
+		} else if (!strcmp(argv[i], "--goto-polls")) {
+			if (++i == argc) return false;
+			goto_poll_count = atoi(argv[i]);
+			if (goto_poll_count < 1) goto_poll_count = 1;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -185,7 +225,8 @@ static void trace_request(const char *path) {
 	}
 }
 
-// A late answer keeps the requester waiting, like a StarBook busy with another request.
+// A late answer keeps the requester waiting, like a StarBook busy with another request. The other
+// commands arm a one-shot fault or model a change made on the StarBook's own hand controller.
 static void apply_control(const char *path) {
 	if (*options.control_file == '\0') {
 		return;
@@ -194,16 +235,42 @@ static void apply_control(const char *path) {
 	if (file == NULL) {
 		return;
 	}
-	char action[16] = { 0 };
-	char expected[256] = { 0 };
-	int milliseconds = 0;
-	int count = fscanf(file, "%15s %255s %d", action, expected, &milliseconds);
+	char line[600] = { 0 };
+	bool read = fgets(line, sizeof(line), file) != NULL;
 	fclose(file);
-	if (count != 3 || strcmp(action, "delay") || !path_matches(expected, path)) {
+	if (!read) {
 		return;
 	}
-	unlink(options.control_file);
-	usleep(milliseconds * 1000);
+	line[strcspn(line, "\r\n")] = '\0';
+	char action[16] = { 0 };
+	char expected[256] = { 0 };
+	int offset = 0;
+	if (sscanf(line, "%15s %255s %n", action, expected, &offset) < 2) {
+		return;
+	}
+	if (!strcmp(action, "track")) {
+		unlink(options.control_file);
+		state.track_state = atoi(expected);
+	} else if (!strcmp(action, "pierside")) {
+		unlink(options.control_file);
+		state.pierside = atoi(expected);
+	} else if (!strcmp(action, "fault")) {
+		unlink(options.control_file);
+		if (runtime_fault_count > 0 && !strcmp(runtime_fault_path, expected) && !strcmp(runtime_fault_reply, line + offset)) {
+			runtime_fault_count++;
+		} else {
+			snprintf(runtime_fault_path, sizeof(runtime_fault_path), "%s", expected);
+			snprintf(runtime_fault_reply, sizeof(runtime_fault_reply), "%s", line + offset);
+			runtime_fault_count = 1;
+		}
+	} else if (!strcmp(action, "drop")) {
+		unlink(options.control_file);
+		snprintf(runtime_drop_path, sizeof(runtime_drop_path), "%s", expected);
+	} else if (!strcmp(action, "delay") && path_matches(expected, path)) {
+		int milliseconds = atoi(line + offset);
+		unlink(options.control_file);
+		usleep(milliseconds * 1000);
+	}
 }
 
 static void signal_handler(int sig) {
@@ -320,16 +387,36 @@ static void update_time_from_path(const char *path) {
 	}
 }
 
-static void update_radec_from_path(const char *path) {
+static void update_target_from_path(const char *path) {
 	char value[32];
+	state.target_ra = state.ra;
+	state.target_dec = state.dec;
 	if (query_value(path, "ra", value, sizeof(value))) {
-		state.ra = parse_starbook_degree(value);
+		state.target_ra = parse_starbook_degree(value);
 	}
 	if (query_value(path, "dec", value, sizeof(value))) {
 		int sign = value[0] == '-' ? -1 : 1;
 		const char *text = value[0] == '-' || value[0] == '+' ? value + 1 : value;
-		state.dec = sign * parse_starbook_degree(text);
+		state.target_dec = sign * parse_starbook_degree(text);
 	}
+}
+
+// A running GOTO covers an equal share of the remaining distance on every status poll and arrives on the last one.
+static void advance_goto(void) {
+	if (!state.goto_state || state.goto_polls <= 0) {
+		return;
+	}
+	state.ra += (state.target_ra - state.ra) / state.goto_polls;
+	state.dec += (state.target_dec - state.dec) / state.goto_polls;
+	if (--state.goto_polls == 0) {
+		state.ra = state.target_ra;
+		state.dec = state.target_dec;
+		state.goto_state = 0;
+	}
+}
+
+static const char *status_state(void) {
+	return state.init ? "INIT" : state.track_state == 0 ? "STOP" : "TRACK";
 }
 
 static void response_body(const char *path, char *body, size_t size) {
@@ -340,15 +427,15 @@ static void response_body(const char *path, char *body, size_t size) {
 		if (state.south) state.dec -= 0.01;
 		if (state.east) state.ra += 0.01;
 		if (state.west) state.ra -= 0.01;
-		snprintf(body, size, "RA=%.6f&DEC=%.6f&GOTO=%d&STATE=%s", state.ra, state.dec, state.goto_state, state.track_state == 0 ? "STOP" : "TRACK");
-		if (state.goto_polls > 0 && --state.goto_polls == 0) state.goto_state = 0;
+		advance_goto();
+		snprintf(body, size, "RA=%.6f&DEC=%.6f&GOTO=%d&STATE=%s", state.ra, state.dec, state.goto_state, status_state());
 	} else if (!strncmp(path, "/GETSTATUS", 10)) {
+		advance_goto();
 		int ra_hours = (int)state.ra;
 		int ra_tenths = (int)((state.ra - ra_hours) * 600);
 		int dec_degrees = (int)fabs(state.dec);
 		int dec_minutes = (int)((fabs(state.dec) - dec_degrees) * 60);
-		snprintf(body, size, "RA=%02d+%02d.%d&DEC=%c%02d+%02d&GOTO=%d&STATE=%s", ra_hours, ra_tenths / 10, ra_tenths % 10, state.dec < 0 ? '-' : '+', dec_degrees, dec_minutes, state.goto_state, state.track_state == 0 ? "STOP" : "TRACK");
-		if (state.goto_polls > 0 && --state.goto_polls == 0) state.goto_state = 0;
+		snprintf(body, size, "RA=%02d+%02d.%d&DEC=%c%02d+%02d&GOTO=%d&STATE=%s", ra_hours, ra_tenths / 10, ra_tenths % 10, state.dec < 0 ? '-' : '+', dec_degrees, dec_minutes, state.goto_state, status_state());
 	} else if (!strncmp(path, "/GETTRACKSTATUS", 15)) {
 		snprintf(body, size, "TRACK=%d", state.track_state);
 	} else if (!strncmp(path, "/GET_PIERSIDE", 13)) {
@@ -363,11 +450,25 @@ static void response_body(const char *path, char *body, size_t size) {
 	} else if (!strncmp(path, "/SETTIME", 8)) {
 		update_time_from_path(path);
 		snprintf(body, size, "OK");
-	} else if (!strncmp(path, "/GOTORADEC", 10) || !strncmp(path, "/ALIGN", 6)) {
-		update_radec_from_path(path);
+	} else if (state.init && (!strncmp(path, "/GOTORADEC", 10) || !strncmp(path, "/ALIGN", 6) || !strncmp(path, "/MOVE", 5))) {
+		// In INIT the StarBook takes no telescope commands until START.
+		snprintf(body, size, "ERROR:ILLEGAL STATE");
+	} else if (!strncmp(path, "/GOTORADEC", 10)) {
+		// The slew starts here, the position moves towards the target on each status poll.
+		update_target_from_path(path);
 		state.track_state = 1;
-		state.goto_state = !strncmp(path, "/GOTORADEC", 10);
-		state.goto_polls = state.goto_state ? 4 : 0;
+		state.goto_state = 1;
+		state.goto_polls = goto_poll_count;
+		snprintf(body, size, "OK");
+	} else if (!strncmp(path, "/ALIGN", 6)) {
+		update_target_from_path(path);
+		state.ra = state.target_ra;
+		state.dec = state.target_dec;
+		state.track_state = 1;
+		state.goto_state = 0;
+		state.goto_polls = 0;
+		snprintf(body, size, "OK");
+	} else if (!strncmp(path, "/MOVEPULSE", 10)) {
 		snprintf(body, size, "OK");
 	} else if (!strncmp(path, "/MOVE", 5)) {
 		char value[8];
@@ -384,8 +485,6 @@ static void response_body(const char *path, char *body, size_t size) {
 			state.west = atoi(value) != 0;
 		}
 		snprintf(body, size, "OK");
-	} else if (!strncmp(path, "/MOVEPULSE", 10)) {
-		snprintf(body, size, "OK");
 	} else if (!strncmp(path, "/SETSPEED", 9)) {
 		char value[8];
 		if (query_value(path, "speed", value, sizeof(value))) {
@@ -398,6 +497,7 @@ static void response_body(const char *path, char *body, size_t size) {
 		state.goto_polls = 0;
 		snprintf(body, size, "OK");
 	} else if (!strncmp(path, "/START", 6)) {
+		state.init = false;
 		state.track_state = 1;
 		snprintf(body, size, "OK");
 	} else if (!strncmp(path, "/RESET", 6)) {
@@ -430,11 +530,18 @@ static void handle_client(int client_fd) {
 		options.drop_used = true;
 		return;
 	}
+	if (*runtime_drop_path && path_matches(runtime_drop_path, path)) {
+		*runtime_drop_path = '\0';
+		return;
+	}
 
 	char body[1024];
 	if (!options.fault_used && path_matches(options.fault_path, path)) {
 		options.fault_used = true;
 		snprintf(body, sizeof(body), "%s", options.fault_reply);
+	} else if (runtime_fault_count > 0 && path_matches(runtime_fault_path, path)) {
+		runtime_fault_count--;
+		snprintf(body, sizeof(body), "%s", runtime_fault_reply);
 	} else {
 		response_body(path, body, sizeof(body));
 	}

@@ -23,6 +23,9 @@
 #include "serial_simulator_test_common.h"
 #include "abort_queue_test_common.h"
 #include <dirent.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 
@@ -31,15 +34,16 @@ static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 #define MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE "build/integration/mount_synscan_simulator"
 #endif
 
-#define MOUNT_POLARSCOPE_PROPERTY_NAME             "POLARSCOPE"
+#define MOUNT_POLARSCOPE_PROPERTY_NAME             "X_POLARSCOPE"
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME      "BRIGHTNESS"
-#define MOUNT_USE_ENCODERS_PROPERTY_NAME           "MOUNT_USE_ENCODERS"
+#define MOUNT_USE_ENCODERS_PROPERTY_NAME           "X_MOUNT_USE_ENCODERS"
 #define MOUNT_USE_RA_ENCODER_ITEM_NAME             "RA"
 #define MOUNT_USE_DEC_ENCODER_ITEM_NAME            "DEC"
-#define MOUNT_AUTOHOME_PROPERTY_NAME               "MOUNT_AUTOHOME"
+#define MOUNT_AUTOHOME_PROPERTY_NAME               "X_MOUNT_AUTOHOME"
 #define MOUNT_AUTOHOME_ITEM_NAME                   "AUTOHOME"
-#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "MOUNT_AUTOHOME_SETTINGS"
+#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME        "DEC_OFFSET"
+#define MOUNT_OPERATING_MODE_PROPERTY_NAME         "X_MOUNT_OPERATING_MODE"
 
 // The driver exposes a mount device and a guider device that share one
 // connection (the guider reuses the mount/master connection). Each logical
@@ -261,6 +265,11 @@ static void synscan_mount_passes_serial_compliance_checks(void) {
 	assert_property_has_items(MOUNT_AUTOHOME_PROPERTY_NAME, autohome_items, ARRAY_SIZE(autohome_items));
 	assert_property_has_items(MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME, autohome_settings_items, ARRAY_SIZE(autohome_settings_items));
 	assert_not_defined_property(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME);
+	// the driver-specific properties carry the X_ prefix, the old names are gone
+	assert_not_defined_property("POLARSCOPE");
+	assert_not_defined_property("MOUNT_USE_ENCODERS");
+	assert_not_defined_property("MOUNT_AUTOHOME");
+	assert_not_defined_property("MOUNT_AUTOHOME_SETTINGS");
 
 	double guide_rate = bounded_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 50);
 	SERIAL_CHECK_TRUE(!isnan(guide_rate));
@@ -752,6 +761,272 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Returns the line of the last command in the simulator's command log that starts with `prefix`,
+// -1 when there is none and -2 when the log cannot be read.
+static int last_synscan_command_line(external_serial_simulator *simulator, const char *prefix) {
+	char path[PATH_MAX];
+	int last = -1, line_number = 0;
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -2;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return -2;
+	}
+	char line[256];
+	while (fgets(line, sizeof(line), file)) {
+		char *command = strchr(line, '\t');
+		if (command == NULL) {
+			continue;
+		}
+		if (!strncmp(command + 1, prefix, strlen(prefix))) {
+			last = line_number;
+		}
+		line_number++;
+	}
+	fclose(file);
+	return last;
+}
+
+// Forum report (A1 v6 beta, EQ8-R Pro): releasing an E/W arrow stopped the RA axis and left it
+// stopped, while the tracking switch still said on. The release has to put RA back on the tracking
+// rate: the axis is started again after it was stopped, at the tracking step period.
+static void synscan_mount_resumes_tracking_after_ra_motion(void) {
+	external_serial_simulator simulator = { 0 };
+	char tracking_period[32] = "", resumed_period[32] = "";
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", tracking_period, sizeof(tracking_period), NULL) > 0);
+
+	for (int pass = 0; pass < 2; pass++) {
+		const char *item = pass == 0 ? MOUNT_MOTION_WEST_ITEM_NAME : MOUNT_MOTION_EAST_ITEM_NAME;
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, item, true));
+		// the slew light stays BUSY for as long as the manual motion runs
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, item, false));
+		// the release handler publishes the idle slew light last, after it has restarted tracking
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_RA_PROPERTY_NAME, INDIGO_OK_STATE));
+		int stop = last_synscan_command_line(&simulator, ":K1");
+		int start = last_synscan_command_line(&simulator, ":J1");
+		SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", resumed_period, sizeof(resumed_period), NULL) > 0);
+		printf("    %s release: last stop at line %d, last start at line %d, period %s (tracking %s)\n", item, stop, start, resumed_period, tracking_period);
+		SERIAL_CHECK_TRUE(stop >= 0);
+		SERIAL_CHECK_TRUE(start > stop);
+		SERIAL_CHECK_TRUE(!strcmp(tracking_period, resumed_period));
+		SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME)->light.value);
+	}
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static int synscan_alignment_point_count(void) {
+	indigo_property *property = find_cached_property(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
+	return property == NULL ? 0 : property->count;
+}
+
+static bool wait_for_synscan_alignment_point_count(int count) {
+	for (int i = 0; i < 100; i++) {
+		if (synscan_alignment_point_count() == count) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// Forum report (A1 v6 beta, EQ8-R Pro): a manual sync copied the coordinates and added no alignment
+// point, so the next poll recomputed them from the raw position and the sync was gone. The controller
+// has no sync of its own, the sync has to become a point of the alignment model and hold across polls.
+static void synscan_mount_sync_adds_alignment_point(void) {
+	const char *coordinate_items[] = {
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
+	};
+	double coordinate_values[2];
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	double raw_ra = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
+	SERIAL_CHECK_TRUE(!isnan(ra) && !isnan(dec) && !isnan(raw_ra));
+	// far enough from the raw position that a recomputation without the point cannot pass for the synced one
+	coordinate_values[0] = fmod(ra + 1, 24);
+	coordinate_values[1] = dec > 0 ? dec - 5 : dec + 5;
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, coordinate_values));
+	SERIAL_CHECK_TRUE(wait_for_synscan_alignment_point_count(1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// tracking is off, so the raw RA follows the sidereal time; a new raw RA proves a poll after the sync
+	raw_ra = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
+	bool polled = false;
+	for (int i = 0; i < 100 && !polled; i++) {
+		indigo_usleep(100000);
+		polled = fabs(cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME) - raw_ra) > 1e-6;
+	}
+	SERIAL_CHECK_TRUE(polled);
+	double synced_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double synced_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	double ra_error = fabs(synced_ra - coordinate_values[0]);
+	if (ra_error > 12) {
+		ra_error = 24 - ra_error;
+	}
+	printf("    synced to %.4f h %.4f deg, after the next poll %.4f h %.4f deg\n", coordinate_values[0], coordinate_values[1], synced_ra, synced_dec);
+	SERIAL_CHECK_TRUE(ra_error < 0.01);
+	SERIAL_CHECK_TRUE(fabs(synced_dec - coordinate_values[1]) < 0.01);
+	// the saved point comes back with the next connection, defined with it, never updated before its definition
+	int undefined_updates = updates_without_define();
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, NULL));
+	SERIAL_CHECK_TRUE(wait_for_synscan_alignment_point_count(1));
+	SERIAL_CHECK_EQ_INT(undefined_updates, updates_without_define());
+
+cleanup:
+	if (context.connected) {
+		// the points are saved in the private configuration folder, leave none behind for the other cases
+		if (synscan_alignment_point_count() > 0) {
+			indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true);
+			ASSERT_TRUE(wait_for_synscan_alignment_point_count(0));
+		}
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The simulator answers the next <count> commands starting with <prefix> with <reply> instead of executing them.
+static bool write_synscan_fault(external_serial_simulator *simulator, const char *prefix, const char *reply, int count) {
+	char path[PATH_MAX], temporary[PATH_MAX + 8];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.fault", simulator->ready_file, NULL)) {
+		return false;
+	}
+	snprintf(temporary, sizeof(temporary), "%s.tmp", path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s %d\n", prefix, reply, count);
+	fclose(file);
+	return rename(temporary, path) == 0;
+}
+
+static bool synscan_fault_pending(external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	return simulator_fixture_path(path, sizeof(path), "%s.fault", simulator->ready_file, NULL) && access(path, F_OK) == 0;
+}
+
+static void remove_synscan_fault(external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	if (simulator_fixture_path(path, sizeof(path), "%s.fault", simulator->ready_file, NULL)) {
+		unlink(path);
+	}
+}
+
+typedef enum {
+	GUIDE_RA_FAULT_AT_END_RECOVERED,
+	GUIDE_RA_FAULT_AT_END_PERSISTENT,
+	GUIDE_RA_FAULT_AT_START_RECOVERED
+} guide_ra_fault;
+
+// A refused step period at either end of an RA guide pulse left the RA axis idle while MOUNT_TRACKING still said
+// ON. The driver now puts RA back on the tracking rate with the full stop, mode, period and start sequence, and
+// only when that fails too switches tracking OFF with ALERT, so the switch and the axis agree.
+static void guide_ra_with_fault(guide_ra_fault mode) {
+	external_serial_simulator simulator = { 0 };
+	bool mount_connected = false, guider_connected = false;
+	char tracking_period[32] = "", resumed_period[32] = "";
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	mount_connected = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", tracking_period, sizeof(tracking_period), NULL) > 0);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_guider, NULL));
+	guider_connected = true;
+	if (mode == GUIDE_RA_FAULT_AT_START_RECOVERED) {
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":I1", "!0", 1));
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300));
+		SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	} else {
+		int periods = count_synscan_commands(&simulator, 0, ":I1", NULL, 0, NULL);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 1000));
+		// BUSY is published when the request is accepted, the guide rate is set when the period command is logged;
+		// only the command that ends the pulse is refused
+		bool started = false;
+		for (int i = 0; i < 50 && !started; i++) {
+			indigo_usleep(10000);
+			started = count_synscan_commands(&simulator, 0, ":I1", NULL, 0, NULL) > periods;
+		}
+		SERIAL_CHECK_TRUE(started);
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":I1", "!0", mode == GUIDE_RA_FAULT_AT_END_PERSISTENT ? 100 : 1));
+		SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_RA_PROPERTY_NAME, mode == GUIDE_RA_FAULT_AT_END_PERSISTENT ? INDIGO_ALERT_STATE : INDIGO_OK_STATE));
+	}
+	int stop = last_synscan_command_line(&simulator, ":K1");
+	int start = last_synscan_command_line(&simulator, ":J1");
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":I1", resumed_period, sizeof(resumed_period), NULL) > 0);
+	printf("    last stop at line %d, last start at line %d, last period %s (tracking %s)\n", stop, start, resumed_period, tracking_period);
+	SERIAL_CHECK_TRUE(stop >= 0);
+	// the mount device's own view of the tracking state, published before the guider's final state
+	reset_simulator_context(&synscan_mount);
+	enumerate_simulator_device();
+	if (mode == GUIDE_RA_FAULT_AT_END_PERSISTENT) {
+		remove_synscan_fault(&simulator);
+		SERIAL_CHECK_TRUE(start < stop);
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_ALERT_STATE));
+	} else {
+		SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+		SERIAL_CHECK_TRUE(start > stop);
+		SERIAL_CHECK_TRUE(!strcmp(tracking_period, resumed_period));
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_OK_STATE));
+	}
+
+cleanup:
+	remove_synscan_fault(&simulator);
+	if (guider_connected) {
+		disconnect_serial_device(&synscan_guider);
+	}
+	if (mount_connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_guider_restores_tracking_after_refused_pulse_end(void) {
+	guide_ra_with_fault(GUIDE_RA_FAULT_AT_END_RECOVERED);
+}
+
+static void synscan_guider_stops_tracking_when_pulse_end_keeps_failing(void) {
+	guide_ra_with_fault(GUIDE_RA_FAULT_AT_END_PERSISTENT);
+}
+
+static void synscan_guider_restores_tracking_after_refused_pulse_start(void) {
+	guide_ra_with_fault(GUIDE_RA_FAULT_AT_START_RECOVERED);
+}
+
 static void synscan_aux_passes_shutter_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -861,6 +1136,33 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// True when the host of a detected "synscan://<host>:<port>" URL is an address of this machine, where the simulator listens.
+static bool synscan_port_is_local(const char *port) {
+	char host[INDIGO_VALUE_SIZE];
+	if (strncmp(port, "synscan://", 10)) {
+		return false;
+	}
+	snprintf(host, sizeof(host), "%s", port + 10);
+	host[strcspn(host, ":")] = 0;
+	if (!strcmp(host, "127.0.0.1") || !strcmp(host, "localhost")) {
+		return true;
+	}
+	struct ifaddrs *addresses = NULL;
+	bool local = false;
+	if (getifaddrs(&addresses) == 0) {
+		for (struct ifaddrs *address = addresses; address != NULL && !local; address = address->ifa_next) {
+			if (address->ifa_addr != NULL && address->ifa_addr->sa_family == AF_INET) {
+				char text[INET_ADDRSTRLEN];
+				if (inet_ntop(AF_INET, &((struct sockaddr_in *)address->ifa_addr)->sin_addr, text, sizeof(text)) != NULL && !strcmp(text, host)) {
+					local = true;
+				}
+			}
+		}
+		freeifaddrs(addresses);
+	}
+	return local;
+}
+
 static void synscan_mount_connects_with_udp_autodetection(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -886,6 +1188,14 @@ static void synscan_mount_connects_with_udp_autodetection(void) {
 		SERIAL_CHECK_TRUE(connected);
 	}
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	// The broadcast reaches every SynScan WiFi mount on the network, and the simulator drops its first replies, so a
+	// real mount powered on nearby answers first. Then this case cannot isolate the simulator and checks no further.
+	indigo_item *port = find_cached_item(DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME);
+	SERIAL_CHECK_TRUE(port != NULL);
+	if (!synscan_port_is_local(port->text.value)) {
+		printf("    a SynScan mount on the network answered the broadcast before the simulator, the simulator was not exercised\n");
+		goto cleanup;
+	}
 	assert_serial_mount_class_property_completeness();
 
 cleanup:
@@ -1200,6 +1510,1162 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Mount Driver Test Standard scenarios: identity, directions and rates on the wire, abort, disconnect, refusals, park,
+// polling failures and the logical siblings.
+
+// What the simulator answers to :a, :b and :g, used to derive step periods independently of the driver.
+#define SIM_STEPS_PER_REVOLUTION   864000.0
+#define SIM_TIMER_FREQUENCY        1000.0
+#define SIM_HIGH_SPEED_RATIO       128.0
+#define SIM_SIDEREAL_ARCSEC        ((360.0 * 3600.0) / 86164.090530833)
+
+// The step period (T1) the motor controller command set defines for a rate in multiples of the sidereal rate:
+// timer frequency over the steps per second; above 128x the axis runs in high speed mode at the rate / ratio.
+static long synscan_expected_period(double multiple, bool *high_speed) {
+	double rate = multiple * SIM_SIDEREAL_ARCSEC;
+	*high_speed = multiple > 128;
+	if (*high_speed) {
+		rate /= SIM_HIGH_SPEED_RATIO;
+	}
+	return lrint(SIM_TIMER_FREQUENCY / (rate * SIM_STEPS_PER_REVOLUTION / (360.0 * 3600.0)));
+}
+
+// The 24-bit argument of a ":<c><axis>xxxxxx" command, low byte first as the protocol sends it.
+static long synscan_command_value(const char *command) {
+	const char *text = command + 3;
+	if (strlen(text) < 6) {
+		return -1;
+	}
+	char swapped[7] = { text[4], text[5], text[2], text[3], text[0], text[1], 0 };
+	return strtol(swapped, NULL, 16);
+}
+
+// The number of commands in the simulator's log, the mark from which later counts start.
+static int synscan_mark(external_serial_simulator *simulator) {
+	int total = 0;
+	count_synscan_commands(simulator, 0, ":", NULL, 0, &total);
+	return total;
+}
+
+// The line of the first command at or after `from` starting with `prefix`, -1 when there is none.
+static int first_synscan_command_line(external_serial_simulator *simulator, int from, const char *prefix) {
+	char path[PATH_MAX];
+	int line_number = 0;
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return -1;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[256];
+	int found = -1;
+	while (found < 0 && fgets(line, sizeof(line), file)) {
+		char *command = strchr(line, '\t');
+		if (command == NULL) {
+			continue;
+		}
+		if (line_number >= from && !strncmp(command + 1, prefix, strlen(prefix))) {
+			found = line_number;
+		}
+		line_number++;
+	}
+	fclose(file);
+	return found;
+}
+
+// The commands that move an axis: mode, goto increment or target, brake point, step period and start.
+static int synscan_motion_commands(external_serial_simulator *simulator, int from) {
+	static const char *prefixes[] = { ":G", ":H", ":S", ":M", ":U", ":I", ":J" };
+	int count = 0;
+	for (int i = 0; i < ARRAY_SIZE(prefixes); i++) {
+		count += count_synscan_commands(simulator, from, prefixes[i], NULL, 0, NULL);
+	}
+	return count;
+}
+
+static double synscan_wrap_hours(double hours) {
+	while (hours >= 12) {
+		hours -= 24;
+	}
+	while (hours < -12) {
+		hours += 24;
+	}
+	return hours;
+}
+
+static double synscan_lst(void) {
+	return cached_number_value(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME);
+}
+
+// The value of a MOUNT_RAW_COORDINATES item published by the second poll after this call, so the poll certainly
+// read the axes after everything the caller requested before. Only polls publish the raw coordinates.
+static double synscan_fresh_raw(const char *item_name) {
+	unsigned int revision = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME);
+	for (int i = 0; i < 100; i++) {
+		indigo_usleep(50000);
+		if (property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME) > revision + 1) {
+			return cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, item_name);
+		}
+	}
+	return NAN;
+}
+
+static double synscan_fresh_hour_angle(void) {
+	double ra = synscan_fresh_raw(MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
+	return synscan_wrap_hours(synscan_lst() - ra);
+}
+
+static bool synscan_set_switch(const char *property_name, const char *item_name, bool value) {
+	unsigned int revision = property_revision(property_name);
+	if (indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, property_name, item_name, value) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_not_busy_after(property_name, revision) && wait_for_switch_item_value(property_name, item_name, value);
+}
+
+// Aborts and waits for the answer; the momentary switch returns to off.
+static bool synscan_abort(void) {
+	unsigned int revision = property_revision(MOUNT_ABORT_MOTION_PROPERTY_NAME);
+	if (indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_after(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, revision) && !find_cached_item(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME)->sw.value;
+}
+
+// Requests a slew of the given kind (an item of MOUNT_ON_COORDINATES_SET) and waits until it is accepted.
+static bool synscan_start_goto(const char *mode_item, double ra, double dec) {
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	if (!synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, mode_item, true)) {
+		return false;
+	}
+	unsigned int busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	if (indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, busy);
+}
+
+static bool synscan_goto(const char *mode_item, double ra, double dec) {
+	return synscan_start_goto(mode_item, ra, dec) && wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+}
+
+// Waits until the raw declination is more than `degrees` away from `from`, i.e. the axes are well under way.
+static bool synscan_wait_for_dec_motion(double from, double degrees) {
+	for (int i = 0; i < 200; i++) {
+		if (fabs(cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - from) > degrees) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+// A declination far from `dec` on the same side of the pole.
+static double synscan_far_dec(double dec, double distance) {
+	return dec > 0 ? dec - distance : dec + distance;
+}
+
+// Turns tracking on and returns the step period the driver set for it, -1 on failure.
+static long synscan_start_tracking(external_serial_simulator *simulator) {
+	char command[32] = "";
+	if (!synscan_set_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true) || find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state != INDIGO_OK_STATE) {
+		return -1;
+	}
+	if (count_synscan_commands(simulator, 0, ":I1", command, sizeof(command), NULL) <= 0) {
+		return -1;
+	}
+	return synscan_command_value(command);
+}
+
+// The RA axis runs at `period`: the last period set is the one given, and the axis was started after its last stop.
+static bool synscan_ra_runs_at(external_serial_simulator *simulator, long period) {
+	char command[32] = "";
+	if (count_synscan_commands(simulator, 0, ":I1", command, sizeof(command), NULL) <= 0 || synscan_command_value(command) != period) {
+		fprintf(stderr, "    the last RA step period is %s, expected %ld\n", command, period);
+		return false;
+	}
+	int stop = last_synscan_command_line(simulator, ":K1");
+	int abort = last_synscan_command_line(simulator, ":L1");
+	int start = last_synscan_command_line(simulator, ":J1");
+	if (start < stop || start < abort) {
+		fprintf(stderr, "    RA was not started again after it was stopped (start %d, stop %d, abort %d)\n", start, stop, abort);
+		return false;
+	}
+	return true;
+}
+
+// The client callbacks below record what a test needs beyond the property cache: the state the coordinates were
+// defined with, the message of the last ALERT of a property and the values published around a coordinate ALERT.
+static atomic_int observed_coordinates_define_state;
+static atomic_bool observed_coordinates_alert;
+static _Atomic double observed_previous_ra, observed_previous_dec, observed_alert_ra, observed_alert_dec, observed_alert_previous_ra, observed_alert_previous_dec;
+static pthread_mutex_t observed_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char observed_coordinates_message[INDIGO_VALUE_SIZE], observed_park_message[INDIGO_VALUE_SIZE];
+
+static double observed_item_value(indigo_property *property, const char *name) {
+	for (int i = 0; i < property->count; i++) {
+		if (!strcmp(property->items[i].name, name)) {
+			return property->items[i].number.value;
+		}
+	}
+	return NAN;
+}
+
+static indigo_result observe_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, synscan_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		atomic_store(&observed_coordinates_define_state, property->state);
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
+
+static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, synscan_mount.device_name)) {
+		bool coordinates = !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		if (coordinates) {
+			double ra = observed_item_value(property, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+			double dec = observed_item_value(property, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+			if (property->state == INDIGO_ALERT_STATE && !atomic_load(&observed_coordinates_alert)) {
+				atomic_store(&observed_alert_ra, ra);
+				atomic_store(&observed_alert_dec, dec);
+				atomic_store(&observed_alert_previous_ra, atomic_load(&observed_previous_ra));
+				atomic_store(&observed_alert_previous_dec, atomic_load(&observed_previous_dec));
+				atomic_store(&observed_coordinates_alert, true);
+			}
+			atomic_store(&observed_previous_ra, ra);
+			atomic_store(&observed_previous_dec, dec);
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+// The bus hands the message of an update to the client's send_message callback, with the property.
+static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && !strcmp(property->device, synscan_mount.device_name) && property->state == INDIGO_ALERT_STATE && message != NULL && *message) {
+		bool coordinates = !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		if (coordinates || !strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
+			pthread_mutex_lock(&observed_mutex);
+			snprintf(coordinates ? observed_coordinates_message : observed_park_message, INDIGO_VALUE_SIZE, "%s", message);
+			pthread_mutex_unlock(&observed_mutex);
+		}
+	}
+	return INDIGO_OK;
+}
+
+static void install_observer(void) {
+	atomic_store(&observed_coordinates_define_state, -1);
+	atomic_store(&observed_coordinates_alert, false);
+	pthread_mutex_lock(&observed_mutex);
+	observed_coordinates_message[0] = observed_park_message[0] = 0;
+	pthread_mutex_unlock(&observed_mutex);
+	simulator_test_client.define_property = observe_define;
+	simulator_test_client.update_property = observe_update;
+	simulator_test_client.send_message = observe_message;
+}
+
+static void remove_observer(void) {
+	simulator_test_client.define_property = simulator_client_define_property;
+	simulator_test_client.update_property = simulator_client_update_property;
+	simulator_test_client.send_message = NULL;
+}
+
+static bool observed_message_contains(const char *message, const char *text) {
+	pthread_mutex_lock(&observed_mutex);
+	bool found = strstr(message, text) != NULL;
+	if (!found) {
+		fprintf(stderr, "    message '%s' does not contain '%s'\n", message, text);
+	}
+	pthread_mutex_unlock(&observed_mutex);
+	return found;
+}
+
+// A second client that connects the guider and pulses it, so the main client's property cache stays on the mount.
+static atomic_bool sibling_attached, sibling_guider_connected;
+static atomic_int sibling_guide_state[2];
+static atomic_uint sibling_guide_revision[2];
+
+static indigo_result sibling_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (strcmp(property->device, synscan_guider.device_name)) {
+		return INDIGO_OK;
+	}
+	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+		bool connected = false;
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, CONNECTION_CONNECTED_ITEM_NAME)) {
+				connected = property->items[i].sw.value;
+			}
+		}
+		atomic_store(&sibling_guider_connected, connected && property->state == INDIGO_OK_STATE);
+	} else {
+		int axis = !strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ? 0 : !strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ? 1 : -1;
+		if (axis >= 0) {
+			atomic_store(&sibling_guide_state[axis], property->state);
+			atomic_fetch_add(&sibling_guide_revision[axis], 1);
+		}
+	}
+	return INDIGO_OK;
+}
+
+static indigo_client sibling_client = {
+	.name = "SynScan sibling client",
+	.version = INDIGO_VERSION_CURRENT,
+	.define_property = sibling_update,
+	.update_property = sibling_update
+};
+
+static bool connect_sibling_guider(void) {
+	atomic_store(&sibling_guider_connected, false);
+	if (!atomic_load(&sibling_attached)) {
+		if (indigo_attach_client(&sibling_client) != INDIGO_OK) {
+			return false;
+		}
+		atomic_store(&sibling_attached, true);
+	}
+	if (indigo_change_switch_property_1(&sibling_client, synscan_guider.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 100 && !atomic_load(&sibling_guider_connected); i++) {
+		indigo_usleep(50000);
+	}
+	return atomic_load(&sibling_guider_connected);
+}
+
+static void disconnect_sibling_guider(void) {
+	if (atomic_load(&sibling_attached)) {
+		if (atomic_load(&sibling_guider_connected)) {
+			indigo_change_switch_property_1(&sibling_client, synscan_guider.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+			for (int i = 0; i < 100 && atomic_load(&sibling_guider_connected); i++) {
+				indigo_usleep(50000);
+			}
+		}
+		indigo_detach_client(&sibling_client);
+		atomic_store(&sibling_attached, false);
+	}
+}
+
+// Requests a guide pulse through the sibling client and returns the state it ended with, -1 when it did not end.
+static int sibling_pulse(const char *property_name, const char *item_name, double duration) {
+	int axis = !strcmp(property_name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ? 0 : 1;
+	unsigned int revision = atomic_load(&sibling_guide_revision[axis]);
+	if (indigo_change_number_property_1(&sibling_client, synscan_guider.device_name, property_name, item_name, duration) != INDIGO_OK) {
+		return -1;
+	}
+	for (int i = 0; i < 1000; i++) {
+		if (atomic_load(&sibling_guide_revision[axis]) > revision && atomic_load(&sibling_guide_state[axis]) != INDIGO_BUSY_STATE) {
+			return atomic_load(&sibling_guide_state[axis]);
+		}
+		indigo_usleep(10000);
+	}
+	return -1;
+}
+
+// Identity, the connect handshake and what stays defined across disconnect and reconnect.
+static void synscan_mount_reports_identity_and_handshake(void) {
+	// The commands from opening the port to the first coordinate read, in order. The axes start uninitialized, so
+	// the driver initializes them and restores the saved position; the value depends on what an earlier case parked.
+	static const char *handshake[] = { ":e1", ":e1", ":f1", ":f2", ":a1", ":a2", ":s1", ":s2", ":b1", ":b2", ":g1", ":g2", ":q1010000", ":q2010000", ":V100", ":F1", ":E1", ":F2", ":E2", ":j2", ":j1" };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char path[PATH_MAX];
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	// :e1 answers 040302, the model code 04 and firmware 2.03
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME, "Sky-Watcher SynScan"));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "EQ8"));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME, "2.03"));
+	SERIAL_CHECK_TRUE(simulator_fixture_path(path, sizeof(path), "%s.events", simulator.ready_file, NULL));
+	FILE *file = fopen(path, "r");
+	SERIAL_CHECK_TRUE(file != NULL);
+	char line[256];
+	int index = 0;
+	bool matches = true;
+	while (index < ARRAY_SIZE(handshake) && fgets(line, sizeof(line), file)) {
+		char *command = strchr(line, '\t');
+		if (command == NULL) {
+			continue;
+		}
+		command++;
+		command[strcspn(command, "\r\n")] = 0;
+		bool prefix_only = !strncmp(handshake[index], ":E", 2);
+		if (prefix_only ? strncmp(command, handshake[index], strlen(handshake[index])) : strcmp(command, handshake[index])) {
+			fprintf(stderr, "    handshake command %d is '%s', expected '%s'\n", index, command, handshake[index]);
+			matches = false;
+		}
+		index++;
+	}
+	fclose(file);
+	SERIAL_CHECK_TRUE(matches);
+	SERIAL_CHECK_EQ_INT(ARRAY_SIZE(handshake), index);
+	// The polarscope probe writes brightness 0, the property shows what the LED was set to
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_POLARSCOPE_PROPERTY_NAME, MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME, 0, 0.001));
+	// The controller works in JNow only and its state lights are read-only
+	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, find_cached_property(MOUNT_EPOCH_PROPERTY_NAME)->perm);
+	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, find_cached_property(MOUNT_STATE_PROPERTY_NAME)->perm);
+	// Without the AZ/EQ feature bit there is no operating mode, the controller has no custom tracking rate
+	assert_not_defined_property(MOUNT_OPERATING_MODE_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME);
+	assert_not_defined_property(UTC_TIME_PROPERTY_NAME);
+	// The connection options stay defined while disconnected, the mount properties are deleted
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(DEVICE_PORT_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(DEVICE_BAUDRATE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_POLARSCOPE_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_USE_ENCODERS_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, NULL));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "EQ8"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Optional properties follow the feature bits of :q 010000, each one tested with the bit that gates it missing.
+static void synscan_mount_defines_options_from_feature_bits(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	// home indexers only: no encoders, no PPEC
+	SERIAL_CHECK_TRUE(start_feature_simulator(&simulator, "6004", "6004"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	assert_not_defined_property(MOUNT_USE_ENCODERS_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_PEC_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_PEC_TRAINING_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_OPERATING_MODE_PROPERTY_NAME);
+	assert_defined_property(MOUNT_AUTOHOME_PROPERTY_NAME);
+	stop_serial_driver(&synscan_mount);
+	driver_started = false;
+	stop_external_serial_simulator(&simulator);
+	// an AZ/EQ mount with encoders: the operating mode is shown, read-only
+	SERIAL_CHECK_TRUE(start_feature_simulator(&simulator, "600B", "600B"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	assert_defined_property(MOUNT_OPERATING_MODE_PROPERTY_NAME);
+	assert_defined_property(MOUNT_USE_ENCODERS_PROPERTY_NAME);
+	assert_defined_property(MOUNT_PEC_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_AUTOHOME_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_OPERATING_MODE_PROPERTY_NAME) != NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, find_cached_property(MOUNT_OPERATING_MODE_PROPERTY_NAME)->perm);
+	assert_not_defined_property("MOUNT_OPERATING_MODE");
+	assert_not_defined_property("MOUNT_USE_ENCODERS");
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The axis direction of every manual motion on both pier sides in both hemispheres, checked by the readback moving
+// the requested way (north raises DEC, west lowers RA), and a north guide pulse using the direction manual north uses.
+static void synscan_mount_moves_the_requested_way_on_both_pier_sides(void) {
+	static const char *properties[] = { MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME };
+	static const char *items[] = { MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, MOUNT_MOTION_WEST_ITEM_NAME, MOUNT_MOTION_EAST_ITEM_NAME };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	double latitude = NAN;
+	char command[32];
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(connect_sibling_guider());
+	latitude = cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true));
+	for (int hemisphere = 0; hemisphere < 2; hemisphere++) {
+		double sign = hemisphere == 0 ? 1 : -1;
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 40 * sign));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 40 * sign, 0.001));
+		for (int side = 0; side < 2; side++) {
+			double ha = side == 0 ? -2.5 : 2.5;
+			double dec = 30 * sign;
+			SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - ha + 48, 24), dec));
+			double reached_ha = synscan_fresh_hour_angle();
+			double reached_dec = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+			const char *pier = find_cached_item(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME)->sw.value ? "east" : "west";
+			printf("    latitude %+.0f: HA %+.1f h DEC %+.0f reached as HA %+.4f h DEC %+.4f, side of pier %s\n", 40 * sign, ha, dec, reached_ha, reached_dec, pier);
+			SERIAL_CHECK_TRUE(fabs(reached_ha - ha) < 0.01);
+			SERIAL_CHECK_TRUE(fabs(reached_dec - dec) < 0.05);
+			char north_direction = 0;
+			for (int direction = 0; direction < 4; direction++) {
+				bool dec_axis = direction < 2;
+				const char *raw_item = dec_axis ? MOUNT_RAW_COORDINATES_DEC_ITEM_NAME : MOUNT_RAW_COORDINATES_RA_ITEM_NAME;
+				double before = synscan_fresh_raw(raw_item);
+				int mark = synscan_mark(&simulator);
+				SERIAL_CHECK_TRUE(synscan_set_switch(properties[direction], items[direction], true));
+				indigo_usleep(500000);
+				SERIAL_CHECK_TRUE(synscan_set_switch(properties[direction], items[direction], false));
+				double change = synscan_fresh_raw(raw_item) - before;
+				if (!dec_axis) {
+					change = synscan_wrap_hours(change);
+				}
+				SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, dec_axis ? ":G2" : ":G1", command, sizeof(command), NULL) > 0);
+				printf("      %s: %s, %s changed by %+.4f\n", items[direction], command, dec_axis ? "DEC" : "RA", change);
+				switch (direction) {
+					case 0:
+						SERIAL_CHECK_TRUE(change > 0.05);
+						north_direction = command[4];
+						break;
+					case 1:
+						SERIAL_CHECK_TRUE(change < -0.05);
+						break;
+					case 2:
+						SERIAL_CHECK_TRUE(change < -0.003);
+						break;
+					case 3:
+						SERIAL_CHECK_TRUE(change > 0.003);
+						break;
+				}
+			}
+			int mark = synscan_mark(&simulator);
+			SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, sibling_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300));
+			SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":G2", command, sizeof(command), NULL) > 0);
+			printf("      north guide pulse: %s\n", command);
+			SERIAL_CHECK_TRUE(command[4] == north_direction);
+		}
+		// RA tracks forward in the north and backward in the south
+		int mark = synscan_mark(&simulator);
+		SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":G1", command, sizeof(command), NULL) > 0);
+		printf("      tracking: %s\n", command);
+		SERIAL_CHECK_TRUE(command[4] == (hemisphere == 0 ? '0' : '1'));
+		SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	}
+
+cleanup:
+	disconnect_sibling_guider();
+	if (driver_started) {
+		if (!isnan(latitude)) {
+			indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitude);
+			wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitude, 0.001);
+		}
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Slew-rate presets, tracking rates and ST4 guide rates are sent in the controller's units; a reversal stops the
+// axis first, both axes run at once.
+static void synscan_mount_sends_rates_in_axis_units(void) {
+	static const char *presets[] = { MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+	static const double multiples[] = { 2, 825 };
+	static const char *guide_rate_items[] = { MOUNT_GUIDE_RATE_RA_ITEM_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME };
+	static const double guide_rates[][2] = { { 100, 1 }, { 50, 75 } };
+	static const char *guide_rate_commands[][2] = { { ":P10", ":P24" }, { ":P12", ":P21" } };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char command[32], mode[32];
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	for (int i = 0; i < ARRAY_SIZE(presets); i++) {
+		bool high_speed = false;
+		long period = synscan_expected_period(multiples[i], &high_speed);
+		SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, presets[i], true));
+		int mark = synscan_mark(&simulator);
+		SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":G1", mode, sizeof(mode), NULL) > 0);
+		SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":I1", command, sizeof(command), NULL) > 0);
+		printf("    %s: %s %s, expected period %ld in %s speed mode\n", presets[i], mode, command, period, high_speed ? "high" : "low");
+		SERIAL_CHECK_TRUE(mode[3] == (high_speed ? '3' : '1'));
+		SERIAL_CHECK_EQ_INT(period, synscan_command_value(command));
+		SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false));
+	}
+	// a reversal stops the axis before the opposite direction is set
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true));
+	int stop = first_synscan_command_line(&simulator, mark, ":K1");
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":G1", mode, sizeof(mode), NULL) == 1);
+	int reversed = first_synscan_command_line(&simulator, mark, ":G1");
+	printf("    west to east: stop at %d, %s at %d\n", stop, mode, reversed);
+	SERIAL_CHECK_TRUE(stop >= 0 && stop < reversed);
+	SERIAL_CHECK_TRUE(!strcmp(mode, ":G111"));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false));
+	// both axes at once
+	mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":J1", NULL, 0, NULL) == 1);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":J2", NULL, 0, NULL) == 1);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	// tracking rates: the lunar rate is slower, so its period is longer, and the running axis takes it without a stop
+	bool high_speed = false;
+	long sidereal = synscan_start_tracking(&simulator);
+	SERIAL_CHECK_EQ_INT(synscan_expected_period(1, &high_speed), sidereal);
+	mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":I1", command, sizeof(command), NULL) == 1);
+	long lunar = synscan_command_value(command);
+	printf("    sidereal period %ld, lunar period %ld\n", sidereal, lunar);
+	SERIAL_CHECK_TRUE(lunar > sidereal && lunar < sidereal * 1.05);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":K1", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(synscan_ra_runs_at(&simulator, sidereal));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// ST4 guide rate codes 0 (1x) to 4 (1/8x), both ends of the range
+	for (int i = 0; i < 2; i++) {
+		double values[] = { guide_rates[i][0], guide_rates[i][1] };
+		unsigned int revision = property_revision(MOUNT_GUIDE_RATE_PROPERTY_NAME);
+		mark = synscan_mark(&simulator);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_GUIDE_RATE_PROPERTY_NAME, 2, guide_rate_items, values));
+		SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_GUIDE_RATE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+		for (int axis = 0; axis < 2; axis++) {
+			SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, axis == 0 ? ":P1" : ":P2", command, sizeof(command), NULL) == 1);
+			printf("    guide rate %.0f %%: %s\n", values[axis], command);
+			SERIAL_CHECK_TRUE(!strcmp(command, guide_rate_commands[i][axis]));
+		}
+	}
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An abort that lands mid-slew stops both axes once, short of the target, ends the GOTO ALERT and puts RA back on
+// the tracking rate; the next GOTO is accepted.
+static void synscan_mount_aborts_goto_mid_slew(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	long tracking = synscan_start_tracking(&simulator);
+	SERIAL_CHECK_TRUE(tracking > 0);
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double target_ra = fmod(ra + 4, 24);
+	double target_dec = synscan_far_dec(dec, 60);
+	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, target_ra, target_dec));
+	SERIAL_CHECK_TRUE(synscan_wait_for_dec_motion(dec, 3));
+	int mark = synscan_mark(&simulator);
+	unsigned int abort_revision = property_revision(MOUNT_ABORT_MOTION_PROPERTY_NAME);
+	unsigned int alert = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	double requested = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, abort_revision));
+	double answered = indigo_monotonic_time() - requested;
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alert));
+	double first = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double second = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	printf("    abort answered in %.2f s, DEC %.4f and %.4f, target %.4f\n", answered, first, second, target_dec);
+	SERIAL_CHECK_TRUE(answered < 2);
+	SERIAL_CHECK_TRUE(fabs(first - second) < 1e-6);
+	SERIAL_CHECK_TRUE(fabs(second - target_dec) > 1);
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":L1", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	// the mount was tracking, the abort leaves it tracking
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(synscan_ra_runs_at(&simulator, tracking));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_OK_STATE));
+	// the next GOTO is accepted and arrives
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, target_ra, target_dec));
+	SERIAL_CHECK_TRUE(fabs(synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - target_dec) < 0.05);
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An abort while idle leaves the position and tracking as they are; an abort of manual motion stops both axes,
+// releases the motion switches and keeps tracking; fresh motion is accepted afterwards.
+static void synscan_mount_abort_keeps_tracking_and_releases_motion(void) {
+	static const char *motion_items[] = { MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, MOUNT_MOTION_WEST_ITEM_NAME, MOUNT_MOTION_EAST_ITEM_NAME };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	long tracking = synscan_start_tracking(&simulator);
+	SERIAL_CHECK_TRUE(tracking > 0);
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(synscan_abort());
+	SERIAL_CHECK_TRUE(fabs(synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - dec) < 1e-6);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(synscan_ra_runs_at(&simulator, tracking));
+	// manual motion on both axes
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_abort());
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L1", NULL, 0, NULL) + count_synscan_commands(&simulator, mark, ":K1", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL) + count_synscan_commands(&simulator, mark, ":K2", NULL, 0, NULL) > 0);
+	for (int i = 0; i < ARRAY_SIZE(motion_items); i++) {
+		const char *property = i < 2 ? MOUNT_MOTION_DEC_PROPERTY_NAME : MOUNT_MOTION_RA_PROPERTY_NAME;
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(property, motion_items[i], false));
+		SERIAL_CHECK_TRUE(find_cached_property(property)->state != INDIGO_BUSY_STATE);
+	}
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	double first = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double second = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(fabs(first - second) < 1e-6);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(synscan_ra_runs_at(&simulator, tracking));
+	// fresh motion
+	mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":J2", NULL, 0, NULL) == 1);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_MOTION_DEC_PROPERTY_NAME)->state);
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Disconnecting during a GOTO or a park stops the axes before the port closes; the next session starts with nothing
+// BUSY, the motion switches off, the park not reported failed and the axes where they stopped.
+static void stop_on_disconnect(bool park) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double ha = synscan_wrap_hours(synscan_lst() - cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME));
+	if (park) {
+		static const char *items[] = { MOUNT_PARK_POSITION_HA_ITEM_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME };
+		double values[] = { synscan_wrap_hours(ha + 4), synscan_far_dec(dec, 60) };
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, 2, items, values));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	} else {
+		SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(synscan_lst() - ha - 4 + 48, 24), synscan_far_dec(dec, 60)));
+	}
+	SERIAL_CHECK_TRUE(synscan_wait_for_dec_motion(dec, 3));
+	int mark = synscan_mark(&simulator);
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	int ra_stop = first_synscan_command_line(&simulator, mark, ":L1");
+	int dec_stop = first_synscan_command_line(&simulator, mark, ":L2");
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, NULL));
+	int reconnect = first_synscan_command_line(&simulator, mark, ":e1");
+	printf("    %s: RA stopped at %d, DEC at %d, next session from %d\n", park ? "park" : "goto", ra_stop, dec_stop, reconnect);
+	SERIAL_CHECK_TRUE(ra_stop >= 0 && ra_stop < reconnect);
+	SERIAL_CHECK_TRUE(dec_stop >= 0 && dec_stop < reconnect);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME)->sw.value && !find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME)->sw.value && !find_cached_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME)->light.value);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value);
+	// no finalizer of the old session survives to move or complete anything
+	double first = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double second = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(fabs(first - second) < 1e-6);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_mount_stops_goto_on_disconnect(void) {
+	stop_on_disconnect(false);
+}
+
+static void synscan_mount_stops_park_on_disconnect(void) {
+	stop_on_disconnect(true);
+}
+
+// A command of the GOTO sequence the controller refuses ends the GOTO ALERT with the controller's reason, sends no
+// later command of the sequence, keeps the real position, and the next GOTO is accepted.
+static void synscan_mount_refused_goto_ends_alert(void) {
+	static const struct {
+		const char *prefix;
+		const char *reply;
+		const char *reason;
+	} faults[] = {
+		{ ":G1", "!4", "not initialized" },
+		{ ":J1", "!2", "motor not stopped" },
+		{ ":H2", "!0", "unknown command" }
+	};
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	for (int i = 0; i < ARRAY_SIZE(faults); i++) {
+		double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+		double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+		double target_ra = fmod(ra + 0.5, 24);
+		double target_dec = synscan_far_dec(dec, 10);
+		int mark = synscan_mark(&simulator);
+		unsigned int alert = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, faults[i].prefix, faults[i].reply, 1));
+		SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alert));
+		SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+		int refused = first_synscan_command_line(&simulator, mark, faults[i].prefix);
+		int later = synscan_motion_commands(&simulator, refused + 1);
+		double after = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+		printf("    %s refused with %s at line %d: %d later motion commands, DEC %.4f -> %.4f\n", faults[i].prefix, faults[i].reply, refused, later, dec, after);
+		SERIAL_CHECK_EQ_INT(0, later);
+		SERIAL_CHECK_TRUE(observed_message_contains(observed_coordinates_message, faults[i].reason));
+		SERIAL_CHECK_TRUE(fabs(after - dec) < 0.01);
+		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+		SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value);
+		SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+		SERIAL_CHECK_TRUE(fabs(synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - target_dec) < 0.05);
+	}
+
+cleanup:
+	remove_observer();
+	remove_synscan_fault(&simulator);
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A second GOTO while one is running is ignored: one slew command per axis, and the mount ends at the first target.
+static void synscan_mount_ignores_goto_while_busy(void) {
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double target_dec = synscan_far_dec(dec, 50);
+	double second[] = { fmod(ra + 2, 24), synscan_far_dec(dec, 20) };
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(ra + 3, 24), target_dec));
+	SERIAL_CHECK_TRUE(synscan_wait_for_dec_motion(dec, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, second));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	double reached = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	printf("    %d RA and %d DEC slews, DEC %.4f, first target %.4f\n", count_synscan_commands(&simulator, mark, ":H1", NULL, 0, NULL), count_synscan_commands(&simulator, mark, ":H2", NULL, 0, NULL), reached, target_dec);
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":H1", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":H2", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(fabs(reached - target_dec) < 0.05);
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Park slews to the park position and reads it back with tracking off; unpark sends no motion; after a power cycle
+// resets the step counters, the next connection restores the parked position.
+static void synscan_mount_parks_at_park_position_and_restores_it(void) {
+	static const char *items[] = { MOUNT_PARK_POSITION_HA_ITEM_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME };
+	double values[] = { 2.5, 40 };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_start_tracking(&simulator) > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, 2, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, busy));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME, INDIGO_OK_STATE));
+	double ha = synscan_fresh_hour_angle();
+	double dec = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	printf("    parked at HA %.4f h DEC %.4f\n", ha, dec);
+	SERIAL_CHECK_TRUE(fabs(ha - values[0]) < 0.01 && fabs(dec - values[1]) < 0.05);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	// unpark sends no motion command and stays unparked across polls
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_EQ_INT(0, synscan_motion_commands(&simulator, mark));
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":K", NULL, 0, NULL) + count_synscan_commands(&simulator, mark, ":L", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME)->light.value);
+	// the power cycle: a new controller with its counters at the defaults; the saved park position is restored
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	disconnect_serial_device(&synscan_mount);
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":E1", NULL, 0, NULL) == 1 && count_synscan_commands(&simulator, 0, ":E2", NULL, 0, NULL) == 1);
+	ha = synscan_fresh_hour_angle();
+	dec = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	printf("    after the power cycle at HA %.4f h DEC %.4f\n", ha, dec);
+	SERIAL_CHECK_TRUE(fabs(ha - values[0]) < 0.01 && fabs(dec - values[1]) < 0.05);
+
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A park the controller refuses, and a park aborted on the way, end ALERT and unparked, with the reason; no later
+// poll latches parked.
+static void synscan_mount_refused_or_aborted_park_stays_unparked(void) {
+	static const char *items[] = { MOUNT_PARK_POSITION_HA_ITEM_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double ha = synscan_wrap_hours(synscan_lst() - cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME));
+	double values[] = { synscan_wrap_hours(ha + 4), synscan_far_dec(dec, 60) };
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, 2, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	// refused: the DEC mode command of the park sequence
+	unsigned int alert = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":G2", "!2", 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, alert));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(observed_message_contains(observed_park_message, "motor not stopped"));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	// aborted on the way
+	dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(synscan_wait_for_dec_motion(dec, 3));
+	int mark = synscan_mark(&simulator);
+	alert = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(synscan_abort());
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, alert));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L1", NULL, 0, NULL) == 1 && count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL) == 1);
+	double first = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double second = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	printf("    park aborted at DEC %.4f and %.4f, park position %.4f\n", first, second, values[1]);
+	SERIAL_CHECK_TRUE(fabs(first - second) < 1e-6 && fabs(second - values[1]) > 1);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME)->light.value != INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+
+cleanup:
+	remove_observer();
+	remove_synscan_fault(&simulator);
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A failed or malformed position reply makes the poll publish the coordinates ALERT with the last valid values, the
+// next good poll restores OK; at connect, a bad first reading marks only the coordinates and the connection completes.
+static void synscan_mount_publishes_failed_poll_and_recovers(void) {
+	static const char *replies[] = { "!0", "=1" };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j2", "=1", 1));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	printf("    coordinates defined with state %d after a malformed first reading\n", atomic_load(&observed_coordinates_define_state));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, atomic_load(&observed_coordinates_define_state));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < ARRAY_SIZE(replies); i++) {
+		synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+		atomic_store(&observed_coordinates_alert, false);
+		unsigned int ok = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j1", replies[i], 1));
+		for (int j = 0; j < 60 && !atomic_load(&observed_coordinates_alert); j++) {
+			indigo_usleep(50000);
+		}
+		SERIAL_CHECK_TRUE(atomic_load(&observed_coordinates_alert));
+		printf("    reply %s: ALERT with RA %.6f DEC %.6f, the previous publication RA %.6f DEC %.6f\n", replies[i], atomic_load(&observed_alert_ra), atomic_load(&observed_alert_dec), atomic_load(&observed_alert_previous_ra), atomic_load(&observed_alert_previous_dec));
+		SERIAL_CHECK_TRUE(atomic_load(&observed_alert_ra) == atomic_load(&observed_alert_previous_ra));
+		SERIAL_CHECK_TRUE(atomic_load(&observed_alert_dec) == atomic_load(&observed_alert_previous_dec));
+		ok = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, ok));
+		SERIAL_CHECK_TRUE(context.connected);
+	}
+
+cleanup:
+	remove_observer();
+	remove_synscan_fault(&simulator);
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The aux shutter needs a snap port: on a model without one it refuses the connection and defines nothing, and the
+// mount still connects afterwards.
+static void synscan_aux_refuses_connection_without_snap_port(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_model_simulator(&simulator, "25"));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&synscan_aux));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, synscan_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	indigo_usleep(100000);
+	SERIAL_CHECK_TRUE(!connect_serial_device(&synscan_aux, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!context.connected);
+	assert_not_defined_property(CCD_EXPOSURE_PROPERTY_NAME);
+	assert_not_defined_property(CCD_ABORT_EXPOSURE_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, NULL));
+	SERIAL_CHECK_TRUE(wait_for_text_item_value(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "CQ350 Pro"));
+
+cleanup:
+	if (driver_started) {
+		disconnect_serial_device(&synscan_mount);
+		tear_down_serial_driver(&synscan_aux);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The guider keeps pulsing after the mount disconnects; a guider-only session neither polls the mount nor publishes
+// anything for the disconnected mount, also while a decelerating DEC axis is waited for.
+static void synscan_guider_keeps_pulsing_after_mount_disconnects(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--stop-lag", "3", NULL };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(connect_sibling_guider());
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	int updates = context.update_count;
+	int mark = synscan_mark(&simulator);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":j", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, sibling_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 300));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":J2", NULL, 0, NULL) == 1);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":K2", NULL, 0, NULL) >= 1);
+	printf("    %d mount updates and %d updates without definition while the guider pulsed alone\n", context.update_count - updates, updates_without_define());
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":j", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(updates, context.update_count);
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
+	// the mount connects again next to the running guider
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+
+cleanup:
+	disconnect_sibling_guider();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GOTO accepted during a guide pulse takes the axes over: the pulse ends without stopping the slew and the GOTO
+// arrives. A pulse requested while the GOTO runs is refused without a command; the next pulse after it works.
+static void synscan_guider_pulse_and_goto_share_the_axes(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_start_tracking(&simulator) > 0);
+	SERIAL_CHECK_TRUE(connect_sibling_guider());
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double target_dec = synscan_far_dec(dec, 40);
+	// a long north pulse runs, then a GOTO
+	unsigned int revision = atomic_load(&sibling_guide_revision[0]);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&sibling_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2500));
+	for (int i = 0; i < 100 && atomic_load(&sibling_guide_revision[0]) == revision; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, atomic_load(&sibling_guide_state[0]));
+	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(ra + 1, 24), target_dec));
+	// a pulse while the GOTO runs, after its handler has started the axes, is refused and sends nothing
+	SERIAL_CHECK_TRUE(synscan_wait_for_dec_motion(dec, 2));
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, sibling_pulse(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200));
+	SERIAL_CHECK_EQ_INT(0, synscan_motion_commands(&simulator, mark));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < 300 && atomic_load(&sibling_guide_state[0]) == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(10000);
+	}
+	double reached = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	printf("    GOTO during a north pulse reached DEC %.4f, target %.4f, the pulse ended with state %d\n", reached, target_dec, atomic_load(&sibling_guide_state[0]));
+	SERIAL_CHECK_TRUE(atomic_load(&sibling_guide_state[0]) != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(fabs(reached - target_dec) < 0.05);
+	// the guider recovers
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, sibling_pulse(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, sibling_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 200));
+
+cleanup:
+	disconnect_sibling_guider();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Manual motion requested by a client is stopped when that client detaches.
+static void synscan_mount_releases_motion_of_detached_client(void) {
+	indigo_client mover = { .name = "SynScan motion client", .version = INDIGO_VERSION_CURRENT };
+	bool mover_attached = false;
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_attach_client(&mover));
+	mover_attached = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&mover, synscan_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE));
+	int mark = synscan_mark(&simulator);
+	indigo_detach_client(&mover);
+	mover_attached = false;
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":K2", NULL, 0, NULL) >= 1);
+	double first = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double second = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(fabs(first - second) < 1e-6);
+
+cleanup:
+	if (mover_attached) {
+		indigo_detach_client(&mover);
+	}
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
 		return 1;
@@ -1212,6 +2678,8 @@ int main(void) {
 		{ "synscan_mount_hides_autohome_without_both_home_indexers", synscan_mount_hides_autohome_without_both_home_indexers },
 		{ "synscan_mount_uses_aux_encoders_for_coordinates", synscan_mount_uses_aux_encoders_for_coordinates },
 		{ "synscan_mount_tracks_after_coordinate_slew_when_requested", synscan_mount_tracks_after_coordinate_slew_when_requested },
+		{ "synscan_mount_resumes_tracking_after_ra_motion", synscan_mount_resumes_tracking_after_ra_motion },
+		{ "synscan_mount_sync_adds_alignment_point", synscan_mount_sync_adds_alignment_point },
 		{ "synscan_mount_reports_home_state_after_home", synscan_mount_reports_home_state_after_home },
 		{ "synscan_mount_stops_tracking_after_home", synscan_mount_stops_tracking_after_home },
 		{ "synscan_mount_autohome_finds_home_index", synscan_mount_autohome_finds_home_index },
@@ -1223,12 +2691,32 @@ int main(void) {
 		{ "synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates", synscan_guider_finishes_a_dec_pulse_while_the_axis_decelerates },
 		{ "synscan_guider_guides_ra_without_stopping_tracking", synscan_guider_guides_ra_without_stopping_tracking },
 		{ "synscan_guider_pulse_survives_previous_finalizer", synscan_guider_pulse_survives_previous_finalizer },
+		{ "synscan_guider_restores_tracking_after_refused_pulse_end", synscan_guider_restores_tracking_after_refused_pulse_end },
+		{ "synscan_guider_stops_tracking_when_pulse_end_keeps_failing", synscan_guider_stops_tracking_when_pulse_end_keeps_failing },
+		{ "synscan_guider_restores_tracking_after_refused_pulse_start", synscan_guider_restores_tracking_after_refused_pulse_start },
 		{ "synscan_aux_passes_shutter_compliance_checks", synscan_aux_passes_shutter_compliance_checks },
 		{ "synscan_mount_disconnects_after_serial_loss", synscan_mount_disconnects_after_serial_loss },
 		{ "synscan_mount_reports_failed_serial_connection", synscan_mount_reports_failed_serial_connection },
 		{ "synscan_mount_connects_with_explicit_udp_url", synscan_mount_connects_with_explicit_udp_url },
 		{ "synscan_mount_survives_lost_udp_replies", synscan_mount_survives_lost_udp_replies },
-		{ "synscan_mount_connects_with_udp_autodetection", synscan_mount_connects_with_udp_autodetection }
+		{ "synscan_mount_connects_with_udp_autodetection", synscan_mount_connects_with_udp_autodetection },
+		{ "synscan_mount_reports_identity_and_handshake", synscan_mount_reports_identity_and_handshake },
+		{ "synscan_mount_defines_options_from_feature_bits", synscan_mount_defines_options_from_feature_bits },
+		{ "synscan_mount_moves_the_requested_way_on_both_pier_sides", synscan_mount_moves_the_requested_way_on_both_pier_sides },
+		{ "synscan_mount_sends_rates_in_axis_units", synscan_mount_sends_rates_in_axis_units },
+		{ "synscan_mount_aborts_goto_mid_slew", synscan_mount_aborts_goto_mid_slew },
+		{ "synscan_mount_abort_keeps_tracking_and_releases_motion", synscan_mount_abort_keeps_tracking_and_releases_motion },
+		{ "synscan_mount_stops_goto_on_disconnect", synscan_mount_stops_goto_on_disconnect },
+		{ "synscan_mount_stops_park_on_disconnect", synscan_mount_stops_park_on_disconnect },
+		{ "synscan_mount_refused_goto_ends_alert", synscan_mount_refused_goto_ends_alert },
+		{ "synscan_mount_ignores_goto_while_busy", synscan_mount_ignores_goto_while_busy },
+		{ "synscan_mount_parks_at_park_position_and_restores_it", synscan_mount_parks_at_park_position_and_restores_it },
+		{ "synscan_mount_refused_or_aborted_park_stays_unparked", synscan_mount_refused_or_aborted_park_stays_unparked },
+		{ "synscan_mount_publishes_failed_poll_and_recovers", synscan_mount_publishes_failed_poll_and_recovers },
+		{ "synscan_aux_refuses_connection_without_snap_port", synscan_aux_refuses_connection_without_snap_port },
+		{ "synscan_guider_keeps_pulsing_after_mount_disconnects", synscan_guider_keeps_pulsing_after_mount_disconnects },
+		{ "synscan_guider_pulse_and_goto_share_the_axes", synscan_guider_pulse_and_goto_share_the_axes },
+		{ "synscan_mount_releases_motion_of_detached_client", synscan_mount_releases_motion_of_detached_client }
 	};
 	int result = 0;
 	const char *filter = getenv("INDIGO_TEST_FILTER");

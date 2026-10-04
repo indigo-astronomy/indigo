@@ -15,7 +15,7 @@ Driver: `indigo_mount_ioptron` (generated from `indigo_mount_ioptron.driver`,
 defect fixes below). Exposes a **mount** logical device and a **guider** logical
 device sharing the same serial connection. Protocol dialects (enum
 `protocol_type`): `HC_8406`, `HC_8407`, `V1_0`, `V2_0`, `V2_5`, `V3_0`, chosen
-either by the persistent `PROTOCOL_VERSION` switch or by autodetection
+either by the persistent `X_PROTOCOL_VERSION` switch or by autodetection
 (`:MountInfo#` product code + `:FW1#` firmware matched against the `PRODUCTS`
 table, with `:GLS#` length as a fallback discriminator). Serial transactions run
 on the shared device queue; polling (`mount_timer_callback`) and guide-pulse
@@ -119,7 +119,7 @@ electrical timing) is documented as a gap, not claimed.
   manual motion (`:m..#`) + abort, park/unpark, home + home-search, reconnect:
   `ioptron_hc8406_profile`, `ioptron_hc8407_profile`, `ioptron_protocol_1_profile`,
   `ioptron_protocol_2_profile`, `ioptron_protocol_25_profile`, `ioptron_protocol_3_profile`.
-- Manual `PROTOCOL_VERSION` selection of every dialect: `ioptron_forced_protocol_selection`.
+- Manual `X_PROTOCOL_VERSION` selection of every dialect: `ioptron_forced_protocol_selection`.
 - GOTO progress, abort mid-slew (not reaching target), fresh GOTO after abort:
   `ioptron_goto_progress_abort_and_restart`.
 - Failed slew reply, dropped slew reply, failed SYNC, each recovering:
@@ -149,7 +149,7 @@ see guider note below). No iOptron hardware was available.
    failure. Fix: return `true` on a successful `:SE?#` and derive `slewing` from the
    reply (matching the other dialects). Regression: `ioptron_hc8406_profile` and
    `ioptron_forced_protocol_selection` connect the idle 8406 dialect.
-3. **PROTOCOL_VERSION only defined after connect** (fixed, user-directed). The
+3. **PROTOCOL_VERSION (now `X_PROTOCOL_VERSION`) only defined after connect** (fixed, user-directed). The
    persistent protocol switch was defined in the connection handler, so a dialect
    could not be selected before connecting (required for the non-autodetectable HC
    controllers). Fix: `always_defined = true` on the `MOUNT_PROTOCOL` switch;
@@ -187,9 +187,7 @@ Remaining observations (not changed): 8406 `:STRn#` orders solar/lunar
 differently from INDIGO but `MOUNT_TRACK_RATE` stays hidden on 8406; 2.5
 meridian handling is implemented but hidden because product support cannot be
 distinguished; CEM60/iEQ45Pro fw 171001 → 3.0 rows are undocumented in the
-bundled PDFs; `PROTOCOL_VERSION`, `MOUNT_MERIDIAN_HANDLING` and
-`MOUNT_MERIDIAN_LIMIT` predate the `X_` naming rule and are kept for
-compatibility; `indigo_uni_is_valid()` probes TCP with a zero-length `send()`
+bundled PDFs; `indigo_uni_is_valid()` probes TCP with a zero-length `send()`
 that does not report a peer close, so a lost `ieq://` session is not
 auto-disconnected (commands fail with ALERT and a manual reconnect works;
 framework change out of scope); guide-pulse completion is published ~50 ms
@@ -338,7 +336,7 @@ bundled documents.
 
 | Acceptance area | Cases |
 | --- | --- |
-| Metadata, base properties, always-defined `PROTOCOL_VERSION` | `ioptron_driver_metadata_and_base_properties` |
+| Metadata, base properties, always-defined `X_PROTOCOL_VERSION` | `ioptron_driver_metadata_and_base_properties` |
 | Dialect profiles: identity, visibility/counts, initial guide rate, exact SYNC/GOTO commands, J2000 readback, tracking after GOTO, disconnect/reconnect, zero protocol violations | `ioptron_profile_8406/8407/0100/0200/0205/0300` |
 | Manual dialect selection and wrong-dialect rollback | `ioptron_forced_protocol_selection` |
 | Product table and firmware/status fallbacks, encoders, SmartEQ, AZ Mount Pro | `ioptron_detect_*` (12) |
@@ -959,3 +957,78 @@ MIGRATION_STATUS.md hardware-free count 109 -> 118 (115 serial cases and the 3 o
 
 Simulated tests: **115 run, 115 passed** (second recorded run; the first recorded run had 22 failures,
 fixed as described in step 4). Hardware tests: **0 run, 0 passed**.
+
+## Mount test standard coverage (2026-10-04, 3.0.0.63)
+
+The suite was checked against the "Mount Drivers" chapter and the "Mount Driver Test Standard" of
+`indigo_test/DRIVER_TESTING_RULES.md` (and the guider standard for pulse guiding). Simulator additions:
+`--meridian <fll>` (initial `:GMT#` state) and the control line `@halt` (the controller ends a running slew
+where it is, as on a limit stop or a hand controller stop).
+
+Defects found by the new assertions and fixed in version 63 (`indigo_mount_ioptron.driver`, regenerated):
+
+1. RA just below the wrap point was rounded to 24 h (`Sr 24:00:00`, `Sr86400000`, `SRA129600000`) and refused
+   by the mount; `ioptron_device_ra()` rounds to the device unit and wraps to 0 (SYNC, GOTO, V1/V2 park).
+2. An aborted GOTO ended `MOUNT_EQUATORIAL_COORDINATES` OK; it now ends ALERT ("Slew aborted") and stays ALERT
+   while the mount decelerates; an abort while idle no longer touches the coordinate state.
+3. A GOTO the controller ended short of the target ended OK; completion now compares the readback with the
+   target (`RA_MIN_DIF`/`DEC_MIN_DIF`, judged on a readback taken after the status reported the end) and ends
+   ALERT with "Slew ended short of the target". The SLEW light returns to IDLE when the slew ends (it was
+   ALERT after a failed GOTO).
+4. A refused slew sent no reason; the controller's reason (`0`, HC8406 `1`/`2`) now reaches the client.
+5. Disconnect during a GOTO, park, homing or arrow motion left the mount moving; it now sends `:Q#` first.
+   HC8406 guider pulses (arrow motion stopped by the finalizer) are stopped with `:Qn#`/`:Qe#` when the guider
+   disconnects during a pulse.
+6. A park or homing the mount acknowledged but never started (or stopped short) stayed BUSY forever; it ends
+   ALERT after 5 s without motion (or when the motion stops) and shows unparked / AWAY.
+7. `MOUNT_PARK_SET.CURRENT` stayed ON after a successful set (momentary action).
+8. The meridian treatment was not read at connect (driver defaults published); `:GMT#` is read on protocol
+   3.0, and a refused meridian change shows the controller's setting.
+9. A refused tracking rate left the rejected rate displayed; the rate the mount uses is read back.
+10. `:RR` of a custom rate truncated (1.9 sent as `RR18999`); now rounded.
+11. A guide rate changed through the mount was not reflected on the guider and vice versa.
+12. The status poll republished `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_PARK`, `MOUNT_HOME` and
+    `MOUNT_SIDE_OF_PIER` every second; they are now published only when they change.
+
+| Rule | Test |
+| --- | --- |
+| Connect handshake order, no controller writes at connect | `ioptron_connect_handshake_order_0300`, `_8407` |
+| No update of an undefined property across connect/disconnect/reconnect | `ioptron_profile_*` |
+| RA rounding carry at the wrap point | `ioptron_coordinate_boundaries_8406/8407/0100/0205/0300` |
+| Aborted GOTO ALERT, never OK, stop sent once | `ioptron_goto_progress_abort_and_restart` |
+| Abort while idle keeps position, tracking and coordinate state | `ioptron_idle_abort_keeps_position_and_tracking` |
+| Frozen status keeps GOTO BUSY, slew ended short ALERT, next GOTO accepted | `ioptron_goto_completion_follows_slew_status` |
+| Refusal reason reaches the client | `ioptron_goto_below_altitude_limit_rejected`, `ioptron_goto_refusal_reason_8406` |
+| Disconnect during GOTO/park stops the mount, clean next session, interrupted park not failed | `ioptron_disconnect_during_motion_stops_mount` |
+| Park/home never started ends ALERT | `ioptron_park_and_home_never_started_alert` |
+| Park light and coordinates BUSY while parking, refused parked requests keep switches, unpark sends no motion and stays unparked | `ioptron_park_workflow_*` |
+| Homing keeps park state | `ioptron_home_workflow_*` |
+| Momentary PARK_SET | `ioptron_park_set_positions_0205/0300` |
+| Prime meridian / zero-degree signs, one-item site change resends the other, site kept across reconnect | `ioptron_site_signs_8407/0200/0300` |
+| Both ends of scaled guide and custom rate ranges on the wire | `ioptron_scaled_range_ends_0300` |
+| Meridian treatment read at connect, refused change shows device state | `ioptron_meridian_treatment_read_at_connect` |
+| Refused tracking rate shows device rate | `ioptron_track_rate_refusal_shows_device_rate_8407/0200/0300` |
+| External change published once | `ioptron_external_changes_published_once` |
+| RA pulse displacement, tracking kept on/off | `ioptron_guider_zero_requests_and_pulse_mechanics` |
+| Guider disconnect during HC8406 pulse | `ioptron_guider_disconnect_stops_hc8406_pulse` |
+| Guide rate shared by mount and guider | `ioptron_guide_rate_shared_by_mount_and_guider` |
+| Manual motion released when its client detaches | `ioptron_motion_released_when_client_detaches` |
+| SHUTDOWN refused while connected | `ioptron_shutdown_refused_while_connected` |
+
+Recorded run 2026-10-04 18:52 (mac arm64, simulator): 136/136 OK. Test cases 115 -> 136 (plus 3 opt-in TCP).
+
+Not covered, with reason: direction/sign per pier side and hemisphere (the mount maps `:mn`/`:ms` itself, the
+driver has no mapping); PEC refusal showing the device state (no PEC state readback in the protocol); a
+setting acknowledged but not kept (the simulated controller always keeps it, no readback after write in the
+protocol flow); requests versus poll for tracking/park/home (documented above with instrumented evidence, the
+window has no I/O); alignment, time-zone order (protocol does not mandate one) and device options the driver
+does not implement.
+
+## Custom property names (3.0.0.64)
+
+The driver-specific properties now carry the required `X_` prefix (user-approved client-visible rename, no
+backward-compatible alias): `PROTOCOL_VERSION` -> `X_PROTOCOL_VERSION`, `MOUNT_MERIDIAN_HANDLING` ->
+`X_MOUNT_MERIDIAN_HANDLING`, `MOUNT_MERIDIAN_LIMIT` -> `X_MOUNT_MERIDIAN_LIMIT`. Items are unchanged. A saved
+protocol selection stored under the old name is not loaded; select the dialect again and save the
+configuration. The integration (`ioptron_driver_metadata_and_base_properties` and the per-dialect profiles)
+and MountSim (`ioptron_park_home_options`) tests assert that the unprefixed names are never defined.

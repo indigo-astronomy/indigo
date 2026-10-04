@@ -1108,12 +1108,10 @@ static void proxy_device_state_failed(indigo_device *device, alpaca_result resul
 // Older devices: "connected" is read as the sign of life and the class reads what it needs with requests of its own.
 // on_poll is called on every tick the server answered, also when the answer was an error: only a request without an answer
 // (a transport error, counted by system_alpaca_check()) skips it, because every further request of the tick would wait for its timeout.
-static void proxy_poll_handler(indigo_device *device) {
+// Read the state and serve it to on_poll of the primary device and, with secondary, of the secondary device. A lost connection is only
+// noted (offline, not_connected); the caller handles it.
+static void proxy_poll_once(indigo_device *device, bool secondary) {
 	alpaca_result result = ALPACA_OK;
-	// the session is tested, not CONNECTION: a bus thread changes CONNECTION when a disconnect is requested
-	if (!system_alpaca_is_active(device) || PRIVATE_DATA->detaching) {
-		return;
-	}
 	if (!PRIVATE_DATA->offline && !PRIVATE_DATA->not_connected) {
 		if (PRIVATE_DATA->has_device_state) {
 			result = system_alpaca_check(device, alpaca_get_device_state(PRIVATE_DATA->channel, &PRIVATE_DATA->state));
@@ -1144,12 +1142,20 @@ static void proxy_poll_handler(indigo_device *device) {
 		if (PRIVATE_DATA->device_class->on_poll != NULL) {
 			PRIVATE_DATA->device_class->on_poll(device);
 		}
-		if (PRIVATE_DATA->secondary != NULL && system_alpaca_is_active(PRIVATE_DATA->secondary) && PRIVATE_DATA->secondary_class->on_poll != NULL) {
+		if (secondary && PRIVATE_DATA->secondary != NULL && system_alpaca_is_active(PRIVATE_DATA->secondary) && PRIVATE_DATA->secondary_class->on_poll != NULL) {
 			PRIVATE_DATA->secondary_class->on_poll(PRIVATE_DATA->secondary);
 		}
 		PRIVATE_DATA->polling = false;
 	}
 	PRIVATE_DATA->state.count = 0;
+}
+
+static void proxy_poll_handler(indigo_device *device) {
+	// the session is tested, not CONNECTION: a bus thread changes CONNECTION when a disconnect is requested
+	if (!system_alpaca_is_active(device) || PRIVATE_DATA->detaching) {
+		return;
+	}
+	proxy_poll_once(device, true);
 	if (PRIVATE_DATA->not_connected) {
 		proxy_connection_lost(device, "the device was disconnected on the Alpaca server");
 	} else if (PRIVATE_DATA->offline) {
@@ -1157,6 +1163,16 @@ static void proxy_poll_handler(indigo_device *device) {
 	} else {
 		indigo_execute_handler_in(device, system_alpaca_poll_interval(PRIVATE_DATA->operations > 0), proxy_poll_handler);
 	}
+}
+
+// Only the state of the primary device is read: a lost connection is left to the regular tick, which takes the secondary device away,
+// and the caller may be a handler of that secondary device.
+void system_alpaca_poll_now(indigo_device *device) {
+	indigo_device *primary = PRIVATE_DATA->device;
+	if (!system_alpaca_is_active(primary) || PRIVATE_DATA->detaching) {
+		return;
+	}
+	proxy_poll_once(primary, false);
 }
 
 static const char *proxy_info_model(indigo_device *device) {

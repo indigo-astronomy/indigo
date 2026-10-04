@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -76,16 +76,16 @@
 #define SYNSCAN_SIDE_EAST    0
 #define SYNSCAN_SIDE_WEST    1
 
-#define MOUNT_POLARSCOPE_PROPERTY_NAME "POLARSCOPE"
+#define MOUNT_POLARSCOPE_PROPERTY_NAME "X_POLARSCOPE"
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME "BRIGHTNESS"
-#define MOUNT_USE_ENCODERS_PROPERTY_NAME "MOUNT_USE_ENCODERS"
+#define MOUNT_USE_ENCODERS_PROPERTY_NAME "X_MOUNT_USE_ENCODERS"
 #define MOUNT_USE_RA_ENCODER_ITEM_NAME "RA"
 #define MOUNT_USE_DEC_ENCODER_ITEM_NAME "DEC"
-#define MOUNT_AUTOHOME_PROPERTY_NAME "MOUNT_AUTOHOME"
+#define MOUNT_AUTOHOME_PROPERTY_NAME "X_MOUNT_AUTOHOME"
 #define MOUNT_AUTOHOME_ITEM_NAME "AUTOHOME"
-#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME "MOUNT_AUTOHOME_SETTINGS"
+#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME "DEC_OFFSET"
-#define MOUNT_OPERATING_MODE_PROPERTY_NAME "MOUNT_OPERATING_MODE"
+#define MOUNT_OPERATING_MODE_PROPERTY_NAME "X_MOUNT_OPERATING_MODE"
 #define POLAR_MODE_ITEM_NAME "POLAR"
 #define ALTAZ_MODE_ITEM_NAME "ALTAZ"
 
@@ -223,9 +223,9 @@ typedef struct {
 	int guide_ra_direction;
 	int guide_dec_direction;
 	double current_tracking_rate;
-	bool southern_hemisphere;
 	bool ra_encoder;
 	bool dec_encoder;
+	int last_error;
 	//- data
 } synscan_private_data;
 
@@ -340,6 +340,7 @@ static synscan_response_result synscan_read_response(indigo_device *device, char
 	buffer[count] = 0;
 	if (buffer[0] == '!') {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SynScan command failed with error %.2s", buffer + 1);
+		PRIVATE_DATA->last_error = buffer[1] >= '0' && buffer[1] <= '9' ? buffer[1] - '0' : -1;
 		return SYNSCAN_RESPONSE_COMMAND_ERROR;
 	}
 	if (buffer[0] != '=' || buffer[count - 1] != '\r') {
@@ -363,6 +364,7 @@ static bool synscan_command(indigo_device *device, const char *command, char *re
 	}
 	bool udp = PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE;
 	int attempts = udp ? SYNSCAN_UDP_COMMAND_ATTEMPTS : 1;
+	PRIVATE_DATA->last_error = -1;
 	char buffer[32];
 	snprintf(buffer, sizeof(buffer), "%s\r", command);
 	for (int attempt = 0; attempt < attempts; attempt++) {
@@ -389,9 +391,41 @@ static bool synscan_command(indigo_device *device, const char *command, char *re
 	return false;
 }
 
+// A reply payload of exactly `length` hex digits; a short or garbled reply is refused instead of being decoded.
+static bool synscan_valid_payload(const char *command, const char *response, size_t length) {
+	if (strlen(response) != length || strspn(response, "0123456789ABCDEFabcdef") != length) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Malformed SynScan reply to %s: '%s'", command, response);
+		return false;
+	}
+	return true;
+}
+
+// The reason of the last failed command, as the motor controller command set lists its error codes.
+static const char *synscan_failure_reason(indigo_device *device) {
+	switch (PRIVATE_DATA->last_error) {
+		case 0:
+			return "unknown command";
+		case 1:
+			return "command length error";
+		case 2:
+			return "motor not stopped";
+		case 3:
+			return "invalid character";
+		case 4:
+			return "not initialized";
+		case 5:
+			return "driver sleeping";
+		case 7:
+			return "PEC training is running";
+		case 8:
+			return "no valid PEC data";
+	}
+	return "no valid reply";
+}
+
 static bool synscan_command_with_long_result(indigo_device *device, const char *command, long *value) {
 	char response[16] = { 0 };
-	if (!synscan_command(device, command, response, sizeof(response))) {
+	if (!synscan_command(device, command, response, sizeof(response)) || !synscan_valid_payload(command, response, 6)) {
 		return false;
 	}
 	if (value != NULL) {
@@ -402,7 +436,7 @@ static bool synscan_command_with_long_result(indigo_device *device, const char *
 
 static bool synscan_command_with_code_result(indigo_device *device, const char *command, long *value) {
 	char response[16] = { 0 };
-	if (!synscan_command(device, command, response, sizeof(response))) {
+	if (!synscan_command(device, command, response, sizeof(response)) || !synscan_valid_payload(command, response, 2)) {
 		return false;
 	}
 	if (value != NULL) {
@@ -436,7 +470,7 @@ static bool synscan_axis_status_query(indigo_device *device, synscan_axis axis, 
 	char response[16] = { 0 };
 	char buffer[8];
 	snprintf(buffer, sizeof(buffer), ":f%c", axis);
-	if (!synscan_command(device, buffer, response, sizeof(response))) {
+	if (!synscan_command(device, buffer, response, sizeof(response)) || !synscan_valid_payload(buffer, response, 3)) {
 		return false;
 	}
 	if (value != NULL) {
@@ -519,8 +553,14 @@ static double synscan_tracking_rate(indigo_device *device) {
 	return SIDEREAL_RATE;
 }
 
+// Read from the site at every use: a latitude set after connecting must not leave RA turning the northern way.
+static bool synscan_southern_hemisphere(indigo_device *device) {
+	device = device->master_device;
+	return MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+}
+
 static long synscan_rate_to_period(indigo_device *device, synscan_axis axis, double rate, bool *high_speed, synscan_direction *direction) {
-	if (PRIVATE_DATA->southern_hemisphere && axis == SYNSCAN_AXIS_RA) {
+	if (synscan_southern_hemisphere(device) && axis == SYNSCAN_AXIS_RA) {
 		rate = -rate;
 	}
 	*direction = rate < 0 ? SYNSCAN_DIRECTION_REVERSE : SYNSCAN_DIRECTION_FORWARD;
@@ -616,6 +656,12 @@ static bool synscan_wait_axis_stopped(indigo_device *device, synscan_axis axis, 
 
 static bool synscan_slew_axis_to_steps(indigo_device *device, synscan_axis axis, long target) {
 	long current = 0;
+	// the slew owns the axis from now on, a guide pulse running on it ends without touching it
+	if (axis == SYNSCAN_AXIS_RA) {
+		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_GOTO;
+	} else {
+		PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_GOTO;
+	}
 	if (!synscan_stop_axis_and_wait(device, axis, NULL) || !synscan_axis_long_query(device, 'j', axis, &current)) {
 		return false;
 	}
@@ -847,7 +893,7 @@ static void synscan_update_mount_state(indigo_device *device) {
 
 static void synscan_clear_tracking_state(indigo_device *device) {
 	PRIVATE_DATA->current_tracking_rate = 0;
-	if (PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_TRACKING || PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_GUIDING) {
+	if (PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_TRACKING || PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_GUIDING || PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_GOTO) {
 		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 	}
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
@@ -855,6 +901,29 @@ static void synscan_clear_tracking_state(indigo_device *device) {
 	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+	}
+}
+
+// Puts RA back on the tracking rate after a failed command left the axis in an unknown state: the cached axis
+// configuration is forgotten, so the axis is stopped and gets the full mode, period and start sequence.
+static bool synscan_restore_tracking(indigo_device *device, double rate) {
+	synscan_invalidate_axis_config(device, SYNSCAN_AXIS_RA);
+	if (!synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, rate)) {
+		return false;
+	}
+	PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
+	return true;
+}
+
+// RA could not be put back on the tracking rate, the switch shows that the mount does not track; device is the mount.
+static void synscan_tracking_lost(indigo_device *device, const char *message) {
+	PRIVATE_DATA->current_tracking_rate = 0;
+	PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+	// A pending request owns the state, its handler reads the target and publishes the result
+	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, message);
 	}
 }
 
@@ -1030,7 +1099,8 @@ static bool synscan_update_mount_coordinates(indigo_device *device) {
 	// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
 	// so resolve the master device before touching any MOUNT_* property.
 	device = device->master_device;
-	if (!synscan_read_mount_coordinates(device)) {
+	// A guider-only session or a connection in progress has no mount properties to publish
+	if (!IS_CONNECTED || !synscan_read_mount_coordinates(device)) {
 		return false;
 	}
 	indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
@@ -1048,6 +1118,14 @@ static bool synscan_update_mount_coordinates(indigo_device *device) {
 	}
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 	return true;
+}
+
+// The sign of a DEC axis rate that moves north. The axis counts declination the other way on the other side of the
+// pier (synscan_encoder_to_eq), in both hemispheres: north is a reverse step on the west side, a forward step on
+// the east side. Manual motion and guide pulses use the same mapping.
+static double synscan_dec_north_sign(indigo_device *device) {
+	device = device->master_device;
+	return MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value ? 1 : -1;
 }
 
 static void synscan_set_coordinate_state(indigo_device *device, indigo_property_state state) {
@@ -1346,9 +1424,10 @@ static bool synscan_configure(indigo_device *device) {
 	MOUNT_USE_ENCODERS_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER));
 	MOUNT_PEC_PROPERTY->hidden = MOUNT_PEC_TRAINING_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_PPEC) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_PPEC));
 	MOUNT_AUTOHOME_PROPERTY->hidden = MOUNT_AUTOHOME_SETTINGS_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_HOME_INDEXER) && (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_HOME_INDEXER));
+	// The probe sets the brightness, the property shows the value the LED now has
 	MOUNT_POLARSCOPE_PROPERTY->hidden = !synscan_set_polarscope_brightness(device, 0);
 	if (!MOUNT_POLARSCOPE_PROPERTY->hidden) {
-		MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value = 255;
+		MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value = MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.target = 0;
 	}
 	if (!MOUNT_PEC_PROPERTY->hidden) {
 		indigo_set_switch(MOUNT_PEC_PROPERTY, PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
@@ -1383,11 +1462,14 @@ static bool synscan_configure(indigo_device *device) {
 	PRIVATE_DATA->parked = false;
 	PRIVATE_DATA->homed = false;
 	PRIVATE_DATA->current_tracking_rate = 0;
-	PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+	// A bad first reading marks only the coordinates, the first poll reads them again; a lost port fails the connection
 	if (!synscan_read_mount_coordinates(device)) {
-		return false;
+		if (PRIVATE_DATA->handle == NULL) {
+			return false;
+		}
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	return true;
 }
@@ -1555,7 +1637,6 @@ static void mount_equatorial_coordinates_finalizer(indigo_device *device) {
 	PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
 	if (ok && MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
-		PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
 		PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, ok ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
@@ -1637,10 +1718,21 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, remaining, guider_guide_ra_finalizer);
 		return;
 	}
-	bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->guide_ra_resume_rate);
+	// A GOTO, abort or manual motion that took the axis over since the pulse started owns it now
+	bool guiding = PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_GUIDING;
+	bool ok = !guiding || synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->guide_ra_resume_rate);
 	PRIVATE_DATA->guide_ra_deadline = 0;
 	PRIVATE_DATA->guide_ra_direction = 0;
-	PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
+	if (guiding && ok) {
+		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
+	} else if (guiding) {
+		// the pulse ran its time, it failed only if the axis cannot be put back on the tracking rate
+		ok = synscan_restore_tracking(device, PRIVATE_DATA->guide_ra_resume_rate);
+		if (!ok) {
+			synscan_tracking_lost(device->master_device, "Failed to resume tracking after RA guide pulse.");
+		}
+		synscan_update_mount_state(device->master_device);
+	}
 	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -1654,10 +1746,14 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, remaining, guider_guide_dec_finalizer);
 		return;
 	}
-	bool ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_DEC, NULL);
+	// A GOTO, abort or manual motion that took the axis over since the pulse started owns it now
+	bool ok = true;
+	if (PRIVATE_DATA->dec_axis_mode == SYNSCAN_AXIS_GUIDING) {
+		ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_DEC, NULL);
+		PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+	}
 	PRIVATE_DATA->guide_dec_deadline = 0;
 	PRIVATE_DATA->guide_dec_direction = 0;
-	PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
 	// only the values, the target of a pulse requested while this one ends is read by its handler
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -1677,7 +1773,11 @@ static void mount_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED || PRIVATE_DATA->handle == NULL) {
 		return;
 	}
-	synscan_update_mount_coordinates(device);
+	// A failed reading keeps the last valid coordinates with ALERT, the next good poll restores the state
+	if (!synscan_update_mount_coordinates(device) && PRIVATE_DATA->handle != NULL && IS_CONNECTED) {
+		synscan_set_coordinate_state(device, INDIGO_ALERT_STATE);
+		synscan_update_mount_state(device);
+	}
 	indigo_execute_handler_in(device, PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? 1 : 0.5, mount_timer_callback);
 	//- mount.on_timer
 }
@@ -1715,7 +1815,19 @@ static void mount_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ mount.on_disconnect
+		// A GOTO, park, home or manual motion of this session does not outlive it: the axes are stopped before
+		// the port closes, and the next session starts with the motion switches off.
+		if (PRIVATE_DATA->handle != NULL && (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE || PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_MANUAL_SLEWING || PRIVATE_DATA->dec_axis_mode == SYNSCAN_AXIS_MANUAL_SLEWING)) {
+			PRIVATE_DATA->abort_motion = true;
+			synscan_axis_command(device, 'L', SYNSCAN_AXIS_RA);
+			synscan_axis_command(device, 'L', SYNSCAN_AXIS_DEC);
+			synscan_invalidate_axis_configs(device);
+			PRIVATE_DATA->ra_axis_mode = PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+		}
 		PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+		MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
+		MOUNT_HOME_ITEM->sw.value = false;
 		//- mount.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -1793,9 +1905,12 @@ static void mount_park_handler(indigo_device *device) {
 			PRIVATE_DATA->motion_deadline = synscan_now() + 300;
 			indigo_execute_handler_in(device, 0.2, mount_park_finalizer);
 		} else {
+			// the reason is read before the stop commands replace it
+			const char *reason = synscan_failure_reason(device);
 			mount_motion_failed(device);
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, "Park failed, %s.", reason);
+			synscan_update_mount_state(device);
 		}
 	}
 	//- mount.MOUNT_PARK.on_change
@@ -1821,9 +1936,11 @@ static void mount_home_handler(indigo_device *device) {
 			PRIVATE_DATA->motion_deadline = synscan_now() + 300;
 			indigo_execute_handler_in(device, 0.2, mount_home_finalizer);
 		} else {
+			const char *reason = synscan_failure_reason(device);
 			mount_motion_failed(device);
 			MOUNT_HOME_ITEM->sw.value = false;
-			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_ALERT_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_ALERT_STATE, "Home failed, %s.", reason);
+			synscan_update_mount_state(device);
 		}
 	}
 	//- mount.MOUNT_HOME.on_change
@@ -1836,11 +1953,8 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		return;
 	}
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
-	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_OK_STATE, NULL);
-	} else if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
+	// A sync never reaches this handler, so a request that did not claim the slew is refused.
+	if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	} else {
 		long ra_target = 0;
@@ -1854,8 +1968,10 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			PRIVATE_DATA->motion_deadline = synscan_now() + 300;
 			indigo_execute_handler_in(device, 0.2, mount_equatorial_coordinates_finalizer);
 		} else {
+			const char *reason = synscan_failure_reason(device);
 			mount_motion_failed(device);
-			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, "Slew failed, %s.", reason);
+			synscan_update_mount_state(device);
 		}
 	}
 	return;
@@ -1878,7 +1994,6 @@ static void mount_tracking_handler(indigo_device *device) {
 	bool ok = true;
 	if (on) {
 		PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
-		PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
 		PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
 	} else {
@@ -1903,7 +2018,6 @@ static void mount_track_rate_handler(indigo_device *device) {
 	bool ok = true;
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
-		PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
 	}
 	if (!ok) {
@@ -1937,6 +2051,19 @@ static void mount_motion_ra_handler(indigo_device *device) {
 	} else {
 		ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, NULL);
 		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+		// Manual motion only interrupts tracking, the switch stays on, so RA goes back to the tracking rate.
+		// If it cannot, the switch is turned off to show the axis is not tracking.
+		if (MOUNT_TRACKING_ON_ITEM->sw.value && !PRIVATE_DATA->parked) {
+			PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+			if (ok && synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate)) {
+				PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_TRACKING;
+			} else {
+				ok = synscan_restore_tracking(device, PRIVATE_DATA->current_tracking_rate);
+				if (!ok) {
+					synscan_tracking_lost(device, "Failed to resume tracking after manual motion.");
+				}
+			}
+		}
 	}
 	if (!ok) {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1960,11 +2087,11 @@ static void mount_motion_dec_handler(indigo_device *device) {
 	bool ok = true;
 	double rate = rates[mount_manual_slew_rate_index(device)] * SIDEREAL_RATE;
 	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
-		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, -rate);
+		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, synscan_dec_north_sign(device) * rate);
 		PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_MANUAL_SLEWING;
 		PRIVATE_DATA->homed = false;
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
-		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, rate);
+		ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, -synscan_dec_north_sign(device) * rate);
 		PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_MANUAL_SLEWING;
 		PRIVATE_DATA->homed = false;
 	} else {
@@ -1998,6 +2125,9 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		MOUNT_HOME_ITEM->sw.value = false;
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
+	// A tracking mount stays tracking: the abort stops slews and manual motion, then RA goes back to the
+	// tracking rate. A pending tracking request is carried out by its own handler.
+	bool tracking = MOUNT_TRACKING_ON_ITEM->sw.value && MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE && !PRIVATE_DATA->parked;
 	PRIVATE_DATA->abort_motion = true;
 	synscan_axis_command(device, 'L', SYNSCAN_AXIS_RA);
 	synscan_axis_command(device, 'L', SYNSCAN_AXIS_DEC);
@@ -2007,16 +2137,22 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 	PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
 	PRIVATE_DATA->homed = false;
-	synscan_clear_tracking_state(device);
+	if (tracking) {
+		PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+		if (!synscan_restore_tracking(device, PRIVATE_DATA->current_tracking_rate)) {
+			synscan_tracking_lost(device, "Failed to resume tracking after abort.");
+		}
+	} else {
+		synscan_clear_tracking_state(device);
+	}
 	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
-	if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);
-	}
-	if (MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
-	}
+	// The manual motion switches show the stopped axes
+	MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+	MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
+	INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_RA_PROPERTY, MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(MOUNT_MOTION_DEC_PROPERTY, MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
 	synscan_update_mount_state(device);
 	INDIGO_UPDATE_PROPERTY_STATE(MOUNT_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
 	//- mount.MOUNT_ABORT_MOTION.on_change
@@ -2169,8 +2305,10 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
 		//+ mount.MOUNT_ALIGNMENT_MODE.on_attach
-		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+		// Select before hiding: the switch clears only the visible items, and a CONTROLLER item left on
+		// behind the count bypasses the alignment model.
 		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
+		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
 		//- mount.MOUNT_ALIGNMENT_MODE.on_attach
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
 		//+ mount.MOUNT_ALIGNMENT_SELECT_POINTS.on_attach
@@ -2262,6 +2400,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
 		//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
+		// The controller has no sync of its own, a sync is an alignment point of the framework's model;
+		// the parked mount guard above already refused it on a parked mount.
+		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+			return indigo_mount_change_property(device, client, property);
+		}
 		// Claim the slew before the poll can republish OK over the accepted BUSY state.
 		if (!MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 			PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
@@ -2407,6 +2550,11 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return;
 	}
+	if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE) {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Ignoring RA guide pulse - mount is slewing.");
+		return;
+	}
 	double tracking_rate = PRIVATE_DATA->current_tracking_rate;
 	if (tracking_rate == 0) {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2424,7 +2572,16 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	PRIVATE_DATA->guide_ra_direction = direction;
 	PRIVATE_DATA->guide_ra_resume_rate = tracking_rate;
 	bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, guide_rate);
-	PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_GUIDING : SYNSCAN_AXIS_IDLE;
+	if (ok) {
+		PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_GUIDING;
+	} else {
+		PRIVATE_DATA->guide_ra_deadline = 0;
+		PRIVATE_DATA->guide_ra_direction = 0;
+		if (!synscan_restore_tracking(device, tracking_rate)) {
+			synscan_tracking_lost(device->master_device, "Failed to resume tracking after RA guide pulse.");
+		}
+		synscan_update_mount_state(device->master_device);
+	}
 	GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, ok ? NULL : "Failed to start RA guide pulse.");
 	if (ok) {
@@ -2452,8 +2609,14 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return;
 	}
+	if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE) {
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "Ignoring DEC guide pulse - mount is slewing.");
+		return;
+	}
 	double tracking_rate = PRIVATE_DATA->current_tracking_rate != 0 ? PRIVATE_DATA->current_tracking_rate : SIDEREAL_RATE;
-	double guide_rate = direction * GUIDER_DEC_RATE_ITEM->number.value * tracking_rate / 100.0;
+	// direction is -1 for north, the axis direction that moves north depends on the side of the pier
+	double guide_rate = -direction * synscan_dec_north_sign(device) * GUIDER_DEC_RATE_ITEM->number.value * tracking_rate / 100.0;
 	// A pulse arriving while another one is still running replaces it, in either
 	// direction, so the deadline is always the new one and the finalizer of the
 	// replaced pulse must not fire on the old schedule.

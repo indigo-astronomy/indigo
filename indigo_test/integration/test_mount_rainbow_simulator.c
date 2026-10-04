@@ -35,6 +35,14 @@ static const simulator_driver_case rainbow_mount = {
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
+static const simulator_driver_case rainbow_guider = {
+	"RainbowAstro Mount (guider)", "indigo_mount_rainbow", "RainbowAstro Mount (guider)", indigo_mount_rainbow, false,
+	NULL, 0, NULL, 0, NULL, 0, NULL, 0
+};
+
+// The message of the last MOUNT_EQUATORIAL_COORDINATES publication that carried one.
+static char coordinates_message[INDIGO_VALUE_SIZE];
+
 static void event_path(const external_serial_simulator *simulator, char *path, size_t size) {
 	snprintf(path, size, "%s.events", simulator->ready_file);
 }
@@ -80,6 +88,72 @@ static int count_event_prefixes(const external_serial_simulator *simulator, cons
 	}
 	fclose(file);
 	return count;
+}
+
+// The number of events of a kind whatever their value, e.g. commands the simulator does not know.
+static int count_kind(const external_serial_simulator *simulator, const char *kind) {
+	char path[PATH_MAX], line[512];
+	event_path(simulator, path, sizeof(path));
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	int count = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		char *first = strchr(line, '\t');
+		char *second = first == NULL ? NULL : strchr(first + 1, '\t');
+		if (first == NULL || second == NULL) {
+			continue;
+		}
+		*second = 0;
+		count += !strcmp(first + 1, kind);
+	}
+	fclose(file);
+	return count;
+}
+
+// The commands were received one right after the other, nothing else came in between.
+static bool commands_in_sequence(const external_serial_simulator *simulator, const char * const *commands, int count) {
+	char path[PATH_MAX], line[512];
+	event_path(simulator, path, sizeof(path));
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return false;
+	}
+	int matched = 0;
+	while (matched < count && fgets(line, sizeof(line), file) != NULL) {
+		char *first = strchr(line, '\t');
+		char *second = first == NULL ? NULL : strchr(first + 1, '\t');
+		if (first == NULL || second == NULL) {
+			continue;
+		}
+		*second++ = 0;
+		second[strcspn(second, "\r\n")] = 0;
+		if (strcmp(first + 1, "CMD")) {
+			continue;
+		}
+		if (!strcmp(second, commands[matched])) {
+			matched++;
+		} else {
+			matched = !strcmp(second, commands[0]) ? 1 : 0;
+		}
+	}
+	fclose(file);
+	if (matched < count) {
+		fprintf(stderr, "Commands from '%s' to '%s' were not received in one sequence\n", commands[0], commands[count - 1]);
+	}
+	return matched == count;
+}
+
+static bool wait_for_event_count_within(const external_serial_simulator *simulator, const char *kind, const char *value, int expected, double seconds) {
+	for (int i = 0; i < seconds * 20; i++) {
+		if (count_events(simulator, kind, value) >= expected) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "Fewer than %d '%s %s' events\n", expected, kind, value);
+	return false;
 }
 
 static bool wait_for_event_count(const external_serial_simulator *simulator, const char *kind, const char *value, int expected) {
@@ -183,8 +257,8 @@ static bool change_coordinates(double ra, double dec, indigo_property_state stat
 
 static void rainbow_driver_info_and_property_inventory(void) {
 	external_serial_simulator simulator = { 0 };
-	static const char *required[] = { MOUNT_INFO_PROPERTY_NAME, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_GUIDE_RATE_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_EPOCH_PROPERTY_NAME, UTC_TIME_PROPERTY_NAME };
-	static const char *hidden[] = { MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_POSITION_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_TRAINING_PROPERTY_NAME };
+	static const char *required[] = { MOUNT_INFO_PROPERTY_NAME, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_GUIDE_RATE_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_EPOCH_PROPERTY_NAME, UTC_TIME_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, "X_RAINBOW_POWER", "X_RAINBOW_TEMPERATURE", "X_RAINBOW_STATUS" };
+	static const char *hidden[] = { MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_POSITION_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_PEC_PROPERTY_NAME, MOUNT_PEC_TRAINING_PROPERTY_NAME };
 
 	assert_simulator_driver_info(&rainbow_mount);
 	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
@@ -192,7 +266,13 @@ static void rainbow_driver_info_and_property_inventory(void) {
 	assert_defined_properties(required, ARRAY_SIZE(required));
 	assert_not_defined_properties(hidden, ARRAY_SIZE(hidden));
 	SERIAL_CHECK_EQ_INT(1, find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME)->count);
-	SERIAL_CHECK_EQ_INT(1, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->count);
+	SERIAL_CHECK_EQ_INT(2, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->count);
+	SERIAL_CHECK_EQ_INT(1, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->count);
+	// sidereal, solar and lunar are the rates the mount has
+	SERIAL_CHECK_EQ_INT(3, find_cached_property(MOUNT_TRACK_RATE_PROPERTY_NAME)->count);
+	// the guide speed is 0.1x to 1.0x
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME)->number.min == 10);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME)->number.max == 100);
 	SERIAL_CHECK_EQ_INT(2, find_cached_property(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME)->count);
 	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME)->text.value, "RainbowAstro"));
 	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "200625"));
@@ -232,6 +312,22 @@ static void rainbow_uses_legacy_firmware_protocol(void) {
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Q", 2));
+	// the axis stops this firmware lacks are never sent
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Qn"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Qs"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Qe"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Qw"));
+	// its clock cannot be set, a request ends ALERT without a command
+	const char *time_items[] = { UTC_TIME_ITEM_NAME, UTC_OFFSET_ITEM_NAME };
+	const char *time_values[] = { "2026-09-16T12:34:56", "+10" };
+	unsigned int revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, rainbow_mount.device_name, UTC_TIME_PROPERTY_NAME, ARRAY_SIZE(time_items), time_items, time_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, false);
+	SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", "SC"));
+	SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", "SG"));
+	SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", "SL"));
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&rainbow_mount);
@@ -285,6 +381,9 @@ static void rainbow_writes_location_and_time(void) {
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SC09/16/26", 1));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SG-10", 1));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "SL22:34:56", 1));
+	// the time zone offset precedes the clock
+	const char *time_sequence[] = { "SC09/16/26", "SG-10", "SL22:34:56" };
+	SERIAL_CHECK_TRUE(commands_in_sequence(&simulator, time_sequence, ARRAY_SIZE(time_sequence)));
 	int sc_count = count_event_prefixes(&simulator, "CMD", "SC");
 	revision = property_revision(UTC_TIME_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, rainbow_mount.device_name, UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME, "not-a-time"));
@@ -293,6 +392,8 @@ static void rainbow_writes_location_and_time(void) {
 	int host_time_count = count_event_prefixes(&simulator, "CMD", "SC");
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(count_event_prefixes(&simulator, "CMD", "SC") > host_time_count);
+	// a momentary switch
+	assert_switch_item_value(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, false);
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&rainbow_mount);
@@ -340,7 +441,8 @@ static void rainbow_manual_motion_covers_all_rates_axes_and_stops(void) {
 	static const char *rate_commands[] = { "RG", "RC", "RM", "RS" };
 	static const char *properties[] = { MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME };
 	static const char *items[] = { MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, MOUNT_MOTION_WEST_ITEM_NAME, MOUNT_MOTION_EAST_ITEM_NAME };
-	static const char *commands[] = { "Mn", "Ms", "Mw", "Me" };
+	// :Ms# moves the declination up (north), :Mn# down (south)
+	static const char *commands[] = { "Ms", "Mn", "Mw", "Me" };
 	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
 	for (int rate = 0; rate < ARRAY_SIZE(rate_items); rate++) {
 		SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_SLEW_RATE_PROPERTY_NAME, rate_items[rate], true, INDIGO_OK_STATE));
@@ -364,25 +466,261 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-static void rainbow_park_reports_success_and_failure(void) {
+static bool wait_for_switch_on(const char *property, const char *item) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *cached = find_cached_item(property, item);
+		if (cached != NULL && cached->sw.value) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+// A park slews to the park position by its altitude and azimuth (:Sa#, :Sz#, :MA#) and stops the tracking there;
+// the default position, the pole at hour angle 6h, is the altitude of the site latitude due north.
+static void rainbow_park_slews_to_park_position(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
 	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	unsigned int coordinates_revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	// the coordinates are BUSY while the mount moves to the park position
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinates_revision));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sa+48*08:10.0", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sz000*00:00.0", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MA", 1));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
-	int north_count = count_events(&simulator, "CMD", "Mn");
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtL", 1));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Ch"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 90, 0.5));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	// the parked mount does not track
+	SERIAL_CHECK_TRUE(wait_for_switch_on(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	// a parked mount refuses motion, GOTO and tracking without sending them and shows its own state
+	int north_count = count_events(&simulator, "CMD", "Ms");
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_EQ_INT(north_count, count_events(&simulator, "CMD", "Mn"));
-	SERIAL_CHECK_TRUE(install_injection(&simulator, "Ch", ":CH0#", 1));
+	SERIAL_CHECK_EQ_INT(north_count, count_events(&simulator, "CMD", "Ms"));
+	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MS"));
+	int unpark_count = count_events(&simulator, "CMD", "CtA");
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(unpark_count, count_events(&simulator, "CMD", "CtA"));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
+	// :CtA# unparks and starts tracking, an unpark moves nothing
+	int motion_count = count_events(&simulator, "CMD", "MS") + count_events(&simulator, "CMD", "MA") + count_events(&simulator, "CMD", "Ms") + count_events(&simulator, "CMD", "Mn") + count_events(&simulator, "CMD", "Mw") + count_events(&simulator, "CMD", "Me");
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtA", unpark_count + 1));
+	SERIAL_CHECK_TRUE(wait_for_switch_on(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(motion_count, count_events(&simulator, "CMD", "MS") + count_events(&simulator, "CMD", "MA") + count_events(&simulator, "CMD", "Ms") + count_events(&simulator, "CMD", "Mn") + count_events(&simulator, "CMD", "Mw") + count_events(&simulator, "CMD", "Me"));
+	// the parked guard does not latch: motion is accepted again
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ms", north_count + 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	// a position below the altitude limit is refused with :MML# and the mount stays unparked
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "MA", ":MML#", 1));
 	revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
-	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, false);
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The park position is the one MOUNT_PARK_POSITION holds: hour angle 6h on the equator is the west horizon.
+static void rainbow_park_follows_park_position(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *items[] = { MOUNT_PARK_POSITION_HA_ITEM_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME };
+	double values[] = { 6, 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	unsigned int revision = property_revision(MOUNT_PARK_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, rainbow_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sa+00*00:00.0", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sz270*00:00.0", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 0, 0.5));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// MOUNT_HOME finds the mechanical origin with :Ch#; :CHO# is success, :CH0# and :CH<# a failed RA or DEC axis.
+static void rainbow_home_finds_mechanical_origin(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	unsigned int revision = property_revision(MOUNT_HOME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_HOME_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ch", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
+	// homing is not a park
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "Ch", ":CH<#", 1));
+	revision = property_revision(MOUNT_HOME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_HOME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, false);
+	// an abort ends a homing in progress; the mount is at home already and would end it at once, so :Ch# is lost
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "Ch", "DROP", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "DROP", "Ch", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Waits until the reported declination passes the threshold upwards or downwards.
+static bool wait_for_declination(double threshold, bool above) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *dec = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		if (dec != NULL && (above ? dec->number.value > threshold : dec->number.value < threshold)) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+// North raises the declination the mount reports.
+static void rainbow_north_raises_declination(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 45, 0.5));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qs", 1));
+	SERIAL_CHECK_TRUE(wait_for_declination(47, true));
+	double north = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.value;
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qn", 2));
+	SERIAL_CHECK_TRUE(wait_for_declination(north - 2, false));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A mount left in the LX200 protocol answers :AV# only after the driver selected the USB interface and the Rainbow
+// protocol (:AU#, :AR#).
+static void rainbow_selects_rainbow_protocol(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--lx200-protocol", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_RAINBOW_SIMULATOR_EXECUTABLE, arguments) && start_serial_driver(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "AU", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "AR", 1));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "IGNORED", "AV"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "200625"));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static bool start_rainbow_guider(external_serial_simulator *simulator, const char *firmware) {
+	const char *arguments[] = { "--firmware", firmware, NULL };
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_RAINBOW_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(&rainbow_guider)) {
+		return false;
+	}
+	if (indigo_change_text_property_1_raw(&simulator_test_client, rainbow_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator->port) != INDIGO_OK || !connect_serial_device(&rainbow_guider, NULL)) {
+		wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+		tear_down_serial_driver(&rainbow_guider);
+		return false;
+	}
+	return true;
+}
+
+static bool guide_and_wait(const char *property, const char *item, double duration) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_number_property_1(&simulator_test_client, rainbow_guider.device_name, property, item, duration) == INDIGO_OK && wait_for_property_state_seen_after(property, INDIGO_BUSY_STATE, revision) && wait_for_property_state_seen_after(property, INDIGO_OK_STATE, revision);
+}
+
+static double event_time(const external_serial_simulator *simulator, const char *value, int occurrence) {
+	char path[PATH_MAX], line[512];
+	event_path(simulator, path, sizeof(path));
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	double result = -1;
+	int seen = 0;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		char *first = strchr(line, '\t');
+		char *second = first == NULL ? NULL : strchr(first + 1, '\t');
+		if (first == NULL || second == NULL) {
+			continue;
+		}
+		*second++ = 0;
+		second[strcspn(second, "\r\n")] = 0;
+		if (!strcmp(first + 1, "CMD") && !strcmp(second, value) && ++seen == occurrence) {
+			result = atof(line);
+			break;
+		}
+	}
+	fclose(file);
+	return result;
+}
+
+// A pulse is a move at the guide speed (:RG#) in its direction that the driver ends after its duration with the
+// stop of that axis; north is :Ms#.
+static void rainbow_guider_pulses_every_direction(void) {
+	external_serial_simulator simulator = { 0 };
+	static const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
+	static const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME };
+	static const char *starts[] = { "Ms", "Mn", "Mw", "Me" };
+	static const char *stops[] = { "Qs", "Qn", "Qw", "Qe" };
+	SERIAL_CHECK_TRUE(start_rainbow_guider(&simulator, "200625"));
+	assert_device_interface(INDIGO_INTERFACE_GUIDER);
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		int guide_rate = count_events(&simulator, "CMD", "RG");
+		SERIAL_CHECK_TRUE(guide_and_wait(properties[i], items[i], 300));
+		SERIAL_CHECK_TRUE(count_events(&simulator, "CMD", "RG") > guide_rate);
+		SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", stops[i], 1));
+		double started = event_time(&simulator, starts[i], 1), stopped = event_time(&simulator, stops[i], 1);
+		SERIAL_CHECK_TRUE(started > 0 && stopped - started >= 0.28 && stopped - started < 1.0);
+	}
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Q"));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Firmware older than 200625 has no axis stop, a pulse ends with :Q#.
+static void rainbow_guider_uses_global_stop_on_legacy_firmware(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow_guider(&simulator, "191217"));
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Mn", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Q", 1));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Qn"));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_guider);
 	}
 	stop_external_serial_simulator(&simulator);
 }
@@ -462,6 +800,10 @@ static void rainbow_rejects_non_rainbow_transport(void) {
 	driver_up = true;
 	SERIAL_CHECK_TRUE(!connect_serial_device(&rainbow_mount, simulator.port));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	// no mount property is left defined
+	assert_not_defined_property(MOUNT_INFO_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	assert_not_defined_property(MOUNT_TRACKING_PROPERTY_NAME);
 cleanup:
 	if (context.connected) {
 		disconnect_serial_device(&rainbow_mount);
@@ -496,15 +838,21 @@ static void rainbow_park_abort_and_pending_disconnect(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ch", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MA", 1));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
 	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, false);
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ch", 2));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MA", 2));
 	disconnect_serial_device(&rainbow_mount);
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Q", 2));
 	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	// no stale BUSY survives into the new session, and the interrupted park is not reported failed
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
+	assert_switch_item_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false);
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
 cleanup:
 	if (context.connected) {
@@ -521,10 +869,22 @@ static void rainbow_goto_ack_prefix_and_error_recovery(void) {
 	SERIAL_CHECK_TRUE(change_coordinates(6, 40, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 1));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// the controller's reason reaches the client and the coordinates keep the real position
 	const char *errors[] = { ":MML#", ":MMU#", ":MME#" };
+	const char *reasons[] = { "below", "above", "canceled" };
 	for (int i = 0; i < ARRAY_SIZE(errors); i++) {
+		double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+		coordinates_message[0] = 0;
 		SERIAL_CHECK_TRUE(install_injection(&simulator, "MS", errors[i], 1));
 		SERIAL_CHECK_TRUE(change_coordinates(7, 45, INDIGO_ALERT_STATE));
+		for (int j = 0; j < 20 && strstr(coordinates_message, reasons[i]) == NULL; j++) {
+			indigo_usleep(50000);
+		}
+		if (strstr(coordinates_message, reasons[i]) == NULL) {
+			fprintf(stderr, "%s was reported as '%s'\n", errors[i], coordinates_message);
+		}
+		SERIAL_CHECK_TRUE(strstr(coordinates_message, reasons[i]) != NULL);
+		SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 0.01);
 	}
 	SERIAL_CHECK_TRUE(change_coordinates(8, 50, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 5));
@@ -550,6 +910,14 @@ static indigo_result capture_define_property(indigo_client *client, indigo_devic
 		atomic_store(&driver_device, device);
 	}
 	return simulator_client_define_property(client, device, property, message);
+}
+
+// The bus hands the message of an update over separately, right after the update.
+static indigo_result capture_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && message != NULL && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		snprintf(coordinates_message, sizeof(coordinates_message), "%s", message);
+	}
+	return INDIGO_OK;
 }
 
 static indigo_result capture_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
@@ -754,12 +1122,736 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static bool start_rainbow_with(external_serial_simulator *simulator, const char * const *arguments) {
+	return start_external_serial_simulator_with_args(simulator, MOUNT_RAINBOW_SIMULATOR_EXECUTABLE, arguments) && start_serial_driver(&rainbow_mount, simulator->port);
+}
+
+static bool wait_for_switch_value(const char *property, const char *item, bool value) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *cached = find_cached_item(property, item);
+		if (cached != NULL && cached->sw.value == value) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+// Waits until the reported value passes the threshold upwards or downwards.
+static bool wait_for_number_beyond(const char *property, const char *item, double threshold, bool above) {
+	for (int i = 0; i < 100; i++) {
+		double value = cached_number_value(property, item);
+		if (above ? value > threshold : value < threshold) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "%s.%s stays at %g, not %s %g\n", property, item, cached_number_value(property, item), above ? "above" : "below", threshold);
+	return false;
+}
+
+// The value is the same before and after two status polls, so the axis stands still. A steady value is not
+// republished, so the polls are counted on the wire.
+static bool wait_for_stopped_readback(const external_serial_simulator *simulator, const char *property, const char *item, double *value) {
+	// the first poll after the stop reads the final position
+	int polls = count_events(simulator, "CMD", "GR");
+	if (!wait_for_event_count(simulator, "CMD", "GR", polls + 1)) {
+		return false;
+	}
+	indigo_usleep(200000);
+	double before = cached_number_value(property, item);
+	polls = count_events(simulator, "CMD", "GR");
+	if (!wait_for_event_count(simulator, "CMD", "GR", polls + 2)) {
+		return false;
+	}
+	indigo_usleep(200000);
+	*value = cached_number_value(property, item);
+	if (*value != before) {
+		fprintf(stderr, "%s.%s moved from %.9f to %.9f\n", property, item, before, *value);
+		return false;
+	}
+	return true;
+}
+
+static int motion_commands(const external_serial_simulator *simulator) {
+	return count_events(simulator, "CMD", "MS") + count_events(simulator, "CMD", "MA") + count_events(simulator, "CMD", "Ms") + count_events(simulator, "CMD", "Mn") + count_events(simulator, "CMD", "Mw") + count_events(simulator, "CMD", "Me");
+}
+
+// Connect publishes the state the mount is in, not driver defaults, and writes no clock, site or setting. A reply that
+// carries no rate keeps the rate shown, an unchanged state is not republished and a change made at the hand controller
+// is published once.
+static void rainbow_connect_publishes_device_state(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--tracking", "--track-rate", "2", "--guide-rate", "0.7", NULL };
+	static const char *writes[] = { "SC", "SL", "SG", "St", "Sg", "Cu0=", "CtR", "CtS", "CtM", "CtA", "CtL" };
+	SERIAL_CHECK_TRUE(start_rainbow_with(&simulator, arguments));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) == 70);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "N/A"));
+	for (int i = 0; i < ARRAY_SIZE(writes); i++) {
+		if (count_event_prefixes(&simulator, "CMD", writes[i]) != 0) {
+			fprintf(stderr, "Connect sent %s\n", writes[i]);
+		}
+		SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", writes[i]));
+	}
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Q"));
+	SERIAL_CHECK_EQ_INT(0, count_kind(&simulator, "UNKNOWN"));
+	SERIAL_CHECK_EQ_INT(0, count_kind(&simulator, "IGNORED"));
+	// :CT3# is the guide speed used as the tracking rate, which has no item
+	unsigned int revision = property_revision(MOUNT_TRACK_RATE_PROPERTY_NAME);
+	int polls = count_events(&simulator, "CMD", "Ct?");
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "Ct?", ":CT3#", 2));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ct?", polls + 4));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(revision, property_revision(MOUNT_TRACK_RATE_PROPERTY_NAME));
+	// both ends of the guide speed range on the wire
+	SERIAL_CHECK_TRUE(change_number_and_wait(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Cu0=0.1", 1));
+	SERIAL_CHECK_TRUE(change_number_and_wait(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Cu0=1.0", 1));
+	// the tracking switched off at the hand controller is published once
+	revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "AT", ":AT0#", 0));
+	polls = count_events(&simulator, "CMD", "AT");
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "AT", polls + 4));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(revision + 1, property_revision(MOUNT_TRACKING_PROPERTY_NAME));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The identity probe is repeated after a missing reply; a reply lost later in the connection marks only its property.
+static void rainbow_connect_recovers_from_lost_initial_replies(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_up = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_RAINBOW_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "AV", "DROP", 1));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&rainbow_mount));
+	driver_up = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(1, count_events(&simulator, "DROP", "AV"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "200625"));
+	disconnect_serial_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "CU0", "DROP", 1));
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(1, count_events(&simulator, "DROP", "CU0"));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_GUIDE_RATE_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(GEOGRAPHIC_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_INFO_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+cleanup:
+	if (context.connected) {
+		disconnect_serial_device(&rainbow_mount);
+	}
+	if (driver_up) {
+		tear_down_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A GOTO sends the tracking rate and :CtA# with the target in one uninterrupted sequence, a status reply in flight when
+// it starts does not end it, a request made while it runs is ignored and it ends at the original target, tracking at the
+// selected rate. Coordinates are encoded without carrying into 24 h or 360 degrees.
+static void rainbow_goto_sequence_completion_and_encoding(void) {
+	external_serial_simulator simulator = { 0 };
+	char ra_string[32], dec_string[32], ra_command[64], dec_command[64];
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	// west of the meridian at hour angle +2 h, declination just south of the equator
+	double lst = cached_number_value(MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME);
+	double ra = fmod(lst - 2 + 24, 24);
+	snprintf(ra_command, sizeof(ra_command), "Sr%s", indigo_dtos_r(ra, "%02d:%02d:%04.1f", ra_string, sizeof(ra_string)));
+	const char *sequence[] = { "CtS", "CtA", ra_command, "Sd-00*30:00.0", "MS" };
+	int polls = count_events(&simulator, "CMD", "CL");
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "CL", "DELAY:800", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CL", polls + 1));
+	// the simulator answers this :CL# with :CL0# only after it read the GOTO
+	SERIAL_CHECK_TRUE(change_coordinates(ra, -0.5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "DELAY", "CL", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 1));
+	SERIAL_CHECK_TRUE(commands_in_sequence(&simulator, sequence, ARRAY_SIZE(sequence)));
+	indigo_usleep(200000);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "RSP", ":MM0#"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, fmod(ra + 3, 24)));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_events(&simulator, "CMD", "MS"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -0.5, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_switch_on(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true);
+	// east of the meridian at hour angle -3 h
+	ra = fmod(lst + 3, 24);
+	snprintf(ra_command, sizeof(ra_command), "Sr%s", indigo_dtos_r(ra, "%02d:%02d:%04.1f", ra_string, sizeof(ra_string)));
+	snprintf(dec_command, sizeof(dec_command), "Sd%s", indigo_dtos_r(30.25, "%+03d*%02d:%04.1f", dec_string, sizeof(dec_string)));
+	SERIAL_CHECK_TRUE(change_coordinates(ra, 30.25, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", ra_command, 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", dec_command, 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, 0.001));
+	// the largest legal sub-unit value and a declination at the pole
+	SERIAL_CHECK_TRUE(change_coordinates(12 + 59.0 / 60 + 59.94 / 3600, 89.99999, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sr12:59:59.9", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sd+90*00:00.0", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	// a value just below 24 h is 0 h, never 24 h or 360 degrees
+	SERIAL_CHECK_TRUE(change_coordinates(23.99999, -89.99999, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sr00:00:00.0", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sd-90*00:00.0", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", "Sr24"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates(23.99999, -0.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ck000.000-00.500", 1));
+	SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", "Ck360"));
+	SERIAL_CHECK_EQ_INT(0, count_kind(&simulator, "UNKNOWN"));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An abort mid-slew sends one stop, ends the GOTO in ALERT and leaves the mount standing short of the target; an abort
+// while idle leaves the position and the tracking alone.
+static void rainbow_abort_stops_slew_once(void) {
+	external_serial_simulator simulator = { 0 };
+	double ra = 0, dec = 0;
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates(18, 45, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_beyond(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 7, true));
+	int stops = count_events(&simulator, "CMD", "Q");
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) > revision);
+	SERIAL_CHECK_TRUE(wait_for_stopped_readback(&simulator, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, &ra));
+	SERIAL_CHECK_TRUE(ra < 17);
+	SERIAL_CHECK_EQ_INT(stops + 1, count_events(&simulator, "CMD", "Q"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "RSP", ":MM0#"));
+	// idle abort
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, false);
+	int polls = count_events(&simulator, "CMD", "AT");
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "AT", polls + 2));
+	indigo_usleep(100000);
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 1e-6);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1e-6);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// When the :MM0# of a GOTO or a park is lost, the status poll (:CL1# then :CL0#) ends it instead of leaving it BUSY.
+static void rainbow_lost_slew_completion_ends_by_status(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "MS", "NOCOMPLETE", 1));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	// long enough for the status poll to see the slew
+	SERIAL_CHECK_TRUE(change_coordinates(18, -30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count_within(&simulator, "LOST", ":MM0#", 1, 15));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 18, 0.001));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "MA", "NOCOMPLETE", 1));
+	int stops = count_events(&simulator, "CMD", "CtL");
+	revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_event_count_within(&simulator, "LOST", ":MM0#", 2, 20));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtL", stops + 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// West lowers and east raises the right ascension; the axes move and stop independently, a direction change needs no
+// stop, and a disconnect stops a motion that is still running.
+static void rainbow_manual_motion_axes_are_independent(void) {
+	external_serial_simulator simulator = { 0 };
+	double ra = 0, dec = 0, value = 0;
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 45, 0.5));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true, INDIGO_OK_STATE));
+	ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Mw", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ms", 1));
+	SERIAL_CHECK_TRUE(wait_for_number_beyond(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra - 0.3, false));
+	SERIAL_CHECK_TRUE(wait_for_number_beyond(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec + 0.3, true));
+	// releasing RA stops RA only
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qw", 1));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Qs"));
+	SERIAL_CHECK_TRUE(wait_for_stopped_readback(&simulator, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, &value));
+	dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_number_beyond(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec + 0.3, true));
+	// east raises the right ascension
+	ra = value;
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_beyond(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra + 0.3, true));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+	// north to south without a stop in between
+	dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Mn", 1));
+	SERIAL_CHECK_TRUE(wait_for_number_beyond(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec - 0.3, false));
+	// a disconnect stops the motion before the port closes
+	int stops = count_events(&simulator, "CMD", "Q") + count_events(&simulator, "CMD", "Qn");
+	disconnect_serial_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(count_events(&simulator, "CMD", "Q") + count_events(&simulator, "CMD", "Qn") > stops);
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_MOTION_DEC_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(wait_for_stopped_readback(&simulator, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, &value));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static indigo_client second_client = { .name = "Second client", .version = INDIGO_VERSION_CURRENT };
+
+// Manual motion started by a client is released with the stop of its axis when that client detaches.
+static void rainbow_manual_motion_released_when_client_detaches(void) {
+	external_serial_simulator simulator = { 0 };
+	bool attached = false;
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_attach_client(&second_client));
+	attached = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&second_client, rainbow_mount.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Me", 1));
+	SERIAL_CHECK_TRUE(wait_for_switch_ok(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Qe"));
+	indigo_detach_client(&second_client);
+	attached = false;
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qe", 1));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false));
+cleanup:
+	if (attached) {
+		indigo_detach_client(&second_client);
+	}
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A latitude change resends the longitude the driver holds; the prime meridian is written and read back as 0, not 360.
+static void rainbow_location_partial_change_and_prime_meridian(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(change_number_and_wait(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "St-10*00'00", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sg-017*06'20", 1));
+	SERIAL_CHECK_TRUE(change_number_and_wait(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Sg+000*00'00", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "St-10*00'00", 2));
+	disconnect_serial_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, -10, 0.001));
+	if (fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) > 0.001) {
+		fprintf(stderr, "The prime meridian reads back as %g\n", cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME));
+	}
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) <= 0.001);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Follows the cached properties of another logical device of the running driver.
+static void follow_device(const simulator_driver_case *device_case) {
+	reset_simulator_context(device_case);
+	enumerate_simulator_device();
+}
+
+static bool request_pulse(const char *property, const char *item, double duration, indigo_property_state state) {
+	unsigned int revision = property_revision(property);
+	return indigo_change_number_property_1(&simulator_test_client, rainbow_guider.device_name, property, item, duration) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
+}
+
+
+static bool wait_for_light(const char *property, const char *item, indigo_property_state state) {
+	for (int i = 0; i < 100; i++) {
+		indigo_item *light = find_cached_item(property, item);
+		if (light != NULL && light->light.value == state) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+// A right ascension reported beyond 24 h or below 0 h wraps around, a declination beyond a pole is mirrored back over it.
+static void rainbow_wraps_and_folds_reported_coordinates(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "GR", ":GR25:00:00.0#", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 1, 0.01));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "GR", ":GR-01:00:00.0#", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 23, 0.01));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "GD", ":GD+95*00:00.0#", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 85, 0.01));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "GD", ":GD-100*00:00.0#", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -80, 0.01));
+	// the right ascension stays as reported, the simulated 6 h, it is not turned by 12 h
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 6, 0.01));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The local sidereal time of the simulated mount clock and site (2026-08-24 22:15:30 UTC+2, 17d06'20" east).
+static double simulator_sidereal_time(void) {
+	int year = 2026, month = 8;
+	double jd = floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + 24 + 2 - floor(year / 100.0) + floor(year / 400.0) - 1524.5;
+	jd += (22 - 2 + 15 / 60.0 + 30 / 3600.0) / 24.0;
+	double lst = fmod(18.697374558 + 24.06570982441908 * (jd - 2451545.0) + (17 + 6 / 60.0 + 20 / 3600.0) / 15.0, 24.0);
+	return lst < 0 ? lst + 24.0 : lst;
+}
+
+// Side of pier from the axis angles, power, temperatures and motor status are polled and published only when they change;
+// the temperature reply :CT<board>|...# is not taken for a tracking rate.
+static void rainbow_reports_side_of_pier_and_status(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_EQ_INT(INDIGO_RO_PERM, find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME)->perm);
+	assert_switch_item_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(cached_number_value("X_RAINBOW_POWER", "VOLTAGE") == 12.3);
+	SERIAL_CHECK_TRUE(cached_number_value("X_RAINBOW_POWER", "RA_MOTOR") == 50);
+	SERIAL_CHECK_TRUE(cached_number_value("X_RAINBOW_POWER", "DEC_MOTOR") == 45);
+	SERIAL_CHECK_TRUE(cached_number_value("X_RAINBOW_TEMPERATURE", "BOARD") == 25.5);
+	SERIAL_CHECK_TRUE(cached_number_value("X_RAINBOW_TEMPERATURE", "RA_MOTOR") == 30.2);
+	SERIAL_CHECK_TRUE(cached_number_value("X_RAINBOW_TEMPERATURE", "DEC_MOTOR") == 29.8);
+	SERIAL_CHECK_EQ_INT(4, find_cached_property("X_RAINBOW_STATUS")->count);
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "TCS", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "RA_MOTOR", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "DEC_MOTOR", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "HOME", INDIGO_IDLE_STATE));
+	// unchanged values are not republished, the temperatures starting with '2' leave the sidereal rate
+	unsigned int power = property_revision("X_RAINBOW_POWER"), temperature = property_revision("X_RAINBOW_TEMPERATURE"), status = property_revision("X_RAINBOW_STATUS"), pier = property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME), rate = property_revision(MOUNT_TRACK_RATE_PROPERTY_NAME);
+	int polls = count_events(&simulator, "CMD", "CT");
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CT", polls + 3));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CY", polls + 3));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "GH", polls + 3));
+	SERIAL_CHECK_EQ_INT(power, property_revision("X_RAINBOW_POWER"));
+	SERIAL_CHECK_EQ_INT(temperature, property_revision("X_RAINBOW_TEMPERATURE"));
+	SERIAL_CHECK_EQ_INT(status, property_revision("X_RAINBOW_STATUS"));
+	SERIAL_CHECK_EQ_INT(pier, property_revision(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(rate, property_revision(MOUNT_TRACK_RATE_PROPERTY_NAME));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true);
+	// a changed value is published
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "CT", ":CT-5.0|21.0|22.0#", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_RAINBOW_TEMPERATURE", "BOARD", -5, 0.01));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "CP", ":CP10.0|90.0#", 0));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_RAINBOW_POWER", "RA_MOTOR", 90, 0.01));
+	SERIAL_CHECK_TRUE(cached_number_value("X_RAINBOW_POWER", "DEC_MOTOR") == 10);
+	// a motor that needs a check
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "GY", ":GYOOXO#", 0));
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "DEC_MOTOR", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "RA_MOTOR", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "TCS", INDIGO_OK_STATE));
+	// the DEC axis turned past 90 degrees from its aligned position is west of the pier
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "CY", ":CY135.000|090.000#", 0));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "CY", ":CY045.000|090.000#", 0));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true));
+	// the simulated axes again: a slew east of the meridian ends west of the pier, a slew west of it east of the pier
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "CY", ":CY045.000|090.000#", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "RSP", ":CY045.000|090.000#", 1));
+	double lst = simulator_sidereal_time();
+	SERIAL_CHECK_TRUE(change_coordinates(fmod(lst + 2, 24), 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count_within(&simulator, "RSP", ":MM0#", 1, 15));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(change_coordinates(fmod(lst + 22, 24), 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count_within(&simulator, "RSP", ":MM0#", 2, 15));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true));
+	// the home sensor is found by homing
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light("X_RAINBOW_STATUS", "HOME", INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A mount that does not answer the side of pier, power, temperature and status queries has none of these properties,
+// and they are neither polled nor shown after a reconnect.
+static void rainbow_hides_unanswered_status_queries(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--no-diagnostics", NULL };
+	static const char *hidden[] = { MOUNT_SIDE_OF_PIER_PROPERTY_NAME, "X_RAINBOW_POWER", "X_RAINBOW_TEMPERATURE", "X_RAINBOW_STATUS" };
+	static const char *queries[] = { "CG3", "CY", "Cv", "CP", "CT", "GY", "GH" };
+	SERIAL_CHECK_TRUE(start_rainbow_with(&simulator, arguments));
+	assert_not_defined_properties(hidden, ARRAY_SIZE(hidden));
+	int polls = count_events(&simulator, "CMD", "AT");
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "AT", polls + 3));
+	for (int i = 0; i < ARRAY_SIZE(queries); i++) {
+		SERIAL_CHECK_EQ_INT(1, count_events(&simulator, "CMD", queries[i]));
+	}
+	disconnect_serial_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	assert_not_defined_properties(hidden, ARRAY_SIZE(hidden));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// While the mount searches for home, a GOTO, sync, park and manual move are refused without a command; a stop request is
+// accepted. After the search they are accepted again.
+static void rainbow_refuses_motion_while_searching_for_home(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	// the lost :Ch# keeps the driver searching until the abort
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "Ch", "DROP", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "DROP", "Ch", 1));
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	indigo_usleep(200000);
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MS"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MA"));
+	SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", "Ck"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Ms"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Me"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ms", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 1));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A zero pulse sends nothing, a completed pulse resets its item, the axes end independently and a replacing pulse on the
+// same axis runs for its own duration with one stop.
+static void rainbow_guider_pulse_zero_replacement_and_axes(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow_guider(&simulator, "200625"));
+	int moves = motion_commands(&simulator);
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 0, INDIGO_OK_STATE));
+	indigo_usleep(200000);
+	SERIAL_CHECK_EQ_INT(moves, motion_commands(&simulator));
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 0);
+	// a long DEC and a short RA pulse at once
+	int dec_stops = count_events(&simulator, "CMD", "Qs");
+	unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME), ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rainbow_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 1000));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rainbow_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GUIDER_GUIDE_RA_PROPERTY_NAME, INDIGO_OK_STATE, ra_revision));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qw", 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(GUIDER_GUIDE_DEC_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(dec_stops, count_events(&simulator, "CMD", "Qs"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_revision));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qs", dec_stops + 1));
+	// a replacing pulse
+	dec_stops = count_events(&simulator, "CMD", "Qs");
+	int starts = count_events(&simulator, "CMD", "Ms");
+	dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ms", starts + 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rainbow_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ms", starts + 2));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, dec_revision));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qs", dec_stops + 1));
+	double started = event_time(&simulator, "Ms", starts + 2), stopped = event_time(&simulator, "Qs", dec_stops + 1);
+	SERIAL_CHECK_TRUE(started > 0 && stopped - started >= 0.28 && stopped - started < 1.0);
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(dec_stops + 1, count_events(&simulator, "CMD", "Qs"));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&rainbow_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The guider shares the mount's connection in both connection orders: it refuses pulses during a slew and while parked,
+// SHUTDOWN is refused while a device is connected, a guider-only session does not poll the mount, and a guider disconnect
+// during a pulse stops its axis.
+static void rainbow_guider_shares_connection_with_mount(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_up = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_RAINBOW_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&rainbow_mount));
+	driver_up = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_guider, NULL));
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qs", 1));
+	// no guiding during a slew
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { 12, 10 };
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, rainbow_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 1));
+	int west = count_events(&simulator, "CMD", "Mw");
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(west, count_events(&simulator, "CMD", "Mw"));
+	SERIAL_CHECK_TRUE(wait_for_event_count_within(&simulator, "RSP", ":MM0#", 1, 15));
+	indigo_usleep(300000);
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200));
+	// SHUTDOWN is refused and the connection survives it
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_mount_rainbow(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 200));
+	// no guiding while parked, guiding again after unpark
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_event_count_within(&simulator, "RSP", ":MM0#", 2, 20));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtL", 1));
+	indigo_usleep(300000);
+	int north = count_events(&simulator, "CMD", "Ms");
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(north, count_events(&simulator, "CMD", "Ms"));
+	int unpark = count_events(&simulator, "CMD", "CtA");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "CtA", unpark + 1));
+	indigo_usleep(300000);
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200));
+	// the mount disconnects, the guider keeps pulsing and nothing polls the mount
+	disconnect_serial_device(&rainbow_mount);
+	follow_device(&rainbow_guider);
+	int polls = count_events(&simulator, "CMD", "GR");
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 1500));
+	SERIAL_CHECK_EQ_INT(polls, count_events(&simulator, "CMD", "GR"));
+	// a guider disconnect during a pulse stops its axis
+	int stops = count_events(&simulator, "CMD", "Qn");
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 5000, INDIGO_BUSY_STATE));
+	disconnect_serial_device(&rainbow_guider);
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Qn", stops + 1));
+	// the guider first, then the mount
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_guider, NULL));
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, NULL));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	follow_device(&rainbow_guider);
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 200));
+cleanup:
+	if (driver_up) {
+		disconnect_serial_device(&rainbow_guider);
+		disconnect_serial_device(&rainbow_mount);
+		tear_down_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A pulse is refused during a manual move and while searching for home; while a pulse runs a GOTO, park, homing and
+// manual move are refused and a sync is accepted; a GOTO refuses a manual move and homing.
+static void rainbow_refuses_collisions_with_manual_motion_and_pulses(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_up = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_RAINBOW_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&rainbow_mount));
+	driver_up = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_mount, simulator.port));
+	SERIAL_CHECK_TRUE(connect_serial_device(&rainbow_guider, NULL));
+	follow_device(&rainbow_mount);
+	// a manual move refuses a pulse and homing
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	follow_device(&rainbow_guider);
+	int north = count_events(&simulator, "CMD", "Ms");
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200, INDIGO_ALERT_STATE));
+	follow_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(north, count_events(&simulator, "CMD", "Ms"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Ch"));
+	// a running pulse refuses a GOTO, park, homing and manual move, a sync is accepted
+	follow_device(&rainbow_guider);
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 3000, INDIGO_BUSY_STATE));
+	follow_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ck105.000+30.000", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MS"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MA"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Ch"));
+	SERIAL_CHECK_EQ_INT(north, count_events(&simulator, "CMD", "Ms"));
+	SERIAL_CHECK_TRUE(wait_for_event_count_within(&simulator, "CMD", "Qn", 1, 5));
+	// a GOTO refuses a manual move and homing, the lost :MS# keeps it running until the abort
+	// the pulse showed the mount moving (:CL1#) until its stop
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "MS", "DROP", 1));
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "DROP", "MS", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Me"));
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "Ch"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	// all accepted again
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ch", 1));
+	follow_device(&rainbow_guider);
+	SERIAL_CHECK_TRUE(request_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200, INDIGO_ALERT_STATE));
+	follow_device(&rainbow_mount);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	follow_device(&rainbow_guider);
+	SERIAL_CHECK_TRUE(guide_and_wait(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 200));
+cleanup:
+	if (driver_up) {
+		disconnect_serial_device(&rainbow_guider);
+		disconnect_serial_device(&rainbow_mount);
+		tear_down_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 2;
 	}
 	simulator_test_client.define_property = capture_define_property;
 	simulator_test_client.update_property = capture_update_property;
+	simulator_test_client.send_message = capture_send_message;
 	const indigo_test_case tests[] = {
 		{ "rainbow_settings_survive_reconnect", rainbow_settings_survive_reconnect },
 		{ "rainbow_park_abort_and_pending_disconnect", rainbow_park_abort_and_pending_disconnect },
@@ -772,14 +1864,35 @@ int main(void) {
 		{ "rainbow_writes_location_and_time", rainbow_writes_location_and_time },
 		{ "rainbow_goto_sync_and_abort_have_distinct_protocols", rainbow_goto_sync_and_abort_have_distinct_protocols },
 		{ "rainbow_manual_motion_covers_all_rates_axes_and_stops", rainbow_manual_motion_covers_all_rates_axes_and_stops },
-		{ "rainbow_park_reports_success_and_failure", rainbow_park_reports_success_and_failure },
+		{ "rainbow_park_slews_to_park_position", rainbow_park_slews_to_park_position },
+		{ "rainbow_park_follows_park_position", rainbow_park_follows_park_position },
+		{ "rainbow_home_finds_mechanical_origin", rainbow_home_finds_mechanical_origin },
+		{ "rainbow_north_raises_declination", rainbow_north_raises_declination },
+		{ "rainbow_selects_rainbow_protocol", rainbow_selects_rainbow_protocol },
+		{ "rainbow_guider_pulses_every_direction", rainbow_guider_pulses_every_direction },
+		{ "rainbow_guider_uses_global_stop_on_legacy_firmware", rainbow_guider_uses_global_stop_on_legacy_firmware },
 		{ "rainbow_recovers_from_faulted_poll_replies", rainbow_recovers_from_faulted_poll_replies },
 		{ "rainbow_reconnects_after_clean_disconnect", rainbow_reconnects_after_clean_disconnect },
 		{ "rainbow_handles_active_transport_loss", rainbow_handles_active_transport_loss },
 		{ "rainbow_rejects_non_rainbow_transport", rainbow_rejects_non_rainbow_transport },
 		{ "rainbow_tracking_request_survives_poll_reply", rainbow_tracking_request_survives_poll_reply },
 		{ "rainbow_track_rate_request_survives_poll_reply", rainbow_track_rate_request_survives_poll_reply },
-		{ "rainbow_utc_request_survives_poll_reply", rainbow_utc_request_survives_poll_reply }
+		{ "rainbow_utc_request_survives_poll_reply", rainbow_utc_request_survives_poll_reply },
+		{ "rainbow_connect_publishes_device_state", rainbow_connect_publishes_device_state },
+		{ "rainbow_connect_recovers_from_lost_initial_replies", rainbow_connect_recovers_from_lost_initial_replies },
+		{ "rainbow_goto_sequence_completion_and_encoding", rainbow_goto_sequence_completion_and_encoding },
+		{ "rainbow_abort_stops_slew_once", rainbow_abort_stops_slew_once },
+		{ "rainbow_lost_slew_completion_ends_by_status", rainbow_lost_slew_completion_ends_by_status },
+		{ "rainbow_manual_motion_axes_are_independent", rainbow_manual_motion_axes_are_independent },
+		{ "rainbow_manual_motion_released_when_client_detaches", rainbow_manual_motion_released_when_client_detaches },
+		{ "rainbow_location_partial_change_and_prime_meridian", rainbow_location_partial_change_and_prime_meridian },
+		{ "rainbow_guider_pulse_zero_replacement_and_axes", rainbow_guider_pulse_zero_replacement_and_axes },
+		{ "rainbow_guider_shares_connection_with_mount", rainbow_guider_shares_connection_with_mount },
+		{ "rainbow_wraps_and_folds_reported_coordinates", rainbow_wraps_and_folds_reported_coordinates },
+		{ "rainbow_reports_side_of_pier_and_status", rainbow_reports_side_of_pier_and_status },
+		{ "rainbow_hides_unanswered_status_queries", rainbow_hides_unanswered_status_queries },
+		{ "rainbow_refuses_motion_while_searching_for_home", rainbow_refuses_motion_while_searching_for_home },
+		{ "rainbow_refuses_collisions_with_manual_motion_and_pulses", rainbow_refuses_collisions_with_manual_motion_and_pulses }
 	};
 	int result = indigo_run_tests("RainbowAstro mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 	indigo_test_remove_private_home();

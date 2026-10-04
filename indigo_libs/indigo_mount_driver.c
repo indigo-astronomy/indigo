@@ -420,7 +420,9 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 	return INDIGO_FAILED;
 }
 
-void indigo_mount_load_alignment_points(indigo_device *device) {
+// Reads the saved alignment points into the model and the alignment properties without publishing them, for the
+// connection, which defines the properties afterwards. Returns false when there is no saved file.
+static bool mount_read_alignment_points(indigo_device *device) {
 	char sexagesimal[128], sexagesimal2[128];
 	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, false, ".alignment");
 	if (handle != NULL) {
@@ -444,9 +446,20 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 		}
 		indigo_uni_close(&handle);
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+		return true;
+	}
+	return false;
+}
+
+// The properties are defined only while the device is connected, and the number of points can change, so they are
+// published again as a delete followed by a define rather than updated.
+void indigo_mount_load_alignment_points(indigo_device *device) {
+	if (mount_read_alignment_points(device) && IS_CONNECTED) {
+		indigo_delete_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 	}
 }
 
@@ -536,7 +549,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
-			indigo_mount_load_alignment_points(device);
+			// the properties are defined below, with the points read here
+			mount_read_alignment_points(device);
 			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			indigo_j2k_to_jnow(&ra, &dec);

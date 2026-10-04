@@ -231,3 +231,193 @@ ASan/UBSan build (the Makefile's sanitize target is arm64 only), regeneration by
 ### Final test summary for this change
 
 Simulated: 18 run / 18 passed. Hardware: 0 run / 0 passed.
+
+## Protocol review: direction, guiding, park, home and connection (3.0.0.22, 2026-10-04)
+
+The driver was reviewed against the bundled protocol sheet `RainbowAstro_200629.pdf`.
+
+### Found defects and changes
+
+- North and south were swapped. The protocol sheet defines `:Ms#` as "manual DEC + move" and `:Mn#` as "DEC -",
+  so north is `:Ms#`. `MOUNT_MOTION_DEC`
+  NORTH now sends `:Ms#` (stop `:Qs#`), SOUTH `:Mn#` (stop `:Qn#`). The portable simulator already moved the
+  declination up on `:Ms#`; no test had checked the direction.
+- No pulse guiding. A guider device now pulses with `:RG#` and the direction command and ends the pulse with the
+  stop of that axis (`:Qs#`, `:Qn#`, `:Qw#`, `:Qe#`), or `:Q#` on firmware older than 200625. Pulses are refused
+  during a slew and while parked. Writes of the mount and the guider share a mutex; the guider reads the firmware
+  version from the `:AV#` probe, so it works without the mount device connected.
+- The interface and the protocol were never selected. The connection now sends `:AU#` (serial) or `:AW#` (network)
+  and `:AR#` before the `:AV#` probe; a mount left in the LX200 protocol (`:AL#`) does not answer `:AV#` otherwise.
+- The network default port was 4030; the WiFi module of the mount listens on 7100, which is the default now.
+- Park was the homing command. `:Ch#` finds the mechanical origin, so it is `MOUNT_HOME` now (`:CHO#` success,
+  `:CH0#` / `:CH<#` RA / DEC failure, abort and timeout end it in ALERT). `MOUNT_PARK` has PARKED and UNPARKED: a
+  park converts `MOUNT_PARK_POSITION` (hour angle, declination; `MOUNT_PARK_SET` sets it) to altitude and azimuth,
+  slews with `:Sa#`, `:Sz#`, `:MA#` and sends `:CtL#` on `:MM0#`; `:MML#`, `:MMU#`, `:MME#` end it in ALERT.
+  Unpark sends `:CtA#`. The mount does not report a park, so a connection starts unparked.
+- `MOUNT_TRACK_RATE` showed King and custom rates the driver could not set (King sent sidereal); it now has
+  sidereal, solar and lunar. `MOUNT_GUIDE_RATE` is limited to the documented 0.1x to 1.0x (10 to 100 %).
+
+Not taken over: side of pier (`:CG3#`, `:CY#`, reply layout not documented), forced meridian flip (`:Af0#`, `:Af1#`),
+star alignment (`:CN`), slew speed setup (`:Cu1=` to `:Cu3=`), and the status queries for motors, temperatures
+and voltage (`:GY#`, `:CP#`, `:CT#`, `:Cv#`).
+
+### Simulator
+
+`:AR#` / `:AL#` select the protocol and `--lx200-protocol` starts in LX200, where every other command is ignored;
+`:AU#` and `:AW#` are accepted; `:Sa#`, `:Sz#`, `:MA#` slew to an altitude and azimuth through the site latitude
+and the local sidereal time of the mount clock, without changing the tracking, and refuse a negative altitude
+with `:MML#`.
+
+### Tests
+
+Changed: `rainbow_driver_info_and_property_inventory` (park, park position, park set, home, three track rates,
+guide rate limits), `rainbow_manual_motion_covers_all_rates_axes_and_stops` (north `:Ms#`),
+`rainbow_park_abort_and_pending_disconnect` (`:MA#`). Replaced `rainbow_park_reports_success_and_failure` by
+`rainbow_park_slews_to_park_position`. New: `rainbow_park_follows_park_position`,
+`rainbow_home_finds_mechanical_origin`, `rainbow_north_raises_declination`, `rainbow_selects_rainbow_protocol`,
+`rainbow_guider_pulses_every_direction`, `rainbow_guider_uses_global_stop_on_legacy_firmware`.
+
+First recorded run (2026-10-04 14:29): 24/22 Failed. Both park cases timed out on the unpark: the generated
+MOUNT_PARK handler does not publish the property, and the unpark branch did not either. It does now.
+
+Second recorded run (2026-10-04 14:31) on macOS arm64: 24/24 OK. MIGRATION_STATUS.md hardware-free count 18 -> 24.
+The MountSim suite was not run; its RST135 model may still use the old north/south mapping and park semantics.
+
+### Final test summary for this change
+
+Simulated tests: **24 run, 24 passed** (second recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Mount testing rules coverage (3.0.0.23, 2026-10-04)
+
+The suite was checked against the "Mount Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (compliance scenarios
+and every row of the Mount Driver Test Standard, the Guider standard for pulse guiding). Every new assertion was first
+run against 3.0.0.22; the defects it found are fixed below.
+
+### Found defects and changes
+
+- `:MML#`, `:MMU#` and `:MME#` all reached the client as "Slew rejected or interrupted"; the message now names the
+  reason (target below / above the altitude limit, slew canceled at the mount).
+- An abort of a running GOTO or park published `MOUNT_EQUATORIAL_COORDINATES` OK; it now ends ALERT (an idle abort
+  stays OK).
+- A lost `:MM0#` left the GOTO or park BUSY for the 600 s deadline. A `:CL0#` after the poll reported the slew moving
+  (`:CL1#`) now ends it the same way; a `:CL0#` that was in flight when the slew started still does not.
+- `MOUNT_TRACKING` and `MOUNT_TRACK_RATE` were republished with every one-second poll; they are now published only when
+  the reported state changes.
+- A target just below 24 h was sent as `:Sr24:00:00.0#` and synced as `:Ck360.000...#`; it is 0 h / 0 degrees now.
+- The prime meridian read back from `:Gg+000*00'00#` was published as longitude 360; it is 0 now.
+- A disconnect during manual motion closed the port with the axis still moving; it sends `:Q#` first now and clears
+  the motion items.
+- A connection failed when any initialization reply was lost; only the identity (`:AV#`) is required now, a lost reply
+  to another query leaves just its property ALERT. The `:AV#` probe in open is repeated (3 attempts) after a missing
+  reply; a wrong reply is still refused.
+
+### Simulator
+
+`--tracking`, `--track-rate <0-3>` and `--guide-rate <D.D>` start the mount in a non-default state; the injection
+action `NOCOMPLETE` executes a slew command but loses its `:MM0#` (event `LOST`).
+
+### Scenario-to-test mapping (additions)
+
+| Rule | Test |
+| --- | --- |
+| Connect publishes device state, no clock/site/setting writes, no unknown commands, placeholder `:CT3#` keeps the rate, unchanged state not republished, external change published once, guide speed range ends on the wire | `rainbow_connect_publishes_device_state` |
+| Identity probe retry after a missing reply, lost initial readback marks only its property | `rainbow_connect_recovers_from_lost_initial_replies` |
+| Refused identity leaves no mount property defined | `rainbow_rejects_non_rainbow_transport` |
+| GOTO prerequisite sequence (rate, `:CtA#`, target, `:MS#`), stale `:CL0#` in flight, request while BUSY ignored and original target reached, tracking at the selected rate after the slew, targets as hour angles on both sides of the meridian, largest sub-unit, DEC pole clamp, 24 h / 360 degrees wrap for GOTO and SYNC, negative zero-degree DEC | `rainbow_goto_sequence_completion_and_encoding` |
+| Controller reason in the client message, coordinates keep the real position | `rainbow_goto_ack_prefix_and_error_recovery` |
+| Abort mid-slew: one stop, ALERT, two equal readbacks short of the target; idle abort keeps position and tracking; momentary item OFF | `rainbow_abort_stops_slew_once` |
+| Lost completion of GOTO and park | `rainbow_lost_slew_completion_ends_by_status` |
+| West/east RA direction, simultaneous axes, independent stop, reversal, disconnect stops motion, no stale motion after reconnect | `rainbow_manual_motion_axes_are_independent` |
+| Manual motion released when its client detaches | `rainbow_manual_motion_released_when_client_detaches` |
+| Park: coordinates BUSY while moving, tracking OFF when parked, GOTO/tracking/motion refused without a command showing the device state, unpark sends no motion, guard does not latch | `rainbow_park_slews_to_park_position` |
+| Park interrupted by disconnect: no stale BUSY, not reported failed | `rainbow_park_abort_and_pending_disconnect` |
+| One-item location change resends the other, prime meridian write and readback | `rainbow_location_partial_change_and_prime_meridian` |
+| Time zone before clock, host-time momentary item | `rainbow_writes_location_and_time` |
+| Legacy firmware: no axis stops, clock writes end ALERT without a command | `rainbow_uses_legacy_firmware_protocol` |
+| Guider: zero pulse, item reset, independent axes, same-axis replacement with one stop | `rainbow_guider_pulse_zero_replacement_and_axes` |
+| Guider with the mount: both connection orders, no pulse during a slew or while parked (accepted after unpark), SHUTDOWN refused, guider-only session does not poll, guider disconnect mid-pulse stops the axis | `rainbow_guider_shares_connection_with_mount` |
+
+### Not covered, with reason
+
+- Slew that never completes: the GOTO/park/home deadline is 600 s and not configurable, too long for an automated case.
+- A completed slew with lost `:MM0#` that ends between two polls (no `:CL1#` seen) still waits for the deadline.
+- Rejection of `:Sr#`/`:Sd#`: the protocol documents only the `1` acknowledgement; the driver does not read it.
+- A setting acknowledged but not kept (published with the device value and ALERT): the driver does not read settings
+  back in its handlers; the next poll shows the device value with OK (tracking, rate) and the guide speed is not polled.
+- RA drift with tracking off, guide pulse displacement and tracking restore after an RA pulse: the simulator does not
+  model the sky drift or the guide speed.
+- Pier side, hemisphere-dependent direction, alignment, PEC, `MOUNT_STATE`, custom rate, home/park-set position
+  workflows: not implemented by the driver (`MOUNT_PARK_SET` CURRENT is framework behaviour).
+- Network (`rainbow://`, TCP 7100) transport: opt-in socket tests are out of the normal integration target.
+
+## Protocol review: coordinate range, collisions, side of pier and status (3.0.0.24, 2026-10-04)
+
+The driver was reviewed once more against the Rainbow protocol as the mount uses it, including the queries that the
+protocol sheet does not document, and against the vendor's release notes, which list collisions of a pulse or a manual
+move with homing and slewing as fixed defects. No hardware test was made; everything below is simulator-validated only.
+
+### Found defects and changes
+
+- A right ascension reported beyond 24 h or below 0 h (`:GR25:00:00.0#`) was published as it was. It wraps into
+  [0, 24) now. A declination reported beyond a pole (`:GD+95*...#`) is mirrored back over it (85 degrees), the right
+  ascension stays as reported. Found by source audit, reproduced by `rainbow_wraps_and_folds_reported_coordinates`.
+- Nothing prevented operations that drive the same axes from overlapping. While the mount searched for home (`:Ch#`),
+  a GOTO, sync, park and manual move were sent; while a guiding pulse ran, a GOTO, park, homing or manual move was sent
+  and the pulse's axis stop (`:Qn#`, `:Qs#`, ...) could stop it; a GOTO or park accepted a manual move and homing; a
+  manual move accepted homing and pulses; a pulse was accepted during a search for home. Each of these is refused now
+  with a reason (`reject_change` on the mount properties, a refusal in the guider handlers); a sync during a pulse and
+  a stop request are still accepted. The guider and the mount share the state through `homing`, `manual_motion`,
+  `pulse_ra` and `pulse_dec` in the private data. Found by source audit, covered by
+  `rainbow_refuses_motion_while_searching_for_home` and `rainbow_refuses_collisions_with_manual_motion_and_pulses`.
+- The tracking-rate reply was matched by its first digit, so the temperature reply `:CT25.5|30.2|29.8#` would have
+  been read as the lunar rate (`:CT2#`). A rate reply must now be `:CT<0-2>#`; a reply with `|` is the temperatures.
+  Covered by `rainbow_reports_side_of_pier_and_status` (rate unchanged and not republished over several polls).
+
+### New capabilities
+
+- `MOUNT_SIDE_OF_PIER` (read-only): `:CG3#` gives the DEC axis angle of the aligned mount, `:CY#` the current DEC axis
+  angle (7 characters), a separator and the RA axis angle; the OTA is west of the pier when the DEC axis is more than
+  90 degrees from its aligned position. A forced meridian flip (`:Af0#`, `:Af1#`) is not supported, so the property is
+  not writable.
+- `X_RAINBOW_POWER` (`:Cv#` input voltage, `:CP<DEC>|<RA>#` motor power in percent), `X_RAINBOW_TEMPERATURE`
+  (`:CT<board>|<RA>|<DEC>#`) and the light property `X_RAINBOW_STATUS` (`:GY#` characters 1, 3 and 4 are the telescope
+  control system, the DEC and the RA motor, `O` is fine; `:GHO#` the home sensor was found).
+- These queries are sent once at connect (`:CG3#:CY#:Cv#:CP#:CT#:GY#:GH#`, up to 1 s); only the answered ones are
+  polled each second, the properties of the others stay hidden (`HOME` is left out of `X_RAINBOW_STATUS` when `:GH#` is
+  not answered). Values are published only when they change.
+
+Not taken over: forced meridian flip (`:Af0#`, `:Af1#`), star alignment (`:CN`), slew speed setup (`:Cu1=` to `:Cu3=`),
+the auto-resume query (`:CR#`), `:SPH#` and `:SPE#` (meaning unknown), the mount's own altitude and azimuth (`:GA#`,
+`:GZ#`; INDIGO computes them).
+
+### Simulator
+
+`:CG3#` answers `:CG3000.00000#`; `:CY#` reports the DEC axis angle within 90 degrees of the alignment east of the pier
+and beyond it west of the pier, which a GOTO or altitude/azimuth slew to a target east of the meridian selects, and the
+RA axis angle from the hour angle; `:Cv#`, `:CP#`, `:CT#` and `:GY#` answer fixed healthy values; `:GH#` reports the
+home sensor found after a completed homing (it reported the park state before). `--no-diagnostics` ignores all seven
+queries. The Arduino sketch `mount_rainbow_simulator.ino` was not changed.
+
+### Tests
+
+New: `rainbow_wraps_and_folds_reported_coordinates`, `rainbow_reports_side_of_pier_and_status` (initial values,
+read-only side of pier, no republishing on unchanged polls, changed temperature and power, a motor needing a check,
+west/east from injected and from simulated axis angles after GOTOs on both sides of the meridian, home sensor found by
+homing), `rainbow_hides_unanswered_status_queries` (no property, one probe each, nothing polled, also after a
+reconnect), `rainbow_refuses_motion_while_searching_for_home`, `rainbow_refuses_collisions_with_manual_motion_and_pulses`.
+Changed: `rainbow_driver_info_and_property_inventory` (side of pier and the three status properties are defined),
+`rainbow_home_finds_mechanical_origin` (the abort case loses `:Ch#`; the mount was already at home and could answer
+`:CHO#` before the abort, which failed under the sanitizer build).
+
+The sanitizer build (`make -C indigo_test test-mount-rainbow-simulator-sanitize`) passed twice after that change.
+Recorded run (2026-10-04 21:09) on macOS arm64: 39/39 OK. MIGRATION_STATUS.md hardware-free count 34 -> 39.
+
+### Not covered, with reason
+
+- The meaning of the `:CY#` separator character and of `:GY#` character 2 is not known; the driver ignores both.
+- Whether a mount reports a declination beyond a pole with the right ascension of the other side is not known; the
+  driver keeps the right ascension as reported.
+
+### Final test summary for this change
+
+Simulated tests: **39 run, 39 passed** (recorded run). Hardware tests: **0 run, 0 passed**.

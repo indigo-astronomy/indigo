@@ -226,7 +226,11 @@ static void guider_completion(void) {
 	double started = indigo_monotonic_time();
 	SA_CHECK(guider_start(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 400) && guider_count("GET", "ispulseguiding") == checks && guider_watched(checks, 1) && indigo_monotonic_time() - started >= 0.4);
 	SA_CHECK(guider_watched(checks, 5) && sa_state(guider_device, GUIDER_GUIDE_DEC_PROPERTY_NAME) == INDIGO_BUSY_STATE && !sa_state_after(guider_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, revision) && sa_number(guider_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 400);
-	SA_CHECK(sa_advance(0, 0.4) && guider_answer(GUIDER_GUIDE_DEC_PROPERTY_NAME, revision) == INDIGO_OK_STATE && guider_zero(GUIDER_GUIDE_DEC_PROPERTY_NAME) && guider_quiet() && guider_count("PUT", "pulseguide") == 1);
+	SA_CHECK(sa_advance(0, 0.4) && guider_answer(GUIDER_GUIDE_DEC_PROPERTY_NAME, revision) == INDIGO_OK_STATE);
+	// the coordinates of the mount already show the pulse when it is reported over: the end of a pulse is followed by a poll tick,
+	// the regular one may be a second away and a client that reads the coordinates at once would see where the pulse started
+	SA_CHECK(mount_near(sa_number(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME), mount_simulated("Declination"), 1e-9));
+	SA_CHECK(guider_zero(GUIDER_GUIDE_DEC_PROPERTY_NAME) && guider_quiet() && guider_count("PUT", "pulseguide") == 1);
 	// the mount is not disturbed: its properties stay as they are
 	SA_CHECK(sa_is_connected(sa_device) && sa_state(sa_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && sa_switch(sa_device, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 	// a pulse that is over when its duration has passed (device time ran ahead) completes with the first look

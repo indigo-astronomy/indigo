@@ -67,6 +67,21 @@
 | Guide-rate commands, all directions, fresh transitions, overlap, concurrent axes and failures | `nexstar_celestron_guider_passes_serial_compliance_checks` |
 | Shared ownership in both orders, sibling survival and pending-pulse reconnect | `nexstar_shared_devices_survive_both_connection_orders` |
 | Guide timing for all directions/durations under idle and motion workloads | `bench_mount_nexstar_guider_timing` |
+| Negative capability contract on both sides of the firmware/model thresholds (ST4 rate 3.1, side of pier 4.15, alt-az, Sky-Watcher, no GPS on Sky-Watcher), read-only side of pier | `nexstar_capability_contract_follows_model` |
+| Connect publishes controller tracking and ST4 rates; rate range ends on the wire; reconnect readback; acknowledged-but-not-kept rate ends ALERT; refused tracking shows device state | `nexstar_connect_reads_device_state_and_guide_rates` |
+| Lost reply at each GOTO step (J, r) ends ALERT with no later command and the real position kept; SYNC not retried; unaligned reason reaches the client | `nexstar_goto_refusals_stop_the_sequence`, `nexstar_mount_rejects_coordinates_when_unaligned` |
+| GOTO completion from the slew status: frozen readback keeps BUSY, a slew ended short of the target ends ALERT | `nexstar_goto_completion_follows_slew_status` |
+| Abort landing mid-slew (one stop, ALERT, stable readback short of target), abort while idle | `nexstar_abort_lands_mid_slew` |
+| Poll in flight does not complete a pending GOTO (one result) | `nexstar_poll_in_flight_does_not_complete_goto` |
+| Disconnect during GOTO and manual motion sends the stop; reconnect starts idle | `nexstar_disconnect_stops_goto_and_motion` |
+| Slew presets 2/4/6/9 on the wire; readback direction for E/W/N/S | `nexstar_manual_motion_rates_and_directions` |
+| Parked guards keep driver state, unpark sends no motion, guards do not latch, refused park shows unparked | `nexstar_park_guards_and_unpark` |
+| Site encoding: both hemispheres, prime meridian 0/360, seconds carry, reconnect readback | `nexstar_site_encoding_and_prime_meridian` |
+| RA/DEC 32-bit encoding just below the RA wrap and at small negative/positive DEC | `nexstar_coordinate_encoding_at_wrap_points` |
+| Guider-only session does not poll the mount; SHUTDOWN refused while a device is connected | `nexstar_guider_only_session_and_shutdown_guard` |
+| GPS without accessory refuses connection and defines nothing | `nexstar_gps_refuses_without_accessory` |
+| GOTO (refused, then accepted) during a guide pulse | `nexstar_goto_during_guide_pulse` |
+| Site request copied while the poll reads the site | `nexstar_location_request_survives_poll` |
 
 ## Validation Results
 
@@ -1197,3 +1212,43 @@ Recorded run `TZ=Europe/Bratislava python3 tools/run_driver_test.py mount_nexsta
 ### Final test summary for this change
 
 Simulated tests: **23 run, 23 passed** (recorded run). Hardware tests: **0 run, 0 passed**.
+
+## Mount testing rules coverage (2026-10-04)
+
+Version 47. Audit of `test_mount_nexstar_simulator.c` against the Mount chapter of
+`indigo_test/DRIVER_TESTING_RULES.md`; the 15 new cases and the extended unaligned case are listed in the
+scenario-to-test mapping above. No hardware run for this change.
+
+Simulator additions: `--tracking-mode`, `--guide-rates`, and control actions `ignore` (acknowledge without
+applying), `stall` (goto accepted, axes do not move), `halt` (goto ends where the axes are) and `slow` (10 s goto).
+
+Driver defects found by the new cases and fixed:
+
+- An acknowledged ST4 rate the controller did not keep was published with the device value but OK, and the cached
+  rate kept the requested value, so a retry was never sent. The readback now sets the cache and a mismatch is ALERT.
+- GOTO completion ignored where the slew ended: a slew the controller ended short of the target was reported OK.
+  The handler records the device-frame target; the poll ends the GOTO OK only within 0.25 deg, otherwise ALERT
+  with "Mount stopped short of the target".
+- An aborted GOTO was published OK. It now ends ALERT (also a GOTO request cancelled before its handler ran).
+- A poll in flight when a GOTO request was copied published OK over the pending request. The poll leaves a BUSY
+  state it did not set (and that is not a running GOTO) to the handler.
+- Disconnecting during a GOTO, park or manual motion sent no stop, and the motion items stayed ON into the next
+  session (coordinates BUSY after reconnect). The disconnect now sends the abort sequence and clears the items.
+- A park the controller refused (or whose tracking-off failed) cleared the parked flag but left the PARKED item on,
+  so the parked guards kept refusing motion. The UNPARKED item is now selected.
+
+Gaps deliberately not covered: a bounded timeout for a slew that never completes (no driver policy, and a
+real-length timeout is too long for the suite); refusing guide pulses while parked (no such guard exists, behaviour
+change); MOUNT_STATE, home, PEC, custom track rates, dialect selection and network transports (not implemented);
+pier-side/hemisphere direction mapping (done by the hand controller); tracking-rate restore after RA motion (the
+simulator does not model per-axis tracking); manual motion ownership (framework, `test_detach_abort.c`).
+
+## Driver-specific property prefix (2026-10-04)
+
+Version 48. The two driver-specific properties lacked the `X_` prefix required for custom properties. With user
+approval they were renamed, without a backward-compatible alias: `TRACKING_MODE` -> `X_TRACKING_MODE` (mount) and
+`COMMAND_GUIDE_RATE` -> `X_COMMAND_GUIDE_RATE` (guider). Item names are unchanged. All other properties of the
+mount, guider and GPS devices are standard INDIGO properties. The persisted `TRACKING_MODE` value of an existing
+configuration is not migrated; the property starts at its default (AUTO) until saved again.
+
+The simulator, mountsim and hardware tests use the new names and assert that the old names are not defined.

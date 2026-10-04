@@ -35,6 +35,7 @@
 #define ALPACA_INTERFACE_VERSION	1
 #define ALPACA_MAX_FILTERS				32
 #define ALPACA_MAX_SWITCHES				8
+#define ALPACA_SWITCH_SECTIONS		6
 #define ALPACA_MAX_ITEMS					128
 #define ALPACA_SIDEREAL_RATE			(360.0 / 86164.0905)
 
@@ -121,10 +122,12 @@ typedef struct indigo_alpaca_device_struct {
 		} wheel;
 		struct {
 			bool absolute;
+			bool positionwritable;
 			bool ismoving;
 			bool tempcompavailable;
 			bool tempcomp;
 			bool tempcompsuspended;
+			bool movepending;
 			bool temperatureavailable;
 			bool halted;
 			int offset;
@@ -136,6 +139,7 @@ typedef struct indigo_alpaca_device_struct {
 		struct {
 			bool canreverse;
 			bool ismoving;
+			bool hasrawposition;
 			double mechanicalposition;
 			double position;
 			double targetposition;
@@ -158,6 +162,8 @@ typedef struct indigo_alpaca_device_struct {
 			bool atpark;
 			double siderealtime;
 			int equatorialsystem;
+			double epoch;										// MOUNT_EPOCH: the equinox of the telescope, 0 for the equinox of date
+			bool epochknown;									// MOUNT_EPOCH was seen; J2000 until then
 			double declination;
 			double rightascension;
 			double altitude;
@@ -192,22 +198,21 @@ typedef struct indigo_alpaca_device_struct {
 			bool isrotating;
 			bool isshuttermoving;
 			bool isflapmoving;
+			bool isparking;
+			bool ishoming;
+			bool homed;
 		} dome;
 		struct {
-			int maxswitch_power_outlet;
-			int maxswitch_heater_outlet;
-			int maxswitch_usb_port;
-			int maxswitch_gpio_outlet;
-			int maxswitch_gpio_sensor;
-			bool canwrite[5 * ALPACA_MAX_SWITCHES];
-			char switchname[5 * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
-			char switchlabel[5 * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
-			double switchvalue[5 * ALPACA_MAX_SWITCHES];
-			double minswitchvalue[5 * ALPACA_MAX_SWITCHES];
-			double maxswitchvalue[5 * ALPACA_MAX_SWITCHES];
-			double switchstep[5 * ALPACA_MAX_SWITCHES];
-			bool valueset[5];
-			bool nameset[5];
+			int count[ALPACA_SWITCH_SECTIONS];			// switches of each section, see indigo_alpaca_switch.c
+			bool canwrite[ALPACA_SWITCH_SECTIONS * ALPACA_MAX_SWITCHES];
+			char switchname[ALPACA_SWITCH_SECTIONS * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
+			char switchlabel[ALPACA_SWITCH_SECTIONS * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
+			double switchvalue[ALPACA_SWITCH_SECTIONS * ALPACA_MAX_SWITCHES];
+			double minswitchvalue[ALPACA_SWITCH_SECTIONS * ALPACA_MAX_SWITCHES];
+			double maxswitchvalue[ALPACA_SWITCH_SECTIONS * ALPACA_MAX_SWITCHES];
+			double switchstep[ALPACA_SWITCH_SECTIONS * ALPACA_MAX_SWITCHES];
+			bool valueset[ALPACA_SWITCH_SECTIONS];
+			bool nameset[2];											// AUX_OUTLET_NAMES, AUX_SENSOR_NAMES
 		} sw;
 		struct {
 			bool canpulseguide;
@@ -310,6 +315,8 @@ INDIGO_EXTERN long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca
 
 INDIGO_EXTERN indigo_device *indigo_agent_alpaca_device;
 INDIGO_EXTERN indigo_client *indigo_agent_alpaca_client;
+
+INDIGO_EXTERN void indigo_alpaca_connect_paired_guider(indigo_alpaca_device *mount, indigo_alpaca_device *guider);
 
 #define IS_DEVICE_TYPE(device, type) ((device->indigo_interface & type) == type)
 

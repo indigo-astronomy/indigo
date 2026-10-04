@@ -63,5 +63,5 @@ Driver is developed and tested with:
 2026-09-26 21:03 3.0.0.68 linux arm64 simulator 99/99 OK
 2026-09-27 02:25 3.0.0.69 linux x64 simulator 103/103 OK
 2026-09-30 19:42 3.0.0.69 linux arm64 NYX-101 35/35 OK
-2026-10-01 09:33 3.0.0.69 mac arm64 simulator 103/103 OK
 2026-10-01 22:47 3.0.0.69 linux x64 On-Step 35/35 OK
+2026-10-04 18:20 3.0.0.76 mac arm64 simulator 140/140 OK

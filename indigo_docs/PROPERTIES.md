@@ -1363,7 +1363,7 @@ Source: `indigo_drivers/mount_asi/indigo_mount_asi.c`.
 
 ### mount_ioptron
 
-Custom properties: `MOUNT_MERIDIAN_HANDLING`, `MOUNT_MERIDIAN_LIMIT`, `PROTOCOL_VERSION`.
+Custom properties: `X_MOUNT_MERIDIAN_HANDLING`, `X_MOUNT_MERIDIAN_LIMIT`, `X_PROTOCOL_VERSION`.
 
 Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_CUSTOM_TRACKING_RATE`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
@@ -1371,11 +1371,27 @@ Source: `indigo_drivers/mount_ioptron/indigo_mount_ioptron.c`.
 
 ### mount_lx200
 
-Custom properties: `X_ALTITUDE_LIMITS`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`.
+Custom properties: `X_ALTITUDE_LIMITS`, `X_AP_PARK_POSITION`, `X_AP_SYNC_MODE`, `X_GEMINI_PARK_POSITION`, `X_GEMINI_STARTUP`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`, `X_ZWO_MAX_SLEW_SPEED`, `X_ZWO_MERIDIAN`, `X_ZWO_MERIDIAN_LIMIT`.
 
-Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `GUIDER_RATE`, `MOUNT_ALIGNMENT_RESET`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
 `X_MOUNT_TYPE.CLASSIC` explicitly selects the original Meade LX200 Classic. It uses the documented quartz/manual tracking-frequency commands, exposes time/location and motion, and hides unsupported adjustable guide-rate, tracking-switch, park and home properties. Its guider uses host-timed `RG` plus directional `M`/`Q` commands at the fixed controller guide speed, with independent axes and replacement/zero-stop semantics. Guiding conflicts with manual motion or a driver GOTO are rejected. `GENERIC` retains its existing compatibility behavior.
+
+`X_AP_SYNC_MODE` (Astro-Physics GTO only, persistent) chooses how a sync reaches the servo controller: `RCAL` (default) recalibrates with `:CMR#` and keeps the side of the pier the controller knows, `SYNC` sends `:CM#`, which also redefines the side of the pier and is meant for the first calibration after the mount was moved through the clutches.
+
+`X_AP_PARK_POSITION` (Astro-Physics GTO only, persistent, shown when the controller has firmware park positions: every GTOCP5/6, and a GTOCP3/4 that reports them) chooses where a park ends: `CURRENT` (default) parks where the mount stands with `:KA#`, `PARK1` to `PARK5` stop the tracking and let the controller slew to that park position itself with `$K1#` to `$K5#`; `MOUNT_PARK` stays busy until `:GOS#` reports the mount parked.
+
+`X_GEMINI_STARTUP` (Losmandy Gemini, persistent, defined also while the mount is not connected) selects the startup mode the driver chooses when a Gemini that was just switched on waits for it: `COLD` (default) cold start with `bC#`, `WARM` warm start with `bW#`, `WARM_RESTART` warm restart with `bR#`. The connection waits until the controller reports it is ready.
+
+`X_GEMINI_PARK_POSITION` (Losmandy Gemini only, persistent) chooses where `MOUNT_PARK` parks: `STARTUP` (default) the counterweight-down startup position with `:hC#`, `HOME` the home position with `:hP#`, `ZENITH` the zenith with `:hZ#`, which Level 4 refuses.
+
+On a Gemini, `MOUNT_GUIDE_RATE` and the guider's `GUIDER_RATE` show and set the one guiding speed of both axes (20 % to 80 % of the sidereal rate), and `MOUNT_TRACK_RATE` is read from the mount at connect.
+
+`X_ZWO_MERIDIAN` (ZWO AM, firmware 1.2.4 and later) sets what the mount does at the meridian: `AUTO_FLIP_AT_LIMIT` flips automatically at the limit, `TRACK_PASSED_MERIDIAN` keeps tracking past the meridian up to the limit. `X_ZWO_MERIDIAN_LIMIT.LIMIT` is that limit in degrees past the meridian (−15 to 15, negative before it). Both are read from the mount at connect.
+
+`X_ZWO_MAX_SLEW_SPEED` (ZWO AM) chooses the highest slew speed: `LOW` 720 times and `HIGH` 1440 times the sidereal rate.
+
+On a ZWO AM with firmware 1.2.4 and later, `MOUNT_ALIGNMENT_RESET` also clears the multi-star calibration of the mount with `:NSC#`. From firmware 1.1.1 the driver reads why tracking stopped and sends it as a message, for example when the mount reaches the meridian limit without an automatic flip.
 
 Source: `indigo_drivers/mount_lx200/indigo_mount_lx200.c`.
 
@@ -1387,11 +1403,11 @@ Source: `indigo_drivers/mount_mxhd/indigo_mount_mxhd.c`.
 
 ### mount_nexstar
 
-Custom properties: `COMMAND_GUIDE_RATE`, `TRACKING_MODE`.
+Custom properties: `X_COMMAND_GUIDE_RATE`, `X_TRACKING_MODE`.
 
-On Advanced VX, `COMMAND_GUIDE_RATE` retains its legacy `GUIDE_50` and `GUIDE_100` item names for client compatibility, while its displayed item labels describe the actual fixed hand-control indices 1 and 2 (manual nominal 2x and 4x sidereal). These command rates are separate from `MOUNT_GUIDE_RATE`, which configures the ST4 autoguide percentage.
+On Advanced VX, `X_COMMAND_GUIDE_RATE` retains its legacy `GUIDE_50` and `GUIDE_100` item names for client compatibility, while its displayed item labels describe the actual fixed hand-control indices 1 and 2 (manual nominal 2x and 4x sidereal). These command rates are separate from `MOUNT_GUIDE_RATE`, which configures the ST4 autoguide percentage.
 
-On SynScan V4 hand controllers, `COMMAND_GUIDE_RATE` selects fixed HC motion indices 1 and 2 (manual nominal 1x and 8x sidereal). `MOUNT_GUIDE_RATE` is hidden because SynScan serial protocol 3.3 does not define the Celestron ST4-rate read/write commands used by that property.
+On SynScan V4 hand controllers, `X_COMMAND_GUIDE_RATE` selects fixed HC motion indices 1 and 2 (manual nominal 1x and 8x sidereal). `MOUNT_GUIDE_RATE` is hidden because SynScan serial protocol 3.3 does not define the Celestron ST4-rate read/write commands used by that property.
 
 Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_ABORT_MOTION`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET` (CURRENT reads mechanical axes from the HC and stores the inverse park-command encoding, including signed DEC), `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
@@ -1413,7 +1429,15 @@ Source: `indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver`; generated output i
 
 ### mount_rainbow
 
-Driver-specific use of existing properties: `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_SET_HOST_TIME`, `UTC_TIME`.
+Custom properties: `X_RAINBOW_POWER`, `X_RAINBOW_STATUS`, `X_RAINBOW_TEMPERATURE`.
+
+Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+`MOUNT_PARK` slews to `MOUNT_PARK_POSITION` by its altitude and azimuth and stops tracking there; unparking starts tracking. `MOUNT_HOME` finds the mechanical origin of the mount. `MOUNT_TRACK_RATE` offers sidereal, solar and lunar, `MOUNT_GUIDE_RATE` 10 to 100 %. The guider device pulses at the guide rate.
+
+While the mount searches for home, a GOTO, sync, park and manual move are refused; while a guiding pulse runs, a GOTO, park, homing and manual move are refused (a sync is accepted); a GOTO or park refuses a manual move and homing, a manual move refuses homing. The guider refuses a pulse during a slew, a manual move, a search for home and while parked.
+
+The following are read-only and defined only on a mount that answers their queries at connect. `MOUNT_SIDE_OF_PIER` is read from the axis angles (`:CG3#`, `:CY#`). `X_RAINBOW_POWER` has the input voltage `VOLTAGE` [V] and the motor power `RA_MOTOR`, `DEC_MOTOR` [%]. `X_RAINBOW_TEMPERATURE` has the temperatures `BOARD`, `RA_MOTOR` and `DEC_MOTOR` [°C]. `X_RAINBOW_STATUS` is a light property: `TCS` (telescope control system), `RA_MOTOR` and `DEC_MOTOR` are OK, or ALERT when the mount asks for a check; `HOME`, shown when the mount reports its home sensor, is OK once home was found.
 
 Source: `indigo_drivers/mount_rainbow/indigo_mount_rainbow.c`.
 
@@ -1427,7 +1451,7 @@ Source: `indigo_drivers/mount_starbook/indigo_mount_starbook.driver`.
 
 ### mount_synscan
 
-Custom properties: `MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE`, `MOUNT_USE_ENCODERS`, `POLARSCOPE`.
+Custom properties: `X_MOUNT_AUTOHOME`, `X_MOUNT_AUTOHOME_SETTINGS`, `X_MOUNT_OPERATING_MODE`, `X_MOUNT_USE_ENCODERS`, `X_POLARSCOPE`.
 
 Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_ALIGNMENT_DELETE_POINTS`, `MOUNT_ALIGNMENT_MODE`, `MOUNT_ALIGNMENT_SELECT_POINTS`, `MOUNT_EPOCH`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_POSITION`, `MOUNT_HOME_SET`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `MOUNT_RAW_COORDINATES`, `MOUNT_SIDE_OF_PIER`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`.
 
@@ -1495,7 +1519,7 @@ Filter wheel proxies. `WHEEL_SLOT`, `WHEEL_SLOT_NAME` and `WHEEL_SLOT_OFFSET` ar
 
 Rotator proxies. `X_ALPACA_MECHANICAL_POSITION` (number, read-write, `POSITION` in degrees, -180..360, normalised to 0..360) shows MechanicalPosition, and a change is MoveMechanical; it is defined for devices with interface version 3 or later that implement MechanicalPosition, and removed for the connection if the device answers NotImplemented to MoveMechanical. `ROTATOR_RAW_POSITION` (read-only) is MechanicalPosition; `ROTATOR_ON_POSITION_SET` (`SYNC` is the Alpaca Sync) is hidden before interface version 3 and removed if Sync is not implemented; `ROTATOR_RELATIVE_MOVE` is Move; `ROTATOR_DIRECTION` is Reverse, hidden unless CanReverse; `ROTATOR_STEPS_PER_REVOLUTION` is read-only, 360 / StepSize, hidden if StepSize is not implemented; `ROTATOR_LIMITS`, `ROTATOR_BACKLASH` and `ROTATOR_POSITION_OFFSET` are hidden.
 
-Dome proxies. `X_ALPACA_DOME_SLAVED` (switch, one of many, `ENABLED` / `DISABLED`; only if CanSlave) is the Alpaca Slaved flag: the dome hardware follows a telescope by itself and then refuses slews, park and find home. It is unrelated to the dome synchronisation of the mount agent; `DOME_ABORT_MOTION` (AbortSlew) switches it off in the device. `X_ALPACA_DOME_PARK_SET` (switch, at most one, `CURRENT`; only if CanSetPark) makes the current azimuth the park position (SetPark). Neither is saved by CONFIG. Standard properties by capability: CanSetAzimuth gives `DOME_HORIZONTAL_COORDINATES` (`ALT` only with CanSetAltitude), `DOME_STEPS`, `DOME_DIRECTION`, `DOME_ON_COORDINATES_SET` (`SYNC` only with CanSyncAzimuth), `DOME_DIMENSION` and `DOME_SLAVING_PARAMETERS`; CanSetShutter gives `DOME_SHUTTER`; CanPark gives `DOME_PARK` (`UNPARKED` sends nothing, Alpaca has no unpark); CanFindHome gives `DOME_HOME`. `DOME_ABORT_MOTION` and `DOME_STATE` always exist, `DOME_SPEED` never.
+Dome proxies. `X_ALPACA_DOME_SLAVED` (switch, one of many, `ENABLED` / `DISABLED`; only if CanSlave) is the Alpaca Slaved flag: the dome hardware follows a telescope by itself and then refuses slews, park and find home. It is unrelated to the dome synchronisation of the mount agent; `DOME_ABORT_MOTION` (AbortSlew) switches it off in the device. `X_ALPACA_DOME_PARK_SET` (switch, at most one, `CURRENT`; only if CanSetPark) makes the current azimuth the park position (SetPark). Neither is saved by CONFIG. Standard properties by capability: CanSetAzimuth gives `DOME_HORIZONTAL_COORDINATES` (`ALT` only with CanSetAltitude), `DOME_STEPS`, `DOME_DIRECTION`, `DOME_ON_COORDINATES_SET` (`SYNC` only with CanSyncAzimuth), `DOME_DIMENSION` and `DOME_SLAVING_PARAMETERS`; CanSetShutter gives `DOME_SHUTTER`; CanPark gives `DOME_PARK` (`UNPARKED` sends nothing, Alpaca has no unpark); CanFindHome gives `DOME_HOME`, whose `HOME` item is on while the device reports AtHome (turning it on starts FindHome). `DOME_ABORT_MOTION` and `DOME_STATE` always exist, `DOME_SPEED` never.
 
 CoverCalibrator proxies (AUX light box). `AUX_COVER` (`OPEN`, `CLOSE`) and `X_ALPACA_COVER_ABORT_MOTION` (switch, at most one, `ABORT_MOTION`; HaltCover, removed for the connection if the device answers NotImplemented) exist if the device has a cover, `AUX_LIGHT_SWITCH` and `AUX_LIGHT_INTENSITY` if it has a calibrator. `LIGHT_INTENSITY` is in the units of the device, 0 to MaxBrightness, and is hidden if MaxBrightness <= 1; a light that is off keeps the intensity for the next ON. `AUX_COVER`, `AUX_LIGHT_SWITCH` and `AUX_LIGHT_INTENSITY` are accepted while BUSY. `INFO.DEVICE_INTERFACE` is the light box interface before the first connection; afterwards it has the light box bit for a calibrator and the dust cap bit for a cover.
 

@@ -292,3 +292,56 @@ Tests:
 Not covered: whether a real controller answers `R5` in standby and whether `Z` needs `T` on both sides of it are taken from the pre-migration driver and the manual's location sequence, not measured. MountSim was not rerun. No Temma mount is available.
 
 Portable suite: 19 cases, 16 on Linux. Final test summary for this change: simulator suite 19 run / 19 passed (macOS arm64); MountSim 0 run; hardware 0 run / 0 passed.
+
+## Mount testing rules coverage pass (2026-10-04)
+
+Version 24. The test was audited against the "Mount Drivers" chapter and the "Mount Driver Test Standard" of `indigo_test/DRIVER_TESTING_RULES.md`. Every case below was confirmed to fail against the version 23 driver where it found a defect.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| TM008 | FIXED | `MOUNT_TRACK_RATE` kept the framework's three items. Selecting LUNAR sent `LL` (sidereal) and reported OK. | `MOUNT_TRACK_RATE_PROPERTY->count = 2` (SIDEREAL `LL`, SOLAR `LK`). |
+| TM009 | FIXED | Connect never read the standby state, so a mount in standby was published as tracking ON. | `on_connect` sends `STN-COD` after `lg` and sets `MOUNT_TRACKING` from its `stn-on`/`stn-off` reply. |
+| TM010 | FIXED | Connect sends `v1` (a TemmaPC switches to 24 V on `v`), but `X_TEMMA_HIGH_SPEED` kept HIGH from the previous session. | The switch is set to LOW after `v1`. |
+| TM011 | FIXED | A refused `MOUNT_TRACKING` or `X_TEMMA_HIGH_SPEED` request ended ALERT showing the requested item. | The driver keeps the standby state from every `stn-on`/`stn-off` reply and the last confirmed `v1`/`v2`. On a failure the switch shows that state. |
+| TM012 | FIXED | A GOTO or SYNC that was refused or not answered published ALERT with the rejected target as coordinates. The same happened when the GOTO finalizer's first poll failed. `temma_update_position()` also overwrote `current_ra` before the declination of the reply was validated. | `temma_restore_position()` publishes the last valid position on those paths. The reply is parsed into locals first. |
+| TM013 | FIXED | Disconnecting during manual motion sent `MA`, but `MOUNT_MOTION_RA/DEC` kept EAST/NORTH ON into the next session. | `on_disconnect` clears the four motion items. |
+| TM014 | FIXED | A tracking request queued behind a GOTO was overwritten. `temma_prepare_position()` set the switch ON before the request's handler read it, and the GOTO finalizer then sent `STN-OFF` at the end of the slew, after the client had stopped tracking. | `temma_prepare_position()` leaves a BUSY `MOUNT_TRACKING` alone. The tracking handler clears `start_tracking`/`stop_tracking`. |
+
+Simulator: one-shot reply overrides are now a table, so several can be armed at once. `<ready-file>.control` also accepts `fault <cmd> <reply>` and `drop <cmd>`, which arm an override during a session. `--standby` starts the mount with the motors off, and `--correction <ra> <dec>` sets the initial correction speeds.
+
+New cases in `integration/test_mount_temma_simulator.c`:
+
+| Case | Rule items |
+| --- | --- |
+| `temma_connect_identity_and_controller_state` (not on Linux) | Unidentifiable device refused: CONNECTION ALERT, nothing after `v`, no mount property defined, then recovery. Pinned handshake `v, v1, T, I, E, lg, STN-COD`. `MOUNT_INFO` vendor/model. Non-default controller state published at connect: standby, correction speeds. High-speed switch after reconnect. One-item change resends the other item (`LA45`, `LB70`). An `lg` without information keeps the values. No update of an undefined property across connect/disconnect/reconnect. |
+| `temma_goto_refusals_keep_position_and_report_reason` | `R2` refusal reaches the client message ("Dec error"). Lost `STN-OFF` reply: no later `T`/`P`. Lost `P` reply. Every refusal publishes the real position and the next GOTO is accepted. A busy GOTO ignores a second request (one `P`, ends at the first target). An unanswered SYNC is not retried and never slews. A refused park ends ALERT, not parked, tracking kept. |
+| `temma_abort_mid_slew_stops_short_and_idle_abort_keeps_state` | Abort mid-slew: one `PS`, GOTO ALERT, and fresh polls after the would-be arrival still read the start. The first OK publication carries the start, never the target. An idle abort keeps position and tracking. |
+| `temma_disconnect_during_motion_and_park_sends_stop` (not on Linux) | Disconnect during manual motion sends `MA`. Motion items read OFF and not BUSY after reconnect, and no stale relay mask is sent. Disconnect during park sends `PS`. The park is released after reconnect and a fresh GOTO completes. |
+| `temma_park_position_and_pending_tracking_request` | Park `P` carries RA = LST - HA for an east hour angle, with the signed declination, and ends with tracking OFF. A tracking OFF request queued behind a GOTO (queue gate) is not overwritten: `STN-ON` is the last standby command, also after the slew ends, and exactly one OK publication follows. A tracking request during a park cannot be pending, because it is refused while PARKED is on. |
+| `temma_refused_switch_requests_show_device_state` | Refused tracking and high-speed requests show the device's state, and an immediate retry succeeds. |
+| `temma_site_changes_resend_latitude_and_sidereal_time` | One-item site changes resend `I` with the kept latitude and `T` at the kept longitude. The `T` value is checked against the LST. Covers the prime-meridian 359.5 side and a southern latitude. |
+| `temma_goto_during_guide_pulse` | A GOTO during a 1500 ms RA pulse completes, and the pulse keeps its length (relay ON to OFF). |
+| `temma_motion_released_when_owner_detaches` | Manual motion released on owner detach: the `Aborting` marker appears, `MA` is sent, and the axis ends OFF. |
+
+Extended cases:
+
+- The contract adds the negative capability set: no home, UTC, host time, custom rate, PEC or state lights; two track-rate items; no SLEW coordinate action; a one-item park.
+- `temma_malformed_position_reply_recovers` now checks that a malformed poll publishes ALERT with the last valid position, that OK is restored, and that a lost `s` reply during a GOTO does not leave it BUSY.
+- The guider case now checks that a guider-only session sends no `E`/`s` polls and that SHUTDOWN is refused (INDIGO_BUSY) while the guider is connected, with the connection surviving.
+
+Deliberately not covered:
+
+- **GOTO that never completes.** `mount_goto_finalizer` has no deadline, and the park's 600 s deadline is too long for a test. This is a missing timeout and is reported, not fixed.
+- **"Done" short of the target.** Temma reports `s0` without a position check, and adding a position comparison is a design change.
+- **Direction bits per pier side and hemisphere, RA drift and decelerating axes.** The driver passes relay bits through unchanged and the simulator does not model axis motion.
+- **`MOUNT_GUIDE_RATE`.** It was visible but sent nothing. Hidden in 3.0.0.25, see below.
+- **Poll versus request races for polled settings.** The poll writes only coordinates and the read-only side of pier, and a tracking request during a park is refused.
+- **Transports, extra logical devices and hot-plug.** The driver has none of them.
+
+Portable suite: 28 cases, 23 on Linux. Final test summary for this change: simulator suite 28 run / 28 passed (macOS arm64, `run_driver_test.py`, driver 3.0.0.24); hardware 0 run / 0 passed.
+
+## Guide rate property hidden (2026-10-04)
+
+Driver version 3.0.0.25. `MOUNT_GUIDE_RATE` was defined and writable but had no device effect: the driver has no handler for it, so a write falls through to the base mount handler, which only copies the value and publishes OK. No command reaches the controller; the old contract test wrote 55 and checked only the OK state, never the trace. Nothing reads the value: the guider pulses (`GUIDER_GUIDE_RA`/`GUIDER_GUIDE_DEC`) only set relay bits, and `GUIDER_RATE` stays hidden on the guider device. The controller's guide-pulse speed is `X_TEMMA_CORRECTION_SPEED` (`LA`/`LB`), which remains the only guide-rate control.
+
+The property is now hidden, so it is not defined. The contract in `integration/test_mount_temma_simulator.c` and `mountsim/test_mount_temma_mountsim.c` asserts that `MOUNT_GUIDE_RATE` is not defined and no longer writes it. Clients that read the standard property, for example the Alpaca bridge's guide-rate values, no longer find it on this mount.

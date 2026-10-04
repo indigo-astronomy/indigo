@@ -65,16 +65,16 @@ static char park_folder[] = "/tmp/indigo-synscan-hw-park-XXXXXX";
 #define GUIDER_DEVICE_NAME "Mount SynScan (guider)"
 #define AUX_DEVICE_NAME "Mount SynScan (aux)"
 
-#define MOUNT_POLARSCOPE_PROPERTY_NAME "POLARSCOPE"
+#define MOUNT_POLARSCOPE_PROPERTY_NAME "X_POLARSCOPE"
 #define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME "BRIGHTNESS"
-#define MOUNT_USE_ENCODERS_PROPERTY_NAME "MOUNT_USE_ENCODERS"
+#define MOUNT_USE_ENCODERS_PROPERTY_NAME "X_MOUNT_USE_ENCODERS"
 #define MOUNT_USE_RA_ENCODER_ITEM_NAME "RA"
 #define MOUNT_USE_DEC_ENCODER_ITEM_NAME "DEC"
-#define MOUNT_AUTOHOME_PROPERTY_NAME "MOUNT_AUTOHOME"
+#define MOUNT_AUTOHOME_PROPERTY_NAME "X_MOUNT_AUTOHOME"
 #define MOUNT_AUTOHOME_ITEM_NAME "AUTOHOME"
-#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME "MOUNT_AUTOHOME_SETTINGS"
+#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME "DEC_OFFSET"
-#define MOUNT_OPERATING_MODE_PROPERTY_NAME "MOUNT_OPERATING_MODE"
+#define MOUNT_OPERATING_MODE_PROPERTY_NAME "X_MOUNT_OPERATING_MODE"
 
 // A network round trip plus the motor controller's own reply latency, with room for one retry.
 #define SHORT_TIMEOUT 15.0
@@ -685,6 +685,11 @@ static void synscan_reports_identity_and_capabilities(void) {
 	ASSERT_TRUE(property_defined(guider, GUIDER_GUIDE_RA_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(guider, GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	ASSERT_TRUE(property_defined(guider, GUIDER_RATE_PROPERTY_NAME));
+	// the driver-specific properties carry the X_ prefix, the old names are gone
+	static const char *old_names[] = { "POLARSCOPE", "MOUNT_USE_ENCODERS", "MOUNT_AUTOHOME", "MOUNT_AUTOHOME_SETTINGS", "MOUNT_OPERATING_MODE" };
+	for (int i = 0; i < ARRAY_SIZE(old_names); i++) {
+		ASSERT_FALSE(property_defined(mount, old_names[i]));
+	}
 }
 
 static void synscan_reads_coordinates_and_state(void) {
@@ -865,6 +870,71 @@ static void synscan_syncs_and_slews(void) {
 	ASSERT_TRUE(current_coordinates(&reached_ra, &reached_dec));
 	ASSERT_NEAR(dec, reached_dec, 0.3);
 	ASSERT_TRUE(fabs(ra_difference(reached_ra, ra)) < 0.05);
+}
+
+// Releasing an E/W arrow ends the manual motion only; with tracking on, the RA axis has to go back to
+// the tracking rate, which shows as a reported right ascension that stands still afterwards.
+static void synscan_resumes_tracking_after_manual_motion(void) {
+	ASSERT_TRUE(prepare_mount());
+	ASSERT_TRUE(slew_to_test_pointing());
+	ASSERT_TRUE(set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	ASSERT_TRUE(set_switch(mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	static const char *items[] = { MOUNT_MOTION_WEST_ITEM_NAME, MOUNT_MOTION_EAST_ITEM_NAME };
+	for (int i = 0; i < 2; i++) {
+		double travel = 0, drift = 0;
+		bool tracking = false;
+		ASSERT_TRUE(manual_motion_moves(MOUNT_MOTION_RA_PROPERTY_NAME, items[i], true, &travel));
+		ASSERT_TRUE(fabs(travel) > 0.002);
+		ASSERT_TRUE(switch_item(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, &tracking));
+		ASSERT_TRUE(tracking);
+		ASSERT_TRUE(property_state(mount, MOUNT_TRACKING_PROPERTY_NAME) == INDIGO_OK_STATE);
+		ASSERT_TRUE(measure_ra_drift(12.0, &drift));
+		printf("    after the %s release RA moved %.5f degrees in 12 s, a stopped axis would show 0.050\n", items[i], drift);
+		ASSERT_TRUE(fabs(drift) < 0.01);
+	}
+	ASSERT_TRUE(set_switch(mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+}
+
+static int alignment_point_count(void) {
+	int count = 0;
+	pthread_mutex_lock(&mutex);
+	int p = slot(mount, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME);
+	if (p >= 0) {
+		count = devices[mount].properties[p]->count;
+	}
+	pthread_mutex_unlock(&mutex);
+	return count;
+}
+
+// A sync away from the reported pointing becomes a point of the alignment model, so the reported
+// coordinates keep the synced position across the following polls; the mount itself does not move.
+static void synscan_sync_adds_alignment_point(void) {
+	double ra = 0, dec = 0, raw_before = 0, raw_after = 0, synced_ra = 0, synced_dec = 0;
+	ASSERT_TRUE(prepare_mount());
+	ASSERT_TRUE(slew_to_test_pointing());
+	ASSERT_TRUE(set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	ASSERT_TRUE(clear_alignment_model());
+	ASSERT_TRUE(alignment_point_count() == 0);
+	ASSERT_TRUE(current_coordinates(&ra, &dec));
+	ASSERT_TRUE(number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, &raw_before));
+	double target_ra = fmod(ra + 0.1 + 24.0, 24.0);
+	double target_dec = dec > 0 ? dec - 1.0 : dec + 1.0;
+	ASSERT_TRUE(set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	bool synced = set_coordinates(mount, target_ra, target_dec, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	ASSERT_TRUE(synced);
+	int points = alignment_point_count();
+	// several polls later
+	indigo_usleep(3000000);
+	ASSERT_TRUE(current_coordinates(&synced_ra, &synced_dec));
+	ASSERT_TRUE(number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, &raw_after));
+	printf("    sync from RA %.5f DEC %.5f to RA %.5f DEC %.5f: %d alignment point(s), 3 s later RA %.5f DEC %.5f, raw DEC %.5f -> %.5f\n", ra, dec, target_ra, target_dec, points, synced_ra, synced_dec, raw_before, raw_after);
+	bool cleared = clear_alignment_model() && alignment_point_count() == 0;
+	ASSERT_TRUE(points == 1);
+	ASSERT_TRUE(fabs(ra_difference(synced_ra, target_ra)) < 0.01);
+	ASSERT_NEAR(target_dec, synced_dec, 0.1);
+	ASSERT_TRUE(fabs(raw_after - raw_before) < 0.02);
+	ASSERT_TRUE(cleared);
 }
 
 static void synscan_aborts_slew_and_recovers(void) {
@@ -1278,6 +1348,8 @@ int main(int argc, char **argv) {
 		{ "synscan_tracking_and_rates", synscan_tracking_and_rates },
 		{ "synscan_manual_motion", synscan_manual_motion },
 		{ "synscan_syncs_and_slews", synscan_syncs_and_slews },
+		{ "synscan_resumes_tracking_after_manual_motion", synscan_resumes_tracking_after_manual_motion },
+		{ "synscan_sync_adds_alignment_point", synscan_sync_adds_alignment_point },
 		{ "synscan_aborts_slew_and_recovers", synscan_aborts_slew_and_recovers },
 		{ "synscan_parks_and_unparks", synscan_parks_and_unparks },
 		{ "synscan_homes", synscan_homes },

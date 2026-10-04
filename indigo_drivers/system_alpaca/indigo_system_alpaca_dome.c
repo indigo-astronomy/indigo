@@ -29,7 +29,8 @@
  - CanSetAzimuth: DOME_HORIZONTAL_COORDINATES (AZ; ALT as well with CanSetAltitude), DOME_STEPS and DOME_DIRECTION (a relative
    move is a slew to the azimuth computed from the current one), DOME_ON_COORDINATES_SET (SYNC with CanSyncAzimuth),
    DOME_DIMENSION and DOME_SLAVING_PARAMETERS. Without it the device is a roll-off roof and all of them are hidden.
- - CanSetShutter: DOME_SHUTTER. CanPark: DOME_PARK. CanFindHome: DOME_HOME. CanSetPark: X_ALPACA_DOME_PARK_SET.
+ - CanSetShutter: DOME_SHUTTER. CanPark: DOME_PARK. CanFindHome: DOME_HOME, ON while AtHome is true (FindHome is a request to turn it
+   ON). CanSetPark: X_ALPACA_DOME_PARK_SET.
    CanSlave: X_ALPACA_DOME_SLAVED.
  - DOME_ABORT_MOTION and DOME_STATE always. DOME_SPEED is hidden, Alpaca has no dome speed.
 
@@ -276,6 +277,10 @@ static void dome_apply_status(indigo_device *device, const dome_status *status) 
 			DOME_DATA->parked = parked;
 		}
 	}
+	// DOME_HOME is ON while the dome is at home, as in dome_beaver; a search for home that runs owns the item
+	if (!DOME_HOME_PROPERTY->hidden && DOME_HOME_PROPERTY->state != INDIGO_BUSY_STATE && status->at_home != DOME_HOME_ITEM->sw.value) {
+		DOME_HOME_ITEM->sw.value = status->at_home;
+	}
 	if (!X_ALPACA_DOME_SLAVED_PROPERTY->hidden && X_ALPACA_DOME_SLAVED_PROPERTY->state != INDIGO_BUSY_STATE && status->slaved != X_ALPACA_DOME_SLAVED_ENABLED_ITEM->sw.value) {
 		indigo_set_switch(X_ALPACA_DOME_SLAVED_PROPERTY, status->slaved ? X_ALPACA_DOME_SLAVED_ENABLED_ITEM : X_ALPACA_DOME_SLAVED_DISABLED_ITEM, true);
 		X_ALPACA_DOME_SLAVED_PROPERTY->state = INDIGO_OK_STATE;
@@ -347,6 +352,7 @@ static void dome_show_status(indigo_device *device, const dome_status *status) {
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+	indigo_update_property(device, DOME_HOME_PROPERTY, NULL);
 	indigo_update_property(device, X_ALPACA_DOME_SLAVED_PROPERTY, NULL);
 	dome_show_lights(device);
 }
@@ -445,7 +451,7 @@ static void dome_motion_done(indigo_device *device, alpaca_result result, bool a
 		}
 	}
 	if (home) {
-		DOME_HOME_ITEM->sw.value = false;
+		DOME_HOME_ITEM->sw.value = result == ALPACA_OK && status.at_home;
 		if (result != ALPACA_OK) {
 			system_alpaca_finish(device, DOME_HOME_PROPERTY, result, "Find home");
 		} else {

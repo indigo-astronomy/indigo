@@ -81,6 +81,21 @@ char *indigo_alpaca_error_string(int code) {
 	}
 }
 
+static void connect_guider_handler(indigo_device *device, void *data) {
+	indigo_change_switch_property_1(indigo_agent_alpaca_client, (char *)data, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	free(data);
+}
+
+// The guider follows the connection of its mount (alpaca_set_connected()). A driver may attach the guider only while the mount connects
+// (system_alpaca does), so the guider is connected when it pairs with a connected mount and when its mount becomes connected. The
+// request is sent from a timer, not from the bus callback, and carries the name, because the record may be gone by then.
+void indigo_alpaca_connect_paired_guider(indigo_alpaca_device *mount, indigo_alpaca_device *guider) {
+	if (mount->connected && !guider->connected && !guider->connection_busy) {
+		guider->connection_failed = false;
+		indigo_set_timer_with_data(indigo_agent_alpaca_device, 0, connect_guider_handler, NULL, indigo_safe_malloc_copy(strlen(guider->indigo_device) + 1, guider->indigo_device));
+	}
+}
+
 void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		alpaca_device->connection_failed = property->state == INDIGO_ALERT_STATE;
@@ -99,6 +114,9 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 			}
 		} else {
 			alpaca_device->connected = false;
+		}
+		if (alpaca_device->guider_device != NULL && IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT)) {
+			indigo_alpaca_connect_paired_guider(alpaca_device, alpaca_device->guider_device);
 		}
 	} else if (!strcmp(property->name, UTC_TIME_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
@@ -140,7 +158,7 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 		indigo_alpaca_guider_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "DOME_", 5)) {
 		indigo_alpaca_dome_update_property(alpaca_device, property);
-	} else if (!strncmp(property->name, "AUX_", 4)) {
+	} else if (!strncmp(property->name, "AUX_", 4) || !strcmp(property->name, "X_ALPACA_SWITCH_VALUES")) {
 		indigo_alpaca_lightbox_update_property(alpaca_device, property);
 		indigo_alpaca_switch_update_property(alpaca_device, property);
 	} // TBD other device types
@@ -286,6 +304,12 @@ static indigo_alpaca_error alpaca_set_connected(indigo_alpaca_device *device, in
 	}
 	pthread_mutex_unlock(&device->mutex);
 	indigo_alpaca_error result = wait_for_connection(device, value);
+	if (result == indigo_alpaca_error_OK && guider == NULL && value) {
+		// a guider attached while the mount connected is connected by indigo_alpaca_connect_paired_guider()
+		pthread_mutex_lock(&device->mutex);
+		guider = device->guider_device;
+		pthread_mutex_unlock(&device->mutex);
+	}
 	if (result == indigo_alpaca_error_OK && guider) {
 		result = wait_for_connection(guider, value);
 	}

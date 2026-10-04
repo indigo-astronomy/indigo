@@ -591,13 +591,16 @@ static void dome_park_home(void) {
 	revision = sa_revision(sa_device, DOME_HOME_PROPERTY_NAME);
 	SA_CHECK(dome_start_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, "findhome") && dome_last("PUT", "findhome", "ClientID=") && SA_WAIT(dome_lights(INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE), SA_TIMEOUT));
 	SA_CHECK(sa_advance(0, 11.5) && SA_WAIT(dome_near(dome_azimuth(), 5.5), SA_TIMEOUT) && sa_state(sa_device, DOME_HOME_PROPERTY_NAME) == INDIGO_BUSY_STATE && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE);
-	SA_CHECK(sa_advance(0, 0.7) && SA_WAIT(sa_state_after(sa_device, DOME_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && !sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME));
+	// DOME_HOME stays ON while the dome is at home
+	SA_CHECK(sa_advance(0, 0.7) && SA_WAIT(sa_state_after(sa_device, DOME_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME));
 	SA_CHECK(dome_azimuth() == 12.5 && dome_simulated_is("AtHome", "true") && sa_state(sa_device, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE);
 	// at home already: over at the first look
 	SA_CHECK(dome_set_switch(DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME, true) == INDIGO_OK_STATE && dome_count("PUT", "findhome") == 2);
 	// park goes to the position that was set
 	revision = sa_revision(sa_device, DOME_PARK_PROPERTY_NAME);
 	SA_CHECK(dome_start_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, "park") && sa_advance(0, 12.2) && SA_WAIT(sa_state_after(sa_device, DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	// away from home: the next poll turns DOME_HOME off
+	SA_CHECK(dome_simulated_is("AtHome", "false") && SA_WAIT(!sa_switch(sa_device, DOME_HOME_PROPERTY_NAME, DOME_HOME_ITEM_NAME), SA_TIMEOUT) && sa_state(sa_device, DOME_HOME_PROPERTY_NAME) == INDIGO_OK_STATE);
 	SA_CHECK(dome_park_is(true, INDIGO_OK_STATE) && dome_azimuth() == 250.5 && dome_simulated_is("AtHome", "false"));
 	SA_CHECK(dome_set_switch(DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true) == INDIGO_OK_STATE);
 	// the dome stops on the way (somebody else aborts it): Slewing ends without AtHome / AtPark, which is a failure

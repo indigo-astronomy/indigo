@@ -432,3 +432,277 @@ Both cases failed against the version 21 driver and pass with version 22. Record
 `tools/run_driver_test.py mount_nexstaraux` on Linux x64: 42/42. No hardware run for this change.
 
 Final test summary for this change: simulator suite 42 run / 42 passed; hardware 0 run / 0 passed.
+
+## AUX protocol audit (2026-10-04)
+
+The driver was compared command by command with the AUX motor controller protocol as other
+AUX-speaking control software uses it, and with `nexstar_aux_commands_10.pdf`. The facts the
+comparison rests on are stated here as protocol facts.
+
+### Protocol facts the driver did not use
+
+- **Rate unit.** The 24 bit form of `MC_SET_POS_GUIDERATE` / `MC_SET_NEG_GUIDERATE` (0x06 / 0x07)
+  carries the axis rate in 1/1024 arcsecond per second; the 16 bit form is the upper two bytes of
+  it, except for the named rates 0xFFFF (sidereal), 0xFFFE (solar) and 0xFFFD (lunar). The protocol
+  document's own alt-azimuth tracking example (`0x00 0x1d 0xef`, 7.5"/s) is consistent with it.
+- **Controller-timed guide pulses.** `MC_AUX_GUIDE` (0x26) takes a signed byte, the rate in percent
+  of sidereal added to the running drive, and an unsigned byte, the duration in units of 10 ms
+  (at most 2.55 s). `MC_IS_AUX_GUIDE_ACTIVE` (0x27) answers 1 while the pulse runs. Motor controller
+  firmware 6.50 and newer implements them; older firmware has to be guided by changing the axis
+  rate for the length of the pulse.
+- **Autoguide rate.** `MC_SET_AUTOGUIDE_RATE` (0x46) is the rate of the ST-4 autoguider port. Only
+  models with such a port store it; on the others (NexStar SE 4/5, SLT, GT, Evolution, ...) it is
+  acknowledged and discarded, which is exactly what the NexStar SE of the hardware run did. The
+  rate a computer-commanded pulse runs at is not a controller setting at all.
+- **Mount model.** `MC_GET_MODEL` (0x05) sent to the azimuth controller answers one byte, the model
+  number: 1, 2 NexStar GPS, 3 NexStar i, 4 NexStar SE, 5 CGE, 6 Advanced GT, 7 SLT, 8 Legend,
+  9 CPC, 10 NexStar GT, 11 NexStar SE 4/5, 12 NexStar SE 6/8, 13 CGE Pro, 14 CGEM, 15 LCM,
+  16 SkyProdigy, 17 CPC Deluxe, 18 NexStar GT, 19 StarSeeker GT, 20 AVX, 21 Cosmos GT,
+  22 Evolution, 23 CGX, 24 CGX-L, 25 AstroFi, 26 to 28 Sky-Watcher mounts on the AUX bus,
+  29 Origin. The models with an autoguider port are 5, 6, 9, 12, 13, 14, 17, 20, 23 and 24; the
+  models from 20 on slew fast enough that their goto approach point is 1 degree from the target
+  rather than 2.5.
+- **Goto approach.** `MC_GET_APPROACH` (0xFC) answers 0 for a positive and 1 for a negative
+  approach per axis. The motor controller does not apply it by itself: a goto is made as a fast goto
+  to a point 2.5 degrees (1 degree on the fast models) short of the target on the approach side,
+  followed by slow gotos to the target, so that every goto ends with the gears loaded the same way.
+  The slow goto is repeated (three passes in all) because the target moves on while the mount is
+  not tracking.
+- **`MC_SLEW_DONE` has three answers**: 0x00 running, 0xFF finished and 0xFE aborted.
+- **Polling rate.** The protocol document warns that polling the controller in quick succession
+  during a goto can make it miss its destination and keep rotating. Polling every 500 ms is safe.
+- **Unsolicited reports.** A motor controller sends `MC_SEND_WARNING` (0x50) with 0x00 for a low
+  battery and 0x01 for a slew limit that stopped the axis, and `MC_SEND_ERROR` (0x51); each is
+  acknowledged by echoing the command back to the controller with no data.
+
+### Defects and gaps found
+
+1. **Right ascension guide pulses moved the wrong way and at the wrong rate.** A pulse was an
+   `MC_MOVE_POS` / `MC_MOVE_NEG` rate move at hand controller rate 1, which writes the same
+   velocity register as the tracking drive. While a pulse ran, the axis turned at +-0.5 times
+   sidereal *instead of* the sidereal drive, so relative to the sky an east pulse slowed the axis by
+   0.5x and a west pulse slowed it by 1.5x: both directions moved the mount the same way. East was
+   also sent as the positive (westward) direction, the opposite of the INDIGO convention in which
+   a west pulse runs the drive faster. Declination pulses had the right sign but, like RA pulses,
+   ignored `GUIDER_RATE` and `MOUNT_GUIDE_RATE` entirely and always ran at 0.5x. No hardware case
+   measured the RA direction, which is how this survived the acceptance run. Source audit;
+   to be reproduced in the simulator and on the hardware.
+2. **The guide rate was refused on every mount without an autoguider port.** Because the setting is
+   only stored by models with an ST-4 port, the readback check made `MOUNT_GUIDE_RATE` and
+   `GUIDER_RATE` fail on the NexStar SE of the hardware run; the published rate was whatever the
+   controller held (0.39 percent on that mount).
+3. **An aborted goto was taken for a finished one.** 0xFE from `MC_SLEW_DONE` was treated as done.
+4. **The goto polled ten times a second.** `mount_slew_finalizer` re-ran every 100 ms.
+5. **No goto approach.** The fast goto went straight to the target and one slow goto followed, so
+   the final direction of motion, and with it the backlash, depended on where the mount came from.
+6. **Model and warnings.** `MOUNT_INFO` named every mount "NexStar AUX", and warning and error
+   reports of the controller were skipped silently.
+
+### Hardware decision
+
+Hardware testing will be performed on the Celestron NexStar SE with a NexStar+ hand controller over
+the SkyPortal WiFi module (motor controller firmware 5.20, so the rate-change guide path). Planned
+scenarios: the existing acceptance suite, plus a new case that measures the hour angle a west and an
+east RA pulse move with tracking on and asserts opposite signs, and the guide rate cases updated to
+the new semantics. The `MC_AUX_GUIDE` path cannot be exercised on this firmware and is covered by
+the simulator only.
+
+### Plan
+
+1. Simulator: correct 24 bit rate unit, `MC_GET_MODEL`, `MC_GET_APPROACH`, `MC_AUX_GUIDE` /
+   `MC_IS_AUX_GUIDE_ACTIVE` superimposed on the drive, profiles `aux-guide` (firmware 7.11,
+   Evolution) and a model without autoguider port for `deaf-guide-rate`, fault actions `aborted`
+   (`MC_SLEW_DONE` answers 0xFE) and `warn0` / `warn1` (unsolicited warning before the answer).
+2. Simulator tests: reproduce defects 1 to 6 against the version 22 driver, adjust the cases whose
+   expectations encode the old guiding and guide rate semantics.
+3. Driver: rate-based guiding with the `MC_AUX_GUIDE` path, guide rate kept by the driver and
+   written to the controller only on models with an autoguider port, model identification, approach
+   goto with three slow passes, 0xFE handling, 500 ms goto polling, warning reports. Version 23.
+4. Hardware suite: RA guide direction case, guide rate cases for the new semantics.
+5. Recorded simulator run and recorded hardware run through `tools/run_driver_test.py`.
+
+### Results (2026-10-04)
+
+- Steps 1 to 4 done. Against the version 22 driver the new and changed simulator cases failed as
+  expected: `guide_pulse_direction` measured +0.00249 h for a west and +0.00110 h for an east pulse
+  (both the same way), `goto_polls_gently` counted 37 polls in 4 s, `goto_aborted_by_mount`,
+  `controller_warning_acknowledged`, `controller_timed_guide_pulses`, `guide_rate_not_stored`,
+  `guider_pulses`, `metadata` and `slew_to_coordinates` failed on the missing behaviour.
+- Two further defects were found while fixing: the guide rate read on connect was written to the
+  item values but not their targets, so a request changing only the declination rate sent the
+  default right ascension rate (regression: `guide_rate_not_stored`); and a reply length byte
+  above 12 was read into the 16 byte reply buffer (source audit, now refused). A refused slow
+  approach also left the goto BUSY; it now ends in ALERT.
+- Version 23: recorded simulator run `tools/run_driver_test.py mount_nexstaraux`, mac arm64,
+  47/47 OK (west -0.00085 h, east +0.00082 h; 7 polls in 4 s).
+- Step 5 hardware run **not done**: the NexStar SE / SkyPortal module answered neither ARP nor its
+  UDP announcement from the Mac or from indigosky on 2026-10-04. The hardware suite is built
+  (37 cases, new `nexstaraux_guides_the_ra_axis_both_ways`) but unvalidated against version 23.
+
+Test summary for this change: simulated tests run 47, passed 47; hardware tests run 0, passed 0.
+
+### Hardware runs and the transport defects they found (2026-10-04)
+
+The first hardware run of version 23 (mac arm64, NexStar SE answering model 11 "NexStar SE 4/5",
+firmware 5.20 / 5.20) passed 35 of 37. `nexstaraux_guides_the_ra_axis_both_ways` measured
+-0.00132 h for a 5 s west and +0.00122 h for a 5 s east pulse at the sidereal rate (expected
+-+0.0014 h), against both directions moving the same way before the fix. The two failures were the
+identity case, which still expected the model text "NexStar AUX" (the suite now prints the model
+and accepts what the mount reports), and `reinitializes`, where the WiFi module refused new
+sessions. A second full run passed 36 of 37: `keeps_tracking_through_a_guide_pulse` lost 0.00628 h
+of right ascension in the 30 s after a west pulse, a quarter of the sidereal drive missing, with
+the hand controller idle waiting for its alignment. It did not repeat in three further runs of the
+guider cases with a wire log, but one of them caught the transport defect behind it:
+
+- **A packet whose bytes arrived apart silenced the mount.** The module sent `3B 04` and the rest
+  of the answer more than a second later. `nexstaraux_read()` waited for the first byte and then
+  read the whole body with `indigo_uni_read()`, whose second `read()` timed out with EAGAIN; that
+  error latches on the handle, and every later request failed without reaching the mount while the
+  socket stayed valid. The read now takes only what has arrived after each wait, and the body of a
+  packet that has begun is given 3 s. Regression case `split_answer_keeps_the_mount_alive`, against
+  a new simulator fault `split` that pauses an answer for 1.5 s after its fourth byte; it failed
+  against the version 23 driver before this fix with the EAGAIN latch.
+- **A late answer was taken for the answer to the next request.** Answers are matched by command
+  and addresses only, so after a request timed out its late answer acknowledged the next request of
+  the same kind. For the rate restored at the end of a guide pulse that is exactly a pulse reported
+  complete while the drive was never set back, which matches the loss measured above. Every request
+  now discards what is waiting before it is sent. Regression case `late_answer_not_taken`, against a
+  new simulator fault `late` whose `MC_GET_POSITION` answer comes 1.5 s late and claims a quarter
+  turn: before the fix the driver published a declination of 90.000, now 20.000. A controller
+  report that arrives between requests is discarded with the rest; reports sent while a request
+  waits for its answer are still acknowledged.
+
+## Mount testing rules coverage (2026-10-04)
+
+Version 23. The simulator suite was checked item by item against the extended "Mount Drivers" chapter
+of `indigo_test/DRIVER_TESTING_RULES.md` and the missing driver-relevant scenarios were added. Seven
+defects were found by the new cases and fixed in `indigo_mount_nexstaraux.driver`:
+
+- **A park the controller refused stayed BUSY for ever.** The failure branch of `MOUNT_PARK` set ALERT
+  without publishing it (the handler references a finalizer, so the generator adds no final update)
+  and left `PARKED` selected. It now publishes ALERT with `UNPARKED` selected.
+- **A park left `MOUNT_TRACKING` ON over a stopped drive, and the coordinates OK while moving.** The
+  park stops the drive on the controller; it now also publishes `MOUNT_TRACKING` OFF (unless a request
+  is pending) with the state light IDLE, and publishes `MOUNT_EQUATORIAL_COORDINATES` BUSY while the
+  mount moves to the park position.
+- **A parked mount could be guided.** The guide handlers now refuse a pulse with ALERT while the mount
+  is parked or parking, like the generated parked guards of the mount properties.
+- **Disconnecting did not stop the mount.** A goto, park or manual motion kept running after the mount
+  was disconnected, and a pulse cut short by a guider disconnect kept its axis turning at the guide
+  rate because its finalizer was cancelled. Both devices now stop their axes in `on_disconnect`, and
+  the mount clears its motion items and its slew/park flags so the next session starts clean.
+- **A lost answer to the tracking restore left the mount standing with tracking ON.**
+  `nexstaraux_stop_axis()` now resends the rate once; when it still fails it reports `MOUNT_TRACKING`
+  OFF with ALERT through `nexstaraux_tracking_lost()`.
+- **A failed coordinate poll was silent.** It now publishes ALERT with the last valid position, and the
+  next good poll restores OK (only an ALERT it set itself, never the ALERT of a failed goto).
+- **The guide rate was not shared.** `MOUNT_GUIDE_RATE` and `GUIDER_RATE` write the same controller
+  registers; a successful write through one is now published on the other. The private data keeps
+  both device pointers for this (`on_attach`/`on_detach`).
+
+The simulator's `INDIGO_NEXSTARAUX_FAULT` file takes an optional count, so a fault can persist over
+several requests (`<dst> <cmd> <action> [count]`).
+
+### New and extended cases
+
+| Rule area | Case |
+| --- | --- |
+| Handshake order, negative capability contract, track-rate items | `metadata`, `property_contract` (extended) |
+| MOUNT_STATE lights, order against the follow-up tracking restart | `mount_state_lights` |
+| Tracking setting kept through the goto, resumed at the selected rate | `goto_keeps_tracking_setting` |
+| Refusal at the first and last command of the goto sequence | `goto_refused_mid_sequence` |
+| Lost status reply during a goto | `goto_survives_a_lost_status_reply` |
+| Busy goto ignores a second request | `busy_goto_ignores_second_request` |
+| Abort landing mid-slew, one stop per axis, ALERT never OK | `abort_lands_mid_slew`, `abort_slew` and `abort_while_idle` (extended) |
+| Direction readback of every manual direction, guide pulse displacement | `motion_directions_read_back` |
+| Parked guards incl. guide pulses, no latch after unpark | `parked_guards` |
+| Park refused by the controller, park with tracking on, unpark sends nothing | `park_refused_by_controller`, `park_and_unpark` and `abort_park` (extended) |
+| Disconnect during goto, manual motion and park | `disconnect_stops_motion` |
+| Guider disconnect during a pulse, guider-only session, GOTO during a pulse | `guider_disconnect_during_pulse`, `guider_only_session`, `goto_during_guide_pulse` |
+| Tracking restore retry and persistent failure | `tracking_restore_retried` |
+| Failed initial readback, failed poll ALERT/recovery | `initial_readback_failure`, `coordinate_polling` (extended) |
+| Guide rate shared by mount and guider | `guide_rate_shared_with_guider` |
+| Hour-angle targets, encoder wrap | `hour_angle_targets` |
+| Refused switch shows the real state, SYNC not retried, no update for undefined properties | `tracking_failure`, `sync_command_failure`, `reconnect` (extended) |
+
+### Gaps left open
+
+- **Southern hemisphere.** The driver flips the tracking direction (`MC_SET_NEG_GUIDERATE`) south of
+  the equator but not the encoder-to-hour-angle conversion of coordinates, gotos and syncs, so the two
+  cannot both be right for a mount in the south. Which one the controller expects needs a southern
+  hardware run; nothing was changed and no south-specific motion case was added.
+- **Guide pulses ignore the guide rate.** Pulses are `MC_MOVE_POS/NEG` at rate 1, half sidereal
+  absolute, replacing the tracking rate. At the default 50 % a declination pulse moves guide rate x
+  duration (asserted), but another `MOUNT_GUIDE_RATE`/`GUIDER_RATE` has no effect on pulses, and on a
+  tracking mount a WEST pulse moves 1.5x sidereal against 0.5x for EAST. Fixing it needs the 24 bit
+  `MC_SET_POS_GUIDERATE` rate, whose unit the protocol document does not give.
+- The tracking restore after a pulse stops the axis first instead of writing the rate on the fly;
+  kept because it is what was verified on hardware.
+- Connect stops the tracking drive because the protocol has no way to read it; the guide rates are
+  read back (`guide_rate`).
+- Discovery, transport changes and alignment/PEC/home/pier-side rows do not apply (no such commands).
+
+The seven defects above were reproduced by the new cases against the version 22 driver
+(`mount_state_lights`, `parked_guards`, `park_refused_by_controller`, `park_and_unpark`,
+`disconnect_stops_motion`, `guider_disconnect_during_pulse`, `tracking_restore_retried`,
+`coordinate_polling`, `guide_rate_shared_with_guider` failed) and pass with version 23. Recorded run
+through `tools/run_driver_test.py mount_nexstaraux` on macOS arm64: 59/59. No hardware run for this
+change.
+
+## Merge of the two version 23 lines (2026-10-04)
+
+Version 24. Two independent changes both called themselves version 23: the AUX protocol audit above
+(guiding, guide rate, model, goto approach, aborted goto, polling rate, controller reports, transport)
+and the mount testing rules coverage (refused park, park stops tracking, parked guider, stop on
+disconnect, retried tracking restore, failed poll reported, guide rate shared with the guider). They
+were merged into one driver; every behaviour of both is kept. Where they met:
+
+- The retried tracking restore now lives in `nexstaraux_restart_tracking()` and is used both after an
+  axis stop and at the end of a guide pulse, so a pulse whose restore keeps failing also reports the
+  mount as not tracking.
+- `nexstaraux_share_guide_rate()` publishes the rate on both devices, and that rate is the driver's
+  own one the pulses run at, written to the controller only on models with an autoguider port.
+- The cases of the testing rules coverage that encoded the old guide pulse (`MC_MOVE_POS` at rate 1)
+  now expect the 24 bit rate of half sidereal and the zero rate at its end
+  (`motion_directions_read_back`, `parked_guards`, `guider_disconnect_during_pulse`,
+  `goto_during_guide_pulse`); `metadata` expects the model and approach queries in the handshake, and
+  `hour_angle_targets` checks the fast goto at its approach point and the slow goto at the target.
+
+### Gaps of the testing rules coverage, resolved
+
+- **Guide pulses ignore the guide rate.** Resolved by the rate-based guiding of the audit: the unit
+  of the 24 bit rate is 1/1024 arcsecond per second, and a pulse runs the axis at the tracking rate
+  plus or minus the guide rate. Measured on the NexStar SE: 5 s pulses at the sidereal rate moved the
+  right ascension by -0.00132 h west and +0.00122 h east.
+- **Southern hemisphere.** On a wedge south of the equator the mount is the mirror image of the
+  northern one: the polar axis turns the other way, which is what the negative tracking drive already
+  assumed, so it reads minus the hour angle, and the declination axis stands half a turn from the
+  declination, reading 90 degrees at the southern pole. `nexstaraux_to_axes()` and
+  `nexstaraux_from_axes()` now convert both ways for gotos, syncs and the poll, the approach side of
+  the polar axis is turned with it, and a manual WEST runs the polar axis the negative way. Regression
+  case `southern_hemisphere`: sync writes 0xE00000 for an hour angle of +3 h and 0x555555 for -60
+  degrees, the tracking mount holds its right ascension (0.00012 h over 12 s), WEST is
+  `MC_MOVE_NEG`, a goto to -45 arrives and the park ends at -90. With the northern conversion the
+  sync would have written 0xA00000 and the tracking mount would have run away at twice the sidereal
+  rate. This follows the mounting geometry and is consistent with the drive direction; it has not
+  been run on a mount in the southern hemisphere, which no bench here has.
+
+### Hardware run of version 24 (2026-10-04)
+
+`MOUNT_NEXSTARAUX_HW_URL=nexstar://192.168.111.156:2000 python3 tools/run_driver_test.py
+mount_nexstaraux --hw`, mac arm64, Celestron NexStar SE (model 11, NexStar SE 4/5, motor controllers
+5.20 / 5.20, no autoguider port) over the SkyPortal WiFi module, hand controller idle waiting for its
+alignment: **37/37 OK**. The two park cases report themselves as not run (opt-in `HW_PARK=1`).
+
+- Tracking: 0.00891 h lost with tracking off and 0.00023 h with it on over 30 s; 0.00000 h after
+  manual motion, 0.00004 h after a slew, 0.00023 h / 0.00014 h after an east / west pulse.
+- GOTO of 3.092 degrees arrived 0.015 degrees from the target.
+- RA guiding: 5 s pulses at the sidereal rate moved the right ascension by -0.00155 h west and
+  +0.00140 h east (expected -+0.0014 h).
+- Guide pulse completion timing (software, request to published completion over WiFi, 48 pulses of
+  50 to 500 ms): signed error min 65.5, mean 127.6, median 120.6, p95 195.6, p99 231.1, max 231.1,
+  sd 43.3 ms. Earlier runs the same evening measured means of 42.5 ms and 101.6 ms with the same
+  pulse logic, so most of the spread is the module; the discard before each request adds up to
+  10 ms to every request, two per pulse.
+
+Test summary for version 24: simulated tests run 67, passed 67; hardware tests run 37, passed 37.

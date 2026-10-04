@@ -87,12 +87,13 @@ static void nexstar_identity_and_readback(void) {
 	}
 	unsigned before = hw_revision(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	ASSERT_TRUE(hw_wait_state(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, before, INDIGO_OK_STATE, 15));
-	const char *props[] = { MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, UTC_TIME_PROPERTY_NAME, MOUNT_TRACKING_PROPERTY_NAME, "TRACKING_MODE" };
+	const char *props[] = { MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, UTC_TIME_PROPERTY_NAME, MOUNT_TRACKING_PROPERTY_NAME, "X_TRACKING_MODE" };
 	for (int i = 0; i < ARRAY_SIZE(props); i++) {
 		printf("PROPERTY %s defined=%d state=%d\n", props[i], hw_property_defined(mount, props[i]), hw_property_state(mount, props[i]));
 		ASSERT_TRUE(hw_property_defined(mount, props[i]));
 		ASSERT_EQ_INT(INDIGO_OK_STATE, hw_property_state(mount, props[i]));
 	}
+	ASSERT_TRUE(!hw_property_defined(mount, "TRACKING_MODE"));
 	double ra, dec;
 	ASSERT_TRUE(hw_number_item(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, &ra));
 	ASSERT_TRUE(hw_number_item(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, &dec));
@@ -140,11 +141,11 @@ static void nexstar_wedge_mode_and_property_contract(void) {
 	ASSERT_TRUE(!hw_property_defined(mount, MOUNT_HOME_PROPERTY_NAME));
 	ASSERT_TRUE(!hw_property_defined(mount, MOUNT_TRACK_RATE_PROPERTY_NAME));
 	ASSERT_TRUE(!hw_property_defined(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
-	ASSERT_TRUE(hw_set_switch(mount, "TRACKING_MODE", "EQ", INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(hw_set_switch(mount, "X_TRACKING_MODE", "EQ", INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(hw_disconnect(mount, 15));
 	ASSERT_TRUE(hw_connect(mount, 30));
-	ASSERT_TRUE(selected(mount, "TRACKING_MODE", "EQ"));
+	ASSERT_TRUE(selected(mount, "X_TRACKING_MODE", "EQ"));
 	ASSERT_TRUE(selected(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 }
 
@@ -322,9 +323,10 @@ static void nexstar_guider_directions_replacement_and_axes(void) {
 	guider = hw_wait_for_device("Mount Nexstar (guider)", 5);
 	ASSERT_TRUE(guider >= 0 && hw_connect(guider, 20));
 	ASSERT_TRUE(hw_device_interface(guider) & INDIGO_INTERFACE_GUIDER);
-	ASSERT_TRUE(hw_set_switch(guider, "COMMAND_GUIDE_RATE", "GUIDE_100", INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(!hw_property_defined(guider, "COMMAND_GUIDE_RATE"));
+	ASSERT_TRUE(hw_set_switch(guider, "X_COMMAND_GUIDE_RATE", "GUIDE_100", INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(pulse(0, 100, true));
-	ASSERT_TRUE(hw_set_switch(guider, "COMMAND_GUIDE_RATE", "GUIDE_50", INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(hw_set_switch(guider, "X_COMMAND_GUIDE_RATE", "GUIDE_50", INDIGO_OK_STATE, 10));
 	for (int i = 0; i < 4; i++) {
 		hw_forget_states();
 		ASSERT_TRUE(pulse(i, 300, true));
@@ -438,7 +440,7 @@ static void nexstar_current_park_and_unpark(void) {
 	ASSERT_TRUE(fabs(remainder(parked_ra - axis_ra, 360)) < 0.15);
 	ASSERT_TRUE(fabs(remainder(parked_dec - axis_dec, 360)) < 0.15);
 	ASSERT_TRUE(hw_connect(mount, 30));
-	ASSERT_TRUE(hw_set_switch(mount, "TRACKING_MODE", "EQ", INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(hw_set_switch(mount, "X_TRACKING_MODE", "EQ", INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(hw_set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE, 10));
 	ASSERT_TRUE(fresh_position(&ra, &dec));
 }

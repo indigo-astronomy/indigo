@@ -1,20 +1,28 @@
 | Driver | Timestamp | Version | Platform | Type | Tests | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | agent_alpaca | 2026-10-01 10:02 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD Guider Simulator | 115 / 115 | ✅ OK |
-|  | 2026-10-01 10:02 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Focuser, CCD Imager Simulator (focuser) | 35 / 35 | ✅ OK |
 |  | 2026-10-01 10:03 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD Bahtinov Mask Simulator | 107 / 107 | ✅ OK |
 |  | 2026-10-01 10:03 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, DSLR Simulator | 107 / 107 | ✅ OK |
 |  | 2026-10-01 10:04 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD File Simulator | 107 / 107 | ✅ OK |
 |  | 2026-10-01 10:05 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 FilterWheel, CCD Imager Simulator (wheel) | 49 / 49 | ✅ OK |
-|  | 2026-10-01 10:05 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Telescope, Mount LX200 | 234 / 234 | ✅ OK |
-|  | 2026-10-01 10:05 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Telescope, Mount Simulator | 234 / 234 | ✅ OK |
 |  | 2026-10-01 10:06 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 CoverCalibrator, FlipFlat | 40 / 40 | ✅ OK |
-|  | 2026-10-01 10:07 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Rotator, Field Rotator Simulator | 43 / 43 | ✅ OK |
-|  | 2026-10-01 10:10 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Dome, Dome Simulator | 69 / 69 | ✅ OK |
 |  | 2026-10-01 10:16 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Focuser, Ultimate Powerbox 3 (focuser) | 28 / 28 | ✅ OK |
-|  | 2026-10-01 10:16 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Switch, Pocket Powerbox | 241 / 241 | ✅ OK |
 |  | 2026-10-01 10:17 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Camera, CCD Imager Simulator | 118 / 118 | ✅ OK |
-|  | 2026-10-01 10:30 | 3.0.0.11 | mac arm64 | ConformU 4.5.0 Switch, Ultimate Powerbox 3 | 772 / 772 | ✅ OK |
+|  | 2026-10-03 23:32 | 3.0.0.12 | mac arm64 | ConformU 4.5.0 Rotator, Field Rotator Simulator | 73 / 73 | ✅ OK |
+|  | 2026-10-03 23:36 | 3.0.0.12 | mac arm64 | ConformU 4.5.0 Focuser, CCD Imager Simulator (focuser) | 35 / 35 | ✅ OK |
+|  | 2026-10-04 09:45 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Dome, Dome Simulator | 69 / 69 | ✅ OK |
+|  | 2026-10-04 09:49 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Telescope, Mount Simulator | 234 / 234 | ✅ OK |
+|  | 2026-10-04 09:54 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Switch, Pocket Powerbox | 241 / 241 | ✅ OK |
+|  | 2026-10-04 10:02 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Switch, Ultimate Powerbox 3 | 772 / 772 | ✅ OK |
+|  | 2026-10-04 10:24 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Telescope, Mount LX200 | 234 / 234 | ✅ OK |
+|  | 2026-10-04 10:28 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Camera, ALPACA Camera Sim (OmniSim 0.5.0 via system_alpaca) | 110 / 110 | ✅ OK |
+|  | 2026-10-04 10:28 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 CoverCalibrator, ALPACA CoverCalibrator Simulator (OmniSim 0.5.0 via system_alpaca) | 40 / 40 | ✅ OK |
+|  | 2026-10-04 10:29 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Dome, ALPACA Dome Simulator (OmniSim 0.5.0 via system_alpaca) | 86 / 86 | ✅ OK |
+|  | 2026-10-04 10:34 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 FilterWheel, ALPACA Filter Wheel Simulator - 0 (OmniSim 0.5.0 via system_alpaca) | 53 / 53 | ✅ OK |
+|  | 2026-10-04 10:34 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Focuser, ALPACA Focuser Simulator - 0 (OmniSim 0.5.0 via system_alpaca) | 35 / 35 | ✅ OK |
+|  | 2026-10-04 10:39 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Rotator, ALPACA Rotator Simulator - 0 (OmniSim 0.5.0 via system_alpaca) | 73 / 73 | ✅ OK |
+|  | 2026-10-04 10:43 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Switch, ALPACA Switch Simulator (OmniSim 0.5.0 via system_alpaca) | 331 / 331 | ✅ OK |
+|  | 2026-10-04 10:52 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Telescope, ALPACA Telescope Simulator (OmniSim 0.5.0 via system_alpaca) | 234 / 234 | ✅ OK |
 | agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
 |  | 2026-10-01 15:27 | 2.0.0.27 | mac arm64 | simulator | 68 / 68 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
@@ -261,7 +269,7 @@
 |  | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
 |  | 2026-09-27 02:42 | 3.0.0.61 | linux x64 | simulator | 106 / 106 | ✅ OK |
-|  | 2026-10-03 22:08 | 3.0.0.62 | mac arm64 | simulator | 115 / 115 | ✅ OK |
+|  | 2026-10-04 19:47 | 3.0.0.64 | mac arm64 | simulator | 136 / 136 | ✅ OK |
 | mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 |  | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-09-23 11:17 | 3.0.0.60 | mac arm64 | OpenAstroTracker | 35 / 35 | ✅ OK |
@@ -273,8 +281,8 @@
 |  | 2026-09-26 21:03 | 3.0.0.68 | linux arm64 | simulator | 99 / 99 | ✅ OK |
 |  | 2026-09-27 02:25 | 3.0.0.69 | linux x64 | simulator | 103 / 103 | ✅ OK |
 |  | 2026-09-30 19:42 | 3.0.0.69 | linux arm64 | NYX-101 | 35 / 35 | ✅ OK |
-|  | 2026-10-01 09:33 | 3.0.0.69 | mac arm64 | simulator | 103 / 103 | ✅ OK |
 |  | 2026-10-01 22:47 | 3.0.0.69 | linux x64 | On-Step | 35 / 35 | ✅ OK |
+|  | 2026-10-04 18:20 | 3.0.0.76 | mac arm64 | simulator | 140 / 140 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |
@@ -285,34 +293,36 @@
 |  | 2026-09-24 21:25 | 3.0.0.41 | mac arm64 | Celestron GPS (NexStar+ 5.35, detection only) | 1 / 1 | ✅ OK |
 |  | 2026-09-24 21:57 | 3.0.0.42 | mac arm64 | Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:04 | 3.0.0.46 | linux x64 | simulator | 23 / 23 | ✅ OK |
-|  | 2026-09-27 22:56 | 3.0.0.46 | mac arm64 | simulator | 23 / 23 | ✅ OK |
+|  | 2026-10-04 19:36 | 3.0.0.48 | mac arm64 | simulator | 38 / 38 | ✅ OK |
 | mount_nexstaraux | 2026-09-24 00:12 | 3.0.0.18 | linux arm64 | simulator | 40 / 40 | ✅ OK |
 |  | 2026-09-24 05:44 | 3.0.0.18 | linux arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-24 11:00 | 3.0.0.18 | mac arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-26 23:13 | 3.0.0.22 | linux x64 | simulator | 42 / 42 | ✅ OK |
-|  | 2026-09-27 22:58 | 3.0.0.22 | mac arm64 | simulator | 42 / 42 | ✅ OK |
+|  | 2026-10-04 19:45 | 3.0.0.24 | mac arm64 | simulator | 67 / 67 | ✅ OK |
+|  | 2026-10-04 19:59 | 3.0.0.24 | mac arm64 | NexStar SE 4/5 | 37 / 37 | ✅ OK |
 | mount_pmc8 | 2026-09-24 23:45 | 3.0.0.12 | mac arm64 | iEXOS-100 | 38 / 38 | ✅ OK |
 |  | 2026-09-26 21:30 | 3.0.0.14 | linux arm64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-09-27 00:26 | 3.0.0.15 | linux x64 | simulator | 21 / 21 | ✅ OK |
-|  | 2026-09-27 23:06 | 3.0.0.15 | mac arm64 | simulator | 21 / 21 | ✅ OK |
 |  | 2026-09-30 19:56 | 3.0.0.15 | linux arm64 | Explore Scientific iEXOS-100 | 38 / 38 | ✅ OK |
+|  | 2026-10-04 19:05 | 3.0.0.16 | mac arm64 | simulator | 36 / 36 | ✅ OK |
 | mount_rainbow | 2026-09-23 14:04 | 3.0.0.18 | mac arm64 | MountSim 2.3 (RainbowAstro RST135) | 13 / 13 | ✅ OK |
 |  | 2026-09-27 12:23 | 3.0.0.21 | linux x64 | simulator | 18 / 18 | ✅ OK |
-|  | 2026-09-27 23:07 | 3.0.0.21 | mac arm64 | simulator | 18 / 18 | ✅ OK |
+|  | 2026-10-04 21:09 | 3.0.0.24 | mac arm64 | simulator | 39 / 39 | ✅ OK |
 | mount_simulator | 2026-09-26 22:40 | 3.0.0.23 | linux x64 | simulator | 19 / 19 | ✅ OK |
-|  | 2026-09-27 23:08 | 3.0.0.23 | mac arm64 | simulator | 19 / 19 | ✅ OK |
+|  | 2026-10-04 11:19 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
+|  | 2026-10-04 15:24 | 3.0.0.25 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | mount_starbook | 2026-09-27 12:08 | 3.0.0.11 | linux x64 | simulator | 13 / 13 | ✅ OK |
-|  | 2026-09-27 23:08 | 3.0.0.11 | mac arm64 | simulator | 13 / 13 | ✅ OK |
+|  | 2026-10-04 18:50 | 3.0.0.12 | mac arm64 | simulator | 26 / 26 | ✅ OK |
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
-|  | 2026-09-24 14:23 | 3.0.0.8 | linux arm64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-09-24 21:27 | 3.0.0.8 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-24 21:48 | 3.0.0.9 | mac arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
-|  | 2026-09-24 22:07 | 3.0.0.9 | mac arm64 | SkyWatcher AZ-GTi | 16 / 16 | ✅ OK |
 |  | 2026-09-26 22:41 | 3.0.0.13 | linux x64 | simulator | 24 / 24 | ✅ OK |
-|  | 2026-09-27 23:09 | 3.0.0.13 | mac arm64 | simulator | 24 / 24 | ✅ OK |
+|  | 2026-10-04 11:05 | 3.0.0.15 | mac arm64 | AZGTi | 18 / 18 | ✅ OK |
+|  | 2026-10-04 11:20 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
+|  | 2026-10-04 19:40 | 3.0.0.17 | mac arm64 | simulator | 46 / 46 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:16 | 3.0.0.22 | linux x64 | simulator | 15 / 15 | ✅ OK |
-|  | 2026-10-03 23:06 | 3.0.0.23 | mac arm64 | simulator | 19 / 19 | ✅ OK |
+|  | 2026-10-04 19:34 | 3.0.0.25 | mac arm64 | simulator | 28 / 28 | ✅ OK |
 | polaralign_mlastro | 2026-09-24 22:28 | 3.0.0.3 | mac arm64 | MLAstro RPA firmware 1.8.1 (TTGO ESP32) | 18 / 14 | ❌ Failed |
 |  | 2026-09-27 05:29 | 3.0.0.6 | linux x64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-09-27 22:40 | 3.0.0.6 | mac arm64 | simulator | 29 / 29 | ✅ OK |
@@ -343,6 +353,7 @@
 |  | 2026-10-04 00:07 | 3.0.0.1 | linux arm64 | OnStepX auxiliary features, firmware 10.28x | 4 / 4 | ✅ OK |
 |  | 2026-10-04 00:07 | 3.0.0.1 | linux arm64 | OnStepX focuser 1, firmware 10.28x | 7 / 7 | ✅ OK |
 |  | 2026-10-04 00:07 | 3.0.0.1 | linux arm64 | OnStepX mount, firmware 10.28x | 20 / 16 | ❌ Failed |
+|  | 2026-10-04 08:21 | 3.0.0.1 | mac arm64 | simulator | 318 / 318 | ✅ OK |
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.17 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
 |  | 2026-09-30 19:13 | 3.0.0.17 | linux arm64 | EFW | 16 / 16 | ✅ OK |
