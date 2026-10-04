@@ -78,6 +78,7 @@ commands, property deletion on disconnect and successful reconnection.
 | Initialization and loss | `initialization_rollback_and_reconnect`, `transport_loss_and_fresh_session`, `secondary_capability_rejection`; open/detection failures, supported missing-name fallback, rollback, new session after loss, unsupported secondary capability rejection |
 | Existing compliance | `mount_passes_serial_compliance_checks`, `guider_passes_serial_compliance_checks`, `focuser_passes_serial_compliance_checks`, `aux_passes_serial_compliance_checks`; original bus lifecycle/transport acceptance |
 | TCP (explicit opt-in) | `tcp_redundant_guider_connection_balances_close`, `tcp_mount_commands_and_reconnect`, `tcp_guider_keepalive_and_shared_ownership`; socket command/reconnect, guider-first keepalive, shared ownership and redundant-connect last-close |
+| Mount test standard (2026-10-04) | `goto_abort_ends_alert_and_idle_abort_keeps_state`, `onstep_park_and_home_abort_settle`, `disconnect_stops_motion_and_reconnect_is_clean`, `connect_publishes_the_device_state`, `coordinate_encoding_at_wrap_points`, `meade_goto_refusals_stop_the_sequence`, `shutdown_refused_while_connected`, `onstep_tracking_request_survives_status_poll`, `zwo_refused_settings_show_the_device_state`, `gemini_guide_rate_is_shared_by_mount_and_guider`; see "Mount test standard gap closure" below |
 
 Custom property inventory audited against declarations and handlers:
 X_MOUNT_MODE, X_MOUNT_TYPE, X_ZWO_BUZZER, X_NYX_WIFI_AP, X_NYX_WIFI_CL,
@@ -2611,3 +2612,47 @@ MIGRATION_STATUS.md hardware-free count 132 -> 134.
 ### Final test summary for this change
 
 Simulated tests: **130 run, 130 passed** (recorded run 2026-10-04 14:11, macOS arm64). Hardware tests: **0 run, 0 passed**.
+
+## Mount test standard gap closure (2026-10-04, 3.0.0.76)
+
+The suite was checked against the extended mount chapter of `indigo_test/DRIVER_TESTING_RULES.md`, with the OnStep, Meade, Astro-Physics, ZWO and Gemini profiles standing for their dialect families. Every new assertion that failed was a driver defect; all of them were repaired in this change.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX072 | FIXED | An abort that landed in a running goto left `MOUNT_EQUATORIAL_COORDINATES` to the next poll, which published it OK, so a goto that never reached its target ended like one that did. | The abort publishes the coordinates ALERT ("Goto aborted") with the last position read and clears the goto; the next valid poll publishes OK as after any refused goto. |
+| LX073 | FIXED | An abort of a running park or home settled `MOUNT_PARK`/`MOUNT_HOME` on a StarGO only. On every other controller the property stayed BUSY for good, because the poll only ends a park that arrives. | The settling (cancel a queued park/home, restore the switch, OK, lights) applies to every dialect, and the park the driver was waiting for on a Gemini, an OpenAstroTracker or an Astro-Physics firmware park is forgotten, so no later poll latches it. |
+| LX074 | FIXED | `MOUNT_STATE.SLEW` went BUSY only on the poll after a goto was accepted, not with the coordinates that went BUSY. | The goto handler publishes the light before the coordinates; the abort turns it off before the ALERT. |
+| LX075 | FIXED | A disconnect during manual motion stopped the mount but kept the motion items ON and the remembered direction, so the next session showed a motion that was not running and its first manual motion stopped a direction the mount was no longer moving in. | The disconnect clears the motion items, the remembered directions and the goto flags. |
+| LX076 | FIXED | A right ascension that rounds up to 24 h went out as `:Sr24:00:00#` (and `24:00:00.00` on a GTOCP4), which no controller takes. | `meade_set_target()` sends both target commands for goto and sync and writes 24 h as 00 h. |
+| LX077 | FIXED | A refused `:MS#` reached the client with its reason on a Gemini only; the Autostar, classic LX200, 10micron and Astro-Physics replies carry the same "code + reason#" and the reason was discarded. | The reason is read for all five dialects, trailing padding removed, and sent as "Slew refused: ...". |
+| LX078 | FIXED | A refused `:SRl#` left `X_ZWO_MAX_SLEW_SPEED` on the rejected item. | The refusal reads `:GRl#` back and shows the speed the mount has. |
+| LX079 | FIXED | A Gemini guiding speed set through `MOUNT_GUIDE_RATE` or through `GUIDER_RATE` was shown only by the device it was set on. | A change through either device is published by the other one while it is connected. |
+
+New cases:
+
+| Case | Rule items |
+| --- | --- |
+| `lx200_goto_abort_ends_alert_and_idle_abort_keeps_state` | Abort mid-slew: one stop, fresh ALERT, two equal fresh readbacks short of the target, next goto taken; idle abort keeps position and tracking; `MOUNT_STATE.SLEW` BUSY/IDLE in the same update as the coordinates; abort item OFF. |
+| `lx200_onstep_park_and_home_abort_settle` | Abort of a running park and home: stop sent once, not BUSY, not parked/homed, no re-latch, homing leaves the park state; park ends with tracking OFF; unpark sends no motion command. |
+| `lx200_disconnect_stops_motion_and_reconnect_is_clean` | Disconnect during goto and manual motion sends the stop; after reconnect no stale BUSY, motion items OFF, the next motion is fresh. |
+| `lx200_connect_publishes_the_device_state` | Tracking on the lunar rate, preferred pier side, meridian limit and a parked mount are published from the controller by a new session; the parked guard holds. |
+| `lx200_coordinate_encoding_at_wrap_points` | Meade and GTOCP4 precision: largest legal values, carries below 24 h and +90, negative declination with zero degrees, the south pole. |
+| `lx200_meade_goto_refusals_stop_the_sequence` | Refusal or lost reply at `:Sr#`, `:Sd#` and `:MS#`: ALERT, no later command, real position kept, the reason reaches the client, next goto taken. |
+| `lx200_shutdown_refused_while_connected` | SHUTDOWN refused with the mount or only the guider connected, connection and operation survive. |
+| `lx200_onstep_tracking_request_survives_status_poll` | A tracking request copied during the `:GU#` round trip: the requested command is sent once, the opposite never. |
+| `lx200_zwo_refused_settings_show_the_device_state` | Refused `:SRl#` and `:STa#` end ALERT showing the device state, immediate retry succeeds; guide rate at both ends of its range on the wire. |
+| `lx200_gemini_guide_rate_is_shared_by_mount_and_guider` | Guide rate set through either device reaches the controller at both range ends and is shown by the other device. |
+
+Extended cases: every profile case (`check_profile`) asserts that no update is published for an undefined property across connect, disconnect and reconnect; `lx200_park_rejects_motion_and_unpark_recovers` asserts that each parked refusal leaves the property on the mount state and sends nothing; `lx200_manual_reversal_and_axis_stops` asserts that north raises and south lowers the declination read back; `lx200_onstep_options_and_partial_failures` asserts that the park-set and home-set actions read OFF once done.
+
+Deliberately not covered:
+
+- A goto that never completes, or a "done" short of the target, is not ended ALERT by the driver: completion comes from each dialect's slew status, there is no goto timeout and no arrival check. Adding them is a behaviour change across fourteen dialects and their hardware evidence; left as a known gap.
+- A wrong forced `X_MOUNT_TYPE` is not refused. The forced type is the documented way to connect controllers that cannot be identified (StarGO2, GTOCP3), so the driver does not verify it.
+- Deceleration before a stop, RA drift with tracking off and hold with tracking on: the shared `serial_motion.h` stops at once and the simulator does not model the sky. The two equal readbacks after an abort are taken on the immediate stop.
+- Manual motion ownership on client detach stays with `integration/test_detach_abort.c`, which already runs against this driver.
+- Hemisphere and pier-side direction mapping: the LX200 commands are direction names the controller maps itself; the driver owns no sign.
+
+### Final test summary for this change
+
+Simulated tests: **140 run, 140 passed** (recorded run 2026-10-04 18:20, macOS arm64, driver 3.0.0.76). Hardware tests: **0 run, 0 passed**.

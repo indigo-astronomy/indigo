@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000018
+#define DRIVER_VERSION       0x03000019
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -113,18 +113,18 @@ static void position_handler(indigo_device *device) {
 		diffRA = (24 - diffRA);
 	}
 	double diffDec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target - MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
+	// the lights of a finished slew are published after the coordinates and the follow-up work
+	bool slew_ended = false;
 	if (PRIVATE_DATA->slew_in_progress) {
 		if (diffRA == 0 && diffDec == 0) {
+			slew_ended = true;
 			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
-				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-			}
-			if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
-				PRIVATE_DATA->ha = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
 			}
 			PRIVATE_DATA->slew_in_progress = false;
 			if (PRIVATE_DATA->parking) {
+				// parked at the hour angle of the park position, set when the park started
 				PRIVATE_DATA->parking = false;
 				PRIVATE_DATA->parked = true;
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
@@ -134,8 +134,8 @@ static void position_handler(indigo_device *device) {
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 				MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
-				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			} else if (PRIVATE_DATA->going_home) {
+				// at the hour angle of the home position, set when the homing started
 				PRIVATE_DATA->going_home = false;
 				PRIVATE_DATA->at_home = true;
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
@@ -144,12 +144,11 @@ static void position_handler(indigo_device *device) {
 				indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 				MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
-				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+				PRIVATE_DATA->ha = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			}
 		} else {
 			double speedRA = 0.2;
@@ -189,6 +188,9 @@ static void position_handler(indigo_device *device) {
 	indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 	indigo_update_coordinates(device, NULL);
 	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+	if (slew_ended) {
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	}
 	publish_simulated_mount_state(device);
 }
 
@@ -222,6 +224,8 @@ static void manual_motion_finalizer(indigo_device *device) {
 	if (raStep == 0 && decStep == 0) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
+		// with tracking off the mount keeps the hour angle it moved to
+		PRIVATE_DATA->ha -= raStep * speed;
 		MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value = fmod(MOUNT_RAW_COORDINATES_RA_ITEM->number.value + raStep * speed + 24, 24);
 		MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = fmod(MOUNT_RAW_COORDINATES_DEC_ITEM->number.value + decStep * speed + 360 + 180, 360) - 180;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -287,6 +291,7 @@ static void guider_guide_dec_finalizer(indigo_device *device) {
 static void mount_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		//+ mount.on_connect
+		MOUNT_LST_TIME_ITEM->number.value = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - (PRIVATE_DATA->ha = MOUNT_PARK_POSITION_HA_ITEM->number.value) + 24, 24);
 			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
@@ -308,14 +313,17 @@ static void mount_connection_handler(indigo_device *device) {
 		//+ mount.on_disconnect
 		indigo_set_simulated_mount_state(device, NULL);
 		PRIVATE_DATA->slew_in_progress = PRIVATE_DATA->parking = PRIVATE_DATA->going_home = false;
+		// an interrupted park or homing stopped the mount, the next session shows it neither parked nor at home, not failed
 		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 			MOUNT_HOME_ITEM->sw.value = false;
-			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+		MOUNT_STATE_HOME_ITEM->light.value = PRIVATE_DATA->at_home ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 		MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
 		MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
@@ -429,6 +437,8 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		// a controller sync changes the coordinates the controller reports, not where the telescope points
 		PRIVATE_DATA->sync_ra_offset = remainder(PRIVATE_DATA->sync_ra_offset + MOUNT_RAW_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, 24);
 		PRIVATE_DATA->sync_dec_offset += MOUNT_RAW_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+		// with tracking off the raw coordinates keep following the sky from the synced RA
+		PRIVATE_DATA->ha -= remainder(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target - MOUNT_RAW_COORDINATES_RA_ITEM->number.value, 24);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 		MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
@@ -642,7 +652,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(MOUNT_MOTION_RA_PROPERTY, mount_motion_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked");
+		INDIGO_REJECT_CHANGE_IF(MOUNT_PARK_PARKED_ITEM->sw.value && MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked");
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
