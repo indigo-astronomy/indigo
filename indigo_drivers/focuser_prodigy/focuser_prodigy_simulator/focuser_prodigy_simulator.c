@@ -168,6 +168,16 @@ static void handle_command(const char *command) {
 	if (!strncmp(action, "temp=", 5)) {
 		temperature = atof(action + 5);
 	}
+	if (!strncmp(action, "external=", 9)) {
+		// a hand controller starts a move the driver did not command
+		start_motion(atoi(action + 9));
+		position = (int)serial_motion_update(&motion);
+	}
+	if (!strcmp(action, "slow")) {
+		// the reply keeps the state from before the delay and still arrives within the
+		// driver's timeout, so a request can be accepted while it is outstanding
+		usleep(300000);
+	}
 	if (!strcmp(action, "reject")) {
 		send_line("ERR");
 		return;

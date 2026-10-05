@@ -168,3 +168,34 @@ cd indigo_test && PRODIGY_TEST_FILTER=ports_defined_at_connect ./build/integrati
 ```
 
 Final test summary: 58 simulated tests run, 58 passed; 0 hardware tests run, 0 passed.
+
+## Focuser testing rules alignment (3.0.0.10, 2026-10-05)
+
+The suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839). Most rules were already covered (connect refusal on every field, firmware variants, shared lifetime and sibling survival, additional instances, motion and limits, park, overlap refusal, queued abort, stop/start/stall failures, malformed, partial, overlong and silent polls, temperature, powerbox, reboot, disconnect during motion and park, transport loss). The simulator gained the one-shot actions `external=<target>` (hand-controller move) and `slow` (reply held 0.3 s, inside the driver timeout); the runner now plans its forked cases.
+
+### Defects found and fixed
+
+- `PRDG-1` An aborted move ended `FOCUSER_POSITION` and `FOCUSER_STEPS` OK. User decision: it ends ALERT at the stopped position with value equal to target, and later idle polls keep the ALERT (`failed_move`). Test: `abort`, `stop_failure` (two fresh polls read the same position and keep the ALERT).
+- `PRDG-2` An abort with nothing moving sent `H` and republished the motion properties. It is answered OK without a command now (as is a request with the item OFF). Test: `abort`.
+- `PRDG-3` An idle poll whose `I` reply was outstanding when a move request was accepted published the request OK before its handler ran. The poll re-checks after its reads and leaves a request the bus accepted alone; an external move it already follows still completes. Test: `request_survives_poll`.
+- `PRDG-4` A failed sync set `uncertain`, so the next sync (and every move) was refused until an abort, and the requested value stayed as target. A failed sync now keeps the real position as value and target, stays ALERT through idle polls, and the next sync is accepted; a confirmed sync clears an uncertain stop. Test: `sync_failure`.
+- `PRDG-5` A failed or aborted move's ALERT was turned OK by the next idle poll. Only an ALERT from a failed poll is cleared now. Test: `abort`, `sync_failure`.
+- `PRDG-6` A limits change excluding the focuser was accepted, and a refused change left its target behind, so the next change was validated against it. Such changes are refused and the targets restored. Test: `limits`.
+- `PRDG-7` A backlash change during motion sent `C`. It is refused without a command now, and `active` joins every motion `reject_change` so a refused property's ALERT cannot open the guard. Test: `rejected_change`.
+- `PRDG-8` `X_AUX_REBOOT` reset the whole controller while the focuser sibling was connected (only a running move refused it). The reboot is refused while the shared connection count is above one. Test: `reboot_refused_with_focuser`.
+
+Against the pre-fix 3.0.0.9 driver (built from a copy of its sources) 7 of the 61 scenarios fail: `rejected_change`, `abort`, `stop_failure`, `sync_failure`, `request_survives_poll`, `reboot_refused_with_focuser`, `limits`. `external_motion` documents behaviour the driver already had.
+
+### Rules not applicable or deliberately kept
+
+- Relative-only profile, temperature sentinel, compensation and mode: the controller is absolute, documents no "no sensor" value and has no compensation; reverse motion is fixed and not defined.
+- Disconnect during motion sends `H` and then reads `P`/`I` before the port closes, to decide whether the stop is confirmed; nothing is sent after the close (`disconnect_motion`, `disconnect_park`).
+- A refused speed change during motion is not required: speed is not a motion-geometry setting.
+
+```sh
+cd indigo_test && PRODIGY_TEST_FILTER=request_survives_poll ./build/integration/test_focuser_prodigy_simulator
+```
+
+The first two recorded runs failed `abort` (60/61): under the recorded run's timing the abort overtook the queued start, so the focuser stopped at its origin, a legitimate ALERT outcome the case did not expect. The case now waits for the move to make progress before it aborts, so it always lands mid-move as the rules require; the third recorded run passed.
+
+Final test summary: 61 simulated tests in the recorded run, 61 passed (see README `## Testing`); 0 hardware tests run, 0 passed.
