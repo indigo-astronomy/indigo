@@ -31,11 +31,17 @@ static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach
 static atomic_int move_calls, poll_calls, close_calls, position = 100, maximum = 10000, backlash;
 static atomic_bool motor, hand_control, fail_poll, fail_position, fail_move, fail_stop, fail_max, fail_backlash, fail_temperature;
 static atomic_int temperature = 10, abort_state;
-static atomic_bool abort_switch, reverse_enabled, beep_enabled;
+static atomic_bool abort_switch, reverse_enabled, beep_enabled, battery_supported;
 static atomic_int open_calls, requested_position, reset_calls;
 static atomic_int stop_calls, set_max_calls, set_backlash_calls, set_reverse_calls, calls_after_close;
 static atomic_bool delay_poll, fail_reset, fail_all, closed_flag, watch_position;
 static atomic_int first_state = -1, first_value = -1, position_busy;
+#define BEEP_PROPERTY    "X_BEEP_ON_MOVE"
+#define SUFFIX_PROPERTY  "X_CUSTOM_SUFFIX"
+#define BATTERY_PROPERTY "X_BATTERY_INFO"
+
+// Names the driver used before its custom properties got the X_ prefix, no client may see them any more.
+static const char *eaf_unprefixed_properties[] = { "EAF_BEEP_ON_MOVE", "EAF_CUSTOM_SUFFIX", "EAF_BATTERY_INFO" };
 static const simulator_driver_case eaf = { "ZWO ASI Focuser", "indigo_focuser_asi", "EAF SDK test 0", indigo_focuser_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static indigo_result eaf_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
@@ -231,7 +237,18 @@ EAF_ERROR_CODE EAFGetTemp(int id, float *value) {
 }
 
 EAF_ERROR_CODE EAFGetBatteryInfo(int id, EAF_BATTERY_INFO *info) {
-	return EAF_ERROR_NOT_SUPPORTED;
+	if (!atomic_load(&battery_supported)) {
+		return EAF_ERROR_NOT_SUPPORTED;
+	}
+	if (!sdk_call(id)) {
+		return EAF_ERROR_REMOVED;
+	}
+	memset(info, 0, sizeof(*info));
+	info->battery_percentage = 80;
+	info->battery_temp = 25;
+	info->battery_vol = 3900;
+	info->battery_num_of_cycles = 12;
+	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFSetID(int id, EAF_ID alias) {
@@ -329,7 +346,7 @@ static void failed_connect_releases_sdk(void) {
 	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
 	// a refused connection leaves no focuser or driver-specific property defined
-	ASSERT_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) == NULL && find_cached_property("EAF_BEEP_ON_MOVE") == NULL && find_cached_property("EAF_CUSTOM_SUFFIX") == NULL);
+	ASSERT_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) == NULL && find_cached_property(BEEP_PROPERTY) == NULL && find_cached_property(SUFFIX_PROPERTY) == NULL && find_cached_property(BATTERY_PROPERTY) == NULL);
 	atomic_store(&fail_position, false);
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
@@ -533,25 +550,63 @@ static void settings_and_readback(void) {
 	set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_TRUE(atomic_load(&reverse_enabled));
-	set_switch("EAF_BEEP_ON_MOVE", "ON");
-	ASSERT_TRUE(wait_for_property_state("EAF_BEEP_ON_MOVE", INDIGO_OK_STATE));
+	set_switch(BEEP_PROPERTY, "ON");
+	ASSERT_TRUE(wait_for_property_state(BEEP_PROPERTY, INDIGO_OK_STATE));
 	ASSERT_TRUE(atomic_load(&beep_enabled));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
 	ASSERT_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
-	ASSERT_TRUE(find_cached_item("EAF_BEEP_ON_MOVE", "ON")->sw.value);
+	ASSERT_TRUE(find_cached_item(BEEP_PROPERTY, "ON")->sw.value);
 	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 125, 0));
 	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 5000, 0));
 	set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_FALSE(atomic_load(&reverse_enabled));
-	set_switch("EAF_BEEP_ON_MOVE", "OFF");
-	ASSERT_TRUE(wait_for_property_state("EAF_BEEP_ON_MOVE", INDIGO_OK_STATE));
+	set_switch(BEEP_PROPERTY, "OFF");
+	ASSERT_TRUE(wait_for_property_state(BEEP_PROPERTY, INDIGO_OK_STATE));
 	ASSERT_FALSE(atomic_load(&beep_enabled));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+}
+
+static void assert_no_unprefixed_properties(void) {
+	for (int i = 0; i < (int)ARRAY_SIZE(eaf_unprefixed_properties); i++) {
+		assert_not_defined_property(eaf_unprefixed_properties[i]);
+		ASSERT_TRUE(find_cached_property(eaf_unprefixed_properties[i]) == NULL);
+	}
+}
+
+// The driver-specific properties exist under their X_ names only while connected, X_BATTERY_INFO only
+// on a focuser whose SDK reports battery data; the legacy EAF_ names are never defined.
+static void driver_specific_property_names(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	ASSERT_TRUE(find_cached_property(BEEP_PROPERTY) == NULL && find_cached_property(SUFFIX_PROPERTY) == NULL && find_cached_property(BATTERY_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	ASSERT_TRUE(find_cached_item(BEEP_PROPERTY, "ON") != NULL && find_cached_item(BEEP_PROPERTY, "OFF") != NULL);
+	ASSERT_TRUE(find_cached_item(SUFFIX_PROPERTY, "SUFFIX") != NULL);
+	// without SDK battery support the battery property stays hidden
+	ASSERT_TRUE(find_cached_property(BATTERY_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	atomic_store(&battery_supported, true);
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	ASSERT_TRUE(find_cached_property(BEEP_PROPERTY) != NULL && find_cached_property(SUFFIX_PROPERTY) != NULL);
+	ASSERT_TRUE(wait_for_number_item_value(BATTERY_PROPERTY, "CHARGE", 80, 0));
+	ASSERT_TRUE(wait_for_number_item_value(BATTERY_PROPERTY, "VOLTAGE", 3.9, 0.001));
+	ASSERT_TRUE(wait_for_number_item_value(BATTERY_PROPERTY, "CYCLES", 12, 0));
+	assert_no_unprefixed_properties();
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	atomic_store(&battery_supported, false);
+	ASSERT_TRUE(find_cached_property(BEEP_PROPERTY) == NULL && find_cached_property(SUFFIX_PROPERTY) == NULL && find_cached_property(BATTERY_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
 }
 
 static void connect_device(void) {
@@ -856,6 +911,7 @@ int main(void) {
 		{ "relative motion in both directions", relative_motion_in_both_directions },
 		{ "synchronize position without motion", synchronize_position_without_motion },
 		{ "settings and reconnect readback", settings_and_readback },
+		{ "driver-specific property names", driver_specific_property_names },
 		{ "idle abort and no-op moves", idle_abort_and_noop_moves },
 		{ "abort overtakes a queued move", abort_overtakes_queued_move },
 		{ "poll in flight versus a request", poll_versus_request },
@@ -865,6 +921,8 @@ int main(void) {
 		{ "settings during motion and refusals", settings_during_motion_and_refusals },
 		{ "disconnect during motion", disconnect_during_motion },
 		{ "transport loss", transport_loss },
+		// checked before removal_during_motion resets the record of defined properties
+		{ "legacy names never defined", assert_no_unprefixed_properties },
 		{ "removal during motion", removal_during_motion },
 		{ "five devices and attach retry", hotplug_capacity_and_failed_attach_retry }
 	};

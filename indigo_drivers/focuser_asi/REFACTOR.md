@@ -273,9 +273,28 @@ The fake-SDK suite was checked against the "Focuser Drivers" chapter of `indigo_
 
 ### Rules not applicable or left open
 
-Single-command moves (`EAFMove`), so no multi-command sequence; the SDK exposes no speed, so `FOCUSER_SPEED` stays hidden; the minimum limit is fixed at 0; replies cannot be split or malformed at the SDK boundary; one model family, so no model-dependent command set. Open decision: the driver-specific properties keep their historical names `EAF_BEEP_ON_MOVE`, `EAF_CUSTOM_SUFFIX` and `EAF_BATTERY_INFO`; the testing rules check driver-specific properties under `X_` names, but renaming them changes the client-visible API, so it was not done here.
+Single-command moves (`EAFMove`), so no multi-command sequence; the SDK exposes no speed, so `FOCUSER_SPEED` stays hidden; the minimum limit is fixed at 0; replies cannot be split or malformed at the SDK boundary; one model family, so no model-dependent command set. The driver-specific properties kept their historical `EAF_` names here; they were renamed with the `X_` prefix in 3.0.0.37 (next section).
 
 ### Test summary
 
-- Fake-SDK tests: 21 run, 21 passed (`python3 tools/run_driver_test.py focuser_asi`, macOS arm64).
+- Fake-SDK tests: 23 run, 23 passed after the 3.0.0.37 rename (`python3 tools/run_driver_test.py focuser_asi`, macOS arm64).
 - Hardware tests: 0 run, 0 passed.
+
+## Driver-specific property prefix (2026-10-05, 3.0.0.37)
+
+Version 37. The three driver-specific properties lacked the `X_` prefix the focuser testing rules require for
+custom properties. With user approval they were renamed, without a backward-compatible alias:
+`EAF_BEEP_ON_MOVE` -> `X_BEEP_ON_MOVE`, `EAF_CUSTOM_SUFFIX` -> `X_CUSTOM_SUFFIX` and `EAF_BATTERY_INFO` ->
+`X_BATTERY_INFO`. The names follow the other ZWO and Player One drivers (`X_CUSTOM_SUFFIX` in `wheel_asi`,
+`ccd_asi`, `wheel_playerone`, `ccd_playerone`), without the vendor prefix. Item names, labels, groups,
+permissions and connect-scoped visibility are unchanged; only the property name strings in the `.driver` source
+changed, the C identifiers keep their `EAF_` macros. The persisted `EAF_BEEP_ON_MOVE` value of an existing
+configuration is not migrated; the switch starts at the value read from the focuser until saved again.
+
+New fake-SDK case `driver-specific property names`: no X_ property is defined while disconnected; after connect
+`X_BEEP_ON_MOVE` (`ON`, `OFF`) and `X_CUSTOM_SUFFIX` (`SUFFIX`) are defined and `X_BATTERY_INFO` stays hidden when
+the SDK reports no battery support; with battery support enabled in the fake (`EAFGetBatteryInfo` returns data)
+`X_BATTERY_INFO` is defined and publishes the charge, voltage and cycle count; after disconnect all three are
+deleted. The legacy `EAF_` names are asserted never defined throughout that case and in `legacy names never defined`,
+which checks the record of every property defined since start-up (placed before `removal during motion`, which
+resets that record). The existing cases use the new names. No hardware test references these properties.

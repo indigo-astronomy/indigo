@@ -22,7 +22,7 @@ driver asi {
 	label = "ZWO ASI Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 36;
+	version = 37;
 	multi_device_support = true;
 	include {
 		#include <stdbool.h>
@@ -520,7 +520,7 @@ driver asi {
 					}
 				}
 			}
-			name = "EAF_BEEP_ON_MOVE";
+			name = "X_BEEP_ON_MOVE";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Beep on move";
 			item EAF_BEEP_ON {
@@ -560,7 +560,7 @@ driver asi {
 					indigo_send_message(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix cleared, will be used on replug");
 				}
 			}
-			name = "EAF_CUSTOM_SUFFIX";
+			name = "X_CUSTOM_SUFFIX";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Device name custom suffix";
 			item EAF_CUSTOM_SUFFIX {
@@ -571,7 +571,7 @@ driver asi {
 		}
 		number EAF_BATTERY_INFO {
 			hidden = true;
-			name = "EAF_BATTERY_INFO";
+			name = "X_BATTERY_INFO";
 			group = "Battery";
 			label = "Battery information";
 			perm = INDIGO_RO_PERM;

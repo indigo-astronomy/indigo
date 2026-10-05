@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_focuser_asi"
 #define DRIVER_LABEL         "ZWO ASI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -63,14 +63,14 @@
 #define EAF_BEEP_ON_ITEM               (EAF_BEEP_PROPERTY->items + 0)
 #define EAF_BEEP_OFF_ITEM              (EAF_BEEP_PROPERTY->items + 1)
 
-#define EAF_BEEP_PROPERTY_NAME         "EAF_BEEP_ON_MOVE"
+#define EAF_BEEP_PROPERTY_NAME         "X_BEEP_ON_MOVE"
 #define EAF_BEEP_ON_ITEM_NAME          "ON"
 #define EAF_BEEP_OFF_ITEM_NAME         "OFF"
 
 #define EAF_CUSTOM_SUFFIX_PROPERTY      (PRIVATE_DATA->eaf_custom_suffix_property)
 #define EAF_CUSTOM_SUFFIX_ITEM          (EAF_CUSTOM_SUFFIX_PROPERTY->items + 0)
 
-#define EAF_CUSTOM_SUFFIX_PROPERTY_NAME "EAF_CUSTOM_SUFFIX"
+#define EAF_CUSTOM_SUFFIX_PROPERTY_NAME "X_CUSTOM_SUFFIX"
 #define EAF_CUSTOM_SUFFIX_ITEM_NAME     "SUFFIX"
 
 #define EAF_BATTERY_INFO_PROPERTY            (PRIVATE_DATA->eaf_battery_info_property)
@@ -83,7 +83,7 @@
 #define EAF_BATTERY_CHARGE_VOL_ITEM          (EAF_BATTERY_INFO_PROPERTY->items + 6)
 #define EAF_BATTERY_CYCLES_ITEM              (EAF_BATTERY_INFO_PROPERTY->items + 7)
 
-#define EAF_BATTERY_INFO_PROPERTY_NAME       "EAF_BATTERY_INFO"
+#define EAF_BATTERY_INFO_PROPERTY_NAME       "X_BATTERY_INFO"
 #define EAF_BATTERY_CHARGE_ITEM_NAME         "CHARGE"
 #define EAF_BATTERY_TEMP_ITEM_NAME           "TEMPERATURE"
 #define EAF_BATTERY_VOLTAGE_ITEM_NAME        "VOLTAGE"
