@@ -36,7 +36,7 @@ driver lunatico {
 	label = "Lunatico Astronomia Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 15;
+	version = 16;
 	multi_device_support = true;
 	serial {
 		configurable_speed = true;
@@ -126,6 +126,10 @@ driver lunatico {
 		inherited FOCUSER_BACKLASH {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_attach {
 				FOCUSER_BACKLASH_ITEM->number.min = 0;
 				FOCUSER_BACKLASH_ITEM->number.max = 200;
@@ -137,6 +141,10 @@ driver lunatico {
 		inherited FOCUSER_COMPENSATION {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_attach {
 				FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 				FOCUSER_COMPENSATION_ITEM->number.max = 10000;
@@ -152,6 +160,10 @@ driver lunatico {
 		inherited FOCUSER_REVERSE_MOTION {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_change {
 				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_MAIN_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
 					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -318,6 +330,10 @@ driver lunatico {
 		inherited FOCUSER_BACKLASH {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_attach {
 				FOCUSER_BACKLASH_ITEM->number.min = 0;
 				FOCUSER_BACKLASH_ITEM->number.max = 200;
@@ -329,6 +345,10 @@ driver lunatico {
 		inherited FOCUSER_COMPENSATION {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_attach {
 				FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 				FOCUSER_COMPENSATION_ITEM->number.max = 10000;
@@ -344,6 +364,10 @@ driver lunatico {
 		inherited FOCUSER_REVERSE_MOTION {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_change {
 				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_EXP_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
 					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -713,6 +737,10 @@ driver lunatico {
 		inherited FOCUSER_BACKLASH {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_attach {
 				FOCUSER_BACKLASH_ITEM->number.min = 0;
 				FOCUSER_BACKLASH_ITEM->number.max = 200;
@@ -724,6 +752,10 @@ driver lunatico {
 		inherited FOCUSER_COMPENSATION {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_attach {
 				FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 				FOCUSER_COMPENSATION_ITEM->number.max = 10000;
@@ -739,6 +771,10 @@ driver lunatico {
 		inherited FOCUSER_REVERSE_MOTION {
 			hidden = false;
 			persistent = true;
+			reject_change {
+				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The focuser is moving";
+			}
 			on_change {
 				if (!lunatico_apply_wiring(device, X_FOCUSER_MOTOR_WIRING_THIRD_PROPERTY, !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)) {
 					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;

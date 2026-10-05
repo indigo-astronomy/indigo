@@ -877,3 +877,69 @@ asserts `!step setpos 0 0#` reaches the controller and the reported position bec
   report, and 27 of 27 over the UDP transport (`make -C indigo_test test-rotator-lunatico-udp`).
 - Hardware tests: **0 executed, 0 passed.** No Lunatico controller was available and no
   hardware validation is claimed.
+
+## Focuser testing rules alignment (3.0.0.16, 2026-10-05)
+
+The suite was checked against the "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` and extended where a rule applies. The focuser behaviour
+lives in `shared/lunatico_shared.c`, which `indigo_rotator_lunatico` compiles too, so its Exp and
+Third focusers get the same fixes (its version is raised separately). No hardware test was run.
+
+### Found defects
+
+| # | Defect | Fix | Regression test (fails against 3.0.0.15) |
+|---|---|---|---|
+| LU-10 | An aborted move ended OK, and an abort while idle sent `!step stop`. | The abort stops only a running or queued move, reads the stopped position and ends both motion properties ALERT with value and target equal to it; idle ends OK without a command. | `abort_motion`, `abort_while_idle` |
+| LU-11 | A refused stop still ended the move OK and cancelled its poll while the motor ran on. | `FOCUSER_ABORT_MOTION` ends ALERT, the move stays BUSY under the poll and a retry stops it. | `stop_failure` |
+| LU-12 | Disconnecting during a move left the motor running. | Releasing a focuser port stops a running move first. | `disconnect_during_motion` |
+| LU-13 | A single lost readback during a move ended it ALERT while the motor kept running; a persistent failure did not stop the motor; a motor reporting motion without advancing stayed BUSY; a move that stopped short of its target ended OK. | One or two lost readbacks are retried, the third stops the motor; ten polls without progress stop the motor; a move stopped elsewhere than its target ends ALERT. All failures end both properties ALERT with value equal to target. | `read_failure`, `single_read_failure`, `stalled_move` |
+| LU-14 | A refused GOTO or SYNC left the requested target published. | Value and target are the position the controller has. | `goto_failure`, `sync_failure` |
+| LU-15 | A SYNC to the position already published was answered OK without a command (the no-op shortcut of GOTO also applied to SYNC). | Only GOTO skips a move to the current position; a SYNC always reaches the controller. | `sync_to_the_published_position` |
+| LU-16 | Motion already running at connect was followed, but its target stayed at the position read at connect. | The target follows the measured position until the motion stops. | `motion_running_at_connect` |
+| LU-17 | `FOCUSER_LIMITS` did not change the range of `FOCUSER_POSITION` and `FOCUSER_STEPS`, limits excluding the current position were sent, and a refused change kept the requested values. | Limits set the ranges (the properties are defined again), a relative move past a limit is sent as a move to it; limits that are inverted, exclude the position or arrive during a move end ALERT without a command and keep the limits the controller holds; a write the controller refuses restores them too. | `limits`, `inverted_limits`, `settings_during_motion` |
+| LU-18 | Backlash, compensation, reverse, limits and mode were accepted during a move. | Refused with ALERT and no command (`reject_change` for the inherited settings, the shared handlers for limits and mode). | `settings_during_motion` |
+| LU-19 | A compensation move the controller refused advanced the temperature reference, and an ALERT position blocked compensation for good. | The reference only advances with a move that started, and only a BUSY position defers compensation, so a failed correction is repeated from the kept reference. | `failed_compensation_is_retried` |
+
+The pre-fix results come from a separate binary built against a copy of the 3.0.0.15 sources
+(driver and shared code); the shared tree was not reverted.
+
+### Simulator additions (shared `lunatico_simulator_common.h`)
+
+- Profile flags `read-glitch` (the first readback after a move is lost), `stall` (a goto is
+  acknowledged, the axis reports moving and does not advance), `stop-error-once` and
+  `goto-error-once`; a refused stop leaves the axis running.
+- Control `move:<port>:<position>`: the axis moves without a command.
+
+### Rule mapping (additions)
+
+| Rule | Test |
+|---|---|
+| Abort ending ALERT at the stopped position, idle abort without a command, refused stop and retry | `abort_motion`, `abort_while_idle`, `stop_failure` |
+| Disconnect during a move stops it, nothing follows the close, reconnect OK at the stopped position | `disconnect_during_motion` |
+| Lost and persistent readbacks, stall | `single_read_failure`, `read_failure`, `stalled_move` |
+| Refused GOTO and SYNC keep the position | `goto_failure`, `sync_failure` |
+| SYNC immediately after connect and to the published value | `sync_to_zero_after_connect`, `sync_to_the_published_position` |
+| Motion running at connect | `motion_running_at_connect` |
+| Limits: ranges, clamped relative move, inverted, excluding the position, during a move | `limits`, `inverted_limits`, `settings_during_motion` |
+| Settings during a move | `settings_during_motion` |
+| Compensation: manual mode, threshold, correction, failed correction retried | `manual_mode_does_not_compensate`, `temperature_compensation`, `failed_compensation_is_retried` |
+
+### Rules not applicable or not covered
+
+- Idle position polling: the controllers have no hand control, so the position only changes
+  through this driver; the one-shot poll at connect follows motion that is already running.
+  Idle position poll failures therefore have no path to test.
+- Model and firmware variants: covered by the existing identity and port-existence scenarios
+  (`limpet_has_no_exp_port`, `armadillo_has_no_third_port`); the focuser commands do not differ
+  between models.
+
+### Validation
+
+`python3 tools/run_driver_test.py focuser_lunatico`: 56/56 passed (3.0.0.16, macOS arm64).
+`test_rotator_lunatico_simulator` still passes against the shared code (27/27, development run;
+the recorded run belongs to the rotator_lunatico commit).
+
+## Final test summary (2026-10-05)
+
+- Simulated tests: 56 run, 56 passed (`test_focuser_lunatico_simulator`, recorded).
+- Hardware tests: 0 run, 0 passed.
