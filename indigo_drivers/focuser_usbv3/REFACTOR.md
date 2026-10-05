@@ -280,4 +280,4 @@ Against the pre-fix 3.0.0.11 driver (built from a copy of its sources) 15 of the
 - Shared controllers, legacy names: single device without driver-specific names other than `X_FOCUSER_STEP_SIZE`.
 
 - Simulated tests run: 38 in the recorded run (see README `## Testing`), with `test_focuser_usbv3_motion` alongside.
-- Hardware tests run: 0 for this change.
+- Hardware tests run: 16, passed: 16 on the USB_Focus v3 (3.0.0.12, macOS arm64, 2026-10-05), including the idle position poll and the stricter connect sequence. The first run failed the property contract only because the hardware suite still expected the fixed 1 to 65535 steps range; it now expects the steps and position maxima to follow the travel limit the unit reports.
