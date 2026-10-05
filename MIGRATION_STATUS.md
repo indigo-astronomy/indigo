@@ -92,7 +92,7 @@
 | focuser_lunatico        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 50 / 0 | |
 | focuser_mjkzz           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 19 / 0 | |
 | focuser_mjkzz_bt        | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
-| focuser_moonlite        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 20 / 0 | |
+| focuser_moonlite        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 44 / 0 | |
 | focuser_mypro2          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 35 / 0 | |
 | focuser_nfocus          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | focuser_nstep           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | |
