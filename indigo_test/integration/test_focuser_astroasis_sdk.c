@@ -131,7 +131,7 @@ typedef struct {
 	unsigned int firmware;
 	AOFocuserConfig config, last_config;
 	char model[AO_FOCUSER_NAME_LEN + 1], friendly[AO_FOCUSER_NAME_LEN + 1], bluetooth[AO_FOCUSER_NAME_LEN + 1];
-	int position, target, moving, motion_from, motion_polls;
+	int position, target, moving, motion_from, motion_polls, stop_short, stalled;
 	double motion_start, motion_end, hold_since;
 	int temperature_int, temperature_ext, detection;
 	int error[FN_COUNT], error_skip[FN_COUNT], calls[FN_COUNT];
@@ -459,7 +459,9 @@ AOReturn AOFocuserGetStatus(int id, AOFocuserStatus *status) {
 		if (fake->moving && !fake->hold_motion) {
 			double now = indigo_monotonic_time();
 			if (now >= fake->motion_end) {
-				fake->position = fake->target;
+				// stop_short models a motor the firmware stops before the target (stall detection)
+				fake->position = fake->target - fake->stop_short;
+				fake->stalled = fake->stop_short != 0;
 				fake->moving = 0;
 			} else {
 				double progress = (now - fake->motion_start) / (fake->motion_end - fake->motion_start);
@@ -472,6 +474,7 @@ AOReturn AOFocuserGetStatus(int id, AOFocuserStatus *status) {
 		status->temperatureDetection = fake->detection;
 		status->position = fake->position;
 		status->moving = fake->moving;
+		status->stallDetection = fake->stalled;
 	}
 	return fake_leave(index, result);
 }
@@ -517,6 +520,7 @@ static void fake_start_motion(fake_focuser *fake, int target) {
 	}
 	fake->target = target;
 	fake->moving = 1;
+	fake->stalled = 0;
 	fake->motion_from = fake->position;
 	fake->motion_start = indigo_monotonic_time();
 	fake->motion_end = fake->motion_start + scaled(MOTION_POLL_INTERVAL * (fake->motion_polls - 0.5));
@@ -1033,12 +1037,42 @@ static bool wait_updates(int index, const char *name, int after, int count) {
 	return false;
 }
 
+// The position is read during the connection and published with the definition of
+// FOCUSER_POSITION, the first temperature update proves the poll is running.
 static bool connect_and_wait_position(int index) {
-	int position = update_count(index, FOCUSER_POSITION_PROPERTY_NAME), temperature = update_count(index, FOCUSER_TEMPERATURE_PROPERTY_NAME);
-	if (!connect_focuser(index, true) || !wait_updates(index, FOCUSER_POSITION_PROPERTY_NAME, position, 1) || !wait_updates(index, FOCUSER_TEMPERATURE_PROPERTY_NAME, temperature, 1)) {
+	int temperature = update_count(index, FOCUSER_TEMPERATURE_PROPERTY_NAME);
+	if (!connect_focuser(index, true) || !wait_updates(index, FOCUSER_TEMPERATURE_PROPERTY_NAME, temperature, 1)) {
 		return false;
 	}
 	return state(index, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE;
+}
+
+static bool wait_temperature_reads(int count) {
+	int before = update_count(0, FOCUSER_TEMPERATURE_PROPERTY_NAME);
+	return wait_updates(0, FOCUSER_TEMPERATURE_PROPERTY_NAME, before, count);
+}
+
+static bool wait_position_between(int index, double low, double high) {
+	for (int i = 0; i < WAIT_STEPS; i++) {
+		double value = number(index, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false);
+		if (value > low && value < high) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "focuser %d position %g never strictly between %g and %g\n", index, number(index, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), low, high);
+	return false;
+}
+
+static bool wait_number(int index, const char *name, const char *item, double expected) {
+	for (int i = 0; i < WAIT_STEPS; i++) {
+		if (number(index, name, item, false) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "focuser %d %s.%s expected %g, got %g\n", index, name, item, expected, number(index, name, item, false));
+	return false;
 }
 
 static void reset_fake(int index, bool present) {
@@ -1128,6 +1162,12 @@ static void set_status_errors_after_stop(int index, int count) {
 	pthread_mutex_unlock(&sdk_mutex);
 }
 
+static void start_external_motion(int index, int target) {
+	pthread_mutex_lock(&sdk_mutex);
+	fake_start_motion(fakes + index, target);
+	pthread_mutex_unlock(&sdk_mutex);
+}
+
 static int status_calls_after_stop(int index) {
 	pthread_mutex_lock(&sdk_mutex);
 	int count = fakes[index].status_calls_after_stop;
@@ -1157,6 +1197,17 @@ static bool fake_opened(int index) {
 
 #define FAKE(index, field) fake_int(index, offsetof(fake_focuser, field))
 #define SET_FAKE(index, field, value) set_fake_int(index, offsetof(fake_focuser, field), value)
+
+static bool wait_fake_position(int index, int expected) {
+	for (int i = 0; i < WAIT_STEPS; i++) {
+		if (FAKE(index, position) == expected && !FAKE(index, moving)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "focuser %d fake position expected %d, got %d\n", index, expected, FAKE(index, position));
+	return false;
+}
 
 static void usb_event(int index, bool arrive) {
 	pthread_mutex_lock(&sdk_mutex);
@@ -1528,31 +1579,71 @@ cleanup:
 static void abort_motion(void) {
 	CHECK(start_driver(1));
 	CHECK(connect_and_wait_position(0));
-	set_hold_motion(0, true);
+	SET_FAKE(0, motion_polls, 40);
 	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
 	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000));
 	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
-	CHECK(wait_calls(0, FN_MOVE_TO, 1));
-	CHECK(wait_calls(0, FN_STATUS, fake_calls(0, FN_STATUS) + 2));
+	CHECK(wait_position_between(0, 250, 5000));
 	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	CHECK_EQ(1, fake_calls(0, FN_STOP));
 	CHECK_EQ(false, switch_value(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
-	indigo_usleep((useconds_t)(scaled(1.5) * 1000000));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
-	CHECK_NEAR(250, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	// the aborted move ends ALERT at the stopped position, never at the requested target
+	int stopped = FAKE(0, position);
+	CHECK(stopped > 250 && stopped < 5000);
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	// two fresh readbacks prove the focuser really stopped short of the target
+	int reads = fake_calls(0, FN_STATUS);
+	CHECK(wait_calls(0, FN_STATUS, reads + 2));
+	CHECK_EQ(stopped, FAKE(0, position));
 	CHECK_EQ(0, FAKE(0, moving));
-	set_hold_motion(0, false);
+	indigo_usleep((useconds_t)(scaled(1.5) * 1000000));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_EQ(1, fake_calls(0, FN_MOVE_TO));
+	SET_FAKE(0, motion_polls, 2);
 	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 800, INDIGO_OK_STATE));
 	CHECK_EQ(800, FAKE(0, position));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	// an abort while idle sends no stop and leaves the position alone
 	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
-	CHECK_EQ(2, fake_calls(0, FN_STOP));
+	CHECK_EQ(1, fake_calls(0, FN_STOP));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_NEAR(800, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	// a request with the item OFF is answered without a command
+	before = revision(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, indigo_change_switch_property_1(&test_client, observed[0].name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	CHECK(wait_state_after(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	CHECK_EQ(1, fake_calls(0, FN_STOP));
+	// a refused stop does not end the move while the focuser keeps moving, a retry stops it
+	SET_FAKE(0, motion_polls, 40);
+	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	CHECK(wait_position_between(0, 800, 4000));
 	set_error(0, FN_STOP, AO_ERROR_COMMUNICATION, 0);
 	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(false, switch_value(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
+	CHECK_EQ(2, fake_calls(0, FN_STOP));
+	CHECK_EQ(1, FAKE(0, moving));
+	indigo_usleep((useconds_t)(scaled(1) * 1000000));
+	CHECK_EQ(INDIGO_BUSY_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_BUSY_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
 	set_error(0, FN_STOP, 0, 0);
+	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK_EQ(3, fake_calls(0, FN_STOP));
+	stopped = FAKE(0, position);
+	CHECK(stopped > 800 && stopped < 4000);
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	SET_FAKE(0, motion_polls, 2);
 	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900, INDIGO_OK_STATE));
 	CHECK_EQ(900, FAKE(0, position));
+	CHECK_EQ(4, fake_calls(0, FN_MOVE_TO));
 cleanup:
 	finish_test();
 }
@@ -1560,17 +1651,33 @@ cleanup:
 static void abort_status_communication_retry(void) {
 	CHECK(start_driver(1));
 	CHECK(connect_and_wait_position(0));
+	SET_FAKE(0, motion_polls, 40);
+	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	CHECK(wait_position_between(0, 250, 5000));
 	set_status_errors_after_stop(0, 2);
 	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	CHECK_EQ(3, status_calls_after_stop(0));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_NEAR(FAKE(0, position), number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(FAKE(0, position), number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
 	CHECK_EQ(false, switch_value(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
+	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 9000));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	double low = number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false);
+	CHECK(wait_position_between(0, low, 9000));
 	set_status_errors_after_stop(0, 3);
 	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	CHECK_EQ(3, status_calls_after_stop(0));
+	// the position stays at the last valid reading, with the target following it
+	double last = number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false);
+	CHECK(last > low && last < 9000);
+	CHECK_NEAR(last, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
 	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
 	CHECK_EQ(false, switch_value(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
 cleanup:
 	finish_test();
@@ -1579,7 +1686,7 @@ cleanup:
 static void motion_poll_failure_and_recovery(void) {
 	CHECK(start_driver(1));
 	CHECK(connect_and_wait_position(0));
-	set_hold_motion(0, true);
+	SET_FAKE(0, motion_polls, 40);
 	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
 	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
 	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
@@ -1588,11 +1695,51 @@ static void motion_poll_failure_and_recovery(void) {
 	set_error(0, FN_STATUS, AO_ERROR_COMMUNICATION, 0);
 	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	// the stop is sent, the failed move is never counted as arrival
+	CHECK_EQ(1, fake_calls(0, FN_STOP));
+	CHECK_EQ(0, FAKE(0, moving));
+	CHECK(number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false) < 3000);
 	set_error(0, FN_STATUS, 0, 0);
-	set_hold_motion(0, false);
+	// a later idle poll does not turn the failed move OK
+	CHECK(wait_temperature_reads(2));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	SET_FAKE(0, motion_polls, 2);
 	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
 	CHECK_EQ(600, FAKE(0, position));
 	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+cleanup:
+	finish_test();
+}
+
+static void stalled_motion_ends_alert(void) {
+	char buffer[INDIGO_VALUE_SIZE];
+	CHECK(start_driver(1));
+	CHECK(connect_and_wait_position(0));
+	// the firmware stops the motor short of the target and reports a stall
+	SET_FAKE(0, stop_short, 70);
+	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_NEAR(1930, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	message(0, FOCUSER_POSITION_PROPERTY_NAME, buffer);
+	CHECK(strstr(buffer, "short of the target") != NULL);
+	CHECK_EQ(1, fake_calls(0, FN_STOP));
+	SET_FAKE(0, stop_short, 0);
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500, INDIGO_OK_STATE));
+	CHECK_EQ(2500, FAKE(0, position));
+	// a motor that reports motion but never progresses is stopped within bounded time
+	set_hold_motion(0, true);
+	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(2, fake_calls(0, FN_STOP));
+	CHECK_EQ(0, FAKE(0, moving));
+	set_hold_motion(0, false);
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_OK_STATE));
+	CHECK_EQ(3000, FAKE(0, position));
 cleanup:
 	finish_test();
 }
@@ -1750,11 +1897,6 @@ cleanup:
 	finish_test();
 }
 
-static bool wait_temperature_reads(int count) {
-	int before = update_count(0, FOCUSER_TEMPERATURE_PROPERTY_NAME);
-	return wait_updates(0, FOCUSER_TEMPERATURE_PROPERTY_NAME, before, count);
-}
-
 static void temperature_sources(void) {
 	char buffer[INDIGO_VALUE_SIZE];
 	CHECK(start_driver(1));
@@ -1787,10 +1929,14 @@ static void temperature_sources(void) {
 	CHECK(wait_temperature_reads(2));
 	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_TEMPERATURE_PROPERTY_NAME));
 	CHECK_EQ(INDIGO_ALERT_STATE, state(0, BOARD_TEMPERATURE_NAME));
+	CHECK_NEAR(19, number(0, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, false), 1e-9);
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
 	set_error(0, FN_STATUS, 0, 0);
 	CHECK(wait_temperature_reads(2));
 	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_TEMPERATURE_PROPERTY_NAME));
 	CHECK_EQ(INDIGO_OK_STATE, state(0, BOARD_TEMPERATURE_NAME));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
 cleanup:
 	finish_test();
 }
@@ -1894,6 +2040,8 @@ static void disconnect_and_removal_during_motion(void) {
 	CHECK_EQ(reads, fake_calls(0, FN_STATUS));
 	set_hold_motion(0, false);
 	CHECK(connect_and_wait_position(0));
+	CHECK_NEAR(FAKE(0, position), number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
 	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
 	set_hold_motion(0, true);
 	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
@@ -2076,6 +2224,16 @@ static void defect_move_start_failure_alerts(void) {
 	CHECK(wait_calls(0, FN_MOVE, moves + 1));
 	CHECK(wait_temperature_reads(2));
 	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	// the reference temperature is kept, so the next reading retries the same correction
+	CHECK_EQ(300, FAKE(0, position));
+	set_error(0, FN_MOVE, 0, 0);
+	CHECK(wait_fake_position(0, 500));
+	CHECK_EQ(200, FAKE(0, last_move));
+	CHECK(wait_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE));
+	moves = fake_calls(0, FN_MOVE);
+	CHECK(wait_temperature_reads(3));
+	CHECK_EQ(moves, fake_calls(0, FN_MOVE));
 cleanup:
 	finish_test();
 }
@@ -2274,10 +2432,238 @@ static void urgent_abort_cancels_queued_move(void) {
 	indigo_usleep((useconds_t)(scaled(3) * 1000000));
 	CHECK_EQ(0, fake_calls(0, FN_MOVE_TO));
 	CHECK_EQ(1, fake_calls(0, FN_STOP));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
-	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_NEAR(250, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(250, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
 	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
 	CHECK_EQ(600, FAKE(0, position));
+cleanup:
+	atomic_store(&hold_status, false);
+	finish_test();
+}
+
+static void connect_publishes_device_state(void) {
+	indigo_property *property = NULL;
+	CHECK(start_driver(1));
+	SET_FAKE(0, position, 3333);
+	SET_FAKE(0, target, 3333);
+	SET_FAKE(0, config.maxStep, 20000);
+	SET_FAKE(0, config.backlash, 77);
+	SET_FAKE(0, config.reverseDirection, 1);
+	SET_FAKE(0, config.beepOnMove, 1);
+	SET_FAKE(0, config.beepOnStartup, 0);
+	SET_FAKE(0, config.backlashDirection, 0);
+	SET_FAKE(0, config.bluetoothOn, 0);
+	CHECK(connect_focuser(0, true));
+	// the device state is published with the definitions, before any poll
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_NEAR(3333, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(3333, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	property = snapshot(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK_NEAR(20000, property->items[0].number.max, 0);
+	indigo_release_property(property);
+	property = NULL;
+	CHECK_NEAR(20000, number(0, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(77, number(0, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, false), 0);
+	CHECK_EQ(true, switch_value(0, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME));
+	CHECK_EQ(true, switch_value(0, BEEP_ON_MOVE_NAME, "ON"));
+	CHECK_EQ(true, switch_value(0, BEEP_ON_POWER_UP_NAME, "OFF"));
+	CHECK_EQ(true, switch_value(0, BACKLASH_DIRECTION_NAME, "INWARD"));
+	CHECK_EQ(true, switch_value(0, BLUETOOTH_NAME, "DISABLED"));
+	// a GOTO right after connect is judged against the position read at connect
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3333, INDIGO_OK_STATE));
+	CHECK_EQ(0, fake_calls(0, FN_MOVE_TO));
+	// a SYNC equal to the published value still reaches the controller
+	CHECK(set_switch_and_wait(0, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3333, INDIGO_OK_STATE));
+	CHECK_EQ(1, fake_calls(0, FN_SYNC));
+	CHECK_EQ(3333, FAKE(0, last_sync));
+	CHECK(set_switch_and_wait(0, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	// reconnecting to a device in another state publishes that state
+	CHECK(connect_focuser(0, false));
+	SET_FAKE(0, position, 1234);
+	SET_FAKE(0, target, 1234);
+	SET_FAKE(0, config.backlash, 5);
+	SET_FAKE(0, config.reverseDirection, 0);
+	SET_FAKE(0, config.maxStep, 15000);
+	CHECK(connect_focuser(0, true));
+	CHECK_NEAR(1234, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(5, number(0, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, false), 0);
+	CHECK_EQ(true, switch_value(0, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME));
+	CHECK_NEAR(15000, number(0, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, false), 0);
+cleanup:
+	indigo_release_property(property);
+	finish_test();
+}
+
+static void connect_status_failure_refused(void) {
+	CHECK(start_driver(1));
+	CHECK(connect_and_wait_position(0));
+	CHECK(connect_focuser(0, false));
+	int opens = fake_calls(0, FN_OPEN), closes = fake_calls(0, FN_CLOSE);
+	set_error(0, FN_STATUS, AO_ERROR_COMMUNICATION, 0);
+	CHECK(!connect_focuser(0, true));
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, CONNECTION_PROPERTY_NAME));
+	CHECK(!fake_opened(0));
+	CHECK_EQ(opens + 1, fake_calls(0, FN_OPEN));
+	CHECK_EQ(closes + 1, fake_calls(0, FN_CLOSE));
+	CHECK(!is_defined(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK(!is_defined(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK(!is_defined(0, BEEP_ON_MOVE_NAME));
+	CHECK(!is_defined(0, BOARD_TEMPERATURE_NAME));
+	set_error(0, FN_STATUS, 0, 0);
+	CHECK(connect_and_wait_position(0));
+	CHECK_NEAR(250, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+cleanup:
+	finish_test();
+}
+
+static void external_motion_and_idle_poll(void) {
+	CHECK(start_driver(1));
+	// motion running at connect is published BUSY and ends OK at the measured position
+	SET_FAKE(0, motion_polls, 8);
+	start_external_motion(0, 1500);
+	CHECK(connect_focuser(0, true));
+	CHECK(state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE) > 0);
+	CHECK(wait_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_NEAR(1500, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	// a position changed by another controller while idle is published
+	SET_FAKE(0, position, 1700);
+	SET_FAKE(0, target, 1700);
+	CHECK(wait_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1700));
+	CHECK_NEAR(1700, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	// motion started by another controller while idle
+	int busy = state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	start_external_motion(0, 2600);
+	for (int i = 0; i < WAIT_STEPS && state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE) == busy; i++) {
+		indigo_usleep(10000);
+	}
+	CHECK(state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE) > busy);
+	CHECK(state_revision(0, FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE) > 0);
+	int after = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(wait_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2600));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, after - 1, INDIGO_OK_STATE));
+	CHECK_NEAR(2600, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	CHECK_EQ(0, fake_calls(0, FN_MOVE_TO));
+	CHECK_EQ(0, fake_calls(0, FN_MOVE));
+	CHECK_EQ(0, fake_calls(0, FN_STOP));
+	// a relative move starts from the externally reached position
+	SET_FAKE(0, motion_polls, 2);
+	CHECK(set_switch_and_wait(0, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK(set_number_and_wait(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_OK_STATE));
+	CHECK_EQ(100, FAKE(0, last_move));
+	CHECK_EQ(2700, FAKE(0, position));
+	CHECK(wait_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2700));
+	// a failed idle poll publishes ALERT with the last valid value, the next good poll restores OK
+	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	set_error(0, FN_STATUS, AO_ERROR_COMMUNICATION, 0);
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	CHECK_NEAR(2700, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	set_error(0, FN_STATUS, 0, 0);
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	CHECK_NEAR(2700, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_OK_STATE));
+	CHECK_EQ(3000, FAKE(0, position));
+cleanup:
+	finish_test();
+}
+
+static void requests_refused_during_motion(void) {
+	const char *items[] = { FOCUSER_COMPENSATION_ITEM_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME };
+	const double values[] = { 33, 4 };
+	CHECK(start_driver(1));
+	CHECK(connect_and_wait_position(0));
+	SET_FAKE(0, motion_polls, 80);
+	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	CHECK(wait_calls(0, FN_MOVE_TO, 1));
+	int writes = fake_calls(0, FN_CONFIG_SET);
+	// another move is refused without a command, the running move keeps its target
+	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 7000, INDIGO_ALERT_STATE));
+	CHECK_NEAR(3000, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	CHECK(set_number_and_wait(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_ALERT_STATE));
+	// motion geometry controls are refused without a command and keep their values
+	CHECK(set_number_and_wait(0, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 99, INDIGO_ALERT_STATE));
+	CHECK_NEAR(12, number(0, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, false), 0);
+	CHECK(set_number_and_wait(0, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 9000, INDIGO_ALERT_STATE));
+	CHECK_NEAR(10000, number(0, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, false), 0);
+	CHECK(set_switch_and_wait(0, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, INDIGO_ALERT_STATE));
+	CHECK_EQ(true, switch_value(0, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME));
+	CHECK(set_switch_and_wait(0, BACKLASH_DIRECTION_NAME, "INWARD", INDIGO_ALERT_STATE));
+	CHECK_EQ(true, switch_value(0, BACKLASH_DIRECTION_NAME, "OUTWARD"));
+	CHECK(set_switch_and_wait(0, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, INDIGO_ALERT_STATE));
+	CHECK_EQ(true, switch_value(0, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME));
+	before = revision(0, FOCUSER_COMPENSATION_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, indigo_change_number_property(&test_client, observed[0].name, FOCUSER_COMPENSATION_PROPERTY_NAME, 2, items, values));
+	CHECK(wait_state_after(0, FOCUSER_COMPENSATION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	CHECK(number(0, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, false) != 33);
+	CHECK_EQ(writes, fake_calls(0, FN_CONFIG_SET));
+	CHECK_EQ(0, fake_calls(0, FN_MOVE));
+	CHECK_EQ(1, FAKE(0, moving));
+	// the running move ends at its original target with exactly one move command
+	CHECK(wait_fake_position(0, 3000));
+	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before - 1, INDIGO_OK_STATE));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_NEAR(3000, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_EQ(1, fake_calls(0, FN_MOVE_TO));
+	SET_FAKE(0, motion_polls, 2);
+	// a limit that excludes the current position is refused without a command
+	CHECK(set_number_and_wait(0, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 2000, INDIGO_ALERT_STATE));
+	CHECK_EQ(writes, fake_calls(0, FN_CONFIG_SET));
+	CHECK_NEAR(10000, number(0, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, false), 0);
+	CHECK_EQ(10000, FAKE(0, config.maxStep));
+	CHECK(set_number_and_wait(0, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 5000, INDIGO_OK_STATE));
+	CHECK_EQ(writes + 1, fake_calls(0, FN_CONFIG_SET));
+	// a relative move past either end of travel is sent as a move to that end
+	CHECK(set_switch_and_wait(0, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK(set_number_and_wait(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4900, INDIGO_OK_STATE));
+	CHECK_EQ(2000, FAKE(0, last_move));
+	CHECK_EQ(5000, FAKE(0, position));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE));
+	CHECK(set_switch_and_wait(0, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK(set_number_and_wait(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 5000, INDIGO_OK_STATE));
+	CHECK_EQ(-5000, FAKE(0, last_move));
+	CHECK_EQ(0, FAKE(0, position));
+	CHECK(wait_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0));
+	CHECK_EQ(INDIGO_OK_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+cleanup:
+	finish_test();
+}
+
+static void poll_in_flight_does_not_complete_request(void) {
+	CHECK(start_driver(1));
+	CHECK(connect_and_wait_position(0));
+	atomic_store(&status_waiting, false);
+	atomic_store(&hold_status, true);
+	for (int i = 0; i < WAIT_STEPS && !atomic_load(&status_waiting); i++) {
+		indigo_usleep(10000);
+	}
+	CHECK(atomic_load(&status_waiting));
+	// the reply held in flight carries a position the poll would otherwise publish
+	SET_FAKE(0, position, 777);
+	SET_FAKE(0, target, 777);
+	int ok = state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE);
+	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	indigo_usleep(100000);
+	CHECK_EQ(INDIGO_BUSY_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	atomic_store(&hold_status, false);
+	CHECK(wait_calls(0, FN_MOVE_TO, 1));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	CHECK_EQ(ok + 1, state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	CHECK_EQ(1, fake_calls(0, FN_MOVE_TO));
+	CHECK_EQ(1500, FAKE(0, last_move_to));
+	CHECK_NEAR(1500, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(1500, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
 cleanup:
 	atomic_store(&hold_status, false);
 	finish_test();
@@ -2313,6 +2699,12 @@ int main(int argc, char **argv) {
 		{ "abort_status_communication_retry", abort_status_communication_retry },
 		{ "urgent_abort_cancels_queued_move", urgent_abort_cancels_queued_move },
 		{ "motion_poll_failure_and_recovery", motion_poll_failure_and_recovery },
+		{ "stalled_motion_ends_alert", stalled_motion_ends_alert },
+		{ "connect_publishes_device_state", connect_publishes_device_state },
+		{ "connect_status_failure_refused", connect_status_failure_refused },
+		{ "external_motion_and_idle_poll", external_motion_and_idle_poll },
+		{ "requests_refused_during_motion", requests_refused_during_motion },
+		{ "poll_in_flight_does_not_complete_request", poll_in_flight_does_not_complete_request },
 		{ "settings_config_writes", settings_config_writes },
 		{ "suffix_and_bluetooth_name", suffix_and_bluetooth_name },
 		{ "factory_reset", factory_reset },

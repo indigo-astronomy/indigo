@@ -267,3 +267,58 @@ keep their previous meaning.
 `step steps-outward` had lost to the temperature poll; every move now shows the same single
 intermediate pair. Verified with eight consecutive runs producing byte-identical traces, three of
 them under saturating CPU load, and the suite at 33 run, 33 passed.
+
+## Focuser testing rules alignment (2026-10-05, version 14)
+
+The suite was checked against the extended "Focuser Driver Test Standard" in `indigo_test/DRIVER_TESTING_RULES.md` (commit `fa5f64839`), including the two decisions for all focusers: an aborted move ends `FOCUSER_POSITION` and `FOCUSER_STEPS` ALERT at the stopped position, and a disconnect during motion sends the stop before the SDK handle closes (already true here: `on_disconnect` calls `AOFocuserStopMove()` before `AOFocuserClose()`).
+
+### Defects found and fixed (driver version 13 → 14)
+
+Every case below failed against a build of the version 13 source kept outside the tree and passes against version 14.
+
+| ID | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| FOC-13 | An aborted move ended `FOCUSER_POSITION`/`FOCUSER_STEPS` OK, with the target left at the requested position. | Abort ends both ALERT with value = target = the position read after the stop. | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move` |
+| FOC-14 | An abort while idle sent `AOFocuserStopMove()`; an abort request with the item OFF also stopped the focuser. | Nothing moving (no motion running, neither motion property BUSY) answers OK without a command; an OFF request is answered without a command. | `abort_motion` |
+| FOC-15 | A refused `AOFocuserStopMove()` published the move OK and cancelled its completion poll while the focuser kept moving. | The abort ends ALERT with the controller error, the move stays BUSY and its completion poll continues; a retried abort stops it. | `abort_motion` |
+| FOC-16 | The position was not read at connect: `FOCUSER_POSITION` showed 0 until the first poll, and a GOTO right after connect was compared with that 0. | `on_connect` reads `AOFocuserGetStatus()`; a failure refuses the connection and closes the handle. | `connect_publishes_device_state`, `connect_status_failure_refused` |
+| FOC-17 | Motion the driver did not command (running at connect, or started from the Bluetooth application) and a position changed while idle were never published; a failed idle read never touched the position. | The 2 s poll publishes an idle position change, publishes external motion BUSY then OK with target = measured position, and a failed read ALERT with the last value, restored OK by the next good read. | `external_motion_and_idle_poll`, `temperature_sources` |
+| FOC-18 | A failed status read during a move ended ALERT but never sent the stop; a move the firmware ended short of its target (stall detection) was reported OK; a motor reporting motion without progress stayed BUSY forever. | The failure sends `AOFocuserStopMove()`; a commanded move must end at its target, otherwise ALERT with the reason (`motor stall` from `stallDetection`); 20 polls without progress (10 s) stop the move with ALERT. | `motion_poll_failure_and_recovery`, `stalled_motion_ends_alert` |
+| FOC-19 | A SYNC to the published position was answered OK without reaching the controller. | The no-op shortcut applies to GOTO only. | `connect_publishes_device_state` |
+| FOC-20 | Limits, backlash, backlash direction, reverse, compensation and mode could be changed during a move; a second move request while one was queued was dropped without an answer; a limit below the current position was written. | `reject_change` on all of them while a move runs or is queued; a limit that excludes the current position ends ALERT without a command. | `requests_refused_during_motion` |
+| FOC-21 | A relative move past either end of travel was sent unchanged. | Relative and compensation moves are clamped to `0..FOCUSER_LIMITS` and sent as a move to that end. | `requests_refused_during_motion` |
+| FOC-22 | A failed compensation move moved the reference temperature, so the correction was never retried. | The reference moves only after a successful start; the next reading retries the same correction. | `FOC-03 move_start_failure_alerts` |
+
+The fake SDK gained `stop_short` (the firmware stops a move short of its target and reports `stallDetection`) and `start_external_motion()` (motion started by another controller). The connection no longer schedules a completion poll unless a motion is running, so `generated_reference_trace.txt` was regenerated: the connect step lost its poll publications, the abort step now ends ALERT, and publication order within a move follows the shared publish helper. Three consecutive traces were identical.
+
+### Scenario-to-test mapping (rules of `fa5f64839`)
+
+| Rule | Cases |
+| --- | --- |
+| Connect publishes the device state (position, travel, backlash, reverse, beep, backlash direction, Bluetooth), reconnect publishes the new state | `connect_publishes_device_state`, `FOC-04` |
+| Refused connect (open, config, status): CONNECTION ALERT, nothing defined, handle closed, next connect works | `connect_status_failure_refused`, `FOC-01`, `FOC-02` |
+| Polling of externally changed position, uncommanded motion BUSY → OK with target = measured, later relative move from it | `external_motion_and_idle_poll` |
+| Failed idle position read ALERT with last value, next good read OK, move works | `external_motion_and_idle_poll`, `temperature_sources` |
+| GOTO, no-op GOTO right after connect, SYNC equal to the published value, failed SYNC | `goto_sync_and_noop`, `connect_publishes_device_state` |
+| Relative moves, direction, device-side reverse, zero step, clamping at both ends | `relative_steps_and_direction`, `requests_refused_during_motion` |
+| Move/setting requests during a move refused with ALERT and no command, running move ends at its target with one command | `requests_refused_during_motion`, `FOC-09` |
+| Limits: range propagation, written to the device, below the current position refused | `FOC-04`, `settings_config_writes`, `requests_refused_during_motion` |
+| Mid-move abort ALERT, value = target = stopped position, two fresh equal readbacks, fresh move; idle abort without stop; OFF request; refused stop and retry; abort overtaking a queued move | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move` |
+| Start failure with the controller error in the message, failed/stalled move sends the stop, never arrival, not turned OK by a later poll | `FOC-03`, `motion_poll_failure_and_recovery`, `stalled_motion_ends_alert` |
+| Disconnect / USB removal during motion: one stop before close, no poll afterwards, reconnect OK at the real position | `disconnect_and_removal_during_motion` |
+| Settings writes, rejected writes keep the device value, immediate retry | `settings_config_writes`, `FOC-08` |
+| Compensation: manual never moves, threshold, ±correction, failed move retried from the kept reference | `temperature_compensation`, `FOC-03` |
+| Poll in flight when a move is accepted | `poll_in_flight_does_not_complete_request`, `FOC-05` |
+| Momentary switches return OFF, OFF request answered | `abort_motion`, `factory_reset`, `FOC-10` |
+| SHUTDOWN refused while connected | `connection_lifecycle_and_shutdown` |
+
+Not applicable or not changed, with the reason:
+
+- No-sensor sentinel publishing `FOCUSER_TEMPERATURE` IDLE: the driver deliberately publishes the board temperature as ambient when no probe is inserted (documented behaviour, covered by `temperature_sources`). There is no range check for an implausible probe value beyond the SDK's `TEMPERATURE_INVALID` sentinel; the SDK documents no other invalid reading.
+- Model/firmware variants: the SDK exposes one command set; there is no model-dependent capability on the bus.
+- Malformed, partial or split replies: the SDK returns decoded structures, only return codes can fail, which the fake injects per call.
+- `AOFocuserGetConfig()` (second read) and `AOFocuserGetBluetoothName()` at connect are optional queries, as in the original driver; their failure is logged and connect completes.
+- Speed, heater, USB power, stall-detection configuration and zero-position: not exposed by the driver.
+- Hand controller: none; motion from the Bluetooth application is the uncommanded-motion case.
+- Shared controllers, `ADDITIONAL_INSTANCES`: one logical device per SDK id.
+- Hardware: no Oasis focuser available, no physical run.
