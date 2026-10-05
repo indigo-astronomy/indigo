@@ -26,5 +26,5 @@ Driver is developed and tested with the physical hardware.
 ## Testing
 
 2026-09-22 01:09 3.0.0.10 mac arm64 USB_Focus v3 16/16 OK
-2026-09-27 23:26 3.0.0.11 mac arm64 simulator 28/28 OK
 2026-09-30 19:29 3.0.0.11 linux arm64 USB_Focus v3 Focuser 16/16 OK
+2026-10-05 16:56 3.0.0.12 mac arm64 simulator 39/39 OK

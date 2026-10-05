@@ -69,8 +69,9 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_USBV3_EVENTS names a file receiving every accepted request, one per line.\n");
-	printf("INDIGO_USBV3_FAULT names a file holding '<command prefix> <silent|garbage|close|truncate>\n");
-	printf("[count]' which is applied to the next matching request, count times, and then removed.\n");
+	printf("INDIGO_USBV3_FAULT names a file holding '<command prefix> <silent|garbage|close|truncate|\n");
+	printf("slow|ignore|value=<reply>|external=<target>> [count]' which is applied to the next matching\n");
+	printf("request, count times, and then removed.\n");
 }
 
 static void signal_handler(int sig) {
@@ -181,7 +182,7 @@ static void apply_profile(void) {
 // the next matching request has to misbehave, so a test can fail exactly one
 // transaction without disturbing the rest of the session.
 static const char *pending_fault(const char *command) {
-	static char action[32];
+	static char action[64];
 	const char *path = getenv("INDIGO_USBV3_FAULT");
 	if (path == NULL) {
 		return NULL;
@@ -195,7 +196,7 @@ static const char *pending_fault(const char *command) {
 	action[0] = '\0';
 	// A count lets one armed fault answer several requests, which is how a driver that retries a
 	// damaged reply is driven into reporting the failure.
-	int fields = fscanf(file, "%31s %31s %d", prefix, action, &count);
+	int fields = fscanf(file, "%31s %63s %d", prefix, action, &count);
 	bool matched = fields >= 2 && !strncmp(command, prefix, strlen(prefix));
 	fclose(file);
 	if (!matched) {
@@ -257,6 +258,30 @@ static void handle_command(const char *command) {
 		// 2026-09-22, with the framework's reader and with a plain POSIX one.
 		if (!strcmp(fault, "truncate")) {
 			drop_a_byte = true;
+		}
+		if (!strncmp(fault, "value=", 6)) {
+			// the reply is replaced, e.g. by an implausible or malformed reading
+			send_line(fault + 6);
+			return;
+		}
+		if (!strcmp(fault, "ignore")) {
+			// a setting is acknowledged as usual but not applied
+			if (strncmp(command, "SMSTP", 5)) {
+				send_line("DONE");
+			}
+			return;
+		}
+		if (!strcmp(fault, "slow")) {
+			// the reply still arrives within the driver's timeout, but late enough for a
+			// request to be accepted while it is outstanding
+			usleep(300000);
+		}
+		if (!strncmp(fault, "external=", 9)) {
+			// the hand controller starts a move the driver did not command; it is modelled
+			// without the completion marker, which is known only for moves sent over the line
+			target_position = atoi(fault + 9);
+			clamp_position();
+			serial_motion_start(&motion, target_position, 1000);
 		}
 	}
 	if (!strcmp(command, "SWHOIS")) {

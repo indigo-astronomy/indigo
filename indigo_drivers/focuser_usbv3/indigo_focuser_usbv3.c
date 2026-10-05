@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -61,6 +61,12 @@ typedef struct {
 	bool abort;
 	int motion_polls;
 	int position_digits;
+	// the settings the controller last confirmed, shown again when a write fails
+	int speed, max_position, compensation, threshold, stepmode;
+	// external_motion: the idle poll follows a move the driver did not command;
+	// poll_failed: the ALERT on FOCUSER_POSITION comes from a failed idle poll
+	bool external_motion, poll_failed;
+	int timer_ticks;
 	//- data
 } usbv3_private_data;
 
@@ -112,8 +118,22 @@ static bool usbv3_quit(indigo_device *device) {
 	if (indigo_uni_printf(PRIVATE_DATA->handle, "FQUITx") <= 0) {
 		return false;
 	}
-	PRIVATE_DATA->moving = false;
-	return indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r\n", INDIGO_DELAY(1), INDIGO_DELAY(0.1)) > 0;
+	// only the stop marker confirms the stop; without it the motor may still run
+	if (indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r\n", INDIGO_DELAY(1), INDIGO_DELAY(0.1)) > 0 && *PRIVATE_DATA->response == '*') {
+		PRIVATE_DATA->moving = false;
+		return true;
+	}
+	return false;
+}
+
+// Setting commands are answered with a fixed acknowledgement ("DONE", "A", "!"); any
+// other reply, or none, is a failure.
+static bool usbv3_acknowledged(indigo_device *device, const char *acknowledgement, char *command, int value) {
+	if (usbv3_command(device, command, true, value) && !strcmp(PRIVATE_DATA->response, acknowledgement)) {
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s not acknowledged", command);
+	return false;
 }
 
 static bool usbv3_open(indigo_device *device) {
@@ -175,6 +195,31 @@ static bool usbv3_read_position(indigo_device *device, int *position) {
 	return false;
 }
 
+// FTxxxA reports the sign of the compensation as a bare "A=0" or "A=1".
+static bool usbv3_read_sign(indigo_device *device, int *sign) {
+	for (int attempt = 0; attempt < 3; attempt++) {
+		if (usbv3_command(device, "FTxxxA", true) && (!strcmp(PRIVATE_DATA->response, "A=0") || !strcmp(PRIVATE_DATA->response, "A=1"))) {
+			*sign = PRIVATE_DATA->response[2] == '1';
+			return true;
+		}
+	}
+	return false;
+}
+
+// The settings the controller holds: the configuration line and the compensation sign.
+static bool usbv3_read_settings(indigo_device *device, int *direction, int *firmware) {
+	int stepmode, speed, stepsdeg, threshold, maxpos, sign;
+	if (!usbv3_read_configuration(device) || sscanf(PRIVATE_DATA->configuration, "C=%d-%d-%d-%d-%d-%d-%d", direction, &stepmode, &speed, &stepsdeg, &threshold, firmware, &maxpos) != 7 || !usbv3_read_sign(device, &sign)) {
+		return false;
+	}
+	PRIVATE_DATA->stepmode = stepmode % 2;
+	PRIVATE_DATA->speed = speed;
+	PRIVATE_DATA->compensation = sign ? stepsdeg : -stepsdeg;
+	PRIVATE_DATA->threshold = threshold;
+	PRIVATE_DATA->max_position = maxpos;
+	return true;
+}
+
 static void usbv3_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
@@ -183,10 +228,50 @@ static void usbv3_close(indigo_device *device) {
 
 //+ focuser.code
 
+// Requests that move the focuser or change its geometry wait for the running motion.
+static bool usbv3_motion_busy(indigo_device *device) {
+	return PRIVATE_DATA->moving || PRIVATE_DATA->external_motion || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+}
+
+// FOCUSER_POSITION and FOCUSER_STEPS cover the travel the controller reports; a
+// running session republishes them, because ranges travel only with a definition.
+static void usbv3_update_ranges(indigo_device *device, bool redefine) {
+	FOCUSER_POSITION_ITEM->number.min = 0;
+	FOCUSER_POSITION_ITEM->number.max = FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->max_position;
+	if (redefine) {
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	}
+}
+
+// Every setting item shows what the controller confirmed last.
+static void usbv3_show_settings(indigo_device *device) {
+	FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = PRIVATE_DATA->speed;
+	FOCUSER_COMPENSATION_ITEM->number.value = FOCUSER_COMPENSATION_ITEM->number.target = PRIVATE_DATA->compensation;
+	FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = PRIVATE_DATA->threshold;
+	FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = PRIVATE_DATA->max_position;
+	indigo_set_switch(X_FOCUSER_STEP_SIZE_PROPERTY, X_FOCUSER_STEP_SIZE_PROPERTY->items + PRIVATE_DATA->stepmode, true);
+}
+
+// A setting write is confirmed by reading the settings back; a failed write shows the
+// settings the controller reports, or the last confirmed ones when that read fails too.
+static bool usbv3_confirm_settings(indigo_device *device, bool written) {
+	int direction, firmware;
+	bool read = usbv3_read_settings(device, &direction, &firmware);
+	usbv3_show_settings(device);
+	return written && read;
+}
+
 static void focuser_motion_finalizer(indigo_device *device) {
 	int position;
 	if (!usbv3_read_position(device, &position)) {
+		// a lost position stops the motor rather than letting it run unobserved
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Position readback failed, stopping the focuser");
+		usbv3_quit(device);
 		PRIVATE_DATA->moving = false;
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_POSITION_ITEM->number.value = position;
@@ -195,6 +280,8 @@ static void focuser_motion_finalizer(indigo_device *device) {
 			FOCUSER_POSITION_ITEM->number.target = position;
 		} else if (--PRIVATE_DATA->motion_polls <= 0) {
 			usbv3_quit(device);
+			PRIVATE_DATA->moving = false;
+			FOCUSER_POSITION_ITEM->number.target = position;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -214,6 +301,7 @@ static void usbv3_start_motion(indigo_device *device, int steps) {
 	indigo_uni_discard(PRIVATE_DATA->handle);
 	PRIVATE_DATA->abort = false;
 	PRIVATE_DATA->moving = false;
+	PRIVATE_DATA->poll_failed = false;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	if (steps != 0) {
 		if (usbv3_command(device, "%c%05u", false, steps > 0 ? 'O' : 'I', abs(steps))) {
@@ -221,12 +309,82 @@ static void usbv3_start_motion(indigo_device *device, int steps) {
 			PRIVATE_DATA->motion_polls = 600;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
+			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
 	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+// The idle poll reads the position the driver does not command itself. A position
+// that changed is a move of the hand controller, followed BUSY until two readings
+// agree; a failed read is an ALERT that the next good read clears.
+static void usbv3_poll_position(indigo_device *device) {
+	bool idle = !PRIVATE_DATA->moving && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE;
+	if (!PRIVATE_DATA->external_motion && !idle) {
+		return;
+	}
+	int position;
+	bool read = usbv3_read_position(device, &position);
+	if (!PRIVATE_DATA->external_motion && (PRIVATE_DATA->moving || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		// a request accepted while the poll was in flight owns the motion properties
+		return;
+	}
+	if (!read) {
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_OK_STATE) {
+			PRIVATE_DATA->poll_failed = true;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Position read failed");
+		}
+		return;
+	}
+	bool changed = position != (int)FOCUSER_POSITION_ITEM->number.value;
+	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+	if (changed && FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE && !PRIVATE_DATA->poll_failed && !PRIVATE_DATA->external_motion) {
+		// a failed or aborted move stays ALERT, the poll only shows where it stopped
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else if (changed) {
+		if (!PRIVATE_DATA->external_motion) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own");
+		}
+		PRIVATE_DATA->external_motion = true;
+		PRIVATE_DATA->poll_failed = false;
+		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else if (PRIVATE_DATA->external_motion) {
+		PRIVATE_DATA->external_motion = false;
+		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else if (PRIVATE_DATA->poll_failed) {
+		// only an ALERT left by a failed poll is cleared, never one of a failed move
+		PRIVATE_DATA->poll_failed = false;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+}
+
+// The probe reading is "T=" and a signed value; a failed, malformed or implausible
+// one is ALERT with the last valid reading kept.
+static void usbv3_poll_temperature(indigo_device *device) {
+	double temperature = 0;
+	char *end = NULL;
+	bool valid = usbv3_command(device, "FTMPRO", true) && !strncmp(PRIVATE_DATA->response, "T=", 2);
+	if (valid) {
+		temperature = strtod(PRIVATE_DATA->response + 2, &end);
+		valid = end != PRIVATE_DATA->response + 2 && *end == 0 && temperature >= -55 && temperature <= 125;
+	}
+	if (valid) {
+		FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	} else if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_ALERT_STATE) {
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "Temperature read failed");
+	}
 }
 
 //- focuser.code
@@ -238,12 +396,12 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
-	if (usbv3_command(device, "FTMPRO", true)) {
-		if (sscanf(PRIVATE_DATA->response, "T=%lf", &FOCUSER_TEMPERATURE_ITEM->number.value) == 1) {
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-		}
+	// the position is polled every two seconds, the temperature every ten
+	usbv3_poll_position(device);
+	if (PRIVATE_DATA->timer_ticks++ % 5 == 0) {
+		usbv3_poll_temperature(device);
 	}
-	indigo_execute_handler_in(device, 10, focuser_timer_callback);
+	indigo_execute_handler_in(device, 2, focuser_timer_callback);
 	//- focuser.on_timer
 }
 
@@ -253,34 +411,32 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = usbv3_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			int direction, stepmode, speed, stepsdeg = 0, threshold = 0, firmware, maxpos, sign, position;
+			// every query is mandatory: a controller that does not answer one is refused
+			int direction = 0, firmware = 0, position = 0;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_uni_discard(PRIVATE_DATA->handle);
 			PRIVATE_DATA->position_digits = 0;
-			if (usbv3_read_configuration(device)) {
-				if (sscanf(PRIVATE_DATA->configuration, "C=%u-%u-%u-%u-%u-%u-%u", &direction, &stepmode, &speed, &stepsdeg, &threshold, &firmware, &maxpos) == 7) {
-					indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_PROPERTY->items + direction % 2, true);
-					indigo_set_switch(X_FOCUSER_STEP_SIZE_PROPERTY, X_FOCUSER_STEP_SIZE_PROPERTY->items + stepmode % 2, true);
-					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
-					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
-					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value), "%d", firmware);
-					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = maxpos;
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-				}
-			}
+			PRIVATE_DATA->moving = PRIVATE_DATA->abort = PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
+			PRIVATE_DATA->timer_ticks = 0;
 			// The first reading of the session also establishes the digit width every later one is
 			// checked against, so it is confirmed by a second read of its own.
-			if (usbv3_read_position(device, &position) && usbv3_read_position(device, &position)) {
+			connection_result = usbv3_read_configuration(device) && sscanf(PRIVATE_DATA->configuration, "C=%d-%*d-%*d-%*d-%*d-%d-%*d", &direction, &firmware) == 2 && usbv3_read_position(device, &position) && usbv3_read_position(device, &position) && usbv3_acknowledged(device, "!", "FMANUA", 0) && usbv3_read_settings(device, &direction, &firmware);
+			if (connection_result) {
+				indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_PROPERTY->items + direction % 2, true);
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value), "%d", firmware);
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+				indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_MANUAL_ITEM, true);
+				usbv3_show_settings(device);
+				usbv3_update_ranges(device, false);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "The controller did not answer the connect sequence");
+				usbv3_close(device);
 			}
-			usbv3_command(device, "FMANUA", true);
-			usbv3_command(device, "FTxxxA", true);
-			if (sscanf(PRIVATE_DATA->response, "A=%d", &sign) == 1) {
-				if (sign == 0)
-					stepsdeg = -stepsdeg;
-				FOCUSER_COMPENSATION_ITEM->number.value = FOCUSER_COMPENSATION_ITEM->number.target = stepsdeg;
-				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = threshold;
-			}
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			//- focuser.on_connect
 		}
 		if (connection_result) {
@@ -295,7 +451,9 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
+		// a running move is stopped before the port closes
 		usbv3_quit(device);
+		PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -329,7 +487,10 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_x_focuser_step_size_handler(indigo_device *device) {
 	X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_FOCUSER_STEP_SIZE.on_change
-	if (!usbv3_command(device, X_FOCUSER_FULL_STEP_ITEM->sw.value ? "SMSTPF" : "SMSTPD", false)) {
+	// the step size commands are not answered, so the settings readback decides
+	int stepmode = X_FOCUSER_FULL_STEP_ITEM->sw.value ? 0 : 1;
+	bool written = usbv3_command(device, stepmode == 0 ? "SMSTPF" : "SMSTPD", false);
+	if (!usbv3_confirm_settings(device, written) || PRIVATE_DATA->stepmode != stepmode) {
 		X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_FOCUSER_STEP_SIZE.on_change
@@ -339,7 +500,10 @@ static void focuser_x_focuser_step_size_handler(indigo_device *device) {
 static void focuser_compensation_handler(indigo_device *device) {
 	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_COMPENSATION.on_change
-	if (!usbv3_command(device, "FLX%03d", true, abs((int)FOCUSER_COMPENSATION_ITEM->number.target)) || !usbv3_command(device, "FZSIG%d", true, FOCUSER_COMPENSATION_ITEM->number.target < 0 ? 0 : 1) || !usbv3_command(device, "SMA%03d", true, (int)FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target)) {
+	int compensation = (int)FOCUSER_COMPENSATION_ITEM->number.target;
+	int threshold = (int)FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target;
+	bool written = usbv3_acknowledged(device, "DONE", "FLX%03d", abs(compensation)) && usbv3_acknowledged(device, "DONE", "FZSIG%d", compensation < 0 ? 0 : 1) && usbv3_acknowledged(device, "DONE", "SMA%03d", threshold);
+	if (!usbv3_confirm_settings(device, written) || PRIVATE_DATA->compensation != compensation || PRIVATE_DATA->threshold != threshold) {
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_COMPENSATION.on_change
@@ -351,21 +515,31 @@ static void focuser_mode_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_MODE.on_change
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
 		indigo_cancel_pending_handler(device, focuser_timer_callback);
-		if (!usbv3_command(device, "FAUTOM", true)) {
+		if (usbv3_acknowledged(device, "A", "FAUTOM", 0)) {
+			// the controller moves on its own now, the position is only reported
+			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+		} else {
+			indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_MANUAL_ITEM, true);
 			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_execute_priority_handler(device, 100, focuser_timer_callback);
 		}
 	} else {
 		int position;
 		// The unit answers FMANUA with an exclamation mark, so the position it stands
 		// at after the mode change is read with the command that reports it.
-		if (usbv3_command(device, "FMANUA", true) && usbv3_read_position(device, &position)) {
-			FOCUSER_POSITION_ITEM->number.value = position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		if (usbv3_acknowledged(device, "!", "FMANUA", 0) && usbv3_read_position(device, &position)) {
+			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 		} else {
+			indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_AUTOMATIC_ITEM, true);
 			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		// the temperature is read again right away
+		PRIVATE_DATA->timer_ticks = 0;
 		indigo_execute_priority_handler(device, 100, focuser_timer_callback);
 	}
+	indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	//- focuser.FOCUSER_MODE.on_change
 	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 }
@@ -376,7 +550,9 @@ static void focuser_speed_handler(indigo_device *device) {
 	// The device answers a speed change with DONE. Reading it here keeps it from
 	// being delivered to the next command, which used to publish that DONE as a
 	// failed position readback.
-	if (!usbv3_command(device, "SMO%03u", true, (int)FOCUSER_SPEED_ITEM->number.target)) {
+	int speed = (int)FOCUSER_SPEED_ITEM->number.target;
+	bool written = usbv3_acknowledged(device, "DONE", "SMO%03u", speed);
+	if (!usbv3_confirm_settings(device, written) || PRIVATE_DATA->speed != speed) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_SPEED.on_change
@@ -430,17 +606,24 @@ static void focuser_position_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	indigo_cancel_pending_handler(device, focuser_position_handler);
-	indigo_cancel_pending_handler(device, focuser_steps_handler);
-	if (PRIVATE_DATA->moving) {
-		if (usbv3_quit(device)) {
-			PRIVATE_DATA->abort = true;
-		} else {
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	// a request with the item OFF, and an abort with nothing moving, send nothing
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		indigo_cancel_pending_handler(device, focuser_position_handler);
+		indigo_cancel_pending_handler(device, focuser_steps_handler);
+		if (PRIVATE_DATA->moving) {
+			// the finalizer ends the move ALERT at the stopped position; without the
+			// stop marker the move stays BUSY and the next abort stops it again
+			if (usbv3_quit(device)) {
+				PRIVATE_DATA->abort = true;
+			} else {
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			PRIVATE_DATA->external_motion = false;
+			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		}
-	} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
@@ -451,9 +634,22 @@ static void focuser_limits_handler(indigo_device *device) {
 	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_LIMITS.on_change
 	// The device answers a travel limit change with DONE, which has to be read for the
-	// same reason as the speed change above.
-	if (!usbv3_command(device, "M%05u", true, (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)) {
+	// same reason as the speed change above. A limit below the focuser is refused.
+	int max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	int confirmed = PRIVATE_DATA->max_position;
+	if (max_position < (int)FOCUSER_POSITION_ITEM->number.value) {
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		usbv3_show_settings(device);
+		indigo_send_message(device, ALERT_PROPERTY, "The focuser is beyond the requested maximum %d", max_position);
+	} else {
+		bool written = usbv3_acknowledged(device, "DONE", "M%05u", max_position);
+		if (!usbv3_confirm_settings(device, written) || PRIVATE_DATA->max_position != max_position) {
+			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+	if (confirmed != PRIVATE_DATA->max_position) {
+		usbv3_update_ranges(device, true);
 	}
 	//- focuser.FOCUSER_LIMITS.on_change
 	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
@@ -527,29 +723,39 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_PROCESS_CONNECT(focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(usbv3_motion_busy(device), X_FOCUSER_STEP_SIZE_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_STEP_SIZE_PROPERTY, focuser_x_focuser_step_size_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(usbv3_motion_busy(device), FOCUSER_REVERSE_MOTION_PROPERTY, "The focuser is moving");
+		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(usbv3_motion_busy(device), FOCUSER_COMPENSATION_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_COMPENSATION_PROPERTY, focuser_compensation_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->moving || PRIVATE_DATA->external_motion || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_MODE_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_MODE_PROPERTY, focuser_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(usbv3_motion_busy(device) || FOCUSER_MODE_AUTOMATIC_ITEM->sw.value, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(usbv3_motion_busy(device) || FOCUSER_MODE_AUTOMATIC_ITEM->sw.value, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(usbv3_motion_busy(device), FOCUSER_LIMITS_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

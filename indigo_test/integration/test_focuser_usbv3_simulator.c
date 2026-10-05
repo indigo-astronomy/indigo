@@ -251,6 +251,44 @@ static void driver_stop(void) {
 	tear_down_serial_driver(&usbv3_focuser);
 }
 
+// ----------------------------------------------------------------- testing rules alignment
+
+static bool target_is(double expected) {
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	if (item == NULL || item->number.target != expected || item->number.value != expected) {
+		fprintf(stderr, "FOCUSER_POSITION: value %g, target %g, expected both %g\n", item ? item->number.value : NAN, item ? item->number.target : NAN, expected);
+		return false;
+	}
+	return true;
+}
+
+static bool state_is(const char *property_name, indigo_property_state expected) {
+	indigo_property *property = find_cached_property(property_name);
+	if (property == NULL || property->state != expected) {
+		fprintf(stderr, "%s: state %d instead of %d\n", property_name, property ? property->state : -1, expected);
+		return false;
+	}
+	return true;
+}
+
+static bool fault_consumed(void) {
+	for (int i = 0; i < 600 && access(fault_path, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	if (access(fault_path, F_OK) == 0) {
+		fprintf(stderr, "The armed fault was never taken\n");
+		return false;
+	}
+	return true;
+}
+
+// Wait for the idle poll to read the position, so a fault armed right afterwards is
+// taken by the request that follows and not by the poll.
+static bool after_poll(void) {
+	int polls = commands("FPOSRO");
+	return wait_for_commands("FPOSRO", polls + 1);
+}
+
 // ----------------------------------------------------------------- identity and lifecycle
 
 static void metadata(void) {
@@ -374,13 +412,16 @@ cleanup:
 
 // The configuration reply is not part of the handshake, so an unparsable one
 // still connects but must not invent a configuration.
+// A controller that never answers the configuration query is refused instead of
+// being published with driver defaults.
 static void config_query_failure(void) {
-	SERIAL_CHECK_TRUE(driver_start());
-	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(!connect_serial_device(&usbv3_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
 	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "Unknown"));
 	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "Unknown"));
-	// The position query is separate and still answers.
-	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) == NULL);
 cleanup:
 	driver_stop();
 }
@@ -506,11 +547,17 @@ static void abort_motion(void) {
 	SERIAL_CHECK_TRUE(wait_for_commands("FQUITx", 1));
 	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(1, commands("FQUITx"));
 	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	printf("Aborted at %g of 60000\n", stopped);
 	SERIAL_CHECK_TRUE(stopped > 1000 && stopped < 60000);
-	indigo_usleep(1000000);
-	SERIAL_CHECK_TRUE(fabs(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) - stopped) <= 1);
+	// The aborted move ends ALERT at the stopped position; two fresh idle polls
+	// read the same position and keep the ALERT.
+	SERIAL_CHECK_TRUE(target_is(stopped));
+	int polls = commands("FPOSRO");
+	SERIAL_CHECK_TRUE(wait_for_commands("FPOSRO", polls + 2));
+	SERIAL_CHECK_TRUE(target_is(stopped));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	// A fresh move has to be accepted right after the abort.
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, stopped + 200, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(stopped + 200));
@@ -523,8 +570,13 @@ static void abort_while_idle(void) {
 	SERIAL_CHECK_TRUE(position_is(1000));
 	int stops = commands("FQUITx");
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	// A request with the item OFF is answered the same way.
+	unsigned int ok = property_state_revision(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, usbv3_focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, ok));
 	// Nothing is moving, so no stop command is needed.
 	SERIAL_CHECK_EQ_INT(stops, commands("FQUITx"));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(1200));
 cleanup:
@@ -554,15 +606,20 @@ static void motion_readback_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(position_is(1000));
 	// One readback the controller does not answer is asked again, so a move survives it.
+	SERIAL_CHECK_TRUE(after_poll());
 	SERIAL_CHECK_TRUE(fault("FPOSRO", "silent"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1050, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(1050));
-	// A readback that keeps failing is reported instead of being retried forever.
-	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "silent", 4));
+	// A readback that keeps failing is reported instead of being retried forever, and the
+	// motor is stopped rather than left running unobserved.
+	SERIAL_CHECK_TRUE(after_poll());
+	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "silent", 3));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(wait_for_commands("FQUITx", 1));
 	// A malformed readback is refused the same way.
-	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "garbage", 4));
+	SERIAL_CHECK_TRUE(after_poll());
+	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "garbage", 3));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1150, INDIGO_ALERT_STATE));
 	// Reconnecting reads the coordinate the controller really holds, and the
 	// driver moves from it again.
@@ -591,6 +648,7 @@ static void truncated_reply_rejected(void) {
 	SERIAL_CHECK_TRUE(position_is(1000));
 	// A position readback that loses a digit is retried, so the move still ends where the
 	// controller really is.
+	SERIAL_CHECK_TRUE(after_poll());
 	SERIAL_CHECK_TRUE(fault("FPOSRO", "truncate"));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_BUSY_STATE));
@@ -611,9 +669,10 @@ static void external_motion_observed(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_EQ_INT(0, commands("O"));
 	SERIAL_CHECK_EQ_INT(0, commands("I"));
-	// The controller stops at 1200 on its own; a relative move from there is
-	// sent as the requested step count whatever the driver last read.
-	indigo_usleep(1000000);
+	// The controller stops at 1200 on its own; the driver follows that move and a
+	// relative move from there is sent as the requested step count.
+	SERIAL_CHECK_TRUE(position_is(1200));
+	SERIAL_CHECK_TRUE(target_is(1200));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(command_sent("O00100"));
@@ -778,6 +837,263 @@ cleanup:
 	driver_stop();
 }
 
+// Every query of the connect sequence is mandatory: a controller that does not
+// confirm manual mode or the compensation sign is refused and the next connect works.
+static void connect_query_refused(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault("FMANUA", "silent"));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&usbv3_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, context.last_connection_state);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "Unknown"));
+	SERIAL_CHECK_TRUE(fault_times("FTxxxA", "garbage", 3));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&usbv3_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&usbv3_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "USB_Focus v3 Focuser"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1200));
+cleanup:
+	driver_stop();
+}
+
+// An extra instance on its own port publishes its own controller, and each
+// instance keeps working while the other one connects and disconnects.
+static void additional_instance(void) {
+	static const simulator_driver_case second = { "USB_Focus v3 Focuser", "indigo_focuser_usbv3", "USB_Focus v3 #2", indigo_focuser_usbv3, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+	external_serial_simulator other = { 0 };
+	unsetenv("INDIGO_USBV3_EVENTS");
+	unsetenv("INDIGO_USBV3_FAULT");
+	const char *arguments[] = { "--profile", "configured", NULL };
+	bool started = start_external_serial_simulator_with_args(&other, FOCUSER_USBV3_SIMULATOR_EXECUTABLE, arguments);
+	setenv("INDIGO_USBV3_EVENTS", event_path, 1);
+	setenv("INDIGO_USBV3_FAULT", fault_path, 1);
+	SERIAL_CHECK_TRUE(started);
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, usbv3_focuser.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	indigo_usleep(500000);
+	SERIAL_CHECK_TRUE(connect_serial_device(&second, other.port));
+	SERIAL_CHECK_TRUE(position_is(5000));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "310"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, second.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5200));
+	SERIAL_CHECK_TRUE(position_is(5200));
+	disconnect_serial_device(&second);
+	reset_simulator_context(&usbv3_focuser);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1100));
+cleanup:
+	disconnect_serial_device(&second);
+	disconnect_serial_device(&usbv3_focuser);
+	indigo_change_number_property_1(&simulator_test_client, usbv3_focuser.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0);
+	indigo_usleep(500000);
+	driver_stop();
+	stop_external_serial_simulator(&other);
+}
+
+// A stop without its marker is reported, the move stays BUSY (never completed
+// while the motor may still run), and the next abort stops it.
+static void abort_failure_reported(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 60000));
+	unsigned int ok = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(fault("FQUITx", "silent"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT((int)ok, (int)property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_EQ_INT(2, commands("FQUITx"));
+cleanup:
+	driver_stop();
+}
+
+// A move of the hand controller is published BUSY then OK at the measured position
+// without a command, and the next relative move starts from it.
+static void external_motion_during_session(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(fault("FPOSRO", "external=4000"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(4000));
+	SERIAL_CHECK_TRUE(target_is(4000));
+	SERIAL_CHECK_EQ_INT(0, commands("O"));
+	SERIAL_CHECK_EQ_INT(0, commands("I"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(command_sent("O00100"));
+	SERIAL_CHECK_TRUE(position_is(4100));
+cleanup:
+	driver_stop();
+}
+
+// A failed idle position poll is ALERT with the last valid position; the next good
+// poll restores OK and a move works.
+static void idle_poll_failure_recovery(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	unsigned int alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "garbage", 3));
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(target_is(1000));
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1300));
+cleanup:
+	driver_stop();
+}
+
+// A move accepted while an idle poll's reply is outstanding stays BUSY; the poll does
+// not complete it and the move is sent once.
+static void request_survives_poll(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(fault("FPOSRO", "slow"));
+	SERIAL_CHECK_TRUE(fault_consumed());
+	unsigned int ok = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000, INDIGO_BUSY_STATE));
+	indigo_usleep(1000000);
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT((int)ok, (int)property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(4000));
+	SERIAL_CHECK_TRUE(target_is(4000));
+	SERIAL_CHECK_EQ_INT(1, commands("O"));
+cleanup:
+	driver_stop();
+}
+
+// Settings the controller did not apply end ALERT showing what it holds, a
+// partly applied compensation shows the applied item only, and a retry works.
+static void settings_readback_mismatch(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("SMO", "ignore"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 6, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 4, 0));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 6, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("SMSTPD", "ignore"));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_STEP_SIZE_PROPERTY_NAME, X_FOCUSER_HALF_STEP_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_STEP_SIZE_PROPERTY_NAME, X_FOCUSER_FULL_STEP_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_STEP_SIZE_PROPERTY_NAME, X_FOCUSER_HALF_STEP_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("M", "ignore"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 40000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 65535, 0));
+	SERIAL_CHECK_TRUE(fault("SMA", "silent"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 20, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 20, 0));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 1, 0));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 2, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 2, 0));
+cleanup:
+	driver_stop();
+}
+
+// The travel limit bounds both motion properties and is refused without a command
+// when it would exclude the focuser.
+static void limits_contract(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position != NULL && position->number.max == 65535);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 30000, INDIGO_OK_STATE));
+	for (int i = 0; i < 50 && find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max != 30000; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == 30000);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME)->number.max == 30000);
+	int writes = commands("M");
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 500, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(writes, commands("M"));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 30000, 0));
+cleanup:
+	driver_stop();
+}
+
+// Settings that change the motion geometry, and the mode, are refused during a move
+// without a command.
+static void settings_refused_during_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 60000));
+	int writes = commands("M") + commands("FLX") + commands("SMSTP") + commands("FAUTOM");
+	SERIAL_CHECK_TRUE(rejected_number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50000));
+	SERIAL_CHECK_TRUE(rejected_number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 30));
+	unsigned int alerts = property_state_revision(X_FOCUSER_STEP_SIZE_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, usbv3_focuser.device_name, X_FOCUSER_STEP_SIZE_PROPERTY_NAME, X_FOCUSER_HALF_STEP_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen(X_FOCUSER_STEP_SIZE_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(switch_is(X_FOCUSER_STEP_SIZE_PROPERTY_NAME, X_FOCUSER_FULL_STEP_ITEM_NAME, true));
+	alerts = property_state_revision(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, usbv3_focuser.device_name, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true));
+	alerts = property_state_revision(FOCUSER_MODE_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, usbv3_focuser.device_name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_MODE_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(writes, commands("M") + commands("FLX") + commands("SMSTP") + commands("FAUTOM"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 30, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// In automatic mode the controller moves on its own: FOCUSER_POSITION is read only and
+// a relative move is refused without a command; manual mode makes it writable again.
+static void automatic_mode_contract(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < 50 && find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm != INDIGO_RO_PERM; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_EQ_INT(0, commands("O"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, INDIGO_OK_STATE));
+	for (int i = 0; i < 50 && find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm != INDIGO_RW_PERM; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm == INDIGO_RW_PERM);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(1200));
+cleanup:
+	driver_stop();
+}
+
+// A failed or implausible temperature is ALERT with the last valid reading, the next
+// valid one restores OK.
+static void temperature_failures(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int alerts = property_state_revision(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	// the temperature is read every ten seconds
+	SERIAL_CHECK_TRUE(fault("FTMPRO", "value=T=+999.00"));
+	for (int i = 0; i < 1500 && access(fault_path, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(fault_consumed());
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.5, .05));
+	unsigned int ok = property_state_revision(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE);
+	int readings = commands("FTMPRO");
+	for (int i = 0; i < 1500 && commands("FTMPRO") <= readings; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(commands("FTMPRO") > readings);
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE, ok));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.5, .05));
+cleanup:
+	driver_stop();
+}
+
 // ----------------------------------------------------------------- runner
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
@@ -810,7 +1126,18 @@ int main(void) {
 		{ "focuser_mode", focuser_mode, "normal" },
 		{ "configuration_roundtrip", configuration_roundtrip, "normal" },
 		{ "temperature_polling", temperature_polling, "normal" },
-		{ "transport_loss", transport_loss, "normal" }
+		{ "transport_loss", transport_loss, "normal" },
+		{ "connect_query_refused", connect_query_refused, "normal" },
+		{ "additional_instance", additional_instance, "normal" },
+		{ "abort_failure_reported", abort_failure_reported, "normal" },
+		{ "external_motion_during_session", external_motion_during_session, "normal" },
+		{ "idle_poll_failure_recovery", idle_poll_failure_recovery, "normal" },
+		{ "request_survives_poll", request_survives_poll, "normal" },
+		{ "settings_readback_mismatch", settings_readback_mismatch, "normal" },
+		{ "limits_contract", limits_contract, "normal" },
+		{ "settings_refused_during_motion", settings_refused_during_motion, "normal" },
+		{ "automatic_mode_contract", automatic_mode_contract, "normal" },
+		{ "temperature_failures", temperature_failures, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (mkdtemp(fixture_directory) == NULL || indigo_test_mkdtemp_home(config_folder) == NULL) {
@@ -822,7 +1149,13 @@ int main(void) {
 	setenv("INDIGO_USBV3_EVENTS", event_path, 1);
 	setenv("INDIGO_USBV3_FAULT", fault_path, 1);
 	const char *filter = getenv("USBV3_TEST_FILTER");
-	int failures = 0;
+	int failures = 0, selected = 0;
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		if (filter == NULL || strstr(cases[i].name, filter) != NULL) {
+			selected++;
+		}
+	}
+	indigo_test_plan("USB_Focus v3", selected, filter);
 	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
 		if (filter != NULL && strstr(cases[i].name, filter) == NULL) {
 			continue;
@@ -859,6 +1192,7 @@ int main(void) {
 			printf("FAIL: %s (exit=%d, signal=%d)\n", cases[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);
 		}
 	}
+	indigo_test_plan_recorded = false;
 	unlink(fault_path);
 	unlink(event_path);
 	rmdir(fixture_directory);
