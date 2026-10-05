@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_focuser_robofocus"
 #define DRIVER_LABEL         "RoboFocus Focuser"
 #define FOCUSER_DEVICE_NAME  "RoboFocus"
@@ -88,7 +88,10 @@ typedef struct {
 	//+ data
 	uint8_t response[9];
 	int position, target, last_position, stalled, maximum;
-	bool active, uncertain;
+	bool active, uncertain, external, poll_failed;
+	uint8_t config[3];
+	int backlash;
+	bool power[4];
 	//- data
 } robofocus_private_data;
 
@@ -154,8 +157,11 @@ static bool robofocus_read_frame(indigo_device *device, double timeout, int *inw
 
 static int robofocus_read_motion(indigo_device *device, int *direction) {
 	uint8_t value;
-	if (!robofocus_read_byte(device, &value, 0.05)) {
+	if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.05)) <= 0) {
 		return 0;
+	}
+	if (indigo_uni_read_available(PRIVATE_DATA->handle, &value, 1) != 1) {
+		return -1;
 	}
 	if (value == 'I' || value == 'O') {
 		*direction = value == 'I' ? -1 : 1;
@@ -243,8 +249,12 @@ static bool robofocus_temperature(indigo_device *device) {
 	if (!robofocus_value(device, 'T', 'T', 0, 0, 1200, &raw)) {
 		return false;
 	}
-	FOCUSER_TEMPERATURE_ITEM->number.value = raw / 2.0 - 273.15;
-	return FOCUSER_TEMPERATURE_ITEM->number.value >= FOCUSER_TEMPERATURE_ITEM->number.min && FOCUSER_TEMPERATURE_ITEM->number.value <= FOCUSER_TEMPERATURE_ITEM->number.max;
+	double temperature = raw / 2.0 - 273.15;
+	if (temperature < FOCUSER_TEMPERATURE_ITEM->number.min || temperature > FOCUSER_TEMPERATURE_ITEM->number.max) {
+		return false;
+	}
+	FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
+	return true;
 }
 
 static bool robofocus_power(indigo_device *device, bool write) {
@@ -261,7 +271,7 @@ static bool robofocus_power(indigo_device *device, bool write) {
 		if (RESPONSE[i + 4] != '1' && RESPONSE[i + 4] != '2') {
 			return false;
 		}
-		X_FOCUSER_POWER_CHANNELS_PROPERTY->items[i].sw.value = RESPONSE[i + 4] == '2';
+		X_FOCUSER_POWER_CHANNELS_PROPERTY->items[i].sw.value = PRIVATE_DATA->power[i] = RESPONSE[i + 4] == '2';
 	}
 	return true;
 }
@@ -279,6 +289,7 @@ static bool robofocus_config(indigo_device *device, bool write) {
 	X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.value = X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.target = RESPONSE[5];
 	X_FOCUSER_CONFIG_STEP_DELAY_ITEM->number.value = X_FOCUSER_CONFIG_STEP_DELAY_ITEM->number.target = RESPONSE[6];
 	X_FOCUSER_CONFIG_STEP_SIZE_ITEM->number.value = X_FOCUSER_CONFIG_STEP_SIZE_ITEM->number.target = RESPONSE[7];
+	memcpy(PRIVATE_DATA->config, RESPONSE + 5, 3);
 	return true;
 }
 
@@ -301,7 +312,7 @@ static bool robofocus_backlash(indigo_device *device, bool write) {
 		return false;
 	}
 	int backlash = RESPONSE[2] == '3' ? -magnitude : RESPONSE[2] == '2' ? magnitude : 0;
-	X_FOCUSER_CONFIG_BACKLASH_ITEM->number.value = X_FOCUSER_CONFIG_BACKLASH_ITEM->number.target = backlash;
+	X_FOCUSER_CONFIG_BACKLASH_ITEM->number.value = X_FOCUSER_CONFIG_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash = backlash;
 	return true;
 }
 
@@ -320,6 +331,34 @@ static void robofocus_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
+static void robofocus_ranges(indigo_device *device, bool redefine) {
+	FOCUSER_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->maximum;
+	FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->maximum - FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	if (redefine) {
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	}
+}
+
+static bool robofocus_stop(indigo_device *device) {
+	int position = 0;
+	bool stopped = indigo_uni_write(PRIVATE_DATA->handle, "\r", 1) == 1 && robofocus_read_frame(device, 1, NULL, NULL) && RESPONSE[1] == 'D' && robofocus_ascii_value(device, 2, 6, ROBOFOCUS_MIN_POSITION, ROBOFOCUS_MAX_POSITION, &position);
+	if (stopped) {
+		PRIVATE_DATA->position = position;
+		FOCUSER_POSITION_ITEM->number.value = position;
+	} else {
+		indigo_uni_discard(PRIVATE_DATA->handle);
+		stopped = robofocus_position(device, false);
+	}
+	PRIVATE_DATA->active = false;
+	PRIVATE_DATA->uncertain = !stopped;
+	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	return stopped;
+}
+
 static void robofocus_motion_state(indigo_device *device, indigo_property_state state) {
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -332,9 +371,7 @@ static void motion_finalizer(indigo_device *device) {
 	}
 	if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, 0) <= 0) {
 		if (++PRIVATE_DATA->stalled >= 30) {
-			PRIVATE_DATA->active = false;
-			PRIVATE_DATA->uncertain = true;
-			indigo_uni_write(PRIVATE_DATA->handle, "\r", 1);
+			robofocus_stop(device);
 			robofocus_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			indigo_execute_handler_in(device, 0.1, motion_finalizer);
@@ -346,9 +383,7 @@ static void motion_finalizer(indigo_device *device) {
 		int direction = 0;
 		state = robofocus_read_motion(device, &direction);
 		if (state < 0) {
-			PRIVATE_DATA->active = false;
-			PRIVATE_DATA->uncertain = true;
-			indigo_uni_write(PRIVATE_DATA->handle, "\r", 1);
+			robofocus_stop(device);
 			robofocus_motion_state(device, INDIGO_ALERT_STATE);
 			return;
 		}
@@ -367,7 +402,9 @@ static void motion_finalizer(indigo_device *device) {
 		int position;
 		if (RESPONSE[1] != 'D' || !robofocus_ascii_value(device, 2, 6, ROBOFOCUS_MIN_POSITION, ROBOFOCUS_MAX_POSITION, &position)) {
 			PRIVATE_DATA->active = false;
-			PRIVATE_DATA->uncertain = true;
+			indigo_uni_discard(PRIVATE_DATA->handle);
+			PRIVATE_DATA->uncertain = !robofocus_position(device, false);
+			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 			robofocus_motion_state(device, INDIGO_ALERT_STATE);
 			return;
 		}
@@ -418,10 +455,30 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-		FOCUSER_POSITION_PROPERTY->state = robofocus_position(device, true) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE && (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->external)) {
+		int previous = PRIVATE_DATA->position;
+		if (robofocus_position(device, false)) {
+			if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->external) {
+				// a request accepted while this poll was in flight owns the property until its handler runs
+			} else if (PRIVATE_DATA->position != previous) {
+				// motion the driver did not command (hand control)
+				PRIVATE_DATA->external = true;
+				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			} else if (PRIVATE_DATA->external || PRIVATE_DATA->poll_failed) {
+				PRIVATE_DATA->external = PRIVATE_DATA->poll_failed = false;
+				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
+		} else if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->external) {
+			PRIVATE_DATA->external = false;
+			PRIVATE_DATA->poll_failed = true;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
 		FOCUSER_TEMPERATURE_PROPERTY->state = robofocus_temperature(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	indigo_execute_handler_in(device, 1, focuser_timer_callback);
@@ -436,8 +493,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			//+ focuser.on_connect
 			connection_result = robofocus_position(device, true) && robofocus_maximum(device, 0) && robofocus_power(device, false) && robofocus_config(device, false) && robofocus_backlash(device, false) && robofocus_temperature(device);
 			if (connection_result) {
-				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
-				FOCUSER_POSITION_PROPERTY->state = FOCUSER_LIMITS_PROPERTY->state = FOCUSER_TEMPERATURE_PROPERTY->state = X_FOCUSER_POWER_CHANNELS_PROPERTY->state = X_FOCUSER_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = PRIVATE_DATA->poll_failed = false;
+				robofocus_ranges(device, false);
+				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = FOCUSER_LIMITS_PROPERTY->state = FOCUSER_TEMPERATURE_PROPERTY->state = X_FOCUSER_POWER_CHANNELS_PROPERTY->state = X_FOCUSER_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				robofocus_close(device);
@@ -499,8 +557,18 @@ static void focuser_position_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_POSITION.on_change
 	int requested = (int)FOCUSER_POSITION_ITEM->number.target;
 	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-		int actual;
-		if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !robofocus_value(device, 'S', 'D', requested, ROBOFOCUS_MIN_POSITION, ROBOFOCUS_MAX_POSITION, &actual) || actual != requested) {
+		int actual = 0;
+		bool replied = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && robofocus_value(device, 'S', 'D', requested, ROBOFOCUS_MIN_POSITION, ROBOFOCUS_MAX_POSITION, &actual);
+		if (!replied || actual != requested) {
+			if (replied) {
+				PRIVATE_DATA->position = actual;
+				FOCUSER_POSITION_ITEM->number.value = actual;
+			} else if (IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
+				// the reply was lost, publish the position the controller really has
+				indigo_uni_discard(PRIVATE_DATA->handle);
+				robofocus_position(device, false);
+			}
+			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			PRIVATE_DATA->position = actual;
@@ -536,27 +604,18 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
+		PRIVATE_DATA->external = false;
 		if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
-			int inward = 0, outward = 0, position = 0;
-			bool stopped = indigo_uni_write(PRIVATE_DATA->handle, "\r", 1) == 1 && robofocus_read_frame(device, 1, &inward, &outward) && RESPONSE[1] == 'D' && robofocus_ascii_value(device, 2, 6, ROBOFOCUS_MIN_POSITION, ROBOFOCUS_MAX_POSITION, &position);
-			if (!stopped) {
-				indigo_uni_discard(PRIVATE_DATA->handle);
-				stopped = robofocus_position(device, true);
-				position = PRIVATE_DATA->position;
-			}
-			PRIVATE_DATA->active = false;
-			PRIVATE_DATA->uncertain = !stopped;
-			if (stopped) {
-				PRIVATE_DATA->position = position;
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-				robofocus_motion_state(device, INDIGO_OK_STATE);
-			} else {
-				robofocus_motion_state(device, INDIGO_ALERT_STATE);
+			// an aborted move ends ALERT at the stopped position
+			if (!robofocus_stop(device)) {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			robofocus_motion_state(device, INDIGO_ALERT_STATE);
 		} else if (pending) {
+			// the move was still queued: stop once, never send it
+			indigo_uni_write(PRIVATE_DATA->handle, "\r", 1);
 			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
-			robofocus_motion_state(device, INDIGO_OK_STATE);
+			robofocus_motion_state(device, INDIGO_ALERT_STATE);
 		}
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
@@ -569,10 +628,13 @@ static void focuser_limits_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_LIMITS.on_change
 	int minimum = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
 	int maximum = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || minimum > maximum || !robofocus_maximum(device, maximum)) {
+	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || minimum > maximum || PRIVATE_DATA->position < minimum || PRIVATE_DATA->position > maximum || !robofocus_maximum(device, maximum)) {
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = minimum;
+		robofocus_ranges(device, true);
 	}
 	//- focuser.FOCUSER_LIMITS.on_change
 	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
@@ -582,6 +644,12 @@ static void focuser_x_focuser_power_channels_handler(indigo_device *device) {
 	X_FOCUSER_POWER_CHANNELS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_FOCUSER_POWER_CHANNELS.on_change
 	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !robofocus_power(device, true)) {
+		for (int i = 0; i < 4; i++) {
+			X_FOCUSER_POWER_CHANNELS_PROPERTY->items[i].sw.value = PRIVATE_DATA->power[i];
+		}
+		if (IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
+			robofocus_power(device, false);
+		}
 		X_FOCUSER_POWER_CHANNELS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_FOCUSER_POWER_CHANNELS.on_change
@@ -591,11 +659,20 @@ static void focuser_x_focuser_power_channels_handler(indigo_device *device) {
 static void focuser_x_focuser_config_handler(indigo_device *device) {
 	X_FOCUSER_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_FOCUSER_CONFIG.on_change
-	bool result = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && robofocus_config(device, true);
-	result = robofocus_backlash(device, true) && result;
+	bool available = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain;
+	bool config = (int)X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.target != PRIVATE_DATA->config[0] || (int)X_FOCUSER_CONFIG_STEP_DELAY_ITEM->number.target != PRIVATE_DATA->config[1] || (int)X_FOCUSER_CONFIG_STEP_SIZE_ITEM->number.target != PRIVATE_DATA->config[2];
+	bool backlash = (int)X_FOCUSER_CONFIG_BACKLASH_ITEM->number.target != PRIVATE_DATA->backlash;
+	bool result = available && (!config || robofocus_config(device, true));
+	result = result && (!backlash || robofocus_backlash(device, true));
 	if (!result) {
-		robofocus_config(device, false);
-		robofocus_backlash(device, false);
+		X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.value = X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.target = PRIVATE_DATA->config[0];
+		X_FOCUSER_CONFIG_STEP_DELAY_ITEM->number.value = X_FOCUSER_CONFIG_STEP_DELAY_ITEM->number.target = PRIVATE_DATA->config[1];
+		X_FOCUSER_CONFIG_STEP_SIZE_ITEM->number.value = X_FOCUSER_CONFIG_STEP_SIZE_ITEM->number.target = PRIVATE_DATA->config[2];
+		X_FOCUSER_CONFIG_BACKLASH_ITEM->number.value = X_FOCUSER_CONFIG_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
+		if (available) {
+			robofocus_config(device, false);
+			robofocus_backlash(device, false);
+		}
 		X_FOCUSER_CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_FOCUSER_CONFIG.on_change
@@ -677,6 +754,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_PROCESS_CONNECT(focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_REVERSE_MOTION_PROPERTY, "Motion in progress");
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
@@ -701,9 +779,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_POWER_CHANNELS_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, X_FOCUSER_POWER_CHANNELS_PROPERTY, "Motion in progress");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_POWER_CHANNELS_PROPERTY, focuser_x_focuser_power_channels_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_CONFIG_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, X_FOCUSER_CONFIG_PROPERTY, "Motion in progress");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_CONFIG_PROPERTY, focuser_x_focuser_config_handler);
 		return INDIGO_OK;
 	}

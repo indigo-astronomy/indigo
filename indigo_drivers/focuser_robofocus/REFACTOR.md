@@ -80,3 +80,46 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && ROBOFOCUS_TEST_FILTER=rejected_change ./build/integration/test_focuser_robofocus_simulator
 ```
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.5)
+
+The regression test was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (compliance scenarios and the Focuser Driver Test Standard) and extended where a relevant rule was not verified. Every defect below was reproduced: the extended test was built against a pre-fix copy of the 3.0.0.4 driver and failed in the named cases, then passed against 3.0.0.5.
+
+### Defects fixed
+
+| Defect | Impact | Fix | Regression case |
+| --- | --- | --- | --- |
+| Aborted move ended OK | An abort mid-move published `FOCUSER_POSITION`/`FOCUSER_STEPS` OK, indistinguishable from arrival. | An abort of a running or queued move ends both ALERT with value = target = stopped position; an abort while idle stays OK. | `abort_mid_move`, `queued_abort`, `rejected_change` |
+| Abort of a queued move sent no stop | An abort overtaking a queued move published OK without stopping. | The stop (carriage return) is sent once; the queued move is never sent. | `queued_abort` |
+| Idle polls overwrote states | Every poll republished `FOCUSER_POSITION` OK: an aborted/failed move turned OK one second later, and a poll in flight when a move was accepted published OK at the old position before the move ran. | The poll publishes only a change (external motion), a recovery from its own failure, or its own failure; it never touches a property a pending request made BUSY. | `abort_mid_move`, `motion_bad_checksum`, `stalled_motion`, `poll_versus_request` |
+| Hand-control motion invisible as motion | A position change the driver did not command was published OK in one step. | A changed poll value is published BUSY (target = measured), the next unchanged poll publishes OK; no command is sent. | `external_state_and_reconnect` |
+| Stall or malformed progress needed an abort | After a stall or bad progress the driver only wrote the stop and stayed "uncertain", refusing every move until a manual abort. | Shared `robofocus_stop()` sends the stop, reads the stopped position (falling back to a position query) and publishes ALERT at it; a fresh move works directly. | `motion_bad_checksum`, `stalled_motion` |
+| Lost transport left motion BUSY forever | When the port vanished during a move the reader saw "data ready" but read nothing and kept the move BUSY. | A failed read after a ready signal is a transport error: the move ends ALERT, later requests end ALERT. | `transport_loss_motion`, `transport_loss_idle` |
+| Implausible temperature published as value | A raw reading outside the sensor range was stored before the range check (e.g. -273.15 °C with ALERT). | The value is stored only when plausible; ALERT keeps the last valid value. | `temperature_failures` |
+| Ranges ignored device travel and limits | `FOCUSER_POSITION` max stayed 65535 and `FOCUSER_STEPS` max 65535 whatever the controller's `FL` travel or `FOCUSER_LIMITS`. | Position min/max and steps max follow the limits and the device maximum, redefined on a limit change. | `capabilities_*`, `movement_and_sync` |
+| Limit change excluding the position accepted | A maximum below the current position was written to the controller. | Refused with ALERT and no `FL`; on any refusal the targets are restored to the kept values. | `movement_and_sync` |
+| Settings sent during motion | Backlash (`FB`) was written during a move (and stops the motor, as any serial byte does); power/config/reverse requests during motion were accepted or showed the requested value with ALERT. | `reject_change` guards on reverse, power and configuration while a move is BUSY: ALERT, previous values, no command. | `motion_controls` |
+| Configuration wrote both commands | Changing one item of `X_FOCUSER_CONFIG` always sent both `FC` and `FB`. | Only the command carrying the changed setting is sent; a failure restores the device's values. | `controls`, `config_failure` |
+| Lost SYNC reply | A lost `FS` reply ended ALERT with the requested target, and the next poll showed the applied sync as motion. | The position is read back, value = target = real position, ALERT. | `sync_failure` |
+
+### Scenario-to-test mapping (added or extended cases)
+
+- Capabilities/readback: `capabilities_normal/alternate/split` (identity from `FV`, ranges from `FL`, non-default start state of power/config/backlash/temperature, negative capability: no `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, standard `FOCUSER_BACKLASH`, speed); `poll_bad_checksum`, `poll_partial`, `poll_overlong` (ALERT with last value, recovery, move afterwards); `temperature_failures`; `external_state_and_reconnect` (hand-control motion BUSY then OK, no command, relative move from it).
+- Motion: `movement_and_sync` (SYNC right after connect and to the published value reaches the controller, GOTO to the connect position is a no-op, a sub-poll move holds both properties BUSY and ends both OK, limit refusals); `sync_failure`; `rejected_change`, `abort_and_overlap` (overlap refusal).
+- Stop and failure: `abort_mid_move` (OFF request answered without command, mid-move stop with one stop command, two equal fresh readbacks, ALERT kept, fresh move, idle abort sends nothing); `stop_unacknowledged` (lost stop reply and recovery query: abort ALERT, retry OK); `queued_abort`; `motion_bad_checksum`, `stalled_motion` (stop sent, ALERT at real position, not turned OK by idle polls, fresh move); `disconnect_motion` (one stop before close, nothing after it, OK at the real stopped position after reconnect, fresh move); `transport_loss_motion`, `transport_loss_idle`.
+- Modes and controls: `controls` (one command per setting, driver-owned reverse sends nothing, stored settings including negative backlash read back after reconnect); `motion_controls`; `power_failure`, `config_failure`.
+- Requests versus polls: `poll_versus_request` (simulator delays a poll reply so the GOTO arrives with it outstanding; the move command is sent once and the first result publication is OK at the requested value).
+- Lifecycle: `init_FV_silent`, `init_FL_malformed` added to the refused-connect cases, which now also assert that no focuser or `X_` property stays defined; `instances` (shutdown refused while connected, disconnecting the additional instance leaves the first working).
+
+### Simulator additions
+
+Every carriage return is logged as a `CR` event (also while idle) so tests count stop commands; faults take an optional repeat count; new reply faults `delay` (reply outstanding for 400 ms) and `overlong` (one extra byte); the sync reply has its own `FS` fault key so a fault never lands on a poll.
+
+### Rules not applicable
+
+No temperature compensation, focuser mode, speed control or controller-side reversal (reverse is driver-owned and sends no command); no no-sensor sentinel (the probe is built into the controller); one model and firmware family, so there is no model-dependent command set; single command moves (no multi-command move sequence to fail part-way); no homing, zeroing or calibration operations; no shared controller; the stop cannot be refused by the protocol (any serial byte stops the motor), so only the unacknowledged case applies. The minimum limit is local because the protocol has no minimum-travel command.
+
+### Test summary
+
+- Simulated tests: 32 run, 32 passed (`python3 tools/run_driver_test.py focuser_robofocus`, macOS arm64).
+- Hardware tests: 0 run, 0 passed.

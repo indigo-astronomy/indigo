@@ -117,11 +117,13 @@ static bool all_zero(const uint8_t *field, int count) {
 
 static bool fault(const char *key, char *action, size_t size) {
 	char found[64] = { 0 };
+	int repeat = 1;
 	FILE *file = fault_file ? fopen(fault_file, "r") : NULL;
 	if (!file) {
 		return false;
 	}
-	if (fscanf(file, "%63s %63s", found, action) != 2) {
+	int fields = fscanf(file, "%63s %63s %d", found, action, &repeat);
+	if (fields < 2) {
 		action[0] = 0;
 	}
 	fclose(file);
@@ -147,7 +149,13 @@ static bool fault(const char *key, char *action, size_t size) {
 		action[0] = 0;
 		return false;
 	}
-	unlink(fault_file);
+	if (fields == 3 && repeat > 1 && (file = fopen(fault_file, "w"))) {
+		// a repeated fault applies to the next <repeat> matching replies
+		fprintf(file, "%s %s %d\n", found, action, repeat - 1);
+		fclose(file);
+	} else {
+		unlink(fault_file);
+	}
 	action[size - 1] = 0;
 	return action[0] != 0;
 }
@@ -170,6 +178,18 @@ static bool injected(const char *key, const uint8_t normal[8]) {
 	}
 	if (!strcmp(action, "bad_checksum")) {
 		reply(normal, true);
+		return true;
+	}
+	if (!strcmp(action, "delay")) {
+		// the reply is outstanding long enough for a request to arrive meanwhile
+		usleep(400000);
+		reply(normal, false);
+		return true;
+	}
+	if (!strcmp(action, "overlong")) {
+		uint8_t extra = '0';
+		reply(normal, false);
+		write_bytes(&extra, 1);
 		return true;
 	}
 	uint8_t malformed[8] = { 'F', 'X', 'B', 'A', 'D', '0', '0', '0' };
@@ -265,7 +285,10 @@ static void dispatch(const uint8_t request[9]) {
 			if (parse_value(request + 2, 6, 0, 65535, &value)) {
 				if (value) serial_motion_sync(&motion, value);
 				last_tick_position = (int)motion.position;
-				send_value('D', last_tick_position);
+				uint8_t payload[8];
+				format_value(payload, 'D', last_tick_position);
+				// the sync reply has its own fault key, so a fault never lands on a poll instead
+				if (!injected("FS", payload)) reply(payload, false);
 			}
 			break;
 		case 'L':
@@ -372,6 +395,7 @@ int main(int argc, char **argv) {
 			continue;
 		}
 		for (ssize_t i = 0; i < count; i++) {
+			if (buffer[i] == '\r') event("CR", buffer + i, 1);
 			if (moving) stop_motion();
 			if (buffer[i] == '\r') { used = 0; continue; }
 			request[used++] = buffer[i];
