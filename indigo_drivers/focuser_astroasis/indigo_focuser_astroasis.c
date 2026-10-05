@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -237,7 +237,6 @@ static void focuser_move_started(indigo_device *device, int target, bool externa
 	PRIVATE_DATA->target_position = target;
 	PRIVATE_DATA->stall_polls = 0;
 	PRIVATE_DATA->motion_position = PRIVATE_DATA->status.position;
-	indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 }
 
 static void focuser_motion_failed(indigo_device *device, const char *message) {
@@ -358,6 +357,7 @@ static void focuser_compensation(indigo_device *device, double curr_temp) {
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	focuser_move_started(device, target, false);
+	indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 }
 
 static void focuser_position_poll(indigo_device *device, bool success) {
@@ -385,6 +385,7 @@ static void focuser_position_poll(indigo_device *device, bool success) {
 		PRIVATE_DATA->poll_failed = false;
 		focuser_publish_motion(device, NULL);
 		focuser_move_started(device, position, true);
+		indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 		return;
 	}
 	bool changed = false;
@@ -495,6 +496,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					focuser_move_started(device, PRIVATE_DATA->status.position, true);
+					indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 				} else {
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -581,7 +583,6 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 }
 
 static void focuser_position_handler(indigo_device *device) {
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_POSITION.on_change
 	PRIVATE_DATA->pending = false;
 	int target = (int)FOCUSER_POSITION_ITEM->number.target;
@@ -600,6 +601,7 @@ static void focuser_position_handler(indigo_device *device) {
 			focuser_move_failed(device, res);
 		} else {
 			focuser_move_started(device, target, false);
+			indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 		}
 	} else {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -627,7 +629,6 @@ static void focuser_position_handler(indigo_device *device) {
 		focuser_publish_motion(device, message);
 	}
 	//- focuser.FOCUSER_POSITION.on_change
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
 static void focuser_limits_handler(indigo_device *device) {
@@ -665,7 +666,6 @@ static void focuser_backlash_handler(indigo_device *device) {
 }
 
 static void focuser_steps_handler(indigo_device *device) {
-	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
 	PRIVATE_DATA->pending = false;
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -679,9 +679,9 @@ static void focuser_steps_handler(indigo_device *device) {
 		focuser_move_failed(device, res);
 	} else {
 		focuser_move_started(device, target, false);
+		indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 	}
 	//- focuser.FOCUSER_STEPS.on_change
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
 static void focuser_abort_motion_handler(indigo_device *device) {
@@ -1420,7 +1420,7 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 #include "indigo_focuser_astroasis.h"
 
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000F, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x03000010, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

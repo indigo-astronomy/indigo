@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Focuser";
 	author = "Frank Chen <frank.chen@astroasis.com>";
 	copyright = "Copyright (C) 2024-2026 Astroasis Vision Technology, Inc.";
-	version = 15;
+	version = 16;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <AOFocus.h>
@@ -220,7 +220,6 @@ driver astroasis {
 				PRIVATE_DATA->target_position = target;
 				PRIVATE_DATA->stall_polls = 0;
 				PRIVATE_DATA->motion_position = PRIVATE_DATA->status.position;
-				indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 			}
 
 			static void focuser_motion_failed(indigo_device *device, const char *message) {
@@ -341,6 +340,7 @@ driver astroasis {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				focuser_move_started(device, target, false);
+				indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 			}
 
 			static void focuser_position_poll(indigo_device *device, bool success) {
@@ -368,6 +368,7 @@ driver astroasis {
 					PRIVATE_DATA->poll_failed = false;
 					focuser_publish_motion(device, NULL);
 					focuser_move_started(device, position, true);
+					indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 					return;
 				}
 				bool changed = false;
@@ -498,6 +499,7 @@ driver astroasis {
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					focuser_move_started(device, PRIVATE_DATA->status.position, true);
+					indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 				} else {
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -555,6 +557,7 @@ driver astroasis {
 						focuser_move_failed(device, res);
 					} else {
 						focuser_move_started(device, target, false);
+						indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 					}
 				} else {
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -645,6 +648,7 @@ driver astroasis {
 					focuser_move_failed(device, res);
 				} else {
 					focuser_move_started(device, target, false);
+					indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 				}
 			}
 		}
