@@ -28,4 +28,4 @@ Unclear - how to abort movement? what is #CF command?
 
 ## Testing
 
-2026-09-27 23:08 3.0.0.9 mac arm64 simulator 10/10 OK
+2026-10-05 16:00 3.0.0.10 mac arm64 simulator 15/15 OK
