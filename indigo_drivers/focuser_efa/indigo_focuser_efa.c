@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_focuser_efa"
 #define DRIVER_LABEL         "Celestron / PlaneWave EFA Focuser"
 #define FOCUSER_DEVICE_NAME  "EFA Focuser"
@@ -68,7 +68,7 @@ typedef struct {
 	indigo_property *x_focuser_calibration_property;
 	//+ data
 	uint8_t response[32];
-	bool celestron, flow, active, coarse, calibrating, uncertain, fans;
+	bool celestron, flow, active, coarse, calibrating, uncertain, fans, external, poll_failed;
 	int position, last_position, stalled;
 	double calibration_deadline;
 	//- data
@@ -269,9 +269,13 @@ static bool efa_limits(indigo_device *device) {
 static void efa_temperature(indigo_device *device) {
 	uint8_t address = 0;
 	int count = efa_command(device, 0x12, 0x26, &address, 1);
-	int raw = count == 3 && RESPONSE[0] == address ? RESPONSE[1] * 256 + RESPONSE[2] : count == 2 ? RESPONSE[1] * 256 + RESPONSE[0] : 0x7F7F;
+	bool valid = (count == 3 && RESPONSE[0] == address) || count == 2;
+	int raw = count == 3 ? RESPONSE[1] * 256 + RESPONSE[2] : count == 2 ? RESPONSE[1] * 256 + RESPONSE[0] : 0;
 	double temperature = (raw & 0x8000 ? raw - 65536 : raw) / 16.0;
-	if (raw == 0x7F7F || temperature < FOCUSER_TEMPERATURE_ITEM->number.min || temperature > FOCUSER_TEMPERATURE_ITEM->number.max) {
+	if (valid && raw == 0x7F7F) {
+		// Protocol pages 6-7: 7F7F marks a missing sensor, which is not a failure.
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+	} else if (!valid || temperature < FOCUSER_TEMPERATURE_ITEM->number.min || temperature > FOCUSER_TEMPERATURE_ITEM->number.max) {
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
@@ -369,6 +373,7 @@ static void efa_start(indigo_device *device, int target) {
 		return;
 	}
 	PRIVATE_DATA->active = true;
+	PRIVATE_DATA->external = false;
 	PRIVATE_DATA->stalled = 0;
 	PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 	efa_motion_state(device, INDIGO_BUSY_STATE);
@@ -383,14 +388,34 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->calibrating && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-		if (efa_position(device)) {
-			if (!PRIVATE_DATA->uncertain) {
-				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+	if (!PRIVATE_DATA->active && !PRIVATE_DATA->calibrating && (PRIVATE_DATA->external || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
+		int previous = PRIVATE_DATA->position;
+		bool valid = efa_position(device);
+		// A request copied while the position was read owns the target and the state; its handler publishes the result.
+		if ((FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->external) && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			if (!valid) {
+				PRIVATE_DATA->poll_failed = true;
+				PRIVATE_DATA->external = false;
+				efa_motion_state(device, INDIGO_ALERT_STATE);
+			} else {
+				if (!PRIVATE_DATA->uncertain) {
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+				}
+				if (PRIVATE_DATA->poll_failed) {
+					// A good poll restores only the state a failed poll took away; a failed or aborted move stays ALERT.
+					PRIVATE_DATA->poll_failed = false;
+					efa_motion_state(device, INDIGO_OK_STATE);
+				}
+				if (PRIVATE_DATA->position != previous && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
+					// Motion the driver did not command (hand control, running at connect): BUSY until it settles.
+					PRIVATE_DATA->external = true;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				} else if (PRIVATE_DATA->position == previous && PRIVATE_DATA->external) {
+					PRIVATE_DATA->external = false;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			efa_motion_state(device, INDIGO_ALERT_STATE);
 		}
 	}
 	if (!PRIVATE_DATA->celestron) {
@@ -408,7 +433,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			//+ focuser.on_connect
 			uint8_t value = 0x40;
 			int calibrated = -1;
-			PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = false;
+			PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = PRIVATE_DATA->poll_failed = false;
 			connection_result = efa_position(device);
 			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 			X_FOCUSER_FANS_PROPERTY->hidden = PRIVATE_DATA->celestron;
@@ -468,10 +493,10 @@ static void focuser_connection_handler(indigo_device *device) {
 			X_FOCUSER_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
 			efa_motion_state(device, INDIGO_ALERT_STATE);
-		} else if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
+		} else if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain || PRIVATE_DATA->external) {
 			efa_byte(device, 0x24, 0);
 		}
-		PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = false;
+		PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -507,7 +532,8 @@ static void focuser_limits_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_LIMITS.on_change
 	double minimum = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
 	double maximum = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-	if (PRIVATE_DATA->celestron || PRIVATE_DATA->active || PRIVATE_DATA->calibrating || minimum >= maximum) {
+	// A limit change during motion, an empty interval or one that excludes the current position keeps the old limits.
+	if (PRIVATE_DATA->celestron || PRIVATE_DATA->active || PRIVATE_DATA->external || PRIVATE_DATA->calibrating || minimum >= maximum || (IS_CONNECTED && (PRIVATE_DATA->position < minimum || PRIVATE_DATA->position > maximum))) {
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = minimum;
@@ -550,7 +576,9 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+	bool pending = PRIVATE_DATA->active || PRIVATE_DATA->calibrating || PRIVATE_DATA->uncertain || PRIVATE_DATA->external || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE;
+	// Nothing moving: an abort is answered without a stop command and the position stays as it is.
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value && pending) {
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		if (!PRIVATE_DATA->active && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
@@ -568,9 +596,10 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				X_FOCUSER_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, "Calibration aborted");
 			}
-			PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = false;
+			PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = false;
 			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
-			efa_motion_state(device, INDIGO_OK_STATE);
+			// An aborted move or calibration ends ALERT at the stopped position.
+			efa_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
