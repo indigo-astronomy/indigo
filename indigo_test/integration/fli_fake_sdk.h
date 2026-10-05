@@ -35,6 +35,7 @@
 #include <string.h>
 #include <limits.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include <libfli.h>
 
@@ -101,6 +102,9 @@ typedef struct {
 	atomic_long last_image_ul_x, last_image_ul_y, last_image_lr_x, last_image_lr_y;
 	atomic_int last_frame_type;
 	atomic_int invalid_handle_uses;
+	// focuser position reads, and a gate that holds them until released
+	atomic_int stepper_position_calls;
+	atomic_bool hold_stepper_position, stepper_position_waiting;
 	// fault injection, each counts down one failing call
 	atomic_int fail_open, fail_close, fail_create_list, fail_list_first;
 	atomic_int fail_model, fail_serial, fail_firmware, fail_filter_count;
@@ -411,6 +415,13 @@ LIBFLIAPI FLIStepMotorAsync(flidev_t dev, long steps) {
 }
 
 LIBFLIAPI FLIGetStepperPosition(flidev_t dev, long *position) {
+	atomic_fetch_add(&fli_fake.stepper_position_calls, 1);
+	if (atomic_load(&fli_fake.hold_stepper_position)) {
+		atomic_store(&fli_fake.stepper_position_waiting, true);
+		for (int i = 0; i < 1000 && atomic_load(&fli_fake.hold_stepper_position); i++) {
+			usleep(10000);
+		}
+	}
 	FLI_FAKE_DEVICE(dev);
 	if (fli_fake_take(&fli_fake.fail_stepper_position)) {
 		return FLI_FAKE_ERROR;

@@ -62,6 +62,7 @@ typedef struct {
 	char name[INDIGO_NAME_SIZE];
 	indigo_property *properties[FLI_TEST_PROPERTIES];
 	int updates[FLI_TEST_PROPERTIES];
+	char messages[FLI_TEST_PROPERTIES][INDIGO_VALUE_SIZE];
 } fli_observed_device;
 
 static fli_observed_device fli_observed[FLI_TEST_DEVICES];
@@ -130,6 +131,7 @@ static indigo_result fli_observe_define(indigo_client *client, indigo_device *de
 		indigo_release_property(fli_observed[index].properties[slot]);
 		fli_observed[index].properties[slot] = indigo_copy_property(NULL, property);
 		fli_observed[index].updates[slot]++;
+		fli_observed[index].messages[slot][0] = 0;
 	}
 	pthread_mutex_unlock(&fli_observation_mutex);
 	return INDIGO_OK;
@@ -152,12 +154,31 @@ static indigo_result fli_observe_delete(indigo_client *client, indigo_device *de
 	return INDIGO_OK;
 }
 
+// The bus delivers the message of an update separately, right after it.
+static indigo_result fli_observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property == NULL || message == NULL) {
+		return INDIGO_OK;
+	}
+	int index = fli_device_index(property->device);
+	if (index < 0 || !fli_is_observed(property->name)) {
+		return INDIGO_OK;
+	}
+	pthread_mutex_lock(&fli_observation_mutex);
+	int slot = fli_property_slot(index, property->name, false);
+	if (slot >= 0) {
+		snprintf(fli_observed[index].messages[slot], INDIGO_VALUE_SIZE, "%s", message);
+	}
+	pthread_mutex_unlock(&fli_observation_mutex);
+	return INDIGO_OK;
+}
+
 static indigo_client fli_test_client = {
 	.name = "FLI fake SDK test",
 	.version = INDIGO_VERSION_CURRENT,
 	.define_property = fli_observe_define,
 	.update_property = fli_observe_define,
-	.delete_property = fli_observe_delete
+	.delete_property = fli_observe_delete,
+	.send_message = fli_observe_message
 };
 
 static indigo_property *fli_snapshot(int index, const char *name) {
@@ -269,6 +290,20 @@ static int fli_updates(int index, const char *property_name) {
 	int count = slot < 0 ? 0 : fli_observed[index].updates[slot];
 	pthread_mutex_unlock(&fli_observation_mutex);
 	return count;
+}
+
+// The message of the last definition or update of the property, empty without one.
+static void fli_message(int index, const char *property_name, char *buffer) {
+	buffer[0] = 0;
+	if (index < 0 || index >= FLI_TEST_DEVICES) {
+		return;
+	}
+	pthread_mutex_lock(&fli_observation_mutex);
+	int slot = fli_property_slot(index, property_name, false);
+	if (slot >= 0) {
+		snprintf(buffer, INDIGO_VALUE_SIZE, "%s", fli_observed[index].messages[slot]);
+	}
+	pthread_mutex_unlock(&fli_observation_mutex);
 }
 
 static bool fli_wait_state(int index, const char *property_name, indigo_property_state state) {
