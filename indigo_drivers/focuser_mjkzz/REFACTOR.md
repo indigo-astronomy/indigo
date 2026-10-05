@@ -84,3 +84,47 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && MJKZZ_TEST_FILTER=rejected_change ./build/integration/test_focuser_mjkzz_simulator
 ```
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.8)
+
+The regression test was checked against the extended "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839). Version raised from 3.0.0.7 to 3.0.0.8.
+
+### Defects found and fixed
+
+Each was reproduced by the new or extended test against a pre-fix copy of the generated driver built as a separate binary.
+
+| Defect | Impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | A STOP-confirmed abort of a pending, active, uncommanded or uncertain move ends both ALERT at the STOP position (value = target). | `abort_motion`, `abort_queued`, `rejected_change` |
+| Abort while idle sent STOP | A stop command was sent with nothing moving. | Abort with nothing pending ends OK without a command. | `abort_motion` (STOP count stays 1) |
+| Idle poll turned a failed move OK | Any good 1 s poll set `FOCUSER_POSITION` OK after a stall, a failed readback or an abort, while `FOCUSER_STEPS` stayed ALERT. | A good poll restores OK only after a failed poll. | `motion_read_failure`, `stalled_motion`, `abort_motion` |
+| Poll took a pending GOTO's target | A GOTO copied while the idle `GPOS` reply was outstanding had its target overwritten by the measured position and OK published over its BUSY, so the handler saw a no-op and the rail never moved. | The poll writes only the measured value while a request is BUSY; target and state are published only when no request is pending. | `request_during_poll` |
+| Uncommanded motion was published OK | Rotary-switch motion and motion running at connect only changed the value. | The idle poll publishes `FOCUSER_POSITION` BUSY with target = measured value while the position changes, OK once it settles; a relative move is refused meanwhile, abort and disconnect send STOP. A failed move stays ALERT. | `manual_motion`, `moving_at_connect`, `external_state` |
+| ALERT survived reconnect | A session ending with an aborted move reconnected with ALERT. | Connect sets `FOCUSER_POSITION`/`FOCUSER_STEPS` OK. | `abort_motion` (reconnect step) |
+
+### Simulator additions
+
+- Fault key `manual <position>`: rotary-switch motion at the controller's speed without a PC command. `external` remains an instantaneous position change.
+- `slow` action: the matching reply is sent 0.8 s late (queue gate).
+- Profile `moving`: motion to 6000 running at start.
+
+### Scenario-to-test mapping (rules chapter → cases)
+
+- Visibility before/after connect, negative contract (no SYNC selector, reverse, temperature, limits), identity `INFO.DEVICE_FW_REVISION` 1.2.3.4, connect sequence GVER, HPWR 12, LPWR 2, MSTEP 0, GPOS, GSPD, non-default position/speed at connect (`alternate`), shutdown refused while connected: `capabilities`, `capabilities_split`, `capabilities_alternate`.
+- Refused handshake and each failed connect-time command, no focuser property left, port released, retry works: `init_*`.
+- Position poll failure keeps the value, next good poll restores OK, a move works: `poll_*`.
+- Uncommanded motion: `manual_motion`, `moving_at_connect`, `external_state`.
+- Absolute/no-op right after connect/signed/boundary, both motion properties BUSY: `absolute_motion`, `boundary_motion`. Relative both directions, zero step, past the end sent as a move to the end: `relative_motion`. Overlap refusal: `overlap`, `rejected_change`.
+- Abort mid-move (ALERT both, value = target = stopped, STOP once, three equal readbacks, not turned OK by polls, idle and OFF abort without a command, reconnect OK, fresh move): `abort_motion`. Abort overtaking a queued GOTO: `abort_queued`. Refused stop and retry: `stop_failure`.
+- Start failure stops and recovers: `start_failure`. Readback failure and stall during motion send STOP and stay ALERT: `motion_read_failure`, `stalled_motion`.
+- Disconnect during motion sends STOP once, nothing follows, reconnect OK at the stopped position: `disconnect_motion`. Transport loss at move start and idle: `start_transport_loss`, `idle_transport_loss`.
+- Speed: one command per write, refusal keeps the device value, retry, refused during motion, read back after reconnect: `speed_control`, `speed_failure`, `speed_during_motion`, `reconnect`.
+- Requests versus polls: `request_during_poll`. Position is the only polled writable value.
+- Additional instance: `instances`.
+
+### Rules not applicable
+
+- SYNC, limits, reverse, temperature, backlash, compensation, modes, homing: not exposed (asserted undefined where inherited). The bundled manual's capture sequences, camera triggering and registers beyond the three startup writes are outside the focuser interface.
+- Multi-command move sequences: a move is the single `SPOS` command.
+
+Validation: `python3 tools/run_driver_test.py focuser_mjkzz` (recorded in README `## Testing`).

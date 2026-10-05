@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_focuser_optecfl"
 #define DRIVER_LABEL         "Optec FocusLynx Focuser"
 #define FOCUSER_1_DEVICE_NAME "Optec FocusLynx #1"
@@ -57,6 +57,10 @@
 #define OPTECFL_MAX_BLOCK_LINES 32
 #define FOCUSER_ID           (device->gp_bits & 0x3)
 #define FOCUSER_SLOT         (FOCUSER_ID - 1)
+// A move whose position does not change for this many polls has stalled.
+#define OPTECFL_STALL_POLLS  5
+// Consecutive failed status polls tolerated during a move.
+#define OPTECFL_MAX_POLL_FAILURES 3
 
 //- define
 
@@ -201,8 +205,17 @@ typedef struct {
 	// has run, so a status poll landing in between cannot clear the BUSY
 	// state that guards against a second move.
 	bool move_pending[2];
-	bool update_position[2];
-	bool update_temperature[2];
+	// Uncommanded motion (hand controller) is followed by the status poll.
+	bool external_motion[2];
+	// FOCUSER_POSITION is ALERT because a status poll failed, so the next good one restores OK.
+	bool poll_alert[2];
+	int poll_failures[2];
+	int stalled_polls[2];
+	int last_position[2];
+	// The fields of the status block just read.
+	bool status_position_valid, status_moving_valid, status_temperature_valid;
+	int status_position, status_moving, status_probe;
+	double status_temperature;
 	//- data
 } optecfl_private_data;
 
@@ -301,7 +314,7 @@ static void optecfl_hub_field(indigo_device *device, const char *key, const char
 
 static void optecfl_config_field(indigo_device *device, const char *key, const char *value) {
 	if (!strcmp(key, "Max Pos")) {
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.max = atoi(value);
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.max = FOCUSER_STEPS_ITEM->number.max = atoi(value);
 	} else if (!strcmp(key, "Dev Typ")) {
 		// Optec focusers must home and therefore reject the SCCP sync command.
 		PRIVATE_DATA->can_sync[FOCUSER_SLOT] = value[0] != 'O';
@@ -315,48 +328,59 @@ static void optecfl_config_field(indigo_device *device, const char *key, const c
 	}
 }
 
+static bool optecfl_integer(const char *value, int *result) {
+	char *end;
+	long number = strtol(value, &end, 10);
+	if (end == value || *end || number < 0 || number > 999999) {
+		return false;
+	}
+	*result = (int)number;
+	return true;
+}
+
 static void optecfl_status_field(indigo_device *device, const char *key, const char *value) {
 	if (!strcmp(key, "Temp(C)")) {
-		double temperature = atof(value);
-		if (FOCUSER_TEMPERATURE_ITEM->number.value != temperature) {
-			FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
-			PRIVATE_DATA->update_temperature[FOCUSER_SLOT] = true;
-		}
+		char *end;
+		double temperature = strtod(value, &end);
+		PRIVATE_DATA->status_temperature_valid = end != value && *end == 0;
+		PRIVATE_DATA->status_temperature = temperature;
 	} else if (!strcmp(key, "TmpProbe")) {
-		int attached = atoi(value);
-		if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_IDLE_STATE && attached == 0) {
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-			PRIVATE_DATA->update_temperature[FOCUSER_SLOT] = true;
-		} else if (FOCUSER_TEMPERATURE_PROPERTY->state == INDIGO_IDLE_STATE && attached == 1) {
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-			PRIVATE_DATA->update_temperature[FOCUSER_SLOT] = true;
-		}
+		PRIVATE_DATA->status_probe = atoi(value);
 	} else if (!strcmp(key, "Curr Pos")) {
-		int position = atoi(value);
-		if (FOCUSER_POSITION_ITEM->number.value != position) {
-			FOCUSER_POSITION_ITEM->number.value = position;
-			PRIVATE_DATA->update_position[FOCUSER_SLOT] = true;
-		}
-	} else if (!strcmp(key, "Targ Pos")) {
-		// A requested move makes the property BUSY before its handler
-		// runs, so the controller's target is only adopted while the
-		// driver is not the one driving the move. Otherwise a poll
-		// landing in that window would overwrite the requested target.
-		int target = atoi(value);
-		if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_POSITION_ITEM->number.target != target) {
-			FOCUSER_POSITION_ITEM->number.target = target;
-			PRIVATE_DATA->update_position[FOCUSER_SLOT] = true;
-		}
+		PRIVATE_DATA->status_position_valid = optecfl_integer(value, &PRIVATE_DATA->status_position);
 	} else if (!strcmp(key, "IsMoving")) {
-		int moving = atoi(value);
-		if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && moving == 1) {
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->update_position[FOCUSER_SLOT] = true;
-		} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE && moving == 0 && !PRIVATE_DATA->move_pending[FOCUSER_SLOT]) {
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			PRIVATE_DATA->update_position[FOCUSER_SLOT] = true;
-		}
+		PRIVATE_DATA->status_moving_valid = optecfl_integer(value, &PRIVATE_DATA->status_moving) && PRIVATE_DATA->status_moving <= 1;
 	}
+}
+
+static bool optecfl_read_status(indigo_device *device) {
+	PRIVATE_DATA->status_position_valid = PRIVATE_DATA->status_moving_valid = PRIVATE_DATA->status_temperature_valid = false;
+	PRIVATE_DATA->status_probe = -1;
+	return optecfl_command(device, "<F%dGETSTATUS>", FOCUSER_ID) && optecfl_block(device, optecfl_status_field) && PRIVATE_DATA->status_position_valid && PRIVATE_DATA->status_moving_valid;
+}
+
+// A move the driver runs owns both motion properties; uncommanded motion is followed by the poll.
+static bool optecfl_driver_move(indigo_device *device) {
+	return (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion[FOCUSER_SLOT];
+}
+
+// Ends a move: an interrupted or failed one at the position the focuser reached, never at the requested one.
+static void optecfl_move_ended(indigo_device *device, indigo_property_state state, const char *message) {
+	if (state != INDIGO_OK_STATE) {
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	}
+	PRIVATE_DATA->external_motion[FOCUSER_SLOT] = false;
+	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	if (message != NULL) {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+}
+
+static bool optecfl_halt(indigo_device *device) {
+	return optecfl_echo(device, "HALTED", "<F%dHALT>", FOCUSER_ID);
 }
 
 // Opens the shared port and reads the hub block. The generator owns the
@@ -389,7 +413,8 @@ static void optecfl_close(indigo_device *device) {
 // Reads the configuration of one logical focuser. A failure here rolls the
 // whole connection attempt back through the generated handler.
 static bool optecfl_connect(indigo_device *device) {
-	PRIVATE_DATA->move_pending[FOCUSER_SLOT] = false;
+	PRIVATE_DATA->move_pending[FOCUSER_SLOT] = PRIVATE_DATA->external_motion[FOCUSER_SLOT] = PRIVATE_DATA->poll_alert[FOCUSER_SLOT] = false;
+	PRIVATE_DATA->poll_failures[FOCUSER_SLOT] = PRIVATE_DATA->stalled_polls[FOCUSER_SLOT] = 0;
 	if (!optecfl_command(device, "<F%dGETCONFIG>", FOCUSER_ID) || !optecfl_block(device, optecfl_config_field)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open focuser #%d", FOCUSER_ID);
 		return false;
@@ -400,16 +425,77 @@ static bool optecfl_connect(indigo_device *device) {
 }
 
 static void optecfl_poll(indigo_device *device) {
-	PRIVATE_DATA->update_position[FOCUSER_SLOT] = PRIVATE_DATA->update_temperature[FOCUSER_SLOT] = false;
-	if (optecfl_command(device, "<F%dGETSTATUS>", FOCUSER_ID) && optecfl_block(device, optecfl_status_field)) {
-		if (PRIVATE_DATA->update_temperature[FOCUSER_SLOT]) {
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	int slot = FOCUSER_SLOT;
+	bool read = optecfl_read_status(device);
+	// Temperature: TmpProbe = 0 reports no probe, a failed or malformed reading keeps the last value.
+	if (read && PRIVATE_DATA->status_probe == 0) {
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+	} else if (read && PRIVATE_DATA->status_temperature_valid) {
+		FOCUSER_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->status_temperature;
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_IDLE_STATE) {
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	// A request accepted and not yet handled owns the motion properties.
+	if (PRIVATE_DATA->move_pending[slot]) {
+		return;
+	}
+	if (optecfl_driver_move(device)) {
+		if (!read) {
+			if (++PRIVATE_DATA->poll_failures[slot] >= OPTECFL_MAX_POLL_FAILURES) {
+				// The motor must not run unobserved.
+				optecfl_halt(device);
+				optecfl_move_ended(device, INDIGO_ALERT_STATE, "The focuser does not report its status");
+			}
+			return;
 		}
-		if (PRIVATE_DATA->update_position[FOCUSER_SLOT]) {
+		PRIVATE_DATA->poll_failures[slot] = 0;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status_position;
+		if (PRIVATE_DATA->status_moving) {
+			if (PRIVATE_DATA->status_position != PRIVATE_DATA->last_position[slot]) {
+				PRIVATE_DATA->last_position[slot] = PRIVATE_DATA->status_position;
+				PRIVATE_DATA->stalled_polls[slot] = 0;
+			} else if (++PRIVATE_DATA->stalled_polls[slot] >= OPTECFL_STALL_POLLS) {
+				optecfl_halt(device);
+				optecfl_move_ended(device, INDIGO_ALERT_STATE, "The focuser stalled");
+				return;
+			}
+			// A refused overlapping request published its own ALERT; the running move is still BUSY.
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		} else {
+			// A move that stopped elsewhere than its target did not arrive.
+			optecfl_move_ended(device, FOCUSER_POSITION_ITEM->number.value == FOCUSER_POSITION_ITEM->number.target ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 		}
+		return;
 	}
+	if (read) {
+		PRIVATE_DATA->poll_failures[slot] = 0;
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status_position;
+		if (PRIVATE_DATA->status_moving) {
+			// Motion nobody requested here, e.g. from the hand controller.
+			PRIVATE_DATA->external_motion[slot] = true;
+			PRIVATE_DATA->poll_alert[slot] = false;
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else if (PRIVATE_DATA->external_motion[slot]) {
+			PRIVATE_DATA->external_motion[slot] = false;
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (PRIVATE_DATA->poll_alert[slot]) {
+			PRIVATE_DATA->poll_alert[slot] = false;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else {
+		if (PRIVATE_DATA->external_motion[slot]) {
+			PRIVATE_DATA->external_motion[slot] = false;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		PRIVATE_DATA->poll_alert[slot] = true;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
 static void optecfl_apply_type(indigo_device *device) {
@@ -430,19 +516,30 @@ static void optecfl_apply_type(indigo_device *device) {
 	// Max Pos follows the device type, so re-read the configuration block.
 	if (optecfl_command(device, "<F%dGETCONFIG>", FOCUSER_ID) && optecfl_block(device, optecfl_config_field)) {
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		// An update does not carry a new range, so the motion properties are defined again.
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	}
 }
 
 static void optecfl_set_position(indigo_device *device) {
 	PRIVATE_DATA->move_pending[FOCUSER_SLOT] = false;
 	int position = (int)FOCUSER_POSITION_ITEM->number.target;
+	PRIVATE_DATA->external_motion[FOCUSER_SLOT] = PRIVATE_DATA->poll_alert[FOCUSER_SLOT] = false;
+	PRIVATE_DATA->poll_failures[FOCUSER_SLOT] = PRIVATE_DATA->stalled_polls[FOCUSER_SLOT] = 0;
+	PRIVATE_DATA->last_position[FOCUSER_SLOT] = (int)FOCUSER_POSITION_ITEM->number.value;
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		if (optecfl_echo(device, "M", "<F%dMA%06d>", FOCUSER_ID, position)) {
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
+			// The focuser stays where it was.
+			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (!PRIVATE_DATA->can_sync[FOCUSER_SLOT]) {
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "This focuser type must home and does not support sync");
@@ -451,6 +548,8 @@ static void optecfl_set_position(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.value = position;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
+		// The controller keeps the position it had.
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -468,10 +567,14 @@ static void optecfl_move_steps(indigo_device *device) {
 	} else if (position > FOCUSER_POSITION_ITEM->number.max) {
 		position = (int)FOCUSER_POSITION_ITEM->number.max;
 	}
+	PRIVATE_DATA->external_motion[FOCUSER_SLOT] = PRIVATE_DATA->poll_alert[FOCUSER_SLOT] = false;
+	PRIVATE_DATA->poll_failures[FOCUSER_SLOT] = PRIVATE_DATA->stalled_polls[FOCUSER_SLOT] = 0;
+	PRIVATE_DATA->last_position[FOCUSER_SLOT] = (int)FOCUSER_POSITION_ITEM->number.value;
 	if (optecfl_echo(device, "M", "<F%dMA%06d>", FOCUSER_ID, position)) {
 		FOCUSER_POSITION_ITEM->number.target = position;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -479,18 +582,35 @@ static void optecfl_move_steps(indigo_device *device) {
 }
 
 static void optecfl_abort(indigo_device *device) {
+	bool requested = FOCUSER_ABORT_MOTION_ITEM->sw.value;
+	bool moving = PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
 	PRIVATE_DATA->move_pending[FOCUSER_SLOT] = false;
-	if (optecfl_echo(device, "HALTED", "<F%dHALT>", FOCUSER_ID)) {
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		}
-	} else {
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (!requested || !moving) {
+		// Nothing moves, so there is nothing to halt.
+		return;
+	}
+	if (!optecfl_halt(device)) {
+		// The focuser keeps moving, so the move stays BUSY and the poll keeps following it.
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		return;
+	}
+	// The aborted move ends ALERT at the position the focuser stopped at.
+	if (optecfl_read_status(device)) {
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status_position;
+	}
+	optecfl_move_ended(device, INDIGO_ALERT_STATE, NULL);
+}
+
+// A move or uncommanded motion still running is halted before the connection closes.
+static void optecfl_disconnect(indigo_device *device) {
+	if (PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (!optecfl_halt(device)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to halt focuser #%d", FOCUSER_ID);
+		}
+	}
+	PRIVATE_DATA->move_pending[FOCUSER_SLOT] = PRIVATE_DATA->external_motion[FOCUSER_SLOT] = PRIVATE_DATA->poll_alert[FOCUSER_SLOT] = false;
 }
 
 //- code
@@ -536,6 +656,9 @@ static void focuser_1_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ focuser_1.on_disconnect
+		optecfl_disconnect(device);
+		//- focuser_1.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			FOCUSER_SPEED_PROPERTY,
@@ -635,6 +758,8 @@ static indigo_result focuser_1_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		//+ focuser_1.FOCUSER_LIMITS.on_attach
+		// The travel follows the device type; the protocol has no command to change it.
+		FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RO_PERM;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
 		//- focuser_1.FOCUSER_LIMITS.on_attach
 		FOCUSER_POSITION_PROPERTY->hidden = false;
@@ -699,6 +824,12 @@ static indigo_result focuser_1_change_property(indigo_device *device, indigo_cli
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		INDIGO_PROCESS_CONNECT(focuser_1_connection_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_REVERSE_MOTION_PROPERTY, "Motion in progress");
+		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
 		//+ focuser_1.FOCUSER_POSITION.on_change_request
@@ -717,6 +848,7 @@ static indigo_result focuser_1_change_property(indigo_device *device, indigo_cli
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_1_focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_1_TYPE_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, X_FOCUSER_1_TYPE_PROPERTY, "Motion in progress");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_1_TYPE_PROPERTY, focuser_1_x_focuser_1_type_handler);
 		return INDIGO_OK;
 	}
@@ -774,6 +906,9 @@ static void focuser_2_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ focuser_2.on_disconnect
+		optecfl_disconnect(device);
+		//- focuser_2.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			FOCUSER_SPEED_PROPERTY,
@@ -859,6 +994,8 @@ static indigo_result focuser_2_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		//+ focuser_2.FOCUSER_LIMITS.on_attach
+		// The travel follows the device type; the protocol has no command to change it.
+		FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RO_PERM;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
 		//- focuser_2.FOCUSER_LIMITS.on_attach
 		FOCUSER_POSITION_PROPERTY->hidden = false;
@@ -923,6 +1060,12 @@ static indigo_result focuser_2_change_property(indigo_device *device, indigo_cli
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		INDIGO_PROCESS_CONNECT(focuser_2_connection_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_REVERSE_MOTION_PROPERTY, "Motion in progress");
+		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Motion already in progress");
 		//+ focuser_2.FOCUSER_POSITION.on_change_request
@@ -941,6 +1084,7 @@ static indigo_result focuser_2_change_property(indigo_device *device, indigo_cli
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_2_focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_2_TYPE_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->move_pending[FOCUSER_SLOT] || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, X_FOCUSER_2_TYPE_PROPERTY, "Motion in progress");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_2_TYPE_PROPERTY, focuser_2_x_focuser_2_type_handler);
 		return INDIGO_OK;
 	}

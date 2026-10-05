@@ -64,6 +64,15 @@ static int max_position = 1000000;
 static int step_delay = 500;
 static int duty_cycle = 20;
 static double temperature = 21.5;
+static bool stalled, split;
+// Test hooks, both optional and named by environment variables:
+//   INDIGO_FOCUSDREAMPRO_EVENTS  every request as "<time> RX <request>"
+//   INDIGO_FOCUSDREAMPRO_FAULT   "<request prefix> <action> [count]"; actions: silent, error (ERR), malformed
+//                                (<letter>:x), delay (reply held 400 ms), ignore (H not executed, no reply),
+//                                stall (M: reports motion but never moves), false (T:false), implausible
+//                                (T:150.0), close; or "external <position>" (motion the driver did not command)
+//                                and "split 1" (every reply written in two parts)
+static const char *event_path, *fault_path;
 
 static void usage(const char *name) {
 	printf("AstroGadget FocusDreamPro serial simulator\n");
@@ -127,13 +136,96 @@ static int clamp_position(int value) {
 
 static void send_line(const char *line) {
 	serial_simulator_trace_line(options.trace, "->", line);
-	serial_simulator_write_all(serial_fd, line, strlen(line));
+	if (split && strlen(line) > 1) {
+		size_t first = strlen(line) / 2;
+		serial_simulator_write_all(serial_fd, line, first);
+		usleep(30000);
+		serial_simulator_write_all(serial_fd, line + first, strlen(line) - first);
+	} else {
+		serial_simulator_write_all(serial_fd, line, strlen(line));
+	}
 	serial_simulator_write_all(serial_fd, "\n", 1);
 }
 
+static void log_request(const char *command) {
+	FILE *file = event_path ? fopen(event_path, "a") : NULL;
+	if (file) {
+		fprintf(file, "%.6f RX %s\n", serial_motion_time(), command);
+		fclose(file);
+	}
+}
+
+// Returns the action of a fault matching this request, consuming one count of it.
+static bool take_fault(const char *command, char *action, size_t size) {
+	FILE *file = fault_path ? fopen(fault_path, "r") : NULL;
+	if (!file) {
+		return false;
+	}
+	char key[32] = "", found[32] = "";
+	int count = 1;
+	int fields = fscanf(file, "%31s %31s %d", key, found, &count);
+	fclose(file);
+	if (fields < 2) {
+		return false;
+	}
+	if (!strcmp(key, "external")) {
+		serial_motion_start(&motion, clamp_position(atoi(found)), 1.0 / (STEP_OVERHEAD_S + STEP_DELAY_UNIT_S * step_delay));
+		unlink(fault_path);
+		return false;
+	}
+	if (!strcmp(key, "split")) {
+		split = atoi(found) != 0;
+		unlink(fault_path);
+		return false;
+	}
+	if (strncmp(command, key, strlen(key))) {
+		return false;
+	}
+	if (fields == 3 && count > 1 && (file = fopen(fault_path, "w"))) {
+		fprintf(file, "%s %s %d\n", key, found, count - 1);
+		fclose(file);
+	} else {
+		unlink(fault_path);
+	}
+	snprintf(action, size, "%s", found);
+	return true;
+}
+
 static void handle_command(const char *command) {
-	char response[COMMAND_LENGTH] = { 0 };
+	char response[COMMAND_LENGTH] = { 0 }, action[32] = "";
 	serial_simulator_trace_line(options.trace, "<-", command);
+	log_request(command);
+	if (take_fault(command, action, sizeof(action))) {
+		if (!strcmp(action, "silent")) {
+			return;
+		} else if (!strcmp(action, "error")) {
+			send_line("ERR");
+			return;
+		} else if (!strcmp(action, "malformed")) {
+			snprintf(response, sizeof(response), "%c:x", command[0]);
+			send_line(response);
+			return;
+		} else if (!strcmp(action, "ignore")) {
+			return;
+		} else if (!strcmp(action, "close")) {
+			running = 0;
+			close(serial_fd);
+			serial_fd = -1;
+			return;
+		} else if (!strcmp(action, "false")) {
+			send_line("T:false");
+			return;
+		} else if (!strcmp(action, "implausible")) {
+			send_line("T:150.0");
+			return;
+		} else if (!strcmp(action, "stall")) {
+			stalled = true;
+			send_line(command);
+			return;
+		} else if (!strcmp(action, "delay")) {
+			usleep(400000);
+		}
+	}
 	if (!strcmp(command, "#")) {
 		if (!strcmp(profile, "no-identity")) {
 			return;
@@ -150,9 +242,9 @@ static void handle_command(const char *command) {
 		}
 	} else if (!strcmp(command, "I")) {
 		serial_motion_update(&motion);
-		send_line(motion.duration > 0 ? "I:true" : "I:false");
+		send_line(stalled || motion.duration > 0 ? "I:true" : "I:false");
 	} else if (!strcmp(command, "P")) {
-		snprintf(response, sizeof(response), "P:%d", (int)serial_motion_update(&motion));
+		snprintf(response, sizeof(response), "P:%d", (int)(stalled ? motion.position : serial_motion_update(&motion)));
 		send_line(response);
 	} else if (!strcmp(command, "X") || !strcmp(command, "S") || !strcmp(command, "D")) {
 		// The controller has no readback for these: the bare query is answered
@@ -190,6 +282,7 @@ static void handle_command(const char *command) {
 		serial_motion_sync(&motion, clamp_position(atoi(command + 2)));
 		send_line(command);
 	} else if (!strcmp(command, "H")) {
+		stalled = false;
 		serial_motion_stop(&motion);
 		send_line(!strcmp(profile, "abort-error") ? "ERR" : "H");
 	}
@@ -248,6 +341,8 @@ int main(int argc, char *argv[]) {
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);
 	serial_motion_sync(&motion, 0);
+	event_path = getenv("INDIGO_FOCUSDREAMPRO_EVENTS");
+	fault_path = getenv("INDIGO_FOCUSDREAMPRO_FAULT");
 	serial_fd = serial_simulator_open_pty(port, sizeof(port));
 	if (serial_fd < 0) {
 		return 1;

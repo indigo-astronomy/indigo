@@ -147,11 +147,16 @@ static void usbv3_publishes_the_property_contract(void) {
 	ASSERT_TRUE(hw_property_defined(focuser, X_FOCUSER_STEP_SIZE_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_defined(focuser, DEVICE_PORT_PROPERTY_NAME));
 	ASSERT_TRUE(hw_property_hidden(focuser, SIMULATION_PROPERTY_NAME));
-	// The speed is the unit's own 1 to 8 scale and the steps are its 16 bit range.
+	// The speed is the unit's own 1 to 8 scale; the steps reach at most the travel limit the unit
+	// reports, which is also the maximum of the position.
+	double travel_limit = 0;
 	ASSERT_TRUE(hw_number_item_range(focuser, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, &min, &max));
 	ASSERT_TRUE(min == 1 && max == 8);
+	ASSERT_TRUE(hw_number_item(focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, &travel_limit));
 	ASSERT_TRUE(hw_number_item_range(focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, &min, &max));
-	ASSERT_TRUE(min == 1 && max == 65535);
+	ASSERT_TRUE(min == 1 && max == travel_limit);
+	ASSERT_TRUE(hw_number_item_range(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &min, &max));
+	ASSERT_TRUE(max == travel_limit);
 	ASSERT_TRUE(hw_number_item_range(focuser, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, &min, &max));
 	ASSERT_TRUE(min == -999 && max == 999);
 	ASSERT_TRUE(hw_number_item_range(focuser, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, &min, &max));

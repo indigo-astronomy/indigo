@@ -31,11 +31,29 @@ static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach
 static atomic_int move_calls, poll_calls, close_calls, position = 100, maximum = 10000, backlash;
 static atomic_bool motor, hand_control, fail_poll, fail_position, fail_move, fail_stop, fail_max, fail_backlash, fail_temperature;
 static atomic_int temperature = 10, abort_state;
-static atomic_bool abort_switch, reverse_enabled, beep_enabled;
+static atomic_bool abort_switch, reverse_enabled, beep_enabled, battery_supported;
 static atomic_int open_calls, requested_position, reset_calls;
+static atomic_int stop_calls, set_max_calls, set_backlash_calls, set_reverse_calls, calls_after_close;
+static atomic_bool delay_poll, fail_reset, fail_all, closed_flag, watch_position;
+static atomic_int first_state = -1, first_value = -1, position_busy;
+#define BEEP_PROPERTY    "X_BEEP_ON_MOVE"
+#define SUFFIX_PROPERTY  "X_CUSTOM_SUFFIX"
+#define BATTERY_PROPERTY "X_BATTERY_INFO"
+
+// Names the driver used before its custom properties got the X_ prefix, no client may see them any more.
+static const char *eaf_unprefixed_properties[] = { "EAF_BEEP_ON_MOVE", "EAF_CUSTOM_SUFFIX", "EAF_BATTERY_INFO" };
 static const simulator_driver_case eaf = { "ZWO ASI Focuser", "indigo_focuser_asi", "EAF SDK test 0", indigo_focuser_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static indigo_result eaf_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, eaf.device_name) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+		if (property->state == INDIGO_BUSY_STATE) {
+			atomic_fetch_add(&position_busy, 1);
+		} else if (atomic_exchange(&watch_position, false)) {
+			// the first result publication after a request
+			atomic_store(&first_value, (int)property->items[0].number.value);
+			atomic_store(&first_state, property->state);
+		}
+	}
 	if (!strcmp(property->device, eaf.device_name) && !strcmp(property->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME)) {
 		if (property->count > 0) {
 			atomic_store(&abort_switch, property->items[0].sw.value);
@@ -126,13 +144,27 @@ EAF_ERROR_CODE EAFGetID(int index, int *id) {
 	return EAF_SUCCESS;
 }
 
+// Every per-device call made while device 0 is closed is counted, and fail_all models a device that is gone.
+static bool sdk_call(int id) {
+	if (id == 0 && atomic_load(&closed_flag)) {
+		atomic_fetch_add(&calls_after_close, 1);
+	}
+	return !atomic_load(&fail_all);
+}
+
 EAF_ERROR_CODE EAFOpen(int id) {
 	atomic_fetch_add(&open_calls, 1);
+	if (id == 0) {
+		atomic_store(&closed_flag, false);
+	}
 	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFClose(int id) {
 	atomic_fetch_add(&close_calls, 1);
+	if (id == 0) {
+		atomic_store(&closed_flag, true);
+	}
 	return EAF_SUCCESS;
 }
 
@@ -150,7 +182,11 @@ EAF_ERROR_CODE EAFGetProperty(int id, EAF_INFO *info) {
 
 EAF_ERROR_CODE EAFIsMoving(int id, bool *moving, bool *hc) {
 	atomic_fetch_add(&poll_calls, 1);
-	if (atomic_load(&fail_poll)) {
+	if (atomic_exchange(&delay_poll, false)) {
+		// the reply is outstanding long enough for a request to arrive meanwhile
+		indigo_usleep(400000);
+	}
+	if (atomic_load(&fail_poll) || !sdk_call(id)) {
 		return EAF_ERROR_GENERAL_ERROR;
 	}
 	*moving = atomic_load(&motor);
@@ -159,7 +195,7 @@ EAF_ERROR_CODE EAFIsMoving(int id, bool *moving, bool *hc) {
 }
 
 EAF_ERROR_CODE EAFGetPosition(int id, int *value) {
-	if (atomic_load(&fail_position)) {
+	if (atomic_load(&fail_position) || !sdk_call(id)) {
 		return EAF_ERROR_GENERAL_ERROR;
 	}
 	*value = atomic_load(&position);
@@ -168,7 +204,7 @@ EAF_ERROR_CODE EAFGetPosition(int id, int *value) {
 
 EAF_ERROR_CODE EAFMove(int id, int target) {
 	atomic_store(&requested_position, target);
-	if (atomic_load(&fail_move)) {
+	if (atomic_load(&fail_move) || !sdk_call(id)) {
 		atomic_fetch_add(&move_calls, 1);
 		return EAF_ERROR_GENERAL_ERROR;
 	}
@@ -179,17 +215,21 @@ EAF_ERROR_CODE EAFMove(int id, int target) {
 
 EAF_ERROR_CODE EAFStop(int id) {
 	// A successful stop command deliberately leaves motion active until the test confirms stop.
-	return atomic_load(&fail_stop) ? EAF_ERROR_GENERAL_ERROR : EAF_SUCCESS;
+	atomic_fetch_add(&stop_calls, 1);
+	return atomic_load(&fail_stop) || !sdk_call(id) ? EAF_ERROR_GENERAL_ERROR : EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFResetPostion(int id, int target) {
+	if (atomic_load(&fail_reset) || !sdk_call(id)) {
+		return EAF_ERROR_GENERAL_ERROR;
+	}
 	atomic_store(&position, target);
 	atomic_fetch_add(&reset_calls, 1);
 	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFGetTemp(int id, float *value) {
-	if (atomic_load(&fail_temperature)) {
+	if (atomic_load(&fail_temperature) || !sdk_call(id)) {
 		return EAF_ERROR_REMOVED;
 	}
 	*value = atomic_load(&temperature);
@@ -197,7 +237,18 @@ EAF_ERROR_CODE EAFGetTemp(int id, float *value) {
 }
 
 EAF_ERROR_CODE EAFGetBatteryInfo(int id, EAF_BATTERY_INFO *info) {
-	return EAF_ERROR_NOT_SUPPORTED;
+	if (!atomic_load(&battery_supported)) {
+		return EAF_ERROR_NOT_SUPPORTED;
+	}
+	if (!sdk_call(id)) {
+		return EAF_ERROR_REMOVED;
+	}
+	memset(info, 0, sizeof(*info));
+	info->battery_percentage = 80;
+	info->battery_temp = 25;
+	info->battery_vol = 3900;
+	info->battery_num_of_cycles = 12;
+	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFSetID(int id, EAF_ID alias) {
@@ -210,12 +261,16 @@ EAF_ERROR_CODE EAFStepRange(int id, int *value) {
 }
 
 EAF_ERROR_CODE EAFSetMaxStep(int id, int value) {
+	atomic_fetch_add(&set_max_calls, 1);
+	if (!sdk_call(id)) {
+		return EAF_ERROR_REMOVED;
+	}
 	atomic_store(&maximum, value);
 	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFGetMaxStep(int id, int *value) {
-	if (atomic_load(&fail_max)) {
+	if (atomic_load(&fail_max) || !sdk_call(id)) {
 		return EAF_ERROR_GENERAL_ERROR;
 	}
 	*value = atomic_load(&maximum);
@@ -223,12 +278,16 @@ EAF_ERROR_CODE EAFGetMaxStep(int id, int *value) {
 }
 
 EAF_ERROR_CODE EAFSetBacklash(int id, int value) {
+	atomic_fetch_add(&set_backlash_calls, 1);
+	if (!sdk_call(id)) {
+		return EAF_ERROR_REMOVED;
+	}
 	atomic_store(&backlash, value);
 	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFGetBacklash(int id, int *value) {
-	if (atomic_load(&fail_backlash)) {
+	if (atomic_load(&fail_backlash) || !sdk_call(id)) {
 		return EAF_ERROR_GENERAL_ERROR;
 	}
 	*value = atomic_load(&backlash);
@@ -236,6 +295,7 @@ EAF_ERROR_CODE EAFGetBacklash(int id, int *value) {
 }
 
 EAF_ERROR_CODE EAFSetReverse(int id, bool value) {
+	atomic_fetch_add(&set_reverse_calls, 1);
 	atomic_store(&reverse_enabled, value);
 	return EAF_SUCCESS;
 }
@@ -273,12 +333,20 @@ static void set_number(const char *property, const char *item, double value) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, eaf.device_name, property, item, value));
 }
 
+static bool finish_motion_at(int target) {
+	atomic_store(&position, target);
+	atomic_store(&motor, false);
+	return wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, 0);
+}
+
 static void failed_connect_releases_sdk(void) {
 	atomic_store(&fail_position, true);
 	int closed = atomic_load(&close_calls);
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
+	// a refused connection leaves no focuser or driver-specific property defined
+	ASSERT_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) == NULL && find_cached_property(BEEP_PROPERTY) == NULL && find_cached_property(SUFFIX_PROPERTY) == NULL && find_cached_property(BATTERY_PROPERTY) == NULL);
 	atomic_store(&fail_position, false);
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
@@ -303,43 +371,62 @@ static void limits_and_readback_failures(void) {
 	atomic_store(&fail_backlash, false);
 }
 
+// A single lost readback is retried; a persistent one stops the motor and ends the move ALERT, never OK.
+// While the state cannot be read no move is started; once it can, a fresh move works.
 static void polling_failure_and_safe_retry(void) {
+	int moves = atomic_load(&move_calls), stops = atomic_load(&stop_calls);
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300);
-	ASSERT_TRUE(wait_atomic(&move_calls, 1));
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	atomic_store(&fail_poll, true);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	int polls = atomic_load(&poll_calls);
-	indigo_usleep(700000);
-	ASSERT_EQ_INT(polls, atomic_load(&poll_calls));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(1, atomic_load(&move_calls));
-	atomic_store(&fail_poll, false);
-	polls = atomic_load(&poll_calls);
-	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
-	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	ASSERT_TRUE(wait_atomic(&poll_calls, polls + 2));
-	ASSERT_EQ_INT(1, atomic_load(&move_calls));
+	indigo_usleep(300000);
+	ASSERT_EQ_INT(moves + 1, atomic_load(&move_calls));
 	atomic_store(&motor, false);
-	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	atomic_store(&fail_poll, false);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 2));
+	ASSERT_TRUE(finish_motion_at(400));
 }
 
+// A refused stop ends the abort ALERT and the move is not reported completed; an immediate retry stops it,
+// and the aborted move ends ALERT at the stop point with value equal to target, never OK.
 static void abort_waits_for_stop_and_resets_switch(void) {
+	int moves = atomic_load(&move_calls), stops = atomic_load(&stop_calls);
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300);
-	ASSERT_TRUE(wait_atomic(&move_calls, 2));
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	// the abort lands mid-move
+	atomic_store(&position, 350);
 	atomic_store(&fail_stop, true);
 	set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
 	ASSERT_TRUE(wait_abort(INDIGO_ALERT_STATE));
 	ASSERT_FALSE(atomic_load(&abort_switch));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
 	atomic_store(&fail_stop, false);
 	set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
 	ASSERT_TRUE(wait_abort(INDIGO_BUSY_STATE));
 	ASSERT_FALSE(atomic_load(&abort_switch));
 	atomic_store(&motor, false);
 	ASSERT_TRUE(wait_abort(INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	ASSERT_NEAR(350, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_NEAR(350, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	ASSERT_EQ_INT(stops + 2, atomic_load(&stop_calls));
+	// the next idle poll agrees and does not turn the aborted move OK
+	int polls = atomic_load(&poll_calls);
+	ASSERT_TRUE(wait_atomic(&poll_calls, polls + 1));
+	indigo_usleep(100000);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
 }
 
 static void compensation_recovers_without_losing_baseline(void) {
+	int moves = atomic_load(&move_calls);
 	set_number(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 100);
 	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 100, 0));
 	set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME);
@@ -350,22 +437,19 @@ static void compensation_recovers_without_losing_baseline(void) {
 	atomic_store(&fail_move, true);
 	atomic_store(&temperature, 12);
 	atomic_store(&fail_temperature, false);
+	// the previous scenario left the aborted move ALERT, so wait for the refused correction itself
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	ASSERT_EQ_INT(3, atomic_load(&move_calls));
+	ASSERT_EQ_INT(moves + 1, atomic_load(&move_calls));
 	atomic_store(&fail_move, false);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	ASSERT_EQ_INT(4, atomic_load(&move_calls));
+	ASSERT_EQ_INT(moves + 2, atomic_load(&move_calls));
 	atomic_store(&motor, false);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
 }
 
-static bool finish_motion_at(int target) {
-	atomic_store(&position, target);
-	atomic_store(&motor, false);
-	return wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, 0);
-}
 
 static void connect_move_disconnect(void) {
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
@@ -385,6 +469,10 @@ static void connect_move_disconnect(void) {
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
+	// nothing is sent to the SDK after the device is closed
+	int after = atomic_load(&calls_after_close);
+	indigo_usleep(2500000);
+	ASSERT_EQ_INT(after, atomic_load(&calls_after_close));
 }
 
 // While the focuser moves, both motion properties carry a reject_change guard. Without it the
@@ -393,13 +481,14 @@ static void rejected_change_while_moving(void) {
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
 	int moves = atomic_load(&move_calls);
-	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500);
+	// the previous scenario ended at 1500, so this is a real move
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1700);
 	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900));
 	ASSERT_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
 	ASSERT_EQ_INT(moves + 1, atomic_load(&move_calls));
-	ASSERT_TRUE(finish_motion_at(1500));
+	ASSERT_TRUE(finish_motion_at(1700));
 	// A guard must not be sticky once the focuser is idle again.
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900);
 	ASSERT_TRUE(wait_atomic(&move_calls, moves + 2));
@@ -461,25 +550,311 @@ static void settings_and_readback(void) {
 	set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_TRUE(atomic_load(&reverse_enabled));
-	set_switch("EAF_BEEP_ON_MOVE", "ON");
-	ASSERT_TRUE(wait_for_property_state("EAF_BEEP_ON_MOVE", INDIGO_OK_STATE));
+	set_switch(BEEP_PROPERTY, "ON");
+	ASSERT_TRUE(wait_for_property_state(BEEP_PROPERTY, INDIGO_OK_STATE));
 	ASSERT_TRUE(atomic_load(&beep_enabled));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(true));
 	ASSERT_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
-	ASSERT_TRUE(find_cached_item("EAF_BEEP_ON_MOVE", "ON")->sw.value);
+	ASSERT_TRUE(find_cached_item(BEEP_PROPERTY, "ON")->sw.value);
 	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 125, 0));
 	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 5000, 0));
 	set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_FALSE(atomic_load(&reverse_enabled));
-	set_switch("EAF_BEEP_ON_MOVE", "OFF");
-	ASSERT_TRUE(wait_for_property_state("EAF_BEEP_ON_MOVE", INDIGO_OK_STATE));
+	set_switch(BEEP_PROPERTY, "OFF");
+	ASSERT_TRUE(wait_for_property_state(BEEP_PROPERTY, INDIGO_OK_STATE));
 	ASSERT_FALSE(atomic_load(&beep_enabled));
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+}
+
+static void assert_no_unprefixed_properties(void) {
+	for (int i = 0; i < (int)ARRAY_SIZE(eaf_unprefixed_properties); i++) {
+		assert_not_defined_property(eaf_unprefixed_properties[i]);
+		ASSERT_TRUE(find_cached_property(eaf_unprefixed_properties[i]) == NULL);
+	}
+}
+
+// The driver-specific properties exist under their X_ names only while connected, X_BATTERY_INFO only
+// on a focuser whose SDK reports battery data; the legacy EAF_ names are never defined.
+static void driver_specific_property_names(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	ASSERT_TRUE(find_cached_property(BEEP_PROPERTY) == NULL && find_cached_property(SUFFIX_PROPERTY) == NULL && find_cached_property(BATTERY_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	ASSERT_TRUE(find_cached_item(BEEP_PROPERTY, "ON") != NULL && find_cached_item(BEEP_PROPERTY, "OFF") != NULL);
+	ASSERT_TRUE(find_cached_item(SUFFIX_PROPERTY, "SUFFIX") != NULL);
+	// without SDK battery support the battery property stays hidden
+	ASSERT_TRUE(find_cached_property(BATTERY_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	atomic_store(&battery_supported, true);
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	ASSERT_TRUE(find_cached_property(BEEP_PROPERTY) != NULL && find_cached_property(SUFFIX_PROPERTY) != NULL);
+	ASSERT_TRUE(wait_for_number_item_value(BATTERY_PROPERTY, "CHARGE", 80, 0));
+	ASSERT_TRUE(wait_for_number_item_value(BATTERY_PROPERTY, "VOLTAGE", 3.9, 0.001));
+	ASSERT_TRUE(wait_for_number_item_value(BATTERY_PROPERTY, "CYCLES", 12, 0));
+	assert_no_unprefixed_properties();
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	atomic_store(&battery_supported, false);
+	ASSERT_TRUE(find_cached_property(BEEP_PROPERTY) == NULL && find_cached_property(SUFFIX_PROPERTY) == NULL && find_cached_property(BATTERY_PROPERTY) == NULL);
+	assert_no_unprefixed_properties();
+}
+
+static void connect_device(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+}
+
+static void disconnect_device(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+}
+
+static void start_move(int target) {
+	int moves = atomic_load(&move_calls);
+	set_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+}
+
+// An abort while idle and a request with the item OFF are answered without a stop; a GOTO to the current position sends no move.
+static void idle_abort_and_noop_moves(void) {
+	connect_device();
+	int stops = atomic_load(&stop_calls), moves = atomic_load(&move_calls);
+	set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
+	ASSERT_TRUE(wait_abort(INDIGO_OK_STATE));
+	ASSERT_EQ_INT(stops, atomic_load(&stop_calls));
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, atomic_load(&position));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_usleep(200000);
+	ASSERT_EQ_INT(moves, atomic_load(&move_calls));
+	start_move(atomic_load(&position) + 500);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, eaf.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	ASSERT_TRUE(wait_abort(INDIGO_OK_STATE));
+	ASSERT_EQ_INT(stops, atomic_load(&stop_calls));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	ASSERT_TRUE(finish_motion_at(atomic_load(&requested_position)));
+	disconnect_device();
+}
+
+// An abort that overtakes a move queued behind a poll in flight stops once and never starts the move.
+static void abort_overtakes_queued_move(void) {
+	connect_device();
+	int stops = atomic_load(&stop_calls), moves = atomic_load(&move_calls), polls = atomic_load(&poll_calls);
+	int origin = atomic_load(&position);
+	atomic_store(&delay_poll, true);
+	ASSERT_TRUE(wait_atomic(&poll_calls, polls + 1));
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, origin + 700);
+	set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
+	ASSERT_TRUE(wait_abort(INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	indigo_usleep(1000000);
+	ASSERT_EQ_INT(moves, atomic_load(&move_calls));
+	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
+	ASSERT_NEAR(origin, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_NEAR(origin, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	ASSERT_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	disconnect_device();
+}
+
+// A poll in flight when a move is accepted does not complete the move.
+static void poll_versus_request(void) {
+	connect_device();
+	int moves = atomic_load(&move_calls), polls = atomic_load(&poll_calls);
+	int target = atomic_load(&position) + 300;
+	atomic_store(&delay_poll, true);
+	ASSERT_TRUE(wait_atomic(&poll_calls, polls + 1));
+	atomic_store(&first_state, -1);
+	atomic_store(&watch_position, true);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_TRUE(finish_motion_at(target));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, atomic_load(&first_state));
+	ASSERT_EQ_INT(target, atomic_load(&first_value));
+	atomic_store(&watch_position, false);
+	disconnect_device();
+}
+
+// Hand controller motion is published BUSY then OK at the measured position without any SDK move or stop,
+// and a relative move starts from it.
+static void hand_controller_motion(void) {
+	connect_device();
+	int moves = atomic_load(&move_calls), stops = atomic_load(&stop_calls), busy = atomic_load(&position_busy);
+	int start = atomic_load(&position);
+	atomic_store(&hand_control, true);
+	atomic_store(&position, start + 50);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	atomic_store(&position, start + 80);
+	atomic_store(&hand_control, false);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, start + 80, 0));
+	ASSERT_NEAR(start + 80, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	ASSERT_TRUE(atomic_load(&position_busy) > busy);
+	ASSERT_EQ_INT(moves, atomic_load(&move_calls));
+	ASSERT_EQ_INT(stops, atomic_load(&stop_calls));
+	set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 20);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_EQ_INT(start + 100, atomic_load(&requested_position));
+	ASSERT_TRUE(finish_motion_at(start + 100));
+	disconnect_device();
+}
+
+// A move the SDK keeps reporting while the position does not change is stopped and ends ALERT; a fresh move works.
+static void stalled_move(void) {
+	connect_device();
+	int stops = atomic_load(&stop_calls);
+	int origin = atomic_load(&position);
+	start_move(origin + 900);
+	for (int i = 0; i < 150 && find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
+	ASSERT_NEAR(origin, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	atomic_store(&motor, false);
+	start_move(origin + 100);
+	ASSERT_TRUE(finish_motion_at(origin + 100));
+	disconnect_device();
+}
+
+// An implausible reading is ALERT keeping the last value, the no-sensor sentinel is IDLE keeping the value, a valid one restores OK.
+static void temperature_readings(void) {
+	connect_device();
+	atomic_store(&temperature, 15);
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 15, 0));
+	atomic_store(&temperature, 150);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(15, find_cached_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME)->number.value, 0);
+	atomic_store(&temperature, -273);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	ASSERT_NEAR(15, find_cached_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME)->number.value, 0);
+	atomic_store(&temperature, 11);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 11, 0));
+	atomic_store(&temperature, 10);
+	disconnect_device();
+}
+
+// Limits, backlash, reverse, compensation and mode requested during a move end ALERT without an SDK call, and a
+// maximum excluding the position is refused without a call; a refused SYNC keeps the real position.
+static void settings_during_motion_and_refusals(void) {
+	connect_device();
+	int origin = atomic_load(&position);
+	int max_calls = atomic_load(&set_max_calls), backlash_calls = atomic_load(&set_backlash_calls), reverse_calls = atomic_load(&set_reverse_calls);
+	double limit = find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value;
+	start_move(origin + 400);
+	ASSERT_TRUE(assert_rejected_number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 9000));
+	ASSERT_TRUE(assert_rejected_number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 33));
+	ASSERT_TRUE(assert_rejected_number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 44));
+	set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME)->sw.value);
+	set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(find_cached_item(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME)->sw.value);
+	ASSERT_EQ_INT(max_calls, atomic_load(&set_max_calls));
+	ASSERT_EQ_INT(backlash_calls, atomic_load(&set_backlash_calls));
+	ASSERT_EQ_INT(reverse_calls, atomic_load(&set_reverse_calls));
+	ASSERT_TRUE(finish_motion_at(origin + 400));
+	set_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, origin + 100);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_LIMITS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(max_calls, atomic_load(&set_max_calls));
+	ASSERT_NEAR(limit, find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_NEAR(limit, find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.target, 0);
+	set_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	atomic_store(&fail_reset, true);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 222);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(origin + 400, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_NEAR(origin + 400, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	atomic_store(&fail_reset, false);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, origin + 400);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_device();
+}
+
+// Disconnecting during motion stops the motor before the device is closed; after reconnect the real position is OK.
+static void disconnect_during_motion(void) {
+	connect_device();
+	int origin = atomic_load(&position), stops = atomic_load(&stop_calls), closes = atomic_load(&close_calls);
+	start_move(origin + 600);
+	atomic_store(&position, origin + 250);
+	disconnect_device();
+	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
+	ASSERT_EQ_INT(closes + 1, atomic_load(&close_calls));
+	atomic_store(&motor, false);
+	int after = atomic_load(&calls_after_close);
+	indigo_usleep(1500000);
+	ASSERT_EQ_INT(after, atomic_load(&calls_after_close));
+	connect_device();
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, origin + 250, 0));
+	ASSERT_NEAR(origin + 250, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	ASSERT_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	start_move(origin + 300);
+	ASSERT_TRUE(finish_motion_at(origin + 300));
+	// shutdown is refused while a device is connected and the connection keeps working
+	ASSERT_EQ_INT(INDIGO_BUSY, indigo_focuser_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
+	ASSERT_TRUE(context.connected);
+	disconnect_device();
+}
+
+// After the device is gone every later request ends ALERT without stale BUSY and disconnect still completes.
+static void transport_loss(void) {
+	connect_device();
+	int origin = atomic_load(&position);
+	start_move(origin + 500);
+	atomic_store(&fail_all, true);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, origin + 900);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	set_number(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 77);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_BACKLASH_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	disconnect_device();
+	atomic_store(&fail_all, false);
+	atomic_store(&motor, false);
+}
+
+// Removing the device while it moves stops the motor and detaches it; it attaches again when it returns.
+static void removal_during_motion(void) {
+	connect_device();
+	int stops = atomic_load(&stop_calls);
+	start_move(atomic_load(&position) + 300);
+	usb_callback(NULL, (libusb_device *)&usb_devices[0], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 0));
+	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
+	atomic_store(&motor, false);
+	usb_callback(NULL, (libusb_device *)&usb_devices[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 1));
+	reset_simulator_context(&eaf);
+	enumerate_simulator_device();
+	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	// the returned device connects and works again
+	connect_device();
+	start_move(atomic_load(&position) + 10);
+	ASSERT_TRUE(finish_motion_at(atomic_load(&requested_position)));
+	disconnect_device();
 }
 
 static void hotplug_capacity_and_failed_attach_retry(void) {
@@ -492,6 +867,12 @@ static void hotplug_capacity_and_failed_attach_retry(void) {
 	ASSERT_TRUE(wait_atomic(&attach_attempts, attempts + 1));
 	usb_callback(NULL, (libusb_device *)&usb_devices[1], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
 	ASSERT_TRUE(wait_atomic(&attached_mask, 3));
+	// a duplicate arrival of an attached device attaches nothing
+	attempts = atomic_load(&attach_attempts);
+	usb_callback(NULL, (libusb_device *)&usb_devices[1], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	indigo_usleep(300000);
+	ASSERT_EQ_INT(attempts, atomic_load(&attach_attempts));
+	ASSERT_EQ_INT(3, atomic_load(&attached_mask));
 	for (int i = 2; i < 5; i++) {
 		atomic_store(&visible_count, i + 1);
 		usb_callback(NULL, (libusb_device *)&usb_devices[i], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
@@ -530,6 +911,19 @@ int main(void) {
 		{ "relative motion in both directions", relative_motion_in_both_directions },
 		{ "synchronize position without motion", synchronize_position_without_motion },
 		{ "settings and reconnect readback", settings_and_readback },
+		{ "driver-specific property names", driver_specific_property_names },
+		{ "idle abort and no-op moves", idle_abort_and_noop_moves },
+		{ "abort overtakes a queued move", abort_overtakes_queued_move },
+		{ "poll in flight versus a request", poll_versus_request },
+		{ "hand controller motion", hand_controller_motion },
+		{ "stalled move", stalled_move },
+		{ "temperature readings", temperature_readings },
+		{ "settings during motion and refusals", settings_during_motion_and_refusals },
+		{ "disconnect during motion", disconnect_during_motion },
+		{ "transport loss", transport_loss },
+		// checked before removal_during_motion resets the record of defined properties
+		{ "legacy names never defined", assert_no_unprefixed_properties },
+		{ "removal during motion", removal_during_motion },
 		{ "five devices and attach retry", hotplug_capacity_and_failed_attach_retry }
 	};
 	int result = indigo_run_tests("ASI EAF SDK integration", tests, ARRAY_SIZE(tests));

@@ -66,6 +66,16 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --model <askar-waf>     Select simulated model, default is askar-waf\n");
+	printf("  --firmware <version>    Report this firmware; below 1.0.3 backlash is not supported\n");
+	printf("  --position <n>          Start at logical position n\n");
+	printf("  --max-step <n>          Start with max travel n\n");
+	printf("  --backlash <n>          Start with backlash n\n");
+	printf("  --reverse <0|1>         Start with reversed motor direction\n");
+	printf("  --motor-mode <0|1>      Start in high performance (0) or balanced (1) mode\n");
+	printf("  --moving-to <n>         Start moving towards position n\n");
+	printf("  Faults are read from $INDIGO_ASKAR_FAULT as '<command letter> <action>', where action is\n");
+	printf("  silent, malformed, error, close, partial, overlong, split, slow, stall, position=<n> or\n");
+	printf("  move=<n>, optionally prefixed with sticky_ to stay armed.\n");
 	printf("  --firmware <version>    Override firmware version\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -77,6 +87,7 @@ static int serial_fd = -1;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int32_t position = 50000;
+static bool stalled = false;
 static int32_t target = 50000;
 static int32_t max_step = 100000;
 static int backlash = 0;
@@ -112,8 +123,13 @@ static bool consume_fault(char command, char *action, size_t action_size) {
 	bool matched = fscanf(file, " %c %63s", &target, value) == 2 && target == command;
 	fclose(file);
 	if (matched) {
-		unlink(path);
-		snprintf(action, action_size, "%s", value);
+		// a sticky_ action stays armed until the test removes the file
+		if (!strncmp(value, "sticky_", 7)) {
+			snprintf(action, action_size, "%s", value + 7);
+		} else {
+			unlink(path);
+			snprintf(action, action_size, "%s", value);
+		}
 	}
 	return matched;
 }
@@ -131,7 +147,7 @@ static void *background(void *arg) {
 	(void)arg;
 	while (running) {
 		pthread_mutex_lock(&state_mutex);
-		if (position != target) {
+		if (position != target && !stalled) {
 			int32_t delta = target - position;
 			int32_t step = 200;
 			if (delta > 0) {
@@ -173,6 +189,18 @@ static bool parse_args(int argc, char *argv[]) {
 				fprintf(stderr, "Unknown model '%s'\n", argv[i]);
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--position") && i + 1 < argc) {
+			position = target = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "--max-step") && i + 1 < argc) {
+			max_step = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "--backlash") && i + 1 < argc) {
+			backlash = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "--reverse") && i + 1 < argc) {
+			reverse = atoi(argv[++i]) != 0;
+		} else if (!strcmp(argv[i], "--motor-mode") && i + 1 < argc) {
+			motor_mode = atoi(argv[++i]) != 0;
+		} else if (!strcmp(argv[i], "--moving-to") && i + 1 < argc) {
+			target = atoi(argv[++i]);
 		} else if (!strcmp(argv[i], "--firmware")) {
 			if (++i == argc) {
 				fprintf(stderr, "--firmware requires a value\n");
@@ -291,6 +319,13 @@ static bool parse_int(const char *s, int32_t *value) {
 	return true;
 }
 
+// The backlash commands exist since firmware 1.0.3.
+static bool backlash_supported(void) {
+	int major = 0, minor = 0, patch = 0;
+	sscanf(firmware, "%d.%d.%d", &major, &minor, &patch);
+	return major > 1 || (major == 1 && (minor > 0 || patch >= 3));
+}
+
 static int32_t clamp(int32_t value, int32_t min, int32_t max) {
 	if (value < min) {
 		return min;
@@ -329,6 +364,34 @@ static void dispatch_command(int fd, const char *frame, int length) {
 				serial_fd = -1;
 			}
 			return;
+		}
+		if (!strcmp(action, "partial")) {
+			// a reply cut short: no terminator follows
+			serial_simulator_write_all(fd, "Fp12", 4);
+			return;
+		}
+		if (!strcmp(action, "overlong") && cmd == 'p') {
+			serial_simulator_write_all(fd, "Fp123456789#\r\n", 15);
+			return;
+		}
+		if (!strcmp(action, "stall")) {
+			// the motor accepts the next move and does not turn, until a stop
+			pthread_mutex_lock(&state_mutex);
+			stalled = true;
+			pthread_mutex_unlock(&state_mutex);
+		}
+		if (!strcmp(action, "slow")) {
+			// the reply arrives late, while the next request is already accepted
+			usleep(400000);
+		}
+		if (!strncmp(action, "move=", 5)) {
+			// motion started by another controller (the Wi-Fi application)
+			int32_t value;
+			if (parse_int(action + 5, &value)) {
+				pthread_mutex_lock(&state_mutex);
+				target = clamp(value, 0, max_step);
+				pthread_mutex_unlock(&state_mutex);
+			}
 		}
 		if (!strncmp(action, "position=", 9)) {
 			int32_t value;
@@ -372,6 +435,7 @@ static void dispatch_command(int fd, const char *frame, int length) {
 		}
 		case 'S':
 			pthread_mutex_lock(&state_mutex);
+			stalled = false;
 			target = position;
 			pthread_mutex_unlock(&state_mutex);
 			sim_printf(fd, "FS");
@@ -396,7 +460,17 @@ static void dispatch_command(int fd, const char *frame, int length) {
 			current_position = position;
 			pthread_mutex_unlock(&state_mutex);
 
-			sim_printf(fd, "Fp%d", current_position);
+			if (!strcmp(action, "split")) {
+				// the reply arrives in two pieces
+				char frame[32];
+				int length = snprintf(frame, sizeof(frame), "Fp%d#\r\n", current_position);
+				serial_simulator_write_all(fd, frame, 3);
+				usleep(50000);
+				serial_simulator_write_all(fd, frame + 3, (size_t)length - 3);
+				log_event("TX", frame);
+			} else {
+				sim_printf(fd, "Fp%d", current_position);
+			}
 			break;
 		}
 		case 'Q': {
@@ -459,6 +533,10 @@ static void dispatch_command(int fd, const char *frame, int length) {
 			sim_printf(fd, "FI%s", model_name);
 			break;
 		case 'b':
+			if (!backlash_supported()) {
+				sim_send_error(fd);
+				break;
+			}
 			pthread_mutex_lock(&state_mutex);
 			int current_backlash = backlash;
 			pthread_mutex_unlock(&state_mutex);
@@ -466,7 +544,7 @@ static void dispatch_command(int fd, const char *frame, int length) {
 			break;
 		case 'B': {
 			int32_t value;
-			if (!parse_int(body, &value)) {
+			if (!backlash_supported() || !parse_int(body, &value)) {
 				sim_send_error(fd);
 				break;
 			}

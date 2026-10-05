@@ -110,3 +110,56 @@ this run needed no production change.
 - Simulated tests run: 17; passed: 17 (unchanged by this record).
 - Hardware tests run: 10; passed: 10, against a physical FCUSB Focuser on macOS arm64, without
   physical hot-plug.
+
+## Focuser testing rules alignment (3.0.0.11, 2026-10-05)
+
+The fake SDK suite was checked against the extended "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` (fa5f64839). The FCUSB is relative-only and open loop, so the
+rules for focusers without position readback apply: an aborted move ends `FOCUSER_STEPS` ALERT and no
+later completion stop is sent (`abort_motion`); disconnecting during a move stops the motor before the
+handle is closed (`fcusb_close()` calls `libfcusb_stop()`), which `disconnect_during_motion` now pins
+to exactly one stop.
+
+### Defects found and fixed (reproduced against a pre-fix 3.0.0.10 build of the same test)
+
+- **A zero step move ended ALERT.** The rules require a zero step to end OK promptly without a command;
+  the driver refused it as a failed move. It now ends OK without any SDK call. Test:
+  `move_command_failures`.
+- **Abort while idle stopped the motor and published `FOCUSER_STEPS` ALERT,** and a request with the
+  `ABORT_MOTION` item OFF did the same. The abort now acts only on a running or queued move, or on a
+  motor a refused stop left running (new `running` flag), and otherwise ends OK without a call and
+  leaves `FOCUSER_STEPS` alone. Test: `abort_while_idle`.
+
+### Added coverage
+
+| Rule | Test |
+| --- | --- |
+| `X_FOCUSER_FREQUENCY` not defined before connect; `FOCUSER_LIMITS`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE` undefined | `property_contract` |
+| Refused connect leaves no focuser or `X_` property defined | `open_failure` |
+| Rejection at each write of the move sequence sends no later write | `move_command_failures` |
+| Driver-owned settings (power, frequency) send no command until the next move | `power_and_frequency` |
+| Aborted move stops once, `ABORT_MOTION` back OFF | `abort_motion` |
+| Refused abort stop: switch OFF, motor still running, move not reported completed, retry stops | `abort_command_failure` |
+| Refused completion stop: the next abort stops the motor | `stop_failure` |
+| Abort overtakes a move still queued: one stop, the move is never started | `abort_overtakes_queued_move` |
+| Second move requested while one runs: no second start, original duration kept | `overlapping_move` |
+| Disconnect and removal during a move stop the motor once before close; not BUSY after reconnect | `disconnect_during_motion`, `removal_during_motion` |
+| Transport loss during a move: ALERT, later requests ALERT without stale BUSY, disconnect completes, reconnect works | `transport_loss` (fake `lost` flag fails every transfer on an open handle) |
+
+### Rules not applicable
+
+- No position readback, absolute moves, SYNC, limits, reversal, backlash, temperature, compensation or
+  mode: the controller only drives a direction for a time. Their absence is asserted.
+- No identity or firmware query in `libfcusb`, so the `INFO` identity rules do not apply.
+- No polling, so the requests-versus-polls row does not apply.
+- No shared controller.
+
+```sh
+python3 tools/run_driver_test.py focuser_fcusb
+```
+
+Recorded run: 24/24 OK (20 cases of `test_focuser_fcusb_sdk` and the 4 FCUSB cases of the shared
+`test_focuser_fcusb_usb` smoke test).
+
+- Simulated tests run: 24 (fake SDK); passed: 24.
+- Hardware tests run: 0 in this step (the 10/10 hardware record above predates it).

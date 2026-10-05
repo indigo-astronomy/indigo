@@ -183,7 +183,8 @@ static void dispatch(const uint8_t *frame) {
 		accept("STOP", frame);
 		serial_motion_stop(&motion);
 		motion_active = batch_active = stalled = false;
-		next_status_time = serial_motion_time() + 0.02;
+		// The status that follows a stop; the "slow_stop" profile sends it later, after the next command could start.
+		next_status_time = serial_motion_time() + (!strcmp(profile, "slow_stop") ? 0.06 : 0.02);
 		motion_status = STATUS_FORWARD;
 		return;
 	}
@@ -200,6 +201,11 @@ static void dispatch(const uint8_t *frame) {
 		motion_status = command == 0x40 ? STATUS_FORWARD : STATUS_BACKWARD;
 		motion_active = true;
 		batch_active = false;
+		if (motion.duration == 0 && !stalled) {
+			// A move of no steps completes at once, before a command that follows it is read.
+			motion_active = false;
+			send_status(motion_status);
+		}
 		return;
 	}
 	if ((command & ~0x0A) == 0x80) {
@@ -310,11 +316,11 @@ static bool parse_args(int argc, char **argv) {
 		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
 			profile = argv[++i];
 		} else {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|fallback|silent]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|fallback|silent|slow_stop]\n", argv[0]);
 			return false;
 		}
 	}
-	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "fallback") || !strcmp(profile, "silent");
+	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "fallback") || !strcmp(profile, "silent") || !strcmp(profile, "slow_stop");
 }
 
 int main(int argc, char **argv) {

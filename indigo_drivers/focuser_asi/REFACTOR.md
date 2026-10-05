@@ -247,3 +247,54 @@ Covered by `rejected change while moving` in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && ./build/integration/test_focuser_asi_sdk
 ```
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.36)
+
+The fake-SDK suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` and extended from 11 to 21 cases. All cases share one process and one fake EAF, so a failure early in the sequence leaves state to later cases; against a copy of the 3.0.0.35 driver the full suite fails from `polling termination and safe retry` onward, and run in isolation (`INDIGO_TEST_CASE_FILTER`) the new cases `idle abort and no-op moves`, `hand controller motion`, `stalled move`, `temperature readings` and `settings during motion and refusals` each fail against 3.0.0.35. `abort overtakes a queued move` and `poll in flight versus a request` use the idle motion poll added in 3.0.0.36 as their gate, so they cannot run against the old driver; `disconnect during motion`, `transport loss` and `removal during motion` pass against both and are coverage additions. Against 3.0.0.36 the recorded run passes 21 of 21.
+
+### Defects fixed
+
+| Defect | Impact | Fix | Regression case |
+| --- | --- | --- | --- |
+| Aborted move ended OK | After a confirmed stop the motion properties settled OK at the stop point. | They end ALERT with value = target = stop point; `FOCUSER_ABORT_MOTION` is BUSY (now published with the item cleared) until the motor is seen stopped, then OK. | `abort confirmation and switch reset` |
+| Idle and OFF aborts called `EAFStop` | An abort with nothing running, or a request with the item OFF, stopped the motor anyway. | Answered OK without an SDK call. | `idle abort and no-op moves` |
+| Abort of a queued move | The overtaken move ended ALERT but the following finalizer published it OK. | The overtaken move is never started and ends ALERT where the focuser is; the stop is sent once. | `abort overtakes a queued move` |
+| Persistent read failure did not stop the motor | A failed `EAFIsMoving`/`EAFGetPosition` during a move ended ALERT at once and left the motor running. | A single failure is retried; three stop the motor and end ALERT. | `polling termination and safe retry` |
+| Stall undetected | A move the SDK kept reporting with a frozen position was polled forever. | Twenty unchanged polls (10 s) stop the motor and end ALERT; a fresh move works. | `stalled move` |
+| Hand-controller motion invisible | Nothing polled the motor while idle, so hand-controller (or running-at-connect) motion was never published. | The 2 s timer also polls motion while idle: such motion is BUSY with target = measured position until it ends OK; no SDK move or stop; a failed idle read publishes ALERT until a good one. | `hand controller motion` |
+| Temperature sentinel and implausible readings | The no-sensor sentinel (-273 °C) was stored as the value; a reading outside the sensor range was published OK. | The sentinel publishes IDLE keeping the value; an implausible reading is ALERT keeping the last value. | `temperature readings` |
+| Settings changed during motion; limit excluding the position | Limits, backlash, reverse, compensation and mode requested during a move were applied; a maximum below the position was written. | `reject_change` guards while a move is BUSY; the limits handler also refuses (without an SDK call) a maximum below the position or a change that arrives while a move starts; refused values are restored. | `settings during motion and refusals` |
+| Refused reverse/beep showed the requested switch | A failed `EAFSetReverse`/`EAFSetBeep` kept the requested item with ALERT. | The device value is read back into the switch. | source audit (the fake has no reverse/beep failure injection) |
+| No-op moves and failed SYNC | A GOTO to the current position or zero steps called `EAFMove` and waited for a poll; a failed SYNC left the requested target. | No-op moves end OK without an SDK call; a failed SYNC keeps value = target = real position. | `idle abort and no-op moves`, `settings during motion and refusals` |
+
+### Added cases
+
+`idle abort and no-op moves`, `abort overtakes a queued move`, `poll in flight versus a request` (the fake holds an idle `EAFIsMoving` reply 400 ms while a GOTO arrives; the first result publication is OK at the target), `hand controller motion`, `stalled move`, `temperature readings`, `settings during motion and refusals`, `disconnect during motion` (stop before close, no SDK call after close, OK at the real position after reconnect, shutdown refused while connected), `transport loss` (every SDK call fails: ALERT without stale BUSY, disconnect completes), `removal during motion` (USB removal while moving stops the motor and detaches; the returned device connects and moves). The hot-plug case now also checks that a duplicate arrival attaches nothing, and the refused connect that no focuser or EAF property stays defined.
+
+### Rules not applicable or left open
+
+Single-command moves (`EAFMove`), so no multi-command sequence; the SDK exposes no speed, so `FOCUSER_SPEED` stays hidden; the minimum limit is fixed at 0; replies cannot be split or malformed at the SDK boundary; one model family, so no model-dependent command set. The driver-specific properties kept their historical `EAF_` names here; they were renamed with the `X_` prefix in 3.0.0.37 (next section).
+
+### Test summary
+
+- Fake-SDK tests: 23 run, 23 passed after the 3.0.0.37 rename (`python3 tools/run_driver_test.py focuser_asi`, macOS arm64).
+- Hardware tests: 0 run, 0 passed.
+
+## Driver-specific property prefix (2026-10-05, 3.0.0.37)
+
+Version 37. The three driver-specific properties lacked the `X_` prefix the focuser testing rules require for
+custom properties. With user approval they were renamed, without a backward-compatible alias:
+`EAF_BEEP_ON_MOVE` -> `X_BEEP_ON_MOVE`, `EAF_CUSTOM_SUFFIX` -> `X_CUSTOM_SUFFIX` and `EAF_BATTERY_INFO` ->
+`X_BATTERY_INFO`. The names follow the other ZWO and Player One drivers (`X_CUSTOM_SUFFIX` in `wheel_asi`,
+`ccd_asi`, `wheel_playerone`, `ccd_playerone`), without the vendor prefix. Item names, labels, groups,
+permissions and connect-scoped visibility are unchanged; only the property name strings in the `.driver` source
+changed, the C identifiers keep their `EAF_` macros. The persisted `EAF_BEEP_ON_MOVE` value of an existing
+configuration is not migrated; the switch starts at the value read from the focuser until saved again.
+
+New fake-SDK case `driver-specific property names`: no X_ property is defined while disconnected; after connect
+`X_BEEP_ON_MOVE` (`ON`, `OFF`) and `X_CUSTOM_SUFFIX` (`SUFFIX`) are defined and `X_BATTERY_INFO` stays hidden when
+the SDK reports no battery support; with battery support enabled in the fake (`EAFGetBatteryInfo` returns data)
+`X_BATTERY_INFO` is defined and publishes the charge, voltage and cycle count; after disconnect all three are
+deleted. The legacy `EAF_` names are asserted never defined throughout that case and in `legacy names never defined`,
+which checks the record of every property defined since start-up (placed before `removal during motion`, which
+resets that record). The existing cases use the new names. No hardware test references these properties.

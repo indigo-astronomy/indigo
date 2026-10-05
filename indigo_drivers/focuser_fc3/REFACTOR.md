@@ -92,10 +92,62 @@ needs and nothing else:
   profile is untouched.
 - Hardware acceptance from `DRIVER_TESTING_RULES.md` was not run; no FocusCube 3 was available.
 
+## Focuser testing rules alignment (2026-10-05)
+
+The suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839) and extended where a relevant rule was not verified. The simulator fault file gained an optional argument and the actions `value <reply>` (replaced reply, e.g. a mismatched echo or malformed status), `slow` (status reply held 0.5 s, inside the driver timeout), `split`, `overlong`, `truncated`, `stall` (move accepted, motor never turns, cleared by `FH`) and `external <target>` (hand-controller move). The runner now plans its forked cases.
+
+Driver version 3.0.0.8 → 3.0.0.9.
+
+### Defects found and fixed
+
+- `FC3-1` An aborted move was published ALERT, but the next status poll turned it OK because the poll settled every non-OK `FOCUSER_POSITION` whose motor was idle, and the target stayed at the requested position. The abort now reads the stopped position, publishes both motion properties ALERT with value equal to target, and the poll completes only a move the driver is following. Test: `motion_progress_and_abort` (two later polls keep the ALERT and the stopped position).
+- `FC3-2` An abort while idle sent `FH` and published the motion properties ALERT. Now OK without a command. Test: `abort_while_idle` (also an abort request with the item OFF).
+- `FC3-3` Any reply counted as an acknowledgement: a garbled or mismatched echo of `FM:`, `FG:`, `FN:`, `SP:`, `BL:` or `FD:` was published as success, and a setting failure left the requested value shown. Commands are now acknowledged only by their exact echo; a failure shows the value the controller last confirmed, a mismatched echo the value it applied. Test: `settings_reported_failures`, `motion_command_failures`.
+- `FC3-4` A relative move published `FOCUSER_STEPS` OK while the motor ran (only `FOCUSER_POSITION` was set BUSY). Both are BUSY now. Test: `relative_move`.
+- `FC3-5` A status poll whose reply arrived after a move request was accepted, but before its handler ran, published the request OK (the poll settled any non-OK state while the motor was idle). The poll now leaves a request the bus accepted alone and completes only moves it follows. Test: `request_survives_poll`.
+- `FC3-6` A failed, malformed, overlong or truncated status line was silently ignored (or partly parsed: `atoi`/`indigo_atod` turned garbage into 0). The status line is validated as a whole; an idle failure publishes `FOCUSER_POSITION` and `FOCUSER_TEMPERATURE` ALERT with the last valid values and the next good poll restores OK; replies must end in a line end. Test: `poll_failure_recovery`, `temperature_failures`.
+- `FC3-7` A failed status read or a stalled motor during a move kept the move BUSY forever. One lost status line is retried, a second one, or five polls without progress, send `FH` and end the move ALERT. Test: `motion_poll_failures`, `stalled_move`.
+- `FC3-8` A hand-controller move started during the session was published BUSY/OK but its end left the target at the old value. External moves now end with the target at the measured position. Test: `external_motion_during_session`, `external_motion_observed`.
+- `FC3-9` A failed status or speed query at connect was ignored and the controller published with driver defaults. Both are mandatory now; a failure refuses the connection, resets the identity and releases the port. Test: `status_query_failure`, `connect_query_refused`.
+- `FC3-10` `FOCUSER_LIMITS` accepted an empty interval (the base handler swapped it) or one excluding the focuser, and `FOCUSER_POSITION`/`FOCUSER_STEPS` ranges ignored the limits. Such changes are now ALERT with the old limits kept; accepted limits set both ranges (republished). Test: `limits_contract`, `limits_clamp_goto` (a sync is now inside the limits too, because the framework clamps to the published range).
+- `FC3-11` A GOTO to the current position sent `FM:` and waited for a poll. It now ends OK at once without a command; a relative move at the limit it approaches sends nothing. Test: `sync_and_goto`, `moves_without_travel`.
+- `FC3-12` Backlash, reverse, limits and a sync were accepted during a move. They are refused without a command now, and both motion properties refuse a second move while any move runs (`motion_active` keeps the guard while a refused property shows ALERT; progress polls keep that ALERT visible until the move ends). Test: `settings_refused_during_motion`, `overlap_rejected` (the running move ends at its own target with one `FM:`).
+- `FC3-13` A failed sync left the requested value as target. The target is restored to the real position. Test: `motion_command_failures`.
+
+All new and changed cases were run against the pre-fix driver (built from a copy of the 3.0.0.8 sources): 21 of 38 fail there.
+
+### Rules not applicable
+
+- Relative-only profiles, model or firmware variants: one controller, one protocol; `FV` is the only optional identity query and is covered by `firmware_query_failure`.
+- Zero step: `FOCUSER_STEPS` has a minimum of 1 (moves without travel are covered instead).
+- Temperature sentinel: the protocol documents no "no sensor" value; implausible readings outside -55…125 °C and malformed ones are ALERT.
+- `FOCUSER_MODE`, `FOCUSER_COMPENSATION`: the controller has no compensation; their absence is asserted.
+- Homing, calibration, other momentary switches, refusal reasons: not in the protocol; the controller answers with echoes only.
+- Shared controllers: single device; `ADDITIONAL_INSTANCES` is covered by `additional_instance`.
+- Legacy names: the driver defines no driver-specific properties.
+
+### Open
+
+- After transport loss an abort with nothing moving ends OK without a command (it has nothing to stop); every other request ends ALERT.
+
+### Scenario additions
+
+| Rule area | New or changed scenario |
+| --- | --- |
+| Refused connect | `status_query_failure`, `connect_query_refused` |
+| Additional instance | `additional_instance` |
+| Zero travel, limits and ranges | `moves_without_travel`, `limits_contract`, `limits_clamp_goto` |
+| Abort contract | `motion_progress_and_abort`, `abort_while_idle` |
+| Overlap and settings during motion | `overlap_rejected`, `settings_refused_during_motion` |
+| External motion | `external_motion_during_session`, `external_motion_observed` |
+| Failures during motion | `stalled_move`, `motion_poll_failures`, `motion_command_failures` |
+| Requests versus polls | `request_survives_poll` |
+| Readback and temperature failures | `poll_failure_recovery`, `temperature_failures`, `settings_reported_failures` |
+
 ```sh
 make -C indigo_test build/integration/test_focuser_fc3_simulator
 cd indigo_test && ./build/integration/test_focuser_fc3_simulator
 ```
 
-- Simulated tests run: 28; passed: 28.
+- Simulated tests run: 38 in the recorded run (see README `## Testing`); the same 38 against the pre-fix 3.0.0.8 driver failed 21.
 - Hardware tests run: 0; passed: 0.

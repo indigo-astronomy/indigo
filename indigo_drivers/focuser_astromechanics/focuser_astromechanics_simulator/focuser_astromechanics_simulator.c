@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <errno.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -28,12 +29,18 @@ typedef struct {
 	bool headless;
 	bool trace;
 	const char *ready_file;
+	char control_file[PATH_MAX];
+	char event_file[PATH_MAX];
+	int position;
+	int moving_to;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.ready_file = NULL
+	.ready_file = NULL,
+	.position = 0,
+	.moving_to = -1
 };
 
 static const char *simulator_name = "focuser_astromechanics";
@@ -49,6 +56,12 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --position <n>          Start the lens at position n (default 0)\n");
+	printf("  --moving-to <n>         Start the lens moving towards position n\n");
+	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR, where\n");
+	printf("  SELECTOR is the command letter (P, M, A) and ACTION is silent, malformed, overlong,\n");
+	printf("  partial, split or stall (M only), optionally prefixed with sticky_ to stay armed.\n");
+	printf("  Every complete command is recorded in <ready-file>.events.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -59,6 +72,16 @@ static void signal_handler(int sig) {
 		close(serial_fd);
 		serial_fd = -1;
 	}
+}
+
+static int clamp_int(int value, int min, int max) {
+	if (value < min) {
+		return min;
+	}
+	if (value > max) {
+		return max;
+	}
+	return value;
 }
 
 static bool parse_args(int argc, char *argv[]) {
@@ -77,22 +100,18 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+			snprintf(options.control_file, sizeof(options.control_file), "%s.control", options.ready_file);
+			snprintf(options.event_file, sizeof(options.event_file), "%s.events", options.ready_file);
+		} else if (!strcmp(argv[i], "--position") && i + 1 < argc) {
+			options.position = clamp_int(atoi(argv[++i]), 0, 9999);
+		} else if (!strcmp(argv[i], "--moving-to") && i + 1 < argc) {
+			options.moving_to = clamp_int(atoi(argv[++i]), 0, 9999);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
 		}
 	}
 	return true;
-}
-
-static int clamp_int(int value, int min, int max) {
-	if (value < min) {
-		return min;
-	}
-	if (value > max) {
-		return max;
-	}
-	return value;
 }
 
 static void write_response(const char *response) {
@@ -102,19 +121,76 @@ static void write_response(const char *response) {
 	serial_simulator_write_all(serial_fd, response, strlen(response));
 }
 
+static void record_event(const char *command) {
+	if (*options.event_file == '\0') {
+		return;
+	}
+	FILE *file = fopen(options.event_file, "a");
+	if (file != NULL) {
+		fprintf(file, "%s\n", command);
+		fclose(file);
+	}
+}
+
+// Returns the armed action when its selector matches the command letter.
+static bool take_control(const char *command, char *action, size_t size) {
+	if (*options.control_file == '\0') {
+		return false;
+	}
+	FILE *file = fopen(options.control_file, "r");
+	if (file == NULL) {
+		return false;
+	}
+	char requested[32] = { 0 }, selector[8] = { 0 };
+	int fields = fscanf(file, "%31s %7s", requested, selector);
+	fclose(file);
+	if (fields != 2 || selector[0] != command[0]) {
+		return false;
+	}
+	if (!strncmp(requested, "sticky_", 7)) {
+		snprintf(action, size, "%s", requested + 7);
+	} else {
+		unlink(options.control_file);
+		snprintf(action, size, "%s", requested);
+	}
+	return true;
+}
+
 static void handle_command(const char *command) {
 	position = (int)serial_motion_update(&motion);
 	char response[COMMAND_LENGTH] = { 0 };
+	char action[32] = { 0 };
 
 	if (options.trace) {
 		fprintf(stderr, "<- %s#\n", command);
 	}
+	record_event(command);
+	bool fault = take_control(command, action, sizeof(action));
 
 	if (!strcmp(command, "P")) {
-		snprintf(response, sizeof(response), "%04d#\n", position);
-		write_response(response);
+		if (fault && !strcmp(action, "silent")) {
+			return;
+		} else if (fault && !strcmp(action, "malformed")) {
+			write_response("4a0#\n");
+		} else if (fault && !strcmp(action, "overlong")) {
+			write_response("12345#\n");
+		} else if (fault && !strcmp(action, "partial")) {
+			snprintf(response, sizeof(response), "%02d", position / 100);
+			write_response(response);
+		} else if (fault && !strcmp(action, "split")) {
+			snprintf(response, sizeof(response), "%04d#\n", position);
+			serial_simulator_write_all(serial_fd, response, 2);
+			usleep(100000);
+			write_response(response + 2);
+		} else {
+			snprintf(response, sizeof(response), "%04d#\n", position);
+			write_response(response);
+		}
 	} else if (command[0] == 'M') {
-		serial_motion_start(&motion, clamp_int(atoi(command + 1), 0, 9999), 1000);
+		// A stalled lens accepts the command and does not move.
+		if (!fault || strcmp(action, "stall")) {
+			serial_motion_start(&motion, clamp_int(atoi(command + 1), 0, 9999), 1000);
+		}
 	} else if (command[0] == 'A') {
 		aperture = clamp_int(atoi(command + 1), 0, 50);
 	} else if (!strcmp(command, "V")) {
@@ -177,6 +253,11 @@ int main(int argc, char *argv[]) {
 	}
 	if (!options.headless) {
 		printf("ASTROMECHANICS focuser simulator ready on %s\n", port);
+	}
+	serial_motion_sync(&motion, options.position);
+	position = options.position;
+	if (options.moving_to >= 0) {
+		serial_motion_start(&motion, options.moving_to, 1000);
 	}
 
 	run_protocol_loop();

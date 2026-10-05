@@ -91,7 +91,8 @@ static bool inject(char command) {
 		}
 		fclose(file);
 		if (!strcmp(key, "external")) {
-			serial_motion_sync(&motion, atoi(action));
+			// Hand-controller motion: finite speed, no M/p completion frames.
+			serial_motion_start(&motion, atoi(action), 1000);
 			motion_active = false;
 			unlink(fault_file);
 			return false;
@@ -116,7 +117,11 @@ static bool inject(char command) {
 	}
 	event("FAULT", action);
 	char response = command == 'q' || command == 'P' ? 'p' : command == 'H' ? 'H' : (char)tolower((unsigned char)command);
-	if (!strcmp(action, "silent")) {
+	if (!strcmp(action, "slow")) {
+		// Delayed but valid reply: holds the driver's queue on this transaction.
+		usleep(800000);
+		return false;
+	} else if (!strcmp(action, "silent")) {
 		return true;
 	} else if (!strcmp(action, "close")) {
 		running = 0;
@@ -227,6 +232,9 @@ int main(int argc, char **argv) {
 		firmware = "1.1.123";
 	} else if (!strcmp(profile, "mfoc2")) {
 		firmware = "2.1.123";
+	} else if (!strcmp(profile, "alternate")) {
+		model = "FMC";
+		firmware = "1.1.077";
 	}
 	maximum = *firmware == '1' ? 65535 : 250000;
 	if (!strcmp(profile, "nc")) {
@@ -234,6 +242,16 @@ int main(int argc, char **argv) {
 	} else if (!strcmp(profile, "alternate")) {
 		temperature = -5;
 		serial_motion_sync(&motion, 500);
+	} else if (!strcmp(profile, "start_state")) {
+		// Settings the controller keeps from a previous session, none of them a driver default.
+		temperature = -3.5;
+		backlash = 17;
+		direction = 1;
+		maximum = 40000;
+		serial_motion_sync(&motion, 1234);
+	} else if (!strcmp(profile, "moving")) {
+		// Hand-controller motion already running when the driver connects.
+		serial_motion_start(&motion, 5000, 1000);
 	}
 	const char *event_path = getenv("INDIGO_LACERTA_EVENTS");
 	events = event_path ? fopen(event_path, "w") : NULL;

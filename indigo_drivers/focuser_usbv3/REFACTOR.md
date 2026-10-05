@@ -250,3 +250,34 @@ the unterminated `FTxxxA` reply and the completion marker the unit sends on its 
 - Simulated tests run: 27; passed: 27.
 - Hardware tests run: 16; passed: 16, twice in a row, against a physical USB_Focus v3 (firmware
   1321) on macOS arm64.
+
+## Focuser testing rules alignment (3.0.0.12, 2026-10-05)
+
+The suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839). The simulator fault file gained the actions `slow` (reply held 0.3 s, inside the driver timeout), `ignore` (setting acknowledged but not applied), `value=<reply>` (replaced reply) and `external=<target>` (hand-controller move, modelled without a completion marker); the runner now plans its forked cases. No hardware run was made for this change: the hardware result recorded above is for 3.0.0.11, and the idle position poll and the stricter connect sequence below still need a hardware acceptance run.
+
+### Defects found and fixed
+
+- `DRV-USBV3-105` A failed stop was reported as stopped: `usbv3_quit()` cleared `moving` before it knew whether the stop marker arrived, so a lost `FQUITx` answer let the next poll publish the move OK while the motor could still run. `moving` is cleared only by the marker now; the move stays BUSY and the next abort stops it. Test: `abort_failure_reported`.
+- `DRV-USBV3-106` A position readback that kept failing during a move ended it ALERT but left the motor running. The finalizer sends the stop first now. Test: `motion_readback_failure`.
+- `DRV-USBV3-107` A move the hand controller made was never published: the driver polled only the temperature while idle. The timer now reads the position every two seconds (the temperature still every ten); a changed position is followed BUSY until two readings agree, then OK with the target at the measured position; a failed idle read is ALERT with the last valid position and the next good one restores OK; a request accepted while the poll's reply is outstanding owns the motion properties, and the ALERT of a failed or aborted move survives the polls. Test: `external_motion_during_session`, `external_motion_observed`, `idle_poll_failure_recovery`, `request_survives_poll`, `abort_motion`, `motion_readback_failure`.
+- `DRV-USBV3-108` Failed connect-time queries were ignored, so a controller that never answered the configuration query was published connected with "Unknown" and driver defaults. The configuration, the position, `FMANUA` and the compensation sign are mandatory now; a failure refuses the connection and the next connect works. Test: `config_query_failure`, `connect_query_refused`.
+- `DRV-USBV3-109` Setting writes were reported OK on any reply, the step size was never confirmed, and a failed write left the requested value shown. Writes have to be acknowledged with `DONE` (`A`, `!` for the modes) and are confirmed by reading the settings back; a mismatch or failure is ALERT showing what the controller holds (a partly applied compensation shows the applied item only). Test: `settings_readback_mismatch`, `settings_reported_failures`.
+- `DRV-USBV3-110` `FOCUSER_POSITION` and `FOCUSER_STEPS` ranges ignored the travel limit, and a limit below the focuser was written. The ranges follow the controller's maximum (republished on change) and such a limit is refused without `M`. Test: `limits_contract`, `limits_clamp`.
+- `DRV-USBV3-111` The travel limit, compensation, reverse motion, step size and mode were accepted during a move; a GOTO or relative move was accepted in automatic mode, where the controller moves on its own, and `FOCUSER_POSITION` stayed writable there. All of them are refused now; automatic mode republishes `FOCUSER_POSITION` read-only and manual mode writable. Test: `settings_refused_during_motion`, `automatic_mode_contract`.
+- `DRV-USBV3-112` A failed, malformed or implausible temperature reading was dropped silently. It is ALERT with the last valid reading now and the next valid reading restores OK. Test: `temperature_failures`.
+- `DRV-USBV3-113` An abort request with the item OFF stopped a running move. It is answered without a command now. Test: `abort_while_idle`.
+
+Against the pre-fix 3.0.0.11 driver (built from a copy of its sources) 15 of the 38 scenarios fail (`truncated_reply_rejected` because it now waits for an idle poll the old driver never made). `test_focuser_usbv3_motion`, built from the shared `test_focuser_motion.c`, is unchanged and passes with 3.0.0.12.
+
+### Rules not applicable
+
+- Relative-only profile, model variants, no-sensor sentinel: one absolute controller; no documented "no sensor" value.
+- Zero step: `FOCUSER_STEPS` has a minimum of 1; a GOTO to the current position sends nothing (`absolute_move`).
+- SYNC: the controller has no sync command and `FOCUSER_ON_POSITION_SET` stays hidden.
+- Backlash: not supported by the controller, the property stays hidden.
+- An abort that overtakes a queued move publishes ALERT without `FQUITx`: nothing was started, so nothing is stopped.
+- Stall detection is the existing 60 s watchdog; a progress-based stall check was not added, the unit's slowest speed was not measured on hardware.
+- Shared controllers, legacy names: single device without driver-specific names other than `X_FOCUSER_STEP_SIZE`.
+
+- Simulated tests run: 38 in the recorded run (see README `## Testing`), with `test_focuser_usbv3_motion` alongside.
+- Hardware tests run: 16, passed: 16 on the USB_Focus v3 (3.0.0.12, macOS arm64, 2026-10-05), including the idle position poll and the stricter connect sequence. The first run failed the property contract only because the hardware suite still expected the fixed 1 to 65535 steps range; it now expects the steps and position maxima to follow the travel limit the unit reports.

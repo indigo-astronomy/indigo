@@ -164,3 +164,72 @@ The suite grew from 44 to 45 scenarios. `abort_overtakes_start` is new and cover
 
 - Simulated tests: 135 executed, 135 passed (45 ordinary scenarios run twice and the same 45 under AddressSanitizer).
 - Hardware tests: 0 executed, 0 passed.
+
+## Focuser testing rules alignment (3.0.0.6, 2026-10-05)
+
+The suite was checked against the "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` and extended where a rule applies to the FocusLynx. No
+hardware test was run.
+
+### Found defects
+
+| # | Defect | Fix | Regression test (fails against 3.0.0.5) |
+|---|---|---|---|
+| DRV-153 | An aborted move ended OK (and `FOCUSER_STEPS` with it), with the target of the request or the controller's `Targ Pos`. | `HALT` is followed by a status read; both motion properties end ALERT with value and target equal to the stopped position. | `abort_during_motion`, `abort_overtakes_start`, `move_after_abort`, `abort_failure_reported` |
+| DRV-154 | An abort while idle sent `HALT`, which also disables temperature compensation on the controller. | Without a running or queued move the abort ends OK without a command. | `abort_while_idle` |
+| DRV-155 | Disconnecting during a move closed the hub without halting the focuser. | `on_disconnect` sends `HALT` while a move is running or queued; after reconnect the position is OK at the stopped position. | `disconnect_during_motion` |
+| DRV-156 | A failed status poll published nothing, malformed `Curr Pos` values were parsed as 0, and a failure during a move left it BUSY while the motor ran unobserved. | Values are validated; an idle failure publishes `FOCUSER_POSITION` and `FOCUSER_TEMPERATURE` ALERT with the last values and the next good poll restores OK; during a move a third consecutive failure halts the focuser and ends ALERT. A later idle poll does not turn that ALERT into OK. | `poll_failure_recovery`, `move_poll_failures` |
+| DRV-157 | A motor reporting `IsMoving = 1` without advancing stayed BUSY forever, and a move that stopped short of its target was reported OK. | Five polls without progress halt the focuser and end ALERT; a move that stops elsewhere than its target ends ALERT. | `stalled_move` |
+| DRV-158 | A rejected, unacknowledged or malformed move or sync left the requested target published. | The target returns to the position the focuser has; both motion properties end ALERT. | `malformed_reply`, `partial_reply`, `overlong_reply`, `missing_acknowledgement`, `transport_loss`, `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
+| DRV-159 | `FOCUSER_LIMITS` was writable although the protocol has no command for the travel, `FOCUSER_STEPS` kept the range 0–99999, and a device type change did not propagate the new range of `FOCUSER_POSITION`. | `FOCUSER_LIMITS` is read-only; both motion properties take their maximum from `Max Pos` and are defined again when the type changes it. | `property_contract`, `limits_follow_max_pos` |
+| DRV-160 | Reverse motion and the device type were accepted during a move. | `reject_change` refuses both without a command while a move runs or is queued. | `settings_during_motion` |
+
+`hand_controller_motion` (uncommanded motion at finite speed published BUSY then OK with the target
+equal to the measured position) and the extended `overlap_rejected` pass against 3.0.0.5 too; they
+were added as coverage, not as reproducers. Uncommanded motion now takes its target from
+`Curr Pos` instead of the controller's `Targ Pos`.
+
+The pre-fix results come from a separate binary built against a copy of the 3.0.0.5 sources; the
+shared tree was not reverted.
+
+### Simulator additions
+
+- Fault `handmove<n> <position>`: focuser n moves at a quarter of the motor speed without a serial
+  command, as with the hand controller.
+- Fault action `stall`: a move is acknowledged, `IsMoving` stays 1 and the position does not change.
+- Fault action `slow`: the reply is delayed by 400 ms; an `always_` prefix keeps any fault armed.
+
+### Rule mapping
+
+| Rule | Test |
+|---|---|
+| Connect sequence `FHGETHUBINFO`, `FxGETCONFIG`, `FxGETSTATUS`; model and hub firmware | `metadata` |
+| Ranges follow `Max Pos`, read-only limits, non-default device type at connect | `property_contract`, `limits_follow_max_pos`, `device_type_readback` |
+| Refused connect leaves nothing defined, port released, sibling survives | `connect_hub_info_failure`, `connect_config_failure`, `sibling_survives_failed_connect` |
+| Poll failure and recovery, probe absent IDLE, uncommanded motion | `poll_failure_recovery`, `temperature_probe_absent`, `external_motion_observed`, `hand_controller_motion` |
+| GOTO, GOTO to the current position, boundaries, relative moves, reversal, clamping | `absolute_goto`, `goto_no_op`, `goto_boundaries`, `steps_*` |
+| Overlapping request refused, running move ends at its target with one command | `overlap_rejected` |
+| SYNC: refused for homing types without a command, accepted for the published value, failure keeps the position, next sync accepted | `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
+| Abort mid-move, overtaking a queued move, while idle, refused and retried | `abort_during_motion`, `abort_overtakes_start`, `abort_while_idle`, `abort_failure_reported`, `move_after_abort` |
+| Move start failures and transport loss | `malformed_reply`, `partial_reply`, `overlong_reply`, `missing_acknowledgement`, `silent_reply`, `transport_loss` |
+| Stall and readback failures during a move | `stalled_move`, `move_poll_failures` |
+| Disconnect during motion | `disconnect_during_motion` |
+| Settings during a move | `settings_during_motion` |
+| Poll in flight while a move is accepted | `request_versus_poll` |
+| Shared hub: both logical focusers, both connection orders, shutdown refused | `focuser_*_lifecycle`, `shared_connection`, `reverse_connection_order`, `shutdown_rejected_while_connected` |
+
+### Rules not applicable
+
+- Speed, backlash, temperature compensation and mode: the driver does not implement the
+  corresponding FocusLynx commands (see D17 above).
+- Homing and centering: not exposed by the driver.
+- Controller-wide reset: `RESET` and hub sleep are not exposed, so there is no reset to refuse.
+
+### Validation
+
+`python3 tools/run_driver_test.py focuser_optecfl` runs the 50 scenarios.
+
+## Final test summary
+
+- Simulated tests: 50 run, 50 passed (recorded run of 3.0.0.6, macOS arm64).
+- Hardware tests: 0 run, 0 passed.

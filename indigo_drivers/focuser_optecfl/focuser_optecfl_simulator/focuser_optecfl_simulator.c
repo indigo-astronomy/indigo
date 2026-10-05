@@ -124,6 +124,8 @@ typedef struct {
 	bool temperature_probe;
 	bool remote_io;
 	bool hand_controller;
+	// A stalled motor reports IsMoving = 1 while its position does not change.
+	bool stalled;
 } focuser_state;
 
 static volatile sig_atomic_t running = 1;
@@ -302,7 +304,7 @@ static void handle_get_status(focuser_state *focuser, int index) {
 	send_line("Temp(C) = %+.1f", focuser->temperature);
 	send_line("Curr Pos = %06d", (int)focuser->motion.position);
 	send_line("Targ Pos = %06d", (int)focuser->motion.target);
-	send_line("IsMoving = %d", focuser->motion.duration > 0 ? 1 : 0);
+	send_line("IsMoving = %d", focuser->motion.duration > 0 || focuser->stalled ? 1 : 0);
 	send_line("IsHoming = %d", focuser->homing ? 1 : 0);
 	send_line("IsHomed = %d", focuser->homed ? 1 : 0);
 	send_line("FFDetect = %d", focuser->ff_detect ? 1 : 0);
@@ -365,6 +367,7 @@ static bool handle_focuser_command(const char *command, const char *body, focuse
 	}
 	if (!strcmp(body, "HALT")) {
 		serial_motion_stop(&focuser->motion);
+		focuser->stalled = false;
 		focuser->homing = false;
 		focuser->tcomp_on = false;
 		focuser->tcomp_suspended = false;
@@ -406,6 +409,7 @@ static bool handle_focuser_command(const char *command, const char *body, focuse
 		if (strlen(body) != 8 || !all_digits(body + 2, 6)) {
 			return false;
 		}
+		focuser->stalled = false;
 		start_motion(focuser, atoi(body + 2));
 		send_line("!");
 		send_line("M");
@@ -541,12 +545,36 @@ static void dispatch_command(const char *command) {
 	const char *fault = getenv("INDIGO_OPTECFL_FAULT");
 	FILE *file = fault ? fopen(fault, "r") : NULL;
 	if (file) {
-		if (fscanf(file, "%63s %255[^\n]", key, action) != 2 || strcmp(key, command)) {
+		bool parsed = fscanf(file, "%63s %255[^\n]", key, action) == 2;
+		fclose(file);
+		if (parsed && !strncmp(key, "handmove", 8)) {
+			// The hand controller moves focuser <n> of "handmove<n>" without a serial command.
+			int slot = key[8] == '2' ? 1 : 0;
+			focusers[slot].stalled = false;
+			serial_motion_start(&focusers[slot].motion, atoi(action), MOTION_SPEED / 4);
+			unlink(fault);
 			action[0] = '\0';
+		} else if (!parsed || strcmp(key, command)) {
+			action[0] = '\0';
+		} else if (!strncmp(action, "always_", 7)) {
+			memmove(action, action + 7, strlen(action + 7) + 1);
 		} else {
 			unlink(fault);
 		}
-		fclose(file);
+	}
+	if (!strcmp(action, "slow")) {
+		usleep(400000);
+		action[0] = '\0';
+	}
+	if (!strcmp(action, "stall")) {
+		// The move is acknowledged but the motor does not advance.
+		int slot = focuser_index(command);
+		if (slot >= 0) {
+			focusers[slot].stalled = true;
+		}
+		send_line("!");
+		send_line("M");
+		return;
 	}
 	if (!strcmp(action, "close")) {
 		running = 0;

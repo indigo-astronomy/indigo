@@ -20,7 +20,7 @@ driver prodigy {
 	label = "PegasusAstro Prodigy Microfocuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -32,6 +32,9 @@ driver prodigy {
 		char response[128];
 		int position, moving, speed, backlash, last_position, stalled, reboot_attempts;
 		bool active, parking, uncertain, rebooting;
+		// failed_move: the last move, sync or abort ended ALERT, which an idle poll keeps;
+		// an ALERT from a failed idle poll is cleared by the next good one
+		bool failed_move;
 		bool outlets[4];
 	}
 	code {
@@ -149,8 +152,9 @@ driver prodigy {
 				}
 				if (!prodigy_status(device) || (PRIVATE_DATA->moving && ++PRIVATE_DATA->stalled >= 100) || (!PRIVATE_DATA->moving && PRIVATE_DATA->position != (int)FOCUSER_POSITION_ITEM->number.target)) {
 					PRIVATE_DATA->active = false;
-					PRIVATE_DATA->uncertain = true;
+					PRIVATE_DATA->uncertain = PRIVATE_DATA->failed_move = true;
 					prodigy_echo(device, "H", "0");
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 					prodigy_motion_state(device, INDIGO_ALERT_STATE);
 					return;
 				}
@@ -174,14 +178,16 @@ driver prodigy {
 				}
 				target = (int)fmax(FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value, fmin(FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value, target));
 				FOCUSER_POSITION_ITEM->number.target = target;
+				PRIVATE_DATA->failed_move = false;
 				if (!park && target == PRIVATE_DATA->position) {
 					prodigy_motion_state(device, INDIGO_OK_STATE);
 					return true;
 				}
 				bool accepted = park ? prodigy_echo(device, "Z", "Z:1") : prodigy_set(device, relative ? 'G' : 'M', relative ? target - PRIVATE_DATA->position : target);
 				if (!accepted) {
-					PRIVATE_DATA->uncertain = true;
+					PRIVATE_DATA->uncertain = PRIVATE_DATA->failed_move = true;
 					prodigy_echo(device, "H", "0");
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 					return false;
 				}
 				PRIVATE_DATA->active = true;
@@ -190,6 +196,11 @@ driver prodigy {
 				PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 				prodigy_motion_state(device, INDIGO_BUSY_STATE);
 				return true;
+			}
+
+			// Requests that move the focuser or change its geometry wait for the running motion.
+			static bool prodigy_motion_busy(indigo_device *device) {
+				return PRIVATE_DATA->active || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
 			}
 
 			static void prodigy_ranges(indigo_device *device) {
@@ -212,6 +223,7 @@ driver prodigy {
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		on_connect {
+			PRIVATE_DATA->failed_move = false;
 			connection_result = prodigy_command(device, true, "A");
 			char *fields[10], *cursor = PRIVATE_DATA->response;
 			for (int i = 0; i < 10 && connection_result; i++) {
@@ -272,11 +284,15 @@ driver prodigy {
 				}
 				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 				if (!PRIVATE_DATA->active && (PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
-					if (prodigy_status(device)) {
-						FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
-						prodigy_motion_state(device, PRIVATE_DATA->uncertain ? INDIGO_ALERT_STATE : PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
-					} else {
+					// an external move the poll follows owns the BUSY state it published
+					bool following = PRIVATE_DATA->moving;
+					if (!prodigy_status(device)) {
 						prodigy_motion_state(device, INDIGO_ALERT_STATE);
+					} else if (following || PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE)) {
+						// a request accepted while the poll was in flight owns the motion properties
+						FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+						// an ALERT of a failed or aborted move stays, one of a failed poll does not
+						prodigy_motion_state(device, PRIVATE_DATA->uncertain || (PRIVATE_DATA->failed_move && !PRIVATE_DATA->moving) ? INDIGO_ALERT_STATE : PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
 					}
 				}
 			}
@@ -300,6 +316,10 @@ driver prodigy {
 		inherited FOCUSER_BACKLASH {
 			hidden = false;
 			on_attach { FOCUSER_BACKLASH_ITEM->number.min = 0; FOCUSER_BACKLASH_ITEM->number.max = 9999; FOCUSER_BACKLASH_ITEM->number.step = 1; }
+			reject_change {
+				condition = prodigy_motion_busy(device);
+				message = "The focuser is moving";
+			}
 			on_change {
 				if (!PRIVATE_DATA->rebooting && prodigy_set(device, 'C', (int)FOCUSER_BACKLASH_ITEM->number.value)) {
 					PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.value;
@@ -319,7 +339,11 @@ driver prodigy {
 				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = 999999;
 			}
 			on_change {
-				if (PRIVATE_DATA->active || PRIVATE_DATA->moving || FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target >= FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target) {
+				// an empty interval, one excluding the focuser, or a change during motion is refused
+				if (PRIVATE_DATA->active || PRIVATE_DATA->moving || FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target >= FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target || PRIVATE_DATA->position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target || PRIVATE_DATA->position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target) {
+					// the refused request leaves no target behind that a later change would build on
+					FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
@@ -332,14 +356,22 @@ driver prodigy {
 			preserve_values = true;
 			on_attach { FOCUSER_POSITION_ITEM->number.min = -999999; FOCUSER_POSITION_ITEM->number.max = 999999; FOCUSER_POSITION_ITEM->number.step = 1; }
 			reject_change {
-				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				// active keeps the guard while a refusal shows one motion property ALERT
+				condition = PRIVATE_DATA->active || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
 				message = "Another motion is pending";
 			}
 			on_change {
 				if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+					// a sync re-establishes the coordinate of a stopped focuser, also after an
+					// uncertain stop; a failed one keeps the real position and the next is accepted
 					int target = (int)FOCUSER_POSITION_ITEM->number.target;
-					bool ok = !PRIVATE_DATA->rebooting && !PRIVATE_DATA->uncertain && prodigy_set(device, 'W', target) && prodigy_status(device) && PRIVATE_DATA->position == target && !PRIVATE_DATA->moving;
-					PRIVATE_DATA->uncertain = !ok;
+					bool ok = !PRIVATE_DATA->rebooting && prodigy_set(device, 'W', target) && prodigy_status(device) && PRIVATE_DATA->position == target && !PRIVATE_DATA->moving;
+					if (ok) {
+						PRIVATE_DATA->uncertain = false;
+					} else {
+						FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+					}
+					PRIVATE_DATA->failed_move = !ok;
 					prodigy_motion_state(device, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
 				} else if (!prodigy_start(device, (int)FOCUSER_POSITION_ITEM->number.target, false, false)) {
 					prodigy_motion_state(device, INDIGO_ALERT_STATE);
@@ -351,7 +383,7 @@ driver prodigy {
 		inherited FOCUSER_STEPS {
 			on_attach { FOCUSER_STEPS_ITEM->number.min = 0; FOCUSER_STEPS_ITEM->number.max = 1999998; FOCUSER_STEPS_ITEM->number.step = 1; }
 			reject_change {
-				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				condition = PRIVATE_DATA->active || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
 				message = "Another motion is pending";
 			}
 			on_change {
@@ -366,7 +398,9 @@ driver prodigy {
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+				// an abort with nothing moving, or with the item OFF, sends nothing
+				bool moving = PRIVATE_DATA->active || PRIVATE_DATA->moving || PRIVATE_DATA->uncertain || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE;
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value && moving) {
 					indigo_cancel_pending_handler(device, focuser_position_handler);
 					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					if (!PRIVATE_DATA->active && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
@@ -385,8 +419,10 @@ driver prodigy {
 							X_FOCUSER_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, "Park aborted");
 						}
+						// an aborted move ends ALERT at the position where it stopped
+						PRIVATE_DATA->failed_move = true;
 						FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
-						prodigy_motion_state(device, INDIGO_OK_STATE);
+						prodigy_motion_state(device, INDIGO_ALERT_STATE);
 					} else {
 						PRIVATE_DATA->uncertain = true;
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -403,7 +439,7 @@ driver prodigy {
 			perm = INDIGO_RW_PERM;
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			reject_change {
-				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+				condition = PRIVATE_DATA->active || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
 				message = "Another motion is pending";
 			}
 			on_change {
@@ -559,7 +595,12 @@ driver prodigy {
 			on_change {
 				X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
 				if (X_AUX_REBOOT_ITEM->sw.value) {
-					if (!PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain && prodigy_command(device, false, "Q")) {
+					// the reboot resets the whole controller, so it waits until the focuser
+					// sibling is disconnected (the shared connection count is then 1)
+					if (PRIVATE_DATA->count > 1) {
+						X_AUX_REBOOT_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_send_message(device, ALERT_PROPERTY, "Disconnect the focuser before rebooting the controller");
+					} else if (!PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain && prodigy_command(device, false, "Q")) {
 						PRIVATE_DATA->rebooting = true;
 						PRIVATE_DATA->reboot_attempts = 0;
 						X_AUX_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;

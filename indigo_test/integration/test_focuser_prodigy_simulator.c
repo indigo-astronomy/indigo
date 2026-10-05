@@ -132,6 +132,13 @@ static int run_cases(const prodigy_test *cases, int count) {
 	if (!mkdtemp(fixture_dir)) {
 		return 1;
 	}
+	int selected = 0;
+	for (int i = 0; i < count; i++) {
+		if (filter == NULL || strstr(cases[i].name, filter)) {
+			selected++;
+		}
+	}
+	indigo_test_plan("PRODIGY", selected, filter);
 	snprintf(event_path, sizeof(event_path), "%s/events", fixture_dir);
 	snprintf(fault_path, sizeof(fault_path), "%s/fault", fixture_dir);
 	setenv("INDIGO_PRODIGY_EVENTS", event_path, 1);
@@ -180,6 +187,7 @@ static int run_cases(const prodigy_test *cases, int count) {
 			failures++;
 		}
 	}
+	indigo_test_plan_recorded = false;
 	unlink(fault_path);
 	unlink(event_path);
 	rmdir(fixture_dir);
@@ -347,8 +355,16 @@ static void limits(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(100));
 	SERIAL_CHECK_EQ_INT(1, commands("G:"));
+	// A maximum below the focuser at 100 excludes it and is refused.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(100, (int)find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value);
+	SERIAL_CHECK_EQ_INT(100, (int)find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.target);
+	SERIAL_CHECK_EQ_INT(100, (int)find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max);
+	// An empty interval is refused and the refused target does not stay behind.
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 100, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(-100, (int)find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME)->number.value);
+	SERIAL_CHECK_EQ_INT(-100, (int)find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME)->number.target);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 200, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
 }
@@ -377,15 +393,37 @@ cleanup:
 
 static void abort_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	// An abort with nothing moving, or with the item OFF, sends no stop.
 	SERIAL_CHECK_TRUE(abort_ok());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, commands("H"));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900000, INDIGO_BUSY_STATE));
+	// the abort has to land mid-move, not overtake the queued start
+	for (int i = 0; i < 500 && find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value <= 50; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value > 50);
 	if (!strcmp(current_profile, "stop_failure")) {
 		SERIAL_CHECK_TRUE(fault("H", "reject"));
 		SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	}
 	SERIAL_CHECK_TRUE(abort_ok());
+	// The aborted move ends ALERT on both motion properties at the stopped position.
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	SERIAL_CHECK_TRUE(position->number.value == position->number.target && position->number.value != 900000);
+	SERIAL_CHECK_TRUE(position->number.value == position->number.target && position->number.value > 50 && position->number.value < 900000);
+	double stopped = position->number.value;
+	// Two fresh polls read the same position and keep the ALERT.
+	int polls = commands("I");
+	for (int i = 0; i < 1000 && commands("I") < polls + 2; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(commands("I") >= polls + 2);
+	position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position->number.value == stopped && position->number.target == stopped);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -433,7 +471,14 @@ static void settings_failure(void) {
 		SERIAL_CHECK_TRUE(fault("W:100", "ignore"));
 		SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100, INDIGO_ALERT_STATE));
-		SERIAL_CHECK_TRUE(abort_ok());
+		// The failed sync keeps the real position, the next poll does not clear it, and
+		// the next sync is accepted without an abort.
+		indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+		SERIAL_CHECK_TRUE(position->number.value == 50 && position->number.target == 50);
+		indigo_usleep(1200000);
+		SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100, INDIGO_OK_STATE));
+		SERIAL_CHECK_EQ_INT(0, commands("H"));
 	} else if (!strcmp(current_profile, "backlash_failure")) {
 		SERIAL_CHECK_TRUE(fault("C:25", "reject"));
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 25, INDIGO_ALERT_STATE));
@@ -617,6 +662,9 @@ static void rejected_change_alerts_and_keeps_values(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200));
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change("X_FOCUSER_PARK", "PARK"));
+	// Backlash changes the motion geometry and is refused without a command, too.
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 30));
+	SERIAL_CHECK_EQ_INT(0, commands("C:"));
 	SERIAL_CHECK_EQ_INT(0, commands("G:"));
 	SERIAL_CHECK_TRUE(abort_ok());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
@@ -719,6 +767,69 @@ static void transport_loss(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(fault("P", "close"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50000, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
+// A move accepted while an idle poll's reply is outstanding stays BUSY; the poll
+// does not complete it, and the move command is sent once.
+static void request_survives_poll(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(at_position(50));
+	SERIAL_CHECK_TRUE(fault("I", "slow"));
+	for (int i = 0; i < 300 && access(fault_path, F_OK) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(access(fault_path, F_OK) != 0);
+	unsigned ok = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900000, INDIGO_BUSY_STATE));
+	indigo_usleep(1000000);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT((int)ok, (int)property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("M:900000"));
+	SERIAL_CHECK_TRUE(abort_ok());
+cleanup:
+	driver_stop();
+}
+
+// A hand-controller move is published BUSY then OK at the measured position with
+// no command sent, and the next relative move starts from it.
+static void external_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(at_position(50));
+	SERIAL_CHECK_TRUE(fault("P", "external=300000"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300000));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position->number.target == 300000);
+	SERIAL_CHECK_EQ_INT(0, commands("M:"));
+	SERIAL_CHECK_EQ_INT(0, commands("G:"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("G:100"));
+	SERIAL_CHECK_TRUE(at_position(300100));
+cleanup:
+	driver_stop();
+}
+
+// The reboot resets the whole controller, so it is refused while the focuser
+// sibling is connected and accepted once it is not.
+static void reboot_refused_with_focuser(void) {
+	SERIAL_CHECK_TRUE(aux_start());
+	SERIAL_CHECK_TRUE(connect_serial_device(&prodigy_focuser, fixture.port));
+	reset_simulator_context(&prodigy_powerbox);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(switch_change("X_AUX_REBOOT", "REBOOT", true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_reset("X_AUX_REBOOT", "REBOOT"));
+	SERIAL_CHECK_EQ_INT(0, commands("Q"));
+	disconnect_serial_device(&prodigy_focuser);
+	reset_simulator_context(&prodigy_powerbox);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(switch_change("X_AUX_REBOOT", "REBOOT", true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_reset("X_AUX_REBOOT", "REBOOT"));
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_AUX_REBOOT", INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("Q"));
 cleanup:
 	driver_stop();
 }
@@ -889,6 +1000,9 @@ int main(void) {
 		{ "power_request_survives_reboot", port_request_survives_reboot, "normal" },
 		{ "usb_request_survives_reboot", port_request_survives_reboot, "normal" },
 		{ "ports_defined_at_connect", ports_defined_at_connect, "normal" },
+		{ "request_survives_poll", request_survives_poll, "normal" },
+		{ "external_motion", external_motion, "normal" },
+		{ "reboot_refused_with_focuser", reboot_refused_with_focuser, "normal" },
 		{ "disconnect_motion", lifecycle, "normal" },
 		{ "disconnect_read", lifecycle, "disconnect_read" },
 		{ "init_identity", rejected_connection, "init_#_reply=OK_OTHER" },

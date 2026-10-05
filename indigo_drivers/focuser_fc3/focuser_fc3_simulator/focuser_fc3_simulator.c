@@ -66,8 +66,10 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_FC3_EVENTS names a file receiving every accepted request, one per line.\n");
-	printf("INDIGO_FC3_FAULT names a file holding '<command prefix> <silent|garbage|close>'\n");
-	printf("which is applied once to the next matching request and then removed.\n");
+	printf("INDIGO_FC3_FAULT names a file holding '<command prefix> <action> [argument]'\n");
+	printf("which is applied once to the next matching request and then removed. Actions:\n");
+	printf("silent, garbage, close, value <reply>, slow, split, overlong, truncated, stall\n");
+	printf("and external <target>.\n");
 }
 
 // ----------------------------------------------------------------- state
@@ -85,6 +87,8 @@ static char id[32] = "AA000000";
 static char fw[32] = "1.4.1";
 static double temperature = 23.5;
 static FILE *events = NULL;
+// a stalled motor reports a move in progress while its position stays put
+static bool stalled = false;
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -99,7 +103,9 @@ static void *background(void *arg) {
 	(void)arg;
 	while (running) {
 		pthread_mutex_lock(&state_mutex);
-		if (target < position) {
+		if (stalled) {
+			// the motor does not turn
+		} else if (target < position) {
 			position--;
 		} else if (target > position) {
 			position++;
@@ -180,7 +186,7 @@ static void apply_profile(void) {
 // One-shot fault injection. The control file names a command prefix and the
 // way the next matching request has to misbehave, so a test can fail exactly
 // one transaction without disturbing the rest of the session.
-static const char *pending_fault(const char *command) {
+static const char *pending_fault(const char *command, char *argument, size_t size) {
 	static char action[32];
 	const char *path = getenv("INDIGO_FC3_FAULT");
 	if (path == NULL) {
@@ -190,13 +196,14 @@ static const char *pending_fault(const char *command) {
 	if (file == NULL) {
 		return NULL;
 	}
-	char prefix[32] = { 0 };
+	char prefix[32] = { 0 }, value[64] = { 0 };
 	action[0] = '\0';
-	bool matched = fscanf(file, "%31s %31s", prefix, action) == 2 && !strncmp(command, prefix, strlen(prefix));
+	int fields = fscanf(file, "%31s %31s %63s", prefix, action, value);
 	fclose(file);
-	if (!matched) {
+	if (fields < 2 || strncmp(command, prefix, strlen(prefix))) {
 		return NULL;
 	}
+	snprintf(argument, size, "%s", fields == 3 ? value : "");
 	unlink(path);
 	return action;
 }
@@ -270,7 +277,8 @@ static void dispatch_command(int handle, const char *buffer) {
 		fprintf(events, "%s\n", buffer);
 		fflush(events);
 	}
-	const char *fault = pending_fault(buffer);
+	char argument[64] = { 0 };
+	const char *fault = pending_fault(buffer, argument, sizeof(argument));
 	if (fault != NULL) {
 		if (!strcmp(fault, "close")) {
 			running = 0;
@@ -290,6 +298,52 @@ static void dispatch_command(int handle, const char *buffer) {
 			pthread_mutex_unlock(&state_mutex);
 			return;
 		}
+		if (!strcmp(fault, "value")) {
+			// the reply is replaced, e.g. by a mismatched echo or a malformed status
+			sim_printf(handle, "%s\n", argument);
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
+		if (!strcmp(fault, "overlong")) {
+			sim_printf(handle, "FC3:%d:0:23.50:0:3:%s\n", position, "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789");
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
+		if (!strcmp(fault, "truncated")) {
+			// the line end never arrives
+			sim_printf(handle, "FC3:%d:0", position);
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
+		if (!strcmp(fault, "split")) {
+			// the status line arrives in two pieces, the second one 50 ms later
+			char reply[128];
+			snprintf(reply, sizeof(reply), "FC3:%d:%d:%.2f:%d:%d\n", position, target == position ? 0 : 1, temperature, direction, backlash);
+			size_t half = strlen(reply) / 2;
+			serial_simulator_write_all(handle, reply, half);
+			usleep(50000);
+			sim_printf(handle, "%s", reply + half);
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
+		if (!strcmp(fault, "slow")) {
+			// the reply keeps the state from before the delay and still arrives within
+			// the driver's timeout, so a request can be accepted while it is outstanding
+			char reply[128];
+			snprintf(reply, sizeof(reply), "FC3:%d:%d:%.2f:%d:%d\n", position, target == position ? 0 : 1, temperature, direction, backlash);
+			pthread_mutex_unlock(&state_mutex);
+			usleep(500000);
+			sim_printf(handle, "%s", reply);
+			return;
+		}
+		if (!strcmp(fault, "external")) {
+			// a hand controller starts a move the driver did not command
+			target = atoi(argument);
+		}
+		if (!strcmp(fault, "stall")) {
+			// the move is accepted, but the motor never turns
+			stalled = true;
+		}
 	}
 	if (!strcmp(buffer, "F#") || !strcmp(buffer, "##")) {
 		sim_printf(handle, strcmp(options.profile, "no-handshake") ? "FC3_%s_A\n" : "ERR_%s\n", id);
@@ -297,7 +351,7 @@ static void dispatch_command(int handle, const char *buffer) {
 		if (!strcmp(options.profile, "bad-status")) {
 			sim_printf(handle, "ERR\n");
 		} else {
-			sim_printf(handle, "FC3:%d:%d:%.2f:%d:%d\n", position, target == position ? 0 : 1, temperature, direction, backlash);
+			sim_printf(handle, "FC3:%d:%d:%.2f:%d:%d\n", position, target == position && !stalled ? 0 : 1, temperature, direction, backlash);
 		}
 	} else if (!strncmp(buffer, "FN:", 3)) {
 		target = position = atoi(buffer + 3);
@@ -309,6 +363,7 @@ static void dispatch_command(int handle, const char *buffer) {
 		target += atoi(buffer + 3);
 		sim_printf(handle, "%s\n", buffer);
 	} else if (!strcmp(buffer, "FH")) {
+		stalled = false;
 		target = position;
 		sim_printf(handle, "FH:1\n");
 	} else if (!strcmp(buffer, "FT")) {

@@ -21,7 +21,7 @@ driver nfocus {
 	label = "Rigel Systems nFOCUS Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	include {
 		#include <ctype.h>
@@ -35,7 +35,7 @@ driver nfocus {
 	data {
 		char response[16];
 		int stalled;
-		bool active, uncertain;
+		bool active, uncertain, pending;
 	}
 	code {
 		static void focuser_steps_handler(indigo_device *device);
@@ -137,8 +137,8 @@ driver nfocus {
 					return;
 				}
 				PRIVATE_DATA->active = false;
-				PRIVATE_DATA->uncertain = true;
-				nfocus_stop(device);
+				/* the state of the motor is known again once the stop went out */
+				PRIVATE_DATA->uncertain = !nfocus_stop(device);
 				nfocus_motion_state(device, INDIGO_ALERT_STATE);
 				return;
 			}
@@ -191,13 +191,19 @@ driver nfocus {
 			if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
 				nfocus_stop(device);
 			}
-			PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+			PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->pending = false;
 			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		}
 		on_timer {
 			if (!PRIVATE_DATA->active && !FOCUSER_TEMPERATURE_PROPERTY->hidden) {
 				bool temperature_present = true;
-				FOCUSER_TEMPERATURE_PROPERTY->state = nfocus_temperature(device, &temperature_present) && temperature_present ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				if (!nfocus_temperature(device, &temperature_present)) {
+					/* a failed reading keeps the last valid value */
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					/* the sensor unplugged during the session reports the no-sensor sentinel */
+					FOCUSER_TEMPERATURE_PROPERTY->state = temperature_present ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				}
 				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			}
 			indigo_execute_handler_in(device, PRIVATE_DATA->active ? 0.5 : 5, focuser_timer_callback);
@@ -206,6 +212,7 @@ driver nfocus {
 		inherited FOCUSER_POSITION { hidden = true; }
 		inherited FOCUSER_TEMPERATURE { hidden = false; }
 		inherited FOCUSER_SPEED {
+			preserve_values = true;
 			on_attach {
 				FOCUSER_SPEED_ITEM->number.min = 1;
 				FOCUSER_SPEED_ITEM->number.max = 250;
@@ -214,6 +221,8 @@ driver nfocus {
 			on_change {
 				int requested = (int)FOCUSER_SPEED_ITEM->number.target;
 				if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !nfocus_command(device, 0, ":CF%03d#", 255 - requested)) {
+					/* the refused speed is not shown as the device speed */
+					FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
 					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					FOCUSER_SPEED_ITEM->number.value = requested;
@@ -230,7 +239,16 @@ driver nfocus {
 				condition = FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
 				message = "Abort is unfinished";
 			}
+			reject_change {
+				condition = PRIVATE_DATA->active || PRIVATE_DATA->pending || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "Another motion operation is pending";
+			}
+			on_change_request {
+				/* the accepted move is pending from now on, a refusal must not hide it from the next request */
+				PRIVATE_DATA->pending = true;
+			}
 			on_change {
+				PRIVATE_DATA->pending = false;
 				int steps = (int)FOCUSER_STEPS_ITEM->number.target;
 				if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
 					nfocus_motion_state(device, INDIGO_ALERT_STATE);
@@ -251,13 +269,17 @@ driver nfocus {
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value && (PRIVATE_DATA->active || PRIVATE_DATA->pending || PRIVATE_DATA->uncertain || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
 					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					indigo_cancel_pending_handler(device, motion_finalizer);
-					PRIVATE_DATA->active = false;
+					bool aborted = PRIVATE_DATA->active || PRIVATE_DATA->pending || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+					PRIVATE_DATA->active = PRIVATE_DATA->pending = false;
 					if (IS_CONNECTED && nfocus_stop(device)) {
 						PRIVATE_DATA->uncertain = false;
-						nfocus_motion_state(device, INDIGO_OK_STATE);
+						/* an aborted move never reports completion */
+						if (aborted) {
+							nfocus_motion_state(device, INDIGO_ALERT_STATE);
+						}
 					} else {
 						PRIVATE_DATA->uncertain = true;
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;

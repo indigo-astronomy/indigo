@@ -299,6 +299,7 @@ static void capabilities(void) {
 	assert_not_defined_property(FOCUSER_BACKLASH_PROPERTY_NAME);
 	assert_not_defined_property(FOCUSER_COMPENSATION_PROPERTY_NAME);
 	assert_not_defined_property(FOCUSER_MODE_PROPERTY_NAME);
+	assert_not_defined_property(FOCUSER_ON_POSITION_SET_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME)->number.min == 1);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME)->number.max == 250);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME)->number.min == 0);
@@ -329,6 +330,9 @@ static void connection_failure_recovery(void) {
 	SERIAL_CHECK_TRUE(!connect_serial_device(&nfocus_focuser, fixture.port));
 	SERIAL_CHECK_TRUE(!context.connected && context.last_connection_state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_EQ_INT(descriptor_count, open_descriptors());
+	assert_not_defined_property(FOCUSER_STEPS_PROPERTY_NAME);
+	assert_not_defined_property(FOCUSER_SPEED_PROPERTY_NAME);
+	assert_not_defined_property(FOCUSER_TEMPERATURE_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(connect_serial_device(&nfocus_focuser, fixture.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(command_count("ID") >= 2);
@@ -388,13 +392,23 @@ static void busy_guard_and_abort(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_command_count(":F01400#", 1));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, nfocus_focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50));
+	// a second move is refused with ALERT and sends no command, also right after a refusal
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 60, INDIGO_ALERT_STATE));
 	indigo_usleep(300000);
 	SERIAL_CHECK_TRUE(command_count(":F01050#") == 0);
+	SERIAL_CHECK_TRUE(command_count(":F01060#") == 0);
+	SERIAL_CHECK_TRUE(command_prefix_count(":F0") == 1);
+	// the aborted move ends ALERT, never OK, and no completion stop follows
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_command_count(":F11000#", 1));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
+	indigo_usleep(1000000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(1, command_count(":F11000#"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
 	stop_fixture();
@@ -407,11 +421,131 @@ static void status_failure_alerts_and_recovers(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	unlink(fault_path);
-	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	// the stop is sent once, no poll follows, and a fresh move works without an abort
+	SERIAL_CHECK_EQ_INT(1, command_count(":F11000#"));
+	int polls = command_count("S");
+	indigo_usleep(1000000);
+	SERIAL_CHECK_EQ_INT(polls, command_count("S"));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
 cleanup:
 	unlink(fault_path);
+	driver_stop();
+	stop_fixture();
+}
+
+// Aborting while nothing moves sends no stop; a request with the item OFF is answered without a command.
+static void abort_idle_and_off_request(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false, INDIGO_OK_STATE));
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(0, command_count(":F11000#"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+	stop_fixture();
+}
+
+// Disconnecting during a move sends the stop once before the port closes, nothing follows, and
+// the next session starts settled.
+static void disconnect_during_motion(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count(":F01400#", 1));
+	disconnect_serial_device(&nfocus_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(1, command_count(":F11000#"));
+	int polls = command_count("S");
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(polls, command_count("S"));
+	SERIAL_CHECK_EQ_INT(1, command_count(":F11000#"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nfocus_focuser, fixture.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	// an idle disconnect sends no stop
+	disconnect_serial_device(&nfocus_focuser);
+	SERIAL_CHECK_EQ_INT(1, command_count(":F11000#"));
+cleanup:
+	driver_stop();
+	stop_fixture();
+}
+
+// The speed the controller stores is read back after reconnect; a speed requested during a move
+// is refused without a command and keeps the device value.
+static void speed_readback_and_refusal(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 120, INDIGO_OK_STATE));
+	disconnect_serial_device(&nfocus_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&nfocus_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 120, .01));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count(":F01400#", 1));
+	int writes = command_prefix_count(":CF");
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 60, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME)->number.value - 120) < .01);
+	SERIAL_CHECK_EQ_INT(writes, command_prefix_count(":CF"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 60, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count(":CF195#", 1));
+cleanup:
+	driver_stop();
+	stop_fixture();
+}
+
+// The no-sensor sentinel during a session publishes FOCUSER_TEMPERATURE IDLE, a failed reading
+// ALERT, both with the last valid value, and the next valid reading restores OK. A reconnect
+// defines the property only when the sensor is present.
+static void temperature_sentinel_failure_and_reconnect(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 27.5, .01));
+	SERIAL_CHECK_TRUE(fault(":RT", "sticky_absent"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) - 27.5) < .01);
+	unlink(fault_path);
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault(":RT", "sticky_malformed"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) - 27.5) < .01);
+	unlink(fault_path);
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&nfocus_focuser);
+	SERIAL_CHECK_TRUE(fault(":RT", "absent"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nfocus_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME) == NULL);
+	disconnect_serial_device(&nfocus_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&nfocus_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME) != NULL);
+cleanup:
+	unlink(fault_path);
+	driver_stop();
+	stop_fixture();
+}
+
+// SHUTDOWN is refused while the focuser is connected, and the connection keeps working.
+static void shutdown_refused_while_connected(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_focuser_nfocus(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
 	driver_stop();
 	stop_fixture();
 }
@@ -452,6 +586,11 @@ int main(void) {
 		{ "busy_guard_and_abort", busy_guard_and_abort },
 		{ "status_failure_alerts_and_recovers", status_failure_alerts_and_recovers },
 		{ "additional_instances", additional_instances },
+		{ "abort_idle_and_off_request", abort_idle_and_off_request },
+		{ "disconnect_during_motion", disconnect_during_motion },
+		{ "speed_readback_and_refusal", speed_readback_and_refusal },
+		{ "temperature_sentinel_failure_and_reconnect", temperature_sentinel_failure_and_reconnect },
+		{ "shutdown_refused_while_connected", shutdown_refused_while_connected },
 	};
 	return indigo_run_tests("Rigel Systems nFOCUS serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

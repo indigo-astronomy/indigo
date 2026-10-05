@@ -98,36 +98,99 @@ Hardware testing will **not** be performed. No myFocuserPro2 controller is avail
 - No `MAX_DEVICES` override, no build products in the diff, driver version raised from `0x0300000B` to `0x0300000C`.
 - Linux and Windows builds were not run in this environment; only the macOS universal build is validated.
 
+## Focuser testing rules alignment (2026-10-05)
+
+The regression suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839) and extended where a relevant rule was not verified. The simulator gained a request journal (`INDIGO_MYPRO2_EVENTS`), a one-shot fault file (`INDIGO_MYPRO2_FAULT`: `silent`, `ignore`, `garbage`, `value <reply>`, `overlong`, `truncated`, `split`, `slow`, `close`, `external <target>`, `stall`, `model <board>`) and the `custom` (every setting off the driver defaults) and `moving` (a move running at connect) profiles. The permanent `moving-error` and `maxpos-error` profiles were replaced by one-shot faults, because the connect sequence now reads `:01#` and `:08#` and a permanently failing query refuses the connection. A Gemini board starts in half step, the only modes it has. The suite runs with a private `HOME` and plans its forked cases.
+
+Driver version 3.0.0.13 → 3.0.0.14.
+
+### Defects found and fixed
+
+- `MFP-1` Aborted move ended OK. User decision: an aborted move ends `FOCUSER_POSITION` and `FOCUSER_STEPS` ALERT at the stopped position with value equal to target. The abort handler now publishes ALERT with both set to the readback after `:27#`. Test: `abort_motion`, `abort_overtakes_start`.
+- `MFP-2` Abort while idle or with the item OFF sent `:27#` and republished the motion properties. Now answered OK without a command. Test: `abort_while_idle`.
+- `MFP-3` A failed `:01#`/`:00#` during motion ended ALERT but left the motor running. The finalizer now sends `:27#` before publishing ALERT. Test: `moving_query_fails` (also checks a later idle poll does not turn the failed move OK).
+- `MFP-4` A motor reporting a move without progress was polled forever. Six polls without progress (3 s) stop it and end ALERT. Test: `stalled_move`.
+- `MFP-5` `FOCUSER_POSITION` and `FOCUSER_STEPS` were capped at 2000000 regardless of the controller's maximum, so a GOTO or relative move past the travel sent the unreachable target and finished OK at another position. Both maxima now follow `:08#` at connect and every confirmed limits change (republished, since ranges travel with a definition); the framework clamps the GOTO on the wire. Test: `metadata`, `custom_state`, `limits_and_clamping`, `controller_settings`.
+- `MFP-6` A `FOCUSER_LIMITS` maximum below the current position was written. Now refused ALERT without `:07#`, old value kept; a readback different from the request is an ALERT too. Test: `limits_and_clamping`.
+- `MFP-7` A SYNC to the published value was dropped (the target-equals-position shortcut ran before the SYNC branch), and an unapplied `:31#` ended OK at whatever the controller reported. SYNC now always sends `:31#`, and a readback different from the requested value ends ALERT at the real position. Test: `sync_contract`.
+- `MFP-8` A second motion request during a move was silently dropped by the BUSY guard (or accepted through the other property's `INDIGO_COPY_*` branch while only one was BUSY). `reject_change` on both motion properties refuses it ALERT with the held value and target; progress polls keep the published state so the refusal stays visible, and `motion_active` keeps the guard while a refused property shows ALERT. Test: `overlap_refused`.
+- `MFP-9` Backlash, limits, reverse, compensation, mode and step mode changes during a move were applied (and reverse/backlash/step-mode commands sent). Now refused without a command. Test: `settings_refused_during_motion`.
+- `MFP-10` Connect-time query failures were ignored, so a controller that answered only `:00#` was reported connected with driver defaults. Every query of the connect sequence (position, motion state, backlash, maximum, reverse, coils, step mode, settle time) is now mandatory: a failure refuses the connection, closes the port, and the next connect succeeds. `:04#` stays optional and its failure keeps the placeholders, which are now reset on every connect so a failed identification no longer shows the previous board. Test: `connect_refused`, `identity_and_model_change`.
+- `MFP-11` The driver never polled the position while idle, so a hand-controller move or a move running at connect was not published. The temperature timer now also reads `:01#`/`:00#` while no move is running: a running move is followed BUSY then OK with target equal to the measured value, a changed position is published, a failed or malformed poll publishes ALERT with the last valid value and the next good poll restores OK. A request accepted while the poll was in flight owns the motion properties (the poll re-checks before publishing). Test: `external_motion`, `moving_at_connect`, `poll_failure_recovery`, `request_survives_poll`.
+- `MFP-12` A reply that timed out before `#` or filled the buffer was parsed (`sscanf` does not check the terminator). Replies must now end in `#`. Test: `poll_failure_recovery` (`truncated`, `overlong`).
+- `MFP-13` A relative move whose `:00#` start read failed was sent from the cached position. It now ends ALERT on both properties without `:05#`. Test: `relative_start_read_fails`.
+- `MFP-14` Unacknowledged setting writes were reported OK: reverse was never read back, backlash only on failure, and a step mode, coils mode or settle time readback that differed from the request was published OK; a failed readback left the requested switch item shown. Every setting is now read back, a mismatch or failed readback ends ALERT showing the value the controller last confirmed. Test: `settings_failures`.
+- `MFP-15` A temperature reading outside the DS18B20 range (other than the `-127` sentinel) was published and fed compensation. Now ALERT with the last valid value. Test: `temperature_failures`.
+- `MFP-16` (source audit, no test) A compensation move whose position read or `:05#` failed still advanced the temperature reference, so the correction was lost. The reference now advances only when the move was started. Not reproducible hardware-free: the PTY write never fails and the position read cannot be failed deterministically between the temperature read and the move.
+
+All new cases were run against the pre-fix driver (built from a copy of the 3.0.0.13 sources): 23 of 35 fail there; the passing ones are unchanged-behaviour cases (`silent_controller`, `reconnect`, `disconnect_during_motion`, `focuser_mode`, compensation, sensor and Gemini cases, `additional_instance`, `shutdown_rejected_while_connected`, `sync_and_goto`, `relative_move`).
+
+### Rules not applicable
+
+- Relative-only profile, model/firmware variants beyond the Gemini step-mode reduction, and the absence of temperature-dependent properties: the controller is absolute, all boards share the protocol subset, and `FOCUSER_TEMPERATURE`/`FOCUSER_COMPENSATION`/`FOCUSER_MODE` are always defined (a missing probe answers `-127`, covered by `no_temperature_sensor`).
+- `FOCUSER_LIMITS` minimum and an empty interval: the minimum is pinned to 0 by the controller.
+- Automatic mode device command and controller-computed compensation parameters: the driver computes compensation itself and does not use `:22#`–`:26#`.
+- Homing, zeroing, calibration and other driver momentary switches: not implemented (`:28#` is unused).
+- Controller refusal reasons: the protocol has no refusal replies; setting commands are never acknowledged, so readbacks decide.
+- Shared controllers/hub: single-device driver; `ADDITIONAL_INSTANCES` is covered by `additional_instance`.
+- Legacy unprefixed property names: the driver-specific properties were always `X_`-prefixed.
+- Reversal implemented by the driver: the controller owns it (`:14#`/`:13#`).
+
+### Open
+
+- A refused or unconfirmed stop (`:27#` has no reply; the readback after it fails) ends `FOCUSER_ABORT_MOTION` ALERT and the next abort resends the stop (`stop_pending`), but no case injects it: the `:00#` after the stop cannot be failed without also hitting the concurrent motion poll.
+- On disconnect the EEPROM save `:48#` follows the stop; it is a settings save, not motion, and was kept.
+- The `mfp://` network transport remains untested (no sockets in the integration target).
+
 ## Test coverage map
 
 | Scenario | Profile | Covers |
 | --- | --- | --- |
-| `metadata` | normal | Interface bit, focuser class properties, the three driver-defined properties, INFO board and firmware, eight step modes, and every value the driver reads back at connect |
-| `sync_and_goto` | normal | SYNC as a coordinate update with no move, absolute GOTO with BUSY then OK, and a request for the position already held |
-| `relative_move` | normal | Outward and inward relative moves, sign and units |
-| `abort_motion` | normal | Abort of a demonstrably running move, settled state, stop point inside travel, stable afterwards, sync and move accepted afterwards |
-| `abort_overtakes_start` | normal | `DRV-145`: urgent abort cancelling a queued move |
-| `abort_while_idle` | normal | Abort with nothing running, motion properties undisturbed |
-| `controller_settings` | normal | `DRV-144`: speed, reversal, backlash, step mode, coil power, settle time and limits written and then read back over a reconnect |
-| `focuser_mode` | normal | Automatic mode withdrawing the manual controls and republishing `FOCUSER_POSITION` read only, manual mode restoring them |
-| `temperature_compensation` | temperature-drift | Driver-owned compensation: threshold, steps per degree, and the resulting move |
-| `gemini_step_modes` | gemini | Board detection reducing `X_STEP_MODE` to full and half step |
-| `no_temperature_sensor` | no-sensor | `-127` puts `FOCUSER_TEMPERATURE` idle and no compensation is applied from an invalid reading |
+| `metadata` | normal | Driver info, `X_` properties absent before connect, interface bit, class properties, INFO board and firmware, connect sequence, every value read back at connect, position/steps maxima from `:08#` |
+| `custom_state` | custom | Connect publishes the controller's non-default position, maximum and ranges, backlash, settle time, step mode, coils, reverse, temperature and identity |
+| `identity_and_model_change` | normal | Failed `:04#` keeps placeholders and connects; Gemini then non-Gemini reconnect defines exactly that board's step modes (`DRV-147`); placeholders reset after a later failure |
+| `connect_refused` | normal | Handshake garbage, failed `:08#`, malformed `:29#` refused with nothing defined, then a working connect |
 | `silent_controller` | silent | Failed open, no driver property left defined |
-| `moving_query_fails` | moving-error | `DRV-141`: a failed motion poll is an alert, not a completed move |
-| `max_position_readback_fails` | maxpos-error | `DRV-142`: a failed limits readback is an alert |
+| `shutdown_rejected_while_connected` | normal | `INDIGO_DRIVER_SHUTDOWN` is BUSY while connected and the connection keeps working |
 | `reconnect` | normal | Property withdrawal and redefinition, motion after reconnect |
-| `disconnect_during_motion` | normal | Disconnect while BUSY halts the controller, clean teardown, reconnect finds it stopped short |
+| `additional_instance` | normal + custom | Second instance on its own port publishes its own controller, both instances move independently |
+| `sync_and_goto` | normal | SYNC without a move, GOTO with both properties BUSY then OK and the command on the wire, GOTO to the held position without a command |
+| `sync_contract` | normal | SYNC right after connect to the published value reaches the controller; an unapplied SYNC ends ALERT at the real position; retry accepted |
+| `relative_move` | normal | Outward and inward relative moves, sign and units on the wire |
+| `zero_and_short_moves` | normal | Zero step and GOTO to the current position end OK without a command; a 5-step move holds both properties BUSY |
+| `limits_and_clamping` | normal | Limits change updates both ranges; GOTO beyond the limit clamped on the wire; relative moves past either end sent to that end; limit below the position refused without a command |
+| `abort_motion` | normal | Mid-move abort: one stop, both properties ALERT, value = target = stopped position, two fresh polls at the same position, fresh move works |
+| `abort_overtakes_start` | normal | `DRV-145`: urgent abort ends a queued move ALERT with one stop |
+| `abort_while_idle` | normal | Idle abort and abort with the item OFF end OK without `:27#`, position untouched |
+| `overlap_refused` | normal | Steps/GOTO during a move refused ALERT with values restored, running move ends at its target with one move command |
+| `settings_refused_during_motion` | normal | Backlash, limits, compensation, reverse, mode, step mode refused during a move without a command; accepted again when idle |
+| `external_motion` | normal | Hand-controller move published BUSY then OK, target = measured, no command; the next relative move starts from it |
+| `moving_at_connect` | moving | Move running at connect published BUSY then OK without a command |
+| `moving_query_fails` | normal | `DRV-141`: failed motion poll ends ALERT, stops the motor, never OK, not cleared by idle polls; next move works |
+| `stalled_move` | normal | Motor without progress stopped and ALERT, never OK; fresh move works |
+| `relative_start_read_fails` | normal | Failed start read ends both properties ALERT without `:05#`; next move works |
+| `poll_failure_recovery` | normal | Silent, garbage, overlong and truncated idle polls ALERT with the last value, next poll OK; split reply reassembled |
+| `request_survives_poll` | normal | GOTO accepted while an idle poll reply is outstanding stays BUSY, never OK early, one move command |
+| `disconnect_during_motion` | normal | Disconnect sends one stop (then the EEPROM save) before the port closes, nothing afterwards; reconnect OK at the real position; fresh move works |
+| `transport_loss` | normal | Port lost while idle: poll ALERT, later requests ALERT, disconnect completes |
+| `controller_settings` | normal | Speed, reverse, backlash, step mode, coils, settle time and limits on the wire and read back over a reconnect (`DRV-144`); compensation sends no command |
+| `settings_failures` | normal | Failed or unapplied step mode, coils, settle time, reverse, backlash and limits (`DRV-142`) end ALERT with the confirmed value; immediate retries succeed |
+| `focuser_mode` | normal | Automatic mode withdraws manual controls and republishes `FOCUSER_POSITION` read-only, manual restores them |
+| `temperature_compensation` | temperature-drift | One compensation move of coefficient × ΔT, BUSY then OK |
+| `manual_mode_no_compensation` | temperature-drift | The same drift in manual mode moves nothing |
+| `no_temperature_sensor` | no-sensor | `-127` publishes IDLE once, no compensation from it |
+| `temperature_failures` | normal | Failed, implausible and malformed readings ALERT with the last valid value, next reading OK, motion usable |
+| `gemini_step_modes` | gemini | Board detection reducing `X_STEP_MODE` to full and half step |
 
 Not covered, and why:
 
 - Hardware behavior of any kind; no device is available (see the hardware-test decision above).
-- The `mfp://`, `tcp://` and `udp://` transports and the unexpected-disconnection path they enable: the integration target must not open sockets, and the PTY harness cannot exercise the TCP branch.
-- `DRV-146` and `DRV-143`, for the reasons recorded with them.
-- `CONFIG.SAVE` persistence of the three driver-defined properties: `indigo_save_property()` is framework behavior; the driver-owned part, re-applying the settings and reading them back on the next connect, is covered by `controller_settings`.
+- The `mfp://`, `tcp://` and `udp://` transports and the unexpected-disconnection path they enable: the integration target must not open sockets.
+- `DRV-143`, `MFP-16` and a refused stop, for the reasons recorded with them.
+- `CONFIG.SAVE` persistence of the three driver-defined properties: framework behavior; re-applying and reading them back is covered by `controller_settings`.
 - `:03#`, `:28#`, `:40#` and `:42#` from the documented command subset: the driver has never used them.
 
 ## Final test summary
 
-- Simulated tests: 32 executed, 32 passed (16 ordinary scenarios and the same 16 under AddressSanitizer). Three of the 16 were recorded as deterministic expected baseline failures against the original driver and one more as an intermittent one; all pass as regression tests against the migrated driver.
+- Simulated tests: 2026-09-20 migration: 32 executed, 32 passed (16 scenarios, plain and under AddressSanitizer). 2026-10-05 rules alignment: 35 scenarios in the recorded run (see README `## Testing`); the same 35 against the pre-fix 3.0.0.13 driver failed 23.
 - Hardware tests: 0 executed, 0 passed.

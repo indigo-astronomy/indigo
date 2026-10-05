@@ -11,7 +11,7 @@ One `EFA Focuser` is present at startup; additional independent serial instances
 
 Both models support absolute/relative integer movement and abort. Measured position is separate from target; no-op completes immediately. PlaneWave moves farther than 50000 encoder counts use coarse slew, stop, then fine GOTO. Handler/finalizer scheduling leaves abort/disconnect available during movement and calibration. Failed replies/ACKs and invalid completion state report ALERT; 100 unchanged motion polls trigger a stop attempt. After uncertain motion, use abort to confirm the stopped position before another move.
 
-PlaneWave exposes coordinate SYNC, `X_FOCUSER_FANS` and temperature. `FOCUSER_LIMITS` sets both local software endpoints (default 0–3799422); these limits constrain driver movement and update property ranges. No undocumented hardware minimum-limit command is sent. Temperature is signed sixteenths of Celsius; no-sensor 7F7F or invalid data reports ALERT while preserving the last valid reading. Both documented three-byte and legacy two-byte temperature replies are supported (see REFACTOR.md).
+PlaneWave exposes coordinate SYNC, `X_FOCUSER_FANS` and temperature. `FOCUSER_LIMITS` sets both local software endpoints (default 0–3799422); these limits constrain driver movement and update property ranges. No undocumented hardware minimum-limit command is sent. Temperature is signed sixteenths of Celsius; no-sensor 7F7F publishes it IDLE, invalid data reports ALERT while preserving the last valid reading. Both documented three-byte and legacy two-byte temperature replies are supported (see REFACTOR.md).
 
 Celestron exposes `X_FOCUSER_CALIBRATION.CALIBRATE`, with measured progress and read-only device limits. Calibration has a 180-second deadline and can be aborted. Limits/readback failure is reported as a failed calibration. SYNC, fans and temperature are hidden for this model. Speed, reversal, backlash and automatic compensation are not implemented.
 
@@ -37,4 +37,4 @@ INDIGO Astronomy open-source license.
 
 ## Testing
 
-2026-09-27 22:47 3.0.0.21 mac arm64 simulator 56/56 OK
+2026-10-05 16:25 3.0.0.22 mac arm64 simulator 64/64 OK

@@ -118,3 +118,58 @@ cd indigo_test && STEELDRIVE2_TEST_FILTER=poll_read ./build/integration/test_foc
 ```
 
 Final test summary: 56 simulated tests run, 56 passed; 0 hardware tests run, 0 passed.
+
+## Focuser testing rules alignment (3.0.0.20, 2026-10-05)
+
+The suite was checked against the "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` and extended where a rule applies. No hardware test was run.
+
+### Found defects
+
+| # | Defect | Fix | Regression test (fails against 3.0.0.19) |
+|---|---|---|---|
+| R1 | An aborted move (running or still queued) ended OK. | Both motion properties end ALERT with value and target equal to the stopped position; an abort while idle still sends no STOP. | `focuser_abort_overlap_disconnect`, `rejected_change` |
+| R2 | A refused or lost STOP during a running move ended the move ALERT and cancelled its finalizer although the focuser kept moving. | `FOCUSER_ABORT_MOTION` ends ALERT, the move stays BUSY under its finalizer and an immediate retry stops it. | `abort_refused` |
+| R3 | After a stall, a persistent status failure or a refused SYNC the driver set `uncertain`, which stopped polling and refused every move and sync until an explicit abort. | The motor is stopped and its position read back; `uncertain` remains only when that stop fails. A failed move stays ALERT through later idle polls, a fresh move is accepted directly, and a refused SYNC keeps the real position and accepts the next SYNC. | `stall_failure`, `sync_failure` |
+| R4 | A refused GO left the requested target published, and the controller's error did not reach the client. | The target returns to the position the focuser has and the `ERROR` reply is the message. | `go_failure` |
+| R5 | Uncommanded motion (hand controller, external position change) kept the old target. | The poll sets the target to the measured position whenever no request is pending (the pending-request check of TGT-D17 is unchanged and runs after the read). | `external_focuser_state`, `uncommanded_motion` |
+| R6 | A missing sensor (TEMP_AVG -128) was published as a temperature. | `FOCUSER_TEMPERATURE` is IDLE and keeps its value. | `focuser_missing_sensor` |
+| R7 | Reverse, limits, temperature compensation mode, compensation settings and end-stop selection were accepted during a move; a new limit below the current position was sent to the controller. | `reject_change` refuses them without a command while a move runs; a limit below the position ends ALERT without a command and keeps the old value. | `settings_during_motion` |
+| R8 | In temperature compensation mode the controller moves the focuser, yet `FOCUSER_POSITION` stayed writable and relative moves and zeroing were accepted. | `FOCUSER_POSITION` is read-only in automatic mode (defined again when the mode changes); `FOCUSER_STEPS` and `X_START_ZEROING` are refused there. | `automatic_mode` |
+| R9 | `X_START_ZEROING` with the item OFF ended ALERT. | It is answered OK without a command. | `automatic_mode` |
+
+The pre-fix results come from a separate binary built against a copy of the 3.0.0.19 sources; the
+shared tree was not reverted.
+
+### Simulator additions
+
+- Fault `external_move <position>`: the focuser moves at 500 steps/s without a command.
+- A refused or lost `STOP` leaves the motor running, and a refused or lost `SET POS` leaves the
+  position unchanged (previously both were applied before the injected reply).
+
+### Rule mapping (additions)
+
+| Rule | Test |
+|---|---|
+| Missing-sensor sentinel IDLE once, never as a value | `focuser_missing_sensor` |
+| Abort ending ALERT at the stopped position, proven by later readbacks; idle abort without STOP; disconnect during a move stops it and reconnect is OK at the stopped position | `focuser_abort_overlap_disconnect` |
+| Refused STOP and retry | `abort_refused` |
+| Stall: STOP, ALERT kept through idle polls, fresh move without abort | `stall_failure` |
+| Idle poll failure ALERT with the last position, recovery, move | `poll_failure` |
+| Refused GO keeps the position | `go_failure` |
+| Uncommanded motion BUSY then OK with target equal to the measurement, later relative move from it | `uncommanded_motion`, `external_focuser_state` |
+| SYNC of the published value, refused SYNC keeps the position, next SYNC accepted | `sync_failure` |
+| Settings during a move, limit excluding the position | `settings_during_motion` |
+| Automatic mode: position read-only, moves refused, manual mode restores moves; momentary switch OFF answered without a command | `automatic_mode` |
+
+### Rules not applicable
+
+- Speed and backlash: not exposed by the driver.
+- Driver-owned temperature compensation: the controller compensates itself (`TCOMP`); the driver
+  writes factor, period and threshold and switches the mode.
+
+### Validation
+
+`python3 tools/run_driver_test.py focuser_steeldrive2`: 61/61 passed (3.0.0.20, macOS arm64).
+
+Final test summary: 61 simulated tests run, 61 passed; 0 hardware tests run, 0 passed.

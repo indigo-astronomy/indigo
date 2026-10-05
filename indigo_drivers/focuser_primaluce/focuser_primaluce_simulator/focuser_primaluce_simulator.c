@@ -60,6 +60,10 @@ static bool report_abs_pos = true;
 static bool report_speed = true;
 static int calibration_restart = 0;
 static const char *motor_error = "";
+// A unit without an external probe reports EXT_T as -127.00 (observed on a SESTO SENSO 2).
+static const char *external_temperature = "22.50";
+// A stalled motor keeps reporting MST "move" while the position does not change.
+static bool focus_stalled = false;
 static FILE *events = NULL;
 
 static void usage(const char *name) {
@@ -70,12 +74,13 @@ static void usage(const char *name) {
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --profile <name>        normal, esatto, sestosenso3, no-abs-pos, no-speed,\n");
 	printf("                          unsupported, old-firmware, needs-calibration or\n");
-	printf("                          external-motion, default is normal\n");
+	printf("                          external-motion or no-probe, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_PRIMALUCE_EVENTS names a file receiving every accepted request.\n");
-	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close>' which is\n");
-	printf("applied once to the next request containing that key and then removed.\n");
+	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close|slow|stall>' which is\n");
+	printf("applied once to the next request containing that key and then removed; an 'always_' prefix keeps\n");
+	printf("it armed. 'handmove <position>' moves the focuser as its hand keypad does.\n");
 }
 
 static void signal_handler(int sig) {
@@ -137,6 +142,8 @@ static void apply_profile(void) {
 		motor_error = "MOT1 needs attention";
 	} else if (!strcmp(options.profile, "external-motion")) {
 		serial_motion_start(&focus_motion, 20000, 500);
+	} else if (!strcmp(options.profile, "no-probe")) {
+		external_temperature = "-127.00";
 	}
 }
 
@@ -155,12 +162,22 @@ static const char *pending_fault(const char *command) {
 	}
 	char key[64] = { 0 };
 	action[0] = '\0';
-	bool matched = fscanf(file, "%63s %31s", key, action) == 2 && strstr(command, key) != NULL;
+	bool parsed = fscanf(file, "%63s %31s", key, action) == 2;
 	fclose(file);
-	if (!matched) {
+	if (parsed && !strcmp(key, "handmove")) {
+		serial_motion_start(&focus_motion, atoi(action), 1000);
+		focus_stalled = false;
+		unlink(path);
 		return NULL;
 	}
-	unlink(path);
+	if (!parsed || strstr(command, key) == NULL) {
+		return NULL;
+	}
+	if (!strncmp(action, "always_", 7)) {
+		memmove(action, action + 7, strlen(action + 7) + 1);
+	} else {
+		unlink(path);
+	}
 	return action;
 }
 
@@ -273,7 +290,7 @@ static void send_state(int handle) {
 		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"},\"LANCFG\":\"%s\","
 		"\"WIFIAP\":{\"SSID\":\"SESTOSENSO20716\",\"PWD\":\"primalucelab\",\"STATUS\":\"%s\"},"
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
-		"\"EXT_T\":\"22.50\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
+		"\"EXT_T\":\"%s\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
 		"\"MOT1\":{%s\"ABS_POS_STEP\":%d,%s\"BKLASH\":%d,"
 		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,\"CAL_MINPOS\":0,\"CAL_MAXPOS\":100000,"
 		"\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,"
@@ -282,7 +299,7 @@ static void send_state(int handle) {
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -292,6 +309,16 @@ static void dispatch_command(int handle, const char *command) {
 		fflush(events);
 	}
 	const char *fault = pending_fault(command);
+	if (fault != NULL && !strcmp(fault, "slow")) {
+		usleep(400000);
+		update_motion();
+		fault = NULL;
+	}
+	if (fault != NULL && !strcmp(fault, "stall") && strstr(command, "\"MOVE_ABS\"") != NULL) {
+		focus_stalled = true;
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"STEP\":\"done\"}}}}\n");
+		return;
+	}
 	if (fault != NULL) {
 		if (!strcmp(fault, "close")) {
 			running = 0;
@@ -383,6 +410,7 @@ static void dispatch_command(int handle, const char *command) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"RUNPRESET\":\"done\"},\"get\":{\"MOT1\":{\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,\"HOLDCURR_STATUS\":%d}}}}\n", hold_current);
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		focuser_target = extract_int_after(command, "\"STEP\":", focuser_target);
+		focus_stalled = false;
 		serial_motion_start(&focus_motion, focuser_target, 1000);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"STEP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"GOTO\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
@@ -391,12 +419,14 @@ static void dispatch_command(int handle, const char *command) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"GOTO\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"MOT_ABORT\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		serial_motion_stop(&focus_motion);
+		focus_stalled = false;
 		focuser_target = focuser_position;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"LOGLEVEL\"") != NULL) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"LOGLEVEL\":\"done\"}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		serial_motion_stop(&focus_motion);
+		focus_stalled = false;
 		focuser_target = focuser_position;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"ARCO\"") != NULL) {
@@ -420,6 +450,14 @@ static void dispatch_command(int handle, const char *command) {
 		rotator_calibration_end = strstr(command, "\"stop\"") != NULL ? 0 : serial_motion_time() + 2;
 		sim_printf(handle, "{\"res\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL || strstr(command, "\"CAL_DIR\"") != NULL) {
+		// GoOutToFindMaxPos runs the draw tube outward until StoreAsMaxPos stops it.
+		if (strstr(command, "\"GoOutToFindMaxPos\"") != NULL) {
+			focuser_target = focuser_position + 1000000;
+			serial_motion_start(&focus_motion, focuser_target, 1000);
+		} else if (strstr(command, "\"StoreAsMaxPos\"") != NULL) {
+			serial_motion_stop(&focus_motion);
+			focuser_target = focuser_position;
+		}
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"done\"}},\"set\":{\"MOT1\":{\"CAL_DIR\":\"done\"}}}}\n");
 	} else {
 		sim_printf(handle, "\"Error: invalid cmd\"\n");

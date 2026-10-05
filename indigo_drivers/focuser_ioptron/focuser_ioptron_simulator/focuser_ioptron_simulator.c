@@ -90,6 +90,13 @@ static bool inject(char command) {
 			unlink(fault_file);
 			return false;
 		}
+		if (!strcmp(key, "move")) {
+			// Motion the driver did not command, as from the hand controller buttons.
+			serial_motion_start(&motion, atoi(action), 2000);
+			motion_active = true;
+			unlink(fault_file);
+			return false;
+		}
 		if (!strcmp(key, "temperature")) {
 			temperature = atoi(action);
 			unlink(fault_file);
@@ -115,6 +122,10 @@ static bool inject(char command) {
 	} else if (!strcmp(action, "stall")) {
 		frozen = true;
 		return true;
+	} else if (!strcmp(action, "delay")) {
+		// The reply is sent late, so the request stays outstanding for a while.
+		usleep(400000);
+		return false;
 	} else if (!strcmp(action, "silent") || !strcmp(action, "ignore")) {
 		return true;
 	} else if (!strcmp(action, "close")) {
@@ -198,7 +209,13 @@ int main(int argc, char **argv) {
 	}
 	if (!strcmp(profile, "alternate")) {
 		temperature = 26815;
+		direction = 0;
 		serial_motion_sync(&motion, 500);
+	}
+	if (!strcmp(profile, "running")) {
+		// The focuser is still moving when the driver connects.
+		serial_motion_start(&motion, 6000, 1000);
+		motion_active = true;
 	}
 	const char *event_path = getenv("INDIGO_IOPTRON_EVENTS");
 	events = event_path ? fopen(event_path, "w") : NULL;

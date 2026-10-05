@@ -17,6 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // PegasusAstro DMFC Focuser driver definition
+// The command language is documented in DMFC-Serial-Command-Table.pdf.
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -26,7 +27,7 @@ driver dmfc {
 	label = "PegasusAstro DMFC Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 19;
+	version = 20;
 	serial {
 		pattern {
 			product = "DMFC";
@@ -37,18 +38,40 @@ driver dmfc {
 			vendor = "Pegasus Astro";
 		}
 	}
-	// include { }
-	// define { }
+	define {
+		// polls without progress while the controller reports a move before it counts as stalled
+		#define DMFC_STALL_POLLS 5
+		// consecutive failed polls during a move before the focuser is stopped
+		#define DMFC_POLL_FAILURES 2
+		#define DMFC_MIN_TEMPERATURE (-55)
+		#define DMFC_MAX_TEMPERATURE 125
+		#define DMFC_MAX_STEPS 9999999
+	}
 	data {
 		char response[128];
 		// A motion the controller runs: the poll ends FOCUSER_POSITION / FOCUSER_STEPS BUSY only for it, not
 		// for a request that is copied and queued but whose handler has not sent the move yet.
 		bool moving;
+		// external_motion: the driver did not command the move; stop_pending: the last abort could not be
+		// sent; poll_failed: the ALERT on FOCUSER_POSITION comes from a failed idle poll, not a failed move
+		bool external_motion, stop_pending, poll_failed;
+		int poll_failures, stall_polls;
+		// the settings the controller last confirmed and the limits the client last accepted
+		int backlash, speed, reverse, motor, encoder_disabled, led, min_limit, max_limit;
 	}
 	code {
 		static void focuser_position_handler(indigo_device *device);
 		static void focuser_steps_handler(indigo_device *device);
 
+		typedef struct {
+			int motor, position, led, reverse, encoder_disabled, backlash;
+			bool moving, temperature_valid;
+			double temperature;
+			char model[32], version[32];
+		} dmfc_status_data;
+
+		// Commands without a reply (C, H, M, G, S, W) are only written. A reply has to end with its
+		// line end; one cut off by the timeout or longer than the buffer is not a reply.
 		static bool dmfc_command(indigo_device *device, char *command, ...) {
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
@@ -57,14 +80,82 @@ driver dmfc {
 				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0 && command[0] != 'C' && command[0] != 'H' && command[0] != 'M' && command[0] != 'G' && command[0] != 'S' && command[0] != 'W') {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(1));
+					if (result > 0 && PRIVATE_DATA->response[result - 1] == '\n') {
+						PRIVATE_DATA->response[result - 1] = 0;
+					} else {
+						result = -1;
+					}
 				}
 			}
 			return result > 0;
 		}
 
+		static bool dmfc_parse_int(const char *text, int *value) {
+			char *end = NULL;
+			long result = strtol(text, &end, 10);
+			if (text == NULL || end == text || *end != 0) {
+				return false;
+			}
+			*value = (int)result;
+			return true;
+		}
+
+		static bool dmfc_parse_flag(const char *text, int *value) {
+			if (text == NULL || (strcmp(text, "0") && strcmp(text, "1"))) {
+				return false;
+			}
+			*value = *text == '1';
+			return true;
+		}
+
+		static bool dmfc_parse_temperature(const char *text, double *value) {
+			char *end = NULL;
+			*value = text == NULL ? 0 : strtod(text, &end);
+			return text != NULL && end != text && *end == 0 && *value >= DMFC_MIN_TEMPERATURE && *value <= DMFC_MAX_TEMPERATURE;
+		}
+
+		// "OK_<model>:<version>:<motor>:<temperature>:<position>:<moving>:<led>:<reverse>:<encoder>:<backlash>";
+		// a missing or malformed field rejects the line, except the temperature, which is only marked invalid.
+		static bool dmfc_status(indigo_device *device, dmfc_status_data *status) {
+			if (!dmfc_command(device, "A") || strncmp(PRIVATE_DATA->response, "OK_", 3)) {
+				return false;
+			}
+			char *fields[10], *pnt;
+			fields[0] = strtok_r(PRIVATE_DATA->response, ":", &pnt);
+			for (int i = 1; i < 10; i++) {
+				fields[i] = strtok_r(NULL, ":", &pnt);
+			}
+			int moving = 0;
+			if (fields[9] == NULL || strtok_r(NULL, ":", &pnt) != NULL || !dmfc_parse_flag(fields[2], &status->motor) || !dmfc_parse_int(fields[4], &status->position) || !dmfc_parse_flag(fields[5], &moving) || !dmfc_parse_flag(fields[6], &status->led) || !dmfc_parse_flag(fields[7], &status->reverse) || !dmfc_parse_flag(fields[8], &status->encoder_disabled) || !dmfc_parse_int(fields[9], &status->backlash)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Malformed status");
+				return false;
+			}
+			status->moving = moving;
+			status->temperature_valid = dmfc_parse_temperature(fields[3], &status->temperature);
+			snprintf(status->model, sizeof(status->model), "%s", fields[0] + 3);
+			snprintf(status->version, sizeof(status->version), "%s", fields[1]);
+			return true;
+		}
+
+		// A setting command answered with "<reply prefix><value>" is confirmed only by that value.
+		static bool dmfc_set(indigo_device *device, const char *command, const char *prefix, int request, int expected, int *applied) {
+			int value = 0;
+			if (!dmfc_command(device, "%s:%d", command, request) || strncmp(PRIVATE_DATA->response, prefix, strlen(prefix)) || !dmfc_parse_flag(PRIVATE_DATA->response + strlen(prefix), &value)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s:%d not acknowledged", command, request);
+				return false;
+			}
+			*applied = value;
+			if (value != expected) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s:%d applied as %d", command, request, value);
+				return false;
+			}
+			return true;
+		}
+
 		static bool dmfc_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+			// the controller talks at 19200 baud
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (dmfc_command(device, "#") && !strncmp(PRIVATE_DATA->response, "OK_", 3)) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"DMFC Focuser");
@@ -86,113 +177,190 @@ driver dmfc {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	focuser {
 		name = "Pegasus DMFC";
 		additional_instances = true;
-		// code { }
+		code {
+			// Requests that move the focuser or change its geometry wait for the running motion.
+			static bool dmfc_motion_busy(indigo_device *device) {
+				return PRIVATE_DATA->moving || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+			}
+
+			// FOCUSER_POSITION and FOCUSER_STEPS cover the FOCUSER_LIMITS interval; a running
+			// session republishes them, because ranges travel only with a definition.
+			static void dmfc_update_ranges(indigo_device *device, bool redefine) {
+				FOCUSER_POSITION_ITEM->number.min = PRIVATE_DATA->min_limit;
+				FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->max_limit;
+				long long span = (long long)PRIVATE_DATA->max_limit - PRIVATE_DATA->min_limit;
+				FOCUSER_STEPS_ITEM->number.max = span < 1 ? 1 : span > DMFC_MAX_STEPS ? DMFC_MAX_STEPS : span;
+				if (redefine) {
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				}
+			}
+
+			static void dmfc_start_motion(indigo_device *device) {
+				PRIVATE_DATA->moving = true;
+				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->poll_failures = PRIVATE_DATA->stall_polls = 0;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			}
+
+			// A move ends with both motion properties in the same state; a failed or aborted move and a move
+			// the driver did not command end with the target at the measured position.
+			static void dmfc_end_motion(indigo_device *device, indigo_property_state state, const char *message) {
+				if (state == INDIGO_ALERT_STATE || PRIVATE_DATA->external_motion) {
+					FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+				}
+				PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->poll_failures = PRIVATE_DATA->stall_polls = 0;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, message);
+			}
+
+			static void dmfc_show_settings(indigo_device *device) {
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = PRIVATE_DATA->speed;
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, PRIVATE_DATA->motor ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
+				indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, PRIVATE_DATA->encoder_disabled ? X_FOCUSER_ENCODER_DISABLED_ITEM : X_FOCUSER_ENCODER_ENABLED_ITEM, true);
+				indigo_set_switch(X_FOCUSER_LED_PROPERTY, PRIVATE_DATA->led ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
+			}
+
+			static void dmfc_poll_failed(indigo_device *device) {
+				if (PRIVATE_DATA->moving) {
+					// a single lost poll is retried, a second one stops the move
+					if (++PRIVATE_DATA->poll_failures >= DMFC_POLL_FAILURES) {
+						dmfc_command(device, "H");
+						dmfc_end_motion(device, INDIGO_ALERT_STATE, "Status read failed, the focuser was stopped");
+					}
+				} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_OK_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+					PRIVATE_DATA->poll_failed = true;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Position read failed");
+				}
+			}
+		}
 		on_timer {
-			if (dmfc_command(device, "T")) {
-				double temp = indigo_atod(PRIVATE_DATA->response);
-				if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
-					FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+			double temperature;
+			if (dmfc_command(device, "T") && dmfc_parse_temperature(PRIVATE_DATA->response, &temperature)) {
+				if (FOCUSER_TEMPERATURE_ITEM->number.value != temperature || FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_OK_STATE) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
 					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_TEMPERATURE_PROPERTY, INDIGO_OK_STATE, NULL);
 				}
+			} else if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_ALERT_STATE) {
+				// the last valid reading stays published
+				INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_TEMPERATURE_PROPERTY, INDIGO_ALERT_STATE, "Temperature read failed");
 			}
-			bool update = false;
-			if (dmfc_command(device, "P")) {
-				int pos = atoi(PRIVATE_DATA->response);
-				if (FOCUSER_POSITION_ITEM->number.value != pos) {
-					FOCUSER_POSITION_ITEM->number.value = pos;
-					update = true;
-				}
-			}
-			if (dmfc_command(device, "I")) {
-				if (PRIVATE_DATA->response[0] == '0') {
-					if (PRIVATE_DATA->moving) {
-						PRIVATE_DATA->moving = false;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			int position = 0, moving = 0;
+			if (!dmfc_command(device, "P") || !dmfc_parse_int(PRIVATE_DATA->response, &position) || !dmfc_command(device, "I") || !dmfc_parse_flag(PRIVATE_DATA->response, &moving)) {
+				dmfc_poll_failed(device);
+			} else {
+				bool changed = FOCUSER_POSITION_ITEM->number.value != position;
+				PRIVATE_DATA->poll_failures = 0;
+				if (PRIVATE_DATA->moving) {
+					FOCUSER_POSITION_ITEM->number.value = position;
+					if (!moving) {
+						dmfc_end_motion(device, INDIGO_OK_STATE, NULL);
+					} else if (!changed && ++PRIVATE_DATA->stall_polls >= DMFC_STALL_POLLS) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser stalled at %d, stopping it", position);
+						dmfc_command(device, "H");
+						dmfc_end_motion(device, INDIGO_ALERT_STATE, "The focuser stalled and was stopped");
+					} else if (changed) {
+						// progress keeps the state, so a refused overlapping request stays visible as ALERT
+						PRIVATE_DATA->stall_polls = 0;
+						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					}
+				} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					// a request the bus accepted waits for its handler; the poll leaves it alone
+				} else if (moving) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own from %d", position);
+					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+					dmfc_start_motion(device);
+					PRIVATE_DATA->external_motion = true;
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				} else if (changed || PRIVATE_DATA->poll_failed) {
+					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+					if (PRIVATE_DATA->poll_failed) {
+						// only an ALERT left by a failed poll is cleared, never one of a failed move
+						PRIVATE_DATA->poll_failed = false;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-						update = true;
 					}
-				} else {
-					PRIVATE_DATA->moving = true;
-					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-						update = true;
-					}
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				}
-			}
-			if (update) {
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			}
 			indigo_execute_handler_in(device, 1, focuser_timer_callback);
 		}
 		on_connect {
-			if (dmfc_command(device, "A") && !strncmp(PRIVATE_DATA->response, "OK_", 3)) {
-				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
-				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
-				token = strtok_r(NULL, ":", &pnt); // status
-				if (token) { // version
-					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
+			// the status line and the speed are mandatory: a controller that does not answer them is refused
+			dmfc_status_data status;
+			double speed = 0;
+			char *end = NULL;
+			connection_result = dmfc_status(device, &status) && dmfc_command(device, "B") && !strncmp(PRIVATE_DATA->response, "B:", 2) && (speed = strtod(PRIVATE_DATA->response + 2, &end), end != PRIVATE_DATA->response + 2 && *end == 0);
+			if (connection_result) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, status.model);
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, status.version);
+				PRIVATE_DATA->motor = status.motor;
+				PRIVATE_DATA->led = status.led;
+				PRIVATE_DATA->reverse = status.reverse;
+				PRIVATE_DATA->encoder_disabled = status.encoder_disabled;
+				PRIVATE_DATA->backlash = status.backlash;
+				PRIVATE_DATA->speed = (int)(speed + 0.5);
+				if (status.temperature_valid) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = status.temperature;
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // motor
-					indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, *token == '1' ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status.position;
+				PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				if (status.moving) {
+					// a move the driver did not command is followed until the controller stops
+					dmfc_start_motion(device);
+					PRIVATE_DATA->external_motion = true;
 				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // temperature
-					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = indigo_atod(token);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // position
-					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // moving status
-					PRIVATE_DATA->moving = *token == '1';
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // led status
-					indigo_set_switch(X_FOCUSER_LED_PROPERTY, *token == '1' ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // reverse
-					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // encoder
-					indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, *token == '1' ? X_FOCUSER_ENCODER_DISABLED_ITEM: X_FOCUSER_ENCODER_ENABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // backlash
-					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
-				}
+				PRIVATE_DATA->min_limit = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				PRIVATE_DATA->max_limit = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				dmfc_update_ranges(device, false);
+				dmfc_show_settings(device);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "The controller did not answer the connect sequence");
+				dmfc_close(device);
 			}
 		}
-		// on_disconnect { }
+		on_disconnect {
+			// a running move is stopped before the port closes
+			if (PRIVATE_DATA->moving || PRIVATE_DATA->stop_pending) {
+				dmfc_command(device, "H");
+			}
+			PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		switch X_FOCUSER_MOTOR_TYPE {
+			reject_change {
+				condition = dmfc_motion_busy(device);
+				message = "The focuser is moving";
+			}
 			on_change {
-				if (!dmfc_command(device, "R:%d", X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM->sw.value ? 1 : 0)) {
+				// R answers with the motor type the controller applied
+				if (!dmfc_set(device, "R", "", X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM->sw.value ? 1 : 0, X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM->sw.value ? 1 : 0, &PRIVATE_DATA->motor)) {
 					X_FOCUSER_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, PRIVATE_DATA->motor ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
 			}
-			// on_attach { }
-			// on_detach { }
 			name = "X_FOCUSER_MOTOR_TYPE";
 			group = FOCUSER_MAIN_GROUP;
 			label = "Motor type";
-			// asynchronous_change = false;
 			item X_FOCUSER_MOTOR_TYPE_STEPPER {
 				name = "STEPPER";
 				label = "Stepper motor";
@@ -205,17 +373,21 @@ driver dmfc {
 			}
 		}
 		switch X_FOCUSER_ENCODER {
+			reject_change {
+				condition = dmfc_motion_busy(device);
+				message = "The focuser is moving";
+			}
 			on_change {
-				if (!dmfc_command(device, "E:%d", X_FOCUSER_ENCODER_DISABLED_ITEM->sw.value ? 1 : 0)) {
+				// E:1 turns the encoder off, E:0 on; the reply repeats the setting
+				int disabled = X_FOCUSER_ENCODER_DISABLED_ITEM->sw.value ? 1 : 0;
+				if (!dmfc_set(device, "E", "E:", disabled, disabled, &PRIVATE_DATA->encoder_disabled)) {
 					X_FOCUSER_ENCODER_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, PRIVATE_DATA->encoder_disabled ? X_FOCUSER_ENCODER_DISABLED_ITEM : X_FOCUSER_ENCODER_ENABLED_ITEM, true);
 			}
-			// on_attach { }
-			// on_detach { }
 			name = "X_FOCUSER_ENCODER";
 			group = FOCUSER_MAIN_GROUP;
 			label = "Encoder state";
-			// asynchronous_change = false;
 			item X_FOCUSER_ENCODER_ENABLED {
 				name = "ENABLED";
 				label = "Enabled";
@@ -229,16 +401,16 @@ driver dmfc {
 		}
 		switch X_FOCUSER_LED {
 			on_change {
-				if (!dmfc_command(device, "L:%d", X_FOCUSER_LED_ENABLED_ITEM->sw.value ? 1 : 0)) {
+				// L:2 switches the LED on, L:1 off; the reply is the LED status, 1 on and 0 off
+				int on = X_FOCUSER_LED_ENABLED_ITEM->sw.value ? 1 : 0;
+				if (!dmfc_set(device, "L", "L:", on ? 2 : 1, on, &PRIVATE_DATA->led)) {
 					X_FOCUSER_LED_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				indigo_set_switch(X_FOCUSER_LED_PROPERTY, PRIVATE_DATA->led ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
 			}
-			// on_attach { }
-			// on_detach { }
 			name = "X_FOCUSER_LED";
 			group = FOCUSER_MAIN_GROUP;
 			label = "LED status";
-			// asynchronous_change = false;
 			item X_FOCUSER_LED_ENABLED {
 				name = "ENABLED";
 				label = "Enabled";
@@ -251,10 +423,24 @@ driver dmfc {
 			}
 		}
 		inherited FOCUSER_BACKLASH {
+			reject_change {
+				condition = dmfc_motion_busy(device);
+				message = "The focuser is moving";
+			}
 			on_change {
-				if (!dmfc_command(device, "C:%d", (int)FOCUSER_BACKLASH_ITEM->number.value)) {
+				// C is not answered, so the status line decides
+				int backlash = (int)FOCUSER_BACKLASH_ITEM->number.value;
+				dmfc_status_data status;
+				bool written = dmfc_command(device, "C:%d", backlash);
+				if (dmfc_status(device, &status)) {
+					PRIVATE_DATA->backlash = status.backlash;
+				} else {
+					written = false;
+				}
+				if (!written || PRIVATE_DATA->backlash != backlash) {
 					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
 			}
 			on_attach {
 				FOCUSER_BACKLASH_PROPERTY->hidden = false;
@@ -262,29 +448,40 @@ driver dmfc {
 				FOCUSER_BACKLASH_ITEM->number.max = 9999;
 				FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
 			}
-			// on_detach { }
 		}
 		inherited FOCUSER_REVERSE_MOTION {
 			hidden = false;
+			reject_change {
+				condition = dmfc_motion_busy(device);
+				message = "The focuser is moving";
+			}
 			on_change {
-				if (!dmfc_command(device, "N:%d", FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? 0 : 1)) {
+				int reverse = FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? 0 : 1;
+				if (!dmfc_set(device, "N", "N:", reverse, reverse, &PRIVATE_DATA->reverse)) {
 					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 			}
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_TEMPERATURE {
 			hidden = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_SPEED {
 			on_change {
-				if (!dmfc_command(device, "S:%d", (int)FOCUSER_SPEED_ITEM->number.value)) {
+				// S is not answered, so the maximum speed the controller reports with B decides
+				int speed = (int)FOCUSER_SPEED_ITEM->number.value;
+				double reported = 0;
+				char *end = NULL;
+				bool written = dmfc_command(device, "S:%d", speed);
+				if (dmfc_command(device, "B") && !strncmp(PRIVATE_DATA->response, "B:", 2) && (reported = strtod(PRIVATE_DATA->response + 2, &end), end != PRIVATE_DATA->response + 2 && *end == 0)) {
+					PRIVATE_DATA->speed = (int)(reported + 0.5);
+				} else {
+					written = false;
+				}
+				if (!written || PRIVATE_DATA->speed != speed) {
 					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = PRIVATE_DATA->speed;
 			}
 			on_attach {
 				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 400;
@@ -292,94 +489,140 @@ driver dmfc {
 				FOCUSER_SPEED_ITEM->number.max = 1000;
 				FOCUSER_SPEED_ITEM->number.step = 1;
 			}
-			// on_detach { }
 		}
 		inherited FOCUSER_STEPS {
 			reject_change {
-				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				condition = dmfc_motion_busy(device);
 				message = "Another motion operation is pending";
 			}
 			on_change {
-				if (dmfc_command(device, "G:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1))) {
-					PRIVATE_DATA->moving = true;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				// G counts inward positive; a move past the limit it approaches is sent to that limit
+				int position = (int)FOCUSER_POSITION_ITEM->number.value;
+				int steps = (int)FOCUSER_STEPS_ITEM->number.target;
+				bool inward = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value;
+				if (inward && position + steps > PRIVATE_DATA->max_limit) {
+					steps = PRIVATE_DATA->max_limit - position;
+				} else if (!inward && position - steps < PRIVATE_DATA->min_limit) {
+					steps = position - PRIVATE_DATA->min_limit;
+				}
+				if (steps < 0) {
+					// beyond the limit already (after a sync): never move further out
+					steps = 0;
+				}
+				FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = steps;
+				int delta = inward ? steps : -steps;
+				if (steps == 0) {
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				} else if (dmfc_command(device, "G:%d", delta)) {
+					FOCUSER_POSITION_ITEM->number.target = position + delta;
+					dmfc_start_motion(device);
 				} else {
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+					FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 			on_attach {
 				FOCUSER_STEPS_ITEM->number.min = 1;
-				FOCUSER_STEPS_ITEM->number.max = 9999999;
+				FOCUSER_STEPS_ITEM->number.max = DMFC_MAX_STEPS;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			// on_detach { }
 		}
 		inherited FOCUSER_ON_POSITION_SET {
 			hidden = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
 			reject_change {
-				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				// moving keeps the guard while a refusal shows one motion property ALERT
+				condition = dmfc_motion_busy(device);
 				message = "Another motion operation is pending";
 			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.target;
-				if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
-					position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				if (position < PRIVATE_DATA->min_limit) {
+					position = PRIVATE_DATA->min_limit;
 				}
-				if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
-					position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				if (position > PRIVATE_DATA->max_limit) {
+					position = PRIVATE_DATA->max_limit;
 				}
 				FOCUSER_POSITION_ITEM->number.target = position;
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-					if (dmfc_command(device, "M:%d", position)) {
-						PRIVATE_DATA->moving = true;
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					if (position == (int)FOCUSER_POSITION_ITEM->number.value) {
+						// already there: OK at once, without a command
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					} else if (dmfc_command(device, "M:%d", position)) {
+						dmfc_start_motion(device);
 					} else {
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-					if (!dmfc_command(device, "W:%d", position)) {
+					// W is not answered, so the position read back decides; a sync reaches the
+					// controller even for the published value
+					int readback = 0;
+					if (dmfc_command(device, "W:%d", position) && dmfc_command(device, "P") && dmfc_parse_int(PRIVATE_DATA->response, &readback) && readback == position) {
+						FOCUSER_POSITION_ITEM->number.value = position;
+						PRIVATE_DATA->poll_failed = false;
+					} else {
+						if (dmfc_parse_int(PRIVATE_DATA->response, &readback)) {
+							FOCUSER_POSITION_ITEM->number.value = readback;
+						}
+						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-					indigo_cancel_pending_handler(device, focuser_position_handler);
-					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-					if (dmfc_command(device, "H")) {
-						PRIVATE_DATA->moving = false;
-						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-						indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-					} else {
-						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					// an abort with nothing moving sends nothing
+					if (PRIVATE_DATA->moving || PRIVATE_DATA->stop_pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						// an urgent abort can overtake a move that is still queued
+						indigo_cancel_pending_handler(device, focuser_position_handler);
+						indigo_cancel_pending_handler(device, focuser_steps_handler);
+						if (dmfc_command(device, "H")) {
+							int position = 0;
+							PRIVATE_DATA->stop_pending = false;
+							if (dmfc_command(device, "P") && dmfc_parse_int(PRIVATE_DATA->response, &position)) {
+								FOCUSER_POSITION_ITEM->number.value = position;
+							}
+							// an aborted move ends ALERT at the position where it stopped
+							dmfc_end_motion(device, INDIGO_ALERT_STATE, NULL);
+						} else {
+							// the motor may still run, so the move stays BUSY
+							PRIVATE_DATA->stop_pending = true;
+							FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
 					}
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_LIMITS {
 			persistent = true;
+			reject_change {
+				condition = dmfc_motion_busy(device);
+				message = "The focuser is moving";
+			}
+			on_change {
+				// the limits belong to the driver, nothing is sent to the controller
+				int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				int position = (int)FOCUSER_POSITION_ITEM->number.value;
+				if (min > max || position < min || position > max) {
+					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_send_message(device, ALERT_PROPERTY, "Limits %d to %d are empty or exclude the focuser at %d", min, max, position);
+				} else {
+					PRIVATE_DATA->min_limit = min;
+					PRIVATE_DATA->max_limit = max;
+					dmfc_update_ranges(device, true);
+				}
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = PRIVATE_DATA->min_limit;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = PRIVATE_DATA->max_limit;
+			}
 			on_attach {
 				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -9999999;
 				strcpy(FOCUSER_LIMITS_MIN_POSITION_ITEM->number.format, "%.0f");
@@ -387,6 +630,5 @@ driver dmfc {
 				strcpy(FOCUSER_LIMITS_MAX_POSITION_ITEM->number.format, "%.0f");
 			}
 		}
-
 	}
 }

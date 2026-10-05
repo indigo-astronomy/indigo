@@ -26,20 +26,44 @@ driver fc3 {
 	label = "PegasusAstro FocusCube v3 Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial {
 		pattern {
 			pid = 0x9000;
 			vid = 0x303a;
 		}
 	}
+	define {
+		// polls without progress while the controller reports a move before it counts as stalled
+		#define FC3_STALL_POLLS 5
+		// consecutive failed status reads during a move before the focuser is stopped
+		#define FC3_POLL_FAILURES 2
+		#define FC3_MIN_TEMPERATURE (-55)
+		#define FC3_MAX_TEMPERATURE 125
+		#define FC3_MAX_STEPS 9999999
+	}
 	data {
 		char response[128];
+		// the settings and limits the controller or the client last confirmed
+		int speed, backlash, reverse, min_limit, max_limit;
+		int poll_failures, stall_polls;
+		// motion_active: a move runs; external_motion: the driver did not command it;
+		// stop_pending: the last abort was not acknowledged; poll_failed: the ALERT on
+		// FOCUSER_POSITION comes from a failed idle poll, not from a failed move
+		bool motion_active, external_motion, stop_pending, poll_failed;
 	}
 	code {
 		static void focuser_position_handler(indigo_device *device);
 		static void focuser_steps_handler(indigo_device *device);
 
+		typedef struct {
+			int position, reverse, backlash;
+			bool running, temperature_valid;
+			double temperature;
+		} fc3_status_data;
+
+		// Replies are "\n"-terminated lines; one cut off by the timeout or longer
+		// than the buffer has no line end and is not a reply.
 		static bool fc3_command(indigo_device *device, char *command, ...) {
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
@@ -48,10 +72,174 @@ driver fc3 {
 				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(1));
+					if (result > 0 && PRIVATE_DATA->response[result - 1] == '\n') {
+						PRIVATE_DATA->response[result - 1] = 0;
+					} else {
+						result = -1;
+					}
 				}
 			}
 			return result > 0;
+		}
+
+		static bool fc3_parse_int(const char *text, int *value) {
+			char *end = NULL;
+			long result = strtol(text, &end, 10);
+			if (end == text || *end != 0) {
+				return false;
+			}
+			*value = (int)result;
+			return true;
+		}
+
+		// Setting and motion commands are acknowledged by their echo, and the value
+		// in the echo is the one the controller applied.
+		static bool fc3_set(indigo_device *device, const char *name, int value, int *applied) {
+			char prefix[8];
+			int echoed = 0;
+			snprintf(prefix, sizeof(prefix), "%s:", name);
+			if (!fc3_command(device, "%s:%d", name, value) || strncmp(PRIVATE_DATA->response, prefix, strlen(prefix)) || !fc3_parse_int(PRIVATE_DATA->response + strlen(prefix), &echoed)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s:%d not acknowledged", name, value);
+				return false;
+			}
+			if (applied != NULL) {
+				*applied = echoed;
+			}
+			if (echoed != value) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s:%d applied as %d", name, value, echoed);
+				return false;
+			}
+			return true;
+		}
+
+		// "FC3:<position>:<running>:<temperature>:<reverse>:<backlash>"; a status line
+		// with a missing or malformed field is rejected as a whole, except for the
+		// temperature, which is only marked invalid.
+		static bool fc3_status(indigo_device *device, fc3_status_data *status) {
+			if (!fc3_command(device, "FA") || strncmp(PRIVATE_DATA->response, "FC3:", 4)) {
+				return false;
+			}
+			char *pnt, *end;
+			char *position = strtok_r(PRIVATE_DATA->response + 4, ":", &pnt);
+			char *running = strtok_r(NULL, ":", &pnt);
+			char *temperature = strtok_r(NULL, ":", &pnt);
+			char *reverse = strtok_r(NULL, ":", &pnt);
+			char *backlash = strtok_r(NULL, ":", &pnt);
+			if (position == NULL || running == NULL || temperature == NULL || reverse == NULL || backlash == NULL || !fc3_parse_int(position, &status->position) || (strcmp(running, "0") && strcmp(running, "1")) || (strcmp(reverse, "0") && strcmp(reverse, "1")) || !fc3_parse_int(backlash, &status->backlash)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Malformed status");
+				return false;
+			}
+			status->running = *running == '1';
+			status->reverse = *reverse == '1';
+			status->temperature = strtod(temperature, &end);
+			status->temperature_valid = end != temperature && *end == 0 && status->temperature >= FC3_MIN_TEMPERATURE && status->temperature <= FC3_MAX_TEMPERATURE;
+			return true;
+		}
+
+		static bool fc3_motion_busy(indigo_device *device) {
+			return PRIVATE_DATA->motion_active || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
+		}
+
+		// FOCUSER_POSITION and FOCUSER_STEPS cover the FOCUSER_LIMITS interval; a running
+		// session republishes them, because ranges travel only with a definition.
+		static void fc3_update_ranges(indigo_device *device, bool redefine) {
+			FOCUSER_POSITION_ITEM->number.min = PRIVATE_DATA->min_limit;
+			FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->max_limit;
+			long long span = (long long)PRIVATE_DATA->max_limit - PRIVATE_DATA->min_limit;
+			FOCUSER_STEPS_ITEM->number.max = span < 1 ? 1 : span > FC3_MAX_STEPS ? FC3_MAX_STEPS : span;
+			if (redefine) {
+				indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+		}
+
+		// A move ends with both motion properties in the same state; a failed or
+		// aborted move and a move the driver did not command end with the target
+		// at the measured position.
+		static void fc3_end_motion(indigo_device *device, indigo_property_state state, const char *message) {
+			if (state == INDIGO_ALERT_STATE || PRIVATE_DATA->external_motion) {
+				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			}
+			PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
+			PRIVATE_DATA->stall_polls = PRIVATE_DATA->poll_failures = 0;
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, message);
+		}
+
+		static void fc3_start_motion(indigo_device *device) {
+			PRIVATE_DATA->motion_active = true;
+			PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
+			PRIVATE_DATA->stall_polls = PRIVATE_DATA->poll_failures = 0;
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+
+		static void fc3_publish_temperature(indigo_device *device, fc3_status_data *status) {
+			if (status == NULL || !status->temperature_valid) {
+				if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_ALERT_STATE) {
+					// the last valid reading stays published
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "Temperature read failed");
+				}
+			} else if (FOCUSER_TEMPERATURE_ITEM->number.value != status->temperature || FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_OK_STATE) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = status->temperature;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			}
+		}
+
+		static void fc3_poll_failed(indigo_device *device) {
+			fc3_publish_temperature(device, NULL);
+			if (PRIVATE_DATA->motion_active) {
+				// a single lost status line is retried, a second one stops the move
+				if (++PRIVATE_DATA->poll_failures >= FC3_POLL_FAILURES) {
+					fc3_command(device, "FH");
+					fc3_end_motion(device, INDIGO_ALERT_STATE, "Status read failed, the focuser was stopped");
+				}
+			} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_OK_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+				PRIVATE_DATA->poll_failed = true;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Status read failed");
+			}
+		}
+
+		static void fc3_poll_motion(indigo_device *device, fc3_status_data *status) {
+			bool changed = FOCUSER_POSITION_ITEM->number.value != status->position;
+			PRIVATE_DATA->poll_failures = 0;
+			if (PRIVATE_DATA->motion_active) {
+				FOCUSER_POSITION_ITEM->number.value = status->position;
+				if (!status->running) {
+					fc3_end_motion(device, INDIGO_OK_STATE, NULL);
+				} else if (!changed && ++PRIVATE_DATA->stall_polls >= FC3_STALL_POLLS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser stalled at %d, stopping it", status->position);
+					fc3_command(device, "FH");
+					fc3_end_motion(device, INDIGO_ALERT_STATE, "The focuser stalled and was stopped");
+				} else if (changed) {
+					// progress keeps the state, so a refused overlapping request stays visible as ALERT
+					PRIVATE_DATA->stall_polls = 0;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				// a request the bus accepted waits for its handler; the poll leaves it alone
+			} else if (status->running) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own from %d", status->position);
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status->position;
+				fc3_start_motion(device);
+				PRIVATE_DATA->external_motion = true;
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			} else if (changed || PRIVATE_DATA->poll_failed) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status->position;
+				if (PRIVATE_DATA->poll_failed) {
+					// only an ALERT left by a failed poll is cleared, never one of a failed move
+					PRIVATE_DATA->poll_failed = false;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
 		}
 
 		static bool fc3_open(indigo_device *device) {
@@ -86,85 +274,68 @@ driver fc3 {
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		on_timer {
-			bool update = false;
-			if (fc3_command(device, "FA") && !strncmp(PRIVATE_DATA->response, "FC3:", 4)) {
-				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
-				token = strtok_r(NULL, ":", &pnt); // position
-				if (token) {
-					int pos = atoi(token);
-					if (FOCUSER_POSITION_ITEM->number.value != pos) {
-						FOCUSER_POSITION_ITEM->number.value = pos;
-						update = true;
-					}
-				}
-				token = strtok_r(NULL, ":", &pnt); // is_running
-				if (token) {
-					if (*token == '0') {
-						if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
-							FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-							FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-							update = true;
-						}
-					} else {
-						if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
-							FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-							FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-							update = true;
-						}
-					}
-				}
-				token = strtok_r(NULL, ":", &pnt); // temperature
-				if (token) {
-					double temp = indigo_atod(token);
-					if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
-						FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-							INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_TEMPERATURE_PROPERTY, INDIGO_OK_STATE, NULL);
-					}
-				}
-			}
-			if (update) {
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			fc3_status_data status;
+			if (fc3_status(device, &status)) {
+				fc3_publish_temperature(device, &status);
+				fc3_poll_motion(device, &status);
+			} else {
+				fc3_poll_failed(device);
 			}
 			indigo_execute_handler_in(device, 1, focuser_timer_callback);
 		}
 		on_connect {
-			if (fc3_command(device, "FA") && !strncmp(PRIVATE_DATA->response, "FC3:", 4)) {
-				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
-				token = strtok_r(NULL, ":", &pnt); // position
-				if (token) {
-					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
+			// every query is mandatory: a controller that does not answer one is refused
+			fc3_status_data status;
+			int speed = 0;
+			connection_result = fc3_status(device, &status) && fc3_command(device, "SP") && !strncmp(PRIVATE_DATA->response, "SP:", 3) && fc3_parse_int(PRIVATE_DATA->response + 3, &speed);
+			if (connection_result) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status.position;
+				PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->stall_polls = PRIVATE_DATA->poll_failures = 0;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				if (status.running) {
+					// a move the driver did not command is followed until the controller stops
+					fc3_start_motion(device);
+					PRIVATE_DATA->external_motion = true;
 				}
-				token = strtok_r(NULL, ":", &pnt); // is_running
-				if (token) {
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+				if (status.temperature_valid) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = status.temperature;
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-				token = strtok_r(NULL, ":", &pnt); // temperature
-				if (token) {
-					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = indigo_atod(token);
-				}
-				token = strtok_r(NULL, ":", &pnt); // direction
-				if (token) {
-					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // backlash
-					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
-				}
-			}
-			if (fc3_command(device, "SP") && !strncmp(PRIVATE_DATA->response, "SP:", 3)) {
-				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(PRIVATE_DATA->response + 3);
+				PRIVATE_DATA->reverse = status.reverse;
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, status.reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				PRIVATE_DATA->backlash = status.backlash;
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = status.backlash;
+				PRIVATE_DATA->speed = speed;
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
+				PRIVATE_DATA->min_limit = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				PRIVATE_DATA->max_limit = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				fc3_update_ranges(device, false);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "The controller did not answer the connect sequence");
+				fc3_close(device);
 			}
 		}
 		on_disconnect {
+			// a running move is stopped before the port closes
 			fc3_command(device, "FH");
+			PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
 		}
 		inherited FOCUSER_BACKLASH {
 			hidden = false;
+			reject_change {
+				condition = fc3_motion_busy(device);
+				message = "The focuser is moving";
+			}
 			on_change {
-				if (!fc3_command(device, "BL:%d", (int)FOCUSER_BACKLASH_ITEM->number.value)) {
+				int applied = PRIVATE_DATA->backlash;
+				if (!fc3_set(device, "BL", (int)FOCUSER_BACKLASH_ITEM->number.value, &applied)) {
 					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				PRIVATE_DATA->backlash = applied;
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = applied;
 			}
 			on_attach {
 				FOCUSER_BACKLASH_ITEM->number.min = 0;
@@ -174,10 +345,17 @@ driver fc3 {
 		}
 		inherited FOCUSER_REVERSE_MOTION {
 			hidden = false;
+			reject_change {
+				condition = fc3_motion_busy(device);
+				message = "The focuser is moving";
+			}
 			on_change {
-				if (!fc3_command(device, "FD:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1)) {
+				int applied = PRIVATE_DATA->reverse;
+				if (!fc3_set(device, "FD", FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? 0 : 1, &applied)) {
 					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				PRIVATE_DATA->reverse = applied ? 1 : 0;
+				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reverse ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 			}
 		}
 		inherited FOCUSER_TEMPERATURE {
@@ -186,9 +364,12 @@ driver fc3 {
 		}
 		inherited FOCUSER_SPEED {
 			on_change {
-				if (!fc3_command(device, "SP:%d", (int)FOCUSER_SPEED_ITEM->number.value)) {
+				int applied = PRIVATE_DATA->speed;
+				if (!fc3_set(device, "SP", (int)FOCUSER_SPEED_ITEM->number.value, &applied)) {
 					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				PRIVATE_DATA->speed = applied;
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = applied;
 			}
 			on_attach {
 				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 400;
@@ -199,31 +380,43 @@ driver fc3 {
 		}
 		inherited FOCUSER_STEPS {
 			reject_change {
-				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+				condition = fc3_motion_busy(device);
 				message = "Another motion operation is pending";
 			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.value;
+				int steps = (int)FOCUSER_STEPS_ITEM->number.target;
+				// a move past the limit it approaches is sent to that limit
 				if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-					if (position - FOCUSER_STEPS_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
-						FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = position - FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+					if (position - steps < PRIVATE_DATA->min_limit) {
+						steps = position - PRIVATE_DATA->min_limit;
 					}
 				} else {
-					if (position + FOCUSER_STEPS_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
-						FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value - position;
+					if (position + steps > PRIVATE_DATA->max_limit) {
+						steps = PRIVATE_DATA->max_limit - position;
 					}
 				}
-				if (fc3_command(device, "FG:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1))) {
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				if (steps < 0) {
+					// beyond the limit already (after a sync): never move further out
+					steps = 0;
+				}
+				FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = steps;
+				int delta = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -steps : steps;
+				if (steps == 0) {
+					// already at the limit: nothing to move
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				} else if (fc3_set(device, "FG", delta, NULL)) {
+					FOCUSER_POSITION_ITEM->number.target = position + delta;
+					fc3_start_motion(device);
 				} else {
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+					FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 			on_attach {
 				FOCUSER_STEPS_ITEM->number.min = 1;
-				FOCUSER_STEPS_ITEM->number.max = 9999999;
+				FOCUSER_STEPS_ITEM->number.max = FC3_MAX_STEPS;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
 		}
@@ -233,29 +426,36 @@ driver fc3 {
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
 			reject_change {
-				condition = FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				// motion_active keeps the guard while a refusal shows one motion property ALERT
+				condition = fc3_motion_busy(device);
 				message = "Another motion operation is pending";
 			}
 			on_change {
 				int position = (int)FOCUSER_POSITION_ITEM->number.target;
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-					if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
-						position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+					if (position < PRIVATE_DATA->min_limit) {
+						position = PRIVATE_DATA->min_limit;
 					}
-					if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
-						position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+					if (position > PRIVATE_DATA->max_limit) {
+						position = PRIVATE_DATA->max_limit;
 					}
 					FOCUSER_POSITION_ITEM->number.target = position;
-					if (fc3_command(device, "FM:%d", position)) {
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					if (position == (int)FOCUSER_POSITION_ITEM->number.value) {
+						// already there: OK at once, without a command
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					} else if (fc3_set(device, "FM", position, NULL)) {
+						fc3_start_motion(device);
 					} else {
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-					if (!fc3_command(device, "FN:%d", position)) {
+					// a sync reaches the controller even for the published value
+					if (fc3_set(device, "FN", position, NULL)) {
+						FOCUSER_POSITION_ITEM->number.value = position;
+					} else {
+						FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 				}
@@ -264,17 +464,25 @@ driver fc3 {
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-					indigo_cancel_pending_handler(device, focuser_position_handler);
-					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-					if (fc3_command(device, "FH")) {
-						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-						indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-					} else {
-						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					// an abort with nothing moving sends nothing
+					if (PRIVATE_DATA->motion_active || PRIVATE_DATA->stop_pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						// an urgent abort can overtake a move that is still queued
+						indigo_cancel_pending_handler(device, focuser_position_handler);
+						indigo_cancel_pending_handler(device, focuser_steps_handler);
+						if (fc3_command(device, "FH") && !strncmp(PRIVATE_DATA->response, "FH:", 3)) {
+							PRIVATE_DATA->stop_pending = false;
+							fc3_status_data status;
+							if (fc3_status(device, &status)) {
+								FOCUSER_POSITION_ITEM->number.value = status.position;
+							}
+							// an aborted move ends ALERT at the position where it stopped
+							fc3_end_motion(device, INDIGO_ALERT_STATE, NULL);
+						} else {
+							// the controller may still be moving, so the move stays BUSY
+							PRIVATE_DATA->stop_pending = true;
+							FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
 					}
 				}
 			}
@@ -284,6 +492,26 @@ driver fc3 {
 		}
 		inherited FOCUSER_LIMITS {
 			persistent = true;
+			reject_change {
+				condition = fc3_motion_busy(device);
+				message = "The focuser is moving";
+			}
+			on_change {
+				// the limits belong to the driver, nothing is sent to the controller
+				int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				int position = (int)FOCUSER_POSITION_ITEM->number.value;
+				if (min > max || position < min || position > max) {
+					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_send_message(device, ALERT_PROPERTY, "Limits %d to %d are empty or exclude the focuser at %d", min, max, position);
+				} else {
+					PRIVATE_DATA->min_limit = min;
+					PRIVATE_DATA->max_limit = max;
+					fc3_update_ranges(device, true);
+				}
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = PRIVATE_DATA->min_limit;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = PRIVATE_DATA->max_limit;
+			}
 			on_attach {
 				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -9999999;
 				strcpy(FOCUSER_LIMITS_MIN_POSITION_ITEM->number.format, "%.0f");

@@ -119,7 +119,7 @@
 | ccd_dsi | 2026-09-30 18:52 | 3.0.0.18 | linux arm64 | DSI Color | 15 / 15 | ✅ OK |
 |  | 2026-09-30 18:52 | 3.0.0.18 | linux arm64 | DSI Color (hot-plug) | 17 / 17 | ✅ OK |
 |  | 2026-10-02 21:06 | 3.0.0.18 | mac arm64 | DSI Color | 15 / 15 | ✅ OK |
-| ccd_fli | 2026-09-27 21:33 | 3.0.0.15 | mac arm64 | fake SDK | 22 / 22 | ✅ OK |
+| ccd_fli | 2026-10-05 20:06 | 3.0.0.15 | mac arm64 | fake SDK | 22 / 22 | ✅ OK |
 | ccd_iidc | 2026-09-22 07:51 | 3.0.0.20 | mac arm64 | Atik GP | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:34 | 3.0.0.22 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 |  | 2026-09-30 18:41 | 3.0.0.22 | linux arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
@@ -202,52 +202,55 @@
 | dome_skyroof | 2026-09-27 22:32 | 3.0.0.10 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | dome_talon6ror | 2026-09-27 14:38 | 3.0.0.6 | linux x64 | simulator | 36 / 36 | ✅ OK |
 |  | 2026-09-27 22:33 | 3.0.0.6 | mac arm64 | simulator | 36 / 36 | ✅ OK |
-| focuser_asi | 2026-09-27 22:37 | 3.0.0.35 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
+| focuser_asi | 2026-10-05 19:55 | 3.0.0.37 | mac arm64 | fake SDK | 23 / 23 | ✅ OK |
 | focuser_askar | 2026-09-24 17:14 | 3.0.0.7 | linux x64 | simulator | 10 / 10 | ✅ OK |
-|  | 2026-09-27 22:37 | 3.0.0.8 | mac arm64 | simulator | 10 / 10 | ✅ OK |
-| focuser_astroasis | 2026-09-27 22:38 | 3.0.0.13 | mac arm64 | fake SDK | 33 / 33 | ✅ OK |
-| focuser_astromechanics | 2026-09-27 22:39 | 3.0.0.7 | mac arm64 | simulator | 12 / 12 | ✅ OK |
-| focuser_dmfc | 2026-09-27 23:11 | 3.0.0.19 | mac arm64 | simulator | 26 / 26 | ✅ OK |
-| focuser_dsd | 2026-09-27 22:41 | 3.0.0.20 | mac arm64 | simulator | 42 / 42 | ✅ OK |
-| focuser_efa | 2026-09-27 22:47 | 3.0.0.21 | mac arm64 | simulator | 56 / 56 | ✅ OK |
-| focuser_fc3 | 2026-09-27 22:52 | 3.0.0.8 | mac arm64 | simulator | 28 / 28 | ✅ OK |
+|  | 2026-10-05 16:18 | 3.0.0.9 | mac arm64 | simulator | 24 / 24 | ✅ OK |
+| focuser_astroasis | 2026-10-05 16:27 | 3.0.0.16 | mac arm64 | fake SDK | 40 / 40 | ✅ OK |
+| focuser_astromechanics | 2026-10-05 20:03 | 3.0.0.8 | mac arm64 | simulator | 21 / 21 | ✅ OK |
+| focuser_dmfc | 2026-10-05 19:50 | 3.0.0.20 | mac arm64 | simulator | 37 / 37 | ✅ OK |
+| focuser_dsd | 2026-10-05 15:50 | 3.0.0.21 | mac arm64 | simulator | 57 / 57 | ✅ OK |
+| focuser_efa | 2026-10-05 16:25 | 3.0.0.22 | mac arm64 | simulator | 64 / 64 | ✅ OK |
+| focuser_fc3 | 2026-10-05 15:42 | 3.0.0.9 | mac arm64 | simulator | 38 / 38 | ✅ OK |
 | focuser_fcusb | 2026-09-21 23:46 | 3.0.0.9 | mac arm64 | FCUSB | 10 / 10 | ✅ OK |
-|  | 2026-09-27 22:53 | 3.0.0.10 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 |  | 2026-09-30 19:16 | 3.0.0.10 | linux arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
-| focuser_fli | 2026-09-27 22:54 | 3.0.0.14 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
+|  | 2026-10-05 15:13 | 3.0.0.11 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
+|  | 2026-10-05 21:02 | 3.0.0.11 | mac arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
+| focuser_fli | 2026-10-05 16:25 | 3.0.0.16 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 | focuser_focusdreampro | 2026-09-22 21:05 | 3.0.0.9 | mac arm64 | AstroGadget FocusDreamPro | 15 / 15 | ✅ OK |
-|  | 2026-09-27 22:54 | 3.0.0.10 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 |  | 2026-09-30 19:34 | 3.0.0.11 | linux arm64 | simulator | 18 / 18 | ✅ OK |
 |  | 2026-09-30 19:36 | 3.0.0.11 | linux arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
+|  | 2026-10-05 16:36 | 3.0.0.12 | mac arm64 | simulator | 35 / 35 | ✅ OK |
+|  | 2026-10-05 20:52 | 3.0.0.12 | mac arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
 | focuser_ioptron | 2026-09-27 00:32 | 3.0.0.10 | linux x64 | simulator | 42 / 42 | ✅ OK |
-|  | 2026-09-27 22:56 | 3.0.0.10 | mac arm64 | simulator | 42 / 42 | ✅ OK |
-| focuser_lacerta | 2026-09-27 22:59 | 3.0.0.8 | mac arm64 | simulator | 43 / 43 | ✅ OK |
-| focuser_lakeside | 2026-09-27 23:20 | 3.0.0.9 | mac arm64 | simulator | 34 / 34 | ✅ OK |
-| focuser_lunatico | 2026-09-27 23:01 | 3.0.0.15 | mac arm64 | simulator | 50 / 50 | ✅ OK |
-| focuser_mjkzz | 2026-09-27 23:04 | 3.0.0.7 | mac arm64 | simulator | 37 / 37 | ✅ OK |
-| focuser_moonlite | 2026-09-27 23:06 | 3.0.0.13 | mac arm64 | simulator | 39 / 39 | ✅ OK |
-| focuser_mypro2 | 2026-09-27 23:07 | 3.0.0.13 | mac arm64 | simulator | 16 / 16 | ✅ OK |
-| focuser_nfocus | 2026-09-27 23:08 | 3.0.0.9 | mac arm64 | simulator | 10 / 10 | ✅ OK |
-| focuser_nstep | 2026-09-27 23:09 | 3.0.0.9 | mac arm64 | simulator | 12 / 12 | ✅ OK |
-| focuser_optec | 2026-09-27 23:09 | 3.0.0.9 | mac arm64 | simulator | 32 / 32 | ✅ OK |
-| focuser_optecfl | 2026-09-27 23:10 | 3.0.0.5 | mac arm64 | simulator | 45 / 45 | ✅ OK |
+|  | 2026-10-05 15:08 | 3.0.0.11 | mac arm64 | simulator | 47 / 47 | ✅ OK |
+| focuser_lacerta | 2026-10-05 15:03 | 3.0.0.9 | mac arm64 | simulator | 50 / 50 | ✅ OK |
+| focuser_lakeside | 2026-10-05 15:14 | 3.0.0.10 | mac arm64 | simulator | 41 / 41 | ✅ OK |
+| focuser_lunatico | 2026-10-05 16:12 | 3.0.0.16 | mac arm64 | simulator | 56 / 56 | ✅ OK |
+| focuser_mjkzz | 2026-10-05 15:41 | 3.0.0.8 | mac arm64 | simulator | 43 / 43 | ✅ OK |
+| focuser_moonlite | 2026-10-05 15:27 | 3.0.0.14 | mac arm64 | simulator | 44 / 44 | ✅ OK |
+| focuser_mypro2 | 2026-10-05 15:20 | 3.0.0.14 | mac arm64 | simulator | 35 / 35 | ✅ OK |
+| focuser_nfocus | 2026-10-05 16:00 | 3.0.0.10 | mac arm64 | simulator | 15 / 15 | ✅ OK |
+| focuser_nstep | 2026-10-05 16:14 | 3.0.0.10 | mac arm64 | simulator | 23 / 23 | ✅ OK |
+| focuser_optec | 2026-10-05 16:22 | 3.0.0.11 | mac arm64 | simulator | 40 / 40 | ✅ OK |
+| focuser_optecfl | 2026-10-05 15:43 | 3.0.0.6 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 |  | 2026-09-30 18:48 | 3.0.0.15 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
-|  | 2026-10-03 19:51 | 3.0.0.16 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-03 19:54 | 3.0.0.16 | linux arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
-|  | 2026-10-03 21:52 | 3.0.0.19 | mac arm64 | simulator | 42 / 42 | ✅ OK |
-|  | 2026-10-03 21:58 | 3.0.0.19 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
+|  | 2026-10-05 22:05 | 3.0.0.22 | mac arm64 | simulator | 54 / 54 | ✅ OK |
+|  | 2026-10-05 22:14 | 3.0.0.22 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
+|  | 2026-10-05 22:15 | 3.0.0.22 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
-|  | 2026-09-27 23:17 | 3.0.0.9 | mac arm64 | simulator | 58 / 58 | ✅ OK |
+|  | 2026-10-05 16:34 | 3.0.0.10 | mac arm64 | simulator | 61 / 61 | ✅ OK |
 | focuser_qhy | 2026-09-27 12:50 | 3.0.0.10 | linux x64 | simulator | 32 / 32 | ✅ OK |
-|  | 2026-09-27 23:24 | 3.0.0.10 | mac arm64 | simulator | 32 / 32 | ✅ OK |
-| focuser_robofocus | 2026-09-27 23:26 | 3.0.0.4 | mac arm64 | simulator | 19 / 19 | ✅ OK |
+|  | 2026-10-05 15:31 | 3.0.0.11 | mac arm64 | simulator | 44 / 44 | ✅ OK |
+| focuser_robofocus | 2026-10-05 15:14 | 3.0.0.5 | mac arm64 | simulator | 32 / 32 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-27 13:10 | 3.0.0.19 | linux x64 | simulator | 56 / 56 | ✅ OK |
-|  | 2026-09-27 23:35 | 3.0.0.19 | mac arm64 | simulator | 56 / 56 | ✅ OK |
+|  | 2026-10-05 15:52 | 3.0.0.20 | mac arm64 | simulator | 61 / 61 | ✅ OK |
 | focuser_usbv3 | 2026-09-22 01:09 | 3.0.0.10 | mac arm64 | USB_Focus v3 | 16 / 16 | ✅ OK |
-|  | 2026-09-27 23:26 | 3.0.0.11 | mac arm64 | simulator | 28 / 28 | ✅ OK |
 |  | 2026-09-30 19:29 | 3.0.0.11 | linux arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
-| focuser_wemacro | 2026-09-27 23:28 | 3.0.0.8 | mac arm64 | simulator | 23 / 23 | ✅ OK |
+|  | 2026-10-05 19:52 | 3.0.0.12 | mac arm64 | simulator | 39 / 39 | ✅ OK |
+|  | 2026-10-05 22:18 | 3.0.0.12 | mac arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
+| focuser_wemacro | 2026-10-05 15:34 | 3.0.0.9 | mac arm64 | simulator | 26 / 26 | ✅ OK |
 | gps_gpsd | 2026-09-27 22:38 | 3.0.0.5 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | gps_nmea | 2026-09-22 21:38 | 3.0.0.20 | mac arm64 | u-blox 7 | 9 / 9 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.21 | mac arm64 | simulator | 5 / 5 | ✅ OK |
@@ -329,7 +332,7 @@
 | polaralign_simulator | 2026-09-27 22:42 | 3.0.0.5 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_asi | 2026-09-27 22:41 | 3.0.0.8 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | rotator_falcon | 2026-09-27 22:41 | 3.0.0.10 | mac arm64 | simulator | 13 / 13 | ✅ OK |
-| rotator_lunatico | 2026-09-27 22:41 | 3.0.0.14 | mac arm64 | simulator | 54 / 54 | ✅ OK |
+| rotator_lunatico | 2026-10-05 16:16 | 3.0.0.15 | mac arm64 | simulator | 54 / 54 | ✅ OK |
 | rotator_optec | 2026-09-27 22:45 | 3.0.0.5 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_simulator | 2026-09-27 22:46 | 3.0.0.8 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 | rotator_wa | 2026-09-27 22:46 | 3.0.0.6 | mac arm64 | simulator | 35 / 35 | ✅ OK |
@@ -362,7 +365,7 @@
 | wheel_astroasis | 2026-09-27 16:51 | 3.0.0.12 | linux x64 | fake SDK | 15 / 15 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.12 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
 | wheel_atik | 2026-09-27 22:39 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
-| wheel_fli | 2026-09-27 22:40 | 3.0.0.14 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
+| wheel_fli | 2026-10-05 20:06 | 3.0.0.14 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | wheel_indigo | 2026-09-27 22:40 | 3.0.0.8 | mac arm64 | simulator | 5 / 5 | ✅ OK |
 | wheel_manual | 2026-09-27 22:41 | 3.0.0.7 | mac arm64 | simulator | 2 / 2 | ✅ OK |
 | wheel_mi | 2026-09-27 22:41 | 3.0.0.9 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |

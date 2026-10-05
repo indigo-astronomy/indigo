@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_focuser_mypro2"
 #define DRIVER_LABEL         "myFocuserPro2 Focuser"
 #define FOCUSER_DEVICE_NAME  "myFocuserPro2"
@@ -56,6 +56,11 @@
 #define MFP_MIN_POSITION     0
 #define MFP_MAX_POSITION     2000000
 #define NO_TEMP_READING      (-127)
+// the DS18B20 probe measures -55 to 125 C, anything else is not a reading
+#define MFP_MIN_TEMPERATURE  (-55)
+#define MFP_MAX_TEMPERATURE  125
+// polls without progress while the controller reports a move before it counts as stalled
+#define MFP_STALL_POLLS      6
 
 //- define
 
@@ -104,9 +109,15 @@ typedef struct {
 	indigo_property *x_settle_time_property;
 	//+ data
 	char response[MFP_CMD_LEN];
-	int current_position, target_position, max_position;
+	int current_position, target_position, max_position, sync_target, stall_polls;
+	// the settings the controller last confirmed, restored when a readback fails
+	int step_mode, coils_mode, settle_time, reversed, backlash;
 	double prev_temp;
 	bool has_temperature_sensor, disconnection_queued;
+	// motion_active: a move runs; external_motion: the driver did not command it;
+	// stop_pending: an abort could not confirm the stop; poll_failed: the ALERT on
+	// FOCUSER_POSITION comes from a failed idle poll, not from a failed move
+	bool motion_active, external_motion, stop_pending, poll_failed;
 	//- data
 } mypro2_private_data;
 
@@ -139,7 +150,9 @@ static void mypro2_network_disconnection(indigo_device *device) {
 static bool mypro2_vcommand(indigo_device *device, bool expect_response, const char *format, va_list args) {
 	bool failed = indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_vprintf(PRIVATE_DATA->handle, format, args) <= 0;
 	if (!failed && expect_response) {
-		failed = indigo_uni_read_section(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(MFP_TIMEOUT)) <= 0;
+		long length = indigo_uni_read_section(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(MFP_TIMEOUT));
+		// a reply that fills the buffer or times out before its '#' is not a reply
+		failed = length <= 0 || RESPONSE[length - 1] != '#';
 		if (!failed) {
 			// the Arduino firmware needs a gap between transactions
 			indigo_usleep(50000);
@@ -176,9 +189,12 @@ static bool mypro2_get_position(indigo_device *device, int *position) {
 	return mypro2_get_int(device, ":00#", 'P', position);
 }
 
+// -127 is the no-sensor sentinel, anything else outside the probe range is rejected
 static bool mypro2_get_temperature(indigo_device *device, double *temperature) {
-	if (mypro2_command(device, true, ":06#") && sscanf(RESPONSE, "Z%lf#", temperature) == 1) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ":06# -> %s = %lf", RESPONSE, *temperature);
+	double value = 0;
+	if (mypro2_command(device, true, ":06#") && sscanf(RESPONSE, "Z%lf#", &value) == 1 && (value <= NO_TEMP_READING || (value >= MFP_MIN_TEMPERATURE && value <= MFP_MAX_TEMPERATURE))) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ":06# -> %s = %lf", RESPONSE, value);
+		*temperature = value;
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, ":06# failed");
@@ -223,41 +239,86 @@ static bool mypro2_get_backlashes(indigo_device *device, int *backlash_in, int *
 	return true;
 }
 
-static bool mypro2_update_step_mode(indigo_device *device) {
-	int mode = 0;
-	if (!mypro2_get_int(device, ":29#", 'S', &mode)) {
-		return false;
-	}
+// The update helpers publish what the controller reports; when the readback
+// fails they restore the value it last confirmed instead of the request.
+static void mypro2_show_step_mode(indigo_device *device) {
 	for (int i = 0; i < X_STEP_MODE_PROPERTY->count; i++) {
-		if (mode == 1 << i) {
+		if (PRIVATE_DATA->step_mode == 1 << i) {
 			indigo_set_switch(X_STEP_MODE_PROPERTY, X_STEP_MODE_PROPERTY->items + i, true);
-			return true;
 		}
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, ":29# wrong value %d", mode);
-	return false;
+}
+
+static bool mypro2_update_step_mode(indigo_device *device) {
+	int mode = 0;
+	bool result = false;
+	if (mypro2_get_int(device, ":29#", 'S', &mode)) {
+		for (int i = 0; i < X_STEP_MODE_PROPERTY->count; i++) {
+			if (mode == 1 << i) {
+				PRIVATE_DATA->step_mode = mode;
+				result = true;
+			}
+		}
+		if (!result) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, ":29# wrong value %d", mode);
+		}
+	}
+	mypro2_show_step_mode(device);
+	return result;
 }
 
 static bool mypro2_update_coils_mode(indigo_device *device) {
 	int mode = 0;
-	if (!mypro2_get_int(device, ":11#", 'O', &mode)) {
-		return false;
+	bool result = false;
+	if (mypro2_get_int(device, ":11#", 'O', &mode)) {
+		if (mode < 0 || mode >= X_COILS_MODE_PROPERTY->count) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, ":11# wrong value %d", mode);
+		} else {
+			PRIVATE_DATA->coils_mode = mode;
+			result = true;
+		}
 	}
-	if (mode < 0 || mode >= X_COILS_MODE_PROPERTY->count) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":11# wrong value %d", mode);
-		return false;
-	}
-	indigo_set_switch(X_COILS_MODE_PROPERTY, X_COILS_MODE_PROPERTY->items + mode, true);
-	return true;
+	indigo_set_switch(X_COILS_MODE_PROPERTY, X_COILS_MODE_PROPERTY->items + PRIVATE_DATA->coils_mode, true);
+	return result;
 }
 
 static bool mypro2_update_settle_time(indigo_device *device) {
 	int settle_time = 0;
-	if (!mypro2_get_int(device, ":72#", '3', &settle_time)) {
-		return false;
+	bool result = mypro2_get_int(device, ":72#", '3', &settle_time);
+	if (result) {
+		PRIVATE_DATA->settle_time = settle_time;
 	}
-	X_SETTLE_TIME_ITEM->number.value = X_SETTLE_TIME_ITEM->number.target = settle_time;
-	return true;
+	X_SETTLE_TIME_ITEM->number.value = X_SETTLE_TIME_ITEM->number.target = PRIVATE_DATA->settle_time;
+	return result;
+}
+
+static bool mypro2_update_reverse(indigo_device *device) {
+	int reversed = 0;
+	bool result = mypro2_get_int(device, ":13#", 'R', &reversed);
+	if (result) {
+		PRIVATE_DATA->reversed = reversed ? 1 : 0;
+	}
+	indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+	return result;
+}
+
+// FOCUSER_POSITION and FOCUSER_STEPS cover the travel the controller reports;
+// a running session republishes them, because ranges travel only with a definition.
+static void mypro2_update_ranges(indigo_device *device, bool redefine) {
+	FOCUSER_POSITION_ITEM->number.max = FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->max_position;
+	if (redefine) {
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		}
+	}
+}
+
+// Requests that move the focuser or change its geometry wait for the running motion.
+static bool mypro2_motion_busy(indigo_device *device) {
+	return PRIVATE_DATA->motion_active || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
 }
 
 static int mypro2_clamp_position(indigo_device *device, long long position) {
@@ -269,29 +330,56 @@ static int mypro2_clamp_position(indigo_device *device, long long position) {
 	return (int)position;
 }
 
+// An ALERT publishes the real position as both value and target, so a failed or
+// aborted move is never shown at the requested position.
 static void mypro2_motion_state(indigo_device *device, indigo_property_state state) {
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	if (state == INDIGO_ALERT_STATE) {
+		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+	}
+	if (state != INDIGO_BUSY_STATE) {
+		PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = false;
+	}
+	PRIVATE_DATA->poll_failed = false;
 	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = state;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
+// A failed status read or a motor that reports a move without progress stops
+// the controller and ends the move ALERT; neither is ever taken for arrival.
 static void motion_finalizer(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
 	int moving = 0, position = 0;
-	bool moving_read = mypro2_get_int(device, ":01#", 'I', &moving);
-	bool position_read = mypro2_get_position(device, &position);
-	if (position_read) {
-		PRIVATE_DATA->current_position = position;
-	}
-	if (!moving_read || !position_read) {
+	if (!mypro2_get_int(device, ":01#", 'I', &moving) || !mypro2_get_position(device, &position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Motion status read failed, stopping the focuser");
+		mypro2_command(device, false, ":27#");
 		mypro2_motion_state(device, INDIGO_ALERT_STATE);
-	} else if (moving == 0 || PRIVATE_DATA->current_position == PRIVATE_DATA->target_position) {
+		return;
+	}
+	if (moving != 0 && position == PRIVATE_DATA->current_position && position != PRIVATE_DATA->target_position) {
+		if (++PRIVATE_DATA->stall_polls >= MFP_STALL_POLLS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser stalled at %d, stopping it", position);
+			mypro2_command(device, false, ":27#");
+			mypro2_motion_state(device, INDIGO_ALERT_STATE);
+			return;
+		}
+	} else {
+		PRIVATE_DATA->stall_polls = 0;
+	}
+	PRIVATE_DATA->current_position = position;
+	if (moving == 0 || PRIVATE_DATA->current_position == PRIVATE_DATA->target_position) {
+		if (PRIVATE_DATA->external_motion) {
+			// a move the driver did not command ends where the controller stopped
+			FOCUSER_POSITION_ITEM->number.target = position;
+		}
 		mypro2_motion_state(device, INDIGO_OK_STATE);
 	} else {
-		mypro2_motion_state(device, INDIGO_BUSY_STATE);
+		// progress keeps the state, so a refused overlapping request stays visible as ALERT
+		FOCUSER_POSITION_ITEM->number.value = position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);
 	}
 }
@@ -303,23 +391,81 @@ static void sync_finalizer(indigo_device *device) {
 		return;
 	}
 	int position = 0;
-	if (mypro2_get_position(device, &position)) {
-		PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-		mypro2_motion_state(device, INDIGO_OK_STATE);
-	} else {
+	if (!mypro2_get_position(device, &position)) {
 		mypro2_motion_state(device, INDIGO_ALERT_STATE);
+		return;
 	}
+	PRIVATE_DATA->current_position = position;
+	if (position != PRIVATE_DATA->sync_target) {
+		// :31# is not acknowledged, the readback is the only proof it was applied
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Sync to %d not applied, the controller reports %d", PRIVATE_DATA->sync_target, position);
+		mypro2_motion_state(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	PRIVATE_DATA->target_position = position;
+	FOCUSER_POSITION_ITEM->number.target = position;
+	mypro2_motion_state(device, INDIGO_OK_STATE);
 }
 
-static void mypro2_start_motion(indigo_device *device, int target) {
+// A target equal to the current position ends at once without a command.
+static bool mypro2_start_motion(indigo_device *device, int target) {
 	PRIVATE_DATA->target_position = target;
-	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	PRIVATE_DATA->external_motion = false;
+	PRIVATE_DATA->stall_polls = 0;
+	FOCUSER_POSITION_ITEM->number.target = target;
+	if (target == PRIVATE_DATA->current_position) {
+		mypro2_motion_state(device, INDIGO_OK_STATE);
+		return true;
+	}
 	if (mypro2_command(device, false, ":05%06d#", target)) {
+		PRIVATE_DATA->motion_active = true;
 		mypro2_motion_state(device, INDIGO_BUSY_STATE);
 		indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":05%06d# failed", target);
-		mypro2_motion_state(device, INDIGO_ALERT_STATE);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, ":05%06d# failed", target);
+	mypro2_motion_state(device, INDIGO_ALERT_STATE);
+	return false;
+}
+
+// The poll reads the position the driver does not command itself: a hand
+// controller move is followed to its end, and a failed read is an ALERT
+// that the next good read clears.
+static void mypro2_poll_position(indigo_device *device) {
+	if (mypro2_motion_busy(device)) {
+		return;
+	}
+	int moving = 0, position = 0;
+	bool read = mypro2_get_int(device, ":01#", 'I', &moving) && mypro2_get_position(device, &position);
+	if (mypro2_motion_busy(device)) {
+		// a request accepted while the poll was in flight owns the motion properties now
+		return;
+	}
+	if (!read) {
+		if (FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->poll_failed = true;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Position read failed");
+		}
+		return;
+	}
+	if (moving) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own from %d", position);
+		PRIVATE_DATA->current_position = position;
+		PRIVATE_DATA->target_position = -1;
+		PRIVATE_DATA->stall_polls = 0;
+		PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = true;
+		FOCUSER_POSITION_ITEM->number.target = position;
+		mypro2_motion_state(device, INDIGO_BUSY_STATE);
+		indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);
+		return;
+	}
+	bool recovered = FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE && PRIVATE_DATA->poll_failed;
+	if (position != PRIVATE_DATA->current_position || recovered) {
+		PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+		FOCUSER_POSITION_ITEM->number.target = position;
+		// an ALERT left by a failed or aborted move stays, only a failed poll is cleared
+		mypro2_motion_state(device, recovered || FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
 	}
 }
 
@@ -342,13 +488,15 @@ static void mypro2_compensate_focus(indigo_device *device, double new_temp) {
 	}
 	int compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, compensation = %d, steps/degC = %.0f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
-	long long target = (long long)PRIVATE_DATA->current_position + compensation;
 	int position = 0;
-	if (mypro2_get_position(device, &position)) {
-		PRIVATE_DATA->current_position = position;
+	if (!mypro2_get_position(device, &position)) {
+		// the reference is kept, so the next reading retries the correction
+		return;
 	}
-	PRIVATE_DATA->prev_temp = new_temp;
-	mypro2_start_motion(device, mypro2_clamp_position(device, target));
+	PRIVATE_DATA->current_position = position;
+	if (mypro2_start_motion(device, mypro2_clamp_position(device, (long long)position + compensation))) {
+		PRIVATE_DATA->prev_temp = new_temp;
+	}
 }
 
 static bool mypro2_open(indigo_device *device) {
@@ -389,6 +537,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
+	mypro2_poll_position(device);
 	double temperature = NO_TEMP_READING;
 	bool read = mypro2_get_temperature(device, &temperature);
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -425,49 +574,57 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = mypro2_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			// board-dependent capabilities are restored before every detection
+			// board-dependent capabilities and the identity are restored before every detection
 			X_STEP_MODE_PROPERTY->count = 8;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, device->name);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 			char board[64] = "N/A", firmware[64] = "N/A";
 			if (mypro2_get_info(device, board, firmware)) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			if (strstr(INFO_DEVICE_MODEL_ITEM->text.value, "Gemini") != NULL) {
 				// Gemini supports full and half step only
 				X_STEP_MODE_PROPERTY->count = 2;
 			}
-			int position = 0;
-			if (mypro2_get_position(device, &position)) {
+			// every query below is part of the protocol subset, so a controller that
+			// does not answer one of them is not a usable myFocuserPro2
+			int position = 0, moving = 0, backlash_in = 0, backlash_out = 0;
+			connection_result = mypro2_get_position(device, &position) && mypro2_get_int(device, ":01#", 'I', &moving) && mypro2_get_backlashes(device, &backlash_in, &backlash_out);
+			if (connection_result && backlash_in != backlash_out) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "backlash_in != backlash_out, using backlash_in as backlash");
+				connection_result = mypro2_set_backlashes(device, backlash_in, backlash_in);
+			}
+			connection_result = connection_result && mypro2_get_int(device, ":08#", 'M', &PRIVATE_DATA->max_position) && mypro2_command(device, false, ":15%d#", (int)FOCUSER_SPEED_ITEM->number.value) && mypro2_update_reverse(device) && mypro2_update_coils_mode(device) && mypro2_update_step_mode(device) && mypro2_update_settle_time(device);
+			if (connection_result) {
 				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-			}
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
-			int backlash_in = 0, backlash_out = 0;
-			if (mypro2_get_backlashes(device, &backlash_in, &backlash_out)) {
-				if (backlash_in != backlash_out) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "backlash_in != backlash_out, using backlash_in as backlash");
-					mypro2_set_backlashes(device, backlash_in, backlash_in);
-				}
+				PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->backlash = backlash_in;
 				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = backlash_in;
-			}
-			if (mypro2_get_int(device, ":08#", 'M', &PRIVATE_DATA->max_position)) {
-				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = PRIVATE_DATA->max_position;
-			}
-			if (!mypro2_command(device, false, ":15%d#", (int)FOCUSER_SPEED_ITEM->number.value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, ":15# failed");
-			}
-			FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
-			int reversed = 0;
-			if (mypro2_get_int(device, ":13#", 'R', &reversed)) {
-				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-			}
-			mypro2_update_coils_mode(device);
-			mypro2_update_step_mode(device);
-			mypro2_update_settle_time(device);
-			PRIVATE_DATA->has_temperature_sensor = true;
-			PRIVATE_DATA->prev_temp = NO_TEMP_READING;
-			if (mypro2_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value)) {
-				PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = PRIVATE_DATA->max_position;
+				mypro2_update_ranges(device, false);
+				FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
+				PRIVATE_DATA->has_temperature_sensor = true;
+				PRIVATE_DATA->prev_temp = NO_TEMP_READING;
+				double temperature = NO_TEMP_READING;
+				if (mypro2_get_temperature(device, &temperature)) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->prev_temp = temperature;
+				}
+				if (moving) {
+					// a move the driver did not command is followed until the controller stops
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser is moving at connect");
+					PRIVATE_DATA->target_position = -1;
+					PRIVATE_DATA->stall_polls = 0;
+					PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = true;
+					FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);
+				}
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "The controller did not answer the connect sequence");
+				mypro2_close(device);
 			}
 			//- focuser.on_connect
 		}
@@ -485,8 +642,10 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
+		// a running move is stopped before the port closes
 		mypro2_command(device, false, ":27#");
 		mypro2_command(device, false, ":48#");
+		PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
@@ -567,7 +726,9 @@ static void focuser_speed_handler(indigo_device *device) {
 static void focuser_reverse_motion_handler(indigo_device *device) {
 	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
-	if (!mypro2_command(device, false, ":14%d#", FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? 1 : 0)) {
+	int requested = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? 1 : 0;
+	// :14# is not acknowledged, so the readback decides
+	if (!mypro2_command(device, false, ":14%d#", requested) || !mypro2_update_reverse(device) || PRIVATE_DATA->reversed != requested) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_REVERSE_MOTION.on_change
@@ -578,15 +739,18 @@ static void focuser_backlash_handler(indigo_device *device) {
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_BACKLASH.on_change
 	int backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
-	if (mypro2_set_backlashes(device, backlash, backlash)) {
-		FOCUSER_BACKLASH_ITEM->number.value = backlash;
+	int backlash_in = 0, backlash_out = 0;
+	// the writes are not acknowledged, so the readback decides
+	bool written = mypro2_set_backlashes(device, backlash, backlash);
+	if (mypro2_get_backlashes(device, &backlash_in, &backlash_out)) {
+		PRIVATE_DATA->backlash = backlash_in;
+		if (!written || backlash_in != backlash || backlash_out != backlash) {
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	} else {
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
-		int backlash_in = 0, backlash_out = 0;
-		if (mypro2_get_backlashes(device, &backlash_in, &backlash_out)) {
-			FOCUSER_BACKLASH_ITEM->number.value = backlash_in;
-		}
 	}
+	FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
 	//- focuser.FOCUSER_BACKLASH.on_change
 	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 }
@@ -594,10 +758,20 @@ static void focuser_backlash_handler(indigo_device *device) {
 static void focuser_limits_handler(indigo_device *device) {
 	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_LIMITS.on_change
-	if (!mypro2_command(device, false, ":07%d#", (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target) || !mypro2_get_int(device, ":08#", 'M', &PRIVATE_DATA->max_position)) {
+	int requested = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	int max_position = PRIVATE_DATA->max_position;
+	if (requested < PRIVATE_DATA->current_position) {
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, ALERT_PROPERTY, "The focuser at %d is beyond the requested maximum %d", PRIVATE_DATA->current_position, requested);
+	} else if (!mypro2_command(device, false, ":07%d#", requested) || !mypro2_get_int(device, ":08#", 'M', &max_position) || max_position != requested) {
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = PRIVATE_DATA->max_position;
+	FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = MFP_MIN_POSITION;
+	FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = max_position;
+	if (max_position != PRIVATE_DATA->max_position) {
+		PRIVATE_DATA->max_position = max_position;
+		mypro2_update_ranges(device, true);
+	}
 	//- focuser.FOCUSER_LIMITS.on_change
 	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 }
@@ -605,9 +779,9 @@ static void focuser_limits_handler(indigo_device *device) {
 static void focuser_position_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_POSITION.on_change
 	int target = (int)FOCUSER_POSITION_ITEM->number.target;
-	if (target == PRIVATE_DATA->current_position) {
-		mypro2_motion_state(device, INDIGO_OK_STATE);
-	} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+		// a sync reaches the controller even for the published value
+		PRIVATE_DATA->sync_target = target;
 		if (mypro2_command(device, false, ":31%06d#", target)) {
 			mypro2_motion_state(device, INDIGO_BUSY_STATE);
 			indigo_execute_handler_in(device, MFP_POLL_DELAY, sync_finalizer);
@@ -627,10 +801,14 @@ static void focuser_steps_handler(indigo_device *device) {
 	int position = 0;
 	if (mypro2_get_position(device, &position)) {
 		PRIVATE_DATA->current_position = position;
+		long long steps = (long long)FOCUSER_STEPS_ITEM->number.value;
+		long long target = (long long)position + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -steps : steps);
+		// a move past either end of travel is sent to that end
+		mypro2_start_motion(device, mypro2_clamp_position(device, target));
+	} else {
+		// without the start position the move is not sent at all
+		mypro2_motion_state(device, INDIGO_ALERT_STATE);
 	}
-	long long steps = (long long)FOCUSER_STEPS_ITEM->number.value;
-	long long target = (long long)PRIVATE_DATA->current_position + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -steps : steps);
-	mypro2_start_motion(device, mypro2_clamp_position(device, target));
 	//- focuser.FOCUSER_STEPS.on_change
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
@@ -638,20 +816,26 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	// an urgent abort can overtake a move that is still queued
-	indigo_cancel_pending_handler(device, focuser_position_handler);
-	indigo_cancel_pending_handler(device, focuser_steps_handler);
-	indigo_cancel_pending_handler(device, motion_finalizer);
-	indigo_cancel_pending_handler(device, sync_finalizer);
-	int position = 0;
-	if (!mypro2_command(device, false, ":27#") || !mypro2_get_position(device, &position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "abort failed");
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+	// a request with the item OFF and an abort with nothing moving send nothing
+	bool active = PRIVATE_DATA->motion_active || PRIVATE_DATA->stop_pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value && active) {
+		// an urgent abort can overtake a move that is still queued
+		indigo_cancel_pending_handler(device, focuser_position_handler);
+		indigo_cancel_pending_handler(device, focuser_steps_handler);
+		indigo_cancel_pending_handler(device, motion_finalizer);
+		indigo_cancel_pending_handler(device, sync_finalizer);
+		int position = 0;
+		if (mypro2_command(device, false, ":27#") && mypro2_get_position(device, &position)) {
+			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+			PRIVATE_DATA->stop_pending = false;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "abort failed");
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->stop_pending = true;
+		}
+		// an aborted move ends ALERT at the position where it stopped
+		mypro2_motion_state(device, INDIGO_ALERT_STATE);
 	}
-	FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
-	mypro2_motion_state(device, FOCUSER_ABORT_MOTION_PROPERTY->state);
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
@@ -667,10 +851,8 @@ static void focuser_x_step_mode_handler(indigo_device *device) {
 			break;
 		}
 	}
-	if (!mypro2_command(device, false, ":30%d#", mode)) {
-		X_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	if (!mypro2_update_step_mode(device)) {
+	// :30# is not acknowledged, so the readback decides
+	if (!mypro2_command(device, false, ":30%d#", mode) || !mypro2_update_step_mode(device) || PRIVATE_DATA->step_mode != mode) {
 		X_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_STEP_MODE.on_change
@@ -680,10 +862,8 @@ static void focuser_x_step_mode_handler(indigo_device *device) {
 static void focuser_x_coils_mode_handler(indigo_device *device) {
 	X_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_COILS_MODE.on_change
-	if (!mypro2_command(device, false, ":12%d#", X_COILS_MODE_ALWAYS_ON_ITEM->sw.value ? 1 : 0)) {
-		X_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	if (!mypro2_update_coils_mode(device)) {
+	int mode = X_COILS_MODE_ALWAYS_ON_ITEM->sw.value ? 1 : 0;
+	if (!mypro2_command(device, false, ":12%d#", mode) || !mypro2_update_coils_mode(device) || PRIVATE_DATA->coils_mode != mode) {
 		X_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_COILS_MODE.on_change
@@ -693,10 +873,8 @@ static void focuser_x_coils_mode_handler(indigo_device *device) {
 static void focuser_x_settle_time_handler(indigo_device *device) {
 	X_SETTLE_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_SETTLE_TIME.on_change
-	if (!mypro2_command(device, false, ":71%d#", (int)X_SETTLE_TIME_ITEM->number.target)) {
-		X_SETTLE_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	if (!mypro2_update_settle_time(device)) {
+	int settle_time = (int)X_SETTLE_TIME_ITEM->number.target;
+	if (!mypro2_command(device, false, ":71%d#", settle_time) || !mypro2_update_settle_time(device) || PRIVATE_DATA->settle_time != settle_time) {
 		X_SETTLE_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_SETTLE_TIME.on_change
@@ -803,9 +981,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_PROCESS_CONNECT(focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), FOCUSER_MODE_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_MODE_PROPERTY, focuser_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), FOCUSER_COMPENSATION_PROPERTY, "The focuser is moving");
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -814,24 +994,30 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), FOCUSER_REVERSE_MOTION_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), FOCUSER_BACKLASH_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_BACKLASH_PROPERTY, focuser_backlash_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), FOCUSER_LIMITS_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_STEP_MODE_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(mypro2_motion_busy(device), X_STEP_MODE_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_STEP_MODE_PROPERTY, focuser_x_step_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_COILS_MODE_PROPERTY, property)) {

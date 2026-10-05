@@ -94,6 +94,11 @@ static void dispatch(uint8_t *request) {
 			serial_motion_sync(&motion, atoi(action));
 			unlink(fault_file);
 			*action = 0;
+		} else if (!strcmp(key, "manual")) {
+			// Hand-control motion: the focuser moves without a command from the PC.
+			serial_motion_start(&motion, atoi(action), 5000);
+			unlink(fault_file);
+			*action = 0;
 		} else if (!strcmp(key, "temperature")) {
 			raw_temperature = atoi(action);
 			unlink(fault_file);
@@ -111,6 +116,11 @@ static void dispatch(uint8_t *request) {
 	}
 	if (*action) {
 		event("FAULT", action);
+	}
+	if (!strcmp(action, "slow")) {
+		// Delayed but valid reply: holds the driver's queue on this transaction.
+		usleep(800000);
+		*action = 0;
 	}
 	if (!strcmp(action, "silent")) {
 		return;
@@ -241,6 +251,18 @@ int main(int argc, char **argv) {
 	serial_motion_sync(&motion, 10);
 	if (!strcmp(profile, "alternate")) {
 		serial_motion_sync(&motion, 500);
+	} else if (!strcmp(profile, "start_state")) {
+		// State a previous session left in the controller, none of it a driver default.
+		serial_motion_sync(&motion, 123456);
+		fans = true;
+		raw_temperature = -56;
+	} else if (!strcmp(profile, "c_start")) {
+		minimum = 1000;
+		maximum = 90000;
+		serial_motion_sync(&motion, 4321);
+	} else if (!strcmp(profile, "moving")) {
+		// Hand-control motion already running when the driver connects.
+		serial_motion_start(&motion, 20000, 5000);
 	}
 	const char *event_path = getenv("INDIGO_EFA_EVENTS");
 	events = event_path ? fopen(event_path, "w") : NULL;

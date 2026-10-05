@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -56,6 +56,15 @@
 #define MAX_TOKEN_COUT       1024
 // The controller stores named focuser positions as PRESET_1 to PRESET_9 (M1POS).
 #define PRESET_COUNT         9
+// Idle position poll period; the controller state (temperature, supplies) is read every ENVIRONMENT_TICKS polls.
+#define POLL_PERIOD          2
+#define ENVIRONMENT_TICKS    5
+// A motor that reports running without advancing for this many 0.2 s polls has stalled.
+#define STALL_POLLS          25
+// Consecutive failed position reads tolerated during a move.
+#define MAX_POLL_FAILURES    3
+// EXT_T reported by a controller without an external probe.
+#define NO_PROBE_TEMPERATURE -127
 
 //- define
 
@@ -379,6 +388,13 @@ typedef struct {
 	bool is_http;
 	char http_host[INDIGO_NAME_SIZE];
 	int http_port;
+	char last_error[INDIGO_VALUE_SIZE];
+	double position, last_position;
+	bool link_failed;
+	int stalled_polls, poll_failures, environment_ticks;
+	bool external_motion, poll_alert, abort_requested, calibrating, pending;
+	int backlash, speed;
+	indigo_item *leds_item, *hold_item, *wifi_item;
 	//- data
 } primaluce_private_data;
 
@@ -548,6 +564,7 @@ static char *get_string(indigo_device *device, char *path[]);
 
 static bool primaluce_command(indigo_device *device, char *command, ...) {
 	long result;
+	PRIVATE_DATA->last_error[0] = 0;
 	va_list args;
 	va_start(args, command);
 	if (PRIVATE_DATA->is_http) {
@@ -555,17 +572,20 @@ static bool primaluce_command(indigo_device *device, char *command, ...) {
 		vsnprintf(request, sizeof(request), command, args);
 		va_end(args);
 		if (!primaluce_http_exchange(device, request)) {
+			PRIVATE_DATA->link_failed = true;
 			return false;
 		}
 	} else {
 		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 		va_end(args);
 		if (result <= 0) {
+			PRIVATE_DATA->link_failed = true;
 			return false;
 		}
 		while (true) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
 			if (result < 1) {
+				PRIVATE_DATA->link_failed = true;
 				return false;
 			}
 			if (*PRIVATE_DATA->response == '[') {
@@ -575,6 +595,8 @@ static bool primaluce_command(indigo_device *device, char *command, ...) {
 			break;
 		}
 	}
+	// The controller answered, whatever the answer is.
+	PRIVATE_DATA->link_failed = false;
 	memset(PRIVATE_DATA->tokens, 0, sizeof(PRIVATE_DATA->tokens));
 	jsmn_init(&PRIVATE_DATA->parser);
 	if (*PRIVATE_DATA->response == '"' || jsmn_parse(&PRIVATE_DATA->parser, PRIVATE_DATA->response, MAX_RESPONSE_SIZE, PRIVATE_DATA->tokens, MAX_TOKEN_COUT) <= 0) {
@@ -599,6 +621,7 @@ static bool primaluce_command(indigo_device *device, char *command, ...) {
 	}
 	if (error != NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Request rejected: %s", error);
+		INDIGO_COPY_VALUE(PRIVATE_DATA->last_error, error);
 		return false;
 	}
 	return true;
@@ -666,6 +689,23 @@ static double get_number2(indigo_device *device, char *path[], char *alt_path[])
 
 static double get_number(indigo_device *device, char *path[]) {
 	return get_number2(device, path, NULL);
+}
+
+static indigo_item *selected_item(indigo_property *property) {
+	for (int i = 0; i < property->count; i++) {
+		if (property->items[i].sw.value) {
+			return property->items + i;
+		}
+	}
+	return NULL;
+}
+
+// A refused switch request keeps the item the device has.
+static void restore_switch(indigo_property *property, indigo_item *item) {
+	if (item != NULL) {
+		indigo_set_switch(property, item, true);
+	}
+	property->state = INDIGO_ALERT_STATE;
 }
 
 // The firmware applies a new LANCFG only after a restart, so a changed mode restarts the controller.
@@ -766,25 +806,94 @@ static const char *power_message(const char *state) {
 }
 
 static void focuser_motion_failed(indigo_device *device, const char *state) {
-	// A relative move keeps FOCUSER_STEPS busy while the absolute move handler runs, so
-	// a refused command has to end that property too.
-	if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	// Both motion properties end the move ALERT at the position the focuser has, and the
+	// reason the controller gave reaches the client.
+	const char *message = power_message(state);
+	char reason[INDIGO_VALUE_SIZE];
+	if (message == NULL && *PRIVATE_DATA->last_error) {
+		snprintf(reason, sizeof(reason), "Move refused: %s", PRIVATE_DATA->last_error);
+		message = reason;
 	}
-	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, power_message(state));
+	PRIVATE_DATA->abort_requested = false;
+	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (message != NULL) {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+}
+
+// Reads the focuser position and whether the motor runs. A reply without the position
+// is a failed read; a reply without MST cannot prove the motor is still running, so it
+// counts as stopped.
+static bool focuser_read_motion(indigo_device *device, double *position, bool *moving) {
+	char *get_position = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
+	char **path = PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP;
+	if (!primaluce_command(device, get_position) || getToken(device, 0, path) == -1) {
+		return false;
+	}
+	*position = PRIVATE_DATA->position = get_number(device, path);
+	char *state = NULL;
+	if (!PRIVATE_DATA->is_sestosenso_3 || primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"\"}}}}}")) {
+		state = get_string(device, GET_MOT1_MST);
+	}
+	*moving = state != NULL && strcmp(state, "stop");
+	return true;
+}
+
+// MOT_ABORT stops the motor at once, MOT_STOP decelerates first and is the fallback.
+static bool focuser_stop(indigo_device *device, char **reason) {
+	char *state = NULL;
+	*reason = NULL;
+	if (primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"\"}}}}") && (state = get_string(device, CMD_MOT1_MOT_ABORT)) != NULL && !strcmp(state, "done")) {
+		return true;
+	}
+	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}")) {
+		return false;
+	}
+	state = get_string(device, CMD_MOT1_MOT_STOP);
+	if (state == NULL || strcmp(state, "done")) {
+		*reason = state;
+		return false;
+	}
+	return true;
+}
+
+static void focuser_movement_ended(indigo_device *device, indigo_property_state state) {
+	// An interrupted or failed move ends at the position the focuser reached, never at the
+	// requested one.
+	if (state != INDIGO_OK_STATE) {
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	}
+	PRIVATE_DATA->abort_requested = false;
+	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
 }
 
 static void focuser_movement_finalizer(indigo_device *device) {
-	char *get_position = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
-	if (primaluce_command(device, get_position)) {
-		FOCUSER_POSITION_ITEM->number.value = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
-		char *state = NULL;
-		if (!PRIVATE_DATA->is_sestosenso_3 || primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"\"}}}}}")) {
-			state = get_string(device, GET_MOT1_MST);
-		}
-		// A reply without MST cannot prove the motor is still running, so it counts as
-		// stopped and the settle loop decides between OK and ALERT.
-		if (state != NULL && strcmp(state, "stop")) {
+	double position = 0;
+	bool moving = false;
+	if (focuser_read_motion(device, &position, &moving)) {
+		PRIVATE_DATA->poll_failures = 0;
+		FOCUSER_POSITION_ITEM->number.value = position;
+		if (moving) {
+			if (position != PRIVATE_DATA->last_position) {
+				PRIVATE_DATA->last_position = position;
+				PRIVATE_DATA->stalled_polls = 0;
+			} else if (++PRIVATE_DATA->stalled_polls >= STALL_POLLS) {
+				// The motor reports running but the position no longer changes.
+				char *reason;
+				focuser_stop(device, &reason);
+				if (focuser_read_motion(device, &position, &moving)) {
+					FOCUSER_POSITION_ITEM->number.value = position;
+				}
+				focuser_movement_ended(device, INDIGO_ALERT_STATE);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "The motor stalled");
+				return;
+			}
 			// Progress is published on every poll, spaced like the rotator poll. Polling
 			// as fast as the link allows publishes the same property from this queue
 			// hundreds of times per second, which both floods the clients and races
@@ -792,23 +901,74 @@ static void focuser_movement_finalizer(indigo_device *device) {
 			// can be lost.
 			indigo_execute_handler_in(device, 0.2, focuser_movement_finalizer);
 		} else {
+			indigo_property_state state = INDIGO_ALERT_STATE;
 			for (int i = 0; i < 10; i++) {
-				indigo_usleep(100000);
-				if (primaluce_command(device, get_position)) {
-					FOCUSER_POSITION_ITEM->number.value = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
-				}
 				if (FOCUSER_POSITION_ITEM->number.target == FOCUSER_POSITION_ITEM->number.value) {
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					state = INDIGO_OK_STATE;
 					break;
 				}
+				indigo_usleep(100000);
+				if (focuser_read_motion(device, &position, &moving)) {
+					FOCUSER_POSITION_ITEM->number.value = position;
+				}
 			}
-			if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			focuser_movement_ended(device, state);
+		}
+	} else if (++PRIVATE_DATA->poll_failures < MAX_POLL_FAILURES) {
+		// A single lost readback is retried.
+		indigo_execute_handler_in(device, 0.2, focuser_movement_finalizer);
+		return;
+	} else {
+		// A persistent failure must neither leave the motion properties busy nor let the
+		// motor run unobserved.
+		char *reason;
+		focuser_stop(device, &reason);
+		focuser_movement_ended(device, INDIGO_ALERT_STATE);
+	}
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+// Follows the position while no move of the driver runs: motion nobody commanded here
+// (the virtual keypad of the web interface, another client on the other link, a move
+// running at connect) is published BUSY with the target following the measured position
+// and OK once it stops.
+static void focuser_poll_position(indigo_device *device) {
+	if (PRIVATE_DATA->pending || ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion)) {
+		return;
+	}
+	double position = 0;
+	bool moving = false;
+	bool read = focuser_read_motion(device, &position, &moving);
+	// A request accepted while the poll was in flight owns the motion properties now. A
+	// refusal of a second request publishes ALERT over the accepted one's BUSY, so the
+	// pending flag, not the property state, says that a move is queued.
+	if (PRIVATE_DATA->pending || ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion)) {
+		return;
+	}
+	if (read) {
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		if (PRIVATE_DATA->calibrating) {
+			// The calibration run is the driver's own motion: it is followed, but not taken
+			// for an uncommanded move, which would leave the position BUSY and refuse END.
+		} else if (moving) {
+			PRIVATE_DATA->external_motion = true;
+			PRIVATE_DATA->poll_alert = false;
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else if (PRIVATE_DATA->external_motion) {
+			PRIVATE_DATA->external_motion = false;
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		} else if (PRIVATE_DATA->poll_alert) {
+			PRIVATE_DATA->poll_alert = false;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
-		// A failed query must not leave the motion properties busy forever.
-		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (PRIVATE_DATA->external_motion) {
+			PRIVATE_DATA->external_motion = false;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		PRIVATE_DATA->poll_alert = true;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -891,21 +1051,37 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
-	if (primaluce_command(device, "{\"req\":{\"get\":{\"EXT_T\":\"\", \"VIN_12V\": \"\", \"MOT1\":{\"NTC_T\":\"\"}}}}")) {
-		double temp = get_number(device, GET_EXT_T);
-		if (temp != FOCUSER_TEMPERATURE_ITEM->number.value) {
-			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+	if (PRIVATE_DATA->environment_ticks++ % ENVIRONMENT_TICKS == 0) {
+		if (primaluce_command(device, "{\"req\":{\"get\":{\"EXT_T\":\"\", \"VIN_12V\": \"\", \"MOT1\":{\"NTC_T\":\"\"}}}}") && getToken(device, 0, GET_EXT_T) != -1) {
+			double temp = get_number(device, GET_EXT_T);
+			// A controller without an external probe reports -127, which is no reading.
+			if (temp <= NO_PROBE_TEMPERATURE) {
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+			} else {
+				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-		}
-		double motor_temp = get_number(device, GET_MOT1_NTC_T);
-		double vin12v = get_number(device, GET_VIN_12V);
-		if (motor_temp != X_STATE_MOTOR_TEMP_ITEM->number.value || vin12v != X_STATE_VIN_12V_ITEM->number.value) {
-			X_STATE_MOTOR_TEMP_ITEM->number.value = motor_temp;
-			X_STATE_VIN_12V_ITEM->number.value = vin12v;
+			double motor_temp = get_number(device, GET_MOT1_NTC_T);
+			double vin12v = get_number(device, GET_VIN_12V);
+			if (motor_temp != X_STATE_MOTOR_TEMP_ITEM->number.value || vin12v != X_STATE_VIN_12V_ITEM->number.value || X_STATE_PROPERTY->state != INDIGO_OK_STATE) {
+				X_STATE_MOTOR_TEMP_ITEM->number.value = motor_temp;
+				X_STATE_VIN_12V_ITEM->number.value = vin12v;
+				X_STATE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_STATE_PROPERTY, NULL);
+			}
+		} else {
+			// A failed reading keeps the last valid values and says so.
+			if (FOCUSER_TEMPERATURE_PROPERTY->state != INDIGO_IDLE_STATE) {
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			}
+			X_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_STATE_PROPERTY, NULL);
 		}
 	}
-	indigo_execute_handler_in(device, 10, focuser_timer_callback);
+	focuser_poll_position(device);
+	indigo_execute_handler_in(device, PRIVATE_DATA->external_motion ? 0.5 : POLL_PERIOD, focuser_timer_callback);
 	//- focuser.on_timer
 }
 
@@ -992,14 +1168,17 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_POSITION_ITEM->number.min = min_position;
 				FOCUSER_POSITION_ITEM->number.max = max_position;
 				FOCUSER_STEPS_ITEM->number.max = max_position - min_position;
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
 				if (getToken(device, 0, GET_MOT1_SPEED) == -1) {
 					FOCUSER_SPEED_PROPERTY->hidden = true;
 				} else {
 					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = get_number(device, GET_MOT1_SPEED);
 					FOCUSER_SPEED_PROPERTY->hidden = false;
 				}
-				FOCUSER_BACKLASH_ITEM->number.value = get_number(device, GET_MOT1_BKLASH);
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash = (int)get_number(device, GET_MOT1_BKLASH);
+				PRIVATE_DATA->speed = (int)FOCUSER_SPEED_ITEM->number.value;
+				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->pending = false;
+				PRIVATE_DATA->environment_ticks = 0;
 				// Models without stored positions report no PRESET_n.
 				bool has_presets = getToken(device, 0, GET_PRESET_1) != -1;
 				X_PRESETS_PROPERTY->hidden = X_PRESET_NAMES_PROPERTY->hidden = X_PRESET_GOTO_PROPERTY->hidden = !has_presets;
@@ -1104,6 +1283,9 @@ static void focuser_connection_handler(indigo_device *device) {
 				} else {
 					indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_OFF_ITEM, true);
 				}
+				PRIVATE_DATA->hold_item = selected_item(X_HOLD_CURR_PROPERTY);
+				PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
+				PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
 			}
 			//- focuser.on_connect
 		}
@@ -1138,6 +1320,17 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ focuser.on_disconnect
+		// A move, an uncommanded motion or a calibration still running is stopped before the
+		// connection closes.
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || PRIVATE_DATA->calibrating) {
+			char *reason;
+			if (!focuser_stop(device, &reason)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop the focuser");
+			}
+		}
+		PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->pending = false;
+		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			X_CONFIG_PROPERTY,
@@ -1204,6 +1397,14 @@ static void focuser_x_wifi_handler(indigo_device *device) {
 	X_WIFI_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_WIFI.on_change
 	bool result = false;
+	// Switching between the access point and station mode restarts the controller, which a
+	// connected rotator shares.
+	bool restart = X_WIFI_STA_ITEM->sw.value ? PRIVATE_DATA->wifi_item != X_WIFI_STA_ITEM : (X_WIFI_AP_ITEM->sw.value && PRIVATE_DATA->wifi_item == X_WIFI_STA_ITEM);
+	if (restart && PRIVATE_DATA->count > 1) {
+		restore_switch(X_WIFI_PROPERTY, PRIVATE_DATA->wifi_item);
+		indigo_update_property(device, X_WIFI_PROPERTY, "Changing the WiFi mode restarts the controller, disconnect the rotator first");
+		return;
+	}
 	if (X_WIFI_OFF_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}");
 	} else if (X_WIFI_AP_ITEM->sw.value) {
@@ -1211,8 +1412,10 @@ static void focuser_x_wifi_handler(indigo_device *device) {
 	} else if (X_WIFI_STA_ITEM->sw.value) {
 		result = primaluce_set_lan_cfg(device, "sta");
 	}
-	if (!result) {
-		X_WIFI_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (result) {
+		PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+	} else {
+		restore_switch(X_WIFI_PROPERTY, PRIVATE_DATA->wifi_item);
 	}
 	//- focuser.X_WIFI.on_change
 	indigo_update_property(device, X_WIFI_PROPERTY, NULL);
@@ -1251,8 +1454,10 @@ static void focuser_x_leds_handler(indigo_device *device) {
 	} else if (X_LEDS_ON_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"DIMLEDS\":\"on\"}}}");
 	}
-	if (!result) {
-		X_LEDS_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (result) {
+		PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
+	} else {
+		restore_switch(X_LEDS_PROPERTY, PRIVATE_DATA->leds_item);
 	}
 	//- focuser.X_LEDS.on_change
 	indigo_update_property(device, X_LEDS_PROPERTY, NULL);
@@ -1419,13 +1624,14 @@ static void focuser_x_hold_curr_handler(indigo_device *device) {
 	} else if (X_HOLD_CURR_ON_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"HOLDCURR_STATUS\":1}}}}");
 	}
-	if (!result) {
-		X_HOLD_CURR_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
+	if (result) {
 		char *state = get_string(device, SET_MOT1_HOLDCURR_STATUS);
-		if (state == NULL || strcmp(state, "done")) {
-			X_HOLD_CURR_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
+		result = state != NULL && !strcmp(state, "done");
+	}
+	if (result) {
+		PRIVATE_DATA->hold_item = selected_item(X_HOLD_CURR_PROPERTY);
+	} else {
+		restore_switch(X_HOLD_CURR_PROPERTY, PRIVATE_DATA->hold_item);
 	}
 	//- focuser.X_HOLD_CURR.on_change
 	indigo_update_property(device, X_HOLD_CURR_PROPERTY, NULL);
@@ -1435,6 +1641,7 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 	X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_CALIBRATE_F.on_change
 	bool result = true;
+	bool started = X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value;
 	if (X_CALIBRATE_F_START_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"Init\"}}}}");
 		if (result) {
@@ -1469,12 +1676,15 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 		if (result) {
 			char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
 			if (primaluce_command(device, get_pos_command)) {
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		}
 	}
+	// The motor runs out to the far end between START and END.
+	PRIVATE_DATA->calibrating = result && started;
 	if (!result) {
+		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
 		X_CALIBRATE_F_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_CALIBRATE_F.on_change
@@ -1484,22 +1694,35 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 static void focuser_backlash_handler(indigo_device *device) {
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_BACKLASH.on_change
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"BKLASH\":%d}}}}", (int)FOCUSER_BACKLASH_ITEM->number.target)) {
+	char *state = NULL;
+	if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"BKLASH\":%d}}}}", (int)FOCUSER_BACKLASH_ITEM->number.target) || (state = get_string(device, SET_MOT1_BKLASH)) == NULL || strcmp(state, "done")) {
+		// The controller keeps the backlash it had.
+		FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_BACKLASH_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
-	char *state = get_string(device, SET_MOT1_BKLASH);
-	if (state == NULL || strcmp(state, "done")) {
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_BACKLASH_PROPERTY, INDIGO_ALERT_STATE, NULL);
-		return;
-	}
+	PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
 	//- focuser.FOCUSER_BACKLASH.on_change
 	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 }
 
 static void focuser_position_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_POSITION.on_change
-	if (!primaluce_command(device, PRIVATE_DATA->is_sestosenso_3 ? "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}" : "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target)) {
+	PRIVATE_DATA->pending = false;
+	// Both motion properties are busy for every move, an absolute one included.
+	if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	}
+	PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = false;
+	PRIVATE_DATA->stalled_polls = PRIVATE_DATA->poll_failures = 0;
+	// The request replaced the published value; the focuser is still where it was read last.
+	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->last_position = PRIVATE_DATA->position;
+	if (PRIVATE_DATA->abort_requested) {
+		// An abort overtook this move while it was queued, so it is never sent.
+		PRIVATE_DATA->last_error[0] = 0;
+		focuser_motion_failed(device, NULL);
+	} else if (!primaluce_command(device, PRIVATE_DATA->is_sestosenso_3 ? "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}" : "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target)) {
 		focuser_motion_failed(device, NULL);
 	} else {
 		char *state = get_string(device, PRIVATE_DATA->is_sestosenso_3 ? CMD_MOT1_GOTO : CMD_MOT1_STEP);
@@ -1539,15 +1762,14 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"SPEED\":%d}}}}", (int)FOCUSER_SPEED_ITEM->number.target)) {
+	char *state = NULL;
+	if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"SPEED\":%d}}}}", (int)FOCUSER_SPEED_ITEM->number.target) || (state = get_string(device, SET_MOT1_SPEED)) == NULL || strcmp(state, "done")) {
+		// The controller keeps the speed it had.
+		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = PRIVATE_DATA->speed;
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_SPEED_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
-	char *state = get_string(device, SET_MOT1_SPEED);
-	if (state == NULL || strcmp(state, "done")) {
-		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_SPEED_PROPERTY, INDIGO_ALERT_STATE, NULL);
-		return;
-	}
+	PRIVATE_DATA->speed = (int)FOCUSER_SPEED_ITEM->number.target;
 	//- focuser.FOCUSER_SPEED.on_change
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 }
@@ -1555,22 +1777,31 @@ static void focuser_speed_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	// A running motion is always owned by the focuser movement finalizer at this point,
-	// so the motion properties are left busy here. That finalizer observes the stop,
-	// reads the position the draw tube actually reached and publishes it as ALERT
-	// because the requested target was not reached.
-	// MOT_ABORT stops the motor at once, MOT_STOP decelerates first and is the fallback.
-	char *state = NULL;
-	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"\"}}}}") || (state = get_string(device, CMD_MOT1_MOT_ABORT)) == NULL || strcmp(state, "done")) {
-		state = NULL;
-		if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}")) {
-			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	// A running motion is owned by the focuser movement finalizer, so the motion
+	// properties are left busy here. That finalizer observes the stop, reads the position
+	// the draw tube actually reached and publishes it as ALERT because the requested
+	// target was not reached. A move still queued behind this abort is never sent.
+	bool requested = FOCUSER_ABORT_MOTION_ITEM->sw.value;
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	bool moving = PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+	if (requested && !moving && !PRIVATE_DATA->calibrating && PRIVATE_DATA->link_failed) {
+		// Nothing to stop, but the controller did not answer the last request.
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		return;
+	}
+	if (requested && (moving || PRIVATE_DATA->calibrating)) {
+		char *reason;
+		if (!focuser_stop(device, &reason)) {
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, power_message(reason));
 			return;
 		}
-		state = get_string(device, CMD_MOT1_MOT_STOP);
-		if (state == NULL || strcmp(state, "done")) {
-			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, power_message(state));
-			return;
+		if (moving && !PRIVATE_DATA->external_motion) {
+			PRIVATE_DATA->abort_requested = true;
+		}
+		if (PRIVATE_DATA->calibrating) {
+			PRIVATE_DATA->calibrating = false;
+			X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
+			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_F_PROPERTY, INDIGO_ALERT_STATE, "Calibration aborted");
 		}
 	}
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
@@ -1854,17 +2085,27 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_HOLD_CURR_PROPERTY, focuser_x_hold_curr_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CALIBRATE_F_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(!PRIVATE_DATA->calibrating && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE), X_CALIBRATE_F_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CALIBRATE_F_PROPERTY, focuser_x_calibrate_f_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_BACKLASH_PROPERTY, "The focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_BACKLASH_PROPERTY, focuser_backlash_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_POSITION.on_change_request
+		// The accepted move is pending from now on; a refusal of a later request must not hide it.
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_STEPS.on_change_request
+		// The accepted move is pending from now on; a refusal of a later request must not hide it.
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {

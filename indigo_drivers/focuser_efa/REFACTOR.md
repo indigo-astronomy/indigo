@@ -74,3 +74,51 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && EFA_TEST_FILTER=rejected_change ./build/integration/test_focuser_efa_simulator
 ```
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.22)
+
+The regression test was checked against the extended "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839). Version raised from 3.0.0.21 to 3.0.0.22.
+
+### Defects found and fixed
+
+Each was reproduced by the new or extended test against a pre-fix copy of the generated driver built as a separate binary.
+
+| Defect | Impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort (both models, also a queued GOTO). | A confirmed abort of a pending, active, uncommanded, uncertain or calibrating operation ends both ALERT at the stopped position (value = target). | `abort_efa`, `abort_celestron`, `abort_queued` |
+| Abort while idle sent a stop | `0x24 0` was sent with nothing moving. | Abort with nothing pending ends OK without a command. | `abort_efa`, `abort_celestron` (stop count stays 1) |
+| A good poll did not clear a failed poll | After one failed idle position poll both motion properties stayed ALERT until the next move or abort. | A failed idle poll is remembered; the next good poll restores OK. A failed or aborted move is not affected. | `poll_*` |
+| Poll took a pending GOTO's target | A GOTO copied while the idle `0x01` reply was outstanding had its target overwritten with the measured position and was published by the poll, so the handler saw a no-op and the focuser never moved. | The poll writes only the measured value while a request is BUSY; target and state are published only when no request is pending. | `request_during_poll` |
+| Uncommanded motion was published OK | Hand-control motion and motion running at connect only changed the value. | The idle poll publishes `FOCUSER_POSITION` BUSY with target = measured value while the position changes, OK once it settles; a relative move is refused meanwhile, abort and disconnect stop it. A failed move stays ALERT. | `external_position`, `manual_motion`, `moving_at_connect` |
+| Limits could exclude the current position | PlaneWave local limits that excluded the measured position were accepted. | Such a change ends ALERT and keeps the old limits, as do changes during uncommanded motion. | `limits` |
+| No-sensor marker reported ALERT | Protocol pages 6–7: 7F7F marks a missing sensor, not a failure. | 7F7F publishes `FOCUSER_TEMPERATURE` IDLE (once) with the last valid value; failed or implausible readings stay ALERT. | `temperature`, `temperature_legacy` |
+
+### Simulator additions
+
+- Fault key `manual <position>`: hand-control motion at 5000 steps/s without a PC command; `external` remains an instantaneous change.
+- `slow` action: the matching reply is sent 0.8 s late (queue gate).
+- Profiles `start_state` (PlaneWave at 123456, fans on, -3.5 °C), `c_start` (Celestron at 4321, device limits 1000–90000) and `moving` (hand-control motion to 20000 running at start).
+
+### Scenario-to-test mapping (rules chapter → cases)
+
+- Model variants on the bus and on the wire (properties, permissions, ranges, `INFO.DEVICE_MODEL`/`DEVICE_FW_REVISION`), connect sequence per model, SYNC right after connect to the published value, shutdown refused while connected, `X_` properties deleted on disconnect: `normal`, `celestron`, `split`, `echo`, `uncalibrated_*`. Non-default device state at connect: `start_state_efa`, `start_state_celestron`. Reconnect to the other model: `model_change`. Refused handshake and every failed connect-time command: `unknown_identity`, `init_*`.
+- Position poll failure keeps the value and the next good poll restores OK: `poll_*`. Temperature sentinel/implausible/recovery and both reply forms: `temperature`, `temperature_legacy`.
+- Uncommanded motion: `external_position`, `manual_motion`, `moving_at_connect`.
+- Short/relative/no-op/coarse moves, limits and clamping, limit refusals (empty interval, excluding the position, during motion): `movement_*`, `long_move`, `limits`, `overlap`. Overlap refusal: `overlap`, `rejected_change`.
+- Abort mid-move (ALERT both, value = target = stopped, stop once, two later equal polls, idle and OFF abort without a command, reconnect OK, fresh move): `abort_efa`, `abort_celestron`. Abort overtaking a queued GOTO and a queued calibration: `abort_queued`, `queued_abort`. Refused stop keeps the move BUSY, retry works: `stop_failure`.
+- Rejection at each command of the coarse move (slew start, fine target): `long_move_failure`; start failures and transport loss: `start_failure`, `transport_loss`. Readback/state failure and stall during motion: `motion_read_failure`, `motion_badstate`, `stalled_motion`.
+- Calibration (Celestron) success, start/progress/read/limits failures, abort, 180 s timeout: `calibration*`.
+- Disconnect during motion sends the stop once, nothing follows, reconnect OK at the stopped position; during a read and during calibration: `disconnect_motion`, `disconnect_read`, `disconnect_calibration`.
+- Requests versus polls: `request_during_poll`. Position is the only polled writable value; fans are read at connect and on change only.
+- Fans command/readback and failure: `normal`, `fans_failure`. SYNC failure keeps the real position: `sync_failure`. Additional instance: `instances`.
+
+### Rules not applicable
+
+- Speed, reversal, backlash, compensation and modes: not implemented by the protocol subset (speed asserted undefined).
+- A controller refusal reason in the client message: replies carry only an ACK byte.
+
+### Test harness fixes found by the first recorded run
+
+The first recorded run ended 62/64. `motion_read_failure` failed because its position-readback fault could be taken by an idle poll still in flight when the GOTO was accepted; the old driver turned that poll failure into an ALERT over the pending request (the defect fixed above), so the case passed by accident. The fault is now injected only after the move command was sent. The second failing case was not printed by the run and did not recur in two further runs of the binary; the most likely candidate is `stalled_motion`, whose fixed 4 s + 8 s wait left little margin over the 100 × 0.1 s stall bound on a loaded host, so the wait was widened to 9 s + 8 s.
+
+Validation: `python3 tools/run_driver_test.py focuser_efa` (recorded in README `## Testing`).

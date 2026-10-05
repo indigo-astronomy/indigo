@@ -83,3 +83,51 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && LAKESIDE_TEST_FILTER=rejected_change ./build/integration/test_focuser_lakeside_simulator
 ```
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.10)
+
+The regression test was checked against the extended "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839). Version raised from 3.0.0.9 to 3.0.0.10.
+
+### Defects found and fixed
+
+Each was reproduced by the new or extended test against a pre-fix copy of the generated driver built as a separate binary.
+
+| Defect | Impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | `abort_finalizer` ends both ALERT at the confirmed stopped position (value = target) when a move, uncommanded motion or queued move was aborted. | `abort_motion`, `abort_queued` |
+| Abort while idle sent `CH` | A stop command was sent with nothing moving. | Abort with no active, uncommanded, uncertain or BUSY move ends OK without a command. | `abort_motion` (CH count stays 1) |
+| Idle poll turned a failed move OK | Any good idle poll set `FOCUSER_POSITION` OK, so a stalled, malformed or aborted move ended OK one second later while `FOCUSER_STEPS` stayed ALERT. | A good poll restores OK only after a failed poll. | `stalled_motion`, `motion_reply_failure`, `completion_failure`, `abort_motion` |
+| Relative move past an end sent the full step count | `CO100` at 65530 relied on the controller to clip; the manual documents 16-bit positions and calibrated endpoints, not overshoot handling. | The command carries the clipped distance (`CO5`, `CI5`). | `relative_motion` |
+| Uncommanded motion was published OK | Handset motion, controller compensation and motion running at connect only changed the value. | The idle poll publishes `FOCUSER_POSITION` BUSY with target = measured value while the position changes, OK once it settles; a relative move is refused meanwhile, abort and disconnect stop it with `CH`. A failed move stays ALERT. | `external_state`, `moving_at_connect` |
+| ALERT survived reconnect | A session ending with an aborted move reconnected with ALERT. | Connect sets `FOCUSER_POSITION`/`FOCUSER_STEPS` OK. | `abort_motion` (reconnect step) |
+
+### Simulator additions
+
+- `external <position>` now moves at a finite handset rate (20000 steps/s) without `P`/`DONE` frames instead of jumping.
+- `slow` fault: the next matching command gets its valid reply 0.8 s late (queue gate).
+- Profiles `start_state` (position 1234, backlash 17, slope 1 = -33 / deadband 7 / period 9, -3.5 °C) and `moving` (handset motion to 40000 running at start).
+
+### Scenario-to-test mapping (rules chapter → cases)
+
+- Relative-only negative contract (no `FOCUSER_ON_POSITION_SET`, `FOCUSER_LIMITS`, speed, reverse; `FOCUSER_POSITION` and temperature read-only), connect sequence `?? CTF CRg1 ?P ?B ?D ?T ?1 ?a ?c ?e`, shutdown refused while connected, `X_FOCUSER_ACTIVE_SLOPE` deleted on disconnect: `capabilities`, `capabilities_split`.
+- Non-default controller state at connect: `start_state`. Refused handshake / failed connect-time command, no focuser or `X_` property left, port released, next connect works: `init_*`.
+- Position/temperature poll failure keeps the last value, next good poll restores OK, a move works: `poll_*`.
+- Uncommanded motion BUSY then OK, no command, refused relative move meanwhile, relative move from the settled position: `external_state`, `moving_at_connect`.
+- Inward/outward, zero step, both ends sent as moves to the end: `relative_motion`. Overlap/refusal: `overlap`, `rejected_change`.
+- Abort mid-move: ALERT on both properties, value = target = stopped, `CH` once, three equal readbacks, idle abort and OFF request without `CH`, reconnect OK, fresh move: `abort_motion`. Abort overtaking a queued move: `abort_queued`. Ignored stop ends ABORT ALERT, move not completed, retry works: `stop_ignored`.
+- Stall, malformed progress/completion: ALERT, `CH`, not turned OK by idle polls: `stalled_motion`, `motion_reply_failure`, `completion_failure`.
+- Disconnect during motion sends `CH` once, nothing follows, reconnect OK at the stopped position, fresh move: `disconnect_motion`.
+- Transport loss at stop, at move start and idle: later requests ALERT, nothing BUSY: `stop_failure`, `start_transport_loss`, `idle_transport_loss`.
+- Settings and modes: one command per write, refusal keeps the device value, retry, refused during motion, readback after reconnect including a negative slope, automatic/manual mode and a move after manual: `controls`, `backlash_failure`, `compensation_failure`, `slope_failure`, `controls_during_motion`, `reconnect`.
+- Requests versus polls: a relative move requested before the position poll (`request_before_poll`) and with its reply outstanding (`request_during_poll`): `CO100` once, `FOCUSER_STEPS` BUSY first, first result OK with the requested value. No writable setting is polled.
+- Additional instance on its own port: `instances`.
+
+### Rules not applicable
+
+- Absolute GOTO, SYNC, limits, speed, reverse (read at connect, hidden), homing/calibration: not exposed. `FOCUSER_ON_POSITION_SET`/`FOCUSER_LIMITS` asserted undefined.
+- `INFO` identity: the protocol has no model or firmware query; the model item keeps the driver's fixed text.
+- Temperature sentinel: the protocol documents none. Multi-command move: a move is the single `CI`/`CO` command.
+- Driver-side compensation: the controller compensates itself; only its parameters (device units) are written.
+- Reconnect to another model: the driver distinguishes no models.
+
+Validation: `python3 tools/run_driver_test.py focuser_lakeside` (recorded in README `## Testing`).

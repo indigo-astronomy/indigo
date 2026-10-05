@@ -1077,11 +1077,11 @@ Source: `indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.driver`.
 
 ### focuser_asi
 
-Custom properties: `EAF_BATTERY_INFO`, `EAF_BEEP_ON_MOVE`, `EAF_CUSTOM_SUFFIX`.
+Custom properties: `X_BATTERY_INFO`, `X_BEEP_ON_MOVE`, `X_CUSTOM_SUFFIX`.
 
 Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-`EAF_BEEP_ON_MOVE` is saved with the standard configuration. `FOCUSER_POSITION` and `FOCUSER_STEPS` report `BUSY` during motion and complete when polling confirms the motor has stopped. A polling error reports `ALERT` and stops that polling loop; a new movement request verifies the SDK motion state first. `FOCUSER_ABORT_MOTION` resets its momentary switch on success and failure and remains `BUSY` until stop is confirmed. Confirmed `FOCUSER_LIMITS` changes update the position and step ranges. `FOCUSER_COMPENSATION` accepts the coefficient and threshold; transient temperature errors preserve the last valid compensation baseline.
+`X_BEEP_ON_MOVE` is saved with the standard configuration. `FOCUSER_POSITION` and `FOCUSER_STEPS` report `BUSY` during motion and complete when polling confirms the motor has stopped. A polling error reports `ALERT` and stops that polling loop; a new movement request verifies the SDK motion state first. `FOCUSER_ABORT_MOTION` resets its momentary switch on success and failure and remains `BUSY` until stop is confirmed. Confirmed `FOCUSER_LIMITS` changes update the position and step ranges. `FOCUSER_COMPENSATION` accepts the coefficient and threshold; transient temperature errors preserve the last valid compensation baseline.
 
 Source: `indigo_drivers/focuser_asi/indigo_focuser_asi.driver` (generates `indigo_focuser_asi.c`).
 
@@ -1131,7 +1131,7 @@ Source: `indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver`.
 
 Custom properties: `X_FOCUSER_CALIBRATION` (Celestron, momentary `CALIBRATE`), `X_FOCUSER_FANS` (PlaneWave, `OFF`/`ON`). Both are connect-scoped and selected by detected model.
 
-Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_STEPS`, `FOCUSER_ABORT_MOTION`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_TEMPERATURE`. Speed, reversal, backlash and automatic compensation remain hidden. PlaneWave exposes integer travel within local software limits (default 0–3799422), coordinate SYNC, fans and temperature. Both local limit endpoints are writable and update motion metadata; limits do not program undocumented hardware minimum commands. Celestron limits are read-only calibrated device values, updated after calibration; SYNC/fan/temperature are hidden. Position and steps report measured motion, with scheduled completion and abort. Temperature accepts address plus big-endian signed sixteenths or the legacy two-byte little-endian form; 7F7F/no sensor and invalid responses report ALERT without replacing the last valid value.
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_STEPS`, `FOCUSER_ABORT_MOTION`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_TEMPERATURE`. Speed, reversal, backlash and automatic compensation remain hidden. PlaneWave exposes integer travel within local software limits (default 0–3799422), coordinate SYNC, fans and temperature. Both local limit endpoints are writable and update motion metadata; limits do not program undocumented hardware minimum commands. Celestron limits are read-only calibrated device values, updated after calibration; SYNC/fan/temperature are hidden. Position and steps report measured motion, with scheduled completion and abort. Temperature accepts address plus big-endian signed sixteenths or the legacy two-byte little-endian form; 7F7F (no sensor) reports IDLE and invalid responses report ALERT, both without replacing the last valid value. PlaneWave limits that exclude the current position or arrive during motion are refused. An aborted move ends `FOCUSER_POSITION` and `FOCUSER_STEPS` ALERT at the stopped position; motion the driver did not command is published BUSY until it settles.
 
 Source: `indigo_drivers/focuser_efa/indigo_focuser_efa.driver`.
 
@@ -1179,7 +1179,7 @@ Source: `indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver`.
 
 Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_STEPS`, `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`. Focuser controls are defined after connection. `FOCUSER_SPEED`, `FOCUSER_MODE` and `FOCUSER_COMPENSATION` remain hidden.
 
-Backlash is 0–255 integer steps. Minimum position is fixed at zero; the configurable maximum is 300–65535 for firmware v1 and 300–250000 for v2/v3. Position and relative-step ranges follow the device maximum. SYNC updates coordinates without movement. Temperature NC (99.9) reports ALERT without replacing the last valid reading. Motion completion and abort publish measured position and final state; failed setting readback preserves the last confirmed value.
+Backlash is 0–255 integer steps. Minimum position is fixed at zero; the configurable maximum is 300–65535 for firmware v1 and 300–250000 for v2/v3. Position and relative-step ranges follow the device maximum. SYNC updates coordinates without movement. Temperature NC (99.9) reports IDLE without replacing the last valid reading. An aborted move ends `FOCUSER_POSITION` and `FOCUSER_STEPS` ALERT at the stopped position; motion the driver did not command is published BUSY until it settles. Motion completion and abort publish measured position and final state; failed setting readback preserves the last confirmed value.
 
 Source: `indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver`.
 
@@ -1203,7 +1203,7 @@ Each driver exposes seven logical devices: the Main port in the driver's own cla
 
 The motor settings are per port and are therefore published by every stepper device, qualified by class: step mode (full or half), coil current for moving and for standing still as a percentage the driver scales into the controller's 0...1023 range, motor wiring (Lunatico or RF/Moonlite, combined with `FOCUSER_REVERSE_MOTION` or `ROTATOR_DIRECTION` into one controller value) and motor type (unipolar, bipolar, DC or step-dir). `X_FOCUSER_TEMPERATURE_SENSOR` selects the internal or the external probe and exists on focuser devices only.
 
-`FOCUSER_SPEED` is a step rate in kHz that the driver sends as a microsecond range. `FOCUSER_LIMITS` and `ROTATOR_LIMITS` are the controller's software limits; a range spanning the full travel deletes them instead of writing a degenerate one. `FOCUSER_BACKLASH` and `ROTATOR_BACKLASH` are passed to the controller with each absolute move and are not applied to relative steps. Rotator angles are converted to steps against `ROTATOR_STEPS_PER_REVOLUTION` with `ROTATOR_LIMITS.MIN_POSITION` as the zero offset, and changing either of those re-syncs the controller's counter so the reported angle does not move. The powerbox outlets and GPIO sensors are addressed with horizontally flipped DB9 pins, so outlet 1 drives pin 4 and sensor 1 reads pin 8.
+`FOCUSER_SPEED` is a step rate in kHz that the driver sends as a microsecond range. `FOCUSER_LIMITS` and `ROTATOR_LIMITS` are the controller's software limits; a range spanning the full travel deletes them instead of writing a degenerate one. `FOCUSER_LIMITS` is also the range of `FOCUSER_POSITION` and `FOCUSER_STEPS`, and a change that is inverted, excludes the current position or arrives during a move is refused without a command. `FOCUSER_BACKLASH` and `ROTATOR_BACKLASH` are passed to the controller with each absolute move and are not applied to relative steps. Rotator angles are converted to steps against `ROTATOR_STEPS_PER_REVOLUTION` with `ROTATOR_LIMITS.MIN_POSITION` as the zero offset, and changing either of those re-syncs the controller's counter so the reported angle does not move. The powerbox outlets and GPIO sensors are addressed with horizontally flipped DB9 pins, so outlet 1 drives pin 4 and sensor 1 reads pin 8.
 
 Source: `indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver`, `indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver`, `indigo_drivers/focuser_lunatico/shared/lunatico_shared.c`.
 
@@ -1261,7 +1261,7 @@ Custom properties: `X_FOCUSER_TYPE`.
 
 Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-`FOCUSER_LIMITS` is read-only in effect: the maximum position is reported by the controller and follows the configured device type. `FOCUSER_REVERSE_MOTION` is resolved by the driver because the FocusLynx protocol has no reverse command. `FOCUSER_SPEED` is hidden. Sync through `FOCUSER_ON_POSITION_SET` is refused for device types that must home. `FOCUSER_COMPENSATION` and `FOCUSER_MODE` are not implemented.
+`FOCUSER_LIMITS` is read-only: the maximum position is reported by the controller, follows the configured device type and is also the range of `FOCUSER_POSITION` and `FOCUSER_STEPS`. `FOCUSER_REVERSE_MOTION` is resolved by the driver because the FocusLynx protocol has no reverse command. `FOCUSER_SPEED` is hidden. Sync through `FOCUSER_ON_POSITION_SET` is refused for device types that must home. `FOCUSER_COMPENSATION` and `FOCUSER_MODE` are not implemented.
 
 The driver exposes the hub's two logical focusers as `Optec FocusLynx #1` and `Optec FocusLynx #2`. They share one serial connection, so only the first device publishes `DEVICE_PORT` and `DEVICE_PORTS`; the second one opens the hub through it. Both publish their own `X_FOCUSER_TYPE`.
 
@@ -1285,7 +1285,7 @@ Source: `indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver`.
 
 ### focuser_qhy
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH` remains hidden; `FOCUSER_COMPENSATION` exposes coefficient and threshold; `FOCUSER_LIMITS` provides local 0–2,000,000-step clamping; `FOCUSER_MODE` switches between manual controls and automatic temperature compensation; `FOCUSER_ON_POSITION_SET` selects GOTO or SYNC; `FOCUSER_REVERSE_MOTION` and `FOCUSER_SPEED` configure firmware; `FOCUSER_TEMPERATURE` publishes a five-sample mean using the outside probe with chip-temperature fallback.
+Driver-specific use of existing properties: `FOCUSER_BACKLASH` remains hidden; `FOCUSER_COMPENSATION` exposes coefficient and threshold; `FOCUSER_LIMITS` provides local 0–2,000,000-step clamping and is the range of `FOCUSER_POSITION` and `FOCUSER_STEPS`, a change that excludes the current position or arrives during motion is refused; `FOCUSER_MODE` switches between manual controls and automatic temperature compensation; `FOCUSER_ON_POSITION_SET` selects GOTO or SYNC; `FOCUSER_REVERSE_MOTION` and `FOCUSER_SPEED` configure firmware; `FOCUSER_TEMPERATURE` publishes a five-sample mean using the outside probe with chip-temperature fallback.
 
 Source: `indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver`.
 
@@ -1301,7 +1301,9 @@ Source: `indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver`.
 
 Custom properties: `X_NAME`, `X_PID_SETTINGS`, `X_RESET`, `X_SAVED_VALUES`, `X_SELECT_AMB_SENSOR`, `X_SELECT_PID_SENSOR`, `X_SELECT_TC_SENSOR`, `X_START_ZEROING`, `X_STATUS`, `X_USE_AUTO_DEW`, `X_USE_ENDSTOP`, `X_USE_PID`.
 
-Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+`FOCUSER_MODE` automatic is the controller's temperature compensation, which moves the focuser itself, so `FOCUSER_POSITION` is read-only there and relative moves and zeroing are refused. `FOCUSER_TEMPERATURE` is IDLE while the averaged sensors report -128 (no sensor).
 
 Source: `indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver`.
 

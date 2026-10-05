@@ -82,3 +82,73 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && MOONLITE_TEST_FILTER=rejected_change ./build/integration/test_focuser_moonlite_simulator
 ```
+
+## Focuser testing rules alignment (3.0.0.14, 2026-10-05)
+
+The regression suite was checked against the extended "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` (fa5f64839) and the two decisions made for all focusers: an aborted
+move ends `FOCUSER_POSITION` and `FOCUSER_STEPS` ALERT at the stopped position, and disconnecting during
+motion sends the stop before the port closes (the driver already did, now pinned to exactly one `:FQ#`).
+
+### Defects found and fixed (all reproduced against a pre-fix 3.0.0.13 build of the same test)
+
+- **Aborted move ended OK.** It now ends both motion properties ALERT at the stopped position (value =
+  target). Test: `abort_and_overlap` (`aborted_at()`).
+- **A failed move was turned OK by the next idle poll.** After a failed readback, a stall or an abort the
+  0.25/0.75 s position poll published OK again. `moonlite_motion_state()` now records whether the last move
+  ended ALERT and the poll keeps publishing ALERT until the next move. Tests: `motion_position_failure`,
+  `motion_status_failure`, `stalled_motion` (`idle_polls_keep()`).
+- **A poll in flight overwrote an accepted GOTO.** The poll is admitted while both motion properties are idle;
+  when a `FOCUSER_POSITION` request was copied while the `:GP#` reply was outstanding, `moonlite_position()`
+  overwrote the requested target with the current position and the poll published OK, so the handler then
+  "moved" to where the focuser already was. The poll no longer touches the target or the state of a pending
+  request. Test: `position_request_survives_poll` (simulator fault `delay`); `steps_request_survives_poll`
+  covers the relative request.
+- **Abort while idle sent `:FQ#`.** It now ends OK without a command when nothing is moving, queued or
+  uncertain. Test: `abort_and_overlap`.
+- **`FOCUSER_LIMITS` did not narrow the `FOCUSER_POSITION` and `FOCUSER_STEPS` ranges, and accepted an interval
+  that excludes the current position or a change during a move.** `moonlite_ranges()` now redefines both
+  properties with the limits; an empty interval, one excluding the position, or a change during motion ends
+  ALERT and keeps the old limits. Tests: `limits`, `controls_during_motion`.
+- **`FOCUSER_REVERSE_MOTION` was accepted during a move.** The driver owns the reversal; it is now refused
+  with ALERT and the previous item. Test: `controls_during_motion`.
+- **A refused `X_FOCUSER_STEPPING_MODE` or `FOCUSER_MODE` request kept the requested item.** Both now show the
+  mode the controller last confirmed. Tests: `stepping_reject`, `controls_during_motion`.
+
+### Added coverage
+
+| Rule | Test |
+| --- | --- |
+| Firmware revision in `INFO`, connect sequence `GV FQ GI - GP GC GD GH C GT`, temperature read-only, `X_` property not defined before connect and deleted on disconnect, shutdown refused while connected | `capabilities*` |
+| Device state at connect (position, speed, coefficient, half step, temperature) | `capabilities_alternate` |
+| Refused connect leaves no focuser or `X_` property | `init_*` |
+| GOTO right after connect judged against the connect readback; both properties BUSY for a short move | `motion` |
+| Absolute targets clamped to limits on the wire (`SN7FBC`, `SN8084`); relative moves past travel or limits sent to the end (`SNFFFF`) | `limits`, `boundaries` |
+| One command per setting in device units (`SD02..SD20`, `SC80`, `SC7F`), manual mode resumes polling and moves | `controls` |
+| Rejected settings keep the device value; retry succeeds | `speed_reject`, `compensation_reject`, `stepping_reject` |
+| Settings stored by the controller read back after reconnect, negative coefficient included | `reconnect` |
+| Settings and geometry controls during a move: ALERT, no command, value kept | `controls_during_motion` |
+| Failed step of the move sequence: no `FG`, both properties ALERT, position unchanged | `start_target_*` |
+| Failed poll keeps the last valid value; failed temperature keeps the last valid value; motion stays usable | `poll_*`, `temperature_failure` |
+| Refused stop: switch back OFF, move not reported completed, retry succeeds | `stop_failure` |
+| Abort overtakes a queued move | `abort_overtakes_queued_move` |
+| Disconnect during motion: one `:FQ#`, nothing after close, OK at the stopped position after reconnect | `disconnect_motion` |
+| Transport loss: every later request ALERT, no stale BUSY, no handshake re-run | `transport_loss` |
+
+### Rules not applicable or left open
+
+- No `FOCUSER_ON_POSITION_SET`: the driver does not implement `:SP` sync (the simulator supports it), so the
+  SYNC rules do not apply; its absence is asserted.
+- Motion the driver did not command: connect stops any running motion with `:FQ#` and requires `:GI#` = 0, so
+  "running at connect" does not occur. A hand controller move during a session is tracked by the position
+  poll only (no `:GI#` in the poll), so it is not published BUSY. Left open: it needs a poll change.
+- No model variants, identity query or no-sensor sentinel; temperature compensation is computed by the
+  controller (`:+#`), so the driver-owned compensation rules do not apply.
+- `FOCUSER_MODE` commands are write-only, so a refused mode write can only be produced by transport loss.
+- No shared controller; independent instances are covered by `instances`.
+
+```sh
+python3 tools/run_driver_test.py focuser_moonlite
+```
+
+Final test summary: 44 simulated tests run, 44 passed; 0 hardware tests run, 0 passed.

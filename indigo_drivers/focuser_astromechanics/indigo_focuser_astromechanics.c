@@ -32,11 +32,19 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS Focuser"
 #define FOCUSER_DEVICE_NAME  "ASTROMECHANICS Focuser"
 #define PRIVATE_DATA         ((astromechanics_private_data *)device->private_data)
+
+//+ define
+
+// A move whose position does not change for this many polls (0.1 s each) has stalled.
+#define ASTROMECHANICS_STALL_POLLS 100
+#define FOCUSER_IN_MOTION    (PRIVATE_DATA->moving || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
+
+//- define
 
 #pragma mark - Property definitions
 
@@ -54,6 +62,9 @@ typedef struct {
 	//+ data
 	char response[16];
 	int motion_polls;
+	int motion_position;
+	bool moving;
+	bool external_motion;
 	//- data
 } astromechanics_private_data;
 
@@ -69,7 +80,8 @@ static bool astromechanics_command(indigo_device *device, char *command, int res
 		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 		va_end(args);
 		if (result > 0 && response > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n#", "\n#", INDIGO_DELAY(1));
+			// '#' terminates and is kept, so a reply cut short by a timeout can be told from a complete one
+			result = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "#", "\n", INDIGO_DELAY(1), INDIGO_DELAY(0.5));
 		}
 	}
 	return result > 0;
@@ -92,41 +104,81 @@ static bool astromechanics_position(indigo_device *device, int *position) {
 	if (!astromechanics_command(device, "P#", 16)) {
 		return false;
 	}
-	char tail;
-	return sscanf(PRIVATE_DATA->response, "%d%c", position, &tail) == 1 && *position >= 0 && *position <= 9999;
+	char terminator = 0, tail;
+	int digits = 0;
+	if (sscanf(PRIVATE_DATA->response, "%d%n%c%c", position, &digits, &terminator, &tail) != 2 || terminator != '#' || digits < 1 || digits > 4 || *position < 0 || *position > 9999) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid position reply '%s'", PRIVATE_DATA->response);
+		return false;
+	}
+	return true;
 }
 
 static void focuser_motion_finalizer(indigo_device *device) {
 	int position;
 	if (!astromechanics_position(device, &position)) {
+		PRIVATE_DATA->moving = false;
+		PRIVATE_DATA->external_motion = false;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		FOCUSER_POSITION_ITEM->number.value = position;
-		if (position == (int)FOCUSER_POSITION_ITEM->number.target) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		} else if (--PRIVATE_DATA->motion_polls <= 0) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Focuser position could not be read");
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		return;
+	}
+	bool progress = position != PRIVATE_DATA->motion_position;
+	PRIVATE_DATA->motion_position = position;
+	FOCUSER_POSITION_ITEM->number.value = position;
+	const char *message = NULL;
+	if (PRIVATE_DATA->external_motion ? !progress : position == (int)FOCUSER_POSITION_ITEM->number.target) {
+		/* motion the driver did not command ends where the lens settles */
+		if (PRIVATE_DATA->external_motion) {
+			FOCUSER_POSITION_ITEM->number.target = position;
 		}
+		PRIVATE_DATA->moving = false;
+		PRIVATE_DATA->external_motion = false;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (progress) {
+		PRIVATE_DATA->motion_polls = ASTROMECHANICS_STALL_POLLS;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
+	} else if (--PRIVATE_DATA->motion_polls <= 0) {
+		PRIVATE_DATA->moving = false;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		message = "Focuser does not reach the target";
+	} else {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
 	}
 	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	if (message != NULL) {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
 static void astromechanics_start_motion(indigo_device *device, int position) {
 	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
 	FOCUSER_POSITION_ITEM->number.target = position;
+	const char *message = NULL;
 	if (astromechanics_command(device, "M%04d#", 0, position)) {
-		PRIVATE_DATA->motion_polls = 100;
+		PRIVATE_DATA->motion_polls = ASTROMECHANICS_STALL_POLLS;
+		PRIVATE_DATA->motion_position = (int)FOCUSER_POSITION_ITEM->number.value;
+		PRIVATE_DATA->moving = true;
+		PRIVATE_DATA->external_motion = false;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
+		PRIVATE_DATA->moving = false;
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		message = "Move command could not be sent";
 	}
 	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	if (message != NULL) {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
@@ -140,10 +192,23 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = astromechanics_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			int position;
+			int position, settled;
 			connection_result = astromechanics_position(device, &position);
 			if (connection_result) {
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				/* a second reading tells a lens still moving from a previous session from a resting one */
+				indigo_usleep(0.1 * ONE_SECOND_DELAY);
+				connection_result = astromechanics_position(device, &settled);
+			}
+			if (connection_result) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = settled;
+				PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = settled != position;
+				PRIVATE_DATA->motion_position = settled;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+				if (PRIVATE_DATA->moving) {
+					indigo_execute_handler_in(device, 0.1, focuser_motion_finalizer);
+				}
+			} else {
+				astromechanics_close(device);
 			}
 			//- focuser.on_connect
 		}
@@ -158,6 +223,10 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ focuser.on_disconnect
+		PRIVATE_DATA->moving = false;
+		PRIVATE_DATA->external_motion = false;
+		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			X_FOCUSER_APERTURE_PROPERTY,
@@ -265,12 +334,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_APERTURE_PROPERTY, focuser_x_focuser_aperture_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_STEPS.on_change_request
+		/* the accepted move is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->moving = true;
+		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_POSITION.on_change_request
+		/* the accepted move is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->moving = true;
+		//- focuser.FOCUSER_POSITION.on_change_request
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);

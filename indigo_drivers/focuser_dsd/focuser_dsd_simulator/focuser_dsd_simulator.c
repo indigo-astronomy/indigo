@@ -31,8 +31,10 @@
 //
 // Test hooks (all optional, named by environment variables):
 //   INDIGO_DSD_EVENTS   event log: "<time> RX|TX|STATE|FAULT|CONTROL <text>"
-//   INDIGO_DSD_FAULT    "<COMMAND|ANY> <silent|error|malformed|partial|garbage|close> [count]"
-//   INDIGO_DSD_CONTROL  lines "<position|temperature|stall|max_move|board> <value>"
+//   INDIGO_DSD_FAULT    "<COMMAND|ANY> <silent|error|malformed|partial|garbage|close|delay> [count]"
+//                       (a silent STOP is a stop the controller ignores; delay holds the reply for 400 ms)
+//   INDIGO_DSD_CONTROL  lines "<position|temperature|stall|max_move|board|move|split> <value>"
+//                       (move starts motion the driver did not command, split 1 sends every reply in two reads)
 
 #include <errno.h>
 #include <limits.h>
@@ -52,7 +54,7 @@
 
 static const char *ready_file, *fault_file, *control_file;
 static FILE *events;
-static bool trace, headless, stalled;
+static bool trace, headless, stalled, split;
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 static int model = 2;
@@ -92,7 +94,16 @@ static bool is_moving(void) {
 static bool write_text(const char *text) {
 	event("TX", "%s", text);
 	serial_simulator_trace_line(trace, "<-", text);
-	return serial_simulator_write_all(serial_fd, text, strlen(text));
+	size_t length = strlen(text);
+	if (split && length > 1) {
+		size_t first = length / 2;
+		if (!serial_simulator_write_all(serial_fd, text, first)) {
+			return false;
+		}
+		usleep(30000);
+		return serial_simulator_write_all(serial_fd, text + first, length - first);
+	}
+	return serial_simulator_write_all(serial_fd, text, length);
 }
 
 static bool reply(const char *format, ...) {
@@ -134,6 +145,10 @@ static bool fault(const char *key) {
 	event("FAULT", "%s %s", key, action);
 	if (!strcmp(action, "silent")) {
 		return true;
+	}
+	if (!strcmp(action, "delay")) {
+		usleep(400000);
+		return false;
 	}
 	if (!strcmp(action, "error")) {
 		write_text("!100)");
@@ -376,6 +391,11 @@ static void apply_control(void) {
 			max_move = atoi(value);
 		} else if (!strcmp(key, "board")) {
 			snprintf(board, sizeof(board), "%s", value);
+		} else if (!strcmp(key, "move")) {
+			stalled = false;
+			serial_motion_start(&motion, atoi(value), motion_rate());
+		} else if (!strcmp(key, "split")) {
+			split = atoi(value) != 0;
 		}
 		event("CONTROL", "%s %s", key, value);
 	}
@@ -415,8 +435,10 @@ static bool parse_arguments(int argc, char **argv) {
 			target = atoi(argv[++i]);
 		} else if (i + 1 < argc && !strcmp(argv[i], "--temperature")) {
 			temperature = atof(argv[++i]);
+		} else if (i + 1 < argc && !strcmp(argv[i], "--max-position")) {
+			max_position = atoi(argv[++i]);
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--model af1|af2|af3] [--position N] [--temperature T]\n", argv[0]);
+			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--model af1|af2|af3] [--position N] [--temperature T] [--max-position N]\n", argv[0]);
 			exit(0);
 		} else {
 			fprintf(stderr, "Unknown/incomplete option '%s'\n", argv[i]);

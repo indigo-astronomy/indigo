@@ -81,6 +81,38 @@ static int commands(const char *prefix) {
 	return count;
 }
 
+// The n-th (from 1) received request in the journal form "<dst> <cmd> <value> <size>", empty if there is none.
+static void nth_command(int occurrence, char *request, size_t size) {
+	FILE *file = fopen(event_path, "r");
+	request[0] = 0;
+	if (!file) {
+		return;
+	}
+	char line[512], kind[16], value[256];
+	double timestamp;
+	while (fgets(line, sizeof(line), file)) {
+		if (sscanf(line, "%lf %15s %255[^\r\n]", &timestamp, kind, value) == 3 && !strcmp(kind, "RX") && --occurrence == 0) {
+			snprintf(request, size, "%s", value);
+			break;
+		}
+	}
+	fclose(file);
+}
+
+// Hold the driver's queue: the next <command> transaction gets its valid reply 0.8 s late.
+static bool gate(const char *command) {
+	if (!fault(command, "slow")) {
+		return false;
+	}
+	for (int i = 0; i < 150; i++) {
+		if (access(fault_path, F_OK) != 0) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
 static void driver_stop(void) {
 	disconnect_serial_device(&efa_focuser);
 	bool disconnected = !context.connected;
@@ -145,7 +177,7 @@ static int run_cases(const efa_test *cases, int count) {
 			failures++;
 			break;
 		}
-		if (!strcmp(cases[i].name, "instances")) {
+		if (!strcmp(cases[i].name, "instances") || !strcmp(cases[i].name, "model_change")) {
 			unsetenv("INDIGO_EFA_EVENTS");
 			unsetenv("INDIGO_EFA_FAULT");
 			const char *second_args[] = { "--profile", "alternate", NULL };
@@ -187,7 +219,11 @@ static int run_cases(const efa_test *cases, int count) {
 }
 
 static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, "X_FOCUSER_CALIBRATION", "X_FOCUSER_FANS", FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME };
-static atomic_uint revisions[8], motion_busy;
+static atomic_uint revisions[8], motion_busy, steps_busy;
+static atomic_bool position_logging;
+static atomic_int position_log_count;
+static indigo_property_state position_log_state[256];
+static double position_log_value[256];
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < 8; i++) {
@@ -206,6 +242,16 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 	}
 	if (i == 1 && property->state == INDIGO_BUSY_STATE) {
 		atomic_fetch_add(&motion_busy, 1);
+	}
+	if (i == 2 && property->state == INDIGO_BUSY_STATE) {
+		atomic_fetch_add(&steps_busy, 1);
+	}
+	if (i == 1 && atomic_load(&position_logging)) {
+		int entry = atomic_fetch_add(&position_log_count, 1);
+		if (entry < 256) {
+			position_log_state[entry] = property->state;
+			position_log_value[entry] = property->items[0].number.value;
+		}
 	}
 	return result;
 }
@@ -253,6 +299,16 @@ static bool is_celestron(void) {
 	return !strcmp(current_profile, "celestron") || !strncmp(current_profile, "c_", 2);
 }
 
+static bool position_above(double minimum) {
+	for (int i = 0; i < 100; i++) {
+		if (find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value > minimum) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	return false;
+}
+
 static void capabilities(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&efa_focuser));
 	SERIAL_CHECK_TRUE(!has_defined_property("X_FOCUSER_FANS") && !has_defined_property("X_FOCUSER_CALIBRATION"));
@@ -267,6 +323,21 @@ static void capabilities(void) {
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_LIMITS_PROPERTY_NAME)->perm == (is_celestron() ? INDIGO_RO_PERM : INDIGO_RW_PERM));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == (is_celestron() ? 100000 : 3799422));
 	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, is_celestron() ? "Celestron Focus Motor" : "PlaneWave EFA"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, is_celestron() ? "1.5.4" : "1.5"));
+	// Connect sequence: identity, position, then the model's calibration/stop detection/fans or calibration/limits reads.
+	const char *efa_sequence[] = { "12 FE", "12 01", "12 30", "12 EF", "13 28" }, *celestron_sequence[] = { "12 FE", "12 01", "12 2B", "12 2C" };
+	const char **sequence = is_celestron() ? celestron_sequence : efa_sequence;
+	for (int i = 0; i < (is_celestron() ? 4 : 5); i++) {
+		char request[256];
+		nth_command(i + 1, request, sizeof(request));
+		SERIAL_CHECK_TRUE(!strncmp(request, sequence[i], strlen(sequence[i])));
+	}
+	if (!is_celestron() && strcmp(current_profile, "echo")) {
+		// SYNC right after connect, to the value already published, still reaches the controller.
+		SERIAL_CHECK_TRUE(sync_to(10));
+		SERIAL_CHECK_EQ_INT(1, commands("12 04 10 3"));
+		SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	}
 	if (!is_celestron()) {
 		SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 21.5, .01));
 		SERIAL_CHECK_TRUE(sync_to(1000));
@@ -277,7 +348,14 @@ static void capabilities(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(1500));
 	SERIAL_CHECK_TRUE(commands(is_celestron() ? "12 02 1500 3" : "12 17 1500 3") == 1);
-	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > 0);
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > 0 && atomic_load(&steps_busy) > 0);
+	// INDIGO_DRIVER_SHUTDOWN is refused while connected and the connection keeps working.
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_focuser_efa(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1600, INDIGO_OK_STATE));
+	// The model-specific properties are deleted on disconnect.
+	disconnect_serial_device(&efa_focuser);
+	SERIAL_CHECK_TRUE(find_cached_property("X_FOCUSER_FANS") == NULL && find_cached_property("X_FOCUSER_CALIBRATION") == NULL);
 cleanup:
 	driver_stop();
 }
@@ -313,8 +391,12 @@ cleanup:
 
 static void external_position(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	unsigned busy = atomic_load(&motion_busy);
 	SERIAL_CHECK_TRUE(fault("external", "-80"));
+	// An uncommanded position change is BUSY until it settles, then OK with the target equal to the measured value.
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, -80, .01));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > busy);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == -80);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(100));
@@ -324,13 +406,18 @@ cleanup:
 
 static void limits(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	// A limit that excludes the current position (10) is refused and the old one kept.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME)->number.value == 0);
+	SERIAL_CHECK_TRUE(sync_to(1000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 100, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 2000, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.min == 100);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == 2000);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, 3000, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME)->number.value == 100);
-	SERIAL_CHECK_TRUE(sync_to(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 500, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value == 2000);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1500, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(2000));
@@ -343,13 +430,177 @@ cleanup:
 
 static void abort_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, is_celestron() ? 90000 : 2000000, INDIGO_BUSY_STATE));
+	int target = is_celestron() ? 90000 : 2000000;
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, INDIGO_BUSY_STATE));
+	// The abort lands mid-move.
+	SERIAL_CHECK_TRUE(position_above(10));
+	unsigned before = atomic_load(&revisions[1]);
 	SERIAL_CHECK_TRUE(abort_ok());
+	// An aborted move ends ALERT on both motion properties at the stopped position, never at the requested target.
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	SERIAL_CHECK_TRUE(item->number.value == item->number.target);
+	double stopped = item->number.value;
+	SERIAL_CHECK_TRUE(item->number.target == stopped && stopped > 10 && stopped < target);
+	SERIAL_CHECK_EQ_INT(1, commands("12 24 0 1"));
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
+	// The stop is real: two more polls read the same position, and they keep ALERT.
+	int polls = commands("12 01");
+	for (int i = 0; i < 60 && commands("12 01") < polls + 2; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(commands("12 01") >= polls + 2);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == stopped);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	// Abort while idle and a request with the item OFF are answered without a command.
+	SERIAL_CHECK_TRUE(abort_ok());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("12 24 0 1"));
+	// A reconnect after the aborted move starts with an OK position, and a fresh move works.
+	disconnect_serial_device(&efa_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&efa_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == stopped);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void abort_queued(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// The GOTO waits in the queue behind a slow poll; the urgent abort overtakes it.
+	SERIAL_CHECK_TRUE(gate("01"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, efa_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
+	SERIAL_CHECK_TRUE(abort_ok());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_EQ_INT(0, commands("12 17") + commands("12 02"));
+	SERIAL_CHECK_EQ_INT(1, commands("12 24 0 1"));
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(item->number.value == 10 && item->number.target == 10);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void request_during_poll(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// A GOTO requested with the idle poll's reply outstanding: the poll must neither take its target nor publish
+	// over its BUSY; the command is sent once and the first result is OK at the requested position.
+	SERIAL_CHECK_TRUE(gate("01"));
+	atomic_store(&position_log_count, 0);
+	atomic_store(&position_logging, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, efa_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
+	SERIAL_CHECK_TRUE(at_position(1000));
+	atomic_store(&position_logging, false);
+	int count = atomic_load(&position_log_count);
+	SERIAL_CHECK_TRUE(count > 1 && position_log_state[0] == INDIGO_BUSY_STATE);
+	int result = 1;
+	while (result < count && position_log_state[result] == INDIGO_BUSY_STATE) {
+		result++;
+	}
+	SERIAL_CHECK_TRUE(result < count && position_log_state[result] == INDIGO_OK_STATE && position_log_value[result] == 1000);
+	SERIAL_CHECK_EQ_INT(1, commands("12 17 1000 3"));
+cleanup:
+	atomic_store(&position_logging, false);
+	driver_stop();
+}
+
+static void manual_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	unsigned busy = atomic_load(&motion_busy);
+	// Hand-control motion is BUSY while it runs (a relative move is refused meanwhile), then OK with the target equal
+	// to the measured value, and no command is sent.
+	SERIAL_CHECK_TRUE(fault("manual", "3000"));
+	for (int i = 0; i < 100 && atomic_load(&motion_busy) == busy; i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > busy);
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 30));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, .01) && wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 3000);
+	SERIAL_CHECK_EQ_INT(0, commands("12 17"));
+	// A later relative move starts from the measured position.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(3100));
+	SERIAL_CHECK_EQ_INT(1, commands("12 17 3100 3"));
+cleanup:
+	driver_stop();
+}
+
+static void moving_at_connect(void) {
+	unsigned busy = atomic_load(&motion_busy);
+	SERIAL_CHECK_TRUE(driver_start());
+	// Motion running at connect is published BUSY, then OK at the settled position, without a command.
+	SERIAL_CHECK_TRUE(at_position(20000));
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > busy);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 20000);
+	SERIAL_CHECK_EQ_INT(0, commands("12 17"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(20100));
+	SERIAL_CHECK_EQ_INT(1, commands("12 17 20100 3"));
+cleanup:
+	driver_stop();
+}
+
+static void start_state(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// Connect publishes the controller's state, not driver defaults.
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	if (is_celestron()) {
+		SERIAL_CHECK_TRUE(position->number.value == 4321 && position->number.target == 4321);
+		SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME)->number.value == 1000);
+		SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value == 90000);
+		SERIAL_CHECK_TRUE(position->number.min == 1000 && position->number.max == 90000);
+	} else {
+		SERIAL_CHECK_TRUE(position->number.value == 123456 && position->number.target == 123456);
+		SERIAL_CHECK_TRUE(find_cached_item("X_FOCUSER_FANS", "ON")->sw.value);
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, -3.5, .01));
+	}
+cleanup:
+	driver_stop();
+}
+
+static void model_change(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(find_cached_property("X_FOCUSER_FANS") != NULL);
+	disconnect_serial_device(&efa_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	// Reconnecting to a Celestron motor defines that device's properties and ranges, nothing kept from the EFA.
+	SERIAL_CHECK_TRUE(connect_serial_device(&efa_focuser, second_fixture.port));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, "Celestron Focus Motor"));
+	SERIAL_CHECK_TRUE(find_cached_property("X_FOCUSER_CALIBRATION") != NULL && find_cached_property("X_FOCUSER_FANS") == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME) == NULL && find_cached_property(FOCUSER_ON_POSITION_SET_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_LIMITS_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == 100000);
+	SERIAL_CHECK_TRUE(at_position(500));
+cleanup:
+	driver_stop();
+}
+
+static void long_move_failure(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// A refused coarse start ends ALERT on both motion properties and sends no fine target.
+	SERIAL_CHECK_TRUE(fault("24", "reject"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 200000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(0, commands("12 17"));
+	SERIAL_CHECK_TRUE(abort_ok());
+	// A refused fine target after the coarse slew ends ALERT and stops; no further command of the sequence follows.
+	SERIAL_CHECK_TRUE(fault("17", "reject"));
+	unsigned before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 200000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(1, commands("12 17"));
+	SERIAL_CHECK_TRUE(commands("12 24 0 1") >= 2);
 	SERIAL_CHECK_TRUE(abort_ok());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(500));
 cleanup:
 	driver_stop();
 }
@@ -387,6 +638,14 @@ static void temperature(void) {
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, -5, .01));
 	unsigned before = atomic_load(&revisions[7]);
 	SERIAL_CHECK_TRUE(fault("temperature", "32639"));
+	// 7F7F is the no-sensor marker: IDLE, published once, with the last valid value.
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME)->number.value == -5);
+	before = atomic_load(&revisions[7]);
+	indigo_usleep(2500000);
+	SERIAL_CHECK_EQ_INT((int)before, (int)atomic_load(&revisions[7]));
+	// An implausible reading is ALERT and never a value.
+	SERIAL_CHECK_TRUE(fault("temperature", "28672"));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME)->number.value == -5);
 	SERIAL_CHECK_TRUE(fault("temperature", "0"));
@@ -402,6 +661,9 @@ static void poll_failure(void) {
 	SERIAL_CHECK_TRUE(fault("01", current_profile));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 10);
+	// The next good poll restores OK without a request.
+	before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(abort_ok());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
 cleanup:
@@ -426,7 +688,10 @@ static void command_failure(void) {
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000000, INDIGO_BUSY_STATE));
 		SERIAL_CHECK_TRUE(fault("24", "reject"));
 		SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
+		// The refused stop leaves the move running and reported BUSY, never completed.
+		SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
 		SERIAL_CHECK_TRUE(abort_ok());
+		SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	} else {
 		SERIAL_CHECK_TRUE(fault("17", current_profile));
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, INDIGO_ALERT_STATE));
@@ -442,9 +707,15 @@ static void motion_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(fault("17", "stall"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, INDIGO_BUSY_STATE));
+	// Inject the readback fault only once the move runs, so an idle poll still in flight cannot take it.
+	for (int i = 0; i < 100 && commands("12 17") == 0; i++) {
+		indigo_usleep(20000);
+	}
+	SERIAL_CHECK_EQ_INT(1, commands("12 17"));
 	unsigned before = atomic_load(&revisions[1]);
 	if (!strcmp(current_profile, "stall")) {
-		indigo_usleep(4000000);
+		// The stall stop comes after 100 unchanged 0.1 s polls; leave margin for a loaded host.
+		indigo_usleep(9000000);
 	} else {
 		SERIAL_CHECK_TRUE(fault(!strcmp(current_profile, "badstate") ? "13" : "01", current_profile));
 	}
@@ -519,13 +790,24 @@ static void lifecycle(void) {
 		SERIAL_CHECK_TRUE(switch_change("X_FOCUSER_CALIBRATION", "CALIBRATE", true, INDIGO_BUSY_STATE));
 	} else {
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000000, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(position_above(10));
 	}
 	disconnect_serial_device(&efa_focuser);
 	SERIAL_CHECK_TRUE(!context.connected);
+	if (!strcmp(current_profile, "normal")) {
+		// The stop is sent once before the port closes.
+		SERIAL_CHECK_EQ_INT(1, commands("12 24 0 1"));
+	}
 	int count = commands("");
 	indigo_usleep(1200000);
 	SERIAL_CHECK_EQ_INT(count, commands(""));
 	SERIAL_CHECK_TRUE(connect_serial_device(&efa_focuser, fixture.port));
+	if (!strcmp(current_profile, "normal")) {
+		// After reconnect the position is OK at the real, stopped position.
+		SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+		double stopped = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value;
+		SERIAL_CHECK_TRUE(stopped > 10 && stopped < 2000000);
+	}
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 800, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -668,6 +950,14 @@ int main(void) {
 		{ "limits", limits, "normal" },
 		{ "abort_efa", abort_motion, "normal" },
 		{ "abort_celestron", abort_motion, "celestron" },
+		{ "abort_queued", abort_queued, "normal" },
+		{ "request_during_poll", request_during_poll, "normal" },
+		{ "manual_motion", manual_motion, "normal" },
+		{ "moving_at_connect", moving_at_connect, "moving" },
+		{ "start_state_efa", start_state, "start_state" },
+		{ "start_state_celestron", start_state, "c_start" },
+		{ "model_change", model_change, "normal" },
+		{ "long_move_failure", long_move_failure, "normal" },
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "temperature", temperature, "normal" },
 		{ "temperature_legacy", temperature, "legacy_temp" },

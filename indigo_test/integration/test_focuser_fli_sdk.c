@@ -31,8 +31,58 @@ static const char *observed_names[] = {
 	FOCUSER_DIRECTION_PROPERTY_NAME,
 	FOCUSER_ABORT_MOTION_PROPERTY_NAME,
 	FOCUSER_SPEED_PROPERTY_NAME,
+	FOCUSER_ON_POSITION_SET_PROPERTY_NAME,
+	FOCUSER_LIMITS_PROPERTY_NAME,
+	FOCUSER_TEMPERATURE_PROPERTY_NAME,
+	FOCUSER_COMPENSATION_PROPERTY_NAME,
+	FOCUSER_MODE_PROPERTY_NAME,
+	FOCUSER_BACKLASH_PROPERTY_NAME,
+	FOCUSER_REVERSE_MOTION_PROPERTY_NAME,
 	INFO_PROPERTY_NAME
 };
+
+static bool position_is(int index, double value, double target) {
+	indigo_property *property = fli_snapshot(index, FOCUSER_POSITION_PROPERTY_NAME);
+	indigo_item *item = fli_snapshot_item(property, FOCUSER_POSITION_ITEM_NAME);
+	bool result = item != NULL && item->number.value == value && item->number.target == target;
+	if (!result) {
+		fprintf(stderr, "FOCUSER_POSITION expected %g / %g, got %g / %g\n", value, target, item ? item->number.value : NAN, item ? item->number.target : NAN);
+	}
+	indigo_release_property(property);
+	return result;
+}
+
+static bool target_is(int index, double target) {
+	indigo_property *property = fli_snapshot(index, FOCUSER_POSITION_PROPERTY_NAME);
+	indigo_item *item = fli_snapshot_item(property, FOCUSER_POSITION_ITEM_NAME);
+	bool result = item != NULL && item->number.target == target;
+	if (!result) {
+		fprintf(stderr, "FOCUSER_POSITION target expected %g, got %g\n", target, item ? item->number.target : NAN);
+	}
+	indigo_release_property(property);
+	return result;
+}
+
+static bool message_contains(int index, const char *property_name, const char *text) {
+	char buffer[INDIGO_VALUE_SIZE];
+	fli_message(index, property_name, buffer);
+	if (strstr(buffer, text) == NULL) {
+		fprintf(stderr, "%s message '%s' does not contain '%s'\n", property_name, buffer, text);
+		return false;
+	}
+	return true;
+}
+
+static bool wait_steps(int expected) {
+	for (int i = 0; i < 300; i++) {
+		if (atomic_load(&fli_fake.step_motor_calls) >= expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "step commands expected %d, got %d\n", expected, atomic_load(&fli_fake.step_motor_calls));
+	return false;
+}
 
 static bool set_direction(int index, const char *item_name) {
 	return fli_set_switch(index, FOCUSER_DIRECTION_PROPERTY_NAME, item_name, true);
@@ -66,6 +116,16 @@ static void attach_and_identify(void) {
 	FLI_CHECK_TRUE(fli_text_is(0, INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "256"));
 	// The controller has no speed setting, so the property stays hidden.
 	FLI_CHECK_TRUE(fli_snapshot(0, FOCUSER_SPEED_PROPERTY_NAME) == NULL);
+	// Neither sync, limits, a temperature probe, compensation, backlash nor reversal exists.
+	const char *absent[] = { FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME };
+	for (int i = 0; i < ARRAY_SIZE(absent); i++) {
+		indigo_property *property = fli_snapshot(0, absent[i]);
+		if (property != NULL) {
+			fprintf(stderr, "%s is defined\n", absent[i]);
+			indigo_release_property(property);
+			FLI_CHECK_TRUE(false);
+		}
+	}
 cleanup:
 	fli_driver_down(indigo_focuser_fli);
 }
@@ -103,6 +163,14 @@ static void extent_failure(void) {
 	atomic_store(&fli_fake.fail_focuser_extent, 1);
 	FLI_CHECK_TRUE(fli_connect_expect(0, false));
 	FLI_CHECK_EQ_INT(0, atomic_load(&fli_fake.open_handles));
+	FLI_CHECK_TRUE(fli_snapshot(0, FOCUSER_POSITION_PROPERTY_NAME) == NULL);
+	// a failed position read at connect is refused the same way
+	atomic_store(&fli_fake.fail_stepper_position, 1);
+	FLI_CHECK_TRUE(fli_connect_expect(0, false));
+	FLI_CHECK_EQ_INT(0, atomic_load(&fli_fake.open_handles));
+	FLI_CHECK_TRUE(fli_snapshot(0, FOCUSER_POSITION_PROPERTY_NAME) == NULL);
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300, INDIGO_OK_STATE));
 cleanup:
 	fli_driver_down(indigo_focuser_fli);
 }
@@ -116,6 +184,7 @@ static void absolute_moves(void) {
 	FLI_CHECK_TRUE(fli_connect(0));
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, INDIGO_OK_STATE));
 	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
+	FLI_CHECK_EQ_INT(INDIGO_OK_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
 	FLI_CHECK_EQ_INT(1500, (int)atomic_load(&fli_fake.last_steps));
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900, INDIGO_OK_STATE));
 	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900));
@@ -190,6 +259,24 @@ static void move_failure(void) {
 	atomic_store(&fli_fake.fail_step, 1);
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, INDIGO_ALERT_STATE));
 	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_TRUE(message_contains(0, FOCUSER_POSITION_PROPERTY_NAME, "refused"));
+	// a failed position read before the move sends no step command
+	int steps = atomic_load(&fli_fake.step_motor_calls);
+	atomic_store(&fli_fake.fail_stepper_position, 1);
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1300, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(steps, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0));
+	// a refused second chunk of a long move ends ALERT and sends nothing more
+	steps = atomic_load(&fli_fake.step_motor_calls);
+	FLI_CHECK_TRUE(indigo_change_number_property_1(&fli_test_client, fli_observed[0].name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 6500) == INDIGO_OK);
+	FLI_CHECK_TRUE(wait_steps(steps + 1));
+	atomic_store(&fli_fake.fail_step, 1);
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	indigo_usleep(1000000);
+	FLI_CHECK_EQ_INT(steps + 2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000));
 	// The focuser stays usable.
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, INDIGO_OK_STATE));
 cleanup:
@@ -205,11 +292,22 @@ static void progress_failure(void) {
 	FLI_CHECK_TRUE(fli_connect(0));
 	atomic_store(&fli_fake.fail_steps_remaining, 1);
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	// the stop is sent and the move is never counted as arrival
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
+	FLI_CHECK_EQ_INT(0, (int)fli_fake_devices[0].steps_remaining);
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500));
+	FLI_CHECK_TRUE(message_contains(0, FOCUSER_POSITION_PROPERTY_NAME, "could not be read"));
+	fli_fake_devices[0].step_hold = 0;
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900));
 cleanup:
 	fli_driver_down(indigo_focuser_fli);
 }
 
-// A running move is stopped and the focuser is left where it actually is.
+// A running move is stopped mid-way and ends ALERT where the focuser actually
+// stopped, never at the requested target.
 static void abort_during_motion(void) {
 	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
 	fli_fake_devices[0].step_hold = 800;
@@ -217,28 +315,268 @@ static void abort_during_motion(void) {
 	FLI_CHECK_TRUE(fli_wait_attached(1));
 	FLI_CHECK_TRUE(fli_connect(0));
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	FLI_CHECK_TRUE(wait_steps(1));
 	FLI_CHECK_TRUE(fli_set_switch(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
 	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_TRUE(fli_switch_is(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
+	FLI_CHECK_TRUE(position_is(0, 1000, 1000));
+	// two readbacks a poll period apart prove the focuser stopped short of the target
+	FLI_CHECK_EQ_INT(1000, (int)fli_fake_devices[0].stepper_position);
+	FLI_CHECK_EQ_INT(0, (int)fli_fake_devices[0].steps_remaining);
+	indigo_usleep(1000000);
+	FLI_CHECK_EQ_INT(1000, (int)fli_fake_devices[0].stepper_position);
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_POSITION_PROPERTY_NAME));
 	// The focuser accepts a fresh move afterwards.
 	fli_fake_devices[0].step_hold = 0;
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100, INDIGO_OK_STATE));
 	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100));
+	FLI_CHECK_EQ_INT(INDIGO_OK_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
 cleanup:
 	fli_driver_down(indigo_focuser_fli);
 }
 
-// Aborting while nothing is moving is accepted and disturbs nothing.
+// Aborting while nothing is moving sends no command and disturbs nothing; a
+// request with the item OFF is answered without a command.
 static void abort_while_idle(void) {
 	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
 	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
 	FLI_CHECK_TRUE(fli_wait_attached(1));
 	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400, INDIGO_OK_STATE));
+	int steps = atomic_load(&fli_fake.step_motor_calls);
+	int updates = fli_updates(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME);
 	FLI_CHECK_TRUE(fli_set_switch(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	for (int i = 0; i < 100 && fli_updates(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME) < updates + 2; i++) {
+		indigo_usleep(10000);
+	}
 	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	FLI_CHECK_EQ_INT(steps, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(INDIGO_OK_STATE, fli_property_state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	FLI_CHECK_TRUE(position_is(0, 400, 400));
+	updates = fli_updates(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME);
+	FLI_CHECK_TRUE(fli_set_switch(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	for (int i = 0; i < 100 && fli_updates(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME) < updates + 2; i++) {
+		indigo_usleep(10000);
+	}
+	FLI_CHECK_TRUE(fli_updates(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME) >= updates + 2);
+	FLI_CHECK_EQ_INT(INDIGO_OK_STATE, fli_property_state(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME));
+	FLI_CHECK_EQ_INT(steps, atomic_load(&fli_fake.step_motor_calls));
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
 cleanup:
+	fli_driver_down(indigo_focuser_fli);
+}
+
+// A refused stop leaves the move reported while the focuser keeps moving, and
+// a retried abort stops it.
+static void abort_refused_stop_keeps_move(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	fli_fake_devices[0].step_hold = 800;
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	FLI_CHECK_TRUE(wait_steps(1));
+	atomic_store(&fli_fake.fail_step, 1);
+	FLI_CHECK_TRUE(fli_set_switch(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	FLI_CHECK_TRUE(fli_switch_is(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	FLI_CHECK_EQ_INT(800, (int)fli_fake_devices[0].steps_remaining);
+	indigo_usleep(1000000);
+	FLI_CHECK_EQ_INT(INDIGO_BUSY_STATE, fli_property_state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	FLI_CHECK_EQ_INT(INDIGO_BUSY_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_TRUE(fli_set_switch(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_EQ_INT(3, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(0, (int)fli_fake_devices[0].steps_remaining);
+	FLI_CHECK_TRUE(position_is(0, 1000, 1000));
+cleanup:
+	fli_driver_down(indigo_focuser_fli);
+}
+
+// An abort that arrives while the move handler is still talking to the SDK
+// waits for it and still ends the move, not BUSY.
+static void abort_queued_behind_start(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	fli_fake_devices[0].step_hold = 800;
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	FLI_CHECK_TRUE(fli_connect(0));
+	atomic_store(&fli_fake.stepper_position_waiting, false);
+	atomic_store(&fli_fake.hold_stepper_position, true);
+	FLI_CHECK_TRUE(indigo_change_number_property_1(&fli_test_client, fli_observed[0].name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000) == INDIGO_OK);
+	for (int i = 0; i < 300 && !atomic_load(&fli_fake.stepper_position_waiting); i++) {
+		indigo_usleep(10000);
+	}
+	FLI_CHECK_TRUE(atomic_load(&fli_fake.stepper_position_waiting));
+	FLI_CHECK_TRUE(fli_set_switch(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	indigo_usleep(100000);
+	atomic_store(&fli_fake.hold_stepper_position, false);
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
+	FLI_CHECK_TRUE(position_is(0, 1000, 1000));
+	indigo_usleep(1000000);
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_POSITION_PROPERTY_NAME));
+cleanup:
+	atomic_store(&fli_fake.hold_stepper_position, false);
+	fli_driver_down(indigo_focuser_fli);
+}
+
+// A second move request while one is running is refused without a command and
+// the running move ends at its own target.
+static void move_refused_while_moving(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	fli_fake_devices[0].step_hold = 800;
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	FLI_CHECK_TRUE(wait_steps(1));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_ALERT_STATE));
+	FLI_CHECK_TRUE(target_is(0, 2000));
+	FLI_CHECK_TRUE(set_direction(0, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(1, atomic_load(&fli_fake.step_motor_calls));
+	// the focuser completes the running move
+	fli_fake_devices[0].stepper_position = 2000;
+	fli_fake_devices[0].steps_remaining = 0;
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(position_is(0, 2000, 2000));
+	FLI_CHECK_EQ_INT(1, atomic_load(&fli_fake.step_motor_calls));
+cleanup:
+	fli_driver_down(indigo_focuser_fli);
+}
+
+// A move that stops progressing, or that ends away from its target, is stopped
+// and reported ALERT within bounded time.
+static void stalled_move_ends_alert(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	fli_fake_devices[0].step_hold = 800;
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	FLI_CHECK_TRUE(wait_steps(1));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_TRUE(message_contains(0, FOCUSER_POSITION_PROPERTY_NAME, "does not move"));
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
+	// the focuser reports the move finished away from the target
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_BUSY_STATE));
+	FLI_CHECK_TRUE(wait_steps(3));
+	fli_fake_devices[0].steps_remaining = 0;
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_TRUE(message_contains(0, FOCUSER_POSITION_PROPERTY_NAME, "short of the target"));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
+	fli_fake_devices[0].step_hold = 0;
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500));
+cleanup:
+	fli_driver_down(indigo_focuser_fli);
+}
+
+// Disconnecting during a move stops the focuser once before the handle closes;
+// nothing is sent afterwards and the next session starts settled.
+static void disconnect_during_motion_stops(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	fli_fake_devices[0].step_hold = 800;
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	FLI_CHECK_TRUE(wait_steps(1));
+	int closes = atomic_load(&fli_fake.close_calls);
+	FLI_CHECK_TRUE(fli_disconnect(0));
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
+	FLI_CHECK_EQ_INT(0, (int)fli_fake_devices[0].steps_remaining);
+	FLI_CHECK_EQ_INT(closes + 1, atomic_load(&fli_fake.close_calls));
+	int reads = atomic_load(&fli_fake.stepper_position_calls);
+	indigo_usleep(1500000);
+	FLI_CHECK_EQ_INT(reads, atomic_load(&fli_fake.stepper_position_calls));
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
+	FLI_CHECK_EQ_INT(0, atomic_load(&fli_fake.invalid_handle_uses));
+	fli_fake_devices[0].step_hold = 0;
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_EQ_INT(INDIGO_OK_STATE, fli_property_state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	FLI_CHECK_EQ_INT(INDIGO_OK_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
+	FLI_CHECK_TRUE(position_is(0, 0, 0));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300, INDIGO_OK_STATE));
+	// an idle disconnect sends no stop
+	int steps = atomic_load(&fli_fake.step_motor_calls);
+	FLI_CHECK_TRUE(fli_disconnect(0));
+	FLI_CHECK_EQ_INT(steps, atomic_load(&fli_fake.step_motor_calls));
+cleanup:
+	fli_driver_down(indigo_focuser_fli);
+}
+
+// Connect publishes the travel the focuser reports; failed optional identity
+// queries keep their placeholders, and a reconnect follows a changed device.
+static void connect_publishes_device_state(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	fli_fake_devices[0].focuser_extent = 12000;
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	atomic_store(&fli_fake.fail_model, 1);
+	atomic_store(&fli_fake.fail_serial, 1);
+	atomic_store(&fli_fake.fail_firmware, 1);
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_number_max(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 12000));
+	FLI_CHECK_TRUE(fli_number_max(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 12000));
+	FLI_CHECK_TRUE(position_is(0, 0, 0));
+	FLI_CHECK_TRUE(fli_text_is(0, INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "Atlas-1"));
+	FLI_CHECK_TRUE(fli_text_is(0, INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, ""));
+	FLI_CHECK_TRUE(fli_text_is(0, INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, ""));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 11000, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_disconnect(0));
+	fli_fake_devices[0].focuser_extent = 9000;
+	snprintf(fli_fake_devices[0].model, sizeof(fli_fake_devices[0].model), "Atlas-Pro");
+	FLI_CHECK_TRUE(fli_connect(0));
+	FLI_CHECK_TRUE(fli_number_max(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 9000));
+	FLI_CHECK_TRUE(position_is(0, 0, 0));
+	FLI_CHECK_TRUE(fli_text_is(0, INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME, "Atlas-Pro"));
+	FLI_CHECK_TRUE(fli_text_is(0, INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "SN1000"));
+cleanup:
+	fli_driver_down(indigo_focuser_fli);
+}
+
+// A refusal turns FOCUSER_POSITION ALERT while the accepted move is still being started; the next
+// request must still be refused instead of queuing a second move.
+static void refusal_keeps_pending_move(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	FLI_CHECK_TRUE(fli_connect(0));
+	atomic_store(&fli_fake.stepper_position_waiting, false);
+	atomic_store(&fli_fake.hold_stepper_position, true);
+	FLI_CHECK_TRUE(indigo_change_number_property_1(&fli_test_client, fli_observed[0].name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000) == INDIGO_OK);
+	for (int i = 0; i < 300 && !atomic_load(&fli_fake.stepper_position_waiting); i++) {
+		indigo_usleep(10000);
+	}
+	FLI_CHECK_TRUE(atomic_load(&fli_fake.stepper_position_waiting));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_ALERT_STATE));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	atomic_store(&fli_fake.hold_stepper_position, false);
+	FLI_CHECK_TRUE(wait_steps(1));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
+	indigo_usleep(1000000);
+	FLI_CHECK_EQ_INT(1, atomic_load(&fli_fake.step_motor_calls));
+cleanup:
+	atomic_store(&fli_fake.hold_stepper_position, false);
 	fli_driver_down(indigo_focuser_fli);
 }
 
@@ -294,6 +632,10 @@ static void shutdown_releases_devices(void) {
 	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
 	FLI_CHECK_TRUE(fli_wait_attached(2));
 	FLI_CHECK_TRUE(fli_connect(0));
+	// SHUTDOWN is refused while a focuser is connected, and the focuser keeps working
+	FLI_CHECK_EQ_INT(INDIGO_BUSY, indigo_focuser_fli(INDIGO_DRIVER_SHUTDOWN, NULL));
+	FLI_CHECK_EQ_INT(2, atomic_load(&fli_attached));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 250, INDIGO_OK_STATE));
 cleanup:
 	fli_driver_down(indigo_focuser_fli);
 	ASSERT_EQ_INT(0, atomic_load(&fli_attached));
@@ -316,6 +658,13 @@ int main(void) {
 		{ "progress_failure", progress_failure },
 		{ "abort_during_motion", abort_during_motion },
 		{ "abort_while_idle", abort_while_idle },
+		{ "abort_refused_stop_keeps_move", abort_refused_stop_keeps_move },
+		{ "abort_queued_behind_start", abort_queued_behind_start },
+		{ "move_refused_while_moving", move_refused_while_moving },
+		{ "stalled_move_ends_alert", stalled_move_ends_alert },
+		{ "disconnect_during_motion_stops", disconnect_during_motion_stops },
+		{ "connect_publishes_device_state", connect_publishes_device_state },
+		{ "refusal_keeps_pending_move", refusal_keeps_pending_move },
 		{ "two_focusers", two_focusers },
 		{ "hot_unplug", hot_unplug },
 		{ "reconnect", reconnect },

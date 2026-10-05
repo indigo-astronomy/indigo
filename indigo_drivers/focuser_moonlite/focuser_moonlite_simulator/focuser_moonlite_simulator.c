@@ -104,6 +104,7 @@ static bool read_fault(const char *command, char *action, size_t size) {
 	}
 	action[size - 1] = 0;
 	unlink(fault_file);
+	event("FAULT", action);
 	return true;
 }
 
@@ -111,6 +112,10 @@ static bool write_reply(const char *payload, const char *action) {
 	char frame[128];
 	if (!strcmp(action, "silent")) {
 		return true;
+	}
+	if (!strcmp(action, "delay")) {
+		// The reply is sent late, so the request stays outstanding for a while.
+		usleep(400000);
 	}
 	if (!strcmp(action, "close")) {
 		running = 0;

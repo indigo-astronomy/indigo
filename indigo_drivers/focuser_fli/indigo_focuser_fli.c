@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_fli"
 #define DRIVER_LABEL         "FLI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -56,6 +56,9 @@
 #define FLI_MAX_STEPS_AT_ONCE 4000
 #define FLI_POLL_DELAY       0.5
 #define FLI_HOME_TIMEOUT_CYCLES 300
+// A move whose position and remaining steps do not change for this many polls has stalled.
+#define FLI_STALL_POLLS      10
+#define FOCUSER_IN_MOTION    (PRIVATE_DATA->moving || PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
 
 //- define
 
@@ -73,6 +76,11 @@ typedef struct {
 	// Some focusers accept only a limited number of steps per command, so a
 	// long move is issued in chunks and this holds what is still owed.
 	long steps_to_go;
+	bool moving;
+	bool pending;
+	long motion_position;
+	long motion_remaining;
+	int stall_polls;
 	//- data
 } fli_private_data;
 
@@ -124,10 +132,45 @@ static bool fli_is_enumerated(const char *file_name) {
 
 static void motion_finalizer(indigo_device *device);
 
-static void fli_motion_state(indigo_device *device, indigo_property_state state) {
+static void fli_motion_state_message(indigo_device *device, indigo_property_state state, const char *message) {
+	/* the accepted request has an outcome now, so it is no longer pending */
+	PRIVATE_DATA->pending = false;
+	if (state != INDIGO_BUSY_STATE) {
+		PRIVATE_DATA->moving = false;
+	}
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	if (message != NULL) {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+static void fli_motion_state(indigo_device *device, indigo_property_state state) {
+	fli_motion_state_message(device, state, NULL);
+}
+
+// A zero step move is how the SDK stops the motor.
+static bool fli_stop(indigo_device *device) {
+	PRIVATE_DATA->steps_to_go = 0;
+	long result = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
+	if (result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIStepMotorAsync(%ld, 0) = %ld", (long)PRIVATE_DATA->dev_id, result);
+		return false;
+	}
+	return true;
+}
+
+// A move that cannot be followed any more is stopped and never counted as arrival.
+static void fli_motion_failed(indigo_device *device, const char *message) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
+	fli_stop(device);
+	long position = 0;
+	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) == 0) {
+		FOCUSER_POSITION_ITEM->number.value = position - PRIVATE_DATA->zero_position;
+	}
+	fli_motion_state_message(device, INDIGO_ALERT_STATE, message);
 }
 
 // Everything the focuser needs is read here, so a device that cannot be
@@ -222,7 +265,7 @@ static void fli_start_motion(indigo_device *device, long target) {
 	long position = 0;
 	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%ld) failed", (long)PRIVATE_DATA->dev_id);
-		fli_motion_state(device, INDIGO_ALERT_STATE);
+		fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser position could not be read");
 		return;
 	}
 	position -= PRIVATE_DATA->zero_position;
@@ -240,9 +283,13 @@ static void fli_start_motion(indigo_device *device, long target) {
 		return;
 	}
 	if (!fli_step(device, target - position)) {
-		fli_motion_state(device, INDIGO_ALERT_STATE);
+		fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser refused the move");
 		return;
 	}
+	PRIVATE_DATA->moving = true;
+	PRIVATE_DATA->motion_position = position;
+	PRIVATE_DATA->motion_remaining = -1;
+	PRIVATE_DATA->stall_polls = 0;
 	fli_motion_state(device, INDIGO_BUSY_STATE);
 	indigo_execute_handler_in(device, FLI_POLL_DELAY, motion_finalizer);
 }
@@ -253,26 +300,35 @@ static void motion_finalizer(indigo_device *device) {
 	}
 	long position = 0, steps_remaining = 0;
 	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0 || FLIGetStepsRemaining(PRIVATE_DATA->dev_id, &steps_remaining) != 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser progress could not be read");
-		PRIVATE_DATA->steps_to_go = 0;
-		fli_motion_state(device, INDIGO_ALERT_STATE);
+		fli_motion_failed(device, "Focuser progress could not be read");
 		return;
 	}
 	position -= PRIVATE_DATA->zero_position;
 	FOCUSER_POSITION_ITEM->number.value = position;
 	FOCUSER_STEPS_ITEM->number.value = labs(steps_remaining) + labs(PRIVATE_DATA->steps_to_go);
 	if (steps_remaining != 0) {
+		if (position != PRIVATE_DATA->motion_position || steps_remaining != PRIVATE_DATA->motion_remaining) {
+			PRIVATE_DATA->motion_position = position;
+			PRIVATE_DATA->motion_remaining = steps_remaining;
+			PRIVATE_DATA->stall_polls = 0;
+		} else if (++PRIVATE_DATA->stall_polls >= FLI_STALL_POLLS) {
+			fli_motion_failed(device, "Focuser does not move");
+			return;
+		}
 		fli_motion_state(device, INDIGO_BUSY_STATE);
 		indigo_execute_handler_in(device, FLI_POLL_DELAY, motion_finalizer);
 	} else if (PRIVATE_DATA->steps_to_go != 0) {
 		if (fli_step(device, PRIVATE_DATA->steps_to_go)) {
+			PRIVATE_DATA->stall_polls = 0;
 			fli_motion_state(device, INDIGO_BUSY_STATE);
 			indigo_execute_handler_in(device, FLI_POLL_DELAY, motion_finalizer);
 		} else {
-			fli_motion_state(device, INDIGO_ALERT_STATE);
+			fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser refused the move");
 		}
+	} else if (position == PRIVATE_DATA->target_position) {
+		fli_motion_state(device, INDIGO_OK_STATE);
 	} else {
-		fli_motion_state(device, position == PRIVATE_DATA->target_position ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
+		fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser stopped short of the target");
 	}
 }
 
@@ -303,6 +359,12 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
+		if (PRIVATE_DATA->moving) {
+			// a move in progress is stopped before the handle closes
+			fli_stop(device);
+			PRIVATE_DATA->moving = false;
+		}
+		PRIVATE_DATA->pending = false;
 		PRIVATE_DATA->steps_to_go = 0;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		//- focuser.on_disconnect
@@ -340,7 +402,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	long position = 0;
 	if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%ld) failed", (long)PRIVATE_DATA->dev_id);
-		fli_motion_state(device, INDIGO_ALERT_STATE);
+		fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser position could not be read");
 	} else {
 		position -= PRIVATE_DATA->zero_position;
 		fli_start_motion(device, FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? position - steps : position + steps);
@@ -352,26 +414,33 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value && FOCUSER_IN_MOTION) {
 		// An urgent abort can overtake a move that is still queued.
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
-		PRIVATE_DATA->steps_to_go = 0;
-		// A zero step move is how the SDK stops the motor.
-		long result = FLIStepMotorAsync(PRIVATE_DATA->dev_id, 0);
-		long position = 0;
-		if (result != 0 || FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser could not be stopped");
+		PRIVATE_DATA->pending = false;
+		if (!fli_stop(device)) {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			fli_motion_state(device, INDIGO_ALERT_STATE);
-		} else {
-			position -= PRIVATE_DATA->zero_position;
-			PRIVATE_DATA->target_position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-			FOCUSER_STEPS_ITEM->number.value = 0;
-			fli_motion_state(device, INDIGO_OK_STATE);
+			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+			if (PRIVATE_DATA->moving) {
+				// the focuser keeps moving, so the move is still reported until it ends
+				indigo_execute_handler_in(device, FLI_POLL_DELAY, motion_finalizer);
+				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "Focuser could not be stopped");
+				return;
+			}
 		}
+		long position = 0;
+		if (FLIGetStepperPosition(PRIVATE_DATA->dev_id, &position) != 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser position could not be read after the stop");
+		} else {
+			FOCUSER_POSITION_ITEM->number.value = position - PRIVATE_DATA->zero_position;
+		}
+		// an aborted move ends at the stopped position, never at the requested target
+		PRIVATE_DATA->target_position = (long)FOCUSER_POSITION_ITEM->number.value;
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+		FOCUSER_STEPS_ITEM->number.value = 0;
+		fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser motion aborted");
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
@@ -407,9 +476,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_POSITION.on_change_request
+		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_STEPS.on_change_request
+		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {

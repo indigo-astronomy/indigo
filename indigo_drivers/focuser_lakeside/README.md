@@ -25,4 +25,4 @@ Tested with simulator only
 
 ## Testing
 
-2026-09-27 23:20 3.0.0.9 mac arm64 simulator 34/34 OK
+2026-10-05 15:14 3.0.0.10 mac arm64 simulator 41/41 OK

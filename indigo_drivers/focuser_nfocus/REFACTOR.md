@@ -44,3 +44,46 @@ Automated coverage includes all behavior exposed by this driver through INDIGO p
 Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
 
 **Not covered.** The only `reject_change` condition in this driver is `FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE`, and that state is only published by `INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE` for the moment between accepting the abort request and running the queued handler. `focuser_abort_motion_handler` ends in OK or ALERT and `nfocus_stop()` writes without reading a reply, so the handler never parks in BUSY. Throughout that window `FOCUSER_STEPS` is itself BUSY from the move being aborted, so the framework BUSY guard in `INDIGO_COPY_VALUES_PROCESS_CHANGE` refuses the request before the driver guard can. An attempt to widen the window with a silent `S` status fault was written and discarded because the guard still did not fire. The guard is kept for symmetry with the other focusers but is unreachable through the simulator; decide separately whether to drop it or to give abort an observable BUSY phase as `focuser_lakeside` has.
+
+## Focuser testing rules alignment (2026-10-05, version 10)
+
+The suite was checked against the extended "Focuser Driver Test Standard" in `indigo_test/DRIVER_TESTING_RULES.md` (commit `fa5f64839`), including the two decisions for all focusers. nFOCUS is relative-only without position readback, so the abort decision reads: an aborted relative move ends `FOCUSER_STEPS` ALERT and no completion stop follows. The disconnect decision was already implemented (`on_disconnect` sends `:F11000#` while a move runs or its state is unknown) and is now tested.
+
+### Defects found and fixed (driver version 9 → 10)
+
+Every case below failed against a build of the version 9 source kept outside the tree and passes against version 10.
+
+| Id | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| NF-01 | An aborted move ended `FOCUSER_STEPS` OK. | The aborted move ends ALERT. | `busy_guard_and_abort` |
+| NF-02 | An abort while idle sent `:F11000#`. | Nothing moving and nothing uncertain answers OK without a command; an unknown motor state after a failed stop still sends the stop. | `abort_idle_and_off_request` |
+| NF-03 | A move request during a move was dropped by the BUSY guard without an answer; after a refusal the next request could slip through while the first move was still queued. | `reject_change` refuses it with ALERT and no command while a move runs or is pending; a pending flag set by `on_change_request` survives the refusal. | `busy_guard_and_abort` |
+| NF-04 | After a persistent status failure the stop was sent, but the driver stayed "uncertain" and refused every move until an abort. | The motor state is uncertain only when the stop could not be sent; a fresh move works right away. | `status_failure_alerts_and_recovers` |
+| NF-05 | A refused speed change (during a move) published the requested speed as the device speed. | `preserve_values` on `FOCUSER_SPEED`; a refusal keeps the device value. | `speed_readback_and_refusal` |
+| NF-06 | The no-sensor sentinel `-888` read during a session published `FOCUSER_TEMPERATURE` ALERT. | The sentinel publishes IDLE with the last value; a failed reading stays ALERT; the next valid reading restores OK. | `temperature_sentinel_failure_and_reconnect` |
+
+### Scenario-to-test mapping (rules of `fa5f64839`)
+
+| Rule | Cases |
+| --- | --- |
+| Interface, ranges, negative capability contract (relative-only: no position, sync, limits, reverse, backlash, compensation, mode) | `capabilities` |
+| Temperature present / absent at connect, reconnect defines exactly the present sensor | `capabilities`, `temperature_absent_connection`, `temperature_sentinel_failure_and_reconnect` |
+| Refused connect (identity, speed read): ALERT, nothing defined, port released, next connect works | `connection_failure_recovery`, `startup_read_validation` |
+| Speed: one `:CF` command, no `:CO`, read back after reconnect, refused during a move without a command | `speed_control`, `speed_readback_and_refusal` |
+| Relative moves inward/outward, zero step without a command | `relative_motion` |
+| Move during a move refused with ALERT and no command | `busy_guard_and_abort` |
+| Aborted move ALERT, no completion stop, fresh move; idle abort and OFF request without a command | `busy_guard_and_abort`, `abort_idle_and_off_request` |
+| Persistent status failure: stop sent once, no poll afterwards, ALERT, fresh move works | `status_failure_alerts_and_recovers` |
+| Disconnect during motion: one stop before close, no poll afterwards, reconnect settled; idle disconnect without a stop | `disconnect_during_motion` |
+| Temperature sentinel IDLE, failure ALERT with the last value, recovery OK | `temperature_sentinel_failure_and_reconnect` |
+| SHUTDOWN refused while connected, `ADDITIONAL_INSTANCES` | `shutdown_refused_while_connected`, `additional_instances` |
+
+Not applicable, with the reason:
+
+- Absolute moves, SYNC, limits, position polling and position after abort: there is no position readback (`FOCUSER_POSITION` is not defined).
+- Motion the driver did not command (hand paddle): the driver polls `S` only during its own moves and has no position to publish for it.
+- Refused or unacknowledged stop: `:F11000#` has no reply; only a transport failure is detectable, and the PTY simulator cannot fail a write while staying connected.
+- Identity variants and firmware queries: the protocol has only the `0x06 → n` handshake.
+- Requests versus polls: no writable setting is polled; temperature is read-only.
+- Shared controllers: one focuser per port.
+- Hardware: no nFOCUS available, no physical run.

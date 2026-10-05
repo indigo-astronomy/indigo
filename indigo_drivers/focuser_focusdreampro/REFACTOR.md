@@ -279,3 +279,40 @@ pattern now resolves: `auto:///dev/ttyUSB1` on indigosky. No other pattern drive
 
 Recorded on linux arm64: simulator 18/18, AGadget FocusDreamPro 15/15, with no port given.
 
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.12)
+
+The simulator suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` and extended where a relevant rule was not verified. Against a copy of the 3.0.0.11 driver the extended suite fails 21 of 35 cases (`abort_motion`, `abort_while_idle`, `abort_overtakes_start`, `temperature_error`, `move_rejected`, `abort_rejected`, `poll_failures`, `poll_failure_during_motion`, `stalled_move`, `stop_ignored_then_retried`, `queued_abort`, `poll_versus_request`, `external_motion`, `temperature_failures`, `setting_failures`, `limit_changes`, `connect_command_failures`, `sync_right_after_connect`, `short_move_and_noop`, `transport_loss_motion`, `transport_loss_idle`); against 3.0.0.12 it passes 35 of 35. Hardware was not used; the hardware record above is for 3.0.0.9, and the hardware suite's `focusdreampro_aborts_a_move` now expects the ALERT state of decision 1 (built, not run).
+
+### Defects fixed
+
+| Defect | Impact | Fix | Regression case |
+| --- | --- | --- | --- |
+| Aborted move ended OK (`DRV-133` reversed by the focuser rules) | An abort published both motion properties OK; the halt was not confirmed. | `H` is confirmed by `I:false` and a `P` readback; the aborted move ends both ALERT with value = target = stop point. | `abort_motion`, `abort_overtakes_start`, `queued_abort` |
+| Idle abort sent `H` and cleared states | An abort with nothing running sent `H` and set both motion properties OK, also over an earlier ALERT. | Idle abort and OFF requests send nothing and leave the states. | `abort_while_idle`, `abort_motion` |
+| Refused or ignored halt reported as done | A failed `H` ended the move ALERT while the motor might still run. | The abort ends ALERT, the move stays BUSY and tracked by the poll and ends ALERT when it stops; a retry halts it. | `abort_rejected`, `stop_ignored_then_retried` |
+| Failed status poll counted as arrival | A failed `I` read was taken as "not moving", so a running move was published OK; `I`/`P` replies were not validated (`P:x` became position 0). | Exact `I:true`/`I:false` and `P:<integer>` parsing; during a move a single failure is retried, three halt the motor and end ALERT; idle failures publish ALERT with the last value until a good poll. | `poll_failures`, `poll_failure_during_motion` |
+| Stall undetected | A motor reporting motion with a frozen position was polled forever. | Six unchanged positions while moving halt it and end ALERT; a fresh move needs no abort. | `stalled_move` |
+| Poll completed a pending request | A poll running while a GOTO waited in the queue turned the framework's BUSY into OK at the old position. | The poll leaves the motion properties alone while a request is pending, also when it was accepted during the poll. | `poll_versus_request` |
+| External motion target | Motion the driver did not command was BUSY then OK but kept a stale target. | Target follows the measured position. | `external_motion` |
+| Temperature sentinel and garbage | `T:false` after connect was published as 0 °C OK; a malformed or out-of-range reply became the value. | `T:false` publishes IDLE once; malformed or implausible readings publish ALERT keeping the last value. | `temperature_failures` |
+| Connect-time failures ignored | A failed `T`, `P`, `X:`, `S:` or `D:` at connect still connected (with ALERT states). | Connection refused, port closed, nothing defined; the next connect works. | `connect_command_failures`, `temperature_error` |
+| Limits never written after connect | Changing `FOCUSER_LIMITS` only clamped targets in the driver: no `X:`, no range update, empty intervals and intervals excluding the position were accepted (the base class swapped them). | `X:` written on change, `FOCUSER_POSITION`/`FOCUSER_STEPS` ranges follow the limits; refusals end ALERT without a command keeping the old limits; a change during motion is refused, also when it arrives while the move command is still in flight. | `limit_changes` |
+| SYNC published BUSY and target kept on failure | SYNC went BUSY until the next poll; a refused SYNC left the requested target. | `R:` confirmed by a `P` readback, OK or ALERT at once, value = target = real position. | `sync_right_after_connect`, `sync_and_goto` |
+| GOTO to the current position and clamped relative moves sent `M:` | A no-op move was sent and waited for a poll. | Ends OK without a command. | `short_move_and_noop`, `relative_move` |
+| Refused setting showed the requested value | `S:`/`D:` have no readback; a refused write kept the requested speed or duty cycle with ALERT. | The last applied value is restored. | `setting_failures` |
+
+### Added cases and mapping
+
+`poll_failures`, `poll_failure_during_motion`, `stalled_move`, `stop_ignored_then_retried`, `queued_abort`, `poll_versus_request`, `external_motion`, `temperature_failures`, `setting_failures` (one `S:`/`D:` per write), `limit_changes` (ranges, `X:`, relative move past the minimum sent as `M:0`, refusals), `connect_command_failures`, `sync_right_after_connect`, `short_move_and_noop`, `transport_loss_motion`, `transport_loss_idle`, `split_replies`, `instances` (shutdown refused while connected, Jolo additional instance on its own port, disconnecting it leaves the first working). Existing cases now assert the stop command count, nothing after the halt on disconnect, the real stop point OK after reconnect, ALERT for aborted moves and the refusal message.
+
+Simulator additions: request log (`INDIGO_FOCUSDREAMPRO_EVENTS`) and a fault file (`INDIGO_FOCUSDREAMPRO_FAULT`) with `silent`, `error`, `malformed`, `delay`, `ignore`, `stall`, `false`, `implausible`, `close`, `external <position>` and `split 1`.
+
+### Rules not applicable
+
+No backlash, compensation, mode or controller-side reversal; `X`, `S` and `D` have no readback, so settings cannot be read back after reconnect (the driver re-applies them, covered by `reconnect`); one command per move (no multi-command sequence beyond `M:`); no homing or calibration; the identity banner is not a firmware version, so `INFO.DEVICE_FW_REVISION` is not published; no shared controller; `DRV-132` (unknown banners accepted) stays a documented decision.
+
+### Test summary
+
+- Simulated tests: 35 run, 35 passed (`python3 tools/run_driver_test.py focuser_focusdreampro`, macOS arm64).
+- Hardware tests: 15 run, 15 passed on the AGadget FocusDreamPro (macOS arm64, 2026-10-05, 3.0.0.12), including the abort ending ALERT and the stop on disconnect. The first run failed `focusdreampro_applies_the_travel_limit`: the hardware suite sent the `FOCUSER_LIMITS` minimum and maximum as two requests without waiting, and since a limit change now writes `X:` to the controller the second request arrived while the property was BUSY and was dropped by the framework, so the focuser went past the intended limit. The suite now waits for each limit change to settle; the driver was not changed.

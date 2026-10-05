@@ -97,3 +97,48 @@ Found by the switch target review (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TG
 - Verification: `TZ=Europe/Bratislava python3 tools/run_driver_test.py focuser_qhy`, 32/32 simulator cases (the suite had 31 cases before, `MIGRATION_STATUS.md` still said 30 and now says 32); regeneration reproducible. No hardware test was run.
 
 Final test summary: 32 simulated tests run and passed in the recorded run, 0 hardware tests run.
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.11)
+
+The regression test was checked against the extended "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839). Version raised from 3.0.0.10 to 3.0.0.11.
+
+### Defects found and fixed
+
+Each was reproduced by the new or extended test against a pre-fix copy of the generated driver built as a separate binary.
+
+| Defect | Impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | A confirmed abort of a pending, active, uncommanded or uncertain move ends both ALERT at the stopped position (value = target). | `abort_overlap`, `abort_queued`, `rejected_change` |
+| Idle poll turned a failed move OK | After a stall recovery or an abort, the next 2 s poll set `FOCUSER_POSITION` OK while `FOCUSER_STEPS` stayed ALERT. | A good poll restores OK only after a failed poll. | `stalled_motion`, `motion_*_read`, `abort_overlap` |
+| Failed readback during motion sent no stop | A lost or malformed command 5 reply ended the move ALERT but left the motor running. | The finalizer sends command 3 and reads the position before releasing the move. | `motion_wrong_read`, `motion_missing_read`, `motion_overlong_read`, `motion_silent_read` |
+| Limits did not shape the motion ranges | `FOCUSER_POSITION`/`FOCUSER_STEPS` kept the 2000000 maximum; a limit excluding the current position or changed during a move was accepted. | Accepted limits set both ranges (properties redefined, also at connect); a limit excluding the current position or requested during motion ends ALERT with the old limits. | `limits_speed_reverse`, `settings_during_motion` |
+| Mode and compensation changes accepted during motion | Switching to automatic during a move deleted the motion properties under it; coefficients changed mid-move. | Both end ALERT and keep their values while a move is BUSY. | `settings_during_motion` |
+| Failed compensation move lost its correction | The reference temperature moved on before the move started; the uncertain state then blocked compensation until a manual abort. | The reference moves only with a started correction; the next poll stops and reads the focuser and retries from the kept reference. | `compensation_limit_failure_recovery` |
+| No-sensor temperature republished on every poll | IDLE with a message was sent every 2 s. | IDLE is published once when it is entered. | `invalid_temperature_recovery` |
+| Uncommanded motion was published OK | Motion by another client or running at connect only changed the value. | The idle poll publishes `FOCUSER_POSITION` BUSY with target = measured value while the position changes and OK once it settles; a relative move is refused meanwhile, abort and disconnect stop it. | `external_motion`, `moving_at_connect` |
+
+### Simulator additions
+
+- Control `external <position>`: motion at 10000 steps/s that the driver did not command (also before connect).
+
+### Scenario-to-test mapping (rules chapter → cases)
+
+- Identity (`INFO.DEVICE_FW_REVISION`/`DEVICE_HW_REVISION`), connect sequence 1, 5, 13, 7, 4, read-only temperature: `capabilities`, `split_transport`. Refused handshake and each failed connect-time command: `init_*_failure`. Non-default position/temperature at connect: `start_state`.
+- Idle position poll failure keeps the value and the next good poll restores OK: `idle_poll_failure`. Temperature failure keeps the last value, IDLE once, chip fallback, smoothing: `polling_temperature_smoothing`, `temperature_silent_recovery`, `invalid_temperature_recovery`, `chip_temperature_fallback`.
+- Uncommanded motion: `external_motion`, `moving_at_connect`.
+- GOTO/no-op right after connect, SYNC right after connect to the published value, relative moves, zero step: `movement_sync_relative`. Failed SYNC keeps the real position, the next SYNC works: `sync_failure`. Limits clamp on the wire and shape the ranges: `limits_speed_reverse`.
+- Abort mid-move (ALERT both, value = target = stopped, command 3 once, two equal readbacks, not turned OK by a poll, idle and OFF abort without a command, reconnect OK, fresh move): `abort_overlap`. Abort overtaking a queued GOTO: `abort_queued`. Refused stop and retry: `stop_refused`. Overlap refusal: `rejected_change`, `abort_overlap`.
+- Start failures, readback failures and stall during motion: `move_*_reply`, `motion_*_read`, `stalled_motion`.
+- Disconnect during motion sends command 3 once, nothing follows, reconnect OK at the stopped position: `disconnect_motion`. Transport loss idle and at move start: `transport_loss_idle`, `transport_loss_move`.
+- Settings: one command per write, rollback on failure, refused during motion (speed, reverse, limits, compensation, mode): `limits_speed_reverse`, `speed_failure_rollback`, `reverse_failure_rollback`, `settings_during_motion`.
+- Compensation: manual mode and invalid temperature never move, threshold, both signs, nearest-step rounding, limit clamping, BUSY then OK, failed move retried from the kept reference: `compensation_manual_invalid`, `modes_compensation`, `compensation_limit_failure_recovery`.
+- Requests versus polls: `position_request_survives_poll` (TGT-B03). Position is the only polled writable value.
+- Shutdown refused while connected: `connected_shutdown`. Additional instance: `additional_instances`.
+
+### Rules not applicable
+
+- Backlash: hidden. Homing/calibration: not in the protocol. Device-stored limits: the limits are driver-owned, so no device command and no readback after reconnect (speed and reverse are written at connect from the driver's values; the protocol has no read command for them).
+- Multi-command move sequences: a move is the single command 6.
+- `qfocuser://` TCP transport: the integration target opens no sockets.
+
+Final test summary: 44 simulated tests run and passed in the recorded run, 0 hardware tests run.

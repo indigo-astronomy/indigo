@@ -105,4 +105,77 @@ Findings TGT-010 and the focuser_ioptron part of TGT-B05 in `indigo_drivers/REVI
 - **Regression tests:** `reverse_request_survives_poll` and `reverse_request_survives_poll_failure` hold the device queue with a gate handler, send the reversal request, let the poll come due behind the gate (with a changed temperature, published only by the poll, or a malformed status reply) and check that the first FOCUSER_REVERSE_MOTION result after the request is the handler's ENABLED/OK, published after the poll ran, with exactly one `:FR#`. Against 3.0.0.9 the first case failed (poll published DISABLED/OK first, no `:FR#` sent) and the second failed (poll published ALERT over BUSY); both pass with 3.0.0.10.
 - **Verification (Linux x64):** `TZ=Europe/Bratislava python3 tools/run_driver_test.py focuser_ioptron` 42/42 OK. Regeneration is byte-for-byte reproducible.
 
-Final test summary: 42 simulated tests run, 42 passed; 0 hardware tests run, 0 passed.
+## Focuser testing rules alignment (3.0.0.11, 2026-10-05)
+
+The regression suite was checked against the extended "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` (fa5f64839) and the two decisions made for all focusers: an aborted
+move ends `FOCUSER_POSITION` and `FOCUSER_STEPS` ALERT at the stopped position, and disconnecting during
+motion sends the stop before the port closes.
+
+### Defects found and fixed (all reproduced against a pre-fix 3.0.0.10 build of the same test)
+
+- **Aborted move ended OK.** The abort handler published both motion properties OK after the stop. It now
+  sets the target to the stopped position and ends both ALERT. Test: `abort` (`aborted_at()`), also
+  `rejected_change`, which waits for the aborted move.
+- **A failed move was turned OK by the next idle poll.** After a stall, a lost readback during motion, a move
+  that ended short of its target or an abort, the 1 s poll published OK one second later. A `failed` flag now
+  keeps the idle polls publishing ALERT until the next move or zero sync starts. Tests: `motion_read_failure`,
+  `stalled_motion` (`idle_polls_keep()`), `abort`.
+- **A poll in flight completed a move request accepted meanwhile.** The poll is admitted while both motion
+  properties are idle; when a `FOCUSER_POSITION` or `FOCUSER_STEPS` request was copied while the status reply
+  was outstanding, the poll published OK (with the old position) over the request's BUSY before the handler
+  ran, and its read error path published ALERT over it. The poll now leaves the motion properties alone when a
+  request arrived during its read. Tests: `position_request_survives_poll`, `steps_request_survives_poll`
+  (simulator fault `delay` holds the status reply 400 ms).
+- **Uncommanded motion ended with a stale target.** Motion started by the hand controller or running at
+  connect was published BUSY by the poll, but at the stop the target stayed at the last intermediate position
+  because `ioptron_publish()` skips the target while the property is BUSY. The poll now sets the target to the
+  measured position. Test: `uncommanded_motion`.
+- **Abort while idle sent a stop.** It now ends OK without `:FQ#` and leaves the position alone when nothing is
+  moving, queued or uncertain. Test: `abort`.
+
+### Simulator additions
+
+- Profile `running`: the focuser is still moving (1000 to 6000 at 1000 steps/s) when the driver connects.
+- Fault key `move <target>`: motion started from the hand controller.
+- Fault action `delay`: the reply is sent 400 ms late.
+- Profile `alternate` (second fixture) now also starts with the direction reversed.
+
+### Scenario to test mapping (additions)
+
+| Rule | Test |
+| --- | --- |
+| Identity and firmware in `INFO`, connect sequence `:DeviceInfo#` then `:FI#`, steps range, negative contract (`FOCUSER_LIMITS`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE` undefined, temperature read-only), `X_` property deleted on disconnect, shutdown refused while connected, both motion properties BUSY for a short move | `normal`, `iafs`, `split` |
+| Device in another state and model on reconnect (iAFS, position, temperature, reversed) | `model_switch` |
+| Uncommanded motion at connect and from the hand controller | `uncommanded_motion` |
+| Relative move clamped at both ends on the wire (`:FM  99999#`, `:FM      0#`) | `movement` |
+| SYNC for the value already published reaches the controller | `zero` |
+| Mid-move abort, stop sent once, two equal readbacks short of the target, ALERT with value = target, idle abort without stop, abort request OFF, relative move abort | `abort` |
+| Abort overtakes a queued move | `abort_overtakes_queued_move` |
+| Failed refused switch shows the device's state and is back OFF; failed stop leaves the move BUSY | `zero_failure`, `reverse_failure`, `stop_failure` |
+| Failed move keeps the published position, both properties ALERT | `start_failure` |
+| Transport loss: every later request ALERT, no stale BUSY, no handshake re-run | `transport_loss` |
+| Poll failure publishes ALERT with the last valid value | `poll_*` |
+| Implausible temperature: motion stays usable | `temperature` |
+| Reversal stored by the controller is read back after reconnect | `reconnect` |
+| Disconnect during motion sends `:FQ#` once as the last command; after reconnect OK at the stopped position | `disconnect_motion` |
+| Move request versus a poll in flight | `position_request_survives_poll`, `steps_request_survives_poll` |
+
+### Rules not applicable
+
+- No `FOCUSER_LIMITS`, `FOCUSER_BACKLASH`, `FOCUSER_SPEED`, compensation or automatic mode: the iEAF protocol
+  has no commands for them, so the limit, backlash, compensation and mode rows do not apply.
+- No coordinate SYNC (`FOCUSER_ON_POSITION_SET`): only the zero sync `X_FOCUSER_ZERO_SYNC`, which is
+  instantaneous, so the homing/zeroing BUSY rule does not apply. A failed zero sync ends the requested
+  `X_FOCUSER_ZERO_SYNC` ALERT with the real position kept, not `FOCUSER_POSITION`.
+- No temperature sensor sentinel in the status reply: the no-sensor rule does not apply.
+- Identity is required for connect (model 2 or 3), so there is no conservative fallback profile; the
+  identity is not reset on disconnect.
+- Single-command moves (`:FM`), so the multi-command rejection rule reduces to the `start_failure` case.
+- No shared controller; independent instances are covered by `instances`.
+
+```sh
+python3 tools/run_driver_test.py focuser_ioptron
+```
+
+Final test summary: 47 simulated tests run, 47 passed; 0 hardware tests run, 0 passed.

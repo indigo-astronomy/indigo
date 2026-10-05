@@ -89,3 +89,61 @@ Coverage map:
 | `hot_unplug` | unplug while connected detaches the device and releases the handle |
 | `reconnect` | disconnect/reconnect cycle re-homes and re-reads the extent |
 | `shutdown_releases_devices` | `INDIGO_DRIVER_SHUTDOWN` detaches every device and unrefs every USB device |
+
+## Focuser testing rules alignment (2026-10-05, version 15)
+
+The suite was checked against the extended "Focuser Driver Test Standard" in `indigo_test/DRIVER_TESTING_RULES.md` (commit `fa5f64839`), including the two decisions for all focusers: an aborted move ends `FOCUSER_POSITION` and `FOCUSER_STEPS` ALERT at the stopped position, and a disconnect during motion sends the stop before the SDK handle closes.
+
+### Defects found and fixed (driver version 14 → 15)
+
+Every case below failed against a build of the version 14 source kept outside the tree and passes against version 15.
+
+| Id | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| `DRV-178` | An aborted move ended OK. | Abort ends both motion properties ALERT, value = target = the position read after the stop. | `abort_during_motion`, `abort_queued_behind_start` |
+| `DRV-179` | An abort while idle sent `FLIStepMotorAsync(dev, 0)`. | Nothing moving (no move running, neither motion property BUSY) answers OK without a command. | `abort_while_idle` |
+| `DRV-180` | A refused stop published the move ALERT and cancelled its completion poll while the focuser kept moving. | The abort ends ALERT, the move stays BUSY and is polled until it ends; a retried abort stops it. | `abort_refused_stop_keeps_move` |
+| `DRV-181` | Disconnecting during a move closed the handle without stopping the focuser. | `on_disconnect` sends the stop when a move is running; an idle disconnect sends nothing. | `disconnect_during_motion_stops` |
+| `DRV-182` | A failed progress read during a move ended ALERT without stopping the focuser; a move that stopped progressing stayed BUSY forever. | The failure sends the stop; 10 polls (5 s) without a change of position or remaining steps stop the move with ALERT. | `progress_failure`, `stalled_move_ends_alert` |
+| `DRV-183` | A move or step request during a move was dropped by the BUSY guard without an answer. | `reject_change` on `FOCUSER_POSITION` and `FOCUSER_STEPS` refuses it with ALERT and no command; the running move keeps its target. | `move_refused_while_moving` |
+| `DRV-184` | Failed moves carried no reason. | Refused move, failed position read, stall and stop short of the target are published with a message. | `move_failure`, `progress_failure`, `stalled_move_ends_alert` |
+
+The shared fake libfli (`fli_fake_sdk.h`) gained a position-read counter and a gate that holds `FLIGetStepperPosition()`, and the shared client (`fli_sdk_test_common.h`) records the messages that come with updates through `send_message`. Both additions are unused by the `ccd_fli` and `wheel_fli` suites, which were rebuilt.
+
+### Scenario-to-test mapping (rules of `fa5f64839`)
+
+| Rule | Cases |
+| --- | --- |
+| Interface, travel from the SDK extent, identity, negative capability contract (no sync, limits, temperature, compensation, mode, backlash, reverse, speed) | `attach_and_identify` |
+| Connect publishes the device state, failed optional identity queries keep placeholders, reconnect to a changed device | `connect_publishes_device_state`, `reconnect` |
+| Refused connect (homing, extent, position read): ALERT, nothing defined, handle released, next connect works | `homing_failure`, `extent_failure` |
+| Absolute moves, both properties end in the same state, zero step / same position without a command | `absolute_moves`, `relative_moves` |
+| Relative moves inward and outward, clamping at both ends of travel | `relative_moves`, `limits_are_respected` |
+| Long moves in chunks; a refused chunk ends ALERT with nothing more sent | `long_move_is_chunked`, `move_failure` |
+| Start failure and failed position read before the move: ALERT with a reason, no command, position unchanged, next move works | `move_failure` |
+| Move request during a move refused, running move ends at its target with one command | `move_refused_while_moving` |
+| Mid-move abort ALERT at the stopped position, stop command, two equal readbacks short of the target, fresh move | `abort_during_motion` |
+| Idle abort and OFF request without a command | `abort_while_idle` |
+| Refused stop keeps the move BUSY, retry stops it | `abort_refused_stop_keeps_move` |
+| Abort queued behind a starting move ends it not BUSY | `abort_queued_behind_start` |
+| Failed progress read and stall: stop sent, ALERT, never arrival, fresh move | `progress_failure`, `stalled_move_ends_alert` |
+| Disconnect during motion: one stop before close, no poll afterwards, reconnect settled | `disconnect_during_motion_stops` |
+| Several focusers, hot unplug, SHUTDOWN refused while connected and the focuser keeps working | `two_focusers`, `hot_unplug`, `shutdown_releases_devices` |
+
+Not applicable, with the reason:
+
+- SYNC, `FOCUSER_LIMITS`, temperature, compensation, mode, backlash, reverse, speed: the driver exposes none of them (asserted undefined).
+- Idle position polling, motion the driver did not command, and requests versus polls: the driver reads the position only while its own move runs; the FLI focusers have no hand controller the driver could observe, and homing at connect defines the position.
+- An abort overtaking a move still queued: the device queue holds nothing a move could wait behind other than a running move, which the BUSY guard refuses; the reachable case, an abort queued behind a starting move, is covered.
+- Malformed, partial or split replies: the SDK returns decoded values, only return codes can fail, which the fake injects per call.
+- Driver-specific properties, settings and their persistence: none exist.
+- Shared controllers, `ADDITIONAL_INSTANCES`: every focuser is its own SDK device.
+- Hardware: no FLI focuser available, no physical run.
+
+### Refusal hiding a pending move (2026-10-05, version 16)
+
+| Id | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| `DRV-185` | While the handler of an accepted move was still talking to the SDK, the refusal of a second request turned `FOCUSER_POSITION` ALERT; neither motion property was BUSY and the driver was not yet moving, so a following `FOCUSER_STEPS` request was accepted and a second move was queued. | A pending flag set by `on_change_request` for every accepted `FOCUSER_POSITION` or `FOCUSER_STEPS` request and cleared when the move publishes its first outcome, by abort and by disconnect is part of the refusal condition. | `refusal_keeps_pending_move` (failed against version 15, passes against 16) |
+
+Found while aligning `focuser_astromechanics`, where the same window let a second `M` command through.
