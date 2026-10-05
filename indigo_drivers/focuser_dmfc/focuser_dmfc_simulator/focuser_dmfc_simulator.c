@@ -46,8 +46,9 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_DMFC_EVENTS names a file receiving every accepted request, one per line.\n");
-	printf("INDIGO_DMFC_FAULT names a file holding '<command prefix> <silent|garbage|close>'\n");
-	printf("which is applied once to the next matching request and then removed.\n");
+	printf("INDIGO_DMFC_FAULT names a file holding '<command prefix> <action>', applied once to\n");
+	printf("the next matching request and then removed. Actions: silent, garbage, close, slow,\n");
+	printf("ignore, stall, value=<reply> and external=<target>.\n");
 }
 
 // ----------------------------------------------------------------- state
@@ -60,6 +61,8 @@ static double temperature = 22.4;
 static int position = 50;
 static serial_motion motion = { .position = 50, .target = 50 };
 static int moving_status = 0;
+// a stalled motor reports a move in progress while its position stays put
+static bool stalled = false;
 static int led_status = 0;
 static int reverse = 0;
 static int disabled_encoder = 0;
@@ -192,7 +195,7 @@ static bool sim_printf(int handle, const char *format, ...) {
 // way the next matching request has to misbehave, so a test can fail exactly
 // one transaction without disturbing the rest of the session.
 static const char *pending_fault(const char *command) {
-	static char action[32];
+	static char action[64];
 	const char *path = getenv("INDIGO_DMFC_FAULT");
 	if (path == NULL) {
 		return NULL;
@@ -203,7 +206,7 @@ static const char *pending_fault(const char *command) {
 	}
 	char prefix[32] = { 0 };
 	action[0] = '\0';
-	bool matched = fscanf(file, "%31s %31s", prefix, action) == 2 && !strncmp(command, prefix, strlen(prefix));
+	bool matched = fscanf(file, "%31s %63s", prefix, action) == 2 && !strncmp(command, prefix, strlen(prefix));
 	fclose(file);
 	if (!matched) {
 		return NULL;
@@ -214,7 +217,7 @@ static const char *pending_fault(const char *command) {
 
 static void dispatch_command(int handle, const char *command) {
 	position = (int)serial_motion_update(&motion);
-	moving_status = motion.duration > 0;
+	moving_status = stalled || motion.duration > 0;
 	if (events != NULL) {
 		fprintf(events, "%s\n", command);
 		fflush(events);
@@ -234,6 +237,27 @@ static void dispatch_command(int handle, const char *command) {
 		}
 		if (!strcmp(fault, "garbage")) {
 			sim_printf(handle, "ERR\n");
+			return;
+		}
+		if (!strncmp(fault, "value=", 6)) {
+			// the reply is replaced, e.g. by a malformed or implausible one
+			sim_printf(handle, "%s\n", fault + 6);
+			return;
+		}
+		if (!strcmp(fault, "ignore")) {
+			// a command that has no reply is taken but not applied
+			return;
+		}
+		if (!strncmp(fault, "external=", 9)) {
+			// the hand controller starts a move the driver did not command
+			serial_motion_start(&motion, atoi(fault + 9), 1000);
+			position = (int)serial_motion_update(&motion);
+			moving_status = motion.duration > 0;
+		}
+		if (!strcmp(fault, "stall")) {
+			// the move is accepted, but the motor never turns
+			stalled = true;
+			moving_status = 1;
 			return;
 		}
 		if (!strcmp(fault, "slow")) {
@@ -264,6 +288,7 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (!strncmp(command, "W:", 2)) {
 		serial_motion_sync(&motion, position = atoi(command + 2));
 	} else if (!strcmp(command, "H")) {
+		stalled = false;
 		serial_motion_stop(&motion);
 		moving_status = 0;
 	} else if (!strncmp(command, "S:", 2)) {
@@ -281,8 +306,13 @@ static void dispatch_command(int handle, const char *command) {
 		disabled_encoder = atoi(command + 2);
 		sim_printf(handle, "%s\n", command);
 	} else if (!strncmp(command, "L:", 2)) {
-		led_status = atoi(command + 2);
+		// L:2 switches the LED on, L:1 off, and the reply is the status, 1 on and 0 off
+		led_status = atoi(command + 2) == 2 ? 1 : 0;
 		sim_printf(handle, "L:%d\n", led_status);
+	} else if (!strcmp(command, "L")) {
+		sim_printf(handle, "L:%d\n", led_status);
+	} else if (!strcmp(command, "B")) {
+		sim_printf(handle, "B:%d.00\n", speed);
 	}
 }
 
