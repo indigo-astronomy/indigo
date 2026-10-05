@@ -235,8 +235,8 @@
 |  | 2026-09-30 18:48 | 3.0.0.15 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-03 19:51 | 3.0.0.16 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-03 19:54 | 3.0.0.16 | linux arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
-|  | 2026-10-03 21:52 | 3.0.0.19 | mac arm64 | simulator | 42 / 42 | ✅ OK |
 |  | 2026-10-03 21:58 | 3.0.0.19 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
+|  | 2026-10-05 15:34 | 3.0.0.20 | mac arm64 | simulator | 53 / 53 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-09-27 23:17 | 3.0.0.9 | mac arm64 | simulator | 58 / 58 | ✅ OK |
 | focuser_qhy | 2026-09-27 12:50 | 3.0.0.10 | linux x64 | simulator | 32 / 32 | ✅ OK |

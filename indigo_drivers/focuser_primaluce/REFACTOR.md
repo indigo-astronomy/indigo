@@ -347,8 +347,8 @@ lexer now tracks strings, character literals, line and block comments. Regenerat
   keeps the range 0 to 1000000. See "Controller features" above.
 - `X_STATE` has two items on SESTO SENSO and three on ESATTO. The attached unit answers
   `"Error: invalid command"` to `VIN_USB`, which confirms the model-dependent item count.
-- `EXT_T` reads -127 on the attached unit because no external probe is fitted, so
-  `FOCUSER_TEMPERATURE` carries that value.
+- `EXT_T` reads -127 on the attached unit because no external probe is fitted. Since 3.0.0.20 the
+  driver publishes `FOCUSER_TEMPERATURE` IDLE for it instead of the value (see below).
 - `X_WIFI` mode switching is not exercised on hardware: turning the access point off would drop the
   unit's own network service. Only the readback is asserted.
 - The driver exposes no guider interface, so the guiding-pulse accuracy measurement does not apply.
@@ -361,5 +361,76 @@ make -C indigo_test build/hardware/test_focuser_primaluce_hw
 cd indigo_test && PRIMALUCE_HW_PORT=/dev/cu.usbserial-11130 ./build/hardware/test_focuser_primaluce_hw --run
 ```
 
-- Simulated tests run: 35; passed: 35.
-- Hardware tests run: 18; passed: 18.
+- 2026-10-03 round: simulated tests run: 35; passed: 35.
+- 2026-10-03 round: hardware tests run: 18; passed: 18.
+
+## Focuser testing rules alignment (3.0.0.20, 2026-10-05)
+
+The simulator suite was checked against the "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` and extended where a rule applies. No hardware test was run
+in this round; the latest hardware record stays at 3.0.0.19.
+
+### Found defects
+
+| # | Defect | Fix | Regression test (fails against 3.0.0.19) |
+|---|---|---|---|
+| D9 | An aborted, stalled or failed move ended ALERT with the requested target, not at the stopped position. | Every move that ends short of its target sets target to the measured position. | `abort_motion`, `stalled_move` |
+| D10 | Disconnecting during a move let the motor run on: the port closed without a stop. | `on_disconnect` sends `MOT_ABORT` (fallback `MOT_STOP`) while a move, an uncommanded motion or a focuser calibration runs. | `disconnect_during_motion` |
+| D11 | `FOCUSER_ABORT_MOTION.ABORT_MOTION` stayed ON after the abort, and an abort while idle sent `MOT_ABORT`. | The item is released in every path; an idle abort sends nothing and ends OK, or ALERT when the controller did not answer the last request. | `abort_while_idle`, `abort_refused` |
+| D12 | An abort that overtook a queued move was followed by that move. | The abort marks the pending move, which is then never sent and ends ALERT. | `abort_overtakes_queued_move` |
+| D13 | The position was only read during the driver's own moves: uncommanded motion (hand keypad, a move running at connect) and a failed idle read were never published. | The position is polled every 2 s while no move of the driver runs (0.5 s while it changes); uncommanded motion is BUSY with the target following the measurement and OK once it stops; a failed or incomplete read is ALERT with the last position and the next good read restores OK. A poll whose reply arrives after a request was accepted leaves the request alone. | `external_motion_observed`, `hand_keypad_motion`, `position_poll_failure`, `request_versus_poll` |
+| D14 | `EXT_T` -127 (no probe, observed on the attached SESTO SENSO 2) was published as a temperature, and a failed temperature poll published nothing. | -127 is published IDLE; a failed poll publishes `FOCUSER_TEMPERATURE` and `X_STATE` ALERT with the last values; the next poll restores OK. | `no_probe`, `status_polling` |
+| D15 | A single lost readback during a move ended it ALERT while the motor kept running; a stalled motor (MST `move`, position unchanged) stayed BUSY forever. | One or two lost readbacks are retried; a third stops the motor and ends ALERT. A motor that does not advance for 25 polls (5 s) is stopped and ends ALERT. | `move_readback_failures`, `stalled_move` |
+| D16 | An absolute move kept `FOCUSER_STEPS` OK, a refused move kept the requested value as position, and the controller's refusal reason never reached the client. | Both properties are BUSY for every move; a refused move ends both ALERT at the position read last, with "Move refused: <reason>". | `absolute_move`, `move_command_failures` |
+| D17 | Backlash and focuser calibration were accepted during a move. | `reject_change` refuses both without a command while a move runs. | `settings_during_motion` |
+| D18 | A rejected backlash, speed, hold current, LED or WiFi write left the requested value published; a failed calibration start left `START` ON. | The value or item the controller keeps is restored; the calibration items are released. | `settings_reported_failures`, `focuser_calibration` |
+| D19 | A WiFi mode change restarts the controller even while the rotator shares the connection. | Refused with ALERT while the rotator is connected. | `controller_restart_refused_with_sibling` |
+| D20 | `FOCUSER_ABORT_MOTION` did not stop a focuser calibration running between START and END. | The abort stops the motor and ends `X_CALIBRATE` ALERT. | `focuser_calibration` |
+
+The pre-fix results come from a separate binary built against a copy of the 3.0.0.19 sources; the
+shared tree was not reverted.
+
+### Simulator additions
+
+- Profile `no-probe`: `EXT_T` is `-127.00`, as the attached unit reports without a probe.
+- Fault `handmove <position>`: the motor moves without a request, as with the hand keypad.
+- Fault action `stall`: a move is acknowledged, MST stays `move` and the position does not change.
+- Fault action `slow`: the reply is delayed by 400 ms; an `always_` prefix keeps any fault armed.
+
+### Rule mapping
+
+| Rule | Test |
+|---|---|
+| Model variants, ranges, hidden controls, conservative fallbacks | `esatto_profile`, `sestosenso3_profile`, `no_abs_pos_profile`, `no_speed_profile`, `old_firmware`, `calibrated_travel` |
+| Connect sequence `MODNAME`, `SWVERS`, `LOGLEVEL`, full state; identity and its reset | `metadata`, `reconnect` |
+| Refused connect leaves nothing defined, port released, next connect works | `unsupported_device`, `handshake_timeout` |
+| Poll failures and recovery, no-probe sentinel, uncommanded motion | `position_poll_failure`, `status_polling`, `no_probe`, `external_motion_observed`, `hand_keypad_motion` |
+| Absolute/relative moves, both properties BUSY, GOTO to the current position, clamping | `absolute_move`, `relative_move`, `relative_move_clamped`, `calibrated_travel` |
+| Overlapping move refused, running move keeps its target and single command | `overlap_rejected` |
+| Abort mid-move ending ALERT at the stopped position, idle abort, refused stop and retry, abort overtaking a queued move | `abort_motion`, `abort_while_idle`, `abort_refused`, `abort_overtakes_queued_move`, `test_focuser_primaluce_motion` |
+| Move rejection, unacknowledged and malformed start, refusal reason, power message | `move_command_failures`, `motor_without_power` |
+| Stall, lost and persistent readback during a move | `stalled_move`, `move_readback_failures` |
+| Disconnect and transport loss during motion | `disconnect_during_motion`, `transport_loss_during_motion`, `transport_loss` |
+| Settings writes, readback after reconnect, failures keep the device value, settings during a move | `controller_settings`, `led_middle`, `wifi_station_mode`, `run_preset`, `settings_reported_failures`, `settings_during_motion` |
+| Calibration sequence, failure, abort | `focuser_calibration` |
+| Poll in flight while a move is accepted | `request_versus_poll` |
+| Shutdown refused while connected; shared transport with the rotator, controller-wide restart refused while it is connected | `shutdown_rejected_while_connected`, `shared_connection`, `controller_restart_refused_with_sibling` |
+
+### Rules not applicable
+
+- SYNC on the focuser: the controller has no focuser sync command (only the ARCO has `SYNC_POS`).
+- `FOCUSER_LIMITS`, reverse motion, compensation and mode: the controller exposes none of them;
+  the travel range comes from the calibration (`CAL_MINPOS`/`CAL_MAXPOS`).
+- Homing and zeroing: not offered by the controller.
+- Rotator scenarios belong to the rotator class rules and were not part of this round.
+
+### Validation
+
+`python3 tools/run_driver_test.py focuser_primaluce` runs `test_focuser_primaluce_simulator`
+(52 cases) and `test_focuser_primaluce_motion` (1 case).
+
+## Final test summary
+
+- Simulated tests: 53 run, 53 passed (recorded run of 3.0.0.20, macOS arm64).
+- Hardware tests: 18 run, 18 passed (latest 3.0.0.19 over WiFi on macOS, recorded in `README.md`;
+  not repeated for 3.0.0.20).
