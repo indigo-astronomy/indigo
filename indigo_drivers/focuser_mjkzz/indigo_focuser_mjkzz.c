@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_mjkzz"
 #define DRIVER_LABEL         "MJKZZ Rail Focuser"
 #define FOCUSER_DEVICE_NAME  "MJKZZ Rail"
@@ -62,7 +62,7 @@ typedef struct {
 	mjkzz_message response;
 	int32_t position, expected_position, last_position;
 	int stalled;
-	bool active, uncertain;
+	bool active, uncertain, external, poll_failed;
 	//- data
 } mjkzz_private_data;
 
@@ -231,6 +231,7 @@ static void mjkzz_start_motion(indigo_device *device, int32_t target) {
 	PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 	PRIVATE_DATA->stalled = 0;
 	PRIVATE_DATA->active = true;
+	PRIVATE_DATA->external = false;
 	mjkzz_motion_state(device, INDIGO_BUSY_STATE);
 }
 
@@ -243,9 +244,40 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
-	if (!PRIVATE_DATA->active && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-		FOCUSER_POSITION_PROPERTY->state = mjkzz_position(device, NULL) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	if (!PRIVATE_DATA->active && (PRIVATE_DATA->external || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
+		int32_t position = 0;
+		bool valid = mjkzz_command(device, CMD_GPOS, 0, 0, &position) && position >= MJKZZ_MIN_POSITION && position <= MJKZZ_MAX_POSITION;
+		bool changed = valid && position != PRIVATE_DATA->position;
+		if (valid) {
+			PRIVATE_DATA->position = position;
+			FOCUSER_POSITION_ITEM->number.value = position;
+		}
+		// A request copied while the position was read owns the target and the state; its handler publishes the result.
+		if ((FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE || PRIVATE_DATA->external) && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			if (!valid) {
+				PRIVATE_DATA->poll_failed = true;
+				PRIVATE_DATA->external = false;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				if (!PRIVATE_DATA->uncertain) {
+					FOCUSER_POSITION_ITEM->number.target = position;
+				}
+				if (PRIVATE_DATA->poll_failed) {
+					// A good poll restores only the state a failed poll took away; a failed or aborted move stays ALERT.
+					PRIVATE_DATA->poll_failed = false;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				if (changed && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
+					// Motion the driver did not command (rotary switch, running at connect): BUSY until it settles.
+					PRIVATE_DATA->external = true;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				} else if (!changed && PRIVATE_DATA->external) {
+					PRIVATE_DATA->external = false;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
 	}
 	indigo_execute_handler_in(device, 1, focuser_timer_callback);
 	//- focuser.on_timer
@@ -261,8 +293,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			connection_result = mjkzz_write_register(device, reg_HPWR, 12) && mjkzz_write_register(device, reg_LPWR, 2) && mjkzz_write_register(device, reg_MSTEP, MOTOR_4STEP) && mjkzz_position(device, &position) && mjkzz_command(device, CMD_GSPD, 0, 0, &speed) && speed >= 0 && speed <= 255;
 			if (connection_result) {
 				PRIVATE_DATA->position = position;
-				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = PRIVATE_DATA->poll_failed = false;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				speed = speed > 3 ? 3 : speed;
 				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
 				indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -283,10 +316,10 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
 		indigo_cancel_pending_handler(device, motion_finalizer);
-		if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
+		if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain || PRIVATE_DATA->external) {
 			mjkzz_stop(device);
 		}
-		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = false;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
@@ -351,14 +384,16 @@ static void focuser_position_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+	bool pending = PRIVATE_DATA->active || PRIVATE_DATA->uncertain || PRIVATE_DATA->external || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value && pending) {
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
-		PRIVATE_DATA->active = false;
+		PRIVATE_DATA->active = PRIVATE_DATA->external = false;
 		if (IS_CONNECTED && mjkzz_stop(device)) {
 			PRIVATE_DATA->uncertain = false;
-			mjkzz_motion_state(device, INDIGO_OK_STATE);
+			// An aborted move ends ALERT at the stopped position.
+			mjkzz_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
