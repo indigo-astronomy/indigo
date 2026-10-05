@@ -283,6 +283,15 @@ static int settled_event_count(external_serial_simulator *simulator, const char 
 	return count;
 }
 
+static int motion_command_count(external_serial_simulator *simulator) {
+	static const char *commands[] = { "MS", "Mn", "Ms", "Me", "Mw" };
+	int count = 0;
+	for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+		count += settled_event_count(simulator, commands[i]);
+	}
+	return count;
+}
+
 static bool wait_event(external_serial_simulator *simulator, const char *command, int before) {
 	for (int i = 0; i < 500; i++) {
 		if (event_count(simulator, command, NULL) > before) {
@@ -434,7 +443,7 @@ static const lx_profile profiles[] = {
 	{ "stargo2", "STARGO2", "Avalon", "RG", NULL, false, true, false, false, false, 2 },
 	{ "ap", "AP", "AstroPhysics", "RG", "RT2", true, true, false, true, false, 3 },
 	{ "agotino", "AGOTINO", "aGotino", NULL, NULL, false, false, false, false, false, 3 },
-	{ "zwo", "ZWO_AM", "ZWO", "R1", "Te", true, true, true, false, true, 3 },
+	{ "zwo", "ZWO_AM", "ZWO", "R1", "Te", true, true, true, true, true, 3 },
 	{ "nyx", "NYX", "PegasusAstro", "R1", "Te", true, true, true, true, false, 3 },
 	{ "oat", "OAT", "OpenAstroTech", "RG", "MT1", true, true, false, true, false, 3 },
 	{ "teen", "TEEN_ASTRO", "TeenAstro", "RG", "Te", true, true, true, true, false, 3 },
@@ -2663,9 +2672,190 @@ static void lx200_zwo_old_firmware(void) {
 	}
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "GTa", NULL));
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "GAT", NULL));
+	// No park before 1.1.9: neither the property nor its status command.
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Gps", NULL));
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
 	stop_external_serial_simulator(&simulator);
+}
+
+static bool start_zwo_options(external_serial_simulator *simulator, const char **options) {
+	const char *arguments[8] = { "--model", "zwo" };
+	int count = 2;
+	for (int i = 0; options[i] != NULL && count < 7; i++) {
+		arguments[count++] = options[i];
+	}
+	arguments[count] = NULL;
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(&lx200_mount)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	if (connect_serial_device(&lx200_mount, simulator->port)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	disconnect_serial_device(&lx200_mount);
+	tear_down_serial_driver(&lx200_mount);
+	return false;
+}
+
+// A ZWO AM parks from home: away from home :hC# goes first and :hP# follows once the home slew is
+// over. The park is latched in :Gps#, refuses motion, survives a reconnect and is released by
+// :Spu# alone, without any motion.
+static void lx200_zwo_park_goes_home_first(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "zwo", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+	// Firmware 1.2.4 parks, but cannot store a park position.
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hC", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	double home_time = 0, park_time = 0;
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "hC", &home_time));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "hP", &park_time));
+	SERIAL_CHECK_TRUE(home_time < park_time);
+	SERIAL_CHECK_TRUE(event_count(&simulator, "Td", NULL) > 0);
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// The park position is not home: the mount stands on the equator.
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) < 1);
+	// Parked, the mount refuses motion and home and sends nothing.
+	int motions = motion_command_count(&simulator);
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(motions, motion_command_count(&simulator));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "hC", NULL));
+	// A new session reads the park from :Gps#.
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	// The unpark releases the mount and moves nothing; the next polls keep it unparked.
+	motions = motion_command_count(&simulator);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "Spu", NULL));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(motions, motion_command_count(&simulator));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "hP", NULL));
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// From home the park needs no home slew.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	int homes = event_count(&simulator, "hC", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(homes, event_count(&simulator, "hC", NULL));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The refusals of the park commands end ALERT with the reason of the mount and leave the park
+// state as it was; an abort of the home slew of a park never sends :hP#.
+static void lx200_zwo_park_refusals_and_abort(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--zwo-firmware", "1.3.0", NULL };
+	SERIAL_CHECK_TRUE(start_zwo_options(&simulator, options));
+	online = true;
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(1, find_cached_property(MOUNT_PARK_SET_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	// An abort during the home slew ends the park, and :hP# never follows.
+	SERIAL_CHECK_TRUE(lx_coordinates(18, -60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hC", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 3));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "hP", NULL));
+	// The current position becomes the park position, unless the mount refuses it.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "Sp01", NULL));
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sp01", "5"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "The mount has to be homed first") != NULL);
+	// A park that reports an error ends ALERT and not parked.
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	// From home the park goes out at once; the error comes while the mount moves to the park position.
+	int parks = event_count(&simulator, "hP", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "hP", parks));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Gps", "3#"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Park failed") != NULL);
+	// The park the simulator still runs ends parked; a refused unpark keeps it so, with the reason.
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Spu", "e4#"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Mount is moving") != NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A ZWO AM in alt-az mode has no park: the request is refused before anything is sent.
+static void lx200_zwo_altaz_refuses_park(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--zwo-altaz", NULL };
+	SERIAL_CHECK_TRUE(start_zwo_options(&simulator, options));
+	online = true;
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "alt-az") != NULL);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "hP", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "hC", NULL));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Firmware 1.1.8 has no park, 1.1.9 parks without a park position, from 1.3.0 both.
+static void lx200_zwo_park_firmware_levels(void) {
+	const char *firmwares[] = { "1.1.8", "1.1.9", "1.2.9", "1.3.0" };
+	const bool park[] = { false, true, true, true };
+	const bool park_set[] = { false, false, false, true };
+	int failures = indigo_test_failures;
+	for (int i = 0; i < 4; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		SERIAL_CHECK_TRUE(start_zwo_firmware(&simulator, firmwares[i]));
+		online = true;
+		SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+		SERIAL_CHECK_EQ_INT(park[i], has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(park_set[i], has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(park[i], event_count(&simulator, "Gps", NULL) > 0);
+	cleanup:
+		if (online) { stop_serial_driver(&lx200_mount); }
+		stop_external_serial_simulator(&simulator);
+		if (indigo_test_failures != failures) {
+			return;
+		}
+	}
 }
 
 static void lx200_nyx_options_and_wifi_failures(void) {
@@ -2927,7 +3117,7 @@ static void check_park_profile(int index) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
 	if (index != 0 && index != 10) {
 		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
-		SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "PO" : index == 3 ? "hW" : index == 4 ? "X370" : "hR", 0));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "PO" : index == 3 ? "hW" : index == 4 ? "X370" : index == 8 ? "Spu" : "hR", 0));
 	}
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
@@ -2952,6 +3142,10 @@ static void lx200_park_stargo(void) {
 
 static void lx200_park_ap(void) {
 	check_park_profile(6);
+}
+
+static void lx200_park_zwo(void) {
+	check_park_profile(8);
 }
 
 static void lx200_park_nyx(void) {
@@ -4090,15 +4284,6 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-static int motion_command_count(external_serial_simulator *simulator) {
-	static const char *commands[] = { "MS", "Mn", "Ms", "Me", "Mw" };
-	int count = 0;
-	for (int i = 0; i < ARRAY_SIZE(commands); i++) {
-		count += settled_event_count(simulator, commands[i]);
-	}
-	return count;
-}
-
 // An abort of a running park or home sends the stop and ends the request: MOUNT_PARK and
 // MOUNT_HOME are not left BUSY, the mount is shown neither parked nor at home, and no later poll
 // latches either. Homing leaves the park state alone. A park that runs to the end stops the
@@ -4484,6 +4669,7 @@ int main(int argc, char **argv) {
 		{ "lx200_gemini_reconnect_forgets_the_park", lx200_gemini_reconnect_forgets_the_park },
 		{ "lx200_park_stargo", lx200_park_stargo },
 		{ "lx200_park_ap", lx200_park_ap },
+		{ "lx200_park_zwo", lx200_park_zwo },
 		{ "lx200_park_nyx", lx200_park_nyx },
 		{ "lx200_park_oat", lx200_park_oat },
 		{ "lx200_park_teenastro", lx200_park_teenastro },
@@ -4497,6 +4683,10 @@ int main(int argc, char **argv) {
 		{ "lx200_zwo_rates_and_buzzer", lx200_zwo_rates_and_buzzer },
 		{ "lx200_zwo_meridian_slew_speed_and_alignment", lx200_zwo_meridian_slew_speed_and_alignment },
 		{ "lx200_zwo_old_firmware", lx200_zwo_old_firmware },
+		{ "lx200_zwo_park_goes_home_first", lx200_zwo_park_goes_home_first },
+		{ "lx200_zwo_park_refusals_and_abort", lx200_zwo_park_refusals_and_abort },
+		{ "lx200_zwo_altaz_refuses_park", lx200_zwo_altaz_refuses_park },
+		{ "lx200_zwo_park_firmware_levels", lx200_zwo_park_firmware_levels },
 		{ "lx200_nyx_options_and_wifi_failures", lx200_nyx_options_and_wifi_failures },
 		{ "lx200_nyx_park_light_follows_the_mount", lx200_nyx_park_light_follows_the_mount },
 		{ "lx200_nyx_park_commands_report_refusals", lx200_nyx_park_commands_report_refusals },

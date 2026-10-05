@@ -87,8 +87,12 @@ typedef struct {
 	int gemini_level;
 	bool gemini_startup;
 	// ZWO AM: the :GV# firmware. 1.1.1 adds the :GAT# tracking status, 1.2.4 the meridian
-	// settings :GTa#/:STa# and the calibration reset :NSC#.
+	// settings :GTa#/:STa# and the calibration reset :NSC#. 1.1.9 adds the park :hP#, its
+	// status :Gps# and the unpark :Spu#, 1.3.0 the custom park position :Sp01#. See
+	// indigo_drivers/mount_lx200/PROTOCOL.md.
 	int zwo_firmware;
+	// ZWO AM in alt-az mode: Z instead of G in :GU#, no park and no park position.
+	bool zwo_altaz;
 	simulator_model model;
 } simulator_options;
 
@@ -208,7 +212,8 @@ static void usage(const char *name) {
 	printf("  --meade-silent-park     Meade: answer nothing at all after :hP#\n");
 	printf("  --gemini-level <4|5>    Gemini software level, 5 by default\n");
 	printf("  --gemini-startup        Gemini: wait for the startup mode (bC#, bW#, bR#) first\n");
-	printf("  --zwo-firmware <x.y.z>  ZWO AM :GV# answer, 1.2.4 by default; :GAT# needs 1.1.1, :GTa#, :STa# and :NSC# 1.2.4\n");
+	printf("  --zwo-firmware <x.y.z>  ZWO AM :GV# answer, 1.2.4 by default; :GAT# needs 1.1.1, :hP#, :Gps# and :Spu# 1.1.9, :GTa#, :STa# and :NSC# 1.2.4, :Sp01# 1.3.0\n");
+	printf("  --zwo-altaz             ZWO AM in alt-az mode: Z in :GU#, park and park position refused\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -324,6 +329,8 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.zwo_firmware = (major << 16) | (minor << 8) | patch;
+		} else if (!strcmp(argv[i], "--zwo-altaz")) {
+			options.zwo_altaz = true;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -568,7 +575,7 @@ static double site_degrees(const char *value) {
 	return sign * (degrees + minutes / 60.0);
 }
 
-// The side of the pier :Gm# reports, in the sense every mount driver publishes it and ASCOM defines it: E while the
+// The side of the pier :Gm# reports, in the sense every mount driver publishes it: E while the
 // mount points west of the meridian (hour angle 0 to 12 h, the normal pointing state), W while it points east of it.
 // The hour angle comes from the date, the local time, the UTC offset and the longitude the client has set, with the
 // clock running on from the moment it was set. A longitude is positive to the west, as in the LX200 protocol.
@@ -1067,6 +1074,26 @@ static void handle_command(const char *command) {
 	} else if (model_is_zwo() && options.zwo_firmware >= 0x010204 && !strcmp(command, "NSC")) {
 		state.alignment_points = 0;
 		write_response("1");
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010109 && !strcmp(command, "Gps")) {
+		// park status: 0 not parked, 1 parking, 2 parked (3 is a park error, injected)
+		write_response(state.parked ? "2#" : parking_requested ? "1#" : "0#");
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010109 && !strcmp(command, "Spu")) {
+		// The unpark only releases the parked state, it does not move the mount.
+		write_response(state.parked ? "1" : "0");
+		state.parked = false;
+	} else if (model_is_zwo() && options.zwo_firmware >= 0x010300 && !strcmp(command, "Sp01")) {
+		// The current position becomes the park position: 4 in alt-az mode, 9 while moving.
+		if (options.zwo_altaz) {
+			write_response("4");
+		} else if (state.slewing || manual_ra || manual_dec) {
+			write_response("9");
+		} else {
+			park_ra = ra_motion.position;
+			park_dec = dec_motion.position;
+			write_response("1");
+		}
+	} else if (model_is_zwo() && !strcmp(command, "hP") && (options.zwo_firmware < 0x010109 || options.zwo_altaz)) {
+		// A firmware without park, or a mount in alt-az mode, takes the command and does nothing.
 	} else if (!strcmp(command, "GVF")) {
 		write_response(options.model == MODEL_ONSTEP ? "OnStep 4.24j#" : "ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
 	} else if (!strcmp(command, "GVN")) {
@@ -1097,7 +1124,7 @@ static void handle_command(const char *command) {
 		bool report_king = state.tracking_rate == 'K' && (options.model != MODEL_ONSTEP || options.status_king);
 		const char *rate = state.tracking_rate == 'L' ? "(" : state.tracking_rate == 'S' ? "O" : report_king ? "k" : "";
 		// T is the east and W the west side of the pier in the OnStep status
-		snprintf(response, sizeof(response), "G%s%s%s%s%s%s%s#", state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", pier_side() == 'E' ? "T" : "W", auto_flip ? "a" : "", rate);
+		snprintf(response, sizeof(response), "%c%s%s%s%s%s%s%s#", model_is_zwo() && options.zwo_altaz ? 'Z' : 'G', state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", pier_side() == 'E' ? "T" : "W", auto_flip ? "a" : "", rate);
 		write_response(response);
 	} else if (!strncmp(command, "SC", 2)) {
 		if (options.model == MODEL_GEMINI && !state.offset_set) {
@@ -1360,7 +1387,8 @@ static void handle_command(const char *command) {
 		// OnStepX documents :hP# with a 0/1 reply and :hC# with none, and the NYX firmware that
 		// derives from it does the same. A simulator that answers the home command anyway hides
 		// a driver that waits for a reply the mount never sends.
-		if (model_is_zwo() || ((options.model == MODEL_ONSTEP || options.model == MODEL_NYX) && !strcmp(command, "hP"))) { write_response("1"); }
+		// The ZWO AM answers neither of them.
+		if ((options.model == MODEL_ONSTEP || options.model == MODEL_NYX) && !strcmp(command, "hP")) { write_response("1"); }
 	} else if (!strcmp(command, "PO") || !strcmp(command, "hW") || !strcmp(command, "X370")) {
 		gemini_park_reported = options.model == MODEL_GEMINI && state.parked;
 		state.tracking = true;
@@ -1520,6 +1548,12 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	signal(SIGPIPE, SIG_IGN);
+	if (model_is_zwo()) {
+		// The default park position of an AM is away from home, pointing horizontally to the
+		// west. The simulator keeps it on the equator, six hours from the home right ascension.
+		park_ra = 2160000;
+		park_dec = 0;
+	}
 	serial_motion_sync(&ra_motion, state.ra_cs);
 	serial_motion_sync(&dec_motion, state.dec_as);
 	serial_motion_sync(&focus_motion, 0);

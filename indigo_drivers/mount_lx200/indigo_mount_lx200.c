@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300004C
+#define DRIVER_VERSION       0x0300004D
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -63,6 +63,7 @@
 // a 0 on :h?# stops meaning "the command has not arrived yet" and starts meaning "the
 // park failed". See meade_update_gemini_state().
 #define GEMINI_PARK_ACK_TIMEOUT 5.0
+#define ZWO_PARK_START_TIMEOUT 5.0
 
 #ifndef MAX
 #define MAX(a,               b) ((a) > (b) ? (a) : (b))
@@ -382,6 +383,11 @@ typedef struct {
 	double stargo_lst_synced;
 	// ZWO AM: the firmware version from :GV# as 0xMMmmpp, and the last :GAT# error code.
 	int zwo_firmware, zwo_tracking_error;
+	// ZWO AM park: 1 while the home slew that precedes :hP# runs, 2 once :hP# is sent; whether
+	// the slew of the stage was seen, and when a stage that never started is given up.
+	int zwo_park_stage;
+	bool zwo_park_moved;
+	double zwo_park_deadline;
 	char gemini_velocity;
 	int gemini_pulse_chunk, gemini_remaining_ns, gemini_remaining_we;
 	char gemini_direction_ns, gemini_direction_we;
@@ -459,21 +465,13 @@ static int compare_versions(const char *version1, const char *version2) {
 	return 0;
 }
 
+// The error codes of the ZWO protocol, e1 to e13.
+#define ZWO_ERROR_COUNT      14
+static const char *zwo_error_messages[ZWO_ERROR_COUNT] = { "", "Parameter out of range", "Format error", "Homing, slewing or goto in progress", "Mount is moving", "Target is below the horizon", "Target is below the altitude limit", "Time and site are not set", "Meridian reached, tracking stopped", "Sync point is on the other side of the meridian", "Altitude inverted", "Sync near the pole refused", "Sync too far from the current position", "Target is above the altitude limit" };
+
 static char *meade_error_string(indigo_device *device, unsigned int code) {
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
-		const char *error_string[] = {
-			NULL,
-			"Parmeters out of range",
-			"Format error",
-			"Mount not initialized",
-			"Mount is Moving",
-			"Target is below horizon",
-			"Target is below the altitude limit",
-			"Time and location is not set",
-			"Unknown error"
-		};
-		if (code > 8) return NULL;
-		return (char *)error_string[code];
+		return code > 0 && code < ZWO_ERROR_COUNT ? (char *)zwo_error_messages[code] : NULL;
 	} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
 		const char *error_string[] = {
 			NULL,
@@ -1646,6 +1644,10 @@ static bool meade_motion_ra(indigo_device *device) {
 	return stopped;
 }
 
+static bool zwo_park(indigo_device *device);
+static bool zwo_unpark(indigo_device *device);
+static bool zwo_park_set(indigo_device *device);
+
 static bool meade_park(indigo_device *device) {
 	// OnStep and the OnStep derived NYX answer :hP# with 0 or 1 and refuse the park in states
 	// the controller cannot leave on its own, for example the standby a :hF# reset puts it in.
@@ -1697,6 +1699,9 @@ static bool meade_park(indigo_device *device) {
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		return meade_command(device, ":X362#") && strcmp(PRIVATE_DATA->response, "pB") == 0;
 	}
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		return zwo_park(device);
+	}
 	return false;
 }
 
@@ -1732,12 +1737,18 @@ static bool meade_unpark(indigo_device *device) {
 	if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		return meade_no_reply_command(device, ":hR#");
 	}
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		return zwo_unpark(device);
+	}
 	return false;
 }
 
 static bool meade_park_set(indigo_device *device) {
 	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		return meade_simple_reply_command(device, ":hQ#") && *PRIVATE_DATA->response == '1';
+	}
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		return zwo_park_set(device);
 	}
 	return false;
 }
@@ -2783,15 +2794,104 @@ static bool zwo_set_meridian(indigo_device *device, bool flip, bool track, int l
 
 // The error codes of the ZWO protocol, as :GAT# reports them. Firmware 1.1.1 and later.
 static const char *zwo_tracking_error(int code) {
-	static const char *messages[] = { "", "Parameter out of range", "Format error", "Homing, slewing or goto in progress", "Mount is moving", "Target is below the horizon", "Target is below the altitude limit", "Time and site are not set", "Meridian reached, tracking stopped", "Sync point is on the other side of the meridian", "Altitude inverted", "Sync near the pole refused", "Sync too far from the current position" };
-	return code > 0 && code < 13 ? messages[code] : "";
+	return code > 0 && code < ZWO_ERROR_COUNT ? zwo_error_messages[code] : "";
+}
+
+// A ZWO AM answers a set command with one character, or with e and the error code up to #.
+// The error is sent to the client and the reply reads as a refusal.
+static bool zwo_set_command(indigo_device *device, char *command) {
+	if (!meade_simple_reply_command(device, command)) {
+		return false;
+	}
+	if (*PRIVATE_DATA->response == 'e') {
+		char code[16];
+		if (indigo_uni_read_section2(PRIVATE_DATA->handle, code, sizeof(code) - 1, "#", "#", INDIGO_DELAY(0.5), INDIGO_DELAY(0.1)) > 0) {
+			const char *message = zwo_tracking_error(atoi(code));
+			if (*message) {
+				indigo_send_message(device, ALERT_PROPERTY, "%s", message);
+			}
+		}
+	}
+	return true;
+}
+
+// :hP# goes to the park position and latches the parked state :Gps# reports; it has no reply.
+// The park starts from home: away from home :hC# goes first and :hP# follows once the home
+// slew is over. See zwo_update_park().
+static bool zwo_park(indigo_device *device) {
+	if (!meade_command(device, ":GU#")) {
+		return false;
+	}
+	if (strchr(PRIVATE_DATA->response, 'Z')) {
+		indigo_send_message(device, ALERT_PROPERTY, "Park is not available in alt-az mode");
+		return false;
+	}
+	bool at_home = strchr(PRIVATE_DATA->response, 'H') != NULL;
+	if (!meade_simple_reply_command(device, ":Td#")) {
+		return false;
+	}
+	PRIVATE_DATA->zwo_park_moved = false;
+	PRIVATE_DATA->zwo_park_deadline = indigo_monotonic_time() + ZWO_PARK_START_TIMEOUT;
+	if (at_home) {
+		PRIVATE_DATA->zwo_park_stage = 2;
+		return meade_no_reply_command(device, ":hP#");
+	}
+	PRIVATE_DATA->zwo_park_stage = 1;
+	return meade_no_reply_command(device, ":hC#");
+}
+
+// Runs every poll while a park is under way, after :GU# and :Gps# were read. The home slew
+// ends with H from firmware 1.8.1 and with the mount standing still before, and either stage
+// that has not started to move within ZWO_PARK_START_TIMEOUT is given up.
+static void zwo_update_park(indigo_device *device) {
+	if (PRIVATE_DATA->slewing || PRIVATE_DATA->parking) {
+		PRIVATE_DATA->zwo_park_moved = true;
+	}
+	bool failed = false;
+	if (PRIVATE_DATA->zwo_park_stage == 1) {
+		bool home_reached = PRIVATE_DATA->homed && (PRIVATE_DATA->zwo_firmware >= 0x010801 || !PRIVATE_DATA->slewing);
+		if (home_reached || (PRIVATE_DATA->zwo_firmware < 0x010801 && PRIVATE_DATA->zwo_park_moved && !PRIVATE_DATA->slewing)) {
+			PRIVATE_DATA->zwo_park_stage = 2;
+			PRIVATE_DATA->zwo_park_moved = false;
+			PRIVATE_DATA->zwo_park_deadline = indigo_monotonic_time() + ZWO_PARK_START_TIMEOUT;
+			failed = !meade_no_reply_command(device, ":hP#");
+		} else if (!PRIVATE_DATA->zwo_park_moved && indigo_monotonic_time() > PRIVATE_DATA->zwo_park_deadline) {
+			failed = true;
+		}
+	} else if (PRIVATE_DATA->parked) {
+		PRIVATE_DATA->zwo_park_stage = 0;
+	} else if (!PRIVATE_DATA->zwo_park_moved && indigo_monotonic_time() > PRIVATE_DATA->zwo_park_deadline) {
+		failed = true;
+	}
+	if (failed) {
+		PRIVATE_DATA->zwo_park_stage = 0;
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, ALERT_PROPERTY, "Park failed, the mount did not start to move");
+	}
+}
+
+// :Spu# releases the parked state without moving the mount.
+static bool zwo_unpark(indigo_device *device) {
+	return zwo_set_command(device, ":Spu#") && *PRIVATE_DATA->response == '1';
+}
+
+// :Sp01# stores the current position as the park position. Firmware 1.3.0 and later.
+static bool zwo_park_set(indigo_device *device) {
+	if (!zwo_set_command(device, ":Sp01#")) {
+		return false;
+	}
+	static const char *refusals[] = { NULL, NULL, "This park position is already set", "Only one park position can be set", "The park position can be set in equatorial mode only", "The mount has to be homed first", NULL, NULL, NULL, "The mount is moving" };
+	char code = *PRIVATE_DATA->response;
+	if (code >= '2' && code <= '9' && refusals[code - '0']) {
+		indigo_send_message(device, ALERT_PROPERTY, "%s", refusals[code - '0']);
+	}
+	return code == '1';
 }
 
 static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = false;
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = false;
-	MOUNT_PARK_PROPERTY->hidden = true;
 	MOUNT_HOME_PROPERTY->hidden = false;
 	MOUNT_HOME_PROPERTY->count = 2;
 	MOUNT_HOME_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
@@ -2808,6 +2908,12 @@ static void meade_init_zwo_mount(indigo_device *device) {
 			PRIVATE_DATA->zwo_firmware = (major << 16) | (minor << 8) | patch;
 		}
 	}
+	// Firmware 1.1.9 parks with :hP#, reports the park with :Gps# and unparks with :Spu#; 1.3.0
+	// separates the park position from home and stores the current position with :Sp01#.
+	PRIVATE_DATA->zwo_park_stage = 0;
+	MOUNT_PARK_PROPERTY->hidden = PRIVATE_DATA->zwo_firmware < 0x010109;
+	MOUNT_PARK_SET_PROPERTY->hidden = PRIVATE_DATA->zwo_firmware < 0x010300;
+	MOUNT_PARK_SET_PROPERTY->count = 1;
 	// Firmware 1.2.4 and later keeps the meridian behaviour in :GTa# (flip at the limit, track
 	// past the meridian, the limit in degrees) and clears the multi-star calibration with :NSC#.
 	if (PRIVATE_DATA->zwo_firmware >= 0x010204) {
@@ -2868,16 +2974,10 @@ static void meade_update_zwo_state(indigo_device *device) {
 	if (meade_command(device, ":GU#")) {
 		if (strchr(PRIVATE_DATA->response, 'N') == NULL) {
 			PRIVATE_DATA->slewing = true;
-			if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-				PRIVATE_DATA->parking = true;
-			}
 			if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 				PRIVATE_DATA->homing = true;
 			}
 		} else {
-			if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-				PRIVATE_DATA->parked = true;
-			}
 			if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 				PRIVATE_DATA->homed = true;
 			}
@@ -2890,6 +2990,23 @@ static void meade_update_zwo_state(indigo_device *device) {
 		} else if (strchr(PRIVATE_DATA->response, 'H')) {
 			PRIVATE_DATA->homed = true;
 		}
+	}
+	// The park state is the one :Gps# reports, never inferred from the position: 0 not
+	// parked, 1 parking, 2 parked, anything else a park error. Firmware 1.1.9 and later.
+	if (PRIVATE_DATA->zwo_firmware >= 0x010109 && meade_command(device, ":Gps#")) {
+		char park_status = *PRIVATE_DATA->response;
+		if (park_status == '1') {
+			PRIVATE_DATA->parking = true;
+		} else if (park_status == '2') {
+			PRIVATE_DATA->parked = true;
+		} else if (park_status != '0' && PRIVATE_DATA->zwo_park_stage == 2) {
+			PRIVATE_DATA->zwo_park_stage = 0;
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_send_message(device, ALERT_PROPERTY, "Park failed");
+		}
+	}
+	if (PRIVATE_DATA->zwo_park_stage != 0) {
+		zwo_update_park(device);
 	}
 	if (meade_command(device, ":Gm#")) {
 		if (strchr(PRIVATE_DATA->response, 'N')) {
@@ -3752,6 +3869,7 @@ static void mount_connection_handler(indigo_device *device) {
 		// left selected and no axis the next manual motion would stop first.
 		PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
 		PRIVATE_DATA->classicGoto = PRIVATE_DATA->goto_issued = false;
+		PRIVATE_DATA->zwo_park_stage = 0;
 		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 		MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
@@ -4080,7 +4198,7 @@ static void mount_park_handler(indigo_device *device) {
 					PRIVATE_DATA->parked = true;
 				}
 			}
-			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
 		} else {
@@ -4233,6 +4351,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 			indigo_cancel_pending_handler(device, mount_home_handler);
 			PRIVATE_DATA->parking = PRIVATE_DATA->homing = false;
 			PRIVATE_DATA->gemini_park_expected = PRIVATE_DATA->oat_park_expected = PRIVATE_DATA->ap_parking = false;
+			PRIVATE_DATA->zwo_park_stage = 0;
 			if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 				meade_restore_park_switch(device);
 				MOUNT_STATE_PARK_ITEM->light.value = PRIVATE_DATA->parked ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;

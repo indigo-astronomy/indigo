@@ -2355,9 +2355,9 @@ Simulated tests: **103 run, 103 passed** (recorded run). Hardware tests: **0 run
 
 ## Simulator: side of the pier from the hour angle (2026-10-01)
 
-No driver change, version stays 3.0.0.69. ASCOM ConformU, run against `indigo_agent_alpaca` with this driver on `mount_lx200_simulator --model nyx`, reported `SideofPier` as "physical pier side rather than pointing state": pierWest on both sides of the meridian. The driver maps what the firmware reports and a NYX-101 passes the same test (`../agent_alpaca/REFACTOR.md`, section 10.2), so the defect was in the simulator: its `:GU#` status of OnStep and NYX carried a constant `W` and `:Gm#` answered a constant `W#`.
+No driver change, version stays 3.0.0.69. ConformU, run against `indigo_agent_alpaca` with this driver on `mount_lx200_simulator --model nyx`, reported `SideofPier` as "physical pier side rather than pointing state": pierWest on both sides of the meridian. The driver maps what the firmware reports and a NYX-101 passes the same test (`../agent_alpaca/REFACTOR.md`, section 10.2), so the defect was in the simulator: its `:GU#` status of OnStep and NYX carried a constant `W` and `:Gm#` answered a constant `W#`.
 
-`pier_side()` in the simulator now derives the side from the hour angle, computed from the date, local time, UTC offset and longitude the client has set, with the clock running on from the moment `:SL` set it: E (`T` in the `:GU#` status) at hour angles from 0 to 12 h, W otherwise. This is the meaning `MOUNT_SIDE_OF_PIER` has in every INDIGO mount driver and in ASCOM (`../agent_alpaca/REFACTOR.md`, section 7a). The ESP32Go `:GU#` reply keeps its constant `E`.
+`pier_side()` in the simulator now derives the side from the hour angle, computed from the date, local time, UTC offset and longitude the client has set, with the clock running on from the moment `:SL` set it: E (`T` in the `:GU#` status) at hour angles from 0 to 12 h, W otherwise. This is the meaning `MOUNT_SIDE_OF_PIER` has in every INDIGO mount driver (`../agent_alpaca/REFACTOR.md`, section 7a). The ESP32Go `:GU#` reply keeps its constant `E`.
 
 Validation on macOS arm64: recorded run `python3 tools/run_driver_test.py mount_lx200` 103/103; `mount_asi`, which shares the simulator, 10/10 (not recorded); ConformU `SideofPier` through the agent: pierWest at hour angles -5.8, -3 and -0.2 h, pierEast at +0.2, +3 and +5.8 h.
 
@@ -2369,7 +2369,7 @@ Simulated tests: **103 run, 103 passed** (recorded run). Hardware tests: **0 run
 
 Baseline: version 69, last recorded run on macOS arm64 103/103 (2026-10-01). No Astro-Physics hardware is
 available; no hardware test is planned or claimed. Sources: `AstroPhysics-GTOCP4.pdf` (GTOCP3/GTOCP4
-command language) and the Astro-Physics V2 ASCOM driver manual 5.70.
+command language) and the Astro-Physics V2 driver manual 5.70.
 
 ### Audit of version 69 (source audit)
 
@@ -2484,7 +2484,7 @@ above). Hardware tests: **0 run, 0 passed**.
 
 ## Meade: tracking rate, products, late sync, missing :GW#, old Autostar guiding and silent park (2026-10-04, 3.0.0.72)
 
-Found by a comparison with an independent Meade-only ASCOM driver and its documented firmware workarounds.
+Found by a comparison with an independent Meade-only driver and its documented firmware workarounds.
 No Meade mount is available, so everything below is simulator backed.
 
 | ID | Status | Observation and root cause | Fix |
@@ -2656,3 +2656,30 @@ Deliberately not covered:
 ### Final test summary for this change
 
 Simulated tests: **140 run, 140 passed** (recorded run 2026-10-04 18:20, macOS arm64, driver 3.0.0.76). Hardware tests: **0 run, 0 passed**.
+
+## ZWO AM: park, unpark and park position (2026-10-05, 3.0.0.77)
+
+The park and home protocol is described in `PROTOCOL.md`, section 8 and the note `[^zwopark]`. Public reports (Cloudy Nights, INDI and ZWO forums) agree that an AM5 parks but its clients often do not learn it; the driver therefore takes the park state from `:Gps#` alone, never from the position.
+
+Hardware decision: no ZWO mount is available; everything below is simulator backed and no hardware validation is claimed.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX080 | FIXED | A ZWO AM could not be parked: `MOUNT_PARK` was hidden, and the status branch read the end of any slew while a park was BUSY as parked. | `MOUNT_PARK` from firmware 1.1.9. The park: tracking off (`:Td#`), `:hC#` first when `:GU#` has no `H`, `:hP#` once the home slew is over (`H` from firmware 1.8.1, the mount standing still before), and each stage that has not started to move within 5 s ends ALERT. Refused in alt-az mode (`Z` in `:GU#`). |
+| LX081 | FIXED | The parked state was never read from the mount. | `:Gps#` every poll from firmware 1.1.9: `1` parking, `2` parked, any other code ends a running park ALERT ("Park failed"). The park survives a reconnect. |
+| LX082 | FIXED | A parked ZWO AM could not be released; this is the "bad state only the vendor application recovers from" `mount_asi` hid its park for. | Unpark with `:Spu#`, no motion; `0` or `e<n>#` ends ALERT with the reason and the mount stays parked. |
+| LX083 | FIXED | The park position could not be stored. | `MOUNT_PARK_SET` (current position only) from firmware 1.3.0 with `:Sp01#`; the refusal codes 2, 3, 4, 5 and 9 reach the client as messages. |
+| LX084 | FIXED | The ZWO error texts of `meade_error_string()` were wrong from `e3` on (`e8` was "Unknown error") and stopped at `e8`. | One table `e1` … `e13` for goto, sync and `:GAT#`. |
+| LX085 | FIXED | An abort or a disconnect during the home slew of a park would still have sent `:hP#` on the next poll. | Both clear the park stage. |
+
+Simulator (`--model zwo` and `asi`): `:hC#` and `:hP#` have no reply (the simulator answered `1` before); `:Gps#`, `:Spu#` from firmware 1.1.9 and `:Sp01#` from 1.3.0, gated by `--zwo-firmware`; the default park position is away from home (DEC 0, RA 6 h); `--zwo-altaz` reports `Z` in `:GU#`, ignores `:hP#` and answers `:Sp01#` with `4`.
+
+New cases: `lx200_zwo_park_goes_home_first` (wire order `:hC#` before `:hP#`, tracking off, park position read back, parked refusals of goto, motion and home with nothing sent, park read back after reconnect, unpark sends `:Spu#` and no motion and stays unparked across polls, park from home sends no `:hC#`), `lx200_zwo_park_refusals_and_abort` (abort during the home slew never sends `:hP#`, `:Sp01#` stored and refused with code 5, `:Gps#` error ends ALERT, refused unpark keeps the park with the reason), `lx200_zwo_altaz_refuses_park`, `lx200_zwo_park_firmware_levels` (1.1.8, 1.1.9, 1.2.9, 1.3.0: properties and `:Gps#` polling), `lx200_park_zwo` in the park profile matrix. Extended: `lx200_zwo_old_firmware` asserts no park and no `:Gps#`, the `zwo` profile expects `MOUNT_PARK`.
+
+Not covered: no ZWO hardware. The behaviour of a real mount sent `:hP#` away from home, a park refused by the mount itself and the exact `:Gps#` replies of firmware below 1.8.1 are not known; the driver follows the sequence described in `PROTOCOL.md` there. The 1.3.0 level for `MOUNT_PARK_SET` comes from INDI forum reports of the firmware that separated park and home.
+
+MIGRATION_STATUS.md hardware-free count 144 -> 149.
+
+### Final test summary for this change
+
+Simulated tests: **145 run, 145 passed** (recorded run 2026-10-05 21:09, macOS arm64, driver 3.0.0.77). Hardware tests: **0 run, 0 passed**.
