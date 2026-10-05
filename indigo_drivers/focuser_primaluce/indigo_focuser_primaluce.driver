@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 20;
+	version = 21;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -617,7 +617,10 @@ driver primaluce {
 				}
 				if (read) {
 					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-					if (moving) {
+					if (PRIVATE_DATA->calibrating) {
+						// The calibration run is the driver's own motion: it is followed, but not taken
+						// for an uncommanded move, which would leave the position BUSY and refuse END.
+					} else if (moving) {
 						PRIVATE_DATA->external_motion = true;
 						PRIVATE_DATA->poll_alert = false;
 						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1886,7 +1889,8 @@ driver primaluce {
 		}
 		switch X_CALIBRATE_F {
 			reject_change {
-				condition = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+				// END has to be accepted while the calibration run moves the draw tube.
+				condition = !PRIVATE_DATA->calibrating && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE);
 				message = "The focuser is moving";
 			}
 			on_change {

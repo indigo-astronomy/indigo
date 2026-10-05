@@ -450,6 +450,14 @@ static void dispatch_command(int handle, const char *command) {
 		rotator_calibration_end = strstr(command, "\"stop\"") != NULL ? 0 : serial_motion_time() + 2;
 		sim_printf(handle, "{\"res\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL || strstr(command, "\"CAL_DIR\"") != NULL) {
+		// GoOutToFindMaxPos runs the draw tube outward until StoreAsMaxPos stops it.
+		if (strstr(command, "\"GoOutToFindMaxPos\"") != NULL) {
+			focuser_target = focuser_position + 1000000;
+			serial_motion_start(&focus_motion, focuser_target, 1000);
+		} else if (strstr(command, "\"StoreAsMaxPos\"") != NULL) {
+			serial_motion_stop(&focus_motion);
+			focuser_target = focuser_position;
+		}
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"done\"}},\"set\":{\"MOT1\":{\"CAL_DIR\":\"done\"}}}}\n");
 	} else {
 		sim_printf(handle, "\"Error: invalid cmd\"\n");

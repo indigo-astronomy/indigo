@@ -429,8 +429,28 @@ shared tree was not reverted.
 `python3 tools/run_driver_test.py focuser_primaluce` runs `test_focuser_primaluce_simulator`
 (52 cases) and `test_focuser_primaluce_motion` (1 case).
 
+## Calibration END refused during the run (3.0.0.21, 2026-10-05)
+
+Found on the SESTO SENSO 2 hardware. The idle position poll added in 3.0.0.20 took the calibration
+run (`GoOutToFindMaxPos`) for an uncommanded move and published `FOCUSER_POSITION` BUSY, and
+`X_CALIBRATE` refuses every request while the position is BUSY, so END was refused with "The
+focuser is moving" and the draw tube kept running outward until it was stopped by hand. The poll now
+follows the calibration run without publishing it as a move, and `X_CALIBRATE` accepts a request
+while a calibration runs. The simulator models the calibration run (it moves outward from
+`GoOutToFindMaxPos` until `StoreAsMaxPos`), and `focuser_calibration` checks that the position
+advances without turning BUSY and that END is accepted; the case fails against 3.0.0.20.
+
+The hardware calibration case (`PRIMALUCE_HW_CALIBRATE=1`) reads MOT1 `CAL_MINPOS`, `CAL_MAXPOS`,
+`CAL_DIR` and `COMPENSATION_POS_STEP` with raw JSON before it runs, starts the calibration at the
+stored minimum so the numbering stays the same, and afterwards stops the motor and writes the
+stored limits, direction and offset back with readback. It never writes `ABS_POS`: the controller
+implements that write as an offset in `COMPENSATION_POS_STEP`, after which every move stops short of
+its target by that offset. An earlier version of the case pressed END at once and left the unit with
+`CAL_MAXPOS = 8`; restoring it by writing `ABS_POS` introduced a 2215 step offset that made every
+move end short. The unit was recalibrated and the offset cleared by hand.
+
 ## Final test summary
 
-- Simulated tests: 53 run, 53 passed (recorded run of 3.0.0.20, macOS arm64).
-- Hardware tests: 18 run, 18 passed (latest 3.0.0.19 over WiFi on macOS, recorded in `README.md`;
-  not repeated for 3.0.0.20).
+- Simulated tests: 53 run, 53 passed (recorded run of 3.0.0.21, macOS arm64).
+- Hardware tests: 18 run, 18 passed on the SESTO SENSO 2 over USB serial (3.0.0.21, macOS arm64,
+  with `PRIMALUCE_HW_CALIBRATE=1`; the stored calibration was read and restored).

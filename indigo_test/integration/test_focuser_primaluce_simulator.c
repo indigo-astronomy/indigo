@@ -998,11 +998,18 @@ cleanup:
 // finishes by reading the new coordinate back.
 static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	unsigned int busy = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	double start = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"Init\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_DIR\":\"normal\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMinPos\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"", 1));
+	// The calibration run moves the draw tube while the idle poll follows it: the run is the driver's
+	// own motion, so the position never turns BUSY and END is accepted to stop it.
+	indigo_usleep(5000000);
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) > start);
+	SERIAL_CHECK_TRUE(property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE) == busy);
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMaxPos\"", 1));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, false));

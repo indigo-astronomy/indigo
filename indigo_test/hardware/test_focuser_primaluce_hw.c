@@ -31,13 +31,22 @@
 // approached. The longest move is PRIMALUCE_HW_TRAVEL steps outward (default 3000), so that much
 // free outward travel must be available.
 //
-// The focuser calibration procedure is deliberately not exercised here: it drives the draw tube to
-// both end stops and rewrites the stored travel limits. Set PRIMALUCE_HW_CALIBRATE=1 to include it
-// on a controller that may be recalibrated.
+// The focuser calibration procedure is opt-in: set PRIMALUCE_HW_CALIBRATE=1 to include it. It
+// rewrites the controller's stored travel limits and renumbers its positions (StoreAsMinPos makes the
+// current position 0, StoreAsMaxPos stores the position reached), and the driver has no property to
+// write them back. The case therefore reads MOT1 ABS_POS, CAL_MINPOS, CAL_MAXPOS, CAL_DIR and
+// COMPENSATION_POS_STEP with raw JSON requests while the focuser is disconnected, moves to the stored
+// minimum first so START numbers the positions exactly as before, runs the calibration with only a
+// brief outward run between START and END, and then, again disconnected and also after a failed
+// assertion, writes the stored limits, direction and compensation offset back and verifies each value
+// by readback. ABS_POS is never written: the controller implements that write as an offset in
+// COMPENSATION_POS_STEP, after which every move stops short of its target by that offset. When the
+// stored calibration cannot be read, or its minimum is not 0, the case is skipped instead of run.
 //
 // The serial port comes from PRIMALUCE_HW_PORT. When it is not set the port the driver itself
 // detected through its CP2102N match pattern is used.
 
+#include <ctype.h>
 #include <limits.h>
 #include <math.h>
 #include <pthread.h>
@@ -49,6 +58,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_timer.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h>
 #include "../test_runner.h"
 #include "hardware_device_record.h"
@@ -102,6 +112,7 @@
 #define X_HOLD_CURR_ON_ITEM_NAME "ON"
 #define X_CALIBRATE_F_PROPERTY_NAME "X_CALIBRATE"
 #define X_CALIBRATE_F_START_ITEM_NAME "START"
+#define X_CALIBRATE_F_START_INVERTED_ITEM_NAME "START_INVERTED"
 #define X_CALIBRATE_F_END_ITEM_NAME "END"
 #define X_CALIBRATE_R_PROPERTY_NAME "X_CALIBRATE_A"
 #define X_CALIBRATE_R_START_ITEM_NAME "START"
@@ -872,15 +883,316 @@ static void primaluce_reads_wifi_settings(void) {
 	printf("    access point %s, mode %s\n", ssid, selected);
 }
 
+// Raw access to the controller for the calibration case. The driver has no property that writes the
+// stored calibration, so the case talks to the controller itself while the focuser is disconnected
+// and the port is free. The requests are the driver's own JSON requests: newline-free on the serial
+// line at 115200 baud with one reply line each (log lines start with '[' and are skipped), and over
+// the network GET /ajax.php?jreq=<url-encoded request>, one request per connection.
+typedef struct {
+	double abs_pos, min_pos, max_pos, compensation;
+	char direction[INDIGO_NAME_SIZE];
+} calibration_state;
+
+static indigo_uni_handle *raw_handle = NULL;
+static bool raw_is_http = false;
+static char raw_host[INDIGO_NAME_SIZE];
+static int raw_http_port = 80;
+// The position the driver published after X_CALIBRATE.END, NAN until END was accepted.
+static double calibration_end_position = NAN;
+
+static bool raw_open(void) {
+	char port[INDIGO_VALUE_SIZE] = "";
+	if (!text_item(focuser, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port, sizeof(port)) || !*port) {
+		fprintf(stderr, "    no port to reach the controller on\n");
+		return false;
+	}
+	raw_is_http = indigo_uni_is_url(port, "http");
+	if (raw_is_http) {
+		const char *host = strchr(port, ':') + 3;
+		size_t host_length = strcspn(host, ":/");
+		if (host_length == 0 || host_length >= sizeof(raw_host)) {
+			fprintf(stderr, "    malformed URL %s\n", port);
+			return false;
+		}
+		memcpy(raw_host, host, host_length);
+		raw_host[host_length] = 0;
+		raw_http_port = host[host_length] == ':' ? atoi(host + host_length + 1) : 80;
+		return true;
+	}
+	raw_handle = indigo_uni_open_serial_with_speed(port, 115200, INDIGO_LOG_DEBUG);
+	if (raw_handle == NULL) {
+		fprintf(stderr, "    can't open %s\n", port);
+		return false;
+	}
+	indigo_usleep(200000);
+	indigo_uni_discard(raw_handle);
+	return true;
+}
+
+static void raw_close(void) {
+	if (raw_handle != NULL) {
+		indigo_uni_close(&raw_handle);
+	}
+}
+
+static bool raw_http_exchange(const char *request, char *reply, size_t size) {
+	char query[3 * 512 + 1], buffer[4096];
+	char *out = query;
+	for (const unsigned char *in = (const unsigned char *)request; *in && out < query + sizeof(query) - 4; in++) {
+		if (isalnum(*in) || strchr("-_.~", *in)) {
+			*out++ = *in;
+		} else {
+			out += sprintf(out, "%%%02X", *in);
+		}
+	}
+	*out = 0;
+	indigo_uni_handle *handle = indigo_uni_open_client_socket_with_timeout(raw_host, raw_http_port, SOCK_STREAM, INDIGO_DELAY(5), INDIGO_LOG_DEBUG);
+	if (handle == NULL) {
+		fprintf(stderr, "    can't connect to the controller\n");
+		return false;
+	}
+	bool result = false;
+	long length = 0;
+	if (indigo_uni_printf(handle, "GET /ajax.php?jreq=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", query, raw_host) > 0) {
+		char *body = NULL;
+		long content_length = -1;
+		// The controller keeps the connection open after the reply, so Content-Length ends the read.
+		while (length < (long)sizeof(buffer) - 1 && indigo_uni_wait_for_data(handle, INDIGO_DELAY(5)) > 0) {
+			long count = indigo_uni_read_available(handle, buffer + length, sizeof(buffer) - 1 - length);
+			if (count <= 0) {
+				break;
+			}
+			length += count;
+			buffer[length] = 0;
+			if (body == NULL && (body = strstr(buffer, "\r\n\r\n")) != NULL) {
+				char *field = strstr(buffer, "\r\nContent-Length:");
+				if (field != NULL && field < body) {
+					content_length = atol(field + 17);
+				}
+			}
+			if (body != NULL && content_length >= 0 && length >= body + 4 - buffer + content_length) {
+				break;
+			}
+		}
+		buffer[length] = 0;
+		if (body != NULL && !strncmp(buffer, "HTTP/1.", 7) && !strncmp(buffer + 8, " 200 ", 5) && strlen(body + 4) < size) {
+			snprintf(reply, size, "%s", body + 4);
+			result = *reply != 0;
+		}
+	}
+	indigo_uni_close(&handle);
+	return result;
+}
+
+static bool raw_exchange(const char *request, char *reply, size_t size) {
+	*reply = 0;
+	bool result = false;
+	if (raw_is_http) {
+		result = raw_http_exchange(request, reply, size);
+	} else if (raw_handle != NULL && indigo_uni_write(raw_handle, request, (long)strlen(request)) > 0) {
+		while (indigo_uni_read_section(raw_handle, reply, (long)size - 1, "\n", "\r\n", INDIGO_DELAY(5)) > 0) {
+			if (*reply != '[') {
+				result = true;
+				break;
+			}
+		}
+	}
+	printf("    raw %s -> %s\n", request, result ? reply : "(no reply)");
+	return result && strstr(reply, "ERROR") == NULL;
+}
+
+// The value of "key" in a flat JSON reply, either a number or a string without its quotes.
+static bool json_field(const char *reply, const char *key, char *value, size_t size) {
+	char pattern[INDIGO_NAME_SIZE];
+	snprintf(pattern, sizeof(pattern), "\"%s\":", key);
+	const char *found = strstr(reply, pattern);
+	if (found == NULL || size == 0) {
+		return false;
+	}
+	found += strlen(pattern);
+	while (*found == ' ') {
+		found++;
+	}
+	size_t length;
+	if (*found == '"') {
+		found++;
+		length = strcspn(found, "\"");
+	} else {
+		length = strcspn(found, ",} ");
+	}
+	if (length == 0 || length >= size) {
+		return false;
+	}
+	memcpy(value, found, length);
+	value[length] = 0;
+	return true;
+}
+
+static bool json_number(const char *reply, const char *key, double *value) {
+	char text[INDIGO_NAME_SIZE], *end = NULL;
+	if (!json_field(reply, key, text, sizeof(text))) {
+		return false;
+	}
+	*value = strtod(text, &end);
+	return end != text && *end == 0;
+}
+
+static bool raw_read_calibration(calibration_state *state) {
+	char reply[1024];
+	if (!raw_exchange("{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"CAL_MINPOS\":\"\",\"CAL_MAXPOS\":\"\",\"CAL_DIR\":\"\",\"COMPENSATION_POS_STEP\":\"\"}}}}", reply, sizeof(reply))) {
+		return false;
+	}
+	return json_number(reply, "ABS_POS", &state->abs_pos) && json_number(reply, "CAL_MINPOS", &state->min_pos) && json_number(reply, "CAL_MAXPOS", &state->max_pos) && json_field(reply, "CAL_DIR", state->direction, sizeof(state->direction)) && json_number(reply, "COMPENSATION_POS_STEP", &state->compensation);
+}
+
+static bool raw_set(const char *key, const char *value) {
+	char request[256], reply[1024], status[INDIGO_NAME_SIZE] = "";
+	snprintf(request, sizeof(request), "{\"req\":{\"set\":{\"MOT1\":{\"%s\":%s}}}}", key, value);
+	return raw_exchange(request, reply, sizeof(reply)) && json_field(reply, key, status, sizeof(status)) && !strcmp(status, "done");
+}
+
+// Reads the stored calibration with the focuser disconnected and connects it again.
+static bool read_stored_calibration(calibration_state *state) {
+	bool result = false;
+	if (disconnect_device(focuser) && raw_open()) {
+		result = raw_read_calibration(state);
+		raw_close();
+	}
+	if (!connect_device(focuser, SHORT_TIMEOUT)) {
+		fprintf(stderr, "    the focuser did not reconnect after the calibration readout\n");
+		indigo_test_failures++;
+		result = false;
+	}
+	return result;
+}
+
+// Writes the stored calibration back after the calibration case, with the focuser disconnected.
+// START was given at the stored minimum, so the numbering it set is the stored one; only the limits,
+// the direction and the compensation offset have to be written back.
+static bool restore_stored_calibration(const calibration_state *saved) {
+	calibration_state now = { 0 }, again = { 0 }, check = { 0 };
+	bool result = false;
+	if (!disconnect_device(focuser)) {
+		fprintf(stderr, "    the focuser did not disconnect for the calibration restore\n");
+	} else if (!raw_open()) {
+		fprintf(stderr, "    the controller could not be reached for the calibration restore\n");
+	} else {
+		// A calibration run whose END was lost keeps driving outward, and its position readback is
+		// not reliable while it runs, so the motor is always stopped first.
+		char stop_reply[1024];
+		if (!raw_exchange("{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}", stop_reply, sizeof(stop_reply))) {
+			fprintf(stderr, "    the motor stop before the restore was not answered\n");
+		}
+		indigo_usleep(1000000);
+		if (raw_read_calibration(&now)) {
+			// The draw tube must have stopped before the distance it travelled is taken.
+			indigo_usleep(1000000);
+			if (raw_read_calibration(&again) && fabs(again.abs_pos - now.abs_pos) > 0.5) {
+				char reply[1024];
+				fprintf(stderr, "    the draw tube is still moving (%.0f -> %.0f), stopping it\n", now.abs_pos, again.abs_pos);
+				raw_exchange("{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"\"}}}}", reply, sizeof(reply));
+				indigo_usleep(1000000);
+				raw_read_calibration(&again);
+			}
+			now = again;
+		}
+		if (*now.direction) {
+			printf("    after the calibration: ABS_POS %.0f, CAL_MINPOS %.0f, CAL_MAXPOS %.0f, CAL_DIR %s\n", now.abs_pos, now.min_pos, now.max_pos, now.direction);
+			if (!isnan(calibration_end_position) && fabs(calibration_end_position - now.abs_pos) > 2) {
+				fprintf(stderr, "    the driver published %.0f after END but the controller holds %.0f\n", calibration_end_position, now.abs_pos);
+			}
+			if (now.min_pos == saved->min_pos && now.max_pos == saved->max_pos && now.compensation == saved->compensation && !strcmp(now.direction, saved->direction)) {
+				printf("    the stored calibration is unchanged\n");
+				result = true;
+			} else {
+				char value[INDIGO_NAME_SIZE];
+				snprintf(value, sizeof(value), "\"%s\"", saved->direction);
+				result = raw_set("CAL_DIR", value);
+				snprintf(value, sizeof(value), "%.0f", saved->min_pos);
+				result = raw_set("CAL_MINPOS", value) && result;
+				snprintf(value, sizeof(value), "%.0f", saved->max_pos);
+				result = raw_set("CAL_MAXPOS", value) && result;
+				snprintf(value, sizeof(value), "%.0f", saved->compensation);
+				result = raw_set("COMPENSATION_POS_STEP", value) && result;
+				if (!raw_read_calibration(&check) || check.min_pos != saved->min_pos || check.max_pos != saved->max_pos || check.compensation != saved->compensation || strcmp(check.direction, saved->direction)) {
+					fprintf(stderr, "    the readback after the restore does not match\n");
+					result = false;
+				}
+			}
+		} else {
+			fprintf(stderr, "    the calibration could not be read back for the restore\n");
+		}
+		raw_close();
+	}
+	if (!connect_device(focuser, SHORT_TIMEOUT)) {
+		fprintf(stderr, "    the focuser did not reconnect after the calibration restore\n");
+		result = false;
+	}
+	if (!result) {
+		fprintf(stderr, "    CALIBRATION RESTORE FAILED: set MOT1 CAL_MINPOS %.0f, CAL_MAXPOS %.0f, CAL_DIR %s, COMPENSATION_POS_STEP %.0f by hand (never ABS_POS)\n", saved->min_pos, saved->max_pos, saved->direction, saved->compensation);
+		indigo_test_failures++;
+	}
+	return result;
+}
+
+static char calibration_direction[INDIGO_NAME_SIZE] = "normal";
+
+// The calibration itself, between the readout and the restore of the stored calibration. A failed
+// assertion returns here so the caller still restores.
+static void calibrate_focuser(void) {
+	bool on = false;
+	double position = 0;
+	const char *start = strcmp(calibration_direction, "invert") ? X_CALIBRATE_F_START_ITEM_NAME : X_CALIBRATE_F_START_INVERTED_ITEM_NAME;
+	ASSERT_TRUE(set_switch(focuser, X_CALIBRATE_F_PROPERTY_NAME, start, INDIGO_OK_STATE, MOTION_TIMEOUT));
+	ASSERT_TRUE(switch_item(focuser, X_CALIBRATE_F_PROPERTY_NAME, start, &on) && on);
+	// The controller runs the draw tube outward to find the far end; a brief run is enough to give
+	// the stored maximum a distance from the new minimum.
+	indigo_usleep(2000000);
+	ASSERT_TRUE(set_switch(focuser, X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT));
+	ASSERT_TRUE(switch_item(focuser, X_CALIBRATE_F_PROPERTY_NAME, start, &on) && !on);
+	ASSERT_TRUE(switch_item(focuser, X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, &on) && !on);
+	// END publishes the position in the controller's new numbering, in which the start point is 0
+	// and the draw tube has moved outward from it.
+	ASSERT_TRUE(number_item(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &position));
+	calibration_end_position = position;
+	printf("    END published position %.0f in the new numbering\n", position);
+	ASSERT_TRUE(position > 0.5);
+	ASSERT_TRUE(property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME) != INDIGO_BUSY_STATE);
+}
+
 static void primaluce_calibrates_the_focuser(void) {
 	if (!run_calibration) {
-		printf("    skipped, set PRIMALUCE_HW_CALIBRATE=1 to drive the draw tube to both end stops\n");
+		printf("    skipped, set PRIMALUCE_HW_CALIBRATE=1 to recalibrate the focuser and restore its stored calibration\n");
 		return;
 	}
-	ASSERT_TRUE(set_switch(focuser, X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT));
-	ASSERT_TRUE(set_switch(focuser, X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT));
-	ASSERT_TRUE(disconnect_device(focuser));
-	ASSERT_TRUE(connect_device(focuser, SHORT_TIMEOUT));
+	ASSERT_TRUE(settle_at_start());
+	calibration_state saved = { 0 };
+	if (!read_stored_calibration(&saved)) {
+		printf("    skipped, the stored calibration could not be read, so it could not be restored\n");
+		return;
+	}
+	printf("    stored calibration: ABS_POS %.0f, CAL_MINPOS %.0f, CAL_MAXPOS %.0f, CAL_DIR %s, COMPENSATION_POS_STEP %.0f\n", saved.abs_pos, saved.min_pos, saved.max_pos, saved.direction, saved.compensation);
+	if (saved.min_pos != 0) {
+		printf("    skipped, the stored minimum is not 0, so START could not reproduce the stored numbering\n");
+		return;
+	}
+	// The published position is the controller's own.
+	ASSERT_TRUE(fabs(cached_position() - saved.abs_pos) < 0.5);
+	// START makes the current position 0, so it is given at the stored minimum.
+	ASSERT_TRUE(move_to(saved.min_pos, MOTION_TIMEOUT));
+	snprintf(calibration_direction, sizeof(calibration_direction), "%s", saved.direction);
+	calibration_end_position = NAN;
+	unsigned failures = indigo_test_failures;
+	calibrate_focuser();
+	if (indigo_test_failures != failures) {
+		fprintf(stderr, "    the calibration failed, restoring the stored calibration\n");
+	}
+	if (!restore_stored_calibration(&saved)) {
+		return;
+	}
+	// The numbering and the limits are the stored ones again, so the session's start position is
+	// reachable and a move ends exactly at its target.
+	ASSERT_TRUE(move_to(initial_position, MOTION_TIMEOUT));
 }
 
 // The rotator is a separate logical device sharing the focuser's connection. Connecting it enables
