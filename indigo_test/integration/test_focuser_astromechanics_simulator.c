@@ -26,6 +26,8 @@
 
 #include <indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.h>
 
+#include <sys/stat.h>
+
 #include "serial_simulator_test_common.h"
 
 #ifndef FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE
@@ -79,6 +81,330 @@ static bool move_steps(const char *direction_item, double steps) {
 	return set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps) && motion_settled();
 }
 
+// -------------------------------------------------------------------------------- fault injection
+
+static char last_position_message[INDIGO_VALUE_SIZE];
+
+static indigo_result capture_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && message != NULL && !strcmp(property->device, astromechanics_focuser.device_name) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+		snprintf(last_position_message, sizeof(last_position_message), "%s", message);
+	}
+	return INDIGO_OK;
+}
+
+// The simulator consumes an armed fault with the first command of the selected letter.
+static bool arm_fault(const external_serial_simulator *simulator, const char *action, const char *selector) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.control", simulator->ready_file);
+	FILE *file = fopen(path, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fprintf(file, "%s %s\n", action, selector);
+	return fclose(file) == 0;
+}
+
+static void disarm_fault(const external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.control", simulator->ready_file);
+	unlink(path);
+}
+
+static void clear_events(const external_serial_simulator *simulator) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	unlink(path);
+}
+
+// Counts the recorded commands that start with prefix; last receives the last of them.
+static int count_events(const external_serial_simulator *simulator, const char *prefix, char *last, size_t size) {
+	char path[PATH_MAX], line[64];
+	snprintf(path, sizeof(path), "%s.events", simulator->ready_file);
+	int count = 0;
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	while (fgets(line, sizeof(line), file) != NULL) {
+		line[strcspn(line, "\n")] = 0;
+		if (!strncmp(line, prefix, strlen(prefix))) {
+			count++;
+			if (last != NULL) {
+				snprintf(last, size, "%s", line);
+			}
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+// The number of descriptors this process holds open on the simulator's port.
+static int open_port_handles(const char *port) {
+	struct stat target;
+	if (stat(port, &target) != 0) {
+		return -1;
+	}
+	int count = 0;
+	for (int fd = 0; fd < 1024; fd++) {
+		struct stat status;
+		if (fstat(fd, &status) == 0 && S_ISCHR(status.st_mode) && status.st_rdev == target.st_rdev) {
+			count++;
+		}
+	}
+	return count;
+}
+
+static bool wait_long_for_state(const char *property_name, indigo_property_state state) {
+	for (int i = 0; i < 3; i++) {
+		if (wait_for_property_state(property_name, state)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// A position reply the protocol cannot have produced refuses the connection, leaves nothing
+// defined, releases the port, and the next connect succeeds.
+static void bad_position_reply_refuses_connect(void) {
+	static const char *actions[] = { "malformed", "overlong", "partial", "silent" };
+	external_serial_simulator simulator = { 0 };
+	bool up = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&astromechanics_focuser));
+	up = true;
+	for (int i = 0; i < ARRAY_SIZE(actions); i++) {
+		printf("Connect with a %s position reply\n", actions[i]);
+		SERIAL_CHECK_TRUE(arm_fault(&simulator, actions[i], "P"));
+		SERIAL_CHECK_TRUE(!connect_serial_device(&astromechanics_focuser, simulator.port));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(CONNECTION_PROPERTY_NAME)->state);
+		assert_not_defined_property(FOCUSER_POSITION_PROPERTY_NAME);
+		assert_not_defined_property(X_FOCUSER_APERTURE_PROPERTY_NAME);
+		SERIAL_CHECK_EQ_INT(0, open_port_handles(simulator.port));
+	}
+	SERIAL_CHECK_TRUE(connect_serial_device(&astromechanics_focuser, simulator.port));
+	SERIAL_CHECK_TRUE(goto_position(800));
+	disconnect_serial_device(&astromechanics_focuser);
+	SERIAL_CHECK_EQ_INT(0, open_port_handles(simulator.port));
+cleanup:
+	if (up) {
+		disconnect_serial_device(&astromechanics_focuser);
+		tear_down_serial_driver(&astromechanics_focuser);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Connect publishes the position the lens reports, also when the reply arrives in two pieces.
+static void connect_reads_a_split_position_reply(void) {
+	static const char *args[] = { "--position", "1234", NULL };
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&astromechanics_focuser));
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "split", "P"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(fabs(position() - 1234) < .5);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	// a goto to the position read at connect settles at once
+	SERIAL_CHECK_TRUE(goto_position(1234));
+	SERIAL_CHECK_TRUE(goto_position(1500));
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); } else { tear_down_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A failed position read during a move ends both motion properties ALERT with the last valid
+// value, never as arrival, and the next move works.
+static void failed_poll_during_motion_ends_alert(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 300 && position() < 500; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(position() >= 500);
+	last_position_message[0] = 0;
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "sticky_malformed", "P"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	double last = position();
+	printf("Position after a failed poll %.0f\n", last);
+	SERIAL_CHECK_TRUE(last >= 500 && last < 5000);
+	SERIAL_CHECK_TRUE(strstr(last_position_message, "could not be read") != NULL);
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	disarm_fault(&simulator);
+	SERIAL_CHECK_TRUE(goto_position(1000));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A lens that accepts a move and does not move ends ALERT within bounded time.
+static void stalled_move_ends_alert(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(goto_position(700));
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "stall", "M"));
+	last_position_message[0] = 0;
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
+	SERIAL_CHECK_TRUE(wait_long_for_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(fabs(position() - 700) < .5);
+	SERIAL_CHECK_TRUE(strstr(last_position_message, "does not reach") != NULL);
+	SERIAL_CHECK_TRUE(goto_position(3000));
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Requests during a move are refused with ALERT and send no command, also after an earlier
+// refusal left FOCUSER_POSITION ALERT; the move ends at its target with exactly one command.
+static void refused_requests_send_no_command(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(goto_position(0));
+	clear_events(&simulator);
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	unsigned int alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 7000));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target - 4000) < .5);
+	alerts = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 6000));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(motion_settled());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000, .5));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	char last[64] = { 0 };
+	SERIAL_CHECK_EQ_INT(1, count_events(&simulator, "M", last, sizeof(last)));
+	SERIAL_CHECK_TRUE(!strcmp(last, "M4000"));
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The protocol has no stop command. Disconnecting during a move sends nothing more, and a
+// reconnect while the lens still moves publishes that motion BUSY, then OK where it settles.
+static void disconnect_during_motion_and_reconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(goto_position(0));
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 6000));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 300 && position() < 300; i++) {
+		indigo_usleep(10000);
+	}
+	disconnect_serial_device(&astromechanics_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	clear_events(&simulator);
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "", NULL, 0));
+	SERIAL_CHECK_TRUE(connect_serial_device(&astromechanics_focuser, simulator.port));
+	SERIAL_CHECK_TRUE(property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE) > 0);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 6000, .5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target - 6000) < .5);
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "M", NULL, 0));
+	SERIAL_CHECK_TRUE(move_steps(FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, 1000));
+	SERIAL_CHECK_TRUE(fabs(position() - 5000) < .5);
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A lens moving when the driver connects is published BUSY and settles OK with the target at
+// the measured position.
+static void motion_running_at_connect(void) {
+	static const char *args[] = { "--position", "200", "--moving-to", "3200", NULL };
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	// published BUSY with the definition, the lens moves for three seconds
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3200, .5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target - 3200) < .5);
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "M", NULL, 0));
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// SHUTDOWN is refused while the focuser is connected, and the connection keeps working.
+static void shutdown_refused_while_connected(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_focuser_astromechanics(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(goto_position(900));
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// An additional instance on its own port publishes its own lens, and disconnecting the first
+// instance leaves it working.
+static void additional_instance(void) {
+	static const simulator_driver_case second = { "ASTROMECHANICS Focuser", "indigo_focuser_astromechanics", "ASTROMECHANICS Focuser #2", indigo_focuser_astromechanics, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+	static const char *args[] = { "--position", "2222", NULL };
+	external_serial_simulator simulator = { 0 }, other = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&other, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(goto_position(500));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, astromechanics_focuser.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1, .01));
+	SERIAL_CHECK_TRUE(connect_serial_device(&second, other.port));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) - 2222) < .5);
+	disconnect_serial_device(&astromechanics_focuser);
+	reset_simulator_context(&second);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, second.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500, .5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&second);
+cleanup:
+	if (online) {
+		disconnect_serial_device(&second);
+		disconnect_serial_device(&astromechanics_focuser);
+		indigo_change_number_property_1(&simulator_test_client, astromechanics_focuser.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0);
+		indigo_usleep(200000);
+		tear_down_serial_driver(&astromechanics_focuser);
+	}
+	stop_external_serial_simulator(&other);
+	stop_external_serial_simulator(&simulator);
+}
+
 // -------------------------------------------------------------------------------- metadata
 
 static void metadata_and_property_completeness(void) {
@@ -106,6 +432,11 @@ static void metadata_and_property_completeness(void) {
 	assert_not_defined_property(FOCUSER_TEMPERATURE_PROPERTY_NAME);
 	assert_not_defined_property(FOCUSER_COMPENSATION_PROPERTY_NAME);
 	assert_not_defined_property(FOCUSER_BACKLASH_PROPERTY_NAME);
+	// There is no sync, no limit, no reversal and no mode either.
+	assert_not_defined_property(FOCUSER_ON_POSITION_SET_PROPERTY_NAME);
+	assert_not_defined_property(FOCUSER_LIMITS_PROPERTY_NAME);
+	assert_not_defined_property(FOCUSER_REVERSE_MOTION_PROPERTY_NAME);
+	assert_not_defined_property(FOCUSER_MODE_PROPERTY_NAME);
 
 	// The protocol encodes the position in four digits and the aperture in two.
 	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
@@ -258,9 +589,16 @@ static void aperture_is_accepted_across_its_range(void) {
 	online = true;
 	static const double values[] = { 0, 7, 22, 50 };
 	for (int i = 0; i < ARRAY_SIZE(values); i++) {
+		clear_events(&simulator);
+		unsigned int revision = property_revision(X_FOCUSER_APERTURE_PROPERTY_NAME);
 		SERIAL_CHECK_TRUE(set_number(X_FOCUSER_APERTURE_PROPERTY_NAME, X_FOCUSER_APERTURE_ITEM_NAME, values[i]));
-		SERIAL_CHECK_TRUE(wait_for_property_state(X_FOCUSER_APERTURE_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state_after(X_FOCUSER_APERTURE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 		SERIAL_CHECK_TRUE(fabs(cached_number_value(X_FOCUSER_APERTURE_PROPERTY_NAME, X_FOCUSER_APERTURE_ITEM_NAME) - values[i]) < .001);
+		// one command carrying the setting in two digits
+		char last[64] = { 0 }, expected[16];
+		snprintf(expected, sizeof(expected), "A%02d", (int)values[i]);
+		SERIAL_CHECK_EQ_INT(1, count_events(&simulator, "A", last, sizeof(last)));
+		SERIAL_CHECK_TRUE(!strcmp(last, expected));
 	}
 	// The aperture is two digits on the wire, so the bus has to clamp before the driver formats it.
 	SERIAL_CHECK_TRUE(set_number(X_FOCUSER_APERTURE_PROPERTY_NAME, X_FOCUSER_APERTURE_ITEM_NAME, 120));
@@ -344,7 +682,17 @@ int main(void) {
 		{ "aperture_is_accepted_across_its_range", aperture_is_accepted_across_its_range },
 		{ "reconnect_adopts_the_lens_position", reconnect_adopts_the_lens_position },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
-		{ "vanished_port_is_refused", vanished_port_is_refused }
+		{ "vanished_port_is_refused", vanished_port_is_refused },
+		{ "bad_position_reply_refuses_connect", bad_position_reply_refuses_connect },
+		{ "connect_reads_a_split_position_reply", connect_reads_a_split_position_reply },
+		{ "failed_poll_during_motion_ends_alert", failed_poll_during_motion_ends_alert },
+		{ "stalled_move_ends_alert", stalled_move_ends_alert },
+		{ "refused_requests_send_no_command", refused_requests_send_no_command },
+		{ "disconnect_during_motion_and_reconnect", disconnect_during_motion_and_reconnect },
+		{ "motion_running_at_connect", motion_running_at_connect },
+		{ "shutdown_refused_while_connected", shutdown_refused_while_connected },
+		{ "additional_instance", additional_instance }
 	};
+	simulator_test_client.send_message = capture_message;
 	return indigo_run_tests("ASTROMECHANICS focuser serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }
