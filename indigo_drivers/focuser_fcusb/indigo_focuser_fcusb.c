@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_fcusb"
 #define DRIVER_LABEL         "Shoestring FCUSB focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -66,6 +66,7 @@ typedef struct {
 	indigo_property *x_focuser_frequency_property;
 	//+ data
 	libfcusb_device_context *device_context;
+	bool running;
 	//- data
 } fcusb_private_data;
 
@@ -83,6 +84,7 @@ static bool fcusb_match(libusb_device *dev, const char **name) {
 }
 
 static bool fcusb_open(indigo_device *device) {
+	PRIVATE_DATA->running = false;
 	return libfcusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
 }
 
@@ -101,6 +103,9 @@ static void fcusb_debug(const char *message) {
 
 static void focuser_motion_finalizer(indigo_device *device) {
 	bool ok = libfcusb_stop(PRIVATE_DATA->device_context);
+	if (ok) {
+		PRIVATE_DATA->running = false;
+	}
 	FOCUSER_STEPS_ITEM->number.value = 0;
 	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 }
@@ -145,15 +150,20 @@ static void focuser_connection_handler(indigo_device *device) {
 
 static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	indigo_cancel_pending_handler(device, focuser_steps_handler);
-	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
-	if (!libfcusb_stop(PRIVATE_DATA->device_context)) {
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	// Only a running or queued move, or a motor a failed stop left running, is stopped; while idle, or with
+	// the item OFF, nothing is sent.
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value && (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || PRIVATE_DATA->running)) {
+		indigo_cancel_pending_handler(device, focuser_steps_handler);
+		indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+		if (libfcusb_stop(PRIVATE_DATA->device_context)) {
+			PRIVATE_DATA->running = false;
+		} else {
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
 }
@@ -161,15 +171,21 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_STEPS.on_change
 	int frequency = X_FOCUSER_FREQUENCY_16_ITEM->sw.value ? 16 : (X_FOCUSER_FREQUENCY_4_ITEM->sw.value ? 4 : 1);
-	bool ok = FOCUSER_STEPS_ITEM->number.value > 0 && libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value) && libfcusb_set_frequency(PRIVATE_DATA->device_context, frequency);
-	if (ok) {
-		ok = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? libfcusb_move_in(PRIVATE_DATA->device_context) : libfcusb_move_out(PRIVATE_DATA->device_context);
-	}
-	if (ok) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, FOCUSER_STEPS_ITEM->number.value / 1000.0, focuser_motion_finalizer);
+	if (FOCUSER_STEPS_ITEM->number.value == 0) {
+		// A zero step move has nothing to drive: it ends OK at once and nothing is sent.
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		bool ok = libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value) && libfcusb_set_frequency(PRIVATE_DATA->device_context, frequency);
+		if (ok) {
+			ok = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? libfcusb_move_in(PRIVATE_DATA->device_context) : libfcusb_move_out(PRIVATE_DATA->device_context);
+		}
+		if (ok) {
+			PRIVATE_DATA->running = true;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, FOCUSER_STEPS_ITEM->number.value / 1000.0, focuser_motion_finalizer);
+		} else {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	//- focuser.FOCUSER_STEPS.on_change

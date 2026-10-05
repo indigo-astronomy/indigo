@@ -51,7 +51,8 @@ static const simulator_driver_case focuser = { "Shoestring FCUSB focuser", "indi
 static atomic_int opened, closed, calls, calls_after_close, references, attached;
 static atomic_int fail_open, fail_power, fail_frequency, fail_move, fail_stop;
 static atomic_int power, frequency, direction, stops, moves;
-static atomic_int fail_queue, fail_register, fail_attach;
+static atomic_int fail_queue, fail_register, fail_attach, lost;
+static _Atomic(indigo_device *) focuser_device;
 static double motion_started, motion_stopped;
 static libusb_hotplug_callback_fn hotplug;
 static indigo_queue *driver_queue;
@@ -84,6 +85,8 @@ static void reset_fake(void) {
 	atomic_store(&fail_queue, 0);
 	atomic_store(&fail_register, 0);
 	atomic_store(&fail_attach, 0);
+	atomic_store(&lost, 0);
+	atomic_store(&focuser_device, NULL);
 	motion_started = motion_stopped = 0;
 	hotplug = NULL;
 }
@@ -94,7 +97,8 @@ static bool transfer(void) {
 		atomic_fetch_add(&calls_after_close, 1);
 		return false;
 	}
-	return true;
+	// A lost device fails every transfer while the handle stays open.
+	return !atomic_load(&lost);
 }
 
 bool libfcusb_focuser(libusb_device *device, const char **name) {
@@ -219,6 +223,7 @@ indigo_result fcusb_attach_device(indigo_device *device) {
 	indigo_result result = indigo_attach_device(device);
 	if (result == INDIGO_OK) {
 		atomic_fetch_add(&attached, 1);
+		atomic_store(&focuser_device, device);
 	}
 	return result;
 }
@@ -345,6 +350,7 @@ static void property_contract(void) {
 	reset_simulator_context(&focuser);
 	enumerate_simulator_device();
 	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_STEPS_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_FOCUSER_FREQUENCY_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(connect_focuser());
 	assert_property_has_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
 	assert_property_has_item(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME);
@@ -360,6 +366,10 @@ static void property_contract(void) {
 	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_ON_POSITION_SET_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_TEMPERATURE_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_BACKLASH_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_LIMITS_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_REVERSE_MOTION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_COMPENSATION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_MODE_PROPERTY_NAME));
 	// The speed item drives the motor power instead of a step rate.
 	indigo_item *speed = find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME);
 	SERIAL_CHECK_TRUE(speed != NULL && speed->number.max == 255 && speed->number.value == 255);
@@ -380,6 +390,8 @@ static void open_failure(void) {
 	SERIAL_CHECK_TRUE(!connect_focuser());
 	SERIAL_CHECK_TRUE(!context.connected);
 	SERIAL_CHECK_EQ_INT(0, opened);
+	SERIAL_CHECK_TRUE(find_cached_property(X_FOCUSER_FREQUENCY_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME) == NULL);
 	SERIAL_CHECK_TRUE(connect_focuser());
 	SERIAL_CHECK_EQ_INT(1, opened);
 	SERIAL_CHECK_TRUE(move_completes(200, -1));
@@ -435,11 +447,13 @@ static void removal_during_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_direction(-1));
+	int stopped = atomic_load(&stops);
 	unplug();
 	SERIAL_CHECK_EQ_INT(0, attached);
 	SERIAL_CHECK_EQ_INT(opened, closed);
-	// Closing the focuser stops the motor.
+	// Closing the focuser stops the motor, once, before the handle is released.
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
+	SERIAL_CHECK_EQ_INT(stopped + 1, atomic_load(&stops));
 	int writes = atomic_load(&calls);
 	indigo_usleep(4500000);
 	SERIAL_CHECK_EQ_INT(writes, atomic_load(&calls));
@@ -500,8 +514,11 @@ cleanup:
 // The power and the frequency are written before the motor is started.
 static void power_and_frequency(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	// Both settings are owned by the driver: changing them sends nothing, the next move carries them.
+	int writes = atomic_load(&calls);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 120, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_change(X_FOCUSER_FREQUENCY_PROPERTY_NAME, X_FOCUSER_FREQUENCY_4_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(writes, atomic_load(&calls));
 	SERIAL_CHECK_TRUE(move_completes(200, -1));
 	SERIAL_CHECK_EQ_INT(120, atomic_load(&power));
 	SERIAL_CHECK_EQ_INT(4, atomic_load(&frequency));
@@ -519,18 +536,26 @@ cleanup:
 // published as a started motion.
 static void move_command_failures(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	// A failed write ends the move ALERT and no later write of the sequence is sent.
 	atomic_store(&fail_power, 1);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
+	SERIAL_CHECK_EQ_INT(-1, atomic_load(&frequency));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&moves));
 	atomic_store(&fail_frequency, 1);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&moves));
 	atomic_store(&fail_move, 1);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
-	// A zero move has nothing to drive and is refused as well.
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&moves));
+	SERIAL_CHECK_TRUE(move_completes(200, -1));
+	// A zero step move has nothing to drive: it ends OK at once without any write.
+	int writes = atomic_load(&calls);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(writes, atomic_load(&calls));
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&moves));
 	SERIAL_CHECK_TRUE(move_completes(200, -1));
 cleanup:
 	driver_stop();
@@ -545,6 +570,10 @@ static void stop_failure(void) {
 	SERIAL_CHECK_TRUE(wait_for_direction(-1));
 	atomic_store(&fail_stop, 1);
 	SERIAL_CHECK_TRUE(state_seen(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	// The motor the refused stop left running is stopped by an abort.
+	SERIAL_CHECK_EQ_INT(-1, atomic_load(&direction));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
 	SERIAL_CHECK_TRUE(move_completes(200, -1));
 cleanup:
 	driver_stop();
@@ -556,9 +585,12 @@ static void abort_motion(void) {
 	unsigned int alerts = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_direction(-1));
+	int stopped = atomic_load(&stops);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
+	SERIAL_CHECK_EQ_INT(stopped + 1, atomic_load(&stops));
 	SERIAL_CHECK_TRUE(state_seen(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
 	// The cancelled move must not stop the motor a second time later on.
 	int writes = atomic_load(&calls);
 	indigo_usleep(4500000);
@@ -568,9 +600,20 @@ cleanup:
 	driver_stop();
 }
 
+// An abort while idle ends OK without a stop and leaves FOCUSER_STEPS alone; a request with the item OFF is answered
+// without a write as well.
 static void abort_while_idle(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(move_completes(200, -1));
+	int writes = atomic_load(&calls);
+	unsigned int alerts = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	unsigned int revision = property_state_revision(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(writes, atomic_load(&calls));
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(move_completes(200, -1));
 cleanup:
 	driver_stop();
@@ -583,6 +626,10 @@ static void abort_command_failure(void) {
 	SERIAL_CHECK_TRUE(wait_for_direction(-1));
 	atomic_store(&fail_stop, 1);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_is(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	// The motor keeps running, so the move is not reported completed.
+	SERIAL_CHECK_EQ_INT(-1, atomic_load(&direction));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
 	SERIAL_CHECK_TRUE(move_completes(200, -1));
@@ -596,14 +643,94 @@ static void disconnect_during_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_direction(-1));
+	int stopped = atomic_load(&stops);
 	disconnect_serial_device(&focuser);
 	SERIAL_CHECK_TRUE(!context.connected);
 	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
+	// The stop is sent once, before the handle is closed (a later one would count as a call after close).
+	SERIAL_CHECK_EQ_INT(stopped + 1, atomic_load(&stops));
 	SERIAL_CHECK_EQ_INT(opened, closed);
 	int writes = atomic_load(&calls);
 	indigo_usleep(4500000);
 	SERIAL_CHECK_EQ_INT(writes, atomic_load(&calls));
 	SERIAL_CHECK_EQ_INT(0, calls_after_close);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(move_completes(200, -1));
+cleanup:
+	driver_stop();
+}
+
+// A second move requested while one runs is not sent; the running move keeps its duration and ends with one start.
+static void overlapping_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	unsigned int done = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_direction(-1));
+	indigo_change_number_property_1(&simulator_test_client, focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200);
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, done));
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&moves));
+	double driven = motion_stopped - motion_started;
+	printf("Move driven for %.3f s\n", driven);
+	SERIAL_CHECK_TRUE(driven > .9);
+cleanup:
+	driver_stop();
+}
+
+// A gate handler holds the device queue, so a move is accepted and queued behind it; the urgent abort overtakes it.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+// An abort that overtakes a move still queued stops once and never starts the queued move, which ends ALERT.
+static void abort_overtakes_queued_move(void) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(atomic_load(&focuser_device) != NULL);
+	indigo_execute_handler(atomic_load(&focuser_device), gate_handler);
+	for (int i = 0; i < 300 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&gate_entered));
+	unsigned int alerts = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	int stopped = atomic_load(&stops);
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&moves));
+	SERIAL_CHECK_EQ_INT(stopped + 1, atomic_load(&stops));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&direction));
+	SERIAL_CHECK_TRUE(move_completes(200, -1));
+cleanup:
+	atomic_store(&gate_release, true);
+	driver_stop();
+}
+
+// The device stops answering in the middle of a move: the move ends ALERT, every later request ends ALERT without a
+// stale BUSY, and disconnect still completes; after the device answers again a reconnect works.
+static void transport_loss(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	unsigned int alerts = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_direction(-1));
+	atomic_store(&lost, 1);
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(1, atomic_load(&moves));
+	disconnect_serial_device(&focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(opened, closed);
+	atomic_store(&lost, 0);
 	SERIAL_CHECK_TRUE(connect_focuser());
 	SERIAL_CHECK_TRUE(move_completes(200, -1));
 cleanup:
@@ -657,6 +784,9 @@ int main(void) {
 		{ "abort_while_idle", abort_while_idle },
 		{ "abort_command_failure", abort_command_failure },
 		{ "disconnect_during_motion", disconnect_during_motion },
+		{ "overlapping_move", overlapping_move },
+		{ "abort_overtakes_queued_move", abort_overtakes_queued_move },
+		{ "transport_loss", transport_loss },
 		{ "configuration_roundtrip", configuration_roundtrip }
 	};
 	return indigo_run_tests("Shoestring FCUSB focuser", tests, ARRAY_SIZE(tests));
