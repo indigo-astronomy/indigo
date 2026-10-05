@@ -1285,7 +1285,7 @@ Source: `indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver`.
 
 ### focuser_qhy
 
-Driver-specific use of existing properties: `FOCUSER_BACKLASH` remains hidden; `FOCUSER_COMPENSATION` exposes coefficient and threshold; `FOCUSER_LIMITS` provides local 0–2,000,000-step clamping; `FOCUSER_MODE` switches between manual controls and automatic temperature compensation; `FOCUSER_ON_POSITION_SET` selects GOTO or SYNC; `FOCUSER_REVERSE_MOTION` and `FOCUSER_SPEED` configure firmware; `FOCUSER_TEMPERATURE` publishes a five-sample mean using the outside probe with chip-temperature fallback.
+Driver-specific use of existing properties: `FOCUSER_BACKLASH` remains hidden; `FOCUSER_COMPENSATION` exposes coefficient and threshold; `FOCUSER_LIMITS` provides local 0–2,000,000-step clamping and is the range of `FOCUSER_POSITION` and `FOCUSER_STEPS`, a change that excludes the current position or arrives during motion is refused; `FOCUSER_MODE` switches between manual controls and automatic temperature compensation; `FOCUSER_ON_POSITION_SET` selects GOTO or SYNC; `FOCUSER_REVERSE_MOTION` and `FOCUSER_SPEED` configure firmware; `FOCUSER_TEMPERATURE` publishes a five-sample mean using the outside probe with chip-temperature fallback.
 
 Source: `indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver`.
 
