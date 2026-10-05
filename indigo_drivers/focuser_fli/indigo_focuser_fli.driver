@@ -26,7 +26,7 @@ driver fli {
 	label = "FLI Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 15;
+	version = 16;
 	multi_device_support = true;
 	include {
 		#include <libfli.h>
@@ -41,7 +41,7 @@ driver fli {
 		#define FLI_HOME_TIMEOUT_CYCLES 300
 		// A move whose position and remaining steps do not change for this many polls has stalled.
 		#define FLI_STALL_POLLS 10
-		#define FOCUSER_IN_MOTION (PRIVATE_DATA->moving || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
+		#define FOCUSER_IN_MOTION (PRIVATE_DATA->moving || PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
 	}
 	data {
 		flidev_t dev_id;
@@ -54,6 +54,7 @@ driver fli {
 		// long move is issued in chunks and this holds what is still owed.
 		long steps_to_go;
 		bool moving;
+		bool pending;
 		long motion_position;
 		long motion_remaining;
 		int stall_polls;
@@ -100,6 +101,8 @@ driver fli {
 		static void motion_finalizer(indigo_device *device);
 
 		static void fli_motion_state_message(indigo_device *device, indigo_property_state state, const char *message) {
+			/* the accepted request has an outcome now, so it is no longer pending */
+			PRIVATE_DATA->pending = false;
 			if (state != INDIGO_BUSY_STATE) {
 				PRIVATE_DATA->moving = false;
 			}
@@ -350,6 +353,7 @@ driver fli {
 				fli_stop(device);
 				PRIVATE_DATA->moving = false;
 			}
+			PRIVATE_DATA->pending = false;
 			PRIVATE_DATA->steps_to_go = 0;
 			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		}
@@ -362,6 +366,10 @@ driver fli {
 				condition = FOCUSER_IN_MOTION;
 				message = "Another motion operation is pending";
 			}
+			on_change_request {
+				/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+				PRIVATE_DATA->pending = true;
+			}
 			on_change {
 				fli_start_motion(device, (long)FOCUSER_POSITION_ITEM->number.target);
 			}
@@ -370,6 +378,10 @@ driver fli {
 			reject_change {
 				condition = FOCUSER_IN_MOTION;
 				message = "Another motion operation is pending";
+			}
+			on_change_request {
+				/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+				PRIVATE_DATA->pending = true;
 			}
 			on_change {
 				long steps = (long)FOCUSER_STEPS_ITEM->number.target;
@@ -391,6 +403,7 @@ driver fli {
 					indigo_cancel_pending_handler(device, focuser_position_handler);
 					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					indigo_cancel_pending_handler(device, motion_finalizer);
+					PRIVATE_DATA->pending = false;
 					if (!fli_stop(device)) {
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						FOCUSER_ABORT_MOTION_ITEM->sw.value = false;

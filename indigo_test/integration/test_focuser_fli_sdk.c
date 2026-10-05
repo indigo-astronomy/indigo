@@ -553,6 +553,33 @@ cleanup:
 	fli_driver_down(indigo_focuser_fli);
 }
 
+// A refusal turns FOCUSER_POSITION ALERT while the accepted move is still being started; the next
+// request must still be refused instead of queuing a second move.
+static void refusal_keeps_pending_move(void) {
+	fli_fake_reset(FLIDEVICE_FOCUSER, 1);
+	FLI_CHECK_TRUE(fli_driver_up(indigo_focuser_fli));
+	FLI_CHECK_TRUE(fli_wait_attached(1));
+	FLI_CHECK_TRUE(fli_connect(0));
+	atomic_store(&fli_fake.stepper_position_waiting, false);
+	atomic_store(&fli_fake.hold_stepper_position, true);
+	FLI_CHECK_TRUE(indigo_change_number_property_1(&fli_test_client, fli_observed[0].name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000) == INDIGO_OK);
+	for (int i = 0; i < 300 && !atomic_load(&fli_fake.stepper_position_waiting); i++) {
+		indigo_usleep(10000);
+	}
+	FLI_CHECK_TRUE(atomic_load(&fli_fake.stepper_position_waiting));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_ALERT_STATE));
+	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	atomic_store(&fli_fake.hold_stepper_position, false);
+	FLI_CHECK_TRUE(wait_steps(1));
+	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
+	indigo_usleep(1000000);
+	FLI_CHECK_EQ_INT(1, atomic_load(&fli_fake.step_motor_calls));
+cleanup:
+	atomic_store(&fli_fake.hold_stepper_position, false);
+	fli_driver_down(indigo_focuser_fli);
+}
+
 // Two focusers are independent and each keeps its own SDK handle.
 static void two_focusers(void) {
 	fli_fake_reset(FLIDEVICE_FOCUSER, 2);
@@ -637,6 +664,7 @@ int main(void) {
 		{ "stalled_move_ends_alert", stalled_move_ends_alert },
 		{ "disconnect_during_motion_stops", disconnect_during_motion_stops },
 		{ "connect_publishes_device_state", connect_publishes_device_state },
+		{ "refusal_keeps_pending_move", refusal_keeps_pending_move },
 		{ "two_focusers", two_focusers },
 		{ "hot_unplug", hot_unplug },
 		{ "reconnect", reconnect },

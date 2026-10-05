@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_fli"
 #define DRIVER_LABEL         "FLI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -58,7 +58,7 @@
 #define FLI_HOME_TIMEOUT_CYCLES 300
 // A move whose position and remaining steps do not change for this many polls has stalled.
 #define FLI_STALL_POLLS      10
-#define FOCUSER_IN_MOTION    (PRIVATE_DATA->moving || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
+#define FOCUSER_IN_MOTION    (PRIVATE_DATA->moving || PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
 
 //- define
 
@@ -77,6 +77,7 @@ typedef struct {
 	// long move is issued in chunks and this holds what is still owed.
 	long steps_to_go;
 	bool moving;
+	bool pending;
 	long motion_position;
 	long motion_remaining;
 	int stall_polls;
@@ -132,6 +133,8 @@ static bool fli_is_enumerated(const char *file_name) {
 static void motion_finalizer(indigo_device *device);
 
 static void fli_motion_state_message(indigo_device *device, indigo_property_state state, const char *message) {
+	/* the accepted request has an outcome now, so it is no longer pending */
+	PRIVATE_DATA->pending = false;
 	if (state != INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->moving = false;
 	}
@@ -361,6 +364,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			fli_stop(device);
 			PRIVATE_DATA->moving = false;
 		}
+		PRIVATE_DATA->pending = false;
 		PRIVATE_DATA->steps_to_go = 0;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		//- focuser.on_disconnect
@@ -415,6 +419,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
+		PRIVATE_DATA->pending = false;
 		if (!fli_stop(device)) {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
@@ -472,10 +477,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_POSITION.on_change_request
+		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_STEPS.on_change_request
+		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {

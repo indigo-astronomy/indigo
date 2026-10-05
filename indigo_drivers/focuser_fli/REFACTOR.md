@@ -139,3 +139,11 @@ Not applicable, with the reason:
 - Driver-specific properties, settings and their persistence: none exist.
 - Shared controllers, `ADDITIONAL_INSTANCES`: every focuser is its own SDK device.
 - Hardware: no FLI focuser available, no physical run.
+
+### Refusal hiding a pending move (2026-10-05, version 16)
+
+| Id | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| `DRV-185` | While the handler of an accepted move was still talking to the SDK, the refusal of a second request turned `FOCUSER_POSITION` ALERT; neither motion property was BUSY and the driver was not yet moving, so a following `FOCUSER_STEPS` request was accepted and a second move was queued. | A pending flag set by `on_change_request` for every accepted `FOCUSER_POSITION` or `FOCUSER_STEPS` request and cleared when the move publishes its first outcome, by abort and by disconnect is part of the refusal condition. | `refusal_keeps_pending_move` (failed against version 15, passes against 16) |
+
+Found while aligning `focuser_astromechanics`, where the same window let a second `M` command through.
