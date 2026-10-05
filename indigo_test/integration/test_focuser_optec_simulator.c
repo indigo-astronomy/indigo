@@ -590,9 +590,19 @@ static void motion_failure(void) {
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 10, INDIGO_ALERT_STATE));
 		SERIAL_CHECK_TRUE(commands("FMMODE") == handshakes);
 	} else {
-		SERIAL_CHECK_TRUE(at_position(!strcmp(current_profile, "start_rejected") || !strcmp(current_profile, "stall") ? 5000 : 5500));
+		// The focuser settles where it really is, with value equal to target, and the failure stays ALERT through
+		// later idle polls; a fresh move is then accepted.
+		double settled = !strcmp(current_profile, "start_rejected") || !strcmp(current_profile, "stall") ? 5000 : 5500;
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, settled, 1));
+		int polls = commands("FPOSRO");
+		for (int retry = 0; retry < 200 && commands("FPOSRO") < polls + 3; retry++) {
+			indigo_usleep(25000);
+		}
+		SERIAL_CHECK_TRUE(commands("FPOSRO") >= polls + 3);
+		SERIAL_CHECK_TRUE(item_target(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == settled);
+		SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE && find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
-		SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(at_position(settled + 10));
 	}
 cleanup:
 	driver_stop();

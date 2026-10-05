@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_optec"
 #define DRIVER_LABEL         "Optec TCF-S Focuser"
 #define FOCUSER_DEVICE_NAME  "Optec TCF-S"
@@ -63,7 +63,7 @@ typedef struct {
 	//+ data
 	char response[64];
 	int position, expected_position, last_position, stalled, recovery_position, recovery_samples;
-	bool active, uncertain, automatic_mode, external, reversed;
+	bool active, uncertain, automatic_mode, external, reversed, failed;
 	//- data
 } optec_private_data;
 
@@ -220,6 +220,7 @@ static void motion_finalizer(indigo_device *device) {
 		PRIVATE_DATA->active = false;
 		PRIVATE_DATA->uncertain = true;
 		PRIVATE_DATA->recovery_samples = 0;
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		optec_motion_state(device, INDIGO_ALERT_STATE);
 		return;
 	}
@@ -237,6 +238,7 @@ static void motion_finalizer(indigo_device *device) {
 		PRIVATE_DATA->uncertain = true;
 		PRIVATE_DATA->recovery_position = position;
 		PRIVATE_DATA->recovery_samples = 1;
+		FOCUSER_POSITION_ITEM->number.target = position;
 		optec_motion_state(device, INDIGO_ALERT_STATE);
 		return;
 	}
@@ -258,10 +260,13 @@ static void focuser_timer_callback(indigo_device *device) {
 		if (optec_position(device, &position)) {
 			if (PRIVATE_DATA->uncertain) {
 				if (PRIVATE_DATA->recovery_samples > 0 && position == PRIVATE_DATA->recovery_position) {
+					// The focuser settled, so a fresh move is accepted again, but the failed move stays ALERT at the
+					// position the focuser reached.
 					PRIVATE_DATA->uncertain = false;
+					PRIVATE_DATA->failed = true;
 					PRIVATE_DATA->recovery_samples = 0;
 					FOCUSER_POSITION_ITEM->number.target = position;
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					PRIVATE_DATA->recovery_position = position;
 					PRIVATE_DATA->recovery_samples = 1;
@@ -269,11 +274,13 @@ static void focuser_timer_callback(indigo_device *device) {
 				}
 			} else if (position != previous) {
 				PRIVATE_DATA->external = true;
+				PRIVATE_DATA->failed = false;
 				FOCUSER_POSITION_ITEM->number.target = position;
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			} else {
+				// A failed move is not turned OK by an idle poll.
 				FOCUSER_POSITION_ITEM->number.target = position;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->failed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 				if (PRIVATE_DATA->external) {
 					PRIVATE_DATA->external = false;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -301,7 +308,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			int position = 0, coefficient = 0, temperature = 0;
 			connection_result = optec_position(device, &position) && (temperature = optec_temperature(device)) != 0 && optec_compensation(device, &coefficient);
 			if (connection_result) {
-				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->automatic_mode = PRIVATE_DATA->external = false;
+				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->automatic_mode = PRIVATE_DATA->external = PRIVATE_DATA->failed = false;
 				PRIVATE_DATA->reversed = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
 				FOCUSER_TEMPERATURE_PROPERTY->state = temperature > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 				PRIVATE_DATA->recovery_samples = 0;
@@ -367,9 +374,10 @@ static void focuser_steps_handler(indigo_device *device) {
 	if (!IS_CONNECTED || PRIVATE_DATA->automatic_mode || PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
 		optec_motion_state(device, INDIGO_ALERT_STATE);
 	} else if (actual_steps == 0) {
+		PRIVATE_DATA->failed = false;
 		optec_motion_state(device, INDIGO_OK_STATE);
 	} else if (optec_exact(device, "*", physical_inward ? "FI%04d" : "FO%04d", actual_steps)) {
-		PRIVATE_DATA->external = false;
+		PRIVATE_DATA->external = PRIVATE_DATA->failed = false;
 		PRIVATE_DATA->expected_position = target;
 		PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 		PRIVATE_DATA->stalled = 0;

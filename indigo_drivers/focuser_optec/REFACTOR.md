@@ -226,7 +226,18 @@ the 3.0.0.9 sources; the shared tree was not reverted.
 - `make -C indigo_test build/integration/test_focuser_optec_simulator`, then one
   recorded run with `python3 tools/run_driver_test.py focuser_optec`: 40 cases.
 
+## Failed moves stay ALERT (3.0.0.11, 2026-10-05)
+
+A rule of the focuser chapter was missed in 3.0.0.10: a stalled move or a failed status read
+during a move "is not turned OK by a later idle poll", and a fresh move works.
+
+| Defect | Fix | Regression test (fails against 3.0.0.10) |
+|---|---|---|
+| After a start failure, a stall or a failed readback during a move the driver waited for two equal position polls and then published both motion properties OK, so the failure disappeared; until then the requested target stayed published. | The failure sets the target to the position read last; the two equal polls only re-enable moves and set value and target to the settled position, while both properties stay ALERT through later idle polls. The next move, an uncommanded motion or a zero-step request clears it. | `motion_start_failure`, `motion_start_rejected`, `motion_poll_failure`, `motion_stall` |
+
+The pre-fix result comes from a separate binary built against a copy of the 3.0.0.10 sources.
+
 ## Final test summary
 
-- Simulated tests: 40 run, 40 passed (recorded run of 3.0.0.10, macOS arm64).
+- Simulated tests: 40 run, 40 passed (recorded run of 3.0.0.11, macOS arm64).
 - Hardware tests: 0 run, 0 passed.
