@@ -76,7 +76,7 @@
 | dome_skyroof            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 11 / 0 | |
 | dome_talon6ror          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 36 / 0 | |
 | focuser_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 10 / 0 | |
-| focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
+| focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 24 / 0 | |
 | focuser_astroasis       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 39 / 0 | |
 | focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 21 / 0 | |
 | focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 25 / 0 | |
