@@ -315,4 +315,4 @@ No backlash, compensation, mode or controller-side reversal; `X`, `S` and `D` ha
 ### Test summary
 
 - Simulated tests: 35 run, 35 passed (`python3 tools/run_driver_test.py focuser_focusdreampro`, macOS arm64).
-- Hardware tests: 0 run, 0 passed in this alignment (the earlier 15/15 hardware run was against 3.0.0.9).
+- Hardware tests: 15 run, 15 passed on the AGadget FocusDreamPro (macOS arm64, 2026-10-05, 3.0.0.12), including the abort ending ALERT and the stop on disconnect. The first run failed `focusdreampro_applies_the_travel_limit`: the hardware suite sent the `FOCUSER_LIMITS` minimum and maximum as two requests without waiting, and since a limit change now writes `X:` to the controller the second request arrived while the property was BUSY and was dropped by the framework, so the focuser went past the intended limit. The suite now waits for each limit change to settle; the driver was not changed.

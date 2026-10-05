@@ -144,7 +144,7 @@ static void restore_initial_state(void) {
 	}
 	hw_set_switch(focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
 	hw_set_switch(focuser, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
-	indigo_change_number_property_1(&hw_client, hw_device_name(focuser), FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, initial_limit_min);
+	hw_set_number(focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, initial_limit_min, INDIGO_OK_STATE, SHORT_TIMEOUT);
 	hw_set_number(focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, initial_limit_max, INDIGO_OK_STATE, SHORT_TIMEOUT);
 	set_speed(FASTEST_SPEED);
 	if (move_to(initial_position)) {
@@ -257,7 +257,9 @@ static void focusdreampro_syncs_the_position(void) {
 static void focusdreampro_applies_the_travel_limit(void) {
 	double limit = initial_position + travel / 2;
 	ASSERT_TRUE(set_speed(FASTEST_SPEED));
-	indigo_change_number_property_1(&hw_client, hw_device_name(focuser), FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, initial_limit_min);
+	// FOCUSER_LIMITS is BUSY while the driver writes X:, and a second request in that window is dropped,
+	// so each item change has to settle before the next one is sent.
+	ASSERT_TRUE(hw_set_number(focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, initial_limit_min, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_set_number(focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, limit, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(move_to(limit));
 	// Asking for more than the limit must stop at the limit, not at the requested target.
@@ -265,7 +267,7 @@ static void focusdreampro_applies_the_travel_limit(void) {
 	hw_request_number(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, initial_position + travel);
 	ASSERT_TRUE(hw_wait_state(focuser, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE, MOVE_TIMEOUT));
 	ASSERT_NEAR(limit, position(), 0);
-	indigo_change_number_property_1(&hw_client, hw_device_name(focuser), FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, initial_limit_min);
+	ASSERT_TRUE(hw_set_number(focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MIN_POSITION_ITEM_NAME, initial_limit_min, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(hw_set_number(focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, initial_limit_max, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(move_to(initial_position));
 }
