@@ -220,7 +220,7 @@
 |  | 2026-09-30 19:34 | 3.0.0.11 | linux arm64 | simulator | 18 / 18 | ✅ OK |
 |  | 2026-09-30 19:36 | 3.0.0.11 | linux arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
 | focuser_ioptron | 2026-09-27 00:32 | 3.0.0.10 | linux x64 | simulator | 42 / 42 | ✅ OK |
-|  | 2026-09-27 22:56 | 3.0.0.10 | mac arm64 | simulator | 42 / 42 | ✅ OK |
+|  | 2026-10-05 15:08 | 3.0.0.11 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 | focuser_lacerta | 2026-10-05 15:03 | 3.0.0.9 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_lakeside | 2026-09-27 23:20 | 3.0.0.9 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | focuser_lunatico | 2026-09-27 23:01 | 3.0.0.15 | mac arm64 | simulator | 50 / 50 | ✅ OK |
