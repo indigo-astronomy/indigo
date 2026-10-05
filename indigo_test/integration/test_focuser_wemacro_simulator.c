@@ -59,6 +59,7 @@ static const char *observed_names[] = {
 	X_RAIL_CONFIG_PROPERTY_NAME, X_RAIL_SHUTTER_PROPERTY_NAME, X_RAIL_EXECUTE_PROPERTY_NAME
 };
 static atomic_uint revisions[ARRAY_SIZE(observed_names)], busy_updates;
+static _Atomic(indigo_device *) focuser_device;
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < (int)ARRAY_SIZE(observed_names); i++) {
@@ -72,6 +73,9 @@ static int observed_index(const char *name) {
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_result result = simulator_client_update_property(client, device, property, message);
 	int index = observed_index(property->name);
+	if (!strcmp(property->device, wemacro.device_name)) {
+		atomic_store(&focuser_device, device);
+	}
 	if (index >= 0) {
 		atomic_fetch_add(&revisions[index], 1);
 	}
@@ -131,6 +135,10 @@ static bool wait_event(const char *kind, const char *prefix, int count) {
 		indigo_usleep(20000);
 	}
 	return false;
+}
+
+static int all_received(void) {
+	return event_count("RX", "");
 }
 
 static bool start_driver(void) {
@@ -295,6 +303,12 @@ static void capabilities(void) {
 	SERIAL_CHECK_TRUE(find_cached_item(X_RAIL_EXECUTE_PROPERTY_NAME, X_RAIL_EXECUTE_PER_STEP_ITEM_NAME)->number.min == 1 && find_cached_item(X_RAIL_EXECUTE_PROPERTY_NAME, X_RAIL_EXECUTE_PER_STEP_ITEM_NAME)->number.max == 9);
 	SERIAL_CHECK_TRUE(find_cached_item(X_RAIL_EXECUTE_PROPERTY_NAME, X_RAIL_EXECUTE_INTERVAL_ITEM_NAME)->number.min == 1 && find_cached_item(X_RAIL_EXECUTE_PROPERTY_NAME, X_RAIL_EXECUTE_INTERVAL_ITEM_NAME)->number.max == 99);
 	SERIAL_CHECK_TRUE(find_cached_item(X_RAIL_EXECUTE_PROPERTY_NAME, X_RAIL_EXECUTE_LENGTH_ITEM_NAME)->number.max == 0xFFFFFF && find_cached_item(X_RAIL_EXECUTE_PROPERTY_NAME, X_RAIL_EXECUTE_COUNT_ITEM_NAME)->number.max == 0xFFFFFF);
+	// The rail is relative-only and open loop: no sync, backlash or compensation either.
+	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_ON_POSITION_SET_PROPERTY_NAME) && !has_defined_property(FOCUSER_BACKLASH_PROPERTY_NAME) && !has_defined_property(FOCUSER_COMPENSATION_PROPERTY_NAME));
+	// The driver-specific properties are deleted on disconnect.
+	disconnect_serial_device(&wemacro);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(X_RAIL_CONFIG_PROPERTY_NAME) == NULL && find_cached_property(X_RAIL_SHUTTER_PROPERTY_NAME) == NULL && find_cached_property(X_RAIL_EXECUTE_PROPERTY_NAME) == NULL);
 cleanup:
 	stop_driver();
 }
@@ -311,6 +325,7 @@ static void initialization_failure_retry(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&wemacro));
 	SERIAL_CHECK_TRUE(!connect_serial_device(&wemacro, fixture.port));
 	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(find_cached_property(X_RAIL_EXECUTE_PROPERTY_NAME) == NULL && find_cached_property(FOCUSER_STEPS_PROPERTY_NAME) == NULL);
 	stop_external_serial_simulator(&fixture);
 	external_serial_simulator replacement = { 0 };
 	const char *args[] = { "--profile", "normal", NULL };
@@ -324,8 +339,17 @@ cleanup:
 
 static void motion_and_controls(void) {
 	SERIAL_CHECK_TRUE(start_driver());
+	int configs = event_count("RX", "CONFIG");
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "CONFIG cmd=80 a=255", 1));
+	// A setting write sends one command carrying it; the driver-owned reversal and rail configuration send nothing.
+	SERIAL_CHECK_EQ_INT(configs + 1, event_count("RX", "CONFIG"));
+	int received = all_received();
+	SERIAL_CHECK_TRUE(switch_change(X_RAIL_CONFIG_PROPERTY_NAME, X_RAIL_CONFIG_BEEP_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_RAIL_CONFIG_PROPERTY_NAME, X_RAIL_CONFIG_BEEP_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(received, all_received());
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "MOVE_FORWARD cmd=40", 1));
@@ -353,9 +377,17 @@ static void overlap_and_abort(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "STOP", 1));
 	SERIAL_CHECK_EQ_INT(1, event_count("RX", "MOVE_FORWARD"));
+	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
 	int stops = event_count("RX", "STOP");
-	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	// The aborted move sends no later completion stop, and stays ALERT.
+	indigo_usleep(2500000);
 	SERIAL_CHECK_EQ_INT(stops, event_count("RX", "STOP"));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	// An abort while idle, or a request with the item OFF, sends no stop and leaves FOCUSER_STEPS alone.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(stops, event_count("RX", "STOP"));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_OK_STATE));
 cleanup:
 	stop_driver();
@@ -367,6 +399,9 @@ static void motion_failure_recovery(void) {
 	SERIAL_CHECK_TRUE(fault("MOVE_FORWARD", action));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_ALERT_STATE));
+	// The failed move sends the stop and is not left BUSY; after an abort a fresh move works.
+	SERIAL_CHECK_TRUE(wait_event("RX", "STOP", 1));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_OK_STATE));
 cleanup:
@@ -381,7 +416,14 @@ static void disconnect_reconnect(void) {
 	SERIAL_CHECK_TRUE(wait_event("RX", "MOVE_FORWARD", 1));
 	disconnect_serial_device(&wemacro);
 	SERIAL_CHECK_TRUE(!context.connected && wait_event("RX", "STOP", 1));
+	// The stop is sent once before the port closes and nothing follows.
+	indigo_usleep(100000);
+	int received = all_received();
+	SERIAL_CHECK_EQ_INT(1, event_count("RX", "STOP"));
+	indigo_usleep(1000000);
+	SERIAL_CHECK_EQ_INT(received, all_received());
 	SERIAL_CHECK_TRUE(connect_serial_device(&wemacro, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_OK_STATE));
 cleanup:
 	stop_driver();
@@ -458,6 +500,9 @@ static void batch_failure_recovery(void) {
 	const char *action = strstr(current_case, "malformed") != NULL ? "malformed" : strstr(current_case, "silent") != NULL ? "silent" : "wrong";
 	SERIAL_CHECK_TRUE(fault("BATCH_EXEC", action));
 	SERIAL_CHECK_TRUE(batch_change(values, INDIGO_ALERT_STATE));
+	// The failed batch sends the stop and is not left BUSY; after an abort a fresh batch works.
+	SERIAL_CHECK_TRUE(wait_event("RX", "STOP", 1));
+	SERIAL_CHECK_TRUE(find_cached_property(X_RAIL_EXECUTE_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(batch_change(values, INDIGO_OK_STATE));
 cleanup:
@@ -500,7 +545,77 @@ static void transport_failure(void) {
 	before = atomic_load(&revisions[index]);
 	SERIAL_CHECK_TRUE(fault("TRANSPORT", "close") && wait_event("CLOSE", "transport", 1));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// Every later request ends ALERT without a stale BUSY, a momentary switch is back OFF, and disconnect completes.
+	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_ALERT_STATE) || find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_RAIL_SHUTTER_PROPERTY_NAME, X_RAIL_SHUTTER_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(X_RAIL_SHUTTER_PROPERTY_NAME, X_RAIL_SHUTTER_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 cleanup:
+	stop_driver();
+}
+
+// Reversal, rail configuration and speed requested during a move end ALERT without a command and keep the value.
+static void controls_during_motion(void) {
+	SERIAL_CHECK_TRUE(start_driver());
+	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1000));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event("RX", "MOVE_FORWARD", 1));
+	int received = all_received();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME)->number.value == 1);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(switch_change(X_RAIL_CONFIG_PROPERTY_NAME, X_RAIL_CONFIG_BACK_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(X_RAIL_CONFIG_PROPERTY_NAME, X_RAIL_CONFIG_BACK_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(received, all_received());
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	// After the move the same requests are accepted.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_RAIL_CONFIG_PROPERTY_NAME, X_RAIL_CONFIG_BACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2, INDIGO_OK_STATE));
+cleanup:
+	stop_driver();
+}
+
+// A gate handler holds the device queue, so a move is accepted and queued behind it; the urgent abort overtakes it.
+static atomic_bool gate_entered, gate_release;
+
+static void gate_handler(indigo_device *device) {
+	atomic_store(&gate_entered, true);
+	for (int i = 0; i < 5000 && !atomic_load(&gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+// An abort that overtakes a move still queued sends the stop once, never sends the queued move, and ends it ALERT.
+static void abort_overtakes_queued_move(void) {
+	atomic_store(&gate_entered, false);
+	atomic_store(&gate_release, false);
+	SERIAL_CHECK_TRUE(start_driver());
+	SERIAL_CHECK_TRUE(atomic_load(&focuser_device) != NULL);
+	int stops = event_count("RX", "STOP");
+	indigo_execute_handler(atomic_load(&focuser_device), gate_handler);
+	for (int i = 0; i < 300 && !atomic_load(&gate_entered); i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&gate_entered));
+	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_EQ_INT(0, event_count("RX", "MOVE_"));
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count("RX", "STOP"));
+	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_OK_STATE));
+cleanup:
+	atomic_store(&gate_release, true);
 	stop_driver();
 }
 
@@ -615,6 +730,8 @@ int main(void) {
 		{ "motion_malformed_status", motion_failure_recovery, "normal" },
 		{ "motion_silent_status", motion_failure_recovery, "normal" },
 		{ "disconnect_reconnect", disconnect_reconnect, "normal" },
+		{ "controls_during_motion", controls_during_motion, "normal" },
+		{ "abort_overtakes_queued_move", abort_overtakes_queued_move, "normal" },
 		{ "configuration_and_shutter", configuration_and_shutter, "normal" },
 		{ "batch_no_back", batch_execution, "normal" },
 		{ "batch_back", batch_execution, "normal" },
@@ -623,6 +740,7 @@ int main(void) {
 		{ "batch_wrong_status", batch_failure_recovery, "normal" },
 		{ "batch_silent_status", batch_failure_recovery, "normal" },
 		{ "batch_disconnect_reconnect", batch_disconnect_reconnect, "normal" },
+		{ "batch_reconnect_slow_stop_status", batch_disconnect_reconnect, "slow_stop" },
 		{ "batch_execute_write_failure", batch_execute_write_failure, "normal" },
 		{ "transport_failure", transport_failure, "normal" },
 		{ "shutdown_and_instances", shutdown_and_instances, "normal" }

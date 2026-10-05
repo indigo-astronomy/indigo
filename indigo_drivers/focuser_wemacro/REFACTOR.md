@@ -81,3 +81,70 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && WEMACRO_TEST_FILTER=rejected_change ./build/integration/test_focuser_wemacro_simulator
 ```
+
+## Focuser testing rules alignment (3.0.0.9, 2026-10-05)
+
+The regression suite was checked against the extended "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` (fa5f64839). The rail is relative-only and open loop (no position
+readback), so the rules for focusers without position readback apply: an aborted move ends `FOCUSER_STEPS`
+ALERT and no later completion stop is sent (`overlap_and_abort`), and disconnecting during a move or batch
+sends the stop before the port closes, which the driver already did and `disconnect_reconnect` now pins to
+exactly one STOP with nothing after it.
+
+### Defects found and fixed (reproduced against a pre-fix 3.0.0.8 build of the same test)
+
+- **An abort that overtook a queued move sent no stop.** The move or batch still waiting behind the queue was
+  cancelled and ended ALERT, but the stop was sent only for an operation already running. The rules require
+  the stop once for the overtaken move as well. Test: `abort_overtakes_queued_move`.
+- **A refused `FOCUSER_SPEED` request showed the requested value.** The speed handler already applied the
+  value only after the controller accepted it, but the property lacked `preserve_values`, so the framework
+  copied the request into the value. Test: `controls_during_motion`.
+- **`FOCUSER_REVERSE_MOTION` and `X_RAIL_CONFIG` were accepted during a move or batch.** Both are owned by the
+  driver; `X_RAIL_CONFIG.BACK` also decides how `batch_finalizer` recognises the end of a batch. Both are now
+  refused with ALERT and keep the previous items (tracked from connect). Test: `controls_during_motion`
+  (fails at the reversal against 3.0.0.8 once the speed check is skipped).
+- **The reset fallback left a stray status that failed the next batch or move.** The first recorded run of
+  this step failed `batch_disconnect_reconnect` (25/24). On reconnect the rail sends no initial status, so
+  `wemacro_initialise()` runs the fallback: a move of no steps, a stop, wait for FORWARD, discard, a second
+  move, wait for FORWARD. The move status arrives at once and the status that follows the stop later; the
+  discard ran before it arrived, the second wait consumed one of the two remaining statuses, and the other one
+  was later read by `batch_finalizer` as a wrong batch status (ALERT). The discard is replaced by
+  `wemacro_drain()`, which reads statuses until the line is quiet for 0.1 s (at most 10) and then discards.
+  The simulator now completes a move of no steps at once (before it reads the following stop), and the new
+  profile `slow_stop` sends the stop status after 60 ms instead of 20 ms. Test:
+  `batch_reconnect_slow_stop_status`, which fails deterministically against 3.0.0.8; `batch_disconnect_reconnect`
+  fails there intermittently.
+
+### Added coverage
+
+| Rule | Test |
+| --- | --- |
+| Negative contract (`FOCUSER_ON_POSITION_SET`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION` undefined), `X_` properties deleted on disconnect | `capabilities_*` |
+| Refused connect leaves no focuser or `X_` property | `initialization_failure_retry` |
+| One CONFIG command per speed write; driver-owned reversal and rail configuration send nothing | `motion_and_controls` |
+| Aborted move: switch back OFF, no later completion stop, stays ALERT; idle abort and OFF request send nothing | `overlap_and_abort` |
+| Failed status during a move or batch sends the stop and is not left BUSY | `motion_*_status`, `batch_*_status` |
+| Settings and geometry controls during a move: ALERT, no command, value kept | `controls_during_motion` |
+| Abort overtakes a queued move: one stop, the move is never sent | `abort_overtakes_queued_move` |
+| Disconnect during a move: one STOP, nothing after close, not BUSY after reconnect | `disconnect_reconnect` |
+| Reconnect through the reset fallback with a late stop status, then a fresh batch | `batch_reconnect_slow_stop_status` |
+| Transport loss: later move, speed and shutter requests ALERT, shutter back OFF, no stale BUSY | `transport_failure` |
+
+### Rules not applicable or left open
+
+- No position readback, absolute moves, SYNC, limits, temperature, compensation or mode; no identity or
+  firmware query (the `INFO` model is a placeholder); no polling, so the requests-versus-polls row does not
+  apply; no device state to read at connect.
+- The stop command has no acknowledgement, so a refused stop can only be produced by transport loss.
+- After a failed move or batch the driver still requires an abort before the next move (`uncertain`), as the
+  other focuser suites do. Left open: the rail sends a status after every stop (20 ms in the simulator); a
+  forward move started right after an abort could take that stray status as its completion. Not reproduced
+  by a test.
+- `X_RAIL_CONFIG` is persistent, but the suite does not run a `CONFIG` save/load roundtrip (it does not
+  redirect `HOME`), so persistence remains uncovered.
+
+```sh
+python3 tools/run_driver_test.py focuser_wemacro
+```
+
+Final test summary: 26 simulated tests run, 26 passed; 0 hardware tests run, 0 passed.

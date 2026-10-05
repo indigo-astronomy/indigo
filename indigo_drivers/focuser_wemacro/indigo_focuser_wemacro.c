@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_wemacro"
 #define DRIVER_LABEL         "WeMacro Rail Focuser"
 #define FOCUSER_DEVICE_NAME  "WeMacro Rail"
@@ -95,7 +95,7 @@ typedef struct {
 	uint8_t batch_command, batch_settle, batch_per_step, batch_interval;
 	uint32_t batch_length, batch_count;
 	double deadline;
-	bool motion_active, batch_active, batch_start_pending, uncertain;
+	bool motion_active, batch_active, batch_start_pending, uncertain, reversed, back, beep;
 	//- data
 } wemacro_private_data;
 
@@ -268,13 +268,21 @@ static void batch_start_finalizer(indigo_device *device) {
 	}
 }
 
+static bool wemacro_drain(indigo_device *device) {
+	// The status that follows a stop can arrive after the status of the preceding move, read until the line is quiet.
+	uint8_t status = 0;
+	for (int i = 0; i < 10 && wemacro_read_status(device, 0.1, &status) > 0; i++) {
+	}
+	return indigo_uni_discard(PRIVATE_DATA->handle) >= 0;
+}
+
 static bool wemacro_initialise(indigo_device *device) {
 	uint8_t status = 0;
 	if (wemacro_read_status(device, 2, &status) > 0 && status == WEMACRO_STATUS_INITIAL) {
 		return wemacro_write(device, wemacro_options(device, true), wemacro_speed(device), 0, 0, 0);
 	}
 	indigo_uni_discard(PRIVATE_DATA->handle);
-	return wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_write(device, 0x20, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && wemacro_write(device, wemacro_options(device, true), wemacro_speed(device), 0, 0, 0);
+	return wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_write(device, 0x20, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && wemacro_drain(device) && wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && wemacro_write(device, wemacro_options(device, true), wemacro_speed(device), 0, 0, 0);
 }
 
 static bool wemacro_open(indigo_device *device) {
@@ -301,6 +309,9 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ focuser.on_connect
 			PRIVATE_DATA->motion_active = PRIVATE_DATA->batch_active = PRIVATE_DATA->batch_start_pending = PRIVATE_DATA->uncertain = false;
+			PRIVATE_DATA->reversed = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+			PRIVATE_DATA->back = X_RAIL_CONFIG_BACK_ITEM->sw.value;
+			PRIVATE_DATA->beep = X_RAIL_CONFIG_BEEP_ITEM->sw.value;
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			//- focuser.on_connect
 		}
@@ -359,6 +370,20 @@ static void focuser_connection_handler(indigo_device *device) {
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void focuser_reverse_motion_handler(indigo_device *device) {
+	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
+	// The driver owns the reversal; it is refused during a move or batch and keeps the previous item.
+	if (PRIVATE_DATA->motion_active || PRIVATE_DATA->batch_active || PRIVATE_DATA->batch_start_pending || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		PRIVATE_DATA->reversed = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+	}
+	//- focuser.FOCUSER_REVERSE_MOTION.on_change
+	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+}
+
 static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
@@ -404,7 +429,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, motion_finalizer);
 		indigo_cancel_pending_handler(device, batch_start_finalizer);
 		indigo_cancel_pending_handler(device, batch_finalizer);
-		bool active = PRIVATE_DATA->motion_active || PRIVATE_DATA->batch_active || PRIVATE_DATA->batch_start_pending || PRIVATE_DATA->uncertain;
+		// A move or batch still queued is cancelled and the stop is sent for it as well.
+		bool active = pending || PRIVATE_DATA->motion_active || PRIVATE_DATA->batch_active || PRIVATE_DATA->batch_start_pending || PRIVATE_DATA->uncertain;
 		PRIVATE_DATA->motion_active = PRIVATE_DATA->batch_active = PRIVATE_DATA->batch_start_pending = false;
 		if (active && (!IS_CONNECTED || !wemacro_stop(device))) {
 			PRIVATE_DATA->uncertain = true;
@@ -424,6 +450,22 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
+}
+
+static void focuser_x_rail_config_handler(indigo_device *device) {
+	X_RAIL_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_RAIL_CONFIG.on_change
+	// The batch completion depends on BACK, so the configuration is refused during a move or batch.
+	if (PRIVATE_DATA->motion_active || PRIVATE_DATA->batch_active || PRIVATE_DATA->batch_start_pending || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		X_RAIL_CONFIG_BACK_ITEM->sw.value = PRIVATE_DATA->back;
+		X_RAIL_CONFIG_BEEP_ITEM->sw.value = PRIVATE_DATA->beep;
+		X_RAIL_CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		PRIVATE_DATA->back = X_RAIL_CONFIG_BACK_ITEM->sw.value;
+		PRIVATE_DATA->beep = X_RAIL_CONFIG_BEEP_ITEM->sw.value;
+	}
+	//- focuser.X_RAIL_CONFIG.on_change
+	indigo_update_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 }
 
 static void focuser_x_rail_shutter_handler(indigo_device *device) {
@@ -532,12 +574,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_PROCESS_CONNECT(focuser_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
-		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another rail operation is in progress");
@@ -547,9 +587,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_RAIL_CONFIG_PROPERTY, property)) {
-		indigo_property_copy_values(X_RAIL_CONFIG_PROPERTY, property, false);
-		X_RAIL_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_RAIL_CONFIG_PROPERTY, focuser_x_rail_config_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_RAIL_SHUTTER_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_RAIL_SHUTTER_PROPERTY, focuser_x_rail_shutter_handler);
