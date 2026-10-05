@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_optec"
 #define DRIVER_LABEL         "Optec TCF-S Focuser"
 #define FOCUSER_DEVICE_NAME  "Optec TCF-S"
@@ -63,7 +63,7 @@ typedef struct {
 	//+ data
 	char response[64];
 	int position, expected_position, last_position, stalled, recovery_position, recovery_samples;
-	bool active, uncertain, automatic_mode;
+	bool active, uncertain, automatic_mode, external, reversed;
 	//- data
 } optec_private_data;
 
@@ -88,7 +88,7 @@ static bool optec_command(indigo_device *device, int expected, const char *comma
 		return true;
 	}
 	long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\n", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
-	if (count != expected + 1 || PRIVATE_DATA->response[count - 1] != '\r' || (long)strlen(PRIVATE_DATA->response) != count) {
+	if ((expected > 0 ? count != expected + 1 : count < 2) || PRIVATE_DATA->response[count - 1] != '\r' || (long)strlen(PRIVATE_DATA->response) != count) {
 		return false;
 	}
 	PRIVATE_DATA->response[count - 1] = 0;
@@ -153,18 +153,24 @@ static bool optec_position(indigo_device *device, int *position) {
 	return true;
 }
 
-static bool optec_temperature(indigo_device *device) {
-	if (!optec_command(device, 7, "FTMPRO") || strncmp(PRIVATE_DATA->response, "T=", 2) || (PRIVATE_DATA->response[2] != '+' && PRIVATE_DATA->response[2] != '-') || !isdigit((unsigned char)PRIVATE_DATA->response[3]) || !isdigit((unsigned char)PRIVATE_DATA->response[4]) || PRIVATE_DATA->response[5] != '.' || !isdigit((unsigned char)PRIVATE_DATA->response[6])) {
+static int optec_temperature(indigo_device *device) {
+	if (!optec_command(device, 0, "FTMPRO")) {
+		return 0;
+	}
+	if (!strcmp(PRIVATE_DATA->response, "ER=1")) {
+		return -1;
+	}
+	if (strlen(PRIVATE_DATA->response) != 7 || strncmp(PRIVATE_DATA->response, "T=", 2) || (PRIVATE_DATA->response[2] != '+' && PRIVATE_DATA->response[2] != '-') || !isdigit((unsigned char)PRIVATE_DATA->response[3]) || !isdigit((unsigned char)PRIVATE_DATA->response[4]) || PRIVATE_DATA->response[5] != '.' || !isdigit((unsigned char)PRIVATE_DATA->response[6])) {
 		return false;
 	}
 	char *end;
 	errno = 0;
 	double value = strtod(PRIVATE_DATA->response + 2, &end);
 	if (errno || *end || !isfinite(value) || value < -40 || value > 100) {
-		return false;
+		return 0;
 	}
 	FOCUSER_TEMPERATURE_ITEM->number.value = value;
-	return true;
+	return 1;
 }
 
 static bool optec_compensation(indigo_device *device, int *coefficient) {
@@ -248,7 +254,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	//+ focuser.on_timer
 	if (!PRIVATE_DATA->automatic_mode && !PRIVATE_DATA->active) {
-		int position = 0;
+		int position = 0, previous = PRIVATE_DATA->position;
 		if (optec_position(device, &position)) {
 			if (PRIVATE_DATA->uncertain) {
 				if (PRIVATE_DATA->recovery_samples > 0 && position == PRIVATE_DATA->recovery_position) {
@@ -261,16 +267,25 @@ static void focuser_timer_callback(indigo_device *device) {
 					PRIVATE_DATA->recovery_samples = 1;
 					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+			} else if (position != previous) {
+				PRIVATE_DATA->external = true;
+				FOCUSER_POSITION_ITEM->number.target = position;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			} else {
 				FOCUSER_POSITION_ITEM->number.target = position;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				if (PRIVATE_DATA->external) {
+					PRIVATE_DATA->external = false;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				}
 			}
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		FOCUSER_TEMPERATURE_PROPERTY->state = optec_temperature(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		int temperature = optec_temperature(device);
+		FOCUSER_TEMPERATURE_PROPERTY->state = temperature > 0 ? INDIGO_OK_STATE : temperature < 0 ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	indigo_execute_handler_in(device, 1, focuser_timer_callback);
@@ -283,10 +298,12 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = optec_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			int position = 0, coefficient = 0;
-			connection_result = optec_position(device, &position) && optec_temperature(device) && optec_compensation(device, &coefficient);
+			int position = 0, coefficient = 0, temperature = 0;
+			connection_result = optec_position(device, &position) && (temperature = optec_temperature(device)) != 0 && optec_compensation(device, &coefficient);
 			if (connection_result) {
-				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->automatic_mode = false;
+				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->automatic_mode = PRIVATE_DATA->external = false;
+				PRIVATE_DATA->reversed = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+				FOCUSER_TEMPERATURE_PROPERTY->state = temperature > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 				PRIVATE_DATA->recovery_samples = 0;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 				indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_MANUAL_ITEM, true);
@@ -308,7 +325,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
 		indigo_cancel_pending_handler(device, motion_finalizer);
-		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
+		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = false;
 		PRIVATE_DATA->recovery_samples = 0;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
@@ -352,6 +369,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	} else if (actual_steps == 0) {
 		optec_motion_state(device, INDIGO_OK_STATE);
 	} else if (optec_exact(device, "*", physical_inward ? "FI%04d" : "FO%04d", actual_steps)) {
+		PRIVATE_DATA->external = false;
 		PRIVATE_DATA->expected_position = target;
 		PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 		PRIVATE_DATA->stalled = 0;
@@ -371,12 +389,16 @@ static void focuser_compensation_handler(indigo_device *device) {
 	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_COMPENSATION.on_change
 	int requested = (int)FOCUSER_COMPENSATION_ITEM->number.target;
-	bool written = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && optec_exact(device, "DONE", "FLA%03d", abs(requested));
-	written = written && optec_exact(device, "DONE", "FZAxx%d", requested < 0 ? 1 : 0);
-	int actual = 0;
-	bool read = IS_CONNECTED && optec_compensation(device, &actual);
-	if (!written || !read || actual != requested) {
+	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || PRIVATE_DATA->external) {
+		FOCUSER_COMPENSATION_ITEM->number.target = FOCUSER_COMPENSATION_ITEM->number.value;
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		bool written = optec_exact(device, "DONE", "FLA%03d", abs(requested)) && optec_exact(device, "DONE", "FZAxx%d", requested < 0 ? 1 : 0);
+		int actual = 0;
+		bool read = optec_compensation(device, &actual);
+		if (!written || !read || actual != requested) {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	//- focuser.FOCUSER_COMPENSATION.on_change
 	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -386,7 +408,7 @@ static void focuser_mode_handler(indigo_device *device) {
 	FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_MODE.on_change
 	bool requested = FOCUSER_MODE_AUTOMATIC_ITEM->sw.value;
-	bool changed = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain;
+	bool changed = IS_CONNECTED && !PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && !PRIVATE_DATA->external;
 	if (changed && requested) {
 		changed = optec_exact(device, "DONE", "FQUIT1") && optec_command(device, -1, "FAMODE");
 	} else if (changed) {
@@ -411,6 +433,19 @@ static void focuser_mode_handler(indigo_device *device) {
 	}
 	//- focuser.FOCUSER_MODE.on_change
 	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+}
+
+static void focuser_reverse_motion_handler(indigo_device *device) {
+	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
+	if (PRIVATE_DATA->active || PRIVATE_DATA->external) {
+		indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		PRIVATE_DATA->reversed = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+	}
+	//- focuser.FOCUSER_REVERSE_MOTION.on_change
+	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (focuser)
@@ -477,9 +512,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_MODE_PROPERTY, focuser_mode_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
-		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);

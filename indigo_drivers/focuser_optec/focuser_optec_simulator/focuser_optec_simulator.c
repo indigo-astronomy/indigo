@@ -94,6 +94,14 @@ static bool read_fault(const char *command, char *action, size_t size) {
 		unlink(fault_file);
 		return false;
 	}
+	if (!strcmp(key, "handmove")) {
+		int position = atoi(action);
+		position = position < 0 ? 0 : position > maximum ? maximum : position;
+		stalled = false;
+		serial_motion_start(&motion, position, 200);
+		unlink(fault_file);
+		return false;
+	}
 	if (!strcmp(key, "temperature")) {
 		temperature = strtod(action, NULL);
 		unlink(fault_file);
@@ -117,6 +125,10 @@ static bool read_fault(const char *command, char *action, size_t size) {
 static bool write_reply(const char *payload, const char *action) {
 	if (!strcmp(action, "silent") || !strcmp(action, "reject")) {
 		return true;
+	}
+	if (!strcmp(action, "slow")) {
+		usleep(400000);
+		action = "";
 	}
 	if (!strcmp(action, "close")) {
 		running = 0;
@@ -208,6 +220,9 @@ static bool dispatch(const char *command) {
 		return write_reply(reply, action);
 	}
 	if (!strcmp(command, "FTMPRO")) {
+		if (!strcmp(profile, "no-probe")) {
+			return write_reply("ER=1", action);
+		}
 		snprintf(reply, sizeof(reply), "T=%+05.1f", temperature);
 		return write_reply(reply, action);
 	}
@@ -277,14 +292,14 @@ static bool parse_args(int argc, char **argv) {
 		} else if (index + 1 < argc && !strcmp(argv[index], "--profile")) {
 			profile = argv[++index];
 		} else if (!strcmp(argv[index], "--help") || !strcmp(argv[index], "-h")) {
-			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|tcf-s]\n", argv[0]);
+			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|tcf-s|no-probe]\n", argv[0]);
 			exit(0);
 		} else {
 			fprintf(stderr, "Unknown/incomplete option: %s\n", argv[index]);
 			return false;
 		}
 	}
-	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "alternate") || !strcmp(profile, "tcf-s");
+	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "alternate") || !strcmp(profile, "tcf-s") || !strcmp(profile, "no-probe");
 }
 
 int main(int argc, char **argv) {

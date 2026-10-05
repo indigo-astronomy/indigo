@@ -96,7 +96,7 @@
 | focuser_mypro2          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
 | focuser_nfocus          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | focuser_nstep           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | |
-| focuser_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
+| focuser_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 40 / 0 | |
 | focuser_optecfl         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 45 / 0 | |
 | focuser_primaluce       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 35 / 18 | |
 | focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 58 / 0 | |

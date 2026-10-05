@@ -152,3 +152,81 @@ modified by this work.
 Hardware validation is intentionally not part of this task. Platform portability
 will be established by generated code and portable APIs; only the local macOS
 simulator-backed build is executable here.
+
+## Focuser testing rules alignment (3.0.0.10)
+
+The suite was checked against the "Focuser Drivers" chapter of
+`indigo_test/DRIVER_TESTING_RULES.md` (compliance scenarios and the Focuser
+Driver Test Standard) and extended where a rule applies to the TCF-S.
+
+### Found defects
+
+| Defect | Impact | Fix | Regression test |
+|---|---|---|---|
+| A controller without a working temperature probe answers `FTMPRO` with the documented `ER=1` report, and the connect required a valid temperature. | A TCF-S without its probe (the most common fault the manual lists) could not be connected at all. | `ER=1` is treated as the no-sensor report: connect completes and `FOCUSER_TEMPERATURE` is IDLE; any other invalid reading stays ALERT with the last valid value. | `no_probe` (fails against 3.0.0.9: connect refused) |
+| Position changes the driver did not command (hand controller, a move still running at connect after a disconnect during motion) were published OK with every poll. | Clients saw a moving focuser as settled and could start a relative move from a stale position. | A poll that reads another position than the previous one publishes `FOCUSER_POSITION` and `FOCUSER_STEPS` BUSY with target equal to the measured value; the next unchanged poll ends both OK. `FOCUSER_STEPS` is only reset when the driver itself set it BUSY, so a pending move request is never overwritten. | `external_motion`, `disconnect_motion` (both fail against 3.0.0.9: no BUSY) |
+| A compensation request during a move was refused, but the readback `FREADA`/`FTxxxA` was still sent. | Device traffic in the middle of a move for a request already refused. | The request ends ALERT with the previous value and target restored and no command. | `settings_during_motion` (fails against 3.0.0.9: readback commands counted) |
+| `FOCUSER_REVERSE_MOTION` was accepted during a move. | A motion-geometry control changed while a move was running. | The request ends ALERT and keeps the previous item; the driver keeps the accepted value in its private data. | `settings_during_motion` (fails against 3.0.0.9: OK instead of ALERT) |
+
+The pre-fix results were obtained with a separate binary built against a copy of
+the 3.0.0.9 sources; the shared tree was not reverted.
+
+### Simulator additions
+
+- Profile `no-probe`: `FTMPRO` answers `ER=1`, the documented report for a
+  missing or failed probe.
+- Fault `handmove <position>`: the focuser moves at 200 steps/s without a serial
+  command, as with the hand controller.
+- Fault action `slow`: the reply is delayed by 400 ms, so a poll can be held in
+  flight while a request arrives.
+
+### Rule mapping
+
+| Rule | Test |
+|---|---|
+| Relative-only negative contract (read-only position, no `FOCUSER_ON_POSITION_SET`, `FOCUSER_LIMITS`, `FOCUSER_SPEED`, `FOCUSER_ABORT_MOTION`), ranges | `capabilities*` |
+| Connect command sequence `FMMODE`, `FPOSRO`, `FTMPRO`, `FREADA`, `FTxxxA`; model placeholder | `capabilities` |
+| Non-default start state (position, signed temperature, negative coefficient) | `capabilities_alternate` |
+| Refused connect: ALERT, no focuser property left, port released, next connect works | `init_*` |
+| Failed/malformed/partial/overlong position poll: ALERT with last value, recovery, move works | `poll_position_*` |
+| Failed or implausible temperature: ALERT with last value, recovery, move works; no-sensor report IDLE once | `poll_temperature_malformed`, `temperature_implausible`, `no_probe` |
+| Uncommanded motion BUSY then OK, target equals measurement, no command, later move starts from it | `external_motion` |
+| Replies split across reads | `capabilities_split`, `simulator_split` |
+| Inward/outward, reverse, zero steps, clamping at both ends sent as a move to the end | `relative_motion` |
+| Both motion properties BUSY also for a move shorter than one poll period | `short_move` |
+| Move request while a move is BUSY: no command, running move ends at its target | `overlap` (the same-property request is dropped by the framework BUSY guard) |
+| Start rejected (no acknowledgement): ALERT on both properties, position unchanged, next move works | `motion_start_rejected` |
+| Malformed acknowledgement, failed readback, stall | `motion_start_failure`, `motion_poll_failure`, `motion_stall` |
+| Transport loss during a move: ALERT, later requests ALERT without BUSY, no new handshake, disconnect completes | `motion_transport_close` |
+| Disconnect during motion: no poll after close; reconnect publishes the still running move BUSY then OK at the real position; fresh move | `disconnect_motion` |
+| Compensation, mode and reverse during a move: ALERT, previous value kept, no command | `settings_during_motion` |
+| Setting write, rejected/partial write with readback, mode switch and restore | `controls`, `compensation_partial_failure`, `mode_failure` |
+| Poll in flight when a move is accepted: one move command, `FOCUSER_STEPS` BUSY until the move ends OK | `request_versus_poll` |
+| `INDIGO_DRIVER_SHUTDOWN` refused while connected, connection keeps working | `shutdown_while_connected` |
+| Additional instance publishes its own device, the first survives its disconnect | `instances` |
+
+### Rules not applicable
+
+- Abort, aborted move ending ALERT, abort while idle, stop on stall and stop on
+  disconnect during motion: the TCF-S protocol has no stop command, so
+  `FOCUSER_ABORT_MOTION` is hidden and the controller always completes a move.
+  A disconnect during motion therefore releases serial control with `FFMODE`
+  and the next connect reports the still running move as uncommanded motion.
+- Absolute GOTO, SYNC, `FOCUSER_LIMITS`, speed, backlash, homing and
+  calibration: not exposed by the protocol or not represented by the driver.
+- Model and firmware identity: the protocol has no identification command, so
+  TCF-S (0–7000) and TCF-S3 (0–9999) cannot be told apart and the model keeps the
+  placeholder.
+- Driver-owned compensation: compensation runs inside the controller in AUTO-A
+  mode; the driver only writes the coefficient and switches the mode.
+- Shared controllers: one focuser per port.
+
+### Validation
+
+- `make -C indigo_test build/integration/test_focuser_optec_simulator`, then one
+  recorded run with `python3 tools/run_driver_test.py focuser_optec`: 40 cases.
+
+## Final test summary
+
+- Simulated tests: 40 run, 40 passed (recorded run of 3.0.0.10, macOS arm64).
+- Hardware tests: 0 run, 0 passed.
