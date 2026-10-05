@@ -230,7 +230,7 @@
 | focuser_nfocus | 2026-09-27 23:08 | 3.0.0.9 | mac arm64 | simulator | 10 / 10 | ✅ OK |
 | focuser_nstep | 2026-09-27 23:09 | 3.0.0.9 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | focuser_optec | 2026-10-05 15:03 | 3.0.0.10 | mac arm64 | simulator | 40 / 40 | ✅ OK |
-| focuser_optecfl | 2026-09-27 23:10 | 3.0.0.5 | mac arm64 | simulator | 45 / 45 | ✅ OK |
+| focuser_optecfl | 2026-10-05 15:43 | 3.0.0.6 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 |  | 2026-09-30 18:48 | 3.0.0.15 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-03 19:51 | 3.0.0.16 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
