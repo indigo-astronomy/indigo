@@ -80,3 +80,38 @@ Automated coverage will include all behavior exposed by this driver through INDI
 Change requests refused by a busy guard are now declared with the generator's `reject_change` block. The generated guard marks every item for update, sets `INDIGO_ALERT_STATE` and publishes the property with the message, so the client receives the actual driver-side values instead of an `INDIGO_OK_STATE` update carrying no items, which left the refused value visible in the client.
 
 **Not covered.** The only `reject_change` condition in this driver is `FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE`, and that state is only published by `INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE` for the moment between accepting the abort request and running the queued handler. `focuser_abort_motion_handler` ends in OK or ALERT and never parks in BUSY, and throughout that window `FOCUSER_STEPS` is itself BUSY from the move being aborted, so the framework BUSY guard in `INDIGO_COPY_VALUES_PROCESS_CHANGE` refuses the request before the driver guard can. The guard is kept for symmetry with the other focusers but is unreachable through the simulator; decide separately whether to drop it or to give abort an observable BUSY phase as `focuser_lakeside` has.
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.10)
+
+The simulator suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` and extended where a relevant rule was not verified. Against a copy of the 3.0.0.9 driver the extended suite failed 11 of 23 cases (`relative_motion`, `busy_guard_and_abort`, `capabilities_alternate`, `settings_readback`, `settings_during_motion`, `stop_ignored_then_retried`, `queued_abort`, `stalled_move`, `disconnect_during_motion`, `external_motion`, `temperature_runtime`); against 3.0.0.10 it passes 23 of 23.
+
+### Defects fixed
+
+| Defect | Impact | Fix | Regression case |
+| --- | --- | --- | --- |
+| Aborted move ended OK | Abort published `FOCUSER_STEPS`/`FOCUSER_POSITION` OK, and the stop was never confirmed. | The stop is confirmed by the motion status and a position readback; the aborted move ends both ALERT with value = target = stopped position. | `busy_guard_and_abort`, `queued_abort` |
+| Idle abort sent the stop | An abort while idle sent `:F10000#`. | Idle abort ends OK without a command; a request with the item OFF never sends one. | `busy_guard_and_abort` |
+| Ignored stop reported as done | A stop the controller did not execute was reported as a stopped move. | Unconfirmed stop: abort ALERT, the move stays BUSY and tracked; a retry stops it; a later natural end is still ALERT. | `stop_ignored_then_retried` |
+| Persistent failure blocked further moves; stall undetected | After a persistent status failure the driver stayed "uncertain" and refused every move until an abort; a motor reporting motion with a frozen position was polled forever. | Confirmed stop clears the uncertain state; six unchanged positions while moving send the stop and end ALERT; a fresh move needs no abort. | `stalled_move`, `status_failure_alerts_and_recovers` |
+| Position target never set | `FOCUSER_POSITION` (read-only) kept a stale target, also at connect. | Target is the expected end of a move, and equals the measured value at connect, after completion and after abort. | `relative_motion`, `capabilities_alternate`, `disconnect_during_motion` |
+| Hand-control motion | A position change the driver did not command was published OK in one step, five seconds later. | Published BUSY (target = measured), polled every 0.5 s until unchanged, then OK; no command. | `external_motion` |
+| Settings not verified | Speed, backlash, compensation, mode and phase wiring writes (which have no reply) were reported OK without checking; a write the controller ignored showed the requested value. | Each write is confirmed by its readback (`:RO`, `:RE`, `:RA`/`:RB`, `:RG`, `:RW`); a mismatch or failure ends ALERT showing the device value. | `settings_readback` |
+| Negative compensation encoded wrongly | A negative coefficient sent `:TS-04#` (sign inside the step count); the controller stored a step count the next connect could not parse, so the connection was refused (found by source audit; the readback in `settings_readback` and the reconnect check pin it). | The sign travels only in `:TT±010#`, the step count is the absolute value. | `settings_readback` |
+| Mode change left manual controls defined | Switching to automatic at runtime kept STEPS, SPEED, POSITION etc. defined, while a connect in automatic mode leaves them undefined. | The mode change deletes/defines the manual controls as the base focuser does at connect. | `capabilities_alternate`, `settings_readback` |
+| Settings changed during motion | Speed was refused but backlash, compensation, mode, phase wiring and stepping mode were applied during a move. | `reject_change` guards while a move is BUSY: ALERT, old values, no command. | `settings_during_motion` |
+| Temperature sentinel and implausible readings | A sensor reporting `-888` after connect was published ALERT on every poll; a reading outside the sensor range was published as the value. | The sentinel publishes IDLE once; an implausible reading is ALERT keeping the last value. | `temperature_runtime` |
+
+### Added cases
+
+`capabilities_alternate` (controller left in a non-default state: negative compensation, automatic mode, backlash, wiring, speed, negative position, temperature), `settings_readback`, `settings_during_motion`, `stop_ignored_then_retried`, `queued_abort` (abort overtakes a move queued behind a delayed poll), `stalled_move`, `disconnect_during_motion` (one stop before close, nothing after it, OK at the real position after reconnect), `external_motion`, `temperature_runtime`, `transport_loss_motion`, `transport_loss_idle`. Existing cases now also assert the relative-only negative contract (no `FOCUSER_ON_POSITION_SET`, no `FOCUSER_LIMITS`), identity, refused shutdown while connected, nothing defined after a refused connect (also for a silent identification), both motion properties BUSY including a sub-poll move, and that the first instance keeps working after the additional one disconnects.
+
+Simulator additions: fault actions `delay`, `stall` (on `:F`), `move<N>` (on `:RP`, motion the driver did not command), `implausible` (on `:RT`), a silent `:F10000#` models an ignored stop, and `--profile alternate`.
+
+### Rules not applicable
+
+Relative-only device: no GOTO, SYNC, limits or travel ends (moves are at most 999 steps); compensation is computed by the controller, so only the parameters sent in device units are tested, not the algorithm; single command moves (no multi-command sequence); no identity or firmware query beyond the `0x06` probe; no homing or calibration; no shared controller. Requests versus polls: the only writable motion request is `FOCUSER_STEPS`, and the idle poll leaves the motion properties alone while it is BUSY; no setting is polled.
+
+### Test summary
+
+- Simulated tests: 23 run, 23 passed (`python3 tools/run_driver_test.py focuser_nstep`, macOS arm64).
+- Hardware tests: 0 run, 0 passed.
