@@ -402,11 +402,11 @@ static void metadata_and_visible_properties(void) {
 		MOUNT_ALIGNMENT_RESET_PROPERTY_NAME
 	};
 	assert_defined_properties(firmware_gated, ARRAY_SIZE(firmware_gated));
-	// PARK is deliberately hidden: it leaves AM mounts in a state only the vendor app recovers.
-	// Nothing the controller lacks is defined either: no park set/position, home set/position,
-	// custom tracking rate, PEC or alignment point controls.
+	// Firmware 1.1.9 parks; storing a park position needs 1.3.0. Nothing the controller lacks is
+	// defined either: no park set/position, home set/position, custom tracking rate, PEC or
+	// alignment point controls.
+	assert_defined_property(MOUNT_PARK_PROPERTY_NAME);
 	static const char *absent[] = {
-		MOUNT_PARK_PROPERTY_NAME,
 		MOUNT_PARK_SET_PROPERTY_NAME,
 		MOUNT_PARK_POSITION_PROPERTY_NAME,
 		MOUNT_HOME_SET_PROPERTY_NAME,
@@ -466,7 +466,7 @@ static void read_only_properties_ignore_requests(void) {
 	SERIAL_CHECK_EQ_INT((int)mode_revision, (int)property_revision(ASI_MOUNT_MODE_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(cached_switch(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) == east);
 	SERIAL_CHECK_TRUE(cached_switch(ASI_MOUNT_MODE_PROPERTY_NAME, "EQUATORIAL"));
-	static const char *poll[] = { "GR", "GD", "GU", "Gm", "GC", "GL", "GG", "GAT" };
+	static const char *poll[] = { "GR", "GD", "GU", "Gps", "Gm", "GC", "GL", "GG", "GAT" };
 	int total = load_events(&simulator);
 	for (int i = mark; i < total; i++) {
 		bool known = false;
@@ -495,11 +495,10 @@ static void firmware_1_2_3_hides_meridian_and_alignment_reset(void) {
 	static const char *gated[] = {
 		ASI_MERIDIAN_PROPERTY_NAME,
 		ASI_MERIDIAN_LIMIT_PROPERTY_NAME,
-		MOUNT_ALIGNMENT_RESET_PROPERTY_NAME,
-		MOUNT_PARK_PROPERTY_NAME
+		MOUNT_ALIGNMENT_RESET_PROPERTY_NAME
 	};
 	assert_not_defined_properties(gated, ARRAY_SIZE(gated));
-	static const char *kept[] = { ASI_BUZZER_PROPERTY_NAME, ASI_MAX_SLEW_SPEED_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME };
+	static const char *kept[] = { ASI_BUZZER_PROPERTY_NAME, ASI_MAX_SLEW_SPEED_PROPERTY_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_PARK_PROPERTY_NAME };
 	assert_defined_properties(kept, ARRAY_SIZE(kept));
 	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
 	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
@@ -1013,6 +1012,201 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// -------------------------------------------------------------------------------- park
+
+static bool start_asi_simulator_with_option(external_serial_simulator *simulator, const char *option) {
+	const char *arguments[] = { "--model", "asi", option, NULL };
+	return start_external_serial_simulator_with_args(simulator, MOUNT_ASI_SIMULATOR_EXECUTABLE, arguments);
+}
+
+// Firmware 1.1.8 has no park, 1.1.9 parks without a park position, from 1.3.0 both; :Gps# is
+// polled only where the park exists.
+static void park_follows_the_firmware_level(void) {
+	const char *firmwares[] = { "1.1.8", "1.1.9", "1.3.0" };
+	const bool park[] = { false, true, true };
+	const bool park_set[] = { false, false, true };
+	int failures = indigo_test_failures;
+	for (int i = 0; i < 3; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		SERIAL_CHECK_TRUE(start_asi_simulator_with_firmware(&simulator, firmwares[i]));
+		SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+		online = true;
+		SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+		SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+		SERIAL_CHECK_EQ_INT(park[i], has_defined_property(MOUNT_PARK_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(park_set[i], has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(park[i], count_since(&simulator, 0, "Gps") > 0);
+		if (park_set[i]) {
+			SERIAL_CHECK_EQ_INT(1, find_cached_property(MOUNT_PARK_SET_PROPERTY_NAME)->count);
+		}
+	cleanup:
+		if (online) { stop_serial_driver(&asi_mount); }
+		stop_external_serial_simulator(&simulator);
+		if (indigo_test_failures != failures) {
+			return;
+		}
+	}
+}
+
+// The mount parks from home: away from home :hC# goes first and :hP# follows once the home slew
+// is over. The park comes from :Gps#, refuses motion, tracking and home, survives a reconnect and
+// is released by :Spu# alone, without any motion.
+static void park_goes_home_first_and_unpark_releases(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	static const char *sequence[] = { "Td", "hC", "hP" };
+	SERIAL_CHECK_TRUE(in_order_since(&simulator, mark, sequence, 3));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "hC"));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "hP"));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
+	// The park position is not home: the simulated mount stands on the equator.
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) < 1);
+	// Parked, the mount refuses goto, manual motion, tracking and home, and sends nothing.
+	mark = event_mark(&simulator);
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(set_coordinates(7, 15));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME));
+	set_switch(&asi_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME);
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	static const char *moves[] = { "MS", "Me", "Mw", "Mn", "Ms", "Te", "hC", "hP" };
+	for (int i = 0; i < ARRAY_SIZE(moves); i++) {
+		SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, moves[i]));
+	}
+	// A new session reads the park from :Gps#.
+	stop_serial_driver(&asi_mount);
+	online = false;
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	// The unpark releases the mount and moves nothing; the next polls keep it unparked.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "Spu"));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Spu"));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	for (int i = 0; i < ARRAY_SIZE(moves); i++) {
+		SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, moves[i]));
+	}
+	SERIAL_CHECK_TRUE(asi_coordinates(7, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// From home the park needs no home slew.
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, count_since(&simulator, mark, "hP"));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "hC"));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The refusals of the park commands end ALERT with the reason of the mount and leave the park
+// state as it was; an abort of the home slew of a park never sends :hP#.
+static void park_refusals_set_position_and_abort(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator_with_firmware(&simulator, "1.3.0"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	// An abort during the home slew ends the park, and :hP# never follows.
+	SERIAL_CHECK_TRUE(asi_coordinates(18, -60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "hC"));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, count_since(&simulator, mark, "hP"));
+	// The current position becomes the park position, unless the mount refuses it.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "Sp01"));
+	SERIAL_CHECK_EQ_INT(1, settled_count_since(&simulator, mark, "Sp01"));
+	SERIAL_CHECK_TRUE(!cached_switch(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME));
+	clear_messages();
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sp01", "5"));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_message("The mount has to be homed first"));
+	// The stored position is where the next park goes, away from home.
+	double stored_dec = coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(fabs(coordinate(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - stored_dec) < 0.01);
+	// A refused unpark keeps the mount parked, with the reason.
+	clear_messages();
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Spu", "e4#"));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_message("Mount is moving"));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	// A park that reports an error ends ALERT.
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME));
+	// From home the park goes out at once; the error comes while the mount moves to the park position.
+	mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_command_since(&simulator, mark, "hP"));
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Gps", "3#"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_message("Park failed"));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// In alt-az mode there is no park: the request is refused before anything is sent.
+static void park_is_refused_in_altaz_mode(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator_with_option(&simulator, "--zwo-altaz"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(cached_switch(ASI_MOUNT_MODE_PROPERTY_NAME, "ALTAZ"));
+	clear_messages();
+	int mark = event_mark(&simulator);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_message("alt-az"));
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, "hP"));
+	SERIAL_CHECK_EQ_INT(0, settled_count_since(&simulator, mark, "hC"));
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // -------------------------------------------------------------------------------- site and time
 
 // The site goes out as LX200 west-positive longitude, a fresh driver reads it back as INDIGO
@@ -1349,6 +1543,10 @@ int main(void) {
 		{ "manual_motion_directions_move_the_readback", manual_motion_directions_move_the_readback },
 		{ "meridian_stop_is_reported_once", meridian_stop_is_reported_once },
 		{ "home_and_abort_of_homing", home_and_abort_of_homing },
+		{ "park_follows_the_firmware_level", park_follows_the_firmware_level },
+		{ "park_goes_home_first_and_unpark_releases", park_goes_home_first_and_unpark_releases },
+		{ "park_refusals_set_position_and_abort", park_refusals_set_position_and_abort },
+		{ "park_is_refused_in_altaz_mode", park_is_refused_in_altaz_mode },
 		{ "site_is_written_and_read_back", site_is_written_and_read_back },
 		{ "host_time_sets_the_controller_clock", host_time_sets_the_controller_clock },
 		{ "guide_rate_buzzer_and_max_slew_speed", guide_rate_buzzer_and_max_slew_speed },

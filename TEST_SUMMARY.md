@@ -258,7 +258,7 @@
 | guider_gpusb | 2026-09-21 23:31 | 3.0.0.10 | mac arm64 | GPUSB | 10 / 10 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.11 | mac arm64 | fake SDK | 20 / 20 | ✅ OK |
 |  | 2026-09-30 19:17 | 3.0.0.11 | linux arm64 | GPUSB Guider | 10 / 10 | ✅ OK |
-| mount_asi | 2026-09-27 22:38 | 3.0.0.30 | mac arm64 | simulator | 10 / 10 | ✅ OK |
+| mount_asi | 2026-10-05 21:05 | 3.0.0.31 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | mount_ioptron | 2026-09-23 14:52 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM25) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 14:54 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM40) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 14:56 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron GEM45) | 8 / 8 | ✅ OK |

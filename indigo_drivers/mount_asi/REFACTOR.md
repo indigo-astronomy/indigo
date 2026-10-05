@@ -67,7 +67,27 @@ observable; over the full range the abort lands consistently near -49.
   `indigo_uni_read_section2()`, which stores the terminating NUL at `buffer[length]`. All 34 call
   sites now reserve that byte. Tracked as `DRV-198`; driver version incremented to `0x0300001E`.
 
+
+## Park, unpark and park position (2026-10-05, 3.0.0.31)
+
+Requested by the user, who also authorized the change of this otherwise off-limits driver. See `indigo_drivers/mount_lx200/PROTOCOL.md`, section 8 and the note `[^zwopark]`, and the same change in `mount_lx200` (LX080 … LX085). Hardware decision: no ZWO mount is available; simulator backed only.
+
+Found defects:
+
+| ID | Observation and root cause | Fix | Regression test |
+| --- | --- | --- | --- |
+| ASI-P1 | `MOUNT_PARK` was hidden because a park "left the mount in a state only the vendor application recovers from". The park is a latched state the mount reports with `:Gps#` and releases with `:Spu#`; the driver knew neither. | `MOUNT_PARK` from firmware 1.1.9: tracking off, `:hC#` first away from home, `:hP#` after the home slew (`H` from 1.8.1, standing still before), 5 s start timeout per stage, refused in alt-az mode; unpark with `:Spu#` (no motion, refusal keeps the park with its reason). | `park_goes_home_first_and_unpark_releases`, `park_is_refused_in_altaz_mode` |
+| ASI-P2 | The park state was taken from the end of the slew and always published as unparked. | `:Gps#` at connect and every poll; a park or unpark made elsewhere is mirrored; a park error ends ALERT. | `park_goes_home_first_and_unpark_releases`, `park_refusals_set_position_and_abort` |
+| ASI-P3 | A parked mount accepted goto, manual motion, tracking and home. | They are refused with "Mount is parked" and send nothing. | `park_goes_home_first_and_unpark_releases` |
+| ASI-P4 | No park position could be stored. | `MOUNT_PARK_SET` (current position) from firmware 1.3.0 with `:Sp01#` and its refusal codes. | `park_refusals_set_position_and_abort` |
+| ASI-P5 | An abort during the home slew of a park would have let `:hP#` follow. | The abort and the disconnect clear the park stage. | `park_refusals_set_position_and_abort` |
+| ASI-P6 | `asi_error_string()` stopped at `e9`. | `e10` … `e13` added. | — (texts only) |
+
+Existing cases updated: `metadata_and_visible_properties` (park defined, park set absent on 1.2.4), `read_only_properties_ignore_requests` (`:Gps#` is poll traffic), `firmware_1_2_3_hides_meridian_and_alignment_reset` (park defined on 1.2.3). New: `park_follows_the_firmware_level` (1.1.8, 1.1.9, 1.3.0).
+
+MIGRATION_STATUS.md hardware-free count 26 -> 30.
+
 ## Final test summary
 
-- Simulated tests: 10 executed, 10 passed.
+- Simulated tests: 30 executed, 30 passed (recorded run 2026-10-05 21:05, macOS arm64, driver 3.0.0.31).
 - Hardware tests: 0 executed, 0 passed.
