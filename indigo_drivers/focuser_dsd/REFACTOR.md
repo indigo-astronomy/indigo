@@ -245,3 +245,43 @@ Covered by the extended `busy_motion_requests_rejected` scenario in `indigo_test
 ```sh
 make -C indigo_test test-focuser-dsd-simulator
 ```
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.21)
+
+The simulator suite was checked against the "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` and extended where a relevant rule was not verified. Each defect below was reproduced: the extended suite, linked against a copy of the 3.0.0.20 driver, failed 18 of 57 cases (`connect_af2_capabilities`, `goto_beyond_device_maximum`, `relative_steps_and_reverse`, `abort_motion_and_idle`, `disconnect_during_motion`, `urgent_abort_cancels_queued_move`, `stop_ignored_then_retried`, `stalled_move_stops`, `move_command_refusals`, `poll_versus_request`, `motion_running_at_connect`, `settings_during_motion`, `travel_and_limit_ranges`, `connect_command_failures`, `sync_right_after_connect`, `compensation_failure_retried`, `reference_trace`, `DSD-04 poll_failure_alerts`) and passes 57 of 57 against 3.0.0.21.
+
+### Defects fixed
+
+| Defect | Impact | Fix | Regression case |
+| --- | --- | --- | --- |
+| Aborted move ended OK | An abort (running or queued move) published `FOCUSER_POSITION`/`FOCUSER_STEPS` OK. | Ends both ALERT at the stopped position with value = target. | `abort_motion_and_idle`, `urgent_abort_cancels_queued_move` |
+| Idle abort and OFF abort sent `[STOP]` | An abort while idle, or a request with the item OFF, sent the stop and read the position. | Idle abort and an OFF request end OK without a command. | `abort_motion_and_idle` |
+| Unconfirmed stop reported as done | The stop reply is not read and nothing checked that the motor stopped. | `[GMOV]` after `[STOP]`; if still moving the abort ends ALERT, the move stays BUSY and tracked, a retry stops it. | `stop_ignored_then_retried` |
+| Stall and persistent poll failure | A stalled motor (`[GMOV]` 1, position frozen) was polled forever; a persistent read failure ended ALERT without stopping the motor. | Three consecutive failed reads or six unchanged positions during a move send `[STOP]` and end ALERT at the real position; a single lost readback is retried; a fresh move needs no abort. | `stalled_move_stops`, `DSD-04 poll_failure_alerts` |
+| `[SMOV]` reply ignored, refusal reason lost | A refused move start was reported as a move and polled to OK; the client never saw why `[STRG]` was refused. | `[SMOV]` must answer `(OK)`; refusals end both properties ALERT at the unchanged position, no polling, and the controller reply is in the client message. | `move_command_refusals` |
+| Poll in flight completed a pending move | The connection poll running when a GOTO was accepted published OK at the old position before the move ran. | A poll that finds a request pending leaves the motion properties alone. | `poll_versus_request` |
+| Motion running at connect not shown as motion | The connection poll kept the property OK while the motor moved. | Published BUSY (target = measured) until it stops, then OK; no command. | `motion_running_at_connect` |
+| Ranges ignored device travel | `FOCUSER_POSITION` max stayed 1000000 and `FOCUSER_STEPS` max 10000000 whatever `[GMXP]` reported; a GOTO beyond travel sent `[STRG]` past it. | Both maxima follow `[GMXP]` and the limit, redefined on a limit change (`[SMXM]` keeps its fixed value). | `connect_af2_capabilities`, `goto_beyond_device_maximum`, `travel_and_limit_ranges` |
+| Limit excluding the position written | A maximum below the current position was sent with `[SMXP]`. | Refused with ALERT and no command, value and target kept. | `travel_and_limit_ranges` |
+| Settings changed during motion | Limits, reverse, backlash, compensation, mode and step mode requested during a move were applied (limits/reverse/step mode with device commands). | `reject_change` guards while a move is BUSY: ALERT, old values, no command. | `settings_during_motion` |
+| SYNC to the published value skipped | A SYNC equal to the current position sent nothing; a failed SYNC left the requested target. | SYNC always sends `[SPOS]`; on failure value = target = real position. | `sync_right_after_connect` |
+| Failed connect-time commands ignored | A failed `[GMXP]`, `[GSPD]`, `[SMXM]`, `[SREV]`, `[GSTP]`, coils, currents, `[GBUF]`, `[GIDC]` or `[GTMC]` still connected with defaults. | Connection refused (port closed, nothing defined); the model-specific reads are optional only after a failed `[GFRM]` (unidentified model). | `connect_command_failures`, `firmware_query_failure` |
+| Failed compensation lost its reference | A refused compensation move moved the reference temperature, and the ALERT state blocked all later compensation. | The reference moves only with a started correction; compensation is skipped only while a move is BUSY, so the failed correction is retried. | `compensation_failure_retried` |
+| Implausible temperature published | A reading outside the sensor range (e.g. 75 °C, 150 °C) was published as the value with OK, and a -127 no-sensor sentinel overwrote the value. | Implausible reading → ALERT keeping the last valid value, not passed to compensation; the sentinel keeps the value and publishes IDLE once. | `compensation_failure_retried`, `temperature_polling` |
+| Zero steps sent a move | A zero step request sent `[STRG]` and `[SMOV]` and waited for a poll. | Ends OK without a command. | `relative_steps_and_reverse` |
+| Current/timing writes sent unchanged items | Changing one item of `X_DSD_CURRENT_CONTROL` or `X_DSD_TIMINGS` wrote both. | Only changed items are written; readback unchanged. | `write_failures`, `settings_af2` |
+
+### Added cases and mapping
+
+`stop_ignored_then_retried`, `stalled_move_stops`, `move_command_refusals`, `poll_versus_request`, `motion_running_at_connect`, `settings_during_motion`, `travel_and_limit_ranges` (non-default `--max-position 80000`, relative move past the end sent as a move to it), `connect_command_failures` (10 commands, descriptor balance, next connect works), `sync_right_after_connect`, `transport_loss_motion`, `transport_loss_idle` (later requests ALERT without stale BUSY, disconnect completes), `split_replies` (every reply in two reads), `compensation_failure_retried`, `short_move` (sub-poll move holds both properties BUSY), `instances_independent` (disconnecting the additional instance leaves the first working). Existing cases were tightened as listed in the table; the reference trace was regenerated and its differences are exactly the ones above (connect targets equal values, new ranges, abort ALERT, no idle stop, redefinition on limit change).
+
+Simulator additions: fault `delay` (reply held 400 ms), a silent `STOP` models a stop the controller ignores, controls `move <target>` (motion the driver did not command) and `split 1`, option `--max-position`.
+
+### Rules not applicable
+
+No hand controller, so external motion is covered only for motion running at connect (the driver does not poll while idle); one shared serial focuser, no hub; no homing, zeroing or calibration; temperature compensation is driver-owned (no controller compensation command or parameters); there is no device speed or mode readback beyond `[GSPD]`; minimum limit is fixed at 0 by the protocol; RTS reset timing and real firmware replies remain hardware-only.
+
+### Test summary
+
+- Simulated tests: 57 run, 57 passed (`python3 tools/run_driver_test.py focuser_dsd`, macOS arm64).
+- Hardware tests: 0 run, 0 passed.

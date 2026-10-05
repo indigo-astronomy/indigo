@@ -155,6 +155,9 @@ static size_t trace_length, trace_pending_length;
 static atomic_bool trace_active;
 static atomic_uint trace_revisions;
 static int trace_mark;
+static atomic_bool watch_position;
+static atomic_int first_state = -1, first_value = -1;
+static char position_message[INDIGO_VALUE_SIZE];
 
 // ---------------------------------------------------------------------------- utilities
 
@@ -507,6 +510,13 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 			note_state(entry, property);
 		}
 		trace_property(entry, "U", property);
+		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+			if (property->state != INDIGO_BUSY_STATE && atomic_exchange(&watch_position, false)) {
+				// the first result publication after a request
+				atomic_store(&first_value, (int)property->items[0].number.value);
+				atomic_store(&first_state, property->state);
+			}
+		}
 		if (getenv("DSD_DEBUG")) {
 			fprintf(stderr, "%.3f U %s %s\n", now(), property->name, state_name(property->state));
 		}
@@ -530,6 +540,17 @@ static indigo_result observe_delete(indigo_client *client, indigo_device *device
 	}
 	pthread_mutex_unlock(&observe_mutex);
 	return result;
+}
+
+static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	(void)client;
+	(void)device;
+	pthread_mutex_lock(&observe_mutex);
+	if (property && message && is_current_device(property) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+		snprintf(position_message, sizeof(position_message), "%s", message);
+	}
+	pthread_mutex_unlock(&observe_mutex);
+	return INDIGO_OK;
 }
 
 static unsigned revision_of(const char *name) {
@@ -922,7 +943,9 @@ static void connect_af2_capabilities(void) {
 	CHECK_STR("2.0.0", text_of(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME));
 	assert_serial_focuser_class_property_completeness();
 	CHECK(number_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &item));
-	CHECK(item.number.value == 1000 && item.number.min == 0 && item.number.max == 1000000 && item.number.step == 100);
+	CHECK(item.number.value == 1000 && item.number.min == 0 && item.number.max == 100000 && item.number.step == 100);
+	// position and steps ranges follow the travel the controller reports
+	CHECK(number_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, &item) && item.number.max == 100000);
 	CHECK_EQ(INDIGO_RW_PERM, perm_of(FOCUSER_POSITION_PROPERTY_NAME));
 	CHECK(number_of(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, &item));
 	CHECK(item.number.value == 100000 && item.number.min == 10000 && item.number.max == 1000000);
@@ -1056,8 +1079,10 @@ static void goto_beyond_device_maximum(void) {
 	CHECK(start_connected());
 	CHECK(goto_position(100000, INDIGO_OK_STATE, 10));
 	CHECK_EQ(100000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	// a target beyond the device travel is clamped to it: nothing to do at the end of travel
 	CHECK(goto_position(120000, INDIGO_OK_STATE, 10));
-	CHECK_EQ(1, rx_count("[STRG120000]"));
+	CHECK_EQ(0, rx_count("[STRG120000]"));
+	CHECK_EQ(1, rx_count("[STRG100000]"));
 	CHECK_EQ(100000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK_STR("(100000)", last_reply_to("[GPOS]"));
 cleanup:
@@ -1100,9 +1125,10 @@ static void relative_steps_and_reverse(void) {
 	CHECK_EQ(1, rx_count("[STRG002000]"));
 	CHECK(wait_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, 0, 2));
 	int moves = rx_count("[SMOV]");
+	// a zero step move ends OK without a command
 	CHECK(change_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_OK_STATE, 10));
-	CHECK_EQ(2, rx_count("[STRG002000]"));
-	CHECK_EQ(moves + 1, rx_count("[SMOV]"));
+	CHECK_EQ(1, rx_count("[STRG002000]"));
+	CHECK_EQ(moves, rx_count("[SMOV]"));
 	CHECK_EQ(2000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(change_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, INDIGO_OK_STATE, 5));
 	CHECK_EQ(1, rx_count("[SREV1]"));
@@ -1143,30 +1169,42 @@ static void abort_motion_and_idle(void) {
 	CHECK(wait_fresh_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE, 5));
 	CHECK(wait_rx("[SMOV]", 1, 5));
 	CHECK(wait_rx("[GMOV]", polls + 1, 3));
+	// a request with the item OFF is answered without a command and the move goes on
+	unsigned abort_before = revision_of(FOCUSER_ABORT_MOTION_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
+	CHECK(wait_settled(FOCUSER_ABORT_MOTION_PROPERTY_NAME, abort_before, INDIGO_OK_STATE, 5));
+	CHECK_EQ(0, rx_count("[STOP]"));
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
 	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5));
 	CHECK(wait_rx("[STOP]", 1, 1));
 	CHECK(rx_before("[STOP]", "[GPOS]"));
-	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE, 3));
-	CHECK_EQ(INDIGO_OK_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
+	// the aborted move ends ALERT on both properties at the stopped position, never at the target
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 3));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
 	CHECK(!switch_of(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
 	double position = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	CHECK(position > 1000 && position < 60000);
+	CHECK_EQ(position, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	// the stop is confirmed by the motion status and the position readback after it
+	CHECK_STR("(0)", last_reply_to("[GMOV]"));
 	char reply[32];
 	snprintf(reply, sizeof(reply), "(%d)", (int)position);
 	CHECK_STR(reply, last_reply_to("[GPOS]"));
 	polls = rx_count("[GMOV]");
 	indigo_usleep(1200000);
 	CHECK_EQ(polls, rx_count("[GMOV]"));
-	CHECK_EQ(INDIGO_OK_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
 	double back = floor(position / 2);
 	CHECK(goto_position(back, INDIGO_OK_STATE, 10));
 	CHECK_EQ(back, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	// an abort while idle ends OK, sends nothing and leaves the position unchanged
+	int total = rx_total() - rx_count("[GTMC]");
 	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5));
-	CHECK(wait_rx("[STOP]", 2, 1));
+	CHECK_EQ(total, rx_total() - rx_count("[GTMC]"));
+	CHECK_EQ(1, rx_count("[STOP]"));
 	CHECK_EQ(back, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
-	CHECK(inject("GPOS", "error", 1));
-	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE, 5));
-	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5));
+	CHECK_EQ(INDIGO_OK_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK(goto_position(back + 500, INDIGO_OK_STATE, 10));
 cleanup:
 	driver_down();
 }
@@ -1385,6 +1423,9 @@ static void disconnect_during_motion(void) {
 	CHECK(connect_to(simulator.port, INDIGO_OK_STATE, true));
 	double position = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	CHECK(position > 1000 && position < 60000);
+	CHECK_EQ(position, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(INDIGO_OK_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_OK_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
 	CHECK(present(STEP_MODE_PROPERTY) && present(FOCUSER_TEMPERATURE_PROPERTY_NAME));
 	CHECK(goto_position(position + 2000, INDIGO_OK_STATE, 10));
 cleanup:
@@ -1539,11 +1580,13 @@ static void dsd04_poll_failure_alerts(void) {
 	CHECK(wait_rx("[SMOV]", 1, 5));
 	CHECK(inject("GPOS", "error", 1000));
 	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 10));
+	// a persistent failed readback during motion stops the move
+	CHECK_EQ(1, rx_count("[STOP]"));
 	indigo_usleep(3000000);
 	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
 	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
 	clear_fault();
-	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5));
+	// a fresh move works without an abort first
 	CHECK(goto_position(2000, INDIGO_OK_STATE, 10));
 	CHECK_STR("(2000)", last_reply_to("[GPOS]"));
 cleanup:
@@ -1702,13 +1745,16 @@ static void urgent_abort_cancels_queued_move(void) {
 	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 20000));
 	CHECK_EQ(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
 	CHECK(wait_settled(FOCUSER_ABORT_MOTION_PROPERTY_NAME, abort, INDIGO_OK_STATE, 5));
-	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, position, INDIGO_OK_STATE, 5));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, position, INDIGO_ALERT_STATE, 5));
 	indigo_usleep(1000000);
+	// the overtaken move is never sent, the stop is sent once and the aborted move ends ALERT
 	CHECK_EQ(0, rx_count("[STRG020000]") + rx_count("[SMOV]"));
 	CHECK_EQ(1, rx_count("[STOP]"));
 	CHECK(rx_before("[GCHD%]", "[STOP]"));
-	CHECK_EQ(INDIGO_OK_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK(state_of(FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_BUSY_STATE);
 	CHECK_EQ(1000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(1000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(wait_settled(CURRENT_CONTROL_PROPERTY, 0, INDIGO_OK_STATE, 5));
 	CHECK(goto_position(3000, INDIGO_OK_STATE, 10));
 	CHECK_STR("(3000)", last_reply_to("[GPOS]"));
@@ -1742,6 +1788,312 @@ static void busy_motion_requests_rejected(void) {
 	CHECK(goto_position(3000, INDIGO_OK_STATE, 10));
 cleanup:
 	driver_down();
+}
+
+// ---------------------------------------------------------------------------- focuser testing rules
+
+static bool start_long_move(double target) {
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	int polls = rx_count("[GMOV]");
+	return indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target) == INDIGO_OK && wait_fresh_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE, 5) && wait_rx("[SMOV]", 1, 5) && wait_rx("[GMOV]", polls + 1, 3);
+}
+
+// A stop the controller ignores ends the abort ALERT and keeps tracking the move; an immediate retry stops it.
+static void stop_ignored_then_retried(void) {
+	CHECK(start_connected());
+	CHECK(start_long_move(60000));
+	CHECK(inject("STOP", "silent", 1));
+	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE, 5));
+	CHECK(!switch_of(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
+	// the move is not reported completed while the device keeps moving
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 3));
+	double position = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	CHECK(position > 1000 && position < 60000);
+	CHECK_EQ(position, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(2, rx_count("[STOP]"));
+	CHECK(goto_position(position - 1000, INDIGO_OK_STATE, 10));
+cleanup:
+	driver_down();
+}
+
+// A move whose position stops changing while the controller reports motion ends ALERT with a stop, and a fresh move works.
+static void stalled_move_stops(void) {
+	CHECK(start_connected());
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(start_long_move(60000));
+	CHECK(control("stall", "1"));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 8));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(1, rx_count("[STOP]"));
+	double position = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	CHECK(position > 1000 && position < 60000);
+	CHECK_EQ(position, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK(goto_position(position + 1000, INDIGO_OK_STATE, 10));
+cleanup:
+	driver_down();
+}
+
+// Each command of the two-command move can be refused: no later command is sent, the position is unchanged, the reason reaches the client.
+static void move_command_refusals(void) {
+	CHECK(start_connected());
+	CHECK(control("max_move", "100"));
+	CHECK(goto_position(5000, INDIGO_ALERT_STATE, 5));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(0, rx_count("[SMOV]"));
+	CHECK(strstr(position_message, "!101)") != NULL);
+	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000);
+	CHECK(control("max_move", "1000000"));
+	CHECK(inject("SMOV", "error", 1));
+	int polls = rx_count("[GMOV]");
+	CHECK(goto_position(5000, INDIGO_ALERT_STATE, 5));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK(strstr(position_message, "!100)") != NULL);
+	indigo_usleep(800000);
+	CHECK_EQ(polls, rx_count("[GMOV]"));
+	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000);
+	CHECK(goto_position(5000, INDIGO_OK_STATE, 10));
+	CHECK_STR("(5000)", last_reply_to("[GPOS]"));
+cleanup:
+	driver_down();
+}
+
+// A poll already in flight when a move is accepted does not complete the move.
+static void poll_versus_request(void) {
+	CHECK(driver_up());
+	CHECK(inject("GMOV", "delay", 1));
+	CHECK(connect_to(simulator.port, INDIGO_OK_STATE, false));
+	CHECK(wait_rx("[GMOV]", 1, 3));
+	atomic_store(&first_state, -1);
+	atomic_store(&watch_position, true);
+	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 9000));
+	CHECK(wait_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 9000, 0, 10));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE, 10));
+	CHECK_EQ(INDIGO_OK_STATE, atomic_load(&first_state));
+	CHECK_EQ(9000, atomic_load(&first_value));
+	CHECK_EQ(1, rx_count("[STRG009000]"));
+cleanup:
+	atomic_store(&watch_position, false);
+	driver_down();
+}
+
+// Motion running at connect is published BUSY then OK at the measured position without any command, and a relative move starts from it.
+static void motion_running_at_connect(void) {
+	CHECK(driver_up());
+	CHECK(control("move", "30000"));
+	unsigned busy = busy_of(FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(connect_to(simulator.port, INDIGO_OK_STATE, false));
+	CHECK(wait_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 30000, 0, 15));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE, 5));
+	CHECK(busy_of(FOCUSER_POSITION_PROPERTY_NAME) > busy);
+	CHECK_EQ(30000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(0, rx_prefix_count("[STRG") + rx_count("[SMOV]") + rx_count("[STOP]"));
+	CHECK(change_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE, 5));
+	CHECK(change_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1000, INDIGO_OK_STATE, 10));
+	CHECK_EQ(1, rx_count("[STRG029000]"));
+cleanup:
+	driver_down();
+}
+
+// Motion-geometry settings and SYNC requested during a move end ALERT without a command; the move ends at its target.
+static void settings_during_motion(void) {
+	CHECK(start_connected());
+	CHECK(start_long_move(20000));
+	int total = rx_total() - rx_count("[GMOV]") - rx_count("[GPOS]") - rx_count("[GTMC]");
+	CHECK(change_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50000, INDIGO_ALERT_STATE, 5));
+	CHECK_EQ(100000, value_of(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME));
+	CHECK(change_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, INDIGO_ALERT_STATE, 5));
+	CHECK(switch_of(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME));
+	CHECK(change_number(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 70, INDIGO_ALERT_STATE, 5));
+	CHECK_EQ(0, value_of(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME));
+	CHECK(change_number(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 30, INDIGO_ALERT_STATE, 5));
+	CHECK(change_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, INDIGO_ALERT_STATE, 5));
+	CHECK(switch_of(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME));
+	CHECK(change_switch(STEP_MODE_PROPERTY, "FULL", INDIGO_ALERT_STATE, 5));
+	CHECK(switch_of(STEP_MODE_PROPERTY, "EIGTH"));
+	CHECK(change_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE, 5));
+	indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500);
+	CHECK(wait_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 20000, 0, 15));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE, 5));
+	CHECK_EQ(total, rx_total() - rx_count("[GMOV]") - rx_count("[GPOS]") - rx_count("[GTMC]"));
+	CHECK_EQ(0, rx_prefix_count("[SPOS") + rx_count("[STOP]"));
+cleanup:
+	driver_down();
+}
+
+// Ranges follow a non-default device travel and the limits; a maximum excluding the position is refused without a command.
+static void travel_and_limit_ranges(void) {
+	indigo_item item;
+	CHECK(start_connected());
+	CHECK(number_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &item) && item.number.max == 80000);
+	CHECK(number_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, &item) && item.number.max == 80000);
+	CHECK_EQ(80000, value_of(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME));
+	CHECK(change_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 50000, INDIGO_OK_STATE, 5));
+	CHECK(wait_present(FOCUSER_POSITION_PROPERTY_NAME, true, 2));
+	CHECK(number_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &item) && item.number.max == 50000);
+	CHECK(number_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, &item) && item.number.max == 50000);
+	// a relative move past the end of travel is sent as a move to that end
+	CHECK(change_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE, 5));
+	CHECK(change_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50000, INDIGO_OK_STATE, 20));
+	CHECK_EQ(1, rx_count("[STRG050000]"));
+	CHECK_EQ(50000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	int writes = rx_prefix_count("[SMXP");
+	CHECK(change_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 30000, INDIGO_ALERT_STATE, 5));
+	CHECK_EQ(writes, rx_prefix_count("[SMXP"));
+	CHECK_EQ(50000, value_of(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME));
+	CHECK_EQ(50000, target_of(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME));
+cleanup:
+	driver_down();
+}
+
+// A refused connect-time command refuses the connection, leaves nothing defined and releases the port.
+static void connect_command_failures(void) {
+	static const char *commands[] = { "GMXP", "GSPD", "SMXM", "SREV", "GSTP", "GCLM", "GCHD", "GBUF", "GIDC", "GTMC" };
+	CHECK(driver_up());
+	int descriptors = open_descriptors();
+	for (int i = 0; i < (int)ARRAY_SIZE(commands); i++) {
+		CHECK(inject(commands[i], "error", 1));
+		if (!connect_to(simulator.port, INDIGO_ALERT_STATE, false)) {
+			fprintf(stderr, "connect not refused after a failed %s\n", commands[i]);
+			indigo_test_failures++;
+			goto cleanup;
+		}
+		CHECK(!present(STEP_MODE_PROPERTY) && !present(CURRENT_CONTROL_PROPERTY) && !present(FOCUSER_POSITION_PROPERTY_NAME) && !present(FOCUSER_TEMPERATURE_PROPERTY_NAME));
+		CHECK_EQ(descriptors, open_descriptors());
+	}
+	CHECK(connect_to(simulator.port, INDIGO_OK_STATE, true));
+	CHECK(goto_position(2000, INDIGO_OK_STATE, 10));
+cleanup:
+	driver_down();
+}
+
+// SYNC right after connect and to the published value reaches the controller; a failed SYNC keeps the real position as value and target.
+static void sync_right_after_connect(void) {
+	CHECK(start_connected());
+	CHECK(change_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE, 5));
+	CHECK(goto_position(1000, INDIGO_OK_STATE, 5));
+	CHECK_EQ(1, rx_count("[SPOS001000]"));
+	CHECK(inject("SPOS", "error", 1));
+	CHECK(goto_position(7000, INDIGO_ALERT_STATE, 5));
+	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000);
+	CHECK(goto_position(7000, INDIGO_OK_STATE, 5));
+	CHECK_EQ(0, rx_prefix_count("[STRG") + rx_count("[SMOV]"));
+cleanup:
+	driver_down();
+}
+
+// After the transport is lost every later request ends ALERT without stale BUSY, and disconnect still completes.
+static void transport_loss(void) {
+	CHECK(start_connected());
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	if (strstr(current_case->name, "motion")) {
+		CHECK(start_long_move(60000));
+		CHECK(inject("GMOV", "close", 1));
+		CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 15));
+	} else {
+		CHECK(inject("GTMC", "close", 1));
+		CHECK(wait_fresh_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, revision_of(FOCUSER_TEMPERATURE_PROPERTY_NAME), INDIGO_ALERT_STATE, 10));
+	}
+	CHECK(state_of(FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_BUSY_STATE);
+	CHECK(goto_position(4000, INDIGO_ALERT_STATE, 10));
+	CHECK(state_of(FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_BUSY_STATE);
+	CHECK(change_number(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 3, INDIGO_ALERT_STATE, 10));
+	CHECK(disconnect());
+cleanup:
+	driver_down();
+}
+
+// Replies split across reads are reassembled.
+static void split_replies(void) {
+	CHECK(driver_up());
+	CHECK(control("split", "1"));
+	CHECK(connect_to(simulator.port, INDIGO_OK_STATE, true));
+	CHECK_STR("DSD AF2", text_of(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME));
+	CHECK(goto_position(3000, INDIGO_OK_STATE, 15));
+	CHECK_STR("(3000)", last_reply_to("[GPOS]"));
+cleanup:
+	driver_down();
+}
+
+// A failed compensation move ends ALERT and is retried from the kept reference; an implausible temperature is ALERT, never a value.
+static void compensation_failure_retried(void) {
+	CHECK(start_connected());
+	CHECK(change_numbers(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 100, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, 1, INDIGO_OK_STATE, 5));
+	CHECK(change_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME, INDIGO_OK_STATE, 5));
+	int temperatures = rx_count("[GTMC]");
+	CHECK(wait_rx("[GTMC]", temperatures + 2, 6));
+	unsigned before = revision_of(FOCUSER_TEMPERATURE_PROPERTY_NAME);
+	CHECK(control("temperature", "75"));
+	CHECK(wait_fresh_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 5));
+	CHECK_NEAR(21.5, value_of(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME), 0.01);
+	CHECK_EQ(0, rx_count("[SMOV]"));
+	CHECK(inject("STRG", "error", 1));
+	before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(control("temperature", "23.5"));
+	CHECK(wait_fresh_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 6));
+	CHECK_EQ(1000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK(wait_rx("[STRG001200]", 2, 6));
+	CHECK(wait_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, 0, 5));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE, 5));
+	CHECK(change_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, INDIGO_OK_STATE, 5));
+cleanup:
+	driver_down();
+}
+
+// A move shorter than one poll period holds both motion properties BUSY and ends both OK.
+static void short_move(void) {
+	CHECK(start_connected());
+	unsigned position = busy_of(FOCUSER_POSITION_PROPERTY_NAME), steps = busy_of(FOCUSER_STEPS_PROPERTY_NAME);
+	CHECK(goto_position(1010, INDIGO_OK_STATE, 5));
+	CHECK(busy_of(FOCUSER_POSITION_PROPERTY_NAME) > position && busy_of(FOCUSER_STEPS_PROPERTY_NAME) > steps);
+	CHECK_EQ(INDIGO_OK_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(1010, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+cleanup:
+	driver_down();
+}
+
+// Disconnecting the additional instance leaves the first one working.
+static void instances_independent(void) {
+	CHECK(start_simulator(&second_simulator, "af1", "2000"));
+	CHECK(start_connected());
+	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1));
+	CHECK(wait_value(ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 1, 0, 5));
+	pthread_mutex_lock(&observe_mutex);
+	reset_simulator_context(&dsd_second_focuser);
+	observed_count = 0;
+	pthread_mutex_unlock(&observe_mutex);
+	enumerate_simulator_device();
+	CHECK(wait_present(CONNECTION_PROPERTY_NAME, true, 5));
+	CHECK(connect_to(second_simulator.port, INDIGO_OK_STATE, true));
+	CHECK_STR("DSD AF1", text_of(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME));
+	CHECK_EQ(2000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK(disconnect());
+	pthread_mutex_lock(&observe_mutex);
+	reset_simulator_context(&dsd_focuser);
+	observed_count = 0;
+	pthread_mutex_unlock(&observe_mutex);
+	enumerate_simulator_device();
+	CHECK(wait_present(FOCUSER_POSITION_PROPERTY_NAME, true, 5));
+	CHECK_STR("DSD AF2", text_of(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME));
+	CHECK(goto_position(3000, INDIGO_OK_STATE, 10));
+	CHECK_STR("(3000)", last_reply_to("[GPOS]"));
+cleanup:
+	pthread_mutex_lock(&observe_mutex);
+	reset_simulator_context(&dsd_focuser);
+	observed_count = 0;
+	pthread_mutex_unlock(&observe_mutex);
+	enumerate_simulator_device();
+	indigo_usleep(200000);
+	if (switch_of(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME)) {
+		disconnect();
+	}
+	indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0);
+	indigo_usleep(300000);
+	driver_down();
+	stop_external_serial_simulator(&second_simulator);
 }
 
 // ---------------------------------------------------------------------------- reference trace
@@ -1884,7 +2236,7 @@ static bool trace_goto(double position) {
 static bool trace_long_move_abort(void) {
 	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
 	int polls = rx_count("[GMOV]");
-	return indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) == INDIGO_OK && wait_fresh_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE, 5) && wait_rx("[GMOV]", polls + 2, 5) && change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5) && wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE, 5);
+	return indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000) == INDIGO_OK && wait_fresh_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE, 5) && wait_rx("[GMOV]", polls + 2, 5) && change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5) && wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 5);
 }
 
 static void trace_model(const char *model) {
@@ -2013,6 +2365,21 @@ static const dsd_case cases[] = {
 	{ "configuration_save", configuration_save, "af2", false },
 	{ "urgent_abort_cancels_queued_move", urgent_abort_cancels_queued_move, "af2", false },
 	{ "busy_motion_requests_rejected", busy_motion_requests_rejected, "af2", false },
+	{ "stop_ignored_then_retried", stop_ignored_then_retried, "af2", false },
+	{ "stalled_move_stops", stalled_move_stops, "af2", false },
+	{ "move_command_refusals", move_command_refusals, "af2", false },
+	{ "poll_versus_request", poll_versus_request, "af2", false },
+	{ "motion_running_at_connect", motion_running_at_connect, "af2", false },
+	{ "settings_during_motion", settings_during_motion, "af2", false },
+	{ "travel_and_limit_ranges", travel_and_limit_ranges, "af2", false },
+	{ "connect_command_failures", connect_command_failures, "af2", false },
+	{ "sync_right_after_connect", sync_right_after_connect, "af2", false },
+	{ "transport_loss_motion", transport_loss, "af2", false },
+	{ "transport_loss_idle", transport_loss, "af2", false },
+	{ "split_replies", split_replies, "af2", false },
+	{ "compensation_failure_retried", compensation_failure_retried, "af2", false },
+	{ "short_move", short_move, "af2", false },
+	{ "instances_independent", instances_independent, "af2", false },
 	{ "reference_trace", reference_trace, NULL, false },
 	{ "DSD-01 silent_device_times_out", dsd01_silent_device_times_out, "af2", false },
 	{ "DSD-02 malformed_reply_rejected", dsd02_malformed_reply_rejected, "af2", false },
@@ -2035,7 +2402,12 @@ static void run_child(const dsd_case *test) {
 	setenv("HOME", home_path, 1);
 	alarm(test->defect ? 60 : 240);
 	current_case = test;
-	if (test->model && !start_simulator(&simulator, test->model, strstr(test->name, "compensation_below_zero") ? "100" : strcmp(test->name, "goto_beyond_device_maximum") ? NULL : "95000")) {
+	if (!strcmp(test->name, "travel_and_limit_ranges")) {
+		const char *args[] = { "--model", test->model, "--max-position", "80000", NULL };
+		if (!start_external_serial_simulator_with_args(&simulator, FOCUSER_DSD_SIMULATOR_EXECUTABLE, args)) {
+			_exit(2);
+		}
+	} else if (test->model && !start_simulator(&simulator, test->model, strstr(test->name, "compensation_below_zero") ? "100" : strcmp(test->name, "goto_beyond_device_maximum") ? NULL : "95000")) {
 		_exit(2);
 	}
 	if (getenv("DSD_DEBUG")) {
@@ -2063,6 +2435,7 @@ int main(int argc, char **argv) {
 	simulator_test_client.define_property = observe_define;
 	simulator_test_client.update_property = observe_update;
 	simulator_test_client.delete_property = observe_delete;
+	simulator_test_client.send_message = observe_message;
 	simulator_test_client.force_property_updates = true;
 	snprintf(fixture_dir, sizeof(fixture_dir), "/tmp/indigo-dsd.XXXXXX");
 	if (!mkdtemp(fixture_dir)) {
