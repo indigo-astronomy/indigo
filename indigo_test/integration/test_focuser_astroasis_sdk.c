@@ -2669,6 +2669,39 @@ cleanup:
 	finish_test();
 }
 
+// A refusal turns FOCUSER_POSITION ALERT while the accepted move is still queued; the next
+// request must still be refused instead of queuing a second move.
+static void refusal_keeps_queued_move_pending(void) {
+	CHECK(start_driver(1));
+	CHECK(connect_and_wait_position(0));
+	atomic_store(&status_waiting, false);
+	atomic_store(&hold_status, true);
+	for (int i = 0; i < WAIT_STEPS && !atomic_load(&status_waiting); i++) {
+		indigo_usleep(10000);
+	}
+	CHECK(atomic_load(&status_waiting));
+	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500));
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	before = revision(0, FOCUSER_STEPS_PROPERTY_NAME);
+	CHECK(change_number(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	CHECK(wait_state_after(0, FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	atomic_store(&hold_status, false);
+	CHECK(wait_calls(0, FN_MOVE_TO, 1));
+	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	CHECK_EQ(1500, FAKE(0, position));
+	indigo_usleep((useconds_t)(scaled(2) * 1000000));
+	CHECK_EQ(1, fake_calls(0, FN_MOVE_TO));
+	CHECK_EQ(0, fake_calls(0, FN_MOVE));
+cleanup:
+	atomic_store(&hold_status, false);
+	finish_test();
+}
+
 static int run_cases(const char *suite, const indigo_test_case *cases, int count) {
 	if (!indigo_test_mkdtemp_home(config_folder)) {
 		perror("mkdtemp");
@@ -2705,6 +2738,7 @@ int main(int argc, char **argv) {
 		{ "external_motion_and_idle_poll", external_motion_and_idle_poll },
 		{ "requests_refused_during_motion", requests_refused_during_motion },
 		{ "poll_in_flight_does_not_complete_request", poll_in_flight_does_not_complete_request },
+		{ "refusal_keeps_queued_move_pending", refusal_keeps_queued_move_pending },
 		{ "settings_config_writes", settings_config_writes },
 		{ "suffix_and_bluetooth_name", suffix_and_bluetooth_name },
 		{ "factory_reset", factory_reset },

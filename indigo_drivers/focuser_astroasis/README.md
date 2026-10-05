@@ -24,4 +24,4 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 ## Testing
 
-2026-10-05 15:09 3.0.0.14 mac arm64 fake SDK 39/39 OK
+2026-10-05 16:21 3.0.0.15 mac arm64 fake SDK 40/40 OK

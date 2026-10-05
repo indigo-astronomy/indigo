@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_focuser_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -55,7 +55,7 @@
 #define ASTROASIS_VENDOR_ID  0x338f
 #define ASTROASIS_PRODUCT_FOCUSER_ID 0xa0f0
 #define FOCUSER_STALL_POLLS  20
-#define FOCUSER_IN_MOTION    (PRIVATE_DATA->moving || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
+#define FOCUSER_IN_MOTION    (PRIVATE_DATA->moving || PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
 
 //- define
 
@@ -141,6 +141,7 @@ typedef struct {
 	double compensation_last_temp;
 	bool has_temperature_sensor;
 	bool moving;
+	bool pending;
 	bool external_motion;
 	bool poll_failed;
 	int target_position;
@@ -360,7 +361,7 @@ static void focuser_compensation(indigo_device *device, double curr_temp) {
 }
 
 static void focuser_position_poll(indigo_device *device, bool success) {
-	if (PRIVATE_DATA->moving) {
+	if (PRIVATE_DATA->moving || PRIVATE_DATA->pending) {
 		return;
 	}
 	if (!success) {
@@ -526,6 +527,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserStopMove() failed, ret = %d", res);
 		}
 		PRIVATE_DATA->moving = false;
+		PRIVATE_DATA->pending = false;
 		PRIVATE_DATA->external_motion = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
@@ -581,6 +583,7 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 static void focuser_position_handler(indigo_device *device) {
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_POSITION.on_change
+	PRIVATE_DATA->pending = false;
 	int target = (int)FOCUSER_POSITION_ITEM->number.target;
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value && target == PRIVATE_DATA->status.position) {
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
@@ -662,7 +665,9 @@ static void focuser_backlash_handler(indigo_device *device) {
 }
 
 static void focuser_steps_handler(indigo_device *device) {
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
+	PRIVATE_DATA->pending = false;
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	focuser_publish_motion(device, NULL);
@@ -696,6 +701,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, focuser_position_handler);
 	indigo_cancel_pending_handler(device, focuser_steps_handler);
 	indigo_cancel_pending_handler(device, focuser_move_finalizer);
+	PRIVATE_DATA->pending = false;
 	int res = AOFocuserStopMove(PRIVATE_DATA->dev_id);
 	if (res != AO_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop Oasis Focuser, ret = %d", res);
@@ -991,7 +997,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->moving || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_POSITION.on_change_request
+		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
@@ -1003,7 +1013,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_BACKLASH_PROPERTY, focuser_backlash_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->moving || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_STEPS.on_change_request
+		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
@@ -1406,7 +1420,7 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 #include "indigo_focuser_astroasis.h"
 
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000E, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x0300000F, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

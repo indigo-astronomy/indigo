@@ -322,3 +322,11 @@ Not applicable or not changed, with the reason:
 - Hand controller: none; motion from the Bluetooth application is the uncommanded-motion case.
 - Shared controllers, `ADDITIONAL_INSTANCES`: one logical device per SDK id.
 - Hardware: no Oasis focuser available, no physical run.
+
+### Refusal hiding a queued move (2026-10-05, version 15)
+
+| ID | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| FOC-23 | The refusal of a second GOTO turned `FOCUSER_POSITION` ALERT while the accepted GOTO was still waiting in the device queue; neither motion property was BUSY any more and the driver was not yet moving, so a following `FOCUSER_STEPS` request was accepted and a second move command was queued behind the first. | A pending flag set by `on_change_request` for every accepted `FOCUSER_POSITION` or `FOCUSER_STEPS` request, cleared when the handler runs, by abort and by disconnect, is part of the motion condition used by the refusals, the idle abort and the idle poll. | `refusal_keeps_queued_move_pending` (failed against version 14, passes against 15) |
+
+Found while aligning `focuser_astromechanics`, where the same window let a second `M` command through.
