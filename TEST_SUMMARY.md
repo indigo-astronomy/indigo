@@ -222,7 +222,7 @@
 | focuser_ioptron | 2026-09-27 00:32 | 3.0.0.10 | linux x64 | simulator | 42 / 42 | ✅ OK |
 |  | 2026-10-05 15:08 | 3.0.0.11 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 | focuser_lacerta | 2026-10-05 15:03 | 3.0.0.9 | mac arm64 | simulator | 50 / 50 | ✅ OK |
-| focuser_lakeside | 2026-09-27 23:20 | 3.0.0.9 | mac arm64 | simulator | 34 / 34 | ✅ OK |
+| focuser_lakeside | 2026-10-05 15:14 | 3.0.0.10 | mac arm64 | simulator | 41 / 41 | ✅ OK |
 | focuser_lunatico | 2026-09-27 23:01 | 3.0.0.15 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_mjkzz | 2026-09-27 23:04 | 3.0.0.7 | mac arm64 | simulator | 37 / 37 | ✅ OK |
 | focuser_moonlite | 2026-09-27 23:06 | 3.0.0.13 | mac arm64 | simulator | 39 / 39 | ✅ OK |

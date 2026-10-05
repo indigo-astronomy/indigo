@@ -99,9 +99,9 @@ static bool read_fault(const char *command, char *action) {
 	if (!strcmp(key, "external")) {
 		int position;
 		if (parse_unsigned(action, 0, 65535, &position)) {
-			serial_motion_sync(&motion, position);
+			// Handset motion at its fast rate: finite speed, no P/DONE frames to the PC.
+			serial_motion_start(&motion, position, 20000);
 			moving = false;
-			last_reported_position = position;
 		}
 		unlink(fault_file);
 		return false;
@@ -129,7 +129,11 @@ static bool inject(const char *command, char expected) {
 		return false;
 	}
 	event("FAULT", action);
-	if (!strcmp(action, "silent")) {
+	if (!strcmp(action, "slow")) {
+		// Delayed but valid reply: holds the driver's queue on this transaction.
+		usleep(800000);
+		return false;
+	} else if (!strcmp(action, "silent")) {
 		return true;
 	} else if (!strcmp(action, "close")) {
 		running = 0;
@@ -287,12 +291,25 @@ int main(int argc, char **argv) {
 		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
 			profile = argv[++i];
 		} else {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|start_state|moving]\n", argv[0]);
 			return 1;
 		}
 	}
 	serial_motion_sync(&motion, !strcmp(profile, "alternate") ? 1000 : 32768);
 	temperature = !strcmp(profile, "alternate") ? -5.5 : 23.0;
+	if (!strcmp(profile, "start_state")) {
+		// Settings the controller keeps from a previous session, none of them a driver default.
+		serial_motion_sync(&motion, 1234);
+		temperature = -3.5;
+		backlash = 17;
+		slope[0] = 33;
+		slope_direction[0] = 1;
+		slope_deadband[0] = 7;
+		slope_period[0] = 9;
+	} else if (!strcmp(profile, "moving")) {
+		// Handset motion already running when the driver connects.
+		serial_motion_start(&motion, 40000, 2000);
+	}
 	last_reported_position = (int)motion.position;
 	const char *event_path = getenv("INDIGO_LAKESIDE_EVENTS");
 	events = event_path ? fopen(event_path, "w") : NULL;
