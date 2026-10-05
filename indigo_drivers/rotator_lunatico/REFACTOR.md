@@ -202,3 +202,18 @@ Rotator-specific results, with the shared details in `../focuser_lunatico/REFACT
   AddressSanitizer with no sanitizer report, and 27 passed over the UDP transport.
 - Hardware tests: **0 executed, 0 passed.** No Lunatico controller was available and no
   hardware validation is claimed.
+
+## Shared focuser fixes (3.0.0.15, 2026-10-05)
+
+`../focuser_lunatico/shared/lunatico_shared.c` gained the focuser fixes LU-10 to LU-19 recorded
+in `../focuser_lunatico/REFACTOR.md` (aborted and failed moves end ALERT at the stopped
+position, idle abort without a stop, stop on disconnect, retried readbacks, stall detection,
+SYNC of the published position, limits as motion ranges, compensation retry). This driver
+compiles the same file for its Exp and Third focusers, so its version is raised from 14 to 15.
+The rotator code is unchanged. The `reject_change` guards that refuse backlash, compensation and
+reverse during a move were added to the focuser blocks of `indigo_focuser_lunatico.driver`
+only; the focuser blocks of this driver do not have them yet. The focuser behaviour is covered
+by `test_focuser_lunatico_simulator`; this driver's suite was rerun unchanged.
+
+- `python3 tools/run_driver_test.py rotator_lunatico`: 54/54 passed (3.0.0.15, macOS arm64).
+- Hardware tests: 0 executed, 0 passed.
