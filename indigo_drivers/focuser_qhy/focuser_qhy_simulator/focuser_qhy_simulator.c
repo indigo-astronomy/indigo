@@ -261,6 +261,9 @@ static void apply_control(void) {
 	if (fscanf(file, "%31s %d", key, &value) == 2) {
 		if (!strcmp(key, "position") && value >= 0 && value <= 2000000) {
 			serial_motion_sync(&motion, value);
+		} else if (!strcmp(key, "external") && value >= 0 && value <= 2000000) {
+			// Motion the driver did not command (another client, running before connect), 10000 steps/s.
+			serial_motion_start(&motion, value, 10000);
 		} else if (!strcmp(key, "outside")) {
 			outside_temperature = value;
 		} else if (!strcmp(key, "chip")) {

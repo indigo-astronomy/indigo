@@ -240,7 +240,7 @@
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-09-27 23:17 | 3.0.0.9 | mac arm64 | simulator | 58 / 58 | ✅ OK |
 | focuser_qhy | 2026-09-27 12:50 | 3.0.0.10 | linux x64 | simulator | 32 / 32 | ✅ OK |
-|  | 2026-09-27 23:24 | 3.0.0.10 | mac arm64 | simulator | 32 / 32 | ✅ OK |
+|  | 2026-10-05 15:31 | 3.0.0.11 | mac arm64 | simulator | 44 / 44 | ✅ OK |
 | focuser_robofocus | 2026-10-05 15:14 | 3.0.0.5 | mac arm64 | simulator | 32 / 32 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-27 13:10 | 3.0.0.19 | linux x64 | simulator | 56 / 56 | ✅ OK |
 |  | 2026-09-27 23:35 | 3.0.0.19 | mac arm64 | simulator | 56 / 56 | ✅ OK |
