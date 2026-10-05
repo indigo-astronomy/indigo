@@ -449,8 +449,22 @@ its target by that offset. An earlier version of the case pressed END at once an
 `CAL_MAXPOS = 8`; restoring it by writing `ABS_POS` introduced a 2215 step offset that made every
 move end short. The unit was recalibrated and the offset cleared by hand.
 
+## Refused request hid a queued move (3.0.0.22, 2026-10-05)
+
+Found on the SESTO SENSO 2 over WiFi, intermittently. An accepted `FOCUSER_POSITION` request is
+BUSY only until a refused second request publishes ALERT over it from the bus thread. When that
+happened while an idle position poll was in flight, the poll no longer saw a move pending, wrote the
+read position into the item and the queued handler sent that position instead of the requested
+target (a GOTO to 8000 went out as `MOVE_ABS` 5000 and ended OK at once). Over USB the window is too
+short to hit; over HTTP the poll holds the device queue long enough. A `pending` flag is now set when
+a `FOCUSER_POSITION` or `FOCUSER_STEPS` request is accepted and cleared when its handler runs; the
+refusal condition, the idle poll and the abort check it instead of the property state.
+`refusal_keeps_queued_move` (slow poll reply, accepted GOTO, refused second GOTO) fails against
+3.0.0.21.
+
 ## Final test summary
 
-- Simulated tests: 53 run, 53 passed (recorded run of 3.0.0.21, macOS arm64).
-- Hardware tests: 18 run, 18 passed on the SESTO SENSO 2 over USB serial (3.0.0.21, macOS arm64,
-  with `PRIMALUCE_HW_CALIBRATE=1`; the stored calibration was read and restored).
+- Simulated tests: 54 run, 54 passed (recorded run of 3.0.0.22, macOS arm64).
+- Hardware tests: 18 run, 18 passed on the SESTO SENSO 2 over USB serial and 18 run, 18 passed over
+  WiFi (3.0.0.22, macOS arm64, with `PRIMALUCE_HW_CALIBRATE=1`; the stored calibration was read and
+  restored in both runs).

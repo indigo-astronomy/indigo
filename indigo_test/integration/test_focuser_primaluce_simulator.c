@@ -1195,6 +1195,23 @@ cleanup:
 	driver_stop();
 }
 
+// A second request refused while the accepted move is still queued behind a poll in flight does
+// not hide that move: the poll does not take its target and the queued move goes where it was sent.
+static void refusal_keeps_queued_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(18075));
+	SERIAL_CHECK_TRUE(fault("\"ABS_POS\"", "slow"));
+	int polls = requests("\"ABS_POS\"");
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ABS_POS\"", polls + 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, PRIMALUCE_FOCUSER_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, PRIMALUCE_FOCUSER_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18100));
+	SERIAL_CHECK_TRUE(position_is(18300));
+	SERIAL_CHECK_EQ_INT(1, requests("\"MOVE_ABS\""));
+	SERIAL_CHECK_EQ_INT(1, requests("\"STEP\":18300"));
+cleanup:
+	driver_stop();
+}
+
 // Backlash and calibration requested during a move are refused without a command.
 static void settings_during_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -1450,6 +1467,7 @@ int main(void) {
 		{ "abort_refused", abort_refused, "normal" },
 		{ "abort_overtakes_queued_move", abort_overtakes_queued_move, "normal" },
 		{ "request_versus_poll", request_versus_poll, "normal" },
+		{ "refusal_keeps_queued_move", refusal_keeps_queued_move, "normal" },
 		{ "settings_during_motion", settings_during_motion, "normal" },
 		{ "transport_loss_during_motion", transport_loss_during_motion, "normal" },
 		{ "controller_restart_refused_with_sibling", controller_restart_refused_with_sibling, "normal" },

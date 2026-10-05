@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -392,7 +392,7 @@ typedef struct {
 	double position, last_position;
 	bool link_failed;
 	int stalled_polls, poll_failures, environment_ticks;
-	bool external_motion, poll_alert, abort_requested, calibrating;
+	bool external_motion, poll_alert, abort_requested, calibrating, pending;
 	int backlash, speed;
 	indigo_item *leds_item, *hold_item, *wifi_item;
 	//- data
@@ -930,17 +930,20 @@ static void focuser_movement_finalizer(indigo_device *device) {
 }
 
 // Follows the position while no move of the driver runs: motion nobody commanded here
-// (hand keypad, a move running at connect) is published BUSY with the target following
-// the measured position and OK once it stops.
+// (the virtual keypad of the web interface, another client on the other link, a move
+// running at connect) is published BUSY with the target following the measured position
+// and OK once it stops.
 static void focuser_poll_position(indigo_device *device) {
-	if ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion) {
+	if (PRIVATE_DATA->pending || ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion)) {
 		return;
 	}
 	double position = 0;
 	bool moving = false;
 	bool read = focuser_read_motion(device, &position, &moving);
-	// A request accepted while the poll was in flight owns the motion properties now.
-	if ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion) {
+	// A request accepted while the poll was in flight owns the motion properties now. A
+	// refusal of a second request publishes ALERT over the accepted one's BUSY, so the
+	// pending flag, not the property state, says that a move is queued.
+	if (PRIVATE_DATA->pending || ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion)) {
 		return;
 	}
 	if (read) {
@@ -1174,7 +1177,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash = (int)get_number(device, GET_MOT1_BKLASH);
 				PRIVATE_DATA->speed = (int)FOCUSER_SPEED_ITEM->number.value;
-				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = false;
+				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->pending = false;
 				PRIVATE_DATA->environment_ticks = 0;
 				// Models without stored positions report no PRESET_n.
 				bool has_presets = getToken(device, 0, GET_PRESET_1) != -1;
@@ -1326,7 +1329,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop the focuser");
 			}
 		}
-		PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = false;
+		PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->pending = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -1705,6 +1708,7 @@ static void focuser_backlash_handler(indigo_device *device) {
 
 static void focuser_position_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_POSITION.on_change
+	PRIVATE_DATA->pending = false;
 	// Both motion properties are busy for every move, an absolute one included.
 	if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1779,7 +1783,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	// target was not reached. A move still queued behind this abort is never sent.
 	bool requested = FOCUSER_ABORT_MOTION_ITEM->sw.value;
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-	bool moving = FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
+	bool moving = PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
 	if (requested && !moving && !PRIVATE_DATA->calibrating && PRIVATE_DATA->link_failed) {
 		// Nothing to stop, but the controller did not answer the last request.
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -2089,11 +2093,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_BACKLASH_PROPERTY, focuser_backlash_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_POSITION.on_change_request
+		// The accepted move is pending from now on; a refusal of a later request must not hide it.
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
+		//+ focuser.FOCUSER_STEPS.on_change_request
+		// The accepted move is pending from now on; a refusal of a later request must not hide it.
+		PRIVATE_DATA->pending = true;
+		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
