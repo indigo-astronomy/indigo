@@ -221,3 +221,57 @@ Covered by the `rejected_change` scenario in `indigo_test/integration/test_focus
 ```sh
 cd indigo_test && LACERTA_TEST_FILTER=rejected_change ./build/integration/test_focuser_lacerta_simulator
 ```
+
+## Focuser testing rules alignment (2026-10-05, 3.0.0.9)
+
+The regression test was checked against the extended "Focuser Drivers" chapter of `indigo_test/DRIVER_TESTING_RULES.md` (commit fa5f64839). Version raised from 3.0.0.8 to 3.0.0.9.
+
+### Defects found and fixed
+
+Each was reproduced by the new or extended test against a pre-fix copy of the generated driver built as a separate binary.
+
+| Defect | Impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | Abort of an active move ends both ALERT at the stopped position (value = target). | `abort`, `abort_queued` |
+| Abort while idle sent `H` | A stop command was sent with nothing moving. | Abort with no commanded, external or uncertain motion and no BUSY move ends OK without `H`. | `abort` (H count stays 1) |
+| A good poll did not clear a failed poll | After one failed idle position poll `FOCUSER_POSITION` stayed ALERT until the next move. | A failed idle poll is remembered; the next good poll restores OK. A failed or aborted move is not affected. | `poll_malformed`, `poll_short`, `poll_overlong`, `poll_silent`, `poll_partial`, `poll_flood` |
+| Uncommanded motion was published OK | Hand-controller motion and motion running at connect only changed the value, never BUSY. | The idle poll publishes `FOCUSER_POSITION` BUSY with target = measured value while the position changes and OK once it settles; abort and disconnect stop it with `H`. A failed move stays ALERT. | `external_position`, `moving_at_connect` |
+| No-sensor sentinel reported ALERT | Workbook row 32: 99.9 means no sensor, not a failure. | 99.9 publishes `FOCUSER_TEMPERATURE` IDLE (once, framework update suppression) with the last valid value; failed readings stay ALERT. | `sensor_absent`, `temperature` |
+| ALERT survived reconnect | A session ending with an aborted move reconnected with `FOCUSER_POSITION` ALERT. | Connect sets `FOCUSER_POSITION`/`FOCUSER_STEPS` OK. | `abort` (reconnect step) |
+
+### Simulator additions
+
+- `external <position>` now moves at the simulator's finite speed instead of jumping, and sends no `M`/`p` completion frames (hand controller).
+- `slow` fault: the next matching command gets its valid reply 0.8 s late, holding the driver's queue for request-versus-poll and queued-abort cases.
+- Profiles `start_state` (position 1234, maximum 40000, backlash 17, reverse on, -3.5 °C), `moving` (motion to 5000 running at start) and `alternate` now an FMC 1.1.077.
+
+### Scenario-to-test mapping (rules chapter → cases)
+
+- Identity, `INFO.DEVICE_MODEL`/`DEVICE_FW_REVISION`, connect sequence `i v r g q b`, SYNC right after connect to the published value, read-only temperature: `capabilities_*`, `debug`, `split`.
+- Non-default device state at connect: `start_state`. Reconnect to another model (MFOC → FMC v1) redefines identity and ranges: `model_change`. Extra instance publishes its own identity: `instances`.
+- Refused handshake / failed connect-time command, port released, next connect works: `init_*`, `*_identity`, `reconnect`.
+- Position poll failure keeps the last value, next good poll restores OK, move works: `poll_*`. Temperature sentinel/failure/recovery: `temperature`, `sensor_absent`.
+- Uncommanded motion BUSY then OK, no command, relative move from it: `external_position`, `moving_at_connect`.
+- Relative/absolute/no-op/clipping/reversal: `relative`, `noop`, `normal`. Move refused while another is BUSY: `overlap`, `rejected_change`.
+- Abort mid-move, ALERT on both properties, value = target = stopped, `H` once, two equal fresh readbacks, idle abort without `H`, OFF request without command, reconnect OK, fresh move: `abort`. Abort overtaking a queued GOTO (no `M`, one `H`): `abort_queued`.
+- Refused stop keeps the move BUSY, retry works: `stop_failure`. Failed readback during motion stops, ends ALERT and is not turned OK by idle polls: `motion_poll_failure`; stall: `stalled_motion`.
+- Disconnect during motion sends `H` once before the port closes, nothing follows, reconnect OK at the real stopped position: `disconnect_motion`, `disconnect_read`.
+- Transport loss during a move and idle: later requests ALERT, nothing BUSY, disconnect completes: `transport_loss`, `transport_loss_idle`.
+- Settings: one command per write, mismatch ALERT keeps the device value / previous switch item, retry, refused during motion, readback after reconnect: `capabilities_*`, `backlash_failure`, `limits_failure`, `reverse_failure`, `settings_during_motion`, `reconnect`.
+- Requests versus polls: SYNC and GOTO requested before the idle poll (`request_before_poll`) and with the poll reply outstanding (`request_during_poll`): command sent once, BUSY first, first result OK with the requested value. Position is the only polled writable value; backlash, reverse and limits are not polled.
+- `INDIGO_DRIVER_SHUTDOWN` refused while connected, connection keeps working: `normal`.
+
+### Rules not applicable
+
+- Speed, compensation, mode, homing, zeroing, calibration, beep/heater: not exposed by the protocol subset the driver implements (speed/mode/compensation asserted undefined).
+- Multi-command move sequences: a move is the single `M` command without an acknowledgement; its loss is covered by `transport_loss`.
+- `FOCUSER_LIMITS` minimum is fixed at 0, so an empty interval cannot be requested; a maximum below the current position is refused (`settings_during_motion`).
+- Failed firmware query falling back to a conservative profile: the driver refuses the connection instead (`init_version`), as the rules allow for a failed connect-time command. `INFO` is not reset on disconnect or refused handshake; the rules require that only where the driver does it.
+- Shared controllers / hot-plug: none. Relative-only profile and no-readback abort: the controller always reports position.
+
+### Open
+
+- README line on the 99.9 sentinel still says ALERT; it needs the user's approval to change.
+- The driver both writes the controller's reverse flag (`R`) and swaps relative direction itself; whether the firmware flag already reverses the logical direction needs hardware confirmation.
+
+Validation: `python3 tools/run_driver_test.py focuser_lacerta` (recorded in README `## Testing`).

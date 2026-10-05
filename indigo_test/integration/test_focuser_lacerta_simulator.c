@@ -63,7 +63,7 @@ static bool fault(const char *command, const char *action) {
 	return rename(temporary, fault_path) == 0;
 }
 
-static int commands(const char *prefix) {
+static int events(const char *type, const char *prefix) {
 	FILE *file = fopen(event_path, "r");
 	if (!file) {
 		return -1;
@@ -72,12 +72,74 @@ static int commands(const char *prefix) {
 	double timestamp;
 	int count = 0;
 	while (fgets(line, sizeof(line), file)) {
-		if (sscanf(line, "%lf %15s %255[^\r\n]", &timestamp, kind, value) == 3 && !strcmp(kind, "RX") && !strncmp(value, prefix, strlen(prefix))) {
+		if (sscanf(line, "%lf %15s %255[^\r\n]", &timestamp, kind, value) == 3 && !strcmp(kind, type) && !strncmp(value, prefix, strlen(prefix))) {
 			count++;
 		}
 	}
 	fclose(file);
 	return count;
+}
+
+static int commands(const char *prefix) {
+	return events("RX", prefix);
+}
+
+// Command letters received so far, in order, e.g. "ivrgqb" for the connect handshake.
+static void command_sequence(char *sequence, int size) {
+	FILE *file = fopen(event_path, "r");
+	int used = 0;
+	sequence[0] = 0;
+	if (!file) {
+		return;
+	}
+	char line[512], kind[16], value[256];
+	double timestamp;
+	while (fgets(line, sizeof(line), file) && used + 1 < size) {
+		if (sscanf(line, "%lf %15s %255[^\r\n]", &timestamp, kind, value) == 3 && !strcmp(kind, "RX") && strlen(value) > 2) {
+			sequence[used++] = value[2];
+		}
+	}
+	sequence[used] = 0;
+	fclose(file);
+}
+
+// Position replies the controller sent after the last H, i.e. the readbacks of the stopped focuser.
+static int positions_after_halt(int *positions, int size) {
+	FILE *file = fopen(event_path, "r");
+	int count = 0;
+	if (!file) {
+		return 0;
+	}
+	char line[512], kind[16], value[256];
+	double timestamp;
+	int position;
+	while (fgets(line, sizeof(line), file)) {
+		if (sscanf(line, "%lf %15s %255[^\r\n]", &timestamp, kind, value) != 3) {
+			continue;
+		}
+		if (!strcmp(kind, "RX") && !strcmp(value, ": H #")) {
+			count = 0;
+		} else if (!strcmp(kind, "TX") && sscanf(value, "p %d", &position) == 1 && count < size) {
+			positions[count++] = position;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+// Hold the driver's queue: the next <command> transaction gets its valid reply 0.8 s late.
+static bool gate(const char *command) {
+	int before = events("FAULT", "slow");
+	if (!fault(command, "slow")) {
+		return false;
+	}
+	for (int i = 0; i < 100; i++) {
+		if (events("FAULT", "slow") > before) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	return false;
 }
 
 static void driver_stop(void) {
@@ -125,6 +187,7 @@ static void noop_motion(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lacerta_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, commands(": M "));
 cleanup:
 	driver_stop();
 }
@@ -153,7 +216,7 @@ static int run_cases(const lacerta_test *cases, int count) {
 			failures++;
 			break;
 		}
-		if (!strcmp(cases[i].name, "instances")) {
+		if (!strcmp(cases[i].name, "instances") || !strcmp(cases[i].name, "model_change")) {
 			unsetenv("INDIGO_LACERTA_EVENTS");
 			unsetenv("INDIGO_LACERTA_FAULT");
 			const char *second_args[] = { "--profile", "alternate", NULL };
@@ -239,6 +302,12 @@ static void lacerta_focuser_passes_serial_compliance_checks(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lacerta_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position, 1));
+	// INDIGO_DRIVER_SHUTDOWN is refused while the focuser is connected, and the connection keeps working.
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_focuser_lacerta(INDIGO_DRIVER_SHUTDOWN, NULL));
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lacerta_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position + 100));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target_position + 100, 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 
 cleanup:
 	driver_stop();
@@ -363,7 +432,11 @@ static void lacerta_simulator_fmc_protocol(void) {
 }
 
 static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_TEMPERATURE_PROPERTY_NAME };
-static atomic_uint revisions[8], motion_busy;
+static atomic_uint revisions[8], motion_busy, steps_busy;
+static atomic_bool position_logging;
+static atomic_int position_log_count;
+static indigo_property_state position_log_state[256];
+static double position_log_value[256];
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < 8; i++) {
@@ -382,6 +455,16 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 	}
 	if (i == 1 && property->state == INDIGO_BUSY_STATE) {
 		atomic_fetch_add(&motion_busy, 1);
+	}
+	if (i == 2 && property->state == INDIGO_BUSY_STATE) {
+		atomic_fetch_add(&steps_busy, 1);
+	}
+	if (i == 1 && atomic_load(&position_logging)) {
+		int index = atomic_fetch_add(&position_log_count, 1);
+		if (index < 256) {
+			position_log_state[index] = property->state;
+			position_log_value[index] = property->items[0].number.value;
+		}
 	}
 	return result;
 }
@@ -424,6 +507,18 @@ static bool at_position(int position) {
 static void capabilities(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	int maximum = !strcmp(current_profile, "fmc") ? 65535 : 250000;
+	char sequence[16];
+	command_sequence(sequence, 7);
+	// Connect handshake: identity, firmware, reverse, maximum, position, backlash.
+	SERIAL_CHECK_TRUE(!strcmp(sequence, "ivrgqb"));
+	const char *model = !strcmp(current_profile, "fmc") ? "FMC" : "MFOC";
+	const char *firmware = !strcmp(current_profile, "fmc") ? "1.1.123" : !strcmp(current_profile, "mfoc2") ? "2.1.123" : "3.1.123";
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, model));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, firmware));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	// SYNC right after connect, to the value already published, still reaches the controller.
+	SERIAL_CHECK_TRUE(sync_to(0));
+	SERIAL_CHECK_EQ_INT(1, commands(": P 0#"));
 	assert_device_interface(INDIGO_INTERFACE_FOCUSER);
 	assert_serial_focuser_class_property_completeness();
 	SERIAL_CHECK_TRUE(!has_defined_property(FOCUSER_SPEED_PROPERTY_NAME));
@@ -469,21 +564,162 @@ cleanup:
 	driver_stop();
 }
 
+static bool position_above(double minimum) {
+	for (int i = 0; i < 60; i++) {
+		if (find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value > minimum) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
 static void abort_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	unsigned steps = atomic_load(&steps_busy);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_BUSY_STATE));
 	for (int i = 0; i < 60 && commands(": M 10000#") == 0; i++) {
 		indigo_usleep(50000);
 	}
 	SERIAL_CHECK_TRUE(commands(": M 10000#") == 1);
+	// The abort lands mid-move: the measured position has left the origin and both motion properties are BUSY.
+	SERIAL_CHECK_TRUE(position_above(0) && atomic_load(&steps_busy) > steps);
+	unsigned before = atomic_load(&revisions[1]);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	// An aborted move ends ALERT on both motion properties, at the stopped position, never at the requested target.
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	SERIAL_CHECK_TRUE(position->number.value == position->number.target && position->number.value < 10000);
+	double stopped = position->number.value;
+	SERIAL_CHECK_TRUE(position->number.target == stopped && stopped > 0 && stopped < 10000);
+	SERIAL_CHECK_EQ_INT(1, commands(": H #"));
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
+	// The stop is real: the abort's own readback and two later polls report the same position.
+	int positions[8], count = 0;
+	for (int i = 0; i < 60 && (count = positions_after_halt(positions, 8)) < 3; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(count >= 3);
+	for (int i = 0; i < count; i++) {
+		SERIAL_CHECK_EQ_INT((int)stopped, positions[i]);
+	}
+	// Idle polls do not turn the aborted move OK.
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	// Abort while idle ends OK without a stop command and keeps the position.
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands(": H #"));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == stopped);
+	// A request with the item OFF is answered without a command.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands(": H #"));
+	// A reconnect after the aborted move starts with an OK position.
+	disconnect_serial_device(&lacerta_focuser);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lacerta_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == stopped);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 800, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(800));
+cleanup:
+	driver_stop();
+}
+
+static void abort_queued(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// The GOTO waits in the queue behind a slow poll; the urgent abort overtakes it.
+	SERIAL_CHECK_TRUE(gate("t"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lacerta_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_EQ_INT(0, commands(": M "));
+	SERIAL_CHECK_EQ_INT(1, commands(": H #"));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position->number.value == 0 && position->number.target == 0);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+cleanup:
+	driver_stop();
+}
+
+static void start_position_log(void) {
+	atomic_store(&position_log_count, 0);
+	atomic_store(&position_logging, true);
+}
+
+// The request publishes BUSY first and its first non-BUSY publication is OK with the requested value.
+static bool first_result(double value) {
+	atomic_store(&position_logging, false);
+	int count = atomic_load(&position_log_count);
+	count = count > 256 ? 256 : count;
+	if (count == 0 || position_log_state[0] != INDIGO_BUSY_STATE) {
+		fprintf(stderr, "First POSITION publication is not BUSY (%d publications)\n", count);
+		return false;
+	}
+	for (int i = 1; i < count; i++) {
+		if (position_log_state[i] != INDIGO_BUSY_STATE) {
+			if (position_log_state[i] == INDIGO_OK_STATE && position_log_value[i] == value) {
+				return true;
+			}
+			fprintf(stderr, "First POSITION result is state %d value %g, expected OK %g\n", position_log_state[i], position_log_value[i], value);
+			return false;
+		}
+	}
+	return false;
+}
+
+static void request_versus_poll(void) {
+	// gate_t: the request arrives before the idle position poll; gate_q: with the poll's reply outstanding.
+	const char *command = !strcmp(current_profile, "gate_q") ? "q" : "t";
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(gate(command));
+	start_position_log();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 321, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(first_result(321));
+	SERIAL_CHECK_EQ_INT(1, commands(": P 321#"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(gate(command));
+	start_position_log();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, lacerta_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900));
+	SERIAL_CHECK_TRUE(at_position(900));
+	SERIAL_CHECK_TRUE(first_result(900));
+	SERIAL_CHECK_EQ_INT(1, commands(": M 900#"));
+cleanup:
+	atomic_store(&position_logging, false);
+	driver_stop();
+}
+
+static void start_state(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// Connect publishes the controller's state, not driver defaults.
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position->number.value == 1234 && position->number.target == 1234 && position->number.max == 40000);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME)->number.max == 40000);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value == 40000);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME)->number.value == 17);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, -3.5, .01));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void model_change(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, "MFOC"));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.max == 250000);
+	disconnect_serial_device(&lacerta_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	// Reconnecting to a v1 FMC defines that device's identity and ranges, nothing kept from the MFOC session.
+	SERIAL_CHECK_TRUE(connect_serial_device(&lacerta_focuser, second_fixture.port));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, "FMC"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "1.1.077"));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.max == 65535);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value == 65535);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == 65535);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 500);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, -5, .01));
 cleanup:
 	driver_stop();
 }
@@ -537,7 +773,10 @@ static void reverse_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(fault("R", "mismatch"));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(2, commands(": R 1#"));
 cleanup:
 	driver_stop();
 }
@@ -558,6 +797,11 @@ static void poll_failure(void) {
 	unsigned before = atomic_load(&revisions[1]);
 	SERIAL_CHECK_TRUE(fault("q", current_profile));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// ALERT keeps the last valid value; the next good poll restores OK without a request.
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 0);
+	before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 0);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(600));
 cleanup:
@@ -569,7 +813,8 @@ static void temperature_failure(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
 	unsigned before = atomic_load(&revisions[7]);
 	SERIAL_CHECK_TRUE(fault("temperature", "99.9"));
-	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// Workbook row 32: 99.9 is the no-sensor sentinel, published IDLE with the last valid value.
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, before, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME)->number.value == 23.5);
 	before = atomic_load(&revisions[7]);
 	SERIAL_CHECK_TRUE(fault("temperature", "-5"));
@@ -585,9 +830,34 @@ cleanup:
 
 static void external_position(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	unsigned busy = atomic_load(&motion_busy);
+	// Hand-controller motion: published BUSY while it runs, then OK with the target equal to the measured value.
 	SERIAL_CHECK_TRUE(fault("external", "750"));
 	SERIAL_CHECK_TRUE(at_position(750));
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > busy);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 750);
+	SERIAL_CHECK_EQ_INT(0, commands(": M "));
+	// A later relative move starts from the measured position.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(800));
+	SERIAL_CHECK_EQ_INT(1, commands(": M 800#"));
+cleanup:
+	driver_stop();
+}
+
+static void moving_at_connect(void) {
+	unsigned busy = atomic_load(&motion_busy);
+	SERIAL_CHECK_TRUE(driver_start());
+	// Motion running at connect is published BUSY, then OK at the settled position, without a command.
+	SERIAL_CHECK_TRUE(at_position(5000));
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > busy);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 5000);
+	SERIAL_CHECK_EQ_INT(0, commands(": M "));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(5100));
+	SERIAL_CHECK_EQ_INT(1, commands(": M 5100#"));
 cleanup:
 	driver_stop();
 }
@@ -597,7 +867,11 @@ static void stop_failure(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(fault("H", "reject"));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	// The refused stop leaves the move running and reported BUSY, never completed.
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value < 10000);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -606,16 +880,27 @@ cleanup:
 static void pending_disconnect(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_above(0));
 	if (!strcmp(current_profile, "disconnect_read")) {
 		SERIAL_CHECK_TRUE(fault("q", "silent"));
 		indigo_usleep(200000);
 	}
 	disconnect_serial_device(&lacerta_focuser);
 	SERIAL_CHECK_TRUE(!context.connected);
+	// The stop is sent once before the port closes; nothing follows it.
+	SERIAL_CHECK_EQ_INT(1, commands(": H #"));
 	int before = commands(": ");
 	indigo_usleep(200000);
 	SERIAL_CHECK_TRUE(commands(": ") == before);
 	SERIAL_CHECK_TRUE(connect_serial_device(&lacerta_focuser, fixture.port));
+	// After reconnect the position is OK at the real, stopped position.
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	double stopped = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value;
+	SERIAL_CHECK_TRUE(stopped > 0 && stopped < 10000);
+	indigo_usleep(300000);
+	int positions[8];
+	int count = positions_after_halt(positions, 8);
+	SERIAL_CHECK_TRUE(count > 0 && positions[count - 1] == (int)stopped);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -623,8 +908,19 @@ cleanup:
 
 static void transport_loss(void) {
 	SERIAL_CHECK_TRUE(driver_start());
-	SERIAL_CHECK_TRUE(fault("M", "close"));
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_ALERT_STATE));
+	if (!strcmp(current_profile, "idle_loss")) {
+		unsigned before = atomic_load(&revisions[1]);
+		SERIAL_CHECK_TRUE(fault("q", "close"));
+		SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_ALERT_STATE));
+	} else {
+		SERIAL_CHECK_TRUE(fault("M", "close"));
+		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_ALERT_STATE));
+	}
+	// Every later request ends ALERT, nothing is left BUSY.
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 9, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 cleanup:
 	driver_stop();
 }
@@ -661,6 +957,9 @@ static void motion_poll_failure(void) {
 	SERIAL_CHECK_TRUE(fault("q", "malformed"));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(commands(": H #") > 0);
+	// Later good idle polls do not turn the failed move OK.
+	indigo_usleep(2200000);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -686,8 +985,12 @@ cleanup:
 
 static void sensor_absent(void) {
 	SERIAL_CHECK_TRUE(driver_start());
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// No sensor: IDLE, published once, never the 99.9 sentinel as a value.
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME)->number.value != 99.9);
+	unsigned before = atomic_load(&revisions[7]);
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(atomic_load(&revisions[7]) == before);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -720,6 +1023,9 @@ static void instances(void) {
 	SERIAL_CHECK_TRUE(connect_serial_device(&second, second_fixture.port));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, -5, .01));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, .01));
+	// The extra instance publishes its own controller's identity and ranges.
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME)->text.value, "FMC"));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max == 65535);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, second.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
 	SERIAL_CHECK_TRUE(at_position(1000));
 	disconnect_serial_device(&lacerta_focuser);
@@ -751,6 +1057,12 @@ int main(void) {
 		{ "split", capabilities, "split" },
 		{ "relative", relative_motion, "normal" },
 		{ "abort", abort_motion, "normal" },
+		{ "abort_queued", abort_queued, "normal" },
+		{ "request_before_poll", request_versus_poll, "gate_t" },
+		{ "request_during_poll", request_versus_poll, "gate_q" },
+		{ "start_state", start_state, "start_state" },
+		{ "model_change", model_change, "normal" },
+		{ "moving_at_connect", moving_at_connect, "moving" },
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "backlash_failure", settings_failure, "normal" },
 		{ "limits_failure", settings_failure, "limits_failure" },
@@ -768,6 +1080,7 @@ int main(void) {
 		{ "disconnect_motion", pending_disconnect, "normal" },
 		{ "disconnect_read", pending_disconnect, "disconnect_read" },
 		{ "transport_loss", transport_loss, "normal" },
+		{ "transport_loss_idle", transport_loss, "idle_loss" },
 		{ "reconnect", reconnect, "normal" },
 		{ "motion_poll_failure", motion_poll_failure, "normal" },
 		{ "stalled_motion", stalled_motion, "normal" },
