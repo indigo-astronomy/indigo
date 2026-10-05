@@ -1301,7 +1301,9 @@ Source: `indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver`.
 
 Custom properties: `X_NAME`, `X_PID_SETTINGS`, `X_RESET`, `X_SAVED_VALUES`, `X_SELECT_AMB_SENSOR`, `X_SELECT_PID_SENSOR`, `X_SELECT_TC_SENSOR`, `X_START_ZEROING`, `X_STATUS`, `X_USE_AUTO_DEW`, `X_USE_ENDSTOP`, `X_USE_PID`.
 
-Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+`FOCUSER_MODE` automatic is the controller's temperature compensation, which moves the focuser itself, so `FOCUSER_POSITION` is read-only there and relative moves and zeroing are refused. `FOCUSER_TEMPERATURE` is IDLE while the averaged sensors report -128 (no sensor).
 
 Source: `indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver`.
 
