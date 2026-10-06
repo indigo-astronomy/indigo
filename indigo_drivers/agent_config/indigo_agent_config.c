@@ -24,7 +24,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300001C
+#define DRIVER_VERSION 0x0300001D
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -345,9 +345,13 @@ static void process_configuration_property(indigo_device *device) {
 					indigo_change_property(agent_client, copy); // synchronous local bus
 				}
 				bool restored = !copy->count;
-				for (int k = 0; has_server && k < 20; k++) {
+				bool busy = false;
+				// the server loads and unloads drivers on its own queue and keeps DRIVERS busy until it is done, unloading
+				// many drivers takes longer than the time an idle server gets to answer
+				for (int k = 0; has_server && (k < 20 || (busy && k < 600)); k++) {
 					pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 					bool rejected = AGENT_CONFIG_DRIVERS_PROPERTY->state == INDIGO_ALERT_STATE;
+					busy = AGENT_CONFIG_DRIVERS_PROPERTY->state == INDIGO_BUSY_STATE;
 					restored = AGENT_CONFIG_DRIVERS_PROPERTY->state == INDIGO_OK_STATE;
 					for (int j = 0; restored && j < copy->count; j++) {
 						bool matched = false;
