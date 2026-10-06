@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002D
+#define DRIVER_VERSION       0x0300002E
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1645,6 +1645,10 @@ indigo_result indigo_ccd_qhy2(indigo_driver_action action, indigo_driver_info *i
 				return INDIGO_FAILED;
 			}
 			indigo_start_usb_event_handler();
+			// ReleaseQHYCCDResource() does not join the SDK's own threads. The driver was the last user of
+			// libqhyccd, so an unload unmapped it and one of those threads crashed in the unmapped library
+			// when it woke up a few seconds later. The SDK library is pinned instead.
+			indigo_pin_library((void *)InitQHYCCDResource);
 			SetQHYCCDAutoDetectCamera(false);
 			SetQHYCCDLogLevel(6);
 			if (!qhy2_result(InitQHYCCDResource(), "InitQHYCCDResource")) {

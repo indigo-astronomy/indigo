@@ -390,3 +390,19 @@ SDK; a `CloseQHYCCD()` on it is counted in `released_closes`, which must stay 0.
 - Hardware tests run: QHY5III178M, `--hw` 1/1 and `--hot-plug` 6/6 (Linux arm64), and the QHY suite's
   `QHY_HW_CASE=hotplug`, all four phases (disconnected, idle, exposing, streaming). 3.0.0.44 aborted in
   the second phase.
+
+## Unloading the driver crashed the server through an SDK thread (version 45 to 46, 2026-10-06)
+
+`indigo_test/integration/test_server_driver_stress` loads and unloads all drivers through
+`Server.DRIVERS` of the real `indigo_server`, without hardware. With this driver in the set the server
+died with SIGSEGV on a thread whose only frames were `_pthread_start` and an unmapped address, a few
+seconds after the driver had been unloaded and left unloaded. Logging every image the loader mapped
+placed that address in `libqhyccd.dylib`: the driver was its last user, so the unload unmapped the
+SDK while a thread `ReleaseQHYCCDResource()` does not join was still sleeping in it.
+
+`on_init` now pins `libqhyccd` through the address of `InitQHYCCDResource()`. The stress test passes
+with the driver in every case, including the random sequence (seed 1, set 14) that reproduced the
+crash. The fake SDK starts no threads, so the scenario is covered by the stress test against the real
+SDK only.
+
+Results (macOS arm64): fake SDK tests run 42, passed 42; `test_server_driver_stress` passed in all three cases with the driver included. Hardware tests run 0. The stress runs and the server-side hang found with them are recorded in `indigo_server/REFACTOR.md`.
