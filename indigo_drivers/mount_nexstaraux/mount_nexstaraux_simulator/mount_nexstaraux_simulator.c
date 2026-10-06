@@ -130,7 +130,7 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after TCP setup\n");
 	printf("  --trace                 Log protocol packets\n");
 	printf("  --profile <name>        normal, no-version, slow-slew, stalling, never-arrives,\n");
-	printf("                          deaf-guide-rate or aux-guide, default is normal\n");
+	printf("                          deaf-guide-rate, aux-guide or cgx, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_NEXSTARAUX_EVENTS names a file receiving '<dst> <cmd> <data>' per request.\n");
@@ -207,6 +207,12 @@ static void apply_profile(void) {
 		firmware_major = 7;
 		firmware_minor = 11;
 		model = 22;
+	} else if (!strcmp(options.profile, "cgx")) {
+		// A CGX, a German mount, at its home position: the counterweight down and the OTA at the
+		// pole, both axes a quarter turn from zero.
+		model = 23;
+		azm.position = azm.target = azm.start = 0x400000;
+		alt.position = alt.target = alt.start = 0x400000;
 	} else if (!strcmp(options.profile, "never-arrives")) {
 		// The axis gives up and the controller keeps calling the goto unfinished.
 		stall_after = 1.0 / 3.0;

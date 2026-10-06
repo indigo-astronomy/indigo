@@ -98,16 +98,16 @@
 |  | 2026-10-01 23:15 | 3.0.0.70 | linux x64 | ZWO ASI224MC | 28 / 28 | ✅ OK |
 |  | 2026-10-02 20:48 | 3.0.0.70 | mac arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-10-02 20:50 | 3.0.0.70 | mac arm64 | ZWO ASI294MC Pro | 28 / 28 | ✅ OK |
-| ccd_atik | 2026-09-22 10:06 | 3.0.0.44 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
-|  | 2026-09-22 10:08 | 3.0.0.44 | mac arm64 | ArtemisCCD VS | 1 / 1 | ✅ OK |
-|  | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
+| ccd_atik | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
 |  | 2026-09-22 14:31 | 3.0.0.45 | mac arm64 | Atik 11000 | 1 / 1 | ✅ OK |
 |  | 2026-09-26 17:43 | 3.0.0.46 | linux arm64 | fake SDK | 43 / 43 | ✅ OK |
-|  | 2026-09-26 19:56 | 3.0.0.47 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
 |  | 2026-09-27 07:55 | 3.0.0.49 | linux x64 | fake SDK | 44 / 44 | ✅ OK |
 |  | 2026-09-27 21:27 | 3.0.0.49 | mac arm64 | fake SDK | 44 / 44 | ✅ OK |
 |  | 2026-09-30 19:06 | 3.0.0.49 | linux arm64 | Atik One | 1 / 1 | ✅ OK |
 |  | 2026-09-30 19:12 | 3.0.0.49 | linux arm64 | Atik Titan | 1 / 1 | ✅ OK |
+|  | 2026-10-06 22:19 | 3.0.0.50 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
+|  | 2026-10-06 22:24 | 3.0.0.50 | mac arm64 | ArtemisCCD VS | 1 / 1 | ✅ OK |
+|  | 2026-10-06 22:27 | 3.0.0.50 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
 | ccd_atik2 | 2026-09-22 09:45 | 3.0.0.14 | mac arm64 | Atik One | 1 / 1 | ✅ OK |
 |  | 2026-09-22 09:48 | 3.0.0.14 | mac arm64 | Atik VS | 1 / 1 | ✅ OK |
 |  | 2026-09-22 09:51 | 3.0.0.14 | mac arm64 | Atik Titan | 1 / 1 | ✅ OK |
@@ -147,7 +147,6 @@
 |  | 2026-09-27 23:37 | 3.0.0.41 | mac arm64 | fake SDK | 39 / 39 | ✅ OK |
 | ccd_qhy2 | 2026-09-22 19:37 | 3.0.0.40 | mac arm64 | QHY5-M | 1 / 1 | ✅ OK |
 |  | 2026-09-22 19:39 | 3.0.0.40 | mac arm64 | QHY8PRO-C | 1 / 1 | ✅ OK |
-|  | 2026-09-22 19:41 | 3.0.0.40 | mac arm64 | QHY5LII-M | 2 / 2 | ✅ OK |
 |  | 2026-09-27 09:27 | 3.0.0.44 | linux x64 | fake SDK | 41 / 41 | ✅ OK |
 |  | 2026-09-27 21:48 | 3.0.0.44 | mac arm64 | fake SDK | 42 / 42 | ✅ OK |
 |  | 2026-09-30 17:25 | 3.0.0.45 | linux arm64 | fake SDK | 41 / 41 | ✅ OK |
@@ -156,7 +155,8 @@
 |  | 2026-09-30 17:50 | 3.0.0.45 | linux arm64 | QHY5LII-M | 1 / 1 | ✅ OK |
 |  | 2026-09-30 17:54 | 3.0.0.45 | linux arm64 | QHY5-M | 1 / 1 | ✅ OK |
 |  | 2026-09-30 17:55 | 3.0.0.45 | linux arm64 | QHY8PRO-C | 1 / 1 | ✅ OK |
-|  | 2026-10-02 21:05 | 3.0.0.45 | mac arm64 | QHY5III178M | 1 / 1 | ✅ OK |
+|  | 2026-10-06 22:33 | 3.0.0.46 | mac arm64 | QHY5III178M | 1 / 1 | ✅ OK |
+|  | 2026-10-06 22:36 | 3.0.0.46 | mac arm64 | QHY5LII-M | 1 / 1 | ✅ OK |
 | ccd_qsi | 2026-09-27 08:05 | 3.0.0.23 | linux x64 | fake SDK | 61 / 61 | ✅ OK |
 | ccd_rising | 2026-09-27 21:49 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_simulator | 2026-09-27 13:44 | 3.0.0.37 | linux x64 | simulator | 25 / 25 | ✅ OK |
@@ -184,7 +184,7 @@
 |  | 2026-10-01 23:23 | 3.0.0.55 | linux x64 | focuser | 0 / 0 | ❌ Failed |
 |  | 2026-10-02 00:32 | 3.0.0.55 | linux x64 | ATR585M (hot-plug) | 30 / 30 | ✅ OK |
 |  | 2026-10-02 00:37 | 3.0.0.55 | linux x64 | ATR585M | 27 / 27 | ✅ OK |
-|  | 2026-10-02 20:57 | 3.0.0.55 | mac arm64 | GPCMOS01200KMB | 27 / 27 | ✅ OK |
+|  | 2026-10-06 22:34 | 3.0.0.56 | mac arm64 | GPCMOS01200KMB | 27 / 27 | ✅ OK |
 | ccd_uvc | 2026-09-21 20:24 | 3.0.0.27 | linux arm64 | SVBONY SV205 | 11 / 11 | ✅ OK |
 |  | 2026-09-21 20:26 | 3.0.0.27 | linux arm64 | Creative Live! Cam Sync HD VF0770 | 11 / 11 | ✅ OK |
 |  | 2026-09-27 22:02 | 3.0.0.30 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
@@ -301,8 +301,8 @@
 |  | 2026-09-24 05:44 | 3.0.0.18 | linux arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-24 11:00 | 3.0.0.18 | mac arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-26 23:13 | 3.0.0.22 | linux x64 | simulator | 42 / 42 | ✅ OK |
-|  | 2026-10-04 19:45 | 3.0.0.24 | mac arm64 | simulator | 67 / 67 | ✅ OK |
-|  | 2026-10-04 19:59 | 3.0.0.24 | mac arm64 | NexStar SE 4/5 | 37 / 37 | ✅ OK |
+|  | 2026-10-06 22:32 | 3.0.0.25 | mac arm64 | simulator | 68 / 68 | ✅ OK |
+|  | 2026-10-06 23:08 | 3.0.0.25 | mac arm64 | NexStar SE 4/5 | 37 / 37 | ✅ OK |
 | mount_pmc8 | 2026-09-24 23:45 | 3.0.0.12 | mac arm64 | iEXOS-100 | 38 / 38 | ✅ OK |
 |  | 2026-09-26 21:30 | 3.0.0.14 | linux arm64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-09-27 00:26 | 3.0.0.15 | linux x64 | simulator | 21 / 21 | ✅ OK |
@@ -320,9 +320,9 @@
 |  | 2026-09-24 21:27 | 3.0.0.8 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-24 21:48 | 3.0.0.9 | mac arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-26 22:41 | 3.0.0.13 | linux x64 | simulator | 24 / 24 | ✅ OK |
-|  | 2026-10-04 11:05 | 3.0.0.15 | mac arm64 | AZGTi | 18 / 18 | ✅ OK |
 |  | 2026-10-04 11:20 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-10-06 21:46 | 3.0.0.18 | mac arm64 | simulator | 46 / 46 | ✅ OK |
+|  | 2026-10-06 22:15 | 3.0.0.18 | mac arm64 | AZGTi | 19 / 19 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:16 | 3.0.0.22 | linux x64 | simulator | 15 / 15 | ✅ OK |
 |  | 2026-10-04 19:34 | 3.0.0.25 | mac arm64 | simulator | 28 / 28 | ✅ OK |
