@@ -1966,8 +1966,9 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// The axis direction of every manual motion on both pier sides in both hemispheres, checked by the readback moving
-// the requested way (north raises DEC, west lowers RA), and a north guide pulse using the direction manual north uses.
+// The reported side of pier and the axis direction of every manual motion on both pier sides in both hemispheres,
+// the direction checked by the readback moving the requested way (north raises DEC, west lowers RA), and a north
+// guide pulse using the direction manual north uses.
 static void synscan_mount_moves_the_requested_way_on_both_pier_sides(void) {
 	static const char *properties[] = { MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_RA_PROPERTY_NAME };
 	static const char *items[] = { MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, MOUNT_MOTION_WEST_ITEM_NAME, MOUNT_MOTION_EAST_ITEM_NAME };
@@ -1995,6 +1996,8 @@ static void synscan_mount_moves_the_requested_way_on_both_pier_sides(void) {
 			printf("    latitude %+.0f: HA %+.1f h DEC %+.0f reached as HA %+.4f h DEC %+.4f, side of pier %s\n", 40 * sign, ha, dec, reached_ha, reached_dec, pier);
 			SERIAL_CHECK_TRUE(fabs(reached_ha - ha) < 0.01);
 			SERIAL_CHECK_TRUE(fabs(reached_dec - dec) < 0.05);
+			// a target east of the meridian puts the OTA west of the pier, and vice versa, in both hemispheres
+			SERIAL_CHECK_TRUE(!strcmp(pier, side == 0 ? "west" : "east"));
 			char north_direction = 0;
 			for (int direction = 0; direction < 4; direction++) {
 				bool dec_axis = direction < 2;
