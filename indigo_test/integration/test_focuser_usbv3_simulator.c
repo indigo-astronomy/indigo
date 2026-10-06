@@ -167,8 +167,8 @@ static bool rejected_number_change(const char *property, const char *item, doubl
 		return false;
 	}
 	double target = cached->number.target;
-	unsigned int revision = property_state_revision(property, INDIGO_ALERT_STATE);
-	if (indigo_change_number_property_1(&simulator_test_client, usbv3_focuser.device_name, property, item, value) != INDIGO_OK || !state_seen(property, INDIGO_ALERT_STATE, revision)) {
+	// a BUSY property is refused with a BUSY message, any other one with ALERT (indigo_reject_change())
+	if (!assert_rejected_number_change_on(usbv3_focuser.device_name, property, item, value)) {
 		return false;
 	}
 	cached = find_cached_item(property, item);

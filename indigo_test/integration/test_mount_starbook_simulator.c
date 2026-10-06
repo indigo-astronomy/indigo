@@ -759,6 +759,8 @@ static char coordinates_message[INDIGO_VALUE_SIZE];
 
 // The bus delivers the message of an update through send_message, right after the update itself.
 static indigo_result message_recording_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (property != NULL && message != NULL && *message != '\0' && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		pthread_mutex_lock(&coordinates_message_mutex);
 		snprintf(coordinates_message, sizeof(coordinates_message), "%s", message);
@@ -771,7 +773,7 @@ static void record_coordinates_messages(bool enable) {
 	pthread_mutex_lock(&coordinates_message_mutex);
 	*coordinates_message = '\0';
 	pthread_mutex_unlock(&coordinates_message_mutex);
-	simulator_test_client.send_message = enable ? message_recording_send_message : NULL;
+	simulator_test_client.send_message = enable ? message_recording_send_message : simulator_client_send_message;
 }
 
 static bool coordinates_message_contains(const char *needle) {

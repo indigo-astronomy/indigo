@@ -606,10 +606,11 @@ static void overlap_rejected(void) {
 	// request is sent, otherwise the command count proves nothing.
 	SERIAL_CHECK_TRUE(wait_for_command("<F1MA", 1));
 	SERIAL_CHECK_TRUE(wait_for_motion_progress(20000));
-	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_POSITION_PROPERTY_NAME)]);
+	int messages = context.busy_message_count;
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optecfl_focuser_1.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100));
-	// The refusal is ALERT and keeps the running move's target.
-	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// The refusal is a BUSY message, the running move keeps the property and its target.
+	SERIAL_CHECK_TRUE(wait_for_busy_message_after(messages));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, property_state(FOCUSER_POSITION_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(position_target() == 20000);
 	indigo_usleep(500000);
 	SERIAL_CHECK_EQ_INT(1, commands("<F1MA"));

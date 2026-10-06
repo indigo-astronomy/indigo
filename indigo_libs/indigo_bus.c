@@ -1136,6 +1136,18 @@ indigo_result indigo_reject_change(indigo_device *device, indigo_property *prope
 	if (property == NULL) {
 		return INDIGO_FAILED;
 	}
+	char message[INDIGO_VALUE_SIZE] = { 0 };
+	if (format != NULL) {
+		va_list args;
+		va_start(args, format);
+		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+		va_end(args);
+	}
+	if (property->state == INDIGO_BUSY_STATE) {
+		// A BUSY property belongs to a running operation; a state written here would race with the updates of that operation, so the
+		// refusal is only told.
+		return indigo_send_message(device, BUSY_PROPERTY, "%s", *message ? message : "Another operation is in progress");
+	}
 	// Every item is forced, because an unchanged value would otherwise be suppressed and the client
 	// would not learn which values it has to roll back.
 	for (int i = 0; i < property->count; i++) {
@@ -1145,11 +1157,6 @@ indigo_result indigo_reject_change(indigo_device *device, indigo_property *prope
 	if (format == NULL) {
 		return indigo_update_property(device, property, NULL);
 	}
-	char message[INDIGO_VALUE_SIZE];
-	va_list args;
-	va_start(args, format);
-	vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-	va_end(args);
 	return indigo_update_property(device, property, "%s", message);
 }
 

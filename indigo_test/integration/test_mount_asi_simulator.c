@@ -186,6 +186,8 @@ static indigo_result asi_client_update(indigo_client *client, indigo_device *dev
 }
 
 static indigo_result asi_client_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	record_message(message);
 	return INDIGO_OK;
 }

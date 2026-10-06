@@ -22,7 +22,7 @@ driver asi {
 	label = "ZWO ASI Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 37;
+	version = 38;
 	multi_device_support = true;
 	include {
 		#include <stdbool.h>
@@ -232,9 +232,8 @@ driver asi {
 					return false;
 				}
 				if (PRIVATE_DATA->moving) {
-					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Focuser is moving");
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					// the running move keeps publishing the motion properties, a refusal is only a message
+					indigo_send_message(device, BUSY_PROPERTY, "Focuser is moving");
 					return false;
 				}
 				bool moving = false, moving_hc = false;

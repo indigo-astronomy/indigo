@@ -558,7 +558,7 @@ driver usbv3 {
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
 			reject_change {
-				// moving keeps the guard while a refusal shows one motion property ALERT
+				// moving and the states of both motion properties guard against a second move
 				// in automatic mode the controller moves on its own and accepts no move
 				condition = usbv3_motion_busy(device) || FOCUSER_MODE_AUTOMATIC_ITEM->sw.value;
 				message = "Another motion operation is pending";

@@ -543,6 +543,8 @@ static indigo_result observe_delete(indigo_client *client, indigo_device *device
 }
 
 static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	(void)client;
 	(void)device;
 	pthread_mutex_lock(&observe_mutex);
@@ -1771,8 +1773,11 @@ static void busy_motion_requests_rejected(void) {
 	CHECK(wait_rx("[SMOV]", 1, 5));
 	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
 	double rejected_steps = value_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME);
+	// STEPS is BUSY with the running move, so the refusal is a BUSY message and the move keeps the property
+	int messages = context.busy_message_count;
 	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
-	CHECK(wait_settled(FOCUSER_STEPS_PROPERTY_NAME, steps, INDIGO_ALERT_STATE, 5));
+	CHECK(wait_for_busy_message_after(messages));
+	CHECK(state_of(FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_ALERT_STATE);
 	CHECK_EQ(rejected_steps, value_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME));
 	CHECK_EQ(rejected_steps, target_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME));
 	CHECK_EQ(12000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));

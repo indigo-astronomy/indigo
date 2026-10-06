@@ -896,9 +896,7 @@ static void focuser_movement_finalizer(indigo_device *device) {
 			}
 			// Progress is published on every poll, spaced like the rotator poll. Polling
 			// as fast as the link allows publishes the same property from this queue
-			// hundreds of times per second, which both floods the clients and races
-			// with a refusal published from the bus thread, so that the refusal message
-			// can be lost.
+			// hundreds of times per second, which floods the clients.
 			indigo_execute_handler_in(device, 0.2, focuser_movement_finalizer);
 		} else {
 			indigo_property_state state = INDIGO_ALERT_STATE;
@@ -940,9 +938,7 @@ static void focuser_poll_position(indigo_device *device) {
 	double position = 0;
 	bool moving = false;
 	bool read = focuser_read_motion(device, &position, &moving);
-	// A request accepted while the poll was in flight owns the motion properties now. A
-	// refusal of a second request publishes ALERT over the accepted one's BUSY, so the
-	// pending flag, not the property state, says that a move is queued.
+	// A request accepted while the poll was in flight owns the motion properties now.
 	if (PRIVATE_DATA->pending || ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion)) {
 		return;
 	}
@@ -1748,10 +1744,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	}
 	// The relative move is carried out by the absolute move handler, so both motion
 	// properties have to be published as busy here and both have to stay busy until
-	// the shared finalizer completes them. The state of this property must not be
-	// derived from the position property afterwards: a refused request published from
-	// the bus thread overwrites that state with ALERT, which would silently disarm the
-	// guard that refuses a second move.
+	// the shared finalizer completes them.
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	focuser_position_handler(device);
@@ -2095,7 +2088,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
 		//+ focuser.FOCUSER_POSITION.on_change_request
-		// The accepted move is pending from now on; a refusal of a later request must not hide it.
+		// The accepted move is pending until its handler runs.
 		PRIVATE_DATA->pending = true;
 		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
@@ -2103,7 +2096,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
 		//+ focuser.FOCUSER_STEPS.on_change_request
-		// The accepted move is pending from now on; a refusal of a later request must not hide it.
+		// The accepted move is pending until its handler runs.
 		PRIVATE_DATA->pending = true;
 		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);

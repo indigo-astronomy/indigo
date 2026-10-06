@@ -441,10 +441,10 @@ static void move_refused_while_moving(void) {
 	FLI_CHECK_TRUE(fli_connect(0));
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
 	FLI_CHECK_TRUE(wait_steps(1));
-	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_ALERT_STATE));
+	FLI_CHECK_TRUE(fli_refused_while_busy(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
 	FLI_CHECK_TRUE(target_is(0, 2000));
 	FLI_CHECK_TRUE(set_direction(0, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME));
-	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	FLI_CHECK_TRUE(fli_refused_while_busy(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
 	FLI_CHECK_EQ_INT(1, atomic_load(&fli_fake.step_motor_calls));
 	// the focuser completes the running move
 	fli_fake_devices[0].stepper_position = 2000;

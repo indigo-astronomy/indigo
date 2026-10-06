@@ -26,6 +26,8 @@ static const simulator_driver_case manual = { "Manual filter wheel", "indigo_whe
 static char last_message[INDIGO_VALUE_SIZE];
 
 static indigo_result capture_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (device && !strcmp(device->name, manual.device_name)) {
 		snprintf(last_message, sizeof(last_message), "%s", message ? message : "");
 	}

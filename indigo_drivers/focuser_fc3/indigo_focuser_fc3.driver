@@ -218,7 +218,7 @@ driver fc3 {
 					fc3_command(device, "FH");
 					fc3_end_motion(device, INDIGO_ALERT_STATE, "The focuser stalled and was stopped");
 				} else if (changed) {
-					// progress keeps the state, so a refused overlapping request stays visible as ALERT
+					// progress keeps the BUSY state of the running move
 					PRIVATE_DATA->stall_polls = 0;
 					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				}
@@ -426,7 +426,7 @@ driver fc3 {
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
 			reject_change {
-				// motion_active keeps the guard while a refusal shows one motion property ALERT
+				// motion_active and the states of both motion properties guard against a second move
 				condition = fc3_motion_busy(device);
 				message = "Another motion operation is pending";
 			}

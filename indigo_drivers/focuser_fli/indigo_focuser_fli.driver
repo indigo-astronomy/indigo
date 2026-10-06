@@ -367,7 +367,7 @@ driver fli {
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+				/* the accepted request is pending until its handler runs */
 				PRIVATE_DATA->pending = true;
 			}
 			on_change {
@@ -380,7 +380,7 @@ driver fli {
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+				/* the accepted request is pending until its handler runs */
 				PRIVATE_DATA->pending = true;
 			}
 			on_change {

@@ -1743,6 +1743,8 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 
 // The bus hands the message of an update to the client's send_message callback, with the property.
 static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (property != NULL && !strcmp(property->device, synscan_mount.device_name) && property->state == INDIGO_ALERT_STATE && message != NULL && *message) {
 		bool coordinates = !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 		if (coordinates || !strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
@@ -1768,7 +1770,7 @@ static void install_observer(void) {
 static void remove_observer(void) {
 	simulator_test_client.define_property = simulator_client_define_property;
 	simulator_test_client.update_property = simulator_client_update_property;
-	simulator_test_client.send_message = NULL;
+	simulator_test_client.send_message = simulator_client_send_message;
 }
 
 static bool observed_message_contains(const char *message, const char *text) {

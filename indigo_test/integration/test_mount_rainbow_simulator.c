@@ -914,6 +914,8 @@ static indigo_result capture_define_property(indigo_client *client, indigo_devic
 
 // The bus hands the message of an update over separately, right after the update.
 static indigo_result capture_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (property != NULL && message != NULL && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		snprintf(coordinates_message, sizeof(coordinates_message), "%s", message);
 	}

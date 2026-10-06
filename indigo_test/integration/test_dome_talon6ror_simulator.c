@@ -636,6 +636,8 @@ static indigo_result observe_delete(indigo_client *client, indigo_device *device
 }
 
 static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	pthread_mutex_lock(&observe_mutex);
 	if (device != NULL && context.driver_case != NULL && !strcmp(device->name, context.driver_case->device_name) && message != NULL) {
 		const char *name = property ? property->name : "";

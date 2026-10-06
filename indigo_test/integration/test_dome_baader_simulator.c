@@ -564,6 +564,8 @@ static indigo_result observe_delete(indigo_client *client, indigo_device *device
 }
 
 static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	pthread_mutex_lock(&observe_mutex);
 	if (device != NULL && context.driver_case != NULL && !strcmp(device->name, context.driver_case->device_name) && message != NULL) {
 		const char *name = property ? property->name : "";
@@ -1224,14 +1226,16 @@ cleanup:
 	driver_down();
 }
 
-static void rejected_change_alerts_and_keeps_values(void) {
+static void rejected_change_keeps_values(void) {
 	CHECK(start_connected());
-	unsigned steps_revision = revision_of(DOME_STEPS_PROPERTY_NAME);
 	double steps = value_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
 	CHECK_EQ(INDIGO_OK, request_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 270));
 	CHECK(wait_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	// DOME_STEPS is BUSY with the rotation, so the refusal is only a BUSY message and the rotation keeps the property
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(DOME_STEPS_PROPERTY_NAME));
 	CHECK_EQ(INDIGO_OK, request_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 30));
-	CHECK(wait_settled(DOME_STEPS_PROPERTY_NAME, steps_revision, INDIGO_ALERT_STATE, 5));
+	CHECK(message_seen("BUSY", "Dome is moving: request can not be completed"));
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(DOME_STEPS_PROPERTY_NAME));
 	CHECK_EQ(steps, value_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME));
 	CHECK_EQ(steps, target_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME));
 	CHECK(abort_motion(INDIGO_OK_STATE));
@@ -2618,7 +2622,7 @@ static const baader_case cases[] = {
 	{ "relative_steps", relative_steps, "--azimuth 900", false },
 	{ "park_and_unpark", park_and_unpark, "--azimuth 900", false },
 	{ "rotation_completes_at_target", rotation_completes_at_target, "--azimuth 1800", false },
-	{ "rejected_change", rejected_change_alerts_and_keeps_values, "--azimuth 900", false },
+	{ "rejected_change", rejected_change_keeps_values, "--azimuth 900", false },
 	{ "abort_rotation", abort_rotation, "--azimuth 900 --rotation-speed 10", false },
 	{ "abort_park", abort_park, "--azimuth 1800 --rotation-speed 10", false },
 	{ "shutter_open_close", shutter_open_close, NULL, false },

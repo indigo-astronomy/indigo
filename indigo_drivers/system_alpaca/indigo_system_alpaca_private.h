@@ -285,7 +285,7 @@
 extern "C" {
 #endif
 
-#define DRIVER_VERSION										0x03000001
+#define DRIVER_VERSION										0x03000002
 #define DRIVER_NAME												"indigo_system_alpaca"
 #define DRIVER_LABEL											"ASCOM Alpaca Client"
 
@@ -448,13 +448,13 @@ extern void system_alpaca_unlock(indigo_device *device);
  guard, the copy of the requested values and the BUSY state under the lock of the device, so that a poll tick that publishes the
  state of the device under the same lock never replaces a request that was just accepted.
  A request for a property that is BUSY is dropped unless ALPACA_ACCEPT_ANYTIME is given. Otherwise refusal (may be NULL) is asked:
- if it returns a message the request is rejected with it (system_alpaca_reject(): the property goes to ALERT unless it is BUSY). An accepted request
+ if it returns a message the request is rejected with it (system_alpaca_reject(): the property goes to ALERT, a BUSY one only gets a BUSY message). An accepted request
  is published as BUSY and handler (may be NULL) is queued on the handler queue of the device. Returns true if the request was accepted.
  */
 extern bool system_alpaca_accept(indigo_device *device, indigo_property *property, indigo_property *request, int options, alpaca_refusal refusal, indigo_timer_callback handler);
 
 /** change_property (bus thread): refuse a request with a message, like indigo_reject_change(), but with the state written under the lock of
- the device. A property that is BUSY because an earlier request waits for its handler keeps its state; the refusal is only told.
+ the device. A property that is BUSY because an earlier request waits for its handler is not changed; the refusal is only a BUSY message.
  */
 extern void system_alpaca_reject(indigo_device *device, indigo_property *property, const char *message);
 

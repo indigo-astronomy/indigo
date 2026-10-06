@@ -578,8 +578,8 @@ cleanup:
 	driver_stop();
 }
 
-// A second motion request that arrives while one is running is refused, and
-// the refusal must restore the values the driver actually holds.
+// A second motion request that arrives while one is running is refused with a
+// BUSY message, and the running move keeps its values and state.
 static void overlap_rejected(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(sync_position(1000));

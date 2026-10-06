@@ -1005,6 +1005,39 @@ static bool set_number_and_wait(int index, const char *property, const char *ite
 	return change_number(index, property, item, value) && wait_state_after(index, property, before, expected);
 }
 
+// A request refused while its property is BUSY is a BUSY message only, the running move keeps the property.
+static bool refused_while_busy(int index, const char *property, const char *item, double value) {
+	if (state(index, property) != INDIGO_BUSY_STATE) {
+		fprintf(stderr, "focuser %d %s is not BUSY before the refused request\n", index, property);
+		return false;
+	}
+	pthread_mutex_lock(&observation_mutex);
+	observed_property *slot = property_slot(index, "BUSY", true);
+	if (slot) {
+		slot->message[0] = 0;
+	}
+	pthread_mutex_unlock(&observation_mutex);
+	if (!change_number(index, property, item, value)) {
+		return false;
+	}
+	char text[INDIGO_VALUE_SIZE] = "";
+	for (int i = 0; i < WAIT_STEPS && !*text; i++) {
+		message(index, "BUSY", text);
+		if (!*text) {
+			indigo_usleep(10000);
+		}
+	}
+	if (!*text) {
+		fprintf(stderr, "focuser %d refusal of %s sent no BUSY message\n", index, property);
+		return false;
+	}
+	if (state(index, property) == INDIGO_ALERT_STATE) {
+		fprintf(stderr, "focuser %d refusal of BUSY %s published ALERT\n", index, property);
+		return false;
+	}
+	return true;
+}
+
 static bool set_text_and_wait(int index, const char *property, const char *item, const char *value, int expected) {
 	int before = revision(index, property);
 	return change_text(index, property, item, value) && wait_state_after(index, property, before, expected);
@@ -2585,10 +2618,10 @@ static void requests_refused_during_motion(void) {
 	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
 	CHECK(wait_calls(0, FN_MOVE_TO, 1));
 	int writes = fake_calls(0, FN_CONFIG_SET);
-	// another move is refused without a command, the running move keeps its target
-	CHECK(set_number_and_wait(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 7000, INDIGO_ALERT_STATE));
+	// another move is refused without a command with a BUSY message, the running move keeps its target
+	CHECK(refused_while_busy(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 7000));
 	CHECK_NEAR(3000, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
-	CHECK(set_number_and_wait(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_ALERT_STATE));
+	CHECK(refused_while_busy(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10));
 	// motion geometry controls are refused without a command and keep their values
 	CHECK(set_number_and_wait(0, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 99, INDIGO_ALERT_STATE));
 	CHECK_NEAR(12, number(0, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, false), 0);
@@ -2683,9 +2716,8 @@ static void refusal_keeps_queued_move_pending(void) {
 	int before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
 	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
 	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
-	before = revision(0, FOCUSER_POSITION_PROPERTY_NAME);
-	CHECK(change_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500));
-	CHECK(wait_state_after(0, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// the queued move owns the BUSY position, a second one is only told; STEPS is not BUSY yet and is refused in ALERT
+	CHECK(refused_while_busy(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500));
 	before = revision(0, FOCUSER_STEPS_PROPERTY_NAME);
 	CHECK(change_number(0, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
 	CHECK(wait_state_after(0, FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));

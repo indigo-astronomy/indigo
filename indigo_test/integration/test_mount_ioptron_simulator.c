@@ -292,6 +292,8 @@ static char last_mount_message[INDIGO_VALUE_SIZE];
 static atomic_int mount_messages;
 
 static indigo_result capture_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (device != NULL && !strcmp(device->name, ioptron_mount.device_name) && message != NULL && *message) {
 		pthread_mutex_lock(&message_mutex);
 		snprintf(last_mount_message, sizeof(last_mount_message), "%s", message);

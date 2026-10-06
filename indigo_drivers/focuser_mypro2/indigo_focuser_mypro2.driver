@@ -315,7 +315,7 @@ driver mypro2 {
 				}
 				mypro2_motion_state(device, INDIGO_OK_STATE);
 			} else {
-				// progress keeps the state, so a refused overlapping request stays visible as ALERT
+				// progress keeps the BUSY state of the running move
 				FOCUSER_POSITION_ITEM->number.value = position;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);
@@ -707,8 +707,8 @@ driver mypro2 {
 				FOCUSER_POSITION_ITEM->number.step = 100;
 			}
 			reject_change {
-				// both motion properties are BUSY while any move runs; motion_active keeps
-				// the guard when a refusal has just put one of them into ALERT
+				// both motion properties are BUSY while any move runs; motion_active guards
+				// the whole move as well
 				condition = mypro2_motion_busy(device);
 				message = "Another motion operation is pending";
 			}

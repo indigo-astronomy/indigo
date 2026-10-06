@@ -304,28 +304,9 @@ static int property_count(const char *property_name) {
 // The refusal is a transition, not a resting state: the driver publishes the
 // property in ALERT and the very next status poll publishes the running motion
 // again, so the check is whether ALERT was published at all after the request.
+// A refused motion request: a BUSY message while the running move owns the property, ALERT with the values restored otherwise.
 static bool assert_refused_motion_request(const char *property_name, const char *item_name, double value) {
-	indigo_item *item = find_cached_item(property_name, item_name);
-	if (item == NULL) {
-		fprintf(stderr, "Missing number item %s.%s\n", property_name, item_name);
-		return false;
-	}
-	double previous_value = item->number.value, previous_target = item->number.target;
-	unsigned int revision = property_state_revision(property_name, INDIGO_ALERT_STATE);
-	if (indigo_change_number_property_1(&simulator_test_client, focuser.device_name, property_name, item_name, value) != INDIGO_OK) {
-		return false;
-	}
-	if (!wait_for_property_state_seen_after(property_name, INDIGO_ALERT_STATE, revision)) {
-		indigo_property *property = find_cached_property(property_name);
-		fprintf(stderr, "Refused %s was never published in ALERT, state is %d\n", property_name, property ? property->state : -1);
-		return false;
-	}
-	item = find_cached_item(property_name, item_name);
-	if (item == NULL || item->number.value != previous_value || item->number.target != previous_target) {
-		fprintf(stderr, "Refused %s.%s was not restored: value %g -> %g, target %g -> %g\n", property_name, item_name, previous_value, item ? item->number.value : NAN, previous_target, item ? item->number.target : NAN);
-		return false;
-	}
-	return true;
+	return assert_rejected_number_change_on(focuser.device_name, property_name, item_name, value);
 }
 
 static void outlet_item(char *buffer, size_t size, int index) {

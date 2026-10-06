@@ -377,7 +377,7 @@ static void motion_finalizer(indigo_device *device) {
 		}
 		mypro2_motion_state(device, INDIGO_OK_STATE);
 	} else {
-		// progress keeps the state, so a refused overlapping request stays visible as ALERT
+		// progress keeps the BUSY state of the running move
 		FOCUSER_POSITION_ITEM->number.value = position;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_execute_handler_in(device, MFP_POLL_DELAY, motion_finalizer);

@@ -319,7 +319,7 @@ static void focuser_timer_callback(indigo_device *device) {
 				dmfc_command(device, "H");
 				dmfc_end_motion(device, INDIGO_ALERT_STATE, "The focuser stalled and was stopped");
 			} else if (changed) {
-				// progress keeps the state, so a refused overlapping request stays visible as ALERT
+				// progress keeps the BUSY state of the running move
 				PRIVATE_DATA->stall_polls = 0;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}

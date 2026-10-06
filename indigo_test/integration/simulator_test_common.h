@@ -76,6 +76,9 @@ typedef struct {
 	bool connected;
 	bool disconnected;
 	indigo_property_state last_connection_state;
+	// A refused change request is answered with a BUSY message only (indigo_reject_change()).
+	atomic_int busy_message_count;
+	char busy_message[INDIGO_VALUE_SIZE];
 } simulator_test_context;
 
 static simulator_test_context context;
@@ -469,6 +472,23 @@ static indigo_result simulator_client_update_property(indigo_client *client, ind
 	return INDIGO_OK;
 }
 
+static indigo_result simulator_client_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// Every device of the test counts: a suite may drive a second device (a shared port, a hub) next to the main one.
+	if (context.driver_case != NULL && device != NULL && property != NULL && !strcmp(property->name, BUSY_PROPERTY->name) && message != NULL) {
+		INDIGO_COPY_VALUE(context.busy_message, message);
+		context.busy_message_count++;
+	}
+	return INDIGO_OK;
+}
+
+// A refusal is sent synchronously from the change request, the short wait only covers a driver that refuses from its queue.
+static bool wait_for_busy_message_after(int count) {
+	for (int i = 0; i < 20 && context.busy_message_count == count; i++) {
+		indigo_usleep(100000);
+	}
+	return context.busy_message_count != count;
+}
+
 static indigo_result simulator_client_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name)) {
 		uncache_property(property);
@@ -487,7 +507,7 @@ static indigo_client simulator_test_client = {
 	simulator_client_define_property,
 	simulator_client_update_property,
 	simulator_client_delete_property,
-	NULL,
+	simulator_client_send_message,
 	NULL,
 	false,
 	false
@@ -521,25 +541,61 @@ static bool save_configuration(void) {
 	return save_configuration_on(context.driver_case->device_name);
 }
 
-static bool assert_rejected_number_change_on(const char *device_name, const char *property_name, const char *item_name, double value) {
-	indigo_item *item = find_cached_item(property_name, item_name);
-	if (item == NULL) {
-		fprintf(stderr, "Missing number item %s.%s on %s\n", property_name, item_name, device_name);
-		return false;
+// State of a property before a request that the driver is expected to refuse.
+typedef struct {
+	indigo_property_state state;
+	unsigned int revision;
+	int messages;
+} refusal_probe;
+
+static refusal_probe probe_refusal(indigo_property *property) {
+	refusal_probe probe = { property->state, property_revision(property->name), context.busy_message_count };
+	return probe;
+}
+
+// A refusal of a BUSY property is a BUSY message only and the running operation keeps the property; any other property is published in
+// ALERT with its values restated (indigo_reject_change()).
+static bool assert_refusal_answered(const char *property_name, refusal_probe probe) {
+	if (probe.state == INDIGO_BUSY_STATE) {
+		if (!wait_for_busy_message_after(probe.messages)) {
+			indigo_property *now = find_cached_property(property_name);
+			fprintf(stderr, "Rejected BUSY %s was not answered with a BUSY message (state now %d, messages %d -> %d, last '%s')\n", property_name, now ? now->state : -1, probe.messages, (int)context.busy_message_count, context.busy_message);
+			return false;
+		}
+		indigo_property *property = find_cached_property(property_name);
+		if (property == NULL || property->state == INDIGO_ALERT_STATE) {
+			fprintf(stderr, "Rejected BUSY %s was put into ALERT\n", property_name);
+			return false;
+		}
+		return true;
 	}
-	double previous_value = item->number.value, previous_target = item->number.target;
-	unsigned int revision = property_revision(property_name);
-	if (indigo_change_number_property_1(&simulator_test_client, device_name, property_name, item_name, value) != INDIGO_OK) {
-		return false;
-	}
-	if (!wait_for_property_state_after(property_name, INDIGO_ALERT_STATE, revision)) {
+	if (!wait_for_property_state_after(property_name, INDIGO_ALERT_STATE, probe.revision)) {
 		indigo_property *property = find_cached_property(property_name);
 		fprintf(stderr, "Rejected %s did not reach ALERT, state is %d\n", property_name, property ? property->state : -1);
 		return false;
 	}
+	return true;
+}
+
+static bool assert_rejected_number_change_on(const char *device_name, const char *property_name, const char *item_name, double value) {
+	indigo_property *property = find_cached_property(property_name);
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (property == NULL || item == NULL) {
+		fprintf(stderr, "Missing number item %s.%s on %s\n", property_name, item_name, device_name);
+		return false;
+	}
+	double previous_value = item->number.value, previous_target = item->number.target;
+	refusal_probe probe = probe_refusal(property);
+	if (indigo_change_number_property_1(&simulator_test_client, device_name, property_name, item_name, value) != INDIGO_OK) {
+		return false;
+	}
+	if (!assert_refusal_answered(property_name, probe)) {
+		return false;
+	}
 	item = find_cached_item(property_name, item_name);
-	if (item == NULL || item->number.value != previous_value || item->number.target != previous_target) {
-		fprintf(stderr, "Rejected %s.%s was not restored: value %g -> %g, target %g -> %g\n", property_name, item_name, previous_value, item ? item->number.value : NAN, previous_target, item ? item->number.target : NAN);
+	// The value of a BUSY property may follow its running operation, its target must not change.
+	if (item == NULL || (probe.state != INDIGO_BUSY_STATE && item->number.value != previous_value) || item->number.target != previous_target) {
+		fprintf(stderr, "Rejected %s.%s changed: value %g -> %g, target %g -> %g\n", property_name, item_name, previous_value, item ? item->number.value : NAN, previous_target, item ? item->number.target : NAN);
 		return false;
 	}
 	return true;
@@ -560,13 +616,11 @@ static bool assert_rejected_switch_change_on(const char *device_name, const char
 	for (int i = 0; i < count; i++) {
 		previous[i] = property->items[i].sw.value;
 	}
-	unsigned int revision = property_revision(property_name);
+	refusal_probe probe = probe_refusal(property);
 	if (indigo_change_switch_property_1(&simulator_test_client, device_name, property_name, item_name, true) != INDIGO_OK) {
 		return false;
 	}
-	if (!wait_for_property_state_after(property_name, INDIGO_ALERT_STATE, revision)) {
-		property = find_cached_property(property_name);
-		fprintf(stderr, "Rejected %s did not reach ALERT, state is %d\n", property_name, property ? property->state : -1);
+	if (!assert_refusal_answered(property_name, probe)) {
 		return false;
 	}
 	property = find_cached_property(property_name);
@@ -593,6 +647,7 @@ static bool assert_rejected_switch_change(const char *property_name, const char 
 static void reset_simulator_context(const simulator_driver_case *driver_case) {
 	release_cached_properties();
 	memset(&context, 0, sizeof(context));
+	atomic_init(&context.busy_message_count, 0);
 	for (int index = 0; index < MAX_DEFINED_PROPERTIES; index++) {
 		atomic_init(context.property_revisions + index, 0);
 		for (int state = 0; state < 4; state++) {

@@ -99,6 +99,8 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 }
 
 static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	(void)client;
 	(void)device;
 	if (property && message && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {

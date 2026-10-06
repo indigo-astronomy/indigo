@@ -285,6 +285,8 @@ static bool select_mount_switch(const char *property_name, const char *item_name
 static char recorded_messages[2048];
 
 static indigo_result record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (message != NULL) {
 		size_t length = strlen(recorded_messages);
 		snprintf(recorded_messages + length, sizeof(recorded_messages) - length, "%s\n", message);
@@ -298,7 +300,7 @@ static void record_messages(void) {
 }
 
 static void stop_recording_messages(void) {
-	simulator_test_client.send_message = NULL;
+	simulator_test_client.send_message = simulator_client_send_message;
 }
 
 // The bytes of the last recorded command that starts with the given byte, the count of them or 0 if there is none.

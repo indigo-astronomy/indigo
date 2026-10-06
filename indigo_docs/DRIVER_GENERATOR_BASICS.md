@@ -406,7 +406,7 @@ inherited FOCUSER_POSITION {
 }
 ```
 
-The generator emits `INDIGO_REJECT_CHANGE_IF(condition, PROPERTY, "message")` at the top of the change branch, before `on_change_request` and before anything is copied. On a match `indigo_reject_change()` marks every item for update (so the client sees the driver's real values again), sets ALERT, publishes the message and returns. Several `reject_change` blocks are tested in declaration order. Do not use it for the property's own BUSY state; the dispatch macro handles that without overwriting the running operation's state.
+The generator emits `INDIGO_REJECT_CHANGE_IF(condition, PROPERTY, "message")` at the top of the change branch, before `on_change_request` and before anything is copied. On a match `indigo_reject_change()` answers and returns: a property that is not BUSY is published in ALERT with every item marked for update (so the client sees the driver's real values again) and the message; a BUSY property belongs to a running operation, so it is left untouched and the message is sent as a BUSY message, which cannot race with the updates of that operation. Several `reject_change` blocks are tested in declaration order. The condition may include the property's own BUSY state, which turns the silent drop of the dispatch macro into an answered request.
 
 Use `on_change_request` only for request-scoped bookkeeping that `reject_change` cannot express, such as zeroing items before a guide pulse is copied, or delegating a request to the base class (`mount_simulator` forwards a plain SYNC to `indigo_mount_change_property()`). It has no generated epilogue; if it returns early, it must publish any rejection itself.
 

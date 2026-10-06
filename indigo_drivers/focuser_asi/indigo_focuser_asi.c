@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000025
+#define DRIVER_VERSION       0x03000026
 #define DRIVER_NAME          "indigo_focuser_asi"
 #define DRIVER_LABEL         "ZWO ASI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -254,9 +254,8 @@ static bool focuser_motion_ready(indigo_device *device) {
 		return false;
 	}
 	if (PRIVATE_DATA->moving) {
-		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Focuser is moving");
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		// the running move keeps publishing the motion properties, a refusal is only a message
+		indigo_send_message(device, BUSY_PROPERTY, "Focuser is moving");
 		return false;
 	}
 	bool moving = false, moving_hc = false;

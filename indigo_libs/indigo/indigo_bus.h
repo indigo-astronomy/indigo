@@ -563,7 +563,9 @@ INDIGO_EXTERN indigo_result indigo_update_property(indigo_device *device, indigo
     A request answered with a bare INDIGO_OK is indistinguishable from a lost one: a client that waits
     for a response never gets it, and a configuration restore, which waits per property, stalls on it
     and loses every setting after it in file order. This publishes the refusal instead, restating the
-    property's unchanged values so the client can correct its own copy.
+    property's unchanged values in ALERT so the client can correct its own copy. A property that is
+    BUSY belongs to a running operation (e.g. a focuser move), whose own updates would race with a
+    state written here; it is left untouched and the refusal is sent as a BUSY message only.
  */
 INDIGO_EXTERN indigo_result indigo_reject_change(indigo_device *device, indigo_property *property, const char *format, ...);
 
@@ -945,8 +947,8 @@ INDIGO_EXTERN void indigo_set_text_item_value(indigo_item *item, const char *val
 
     Use it where INDIGO_COPY_*_PROCESS_CHANGE would otherwise be skipped by a driver-specific
     admission check, so the request is answered instead of silently dropped; see
-    indigo_reject_change(). The property's own BUSY state is already handled by those macros and
-    must not be refused this way, because that would overwrite the running operation's state.
+    indigo_reject_change(). The check may also cover the property's own BUSY state: a BUSY property
+    is not changed, the refusal is only sent as a BUSY message.
  */
 #define INDIGO_REJECT_CHANGE_IF(c, p, f, ...) if (c) { indigo_reject_change(device, p, f, ##__VA_ARGS__); return INDIGO_OK; }
 

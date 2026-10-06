@@ -393,7 +393,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_REJECT_CHANGE_IF(FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Abort is unfinished");
 		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->active || PRIVATE_DATA->pending || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
 		//+ focuser.FOCUSER_STEPS.on_change_request
-		/* the accepted move is pending from now on, a refusal must not hide it from the next request */
+		/* the accepted move is pending until its handler runs */
 		PRIVATE_DATA->pending = true;
 		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);

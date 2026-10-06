@@ -863,6 +863,8 @@ static indigo_result capture_update_property(indigo_client *client, indigo_devic
 }
 
 static indigo_result capture_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (device != NULL && !strcmp(device->name, temma_mount.device_name)) {
 		remember_message(message);
 	}
@@ -883,7 +885,7 @@ static void remove_capture(void) {
 	atomic_store(&watch_armed, false);
 	simulator_test_client.define_property = simulator_client_define_property;
 	simulator_test_client.update_property = simulator_client_update_property;
-	simulator_test_client.send_message = NULL;
+	simulator_test_client.send_message = simulator_client_send_message;
 }
 
 static void watch_publication(const char *property_name, indigo_property_state state) {

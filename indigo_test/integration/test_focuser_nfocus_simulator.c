@@ -392,9 +392,9 @@ static void busy_guard_and_abort(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_command_count(":F01400#", 1));
-	// a second move is refused with ALERT and sends no command, also right after a refusal
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 60, INDIGO_ALERT_STATE));
+	// a second move is refused with a BUSY message and sends no command, also right after a refusal
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 60));
 	indigo_usleep(300000);
 	SERIAL_CHECK_TRUE(command_count(":F01050#") == 0);
 	SERIAL_CHECK_TRUE(command_count(":F01060#") == 0);

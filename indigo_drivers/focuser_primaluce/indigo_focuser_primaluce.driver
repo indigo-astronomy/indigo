@@ -568,9 +568,7 @@ driver primaluce {
 						}
 						// Progress is published on every poll, spaced like the rotator poll. Polling
 						// as fast as the link allows publishes the same property from this queue
-						// hundreds of times per second, which both floods the clients and races
-						// with a refusal published from the bus thread, so that the refusal message
-						// can be lost.
+						// hundreds of times per second, which floods the clients.
 						indigo_execute_handler_in(device, 0.2, focuser_movement_finalizer);
 					} else {
 						indigo_property_state state = INDIGO_ALERT_STATE;
@@ -612,9 +610,7 @@ driver primaluce {
 				double position = 0;
 				bool moving = false;
 				bool read = focuser_read_motion(device, &position, &moving);
-				// A request accepted while the poll was in flight owns the motion properties now. A
-				// refusal of a second request publishes ALERT over the accepted one's BUSY, so the
-				// pending flag, not the property state, says that a move is queued.
+				// A request accepted while the poll was in flight owns the motion properties now.
 				if (PRIVATE_DATA->pending || ((FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion)) {
 					return;
 				}
@@ -1995,15 +1991,13 @@ driver primaluce {
 		inherited FOCUSER_POSITION {
 			reject_change {
 				// A relative move runs through this property too, so both motion properties are
-				// busy while any move runs and both have to be inspected. Without the second term
-				// a refusal of one property would clear the only guard the other one has, and
-				// without the first term INDIGO_COPY_NUMBER_PROCESS_CHANGE would drop an
-				// overlapping absolute move silently.
+				// busy while any move runs and both have to be inspected. pending covers a move
+				// that is accepted and not handled yet.
 				condition = PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				// The accepted move is pending from now on; a refusal of a later request must not hide it.
+				// The accepted move is pending until its handler runs.
 				PRIVATE_DATA->pending = true;
 			}
 			on_change {
@@ -2045,7 +2039,7 @@ driver primaluce {
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				// The accepted move is pending from now on; a refusal of a later request must not hide it.
+				// The accepted move is pending until its handler runs.
 				PRIVATE_DATA->pending = true;
 			}
 			on_change {
@@ -2059,10 +2053,7 @@ driver primaluce {
 				}
 				// The relative move is carried out by the absolute move handler, so both motion
 				// properties have to be published as busy here and both have to stay busy until
-				// the shared finalizer completes them. The state of this property must not be
-				// derived from the position property afterwards: a refused request published from
-				// the bus thread overwrites that state with ALERT, which would silently disarm the
-				// guard that refuses a second move.
+				// the shared finalizer completes them.
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				focuser_position_handler(device);

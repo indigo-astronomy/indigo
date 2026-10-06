@@ -212,8 +212,78 @@ static void message_properties_survive_bus_restarts(void) {
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, ALERT_PROPERTY->state);
 }
 
+// indigo_reject_change(): a property that is not BUSY is published in ALERT with the message and its values restated; a BUSY
+// property belongs to a running operation, so it is left untouched and the refusal is only a BUSY message
+static int refusal_updates, refusal_messages;
+static indigo_property_state refusal_state;
+static char refusal_text[INDIGO_VALUE_SIZE], refusal_name[INDIGO_NAME_SIZE];
+
+static indigo_result refusal_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	refusal_updates++;
+	refusal_state = property->state;
+	snprintf(refusal_text, sizeof(refusal_text), "%s", message ? message : "");
+	return INDIGO_OK;
+}
+
+static indigo_result refusal_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	refusal_messages++;
+	snprintf(refusal_name, sizeof(refusal_name), "%s", property ? property->name : "");
+	snprintf(refusal_text, sizeof(refusal_text), "%s", message ? message : "");
+	return INDIGO_OK;
+}
+
+static indigo_client refusal_client = { .name = "Refusal test client", .version = INDIGO_VERSION_CURRENT, .update_property = refusal_update, .send_message = refusal_message };
+
+static indigo_property *refusal_setup(indigo_device *device, indigo_property_state state) {
+	memset(device, 0, sizeof(*device));
+	snprintf(device->name, sizeof(device->name), "%s", "Refusal test device");
+	indigo_property *property = indigo_init_number_property(NULL, device->name, "TEST_NUMBER", "Group", "Label", state, INDIGO_RW_PERM, 1);
+	indigo_init_number_item(property->items, "VALUE", "Value", 0, 100, 1, 42);
+	refusal_updates = refusal_messages = 0;
+	refusal_text[0] = refusal_name[0] = 0;
+	return property;
+}
+
+static void refusal_of_an_idle_property_publishes_alert(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&refusal_client));
+	indigo_device device;
+	indigo_property *property = refusal_setup(&device, INDIGO_OK_STATE);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_reject_change(&device, property, "Gain can not be changed during an exposure (%d)", 1));
+	ASSERT_EQ_INT(1, refusal_updates);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, refusal_state);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	// the bus also delivers the message of the update through send_message, tagged with the property, not as a BUSY message
+	ASSERT_EQ_INT(1, refusal_messages);
+	ASSERT_STREQ("TEST_NUMBER", refusal_name);
+	ASSERT_STREQ("Gain can not be changed during an exposure (1)", refusal_text);
+	ASSERT_NEAR(42, property->items[0].number.value, 1e-12);
+	indigo_release_property(property);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&refusal_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+}
+
+static void refusal_of_a_busy_property_is_only_a_message(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&refusal_client));
+	indigo_device device;
+	indigo_property *property = refusal_setup(&device, INDIGO_BUSY_STATE);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_reject_change(&device, property, "Focuser is moving"));
+	ASSERT_EQ_INT(0, refusal_updates);
+	ASSERT_EQ_INT(1, refusal_messages);
+	ASSERT_STREQ(BUSY_PROPERTY->name, refusal_name);
+	ASSERT_STREQ("Focuser is moving", refusal_text);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, property->state);
+	ASSERT_NEAR(42, property->items[0].number.value, 1e-12);
+	indigo_release_property(property);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&refusal_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "refusal_of_an_idle_property_publishes_alert", refusal_of_an_idle_property_publishes_alert },
+		{ "refusal_of_a_busy_property_is_only_a_message", refusal_of_a_busy_property_is_only_a_message },
 		{ "numeric_string_helpers_parse_and_format_values", numeric_string_helpers_parse_and_format_values },
 		{ "sexagesimal_helpers_parse_and_format_values", sexagesimal_helpers_parse_and_format_values },
 		{ "sexagesimal_rounding_follows_format", sexagesimal_rounding_follows_format },

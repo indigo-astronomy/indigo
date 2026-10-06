@@ -297,6 +297,8 @@ cleanup:
 static char last_position_message[INDIGO_VALUE_SIZE];
 
 static indigo_result capture_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (property != NULL && message != NULL && context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		snprintf(last_position_message, sizeof(last_position_message), "%s", message);
 	}
@@ -334,16 +336,17 @@ static bool wait_position_between(double low, double high) {
 	return false;
 }
 
-// Requests during a move are refused with ALERT and send no command, and the move ends at its
-// original target with exactly one move command.
+// Requests during a move send no command: a second move is refused with a BUSY message and the
+// running move keeps the motion properties, settings are refused with ALERT, and the move ends at
+// its original target with exactly one move command.
 static void refusals_during_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 40000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_commands("FP40000", 1));
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 20000, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 20000));
 	SERIAL_CHECK_TRUE(cached_target() == 40000);
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 30000, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 30000));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 90000, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value == 100000);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 50, INDIGO_ALERT_STATE));
@@ -649,7 +652,7 @@ cleanup:
 	driver_stop();
 }
 
-static void rejected_change_alerts_and_keeps_values(void) {
+static void rejected_change_keeps_values(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10000, INDIGO_BUSY_STATE));
 	for (int i = 0; i < 60 && commands("FP10000") == 0; i++) {
@@ -817,7 +820,7 @@ int main(void) {
 		{ "absolute_and_relative_motion", absolute_and_relative_motion },
 		{ "limits_and_sync", limits_and_sync },
 		{ "abort_motion", abort_motion },
-		{ "rejected_change", rejected_change_alerts_and_keeps_values },
+		{ "rejected_change", rejected_change_keeps_values },
 		{ "rejected_connection", rejected_connection },
 		{ "command_failure_recovery", command_failure_recovery },
 		{ "sync_and_poll_failure_recovery", sync_and_poll_failure_recovery },

@@ -154,9 +154,16 @@ static indigo_result fli_observe_delete(indigo_client *client, indigo_device *de
 	return INDIGO_OK;
 }
 
+// A refused change request of a BUSY property is answered with a BUSY message only.
+static atomic_int fli_busy_messages;
+
 // The bus delivers the message of an update separately, right after it.
 static indigo_result fli_observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (property == NULL || message == NULL) {
+		return INDIGO_OK;
+	}
+	if (!strcmp(property->name, BUSY_PROPERTY->name)) {
+		atomic_fetch_add(&fli_busy_messages, 1);
 		return INDIGO_OK;
 	}
 	int index = fli_device_index(property->device);
@@ -337,6 +344,36 @@ static bool fli_set_number(int index, const char *property_name, const char *ite
 		return false;
 	}
 	return fli_wait_state(index, property_name, expected);
+}
+
+// A request refused while its property is BUSY: a BUSY message, the running operation keeps the property.
+static bool fli_refused_while_busy(int index, const char *property_name, const char *item_name, double value) {
+	indigo_property *property = fli_snapshot(index, property_name);
+	bool busy = property != NULL && property->state == INDIGO_BUSY_STATE;
+	indigo_release_property(property);
+	if (!busy) {
+		fprintf(stderr, "%s is not BUSY before the refused request\n", property_name);
+		return false;
+	}
+	int before = atomic_load(&fli_busy_messages);
+	if (indigo_change_number_property_1(&fli_test_client, fli_observed[index].name, property_name, item_name, value) != INDIGO_OK) {
+		return false;
+	}
+	for (int i = 0; i < 200 && atomic_load(&fli_busy_messages) == before; i++) {
+		indigo_usleep(10000);
+	}
+	if (atomic_load(&fli_busy_messages) == before) {
+		fprintf(stderr, "Refusal of %s sent no BUSY message\n", property_name);
+		return false;
+	}
+	property = fli_snapshot(index, property_name);
+	bool alert = property == NULL || property->state == INDIGO_ALERT_STATE;
+	indigo_release_property(property);
+	if (alert) {
+		fprintf(stderr, "Refusal of BUSY %s published ALERT\n", property_name);
+		return false;
+	}
+	return true;
 }
 
 // A connection change publishes BUSY before its handler runs, so the settled

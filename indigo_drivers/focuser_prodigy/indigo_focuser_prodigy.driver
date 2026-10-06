@@ -356,7 +356,7 @@ driver prodigy {
 			preserve_values = true;
 			on_attach { FOCUSER_POSITION_ITEM->number.min = -999999; FOCUSER_POSITION_ITEM->number.max = 999999; FOCUSER_POSITION_ITEM->number.step = 1; }
 			reject_change {
-				// active keeps the guard while a refusal shows one motion property ALERT
+				// active and the states of the motion properties guard against a second move
 				condition = PRIVATE_DATA->active || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || X_FOCUSER_PARK_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE;
 				message = "Another motion is pending";
 			}

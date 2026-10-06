@@ -858,7 +858,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
 		//+ focuser.FOCUSER_POSITION.on_change_request
-		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		/* the accepted request is pending until its handler runs */
 		PRIVATE_DATA->pending = true;
 		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
@@ -866,7 +866,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
 		//+ focuser.FOCUSER_STEPS.on_change_request
-		/* the accepted request is pending from now on, a refusal must not hide it from the next request */
+		/* the accepted request is pending until its handler runs */
 		PRIVATE_DATA->pending = true;
 		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);

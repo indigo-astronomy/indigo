@@ -173,8 +173,8 @@ static bool rejected_number_change(const char *property, const char *item, doubl
 		return false;
 	}
 	double target = cached->number.target;
-	unsigned int revision = property_state_revision(property, INDIGO_ALERT_STATE);
-	if (indigo_change_number_property_1(&simulator_test_client, fc3_focuser.device_name, property, item, value) != INDIGO_OK || !state_seen(property, INDIGO_ALERT_STATE, revision)) {
+	// a BUSY property is refused with a BUSY message, any other one with ALERT (indigo_reject_change())
+	if (!assert_rejected_number_change_on(fc3_focuser.device_name, property, item, value)) {
 		return false;
 	}
 	cached = find_cached_item(property, item);
@@ -689,8 +689,8 @@ cleanup:
 	driver_stop();
 }
 
-// A second motion request that arrives while one is running is refused, and
-// the refusal must restore the values the driver actually holds.
+// A second motion request that arrives while one is running is refused with a
+// BUSY message, and the running move keeps its values and state.
 static void overlap_rejected(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(sync_position(1000));
@@ -698,8 +698,7 @@ static void overlap_rejected(void) {
 	SERIAL_CHECK_TRUE(goto_position(5000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(motion_running());
 	SERIAL_CHECK_TRUE(rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
-	// The refused property shows ALERT for the rest of the move, and the guard
-	// still holds for both properties.
+	// The guard holds for both properties for the rest of the move.
 	SERIAL_CHECK_TRUE(rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000));
 	SERIAL_CHECK_EQ_INT(0, commands("FG:"));

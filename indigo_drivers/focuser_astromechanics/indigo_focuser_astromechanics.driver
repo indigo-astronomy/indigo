@@ -207,7 +207,7 @@ driver astromechanics {
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				/* the accepted move is pending from now on, a refusal must not hide it from the next request */
+				/* the accepted move is pending until its handler runs */
 				PRIVATE_DATA->moving = true;
 			}
 			on_change {
@@ -237,7 +237,7 @@ driver astromechanics {
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				/* the accepted move is pending from now on, a refusal must not hide it from the next request */
+				/* the accepted move is pending until its handler runs */
 				PRIVATE_DATA->moving = true;
 			}
 			on_change {

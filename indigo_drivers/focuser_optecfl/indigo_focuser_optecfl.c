@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_focuser_optecfl"
 #define DRIVER_LABEL         "Optec FocusLynx Focuser"
 #define FOCUSER_1_DEVICE_NAME "Optec FocusLynx #1"
@@ -461,10 +461,7 @@ static void optecfl_poll(indigo_device *device) {
 				optecfl_move_ended(device, INDIGO_ALERT_STATE, "The focuser stalled");
 				return;
 			}
-			// A refused overlapping request published its own ALERT; the running move is still BUSY.
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		} else {
 			// A move that stopped elsewhere than its target did not arrive.
 			optecfl_move_ended(device, FOCUSER_POSITION_ITEM->number.value == FOCUSER_POSITION_ITEM->number.target ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);

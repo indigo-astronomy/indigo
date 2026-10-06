@@ -210,6 +210,8 @@ static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char messages[4096];
 
 static indigo_result record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (message != NULL && *message) {
 		pthread_mutex_lock(&message_mutex);
 		if (strlen(messages) + strlen(message) + 2 < sizeof(messages)) {
@@ -277,8 +279,8 @@ static bool rejected_number_change(const char *property, const char *item, doubl
 		return false;
 	}
 	double target = cached->number.target;
-	unsigned int revision = property_state_revision(property, INDIGO_ALERT_STATE);
-	if (indigo_change_number_property_1(&simulator_test_client, device_name(), property, item, value) != INDIGO_OK || !state_seen(property, INDIGO_ALERT_STATE, revision)) {
+	// a BUSY property is refused with a BUSY message, any other one with ALERT (indigo_reject_change())
+	if (!assert_rejected_number_change_on(device_name(), property, item, value)) {
 		return false;
 	}
 	cached = find_cached_item(property, item);

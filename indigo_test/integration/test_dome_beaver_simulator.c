@@ -617,6 +617,8 @@ static indigo_result observe_delete(indigo_client *client, indigo_device *device
 }
 
 static indigo_result observe_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	pthread_mutex_lock(&observe_mutex);
 	if (device != NULL && context.driver_case != NULL && !strcmp(device->name, context.driver_case->device_name) && message != NULL) {
 		const char *name = property ? property->name : "";
@@ -909,6 +911,24 @@ static void driver_down(void) {
 
 static bool wait_message(const char *name, const char *text) {
 	return message_seen(name, text);
+}
+
+// A refusal of a BUSY property is a BUSY message, of any other property an ALERT update with the message (indigo_reject_change()).
+static bool wait_refusal_message(const char *name, const char *text) {
+	for (int attempt = 0; attempt < 100; attempt++) {
+		bool seen = false;
+		pthread_mutex_lock(&observe_mutex);
+		for (int i = 0; i < message_count && !seen; i++) {
+			seen = (!strcmp(messages[i].property, name) || !strcmp(messages[i].property, "BUSY")) && !strcmp(messages[i].text, text);
+		}
+		pthread_mutex_unlock(&observe_mutex);
+		if (seen) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "No refusal message \"%s\" for %s\n", text, name);
+	return false;
 }
 
 // ---------------------------------------------------------------------------- simulator protocol
@@ -1369,14 +1389,16 @@ cleanup:
 	driver_down();
 }
 
-static void rejected_change_alerts_and_keeps_values(void) {
+static void rejected_change_keeps_values(void) {
 	CHECK(start_connected());
-	unsigned steps_revision = revision_of(DOME_STEPS_PROPERTY_NAME);
 	double steps = value_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
 	CHECK_EQ(INDIGO_OK, request_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 270));
 	CHECK(wait_state(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	// DOME_STEPS is BUSY with the rotation, so the refusal is only a BUSY message and the rotation keeps the property
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(DOME_STEPS_PROPERTY_NAME));
 	CHECK_EQ(INDIGO_OK, request_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 30));
-	CHECK(wait_settled(DOME_STEPS_PROPERTY_NAME, steps_revision, INDIGO_ALERT_STATE, 5));
+	CHECK(message_seen("BUSY", "Dome is moving: request can not be completed"));
+	CHECK_EQ(INDIGO_BUSY_STATE, state_of(DOME_STEPS_PROPERTY_NAME));
 	CHECK_EQ(steps, value_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME));
 	CHECK_EQ(steps, target_of(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME));
 	CHECK(abort_motion(INDIGO_OK_STATE));
@@ -1673,7 +1695,8 @@ static void busy_requests_rejected(void) {
 	CHECK(wait_polls(1, 5));
 	CHECK_EQ(INDIGO_OK, request_number(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 300));
 	CHECK_EQ(INDIGO_OK, request_number(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME, 20));
-	CHECK(wait_message(DOME_STEPS_PROPERTY_NAME, "Dome is moving: request can not be completed"));
+	// DOME_STEPS turns BUSY with the rotation only when a poll publishes it, so either form of the refusal is valid here
+	CHECK(wait_refusal_message(DOME_STEPS_PROPERTY_NAME, "Dome is moving: request can not be completed"));
 	CHECK(wait_polls(1, 5));
 	CHECK_EQ(180, target_of(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME));
 	CHECK(wait_settled(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, before, INDIGO_OK_STATE, 20));
@@ -2514,7 +2537,7 @@ static const beaver_case cases[] = {
 	{ "park_and_unpark", park_and_unpark, "--azimuth 90", false, false },
 	{ "park_position_set", park_position_set, "--azimuth 90", false, false },
 	{ "go_home", go_home, "--azimuth 90 --home 20", false, false },
-	{ "rejected_change", rejected_change_alerts_and_keeps_values, "--azimuth 90", false, false },
+	{ "rejected_change", rejected_change_keeps_values, "--azimuth 90", false, false },
 	{ "abort_rotation", abort_rotation, "--azimuth 90 --rotation-speed 10", false, false },
 	{ "abort_park", abort_park, "--azimuth 180 --rotation-speed 10", false, false },
 	{ "shutter_open_close", shutter_open_close, NULL, false, false },

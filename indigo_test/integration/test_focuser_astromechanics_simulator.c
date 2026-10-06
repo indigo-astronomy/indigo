@@ -86,6 +86,8 @@ static bool move_steps(const char *direction_item, double steps) {
 static char last_position_message[INDIGO_VALUE_SIZE];
 
 static indigo_result capture_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (property != NULL && message != NULL && !strcmp(property->device, astromechanics_focuser.device_name) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		snprintf(last_position_message, sizeof(last_position_message), "%s", message);
 	}
@@ -266,8 +268,9 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// Requests during a move are refused with ALERT and send no command, also after an earlier
-// refusal left FOCUSER_POSITION ALERT; the move ends at its target with exactly one command.
+// Requests during a move are refused with a BUSY message and send no command, also right after an
+// earlier refusal; the running move keeps both motion properties and ends at its target with
+// exactly one command.
 static void refused_requests_send_no_command(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -278,16 +281,10 @@ static void refused_requests_send_no_command(void) {
 	clear_events(&simulator);
 	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	unsigned int alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
-	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 7000));
-	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 7000));
 	SERIAL_CHECK_TRUE(fabs(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target - 4000) < .5);
-	alerts = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE);
-	SERIAL_CHECK_TRUE(set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
-	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
-	alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
-	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 6000));
-	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 6000));
 	SERIAL_CHECK_TRUE(motion_settled());
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4000, .5));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);

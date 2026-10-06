@@ -1093,6 +1093,8 @@ cleanup:
 static char lx_last_message[1024];
 
 static indigo_result lx_record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	// the shared harness counts BUSY refusal messages
+	simulator_client_send_message(client, device, property, message);
 	if (message != NULL) {
 		size_t length = strlen(lx_last_message);
 		snprintf(lx_last_message + length, sizeof(lx_last_message) - length, "%s\n", message);
