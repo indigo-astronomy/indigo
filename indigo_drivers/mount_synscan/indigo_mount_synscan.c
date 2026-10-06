@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -971,7 +971,8 @@ static void synscan_encoder_to_eq(indigo_device *device, double ra_encoder, doub
 		*dec = -*dec;
 	}
 	*dec *= 2.0 * M_PI;
-	*side_of_pier = west ? SYNSCAN_SIDE_WEST : SYNSCAN_SIDE_EAST;
+	// west means the OTA points west of the meridian, which puts it east of the pier
+	*side_of_pier = west ? SYNSCAN_SIDE_EAST : SYNSCAN_SIDE_WEST;
 	if (!south) {
 		if (!west) {
 			*ha = ra_encoder - 0.5;
@@ -1121,11 +1122,11 @@ static bool synscan_update_mount_coordinates(indigo_device *device) {
 }
 
 // The sign of a DEC axis rate that moves north. The axis counts declination the other way on the other side of the
-// pier (synscan_encoder_to_eq), in both hemispheres: north is a reverse step on the west side, a forward step on
-// the east side. Manual motion and guide pulses use the same mapping.
+// pier (synscan_encoder_to_eq), in both hemispheres: north is a reverse step with the OTA east of the pier, a
+// forward step with the OTA west of the pier. Manual motion and guide pulses use the same mapping.
 static double synscan_dec_north_sign(indigo_device *device) {
 	device = device->master_device;
-	return MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value ? 1 : -1;
+	return MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value ? 1 : -1;
 }
 
 static void synscan_set_coordinate_state(indigo_device *device, indigo_property_state state) {
