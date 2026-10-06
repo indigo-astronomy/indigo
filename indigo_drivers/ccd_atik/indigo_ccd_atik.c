@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000031
+#define DRIVER_VERSION       0x03000032
 #define DRIVER_NAME          "indigo_ccd_atik"
 #define DRIVER_LABEL         "Atik Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1386,6 +1386,10 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 			// inside the SDK library. The driver therefore never shuts the SDK down and pins the SDK
 			// library instead, so that thread keeps executing mapped code after the driver is gone.
 			indigo_pin_library((void *)ArtemisShutdown);
+			// The SDK keeps calling the debug callback from that thread, and the callback is code of this
+			// driver, so the driver library is pinned too: after an unload the thread called into unmapped
+			// code or into whichever driver the loader had mapped there since.
+			indigo_pin_library((void *)debug_log);
 			ArtemisSetDebugCallback(debug_log);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Artemis SDK %d, API %d", ArtemisDLLVersion(), ArtemisAPIVersion());
 			//- on_init

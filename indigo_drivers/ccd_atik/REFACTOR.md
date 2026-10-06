@@ -478,3 +478,19 @@ never writes it, so it is unchanged.
 
 Simulated (fake SDK) tests run 44, passed 44 (Linux x64, `tools/run_driver_test.py ccd_atik`).
 Hardware tests run 0.
+
+## Unloading the driver crashed the server through the SDK debug callback (version 49 to 50, 2026-10-06)
+
+`indigo_test/integration/test_server_driver_stress` loads and unloads all drivers through
+`Server.DRIVERS` of the real `indigo_server`, without hardware. With the Atik driver in the set the
+server died with SIGSEGV or SIGILL a few requests after the driver was unloaded, always on the SDK's
+`AtikCore::USBDetectorConsole::Thread_ThreadMainLibUSB` thread. The SDK library is pinned (version 44),
+but the driver registers `debug_log` with `ArtemisSetDebugCallback()` and that callback is code of the
+driver library, which was unloaded. The thread called into unmapped memory, or into the driver the
+loader had mapped at the same address since (`indigo_wheel_quantum` in one crash report).
+
+`on_init` now pins the driver library as well, through the address of `debug_log`. The stress test
+passes with the driver in every case. The fake SDK has no detector thread, so the scenario is covered
+by the stress test against the real SDK only.
+
+Results (macOS arm64): fake SDK tests run 44, passed 44; `test_server_driver_stress` passed in all three cases with the driver included. Hardware tests run 0. The stress runs and the server-side hang found with them are recorded in `indigo_server/REFACTOR.md`.

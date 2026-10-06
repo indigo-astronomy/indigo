@@ -20,7 +20,7 @@ driver atik {
 	label = "Atik Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 49;
+	version = 50;
 	max_devices = 16;
 	multi_device_support = true;
 	include {
@@ -356,6 +356,10 @@ driver atik {
 		// inside the SDK library. The driver therefore never shuts the SDK down and pins the SDK
 		// library instead, so that thread keeps executing mapped code after the driver is gone.
 		indigo_pin_library((void *)ArtemisShutdown);
+		// The SDK keeps calling the debug callback from that thread, and the callback is code of this
+		// driver, so the driver library is pinned too: after an unload the thread called into unmapped
+		// code or into whichever driver the loader had mapped there since.
+		indigo_pin_library((void *)debug_log);
 		ArtemisSetDebugCallback(debug_log);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Artemis SDK %d, API %d", ArtemisDLLVersion(), ArtemisAPIVersion());
 	}
