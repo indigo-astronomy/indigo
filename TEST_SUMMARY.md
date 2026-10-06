@@ -281,13 +281,14 @@
 |  | 2026-09-23 20:26 | 3.0.0.65 | mac arm64 | MountSim 2.3 (LX200Classic) | 15 / 15 | ✅ OK |
 |  | 2026-09-24 23:20 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 | 35 / 35 | ✅ OK |
 |  | 2026-09-24 23:26 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 (WiFi) | 35 / 35 | ✅ OK |
-|  | 2026-09-26 21:03 | 3.0.0.68 | linux arm64 | simulator | 99 / 99 | ✅ OK |
 |  | 2026-09-27 02:25 | 3.0.0.69 | linux x64 | simulator | 103 / 103 | ✅ OK |
 |  | 2026-10-01 22:47 | 3.0.0.69 | linux x64 | On-Step | 35 / 35 | ✅ OK |
 |  | 2026-10-05 21:09 | 3.0.0.77 | mac arm64 | simulator | 145 / 145 | ✅ OK |
 |  | 2026-10-06 23:50 | 3.0.0.77 | linux arm64 | NYX-101 | 35 / 35 | ✅ OK |
 |  | 2026-10-06 23:58 | 3.0.0.77 | linux arm64 | esp32go | 35 / 35 | ✅ OK |
 |  | 2026-10-07 00:04 | 3.0.0.77 | linux arm64 | OpenAstroTracker | 35 / 29 | ❌ Failed |
+|  | 2026-10-07 00:52 | 3.0.0.79 | linux arm64 | On-Step | 35 / 35 | ✅ OK |
+|  | 2026-10-07 01:02 | 3.0.0.79 | linux arm64 | simulator | 147 / 147 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |

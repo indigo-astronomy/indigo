@@ -2691,3 +2691,21 @@ Hardware run on Linux arm64 against `OAT_1.13.20_esp32_s3.bin` on the bench ESP3
 The six failures are one controller defect, not a driver one. A guide command that reaches the firmware while a pulse on the same axis is still running stops the controller for good: no command is answered any more until the board is reset. It reproduces without INDIGO on the raw port, `:Mgn0600#` followed 50 ms later by `:Mgs0600#`, after which `:GX#` and `:GR#` stay unanswered. Pulses one after another, and a pulse on the other axis while one runs, were answered normally in the same session; in the full suite the hang also followed the RA plus DEC pulse pair, so the trigger is timing dependent. From then on every poll times out, `MOUNT_EQUATORIAL_COORDINATES` stays ALERT, the park never completes and the reconnect cases cannot open a session, because reopening the port does not reset the board.
 
 The firmware sources this image was built from are no longer available, so the defect cannot be located in the image, and a driver workaround for a defect of a bench port would not apply to real controllers. No change to the driver or the simulator; the image needs a rebuild before the OAT run can pass again. The 2026-09-23 macOS run of the same image passed the same cases.
+
+## OnStepX: a clock lost in a restart (2026-10-07, 3.0.0.79)
+
+Hardware run on Linux arm64 against `OnStepX_10.28x_esp32_s3.bin` on the bench ESP32-S3 (UART0 through the CH343 bridge, `/dev/ttyACM0`, 9600 baud). Hardware testing IS performed for this record.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX086 | FIXED | Nine of 35 cases failed on 3.0.0.77: every goto ended "Outside limits" and tracking never started, with the site, the date and the limits all correct. OnStepX keeps its last date across a restart and runs its clock from the start, so the driver's 24 hour check found nothing wrong, but the firmware counts a date or time that was not written since the start as a goto error (`Limits::isGotoError()`) and accepts `:Te#` without tracking. On this board every serial open resets the controller, so every connection started in that state. Reproduced on the raw port: `:MS#` answers `6` until `:SC#` and `:SL#` are written, then `0`. | At connect an OnStep is asked `:GX89#`; `1` (not ready) makes the driver write the host clock, as for a clock more than 24 hours off. The site is written with it only when the driver has one, as before. An OnStep that does not know the command answers `0` and is left alone. |
+
+Simulator: `--onstep-clock-unset` starts the OnStep model with the host's date and time, `:GX89#` answers `1` until both `:SC#` and `:SL#` arrive, `:MS#` answers `6` and `:Te#` is acknowledged without tracking until then.
+
+New case: `lx200_onstep_sets_a_clock_lost_in_a_restart` (`:GX89#` asked, `:SC#` and `:SL#` written, the goto completes at the target, tracking starts, a reconnect to a controller whose clock is set writes no clock). It fails against 3.0.0.78.
+
+MIGRATION_STATUS.md hardware-free count 149 -> 150.
+
+### Final test summary for this change
+
+Simulated tests: **147 run, 147 passed** (recorded run 2026-10-07 01:02, Linux arm64, driver 3.0.0.79). Hardware tests: **35 run, 35 passed** (OnStepX 10.28x, recorded run 2026-10-07 00:52, Linux arm64).

@@ -1846,6 +1846,43 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// An OnStepX without a real time clock comes back from a restart with the date it last had and a
+// clock running from there, close enough to the host for the 24 hour check, but it refuses every
+// goto with 6 and does not track until the date and the time are written again. Observed on the
+// OnStepX 10.28x bench board, which a serial open resets: the hardware suite saw "Outside limits"
+// for every slew and a tracking switch that never took. :GX89# says whether the clock is set.
+static void lx200_onstep_sets_a_clock_lost_in_a_restart(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, (const char *[]) { "--model", "onstep", "--onstep-clock-unset", NULL }));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "ONSTEP", true);
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GX89", NULL) > 0);
+	SERIAL_CHECK_TRUE(prefixed_event_count(&simulator, "SC") > 0);
+	SERIAL_CHECK_TRUE(prefixed_event_count(&simulator, "SL") > 0);
+	// The controller takes a goto and tracks again.
+	SERIAL_CHECK_TRUE(lx_coordinates(3, 10, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 10) < 0.1);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	// The status poll after the request has to find the tracking the controller started.
+	int polls = event_count(&simulator, "GU", NULL);
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "GU", polls + 1));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	// A controller whose clock is set is not written to again on the next connection.
+	int clock_writes = prefixed_event_count(&simulator, "SL");
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(clock_writes, prefixed_event_count(&simulator, "SL"));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // An OnStep build without a focuser answers every focuser command with 0, including the :FT# a
 // move waits on. The focuser device has to refuse the connection on such a controller instead of
 // coming up and blocking its device queue on the first move, which is what an OnStepX with no
@@ -4737,6 +4774,7 @@ int main(int argc, char **argv) {
 		{ "lx200_refused_goto_recovers_on_the_next_poll", lx200_refused_goto_recovers_on_the_next_poll },
 		{ "lx200_prime_meridian_longitude_is_zero", lx200_prime_meridian_longitude_is_zero },
 		{ "lx200_onstep_without_auxiliary_features", lx200_onstep_without_auxiliary_features },
+		{ "lx200_onstep_sets_a_clock_lost_in_a_restart", lx200_onstep_sets_a_clock_lost_in_a_restart },
 		{ "lx200_onstep_without_a_focuser_refuses_the_connection", lx200_onstep_without_a_focuser_refuses_the_connection },
 		{ "lx200_onstep_king_rate_comes_from_the_frequency", lx200_onstep_king_rate_comes_from_the_frequency },
 		{ "lx200_onstep_king_rate_comes_from_the_status", lx200_onstep_king_rate_comes_from_the_status },

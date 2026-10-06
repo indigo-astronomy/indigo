@@ -95,6 +95,11 @@ typedef struct {
 	bool zwo_altaz;
 	// ZWO AM5 hardware: a parked mount is neither stopped nor tracking, so :GU# carries no N (nGM040000895).
 	bool zwo_parked_no_stop;
+	// OnStepX restarted without a real time clock: it keeps the date it last had, but refuses
+	// every goto with 6 and does not start tracking until both the date and the local time have
+	// been written again, and :GX89# answers 1 until then. Observed on OnStepX 10.28x, whose
+	// limits treat a missing date or time as a goto error.
+	bool onstep_clock_unset;
 	simulator_model model;
 } simulator_options;
 
@@ -150,6 +155,9 @@ typedef struct {
 	// own source marks as a known limitation. Observed on firmware 230312.
 	long frozen_ra_cs;
 	long frozen_dec_as;
+	// Whether an OnStepX has been given the date and the local time since it started.
+	bool onstep_date_ready;
+	bool onstep_time_ready;
 } simulator_state;
 
 static simulator_options options = {
@@ -217,6 +225,7 @@ static void usage(const char *name) {
 	printf("  --zwo-firmware <x.y.z>  ZWO AM :GV# answer, 1.2.4 by default; :GAT# needs 1.1.1, :hP#, :Gps# and :Spu# 1.1.9, :GTa#, :STa# and :NSC# 1.2.4, :Sp01# 1.3.0\n");
 	printf("  --zwo-altaz             ZWO AM in alt-az mode: Z in :GU#, park and park position refused\n");
 	printf("  --zwo-parked-no-stop    ZWO AM5: a parked mount reports no N in :GU#, as the hardware does\n");
+	printf("  --onstep-clock-unset    OnStepX restarted without a clock: :GX89# answers 1, no goto or tracking until :SC# and :SL#\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -282,6 +291,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.tcp = true;
 		} else if (!strcmp(argv[i], "--status-king")) {
 			options.status_king = true;
+		} else if (!strcmp(argv[i], "--onstep-clock-unset")) {
+			options.onstep_clock_unset = true;
 		} else if (!strcmp(argv[i], "--unaligned")) {
 			options.unaligned = true;
 		} else if (!strcmp(argv[i], "--park-fails")) {
@@ -376,6 +387,10 @@ static void write_response(const char *response) {
 			running = 0;
 		}
 	}
+}
+
+static bool onstep_clock_ready(void) {
+	return options.model != MODEL_ONSTEP || !options.onstep_clock_unset || (state.onstep_date_ready && state.onstep_time_ready);
 }
 
 static bool model_is_double_precision(void) {
@@ -889,6 +904,9 @@ static void handle_command(const char *command) {
 		state.tracking = true;
 	} else if (!strncmp(command, "191", 3)) {
 		state.tracking = false;
+	} else if (!strcmp(command, "Te") && !onstep_clock_ready()) {
+		// The command is acknowledged, the tracking does not start.
+		write_response("1");
 	} else if (!strcmp(command, "Te") || !strncmp(command, "MT", 2)) {
 		state.tracking = strcmp(command, "MT0") != 0;
 		if (state.tracking) {
@@ -947,6 +965,8 @@ static void handle_command(const char *command) {
 		write_response("0.5#");
 	} else if (!strcmp(command, "GBu")) {
 		write_response("1");
+	} else if (!strcmp(command, "GX89") && options.model == MODEL_ONSTEP) {
+		write_response(onstep_clock_ready() ? "0" : "1");
 	} else if (!strcmp(command, "GX96")) {
 		snprintf(response, sizeof(response), "%c#", preferred_side);
 		write_response(response);
@@ -1141,6 +1161,7 @@ static void handle_command(const char *command) {
 		state.date_month = atoi(command + 2);
 		state.date_day = atoi(command + 5);
 		state.date_year = 2000 + atoi(command + 8);
+		state.onstep_date_ready = true;
 		write_response(options.model == MODEL_MEADE ? "1Updating Planetary Data#                                #" : "1");
 	} else if (!strcmp(command, "GC")) {
 		snprintf(response, sizeof(response), "%02d/%02d/%02d#", state.date_month, state.date_day, state.date_year % 100);
@@ -1170,6 +1191,7 @@ static void handle_command(const char *command) {
 		state.time_minute = atoi(command + 5);
 		state.time_second = atoi(command + 8);
 		clock_set_at = time(NULL);
+		state.onstep_time_ready = true;
 		write_response("1");
 	} else if (!strcmp(command, "GL")) {
 		if (model_is_double_precision()) {
@@ -1315,6 +1337,11 @@ static void handle_command(const char *command) {
 		// "already in motion" error instead of starting the slew.
 		if (options.model == MODEL_NYX && serial_motion_time() < guide_pulse_until) {
 			write_response("8");
+			return;
+		}
+		// OnStepX counts a date or time it has not been given as a limit error.
+		if (!onstep_clock_ready()) {
+			write_response("6");
 			return;
 		}
 		state.frozen_ra_cs = state.ra_cs;
@@ -1522,6 +1549,21 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 	gemini_boot = options.model == MODEL_GEMINI && options.gemini_startup ? 'b' : 0;
+	if (options.model == MODEL_ONSTEP && options.onstep_clock_unset) {
+		// The date survives the restart and the clock runs from the moment it started, so the
+		// controller reports a date and a time close enough to the host not to look unset.
+		time_t now = time(NULL);
+		struct tm local;
+		localtime_r(&now, &local);
+		state.date_day = local.tm_mday;
+		state.date_month = local.tm_mon + 1;
+		state.date_year = local.tm_year + 1900;
+		state.time_hour = local.tm_hour;
+		state.time_minute = local.tm_min;
+		state.time_second = local.tm_sec;
+		state.time_offset = -(int)(local.tm_gmtoff / 3600);
+		clock_set_at = now;
+	}
 	char port[PATH_MAX];
 	if (options.tcp) {
 		listen_fd = socket(AF_INET, SOCK_STREAM, 0);

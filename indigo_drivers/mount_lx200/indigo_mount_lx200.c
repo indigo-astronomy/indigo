@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300004E
+#define DRIVER_VERSION       0x0300004F
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -3472,9 +3472,17 @@ static void meade_init_mount(indigo_device *device) {
 	time_t secs = 0;
 	bool clock_read = meade_get_utc(device, &secs, &PRIVATE_DATA->utc_offset);
 	time_t now = time(NULL);
+	bool clock_unset = labs(secs - now) > 24 * 60 * 60;
+	// An OnStepX without a real time clock keeps its last date across a restart and runs its
+	// clock from there, so it looks set, but it refuses every goto as outside the limits and
+	// does not track until the date and the time have been written again. :GX89# answers 1
+	// until both have been, an OnStep that does not know the command answers 0.
+	if (!clock_unset && MOUNT_TYPE_ON_STEP_ITEM->sw.value && meade_simple_reply_command(device, ":GX89#") && PRIVATE_DATA->response[0] == '1') {
+		clock_unset = true;
+	}
 	// A Gemini whose clock could not be read is left alone: the clock and the site it has are
 	// not replaced because of a reply this driver failed to parse.
-	if ((clock_read || !MOUNT_TYPE_GEMINI_ITEM->sw.value) && labs(secs - now) > 24 * 60 * 60) {
+	if ((clock_read || !MOUNT_TYPE_GEMINI_ITEM->sw.value) && clock_unset) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount is not initialized, initializing...");
 		meade_set_utc(device, now, indigo_get_utc_offset());
 		// The clock is what this check is about. The site is written with it only when the
