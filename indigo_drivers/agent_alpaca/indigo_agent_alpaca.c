@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0300000D
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -70,6 +70,7 @@ typedef struct {
 	indigo_property *devices_property;
 	indigo_property *camera_bayerpat_property;
 	indigo_timer *discovery_server_timer;
+	volatile bool discovery_server_running;
 	pthread_mutex_t mutex;
 } alpaca_agent_private_data;
 
@@ -77,9 +78,8 @@ static alpaca_agent_private_data *private_data = NULL;
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #define INVALID_SOCKET -1
-static int discovery_server_socket = INVALID_SOCKET;
-#elif defined(INDIGO_WINDOWS)
-static SOCKET discovery_server_socket = INVALID_SOCKET;
+#define closesocket(s) close(s)
+typedef int SOCKET;
 #endif
 
 // Device records are linked and unlinked by the bus client callbacks and used by the HTTP worker threads, which keep
@@ -201,79 +201,75 @@ static indigo_alpaca_device *get_alpaca_device(const char *name, bool create) {
 #define LAST_ERROR indigo_last_wsa_error()
 #endif
 
-static void start_discovery_server(indigo_device *device) {
+// The discovery server runs in the discovery_server_timer callback, which owns its socket. It ends when
+// discovery_server_running is cleared, at the latest after the 1s select() timeout, and shutdown_discovery_server()
+// waits for it, so the socket is never closed under the callback and the timer can be set again.
+
+static void discovery_server_loop(indigo_device *device) {
 	int port = (int)AGENT_DISCOVERY_PORT_ITEM->number.value;
-	discovery_server_socket = socket(PF_INET, SOCK_DGRAM, 0);
-	if (discovery_server_socket == INVALID_SOCKET) {
+	SOCKET server_socket = socket(PF_INET, SOCK_DGRAM, 0);
+	if (server_socket == INVALID_SOCKET) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create socket (%s)", LAST_ERROR);
 		return;
 	}
 	int reuse = 1;
-	if (setsockopt(discovery_server_socket, SOL_SOCKET, SO_REUSEADDR, (char *) &reuse, sizeof(reuse)) < 0) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		close(discovery_server_socket);
-#elif defined(INDIGO_WINDOWS)
-		closesocket(discovery_server_socket);
-#endif
+	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, (char *) &reuse, sizeof(reuse)) < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "setsockopt() failed (%s)", LAST_ERROR);
+		closesocket(server_socket);
 		return;
 	}
 	struct sockaddr_in server_address;
 	unsigned int server_address_length = sizeof(server_address);
+	memset(&server_address, 0, sizeof(server_address));
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(port);
 	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(discovery_server_socket, (struct sockaddr *)&server_address, server_address_length) < 0) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		close(discovery_server_socket);
-#elif defined(INDIGO_WINDOWS)
-		closesocket(discovery_server_socket);
-#endif
+	if (bind(server_socket, (struct sockaddr *)&server_address, server_address_length) < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "bind() failed (%s)", LAST_ERROR);
+		closesocket(server_socket);
 		return;
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery server started on port %d", port);
 	fd_set readfd;
 	struct sockaddr_in client_address;
-	unsigned int client_address_length = sizeof(client_address);
+	unsigned int client_address_length;
 	char buffer[128];
 	struct timeval tv;
-	while (discovery_server_socket != INVALID_SOCKET) {
+	while (PRIVATE_DATA->discovery_server_running) {
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 		FD_ZERO(&readfd);
-		FD_SET(discovery_server_socket, &readfd);
+		FD_SET(server_socket, &readfd);
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		int ret = select(discovery_server_socket + 1, &readfd, NULL, NULL, &tv);
+		int ret = select(server_socket + 1, &readfd, NULL, NULL, &tv);
 #elif defined(INDIGO_WINDOWS)
 		int ret = select(0, &readfd, NULL, NULL, &tv);
 #endif
-		if (ret > 0) {
-			if (FD_ISSET(discovery_server_socket, &readfd)) {
-				recvfrom(discovery_server_socket, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_address, &client_address_length);
+		if (ret > 0 && FD_ISSET(server_socket, &readfd)) {
+			client_address_length = sizeof(client_address);
+			int length = (int)recvfrom(server_socket, buffer, sizeof(buffer) - 1, 0, (struct sockaddr*)&client_address, &client_address_length);
+			if (length > 0) {
+				buffer[length] = 0;
 				if (strstr(buffer, DISCOVERY_REQUEST)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery request from %s", inet_ntoa(client_address.sin_addr));
-					sprintf(buffer, DISCOVERY_RESPONSE, indigo_server_tcp_port);
-					sendto(discovery_server_socket, buffer, (int)strlen(buffer), 0, (struct sockaddr*)&client_address, client_address_length);
+					snprintf(buffer, sizeof(buffer), DISCOVERY_RESPONSE, indigo_server_tcp_port);
+					sendto(server_socket, buffer, (int)strlen(buffer), 0, (struct sockaddr*)&client_address, client_address_length);
 				}
 			}
 		}
 	}
+	closesocket(server_socket);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery server stopped on port %d", port);
-	return;
 }
 
-static void shutdown_discovery_server() {
-	if (discovery_server_socket > 0) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		shutdown(discovery_server_socket, SHUT_RDWR);
-		close(discovery_server_socket);
-#elif defined(INDIGO_WINDOWS)
-		shutdown(discovery_server_socket, SD_BOTH);
-		closesocket(discovery_server_socket);
-#endif
-		discovery_server_socket = INVALID_SOCKET;
-	}
+static void start_discovery_server(indigo_device *device) {
+	PRIVATE_DATA->discovery_server_running = true;
+	indigo_set_timer(device, 0, discovery_server_loop, &PRIVATE_DATA->discovery_server_timer);
+}
+
+static void shutdown_discovery_server(indigo_device *device) {
+	PRIVATE_DATA->discovery_server_running = false;
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->discovery_server_timer);
 }
 
 #define ALPACA_MAX_PARAMS		16
@@ -1013,7 +1009,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_CAMERA_BAYERPAT_PROPERTY->count = 0;
 		// --------------------------------------------------------------------------------
 		srand((unsigned)time(0));
-		indigo_set_timer(device, 0, start_discovery_server, &private_data->discovery_server_timer);
+		start_discovery_server(device);
 		indigo_server_add_handler("/setup", &alpaca_setup_handler);
 		indigo_server_add_handler("/management/apiversions", &alpaca_apiversions_handler);
 		indigo_server_add_handler("/management/v1/description", &alpaca_v1_description_handler);
@@ -1048,8 +1044,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	}
 	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_DISCOVERY_PROPERTY, property, false);
-		shutdown_discovery_server();
-		indigo_set_timer(device, 0, start_discovery_server, &private_data->discovery_server_timer);
+		shutdown_discovery_server(device);
+		start_discovery_server(device);
 		AGENT_DISCOVERY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_DEVICES_PROPERTY, property)) {
@@ -1092,13 +1088,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
-	shutdown_discovery_server();
+	shutdown_discovery_server(device);
 	indigo_server_remove_resource("/setup");
 	indigo_server_remove_resource("/management/apiversions");
 	indigo_server_remove_resource("/management/v1/description");
 	indigo_server_remove_resource("/management/v1/configureddevices");
 	indigo_server_remove_resource("/api/v1");
-	indigo_cancel_timer_sync(device, &private_data->discovery_server_timer);
 	indigo_release_property(AGENT_DISCOVERY_PROPERTY);
 	indigo_release_property(AGENT_DEVICES_PROPERTY);
 	indigo_release_property(AGENT_CAMERA_BAYERPAT_PROPERTY);
