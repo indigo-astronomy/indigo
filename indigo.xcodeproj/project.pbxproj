@@ -5742,6 +5742,8 @@
 		C0DE20260924A00100000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260926120000000001 /* hardware_device_record.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hardware_device_record.h; sourceTree = "<group>"; };
 		C0DE20260926D0AB00000001 /* test_detach_abort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_detach_abort.c; sourceTree = "<group>"; };
+		C0DE20261006D0AB00000001 /* test_server_driver_stress.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_driver_stress.c; sourceTree = "<group>"; };
+		C0DE20261006D0AB00000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260928A00100000001 /* test_agent_astrometry_solver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_astrometry_solver.c; sourceTree = "<group>"; };
 		C0DE20260930000100000001 /* test_ccd_dsi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_dsi_hw.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000001 /* indigo_system_alpaca.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca.c; sourceTree = "<group>"; };
@@ -9464,6 +9466,7 @@
 		599A63D61DF5D93500ABC827 /* indigo_server */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20261006D0AB00000002 /* REFACTOR.md */,
 				59FA7C14301E2BF900A35CFB /* REVIEW.md */,
 				9DC7830621A7072B009859FD /* Makefile */,
 				9D97F81A1D9A8A5D00582EAF /* indigo_server.c */,
@@ -14267,6 +14270,7 @@
 				5907ACD3301E7DC60009AA99 /* test_aux_wcv4ec_simulator.c */,
 				59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */,
 				C0DE20260926D0AB00000001 /* test_detach_abort.c */,
+				C0DE20261006D0AB00000001 /* test_server_driver_stress.c */,
 				C0DE20260911000100000001 /* test_ccd_altair_sdk.c */,
 				59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */,
 				9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */,

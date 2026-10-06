@@ -810,6 +810,15 @@ test-detach-abort: check-lib $(INTEGRATION_BUILD)/test_detach_abort
 test-detach-abort-network: check-lib $(INTEGRATION_BUILD)/test_detach_abort
 	$(INTEGRATION_BUILD)/test_detach_abort --network
 
+# Opt-in: launches build/bin/indigo_server and drives Server.DRIVERS over loopback, loading and unloading the
+# driver libraries in build/drivers, so it is in neither INTEGRATION_TESTS nor OPT_IN_DRIVER_TESTS.
+$(INTEGRATION_BUILD)/test_server_driver_stress: integration/test_server_driver_stress.c test_runner.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DINDIGO_SERVER_EXECUTABLE='"$(BUILD_BIN)/indigo_server"' -o $@ $< $(TEST_LDFLAGS)
+
+.PHONY: test-server-driver-stress
+test-server-driver-stress: check-lib $(INTEGRATION_BUILD)/test_server_driver_stress
+	$(INTEGRATION_BUILD)/test_server_driver_stress
+
 .PHONY: test-mount-lx200-tcp
 test-mount-lx200-tcp: $(INTEGRATION_BUILD)/test_mount_lx200_simulator $(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize
 	$(INTEGRATION_BUILD)/test_mount_lx200_simulator --tcp; lx200_normal_status=$$?; $(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize --tcp; lx200_sanitize_status=$$?; test $$lx200_normal_status -eq 0 -a $$lx200_sanitize_status -eq 0
