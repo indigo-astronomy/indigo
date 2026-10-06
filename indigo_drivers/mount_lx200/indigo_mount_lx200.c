@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300004D
+#define DRIVER_VERSION       0x0300004E
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -2999,6 +2999,8 @@ static void meade_update_zwo_state(indigo_device *device) {
 			PRIVATE_DATA->parking = true;
 		} else if (park_status == '2') {
 			PRIVATE_DATA->parked = true;
+			// A parked AM5 reports neither N (stopped or tracking) nor a slew in :GU#, so a missing N is no slew.
+			PRIVATE_DATA->slewing = false;
 		} else if (park_status != '0' && PRIVATE_DATA->zwo_park_stage == 2) {
 			PRIVATE_DATA->zwo_park_stage = 0;
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;

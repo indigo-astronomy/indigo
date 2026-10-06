@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 77;
+	version = 78;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -2737,6 +2737,8 @@ driver lx200 {
 				PRIVATE_DATA->parking = true;
 			} else if (park_status == '2') {
 				PRIVATE_DATA->parked = true;
+				// A parked AM5 reports neither N (stopped or tracking) nor a slew in :GU#, so a missing N is no slew.
+				PRIVATE_DATA->slewing = false;
 			} else if (park_status != '0' && PRIVATE_DATA->zwo_park_stage == 2) {
 				PRIVATE_DATA->zwo_park_stage = 0;
 				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;

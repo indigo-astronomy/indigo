@@ -2765,6 +2765,30 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A parked AM5 answers :GU# with no N (nGM040000895): it is neither stopped nor tracking, so the
+// status cannot be read as a slew. The position is valid and the coordinates have to stay OK.
+static void lx200_zwo_parked_keeps_coordinates_ok(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--zwo-parked-no-stop", NULL };
+	SERIAL_CHECK_TRUE(start_zwo_options(&simulator, options));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 3));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // The refusals of the park commands end ALERT with the reason of the mount and leave the park
 // state as it was; an abort of the home slew of a park never sends :hP#.
 static void lx200_zwo_park_refusals_and_abort(void) {
@@ -4686,6 +4710,7 @@ int main(int argc, char **argv) {
 		{ "lx200_zwo_meridian_slew_speed_and_alignment", lx200_zwo_meridian_slew_speed_and_alignment },
 		{ "lx200_zwo_old_firmware", lx200_zwo_old_firmware },
 		{ "lx200_zwo_park_goes_home_first", lx200_zwo_park_goes_home_first },
+		{ "lx200_zwo_parked_keeps_coordinates_ok", lx200_zwo_parked_keeps_coordinates_ok },
 		{ "lx200_zwo_park_refusals_and_abort", lx200_zwo_park_refusals_and_abort },
 		{ "lx200_zwo_altaz_refuses_park", lx200_zwo_altaz_refuses_park },
 		{ "lx200_zwo_park_firmware_levels", lx200_zwo_park_firmware_levels },

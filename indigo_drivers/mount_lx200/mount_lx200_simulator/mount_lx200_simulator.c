@@ -93,6 +93,8 @@ typedef struct {
 	int zwo_firmware;
 	// ZWO AM in alt-az mode: Z instead of G in :GU#, no park and no park position.
 	bool zwo_altaz;
+	// ZWO AM5 hardware: a parked mount is neither stopped nor tracking, so :GU# carries no N (nGM040000895).
+	bool zwo_parked_no_stop;
 	simulator_model model;
 } simulator_options;
 
@@ -214,6 +216,7 @@ static void usage(const char *name) {
 	printf("  --gemini-startup        Gemini: wait for the startup mode (bC#, bW#, bR#) first\n");
 	printf("  --zwo-firmware <x.y.z>  ZWO AM :GV# answer, 1.2.4 by default; :GAT# needs 1.1.1, :hP#, :Gps# and :Spu# 1.1.9, :GTa#, :STa# and :NSC# 1.2.4, :Sp01# 1.3.0\n");
 	printf("  --zwo-altaz             ZWO AM in alt-az mode: Z in :GU#, park and park position refused\n");
+	printf("  --zwo-parked-no-stop    ZWO AM5: a parked mount reports no N in :GU#, as the hardware does\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -331,6 +334,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.zwo_firmware = (major << 16) | (minor << 8) | patch;
 		} else if (!strcmp(argv[i], "--zwo-altaz")) {
 			options.zwo_altaz = true;
+		} else if (!strcmp(argv[i], "--zwo-parked-no-stop")) {
+			options.zwo_parked_no_stop = true;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -1124,7 +1129,7 @@ static void handle_command(const char *command) {
 		bool report_king = state.tracking_rate == 'K' && (options.model != MODEL_ONSTEP || options.status_king);
 		const char *rate = state.tracking_rate == 'L' ? "(" : state.tracking_rate == 'S' ? "O" : report_king ? "k" : "";
 		// T is the east and W the west side of the pier in the OnStep status
-		snprintf(response, sizeof(response), "%c%s%s%s%s%s%s%s#", model_is_zwo() && options.zwo_altaz ? 'Z' : 'G', state.tracking ? "" : "n", state.slewing ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", pier_side() == 'E' ? "T" : "W", auto_flip ? "a" : "", rate);
+		snprintf(response, sizeof(response), "%c%s%s%s%s%s%s%s#", model_is_zwo() && options.zwo_altaz ? 'Z' : 'G', state.tracking ? "" : "n", state.slewing || (model_is_zwo() && options.zwo_parked_no_stop && state.parked) ? "" : "N", state.parked ? "P" : parking_requested ? "I" : "p", state.at_home ? "H" : homing_requested ? "h" : "", pier_side() == 'E' ? "T" : "W", auto_flip ? "a" : "", rate);
 		write_response(response);
 	} else if (!strncmp(command, "SC", 2)) {
 		if (options.model == MODEL_GEMINI && !state.offset_set) {

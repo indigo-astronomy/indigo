@@ -25,7 +25,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0300001F
+#define DRIVER_VERSION 0x03000020
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -792,6 +792,10 @@ static void position_timer_callback(indigo_device *device) {
 			}
 			if (!MOUNT_PARK_PROPERTY->hidden) {
 				asi_update_park(device, strchr(response, 'N') == NULL, strchr(response, 'H') != NULL);
+				// A parked AM5 reports neither N (stopped or tracking) nor a slew in :GU#, so a missing N is no slew.
+				if (PRIVATE_DATA->parked) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				}
 			}
 		}
 

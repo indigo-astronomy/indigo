@@ -1189,6 +1189,33 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A parked AM5 answers :GU# with no N (nGM040000895): it is neither stopped nor tracking, so the
+// status cannot be read as a slew. The position is valid and the coordinates have to stay OK.
+static void parked_status_without_stop_keeps_coordinates_ok(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_asi_simulator_with_option(&simulator, "--zwo-parked-no-stop"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(pin_epoch());
+	SERIAL_CHECK_TRUE(asi_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(asi_switch(&asi_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&simulator));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	if (online) { stop_serial_driver(&asi_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // In alt-az mode there is no park: the request is refused before anything is sent.
 static void park_is_refused_in_altaz_mode(void) {
 	external_serial_simulator simulator = { 0 };
@@ -1548,6 +1575,7 @@ int main(void) {
 		{ "park_follows_the_firmware_level", park_follows_the_firmware_level },
 		{ "park_goes_home_first_and_unpark_releases", park_goes_home_first_and_unpark_releases },
 		{ "park_refusals_set_position_and_abort", park_refusals_set_position_and_abort },
+		{ "parked_status_without_stop_keeps_coordinates_ok", parked_status_without_stop_keeps_coordinates_ok },
 		{ "park_is_refused_in_altaz_mode", park_is_refused_in_altaz_mode },
 		{ "site_is_written_and_read_back", site_is_written_and_read_back },
 		{ "host_time_sets_the_controller_clock", host_time_sets_the_controller_clock },
