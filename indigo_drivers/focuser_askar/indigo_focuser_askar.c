@@ -54,7 +54,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_askar"
 #define DRIVER_LABEL         "Askar-WAF Focuser"
 #define FOCUSER_DEVICE_NAME  "Askar-WAF"
@@ -73,6 +73,7 @@
 #define ASKAR_DISCOVERY_TIMEOUT 1
 #define ASKAR_DISCOVERY_RETRIES 3
 #define ASKAR_DISCOVERY_MAX_DEVICES 20
+#define ASKAR_IDLE_POLLS     5
 #define FOCUSER_IN_MOTION    (PRIVATE_DATA->moving || PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE)
 
 //- define
@@ -94,7 +95,7 @@ typedef struct {
 	indigo_property *x_focuser_motor_mode_property;
 	//+ data
 	char response[ASKAR_CMD_LEN];
-	int current_position, target_position, max_position, last_position, stalled;
+	int current_position, target_position, max_position, last_position, stalled, idle;
 	bool moving, uncertain, pending, external, poll_failed;
 	bool reversed, balanced;
 	//- data
@@ -269,9 +270,12 @@ static void motion_finalizer(indigo_device *device) {
 	}
 	PRIVATE_DATA->current_position = position;
 	FOCUSER_POSITION_ITEM->number.value = position;
-	if (PRIVATE_DATA->external ? !moving : (!moving || position == PRIVATE_DATA->target_position)) {
+	/* the firmware can answer FQ0 while the motor still turns, so a stop away from the target counts only after ASKAR_IDLE_POLLS idle replies at one position */
+	PRIVATE_DATA->idle = moving || position != PRIVATE_DATA->last_position ? 0 : PRIVATE_DATA->idle + 1;
+	bool at_target = !PRIVATE_DATA->external && position == PRIVATE_DATA->target_position;
+	if (at_target || PRIVATE_DATA->idle >= ASKAR_IDLE_POLLS) {
 		/* motion the driver did not command ends where the focuser stops */
-		bool reached = PRIVATE_DATA->external || position == PRIVATE_DATA->target_position;
+		bool reached = PRIVATE_DATA->external || at_target;
 		PRIVATE_DATA->moving = PRIVATE_DATA->external = false;
 		PRIVATE_DATA->target_position = position;
 		FOCUSER_POSITION_ITEM->number.target = position;
@@ -326,7 +330,7 @@ static void askar_start_motion(indigo_device *device, int target) {
 	}
 	PRIVATE_DATA->moving = true;
 	PRIVATE_DATA->external = false;
-	PRIVATE_DATA->stalled = 0;
+	PRIVATE_DATA->stalled = PRIVATE_DATA->idle = 0;
 	PRIVATE_DATA->last_position = PRIVATE_DATA->current_position;
 	askar_motion_state(device, INDIGO_BUSY_STATE);
 }
@@ -463,7 +467,7 @@ static void focuser_timer_callback(indigo_device *device) {
 					/* motion the driver did not command, e.g. from the Wi-Fi application */
 					PRIVATE_DATA->moving = PRIVATE_DATA->external = true;
 					PRIVATE_DATA->poll_failed = false;
-					PRIVATE_DATA->stalled = 0;
+					PRIVATE_DATA->stalled = PRIVATE_DATA->idle = 0;
 					PRIVATE_DATA->last_position = position;
 					askar_motion_state(device, INDIGO_BUSY_STATE);
 					indigo_execute_handler_in(device, 0.1, motion_finalizer);
@@ -521,7 +525,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->uncertain = PRIVATE_DATA->pending = PRIVATE_DATA->poll_failed = false;
 				/* motion the driver did not command is running at connect */
 				PRIVATE_DATA->moving = PRIVATE_DATA->external = moving;
-				PRIVATE_DATA->stalled = 0;
+				PRIVATE_DATA->stalled = PRIVATE_DATA->idle = 0;
 				PRIVATE_DATA->last_position = position;
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				if (moving) {

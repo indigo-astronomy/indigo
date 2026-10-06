@@ -54,7 +54,7 @@ static external_serial_simulator fixture;
 static char fixture_dir[] = "/tmp/indigo-askar.XXXXXX";
 static char event_path[256], fault_path[256];
 static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_PROPERTY_NAME };
-static atomic_uint revisions[8], motion_busy;
+static atomic_uint revisions[8], motion_busy, motion_alert;
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < ARRAY_SIZE(observed_names); i++) {
@@ -72,6 +72,9 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 		atomic_fetch_add(&revisions[index], 1);
 		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME) && property->state == INDIGO_BUSY_STATE) {
 			atomic_fetch_add(&motion_busy, 1);
+		}
+		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME) && property->state == INDIGO_ALERT_STATE) {
+			atomic_fetch_add(&motion_alert, 1);
 		}
 	}
 	return result;
@@ -135,6 +138,7 @@ static bool driver_start(void) {
 		atomic_store(&revisions[i], 0);
 	}
 	atomic_store(&motion_busy, 0);
+	atomic_store(&motion_alert, 0);
 	simulator_test_client.update_property = observe_update;
 	return bring_up_serial_driver(&askar_focuser) && connect_serial_device(&askar_focuser, fixture.port);
 }
@@ -622,6 +626,39 @@ cleanup:
 	driver_stop();
 }
 
+// The firmware can answer FQ0 while the motor still turns; a single idle reply away from the target does not end
+// the move, which ends OK at the target without an ALERT on the way.
+static void transient_idle_does_not_end_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	last_position_message[0] = 0;
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 54000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(fault('Q', "idle"));
+	SERIAL_CHECK_TRUE(at_position(54000));
+	SERIAL_CHECK_TRUE(cached_target() == 54000);
+	SERIAL_CHECK_EQ_INT(0, (int)atomic_load(&motion_alert));
+	SERIAL_CHECK_TRUE(last_position_message[0] == 0);
+	SERIAL_CHECK_EQ_INT(1, commands("FP"));
+cleanup:
+	driver_stop();
+}
+
+// A focuser that stays idle away from the target (stopped by another controller) ends the move ALERT at the
+// stopped position.
+static void stop_away_from_target_ends_alert(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	last_position_message[0] = 0;
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 54000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(fault('p', "position=52000"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(strstr(last_position_message, "stopped short") != NULL);
+	SERIAL_CHECK_TRUE(cached_position() == 52000 && cached_target() == 52000);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52400, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(52400));
+cleanup:
+	driver_stop();
+}
+
 // A mid-move abort ends both motion properties ALERT at the stopped position, never at the
 // requested target; an idle abort and an OFF request send no stop; a fresh move works.
 static void abort_motion(void) {
@@ -838,7 +875,9 @@ int main(void) {
 		{ "disconnect_during_motion", disconnect_during_motion },
 		{ "shutdown_refused_while_connected", shutdown_refused_while_connected },
 		{ "additional_instance", additional_instance },
-		{ "stalled_move_ends_alert", stalled_move_ends_alert }
+		{ "stalled_move_ends_alert", stalled_move_ends_alert },
+		{ "transient_idle_does_not_end_move", transient_idle_does_not_end_move },
+		{ "stop_away_from_target_ends_alert", stop_away_from_target_ends_alert }
 	};
 	return run_cases(tests, ARRAY_SIZE(tests));
 }

@@ -74,7 +74,7 @@ static void usage(const char *name) {
 	printf("  --motor-mode <0|1>      Start in high performance (0) or balanced (1) mode\n");
 	printf("  --moving-to <n>         Start moving towards position n\n");
 	printf("  Faults are read from $INDIGO_ASKAR_FAULT as '<command letter> <action>', where action is\n");
-	printf("  silent, malformed, error, close, partial, overlong, split, slow, stall, position=<n> or\n");
+	printf("  silent, malformed, error, close, partial, overlong, split, slow, stall, idle, position=<n> or\n");
 	printf("  move=<n>, optionally prefixed with sticky_ to stay armed.\n");
 	printf("  --firmware <version>    Override firmware version\n");
 	printf("  -h, --help              Show this help and exit\n");
@@ -477,7 +477,8 @@ static void dispatch_command(int fd, const char *frame, int length) {
 			bool moving;
 
 			pthread_mutex_lock(&state_mutex);
-			moving = position != target;
+			// an idle reply while the motor still turns
+			moving = position != target && strcmp(action, "idle");
 			pthread_mutex_unlock(&state_mutex);
 
 			sim_printf(fd, moving ? "FQ1" : "FQ0");
