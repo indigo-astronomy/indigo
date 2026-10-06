@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION											0x03000037
+#define DRIVER_VERSION											0x03000038
 #define PRIVATE_DATA												((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define ADVANCED_GROUP											"Advanced"
@@ -2946,14 +2946,22 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 	}
 	switch (action) {
 		case INDIGO_DRIVER_INIT: {
-			driver_queue = indigo_queue_create(NULL);
+			// The first EnumV2() schedules the SDK's HID manager on the run loop of the calling thread, the driver queue, and
+			// from then on the SDK library is never unmapped. A queue deleted at shutdown left the SDK with the run loop of a
+			// thread that was gone, and the first enumeration after a reload stopped the process in CFRunLoopAddSource().
+			// The driver library is pinned and the queue lives as long as the process, so a reloaded driver finds the same
+			// queue and the SDK the same thread.
+			indigo_pin_library((void *)process_plug_event_handler);
 			if (driver_queue == NULL) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
-				return INDIGO_FAILED;
+				driver_queue = indigo_queue_create(NULL);
+				if (driver_queue == NULL) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+					return INDIGO_FAILED;
+				}
+				indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
+				// The enqueue API has no failure return. Preserve the old unbounded asynchronous submission behavior so connection/cleanup tasks cannot be dropped.
+				indigo_queue_set_max_pending_tasks(driver_queue, 0);
 			}
-			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
-			// The enqueue API has no failure return. Preserve the old unbounded asynchronous submission behavior so connection/cleanup tasks cannot be dropped.
-			indigo_queue_set_max_pending_tasks(driver_queue, 0);
 			for (int i = 0; i < SDK_DEF(MAX); i++) {
 				devices[i] = NULL;
 			}
@@ -2971,7 +2979,6 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 						devices[i] = NULL;
 					}
 				}
-				indigo_queue_delete(&driver_queue);
 				return INDIGO_FAILED;
 			}
 			return INDIGO_OK;
@@ -2993,7 +3000,7 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 					devices[i] = NULL;
 				}
 			}
-			indigo_queue_delete(&driver_queue);
+			// the queue is kept, see INDIGO_DRIVER_INIT
 			break;
 		}
 		case INDIGO_DRIVER_INFO:

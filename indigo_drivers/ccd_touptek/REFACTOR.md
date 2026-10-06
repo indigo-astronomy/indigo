@@ -780,3 +780,34 @@ Validation, fake SDK, Linux x64: `TZ=Europe/Bratislava python3 tools/run_driver_
 The OEM variant suites, which include the same test source, were not run in this change. Not verified on hardware.
 
 Test totals for this change: simulated (fake SDK) tests run 36, passed 36; hardware tests run 0.
+
+## Reloading the driver stopped the server in the SDK enumeration (3.0.0.55 to 3.0.0.56, 2026-10-06)
+
+`indigo_test/integration/test_server_driver_stress` loads and unloads all drivers through `Server.DRIVERS` of the real
+`indigo_server`, without hardware. Every variant built from this source except Meade stopped the server with SIGTRAP in
+`CFRunLoopAddSource()`, called from `<Vendor>_EnumV2()` / `IOHIDManagerSetDeviceMatchingMultiple()` in
+`process_unplug_event_handler()` at the start of `process_plug_event_handler()`, on the driver queue. Single-driver
+sequences against a fresh server reproduced it every time on macOS arm64 without a camera attached: load, stay 2 s,
+unload, load again. Loading and unloading at once before the reload passed, and so did an unload without a reload.
+
+`INIT` registers the hot-plug callback with `LIBUSB_HOTPLUG_ENUMERATE`, so 0.5 s after a load the driver queue calls
+`EnumV2()`. That first call schedules the SDK's HID manager on the run loop of the calling thread, and from then on the
+loader never unmaps the SDK library: the image log showed the library unmapped at an unload before the first
+enumeration and kept after it. `SHUTDOWN` deleted the driver queue and with it that thread, and the reloaded driver
+enumerated on a new queue while the SDK still used the run loop of the old one.
+
+`INIT` now pins the driver library and creates the driver queue only when it has none; `SHUTDOWN` drains the queue and
+keeps it. A reloaded driver finds the same queue, so the SDK is called from the same thread for the life of the
+process. The cost is one idle queue thread per variant after its first load. A failure to create the queue is now
+reachable only at the first `INIT` of a process.
+
+The `SDK lifecycle queue` case of the fake SDK suite asserts the new contract: SDK calls stay on one thread across the
+reload of its second cycle, and a later `INIT` succeeds without creating a queue while queue creation is made to fail,
+where it used to expect `INDIGO_FAILED`. With the previous driver source the updated case fails at that assertion. A new
+thread can get the identifier of a finished one, which is why the thread check alone did not tell the two queues
+apart. The fake SDK has no run loop, so the crash itself is reproduced only by the stress test against the real SDKs.
+
+Results (macOS arm64): fake SDK suites of `ccd_touptek` and all ten variants run 36 each, passed 36 each. The
+load, enumerate, unload and reload sequence passes for all eleven drivers, once and three times in a row.
+`test_server_driver_stress` passed all three cases four times (seeds 1 to 4) with only `ccd_bresser`, `ccd_svb2` and
+`ccd_baccam` excluded and once (seed 5) with all 144 drivers. Hardware tests run 0.

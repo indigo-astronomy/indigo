@@ -753,8 +753,11 @@ static void connect_device(int index, bool connected) {
 static void lifecycle(void) {
 	indigo_start();
 	indigo_attach_client(&client);
+	have_thread = false;
 	for (int cycle = 0; cycle < 2; cycle++) {
-		have_thread = false;
+		// The SDK keeps the run loop of the thread that enumerated first, so the second cycle, a reload, must call it
+		// from the same thread. A new thread can get the identifier of a finished one, the queue check below is the
+		// one that tells them apart.
 		atomic_store(&visible, 7);
 		CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_INIT, NULL), INDIGO_OK);
 		CHECK_TRUE(wait_value(&attached, 15));
@@ -800,7 +803,6 @@ static void lifecycle(void) {
 		atomic_store(&moving, false);
 	}
 	// Camera-only ownership and failed Open must not leak a handle/global lock.
-	have_thread = false;
 	models[0].flag &= ~TOUPCAM_FLAG_ST4;
 	atomic_store(&visible, 1);
 	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_INIT, NULL), INDIGO_OK);
@@ -818,8 +820,14 @@ static void lifecycle(void) {
 	CHECK_EQ_INT(atomic_load(&bad_handle), 0);
 	CHECK_EQ_INT(atomic_load(&wrong_thread), 0);
 	atomic_store(&visible, 0);
+	// The driver queue outlives the driver, a reload reuses it and never creates another one. With a new queue a reload
+	// stopped the real SDK in CFRunLoopAddSource(), the fake SDK has no run loop.
+	indigo_queue *queue = test_driver_queue;
+	CHECK_TRUE(queue != NULL);
 	atomic_store(&fail_queue, true);
-	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_INIT, NULL), INDIGO_FAILED);
+	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_INIT, NULL), INDIGO_OK);
+	CHECK_TRUE(test_driver_queue == queue);
+	CHECK_EQ_INT(indigo_ccd_touptek(INDIGO_DRIVER_SHUTDOWN, NULL), INDIGO_OK);
 	atomic_store(&fail_queue, false);
 	// Failed registration must leave a repeatable INIT/SHUTDOWN lifecycle.
 	atomic_store(&fail_register, true);
