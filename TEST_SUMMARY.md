@@ -151,12 +151,12 @@
 |  | 2026-09-27 21:48 | 3.0.0.44 | mac arm64 | fake SDK | 42 / 42 | ✅ OK |
 |  | 2026-09-30 17:25 | 3.0.0.45 | linux arm64 | fake SDK | 41 / 41 | ✅ OK |
 |  | 2026-09-30 17:27 | 3.0.0.45 | linux arm64 | QHY5III178M (hot-plug) | 6 / 6 | ✅ OK |
-|  | 2026-09-30 17:48 | 3.0.0.45 | linux arm64 | QHY5III178M | 1 / 1 | ✅ OK |
 |  | 2026-09-30 17:50 | 3.0.0.45 | linux arm64 | QHY5LII-M | 1 / 1 | ✅ OK |
 |  | 2026-09-30 17:54 | 3.0.0.45 | linux arm64 | QHY5-M | 1 / 1 | ✅ OK |
 |  | 2026-09-30 17:55 | 3.0.0.45 | linux arm64 | QHY8PRO-C | 1 / 1 | ✅ OK |
 |  | 2026-10-06 22:33 | 3.0.0.46 | mac arm64 | QHY5III178M | 1 / 1 | ✅ OK |
 |  | 2026-10-06 22:36 | 3.0.0.46 | mac arm64 | QHY5LII-M | 1 / 1 | ✅ OK |
+|  | 2026-10-06 23:52 | 3.0.0.46 | linux arm64 | QHY5III178M | 1 / 1 | ✅ OK |
 | ccd_qsi | 2026-09-27 08:05 | 3.0.0.23 | linux x64 | fake SDK | 61 / 61 | ✅ OK |
 | ccd_rising | 2026-09-27 21:49 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_simulator | 2026-09-27 13:44 | 3.0.0.37 | linux x64 | simulator | 25 / 25 | ✅ OK |
