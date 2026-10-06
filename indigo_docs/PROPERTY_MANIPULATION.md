@@ -221,6 +221,8 @@ If **-e** switch is specified to the **discover** command each service will be l
 
 There are two ways to achieve this goal. The easiest way is to set the driver's switch to **ON** or **OFF** in the **Server.DRIVERS** property, and the second way is to provide driver's name to **Server.LOAD** or **Server.UNLOAD** respectively.
 
+The server loads and unloads drivers in the background, one request after another. The changed property turns **BUSY** first and is updated again when the request is done; **Server.DRIVERS** stays **BUSY** until every queued request is applied, so a client that waits for **OK** sees the final selection.
+
 Let us assume we need **indigo_ccd_simulator** loaded and **indigo_wheel_asi** unloaded.
 
 First we need to list the drivers that the server sees:
