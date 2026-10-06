@@ -2683,3 +2683,11 @@ MIGRATION_STATUS.md hardware-free count 144 -> 149.
 ### Final test summary for this change
 
 Simulated tests: **145 run, 145 passed** (recorded run 2026-10-05 21:09, macOS arm64, driver 3.0.0.77). Hardware tests: **0 run, 0 passed**.
+
+## OpenAstroTracker ESP32-S3 image: overlapping guide pulses (2026-10-07, 3.0.0.77)
+
+Hardware run on Linux arm64 against `OAT_1.13.20_esp32_s3.bin` on the bench ESP32-S3 (UART0 through the CH343 bridge, `/dev/ttyACM0`, 19200 baud): 35 cases, 29 passed. Hardware testing IS performed for this record.
+
+The six failures are one controller defect, not a driver one. A guide command that reaches the firmware while a pulse on the same axis is still running stops the controller for good: no command is answered any more until the board is reset. It reproduces without INDIGO on the raw port, `:Mgn0600#` followed 50 ms later by `:Mgs0600#`, after which `:GX#` and `:GR#` stay unanswered. Pulses one after another, and a pulse on the other axis while one runs, were answered normally in the same session; in the full suite the hang also followed the RA plus DEC pulse pair, so the trigger is timing dependent. From then on every poll times out, `MOUNT_EQUATORIAL_COORDINATES` stays ALERT, the park never completes and the reconnect cases cannot open a session, because reopening the port does not reset the board.
+
+The firmware sources this image was built from are no longer available, so the defect cannot be located in the image, and a driver workaround for a defect of a bench port would not apply to real controllers. No change to the driver or the simulator; the image needs a rebuild before the OAT run can pass again. The 2026-09-23 macOS run of the same image passed the same cases.

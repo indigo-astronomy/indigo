@@ -66,3 +66,4 @@ Driver is developed and tested with:
 2026-10-05 21:09 3.0.0.77 mac arm64 simulator 145/145 OK
 2026-10-06 23:50 3.0.0.77 linux arm64 NYX-101 35/35 OK
 2026-10-06 23:58 3.0.0.77 linux arm64 esp32go 35/35 OK
+2026-10-07 00:04 3.0.0.77 linux arm64 OpenAstroTracker 35/29 Failed
