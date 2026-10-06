@@ -2401,6 +2401,120 @@ cleanup:
 	driver_stop();
 }
 
+// ----------------------------------------------------------------- German mounts
+
+// The DEC axis motion and guide pulse directions read back on the side of pier the mount is on: north
+// must raise the declination with the OTA on either side.
+static bool north_raises_declination(void) {
+	static const struct { const char *item; double sign; } directions[] = { { MOUNT_MOTION_NORTH_ITEM_NAME, 1 }, { MOUNT_MOTION_SOUTH_ITEM_NAME, -1 } };
+	for (int i = 0; i < ARRAY_SIZE(directions); i++) {
+		if (!wait_for_fresh_coordinates()) {
+			return false;
+		}
+		double before = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		if (!switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, directions[i].item, INDIGO_BUSY_STATE)) {
+			return false;
+		}
+		indigo_usleep(1000000);
+		unsigned int stopped = property_state_revision(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE);
+		if (indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, directions[i].item, false) != INDIGO_OK || !state_seen(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE, stopped) || !wait_for_fresh_coordinates()) {
+			return false;
+		}
+		double moved = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - before;
+		printf("    %s moved the declination by %+.4f\n", directions[i].item, moved);
+		if (moved * directions[i].sign < 1) {
+			return false;
+		}
+	}
+	double expected = 0.5 * 15.041067 / 3600;
+	static const struct { const char *item; double sign; } pulses[] = { { GUIDER_GUIDE_NORTH_ITEM_NAME, 1 }, { GUIDER_GUIDE_SOUTH_ITEM_NAME, -1 } };
+	for (int i = 0; i < ARRAY_SIZE(pulses); i++) {
+		if (!wait_for_fresh_coordinates()) {
+			return false;
+		}
+		double before = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		int stops = payload_requests(ALT_SET_POS_GUIDERATE, "00 00");
+		if (indigo_change_number_property_1(&simulator_test_client, nexstaraux_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, pulses[i].item, 1000) != INDIGO_OK || !wait_for_payload_requests(ALT_SET_POS_GUIDERATE, "00 00", stops + 1) || !wait_for_fresh_coordinates()) {
+			return false;
+		}
+		double moved = cached_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - before;
+		printf("    a 1000 ms %s pulse moved the declination by %+.5f, expected %+.5f\n", pulses[i].item, moved, pulses[i].sign * expected);
+		if (moved * pulses[i].sign < 0.8 * expected || moved * pulses[i].sign > 1.3 * expected) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool axis_argument_is(const char *prefix, unsigned expected) {
+	unsigned raw = 0;
+	if (!last_position_argument(prefix, &raw)) {
+		fprintf(stderr, "no %s request\n", prefix);
+		return false;
+	}
+	printf("    %s %06X, expected %06X\n", prefix, raw, expected);
+	return abs((int)raw - (int)expected) < 0x1000;
+}
+
+// A German mount reports the side of pier the OTA is on. A GOTO east of the meridian keeps the OTA
+// west of the pier with the axes of a fork mount, a GOTO west of the meridian puts the OTA east of
+// the pier: the polar axis twelve hours on and the declination axis at 180 degrees less the
+// declination, so the counterweight stays down. Both hemispheres, then a sync on the east side and
+// the park at the home position with the counterweight down.
+static void german_side_of_pier(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(connect_guider());
+	reset_simulator_context(&nexstaraux_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(text_is(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME, "CGX"));
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	// The home position, counterweight down and the OTA at the pole, is six hours east with the OTA west of the pier.
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	double longitude = cached_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	static const struct { double latitude, ha, dec; const char *side; unsigned azm, alt; } targets[] = {
+		{ 48, -2, 30, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, 0x6AAAAA, 0x155555 },
+		{ 48, 2, 30, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, 0x155555, 0x6AAAAA },
+		{ -33, -2, -30, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, 0x155555, 0x6AAAAA },
+		{ -33, 2, -30, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, 0x6AAAAA, 0x155555 }
+	};
+	for (int i = 0; i < ARRAY_SIZE(targets); i++) {
+		if (i == 0 || targets[i].latitude != targets[i - 1].latitude) {
+			SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, targets[i].latitude, INDIGO_OK_STATE));
+		}
+		double ra = fmod(indigo_lst(NULL, longitude) - targets[i].ha + 24, 24);
+		printf("    latitude %+.0f, GOTO to HA %+.0f h DEC %+.0f\n", targets[i].latitude, targets[i].ha, targets[i].dec);
+		SERIAL_CHECK_TRUE(coordinates_change(ra, targets[i].dec, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(coordinates_are(ra, targets[i].dec, .1));
+		SERIAL_CHECK_TRUE(switch_is(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, targets[i].side, true));
+		SERIAL_CHECK_TRUE(axis_argument_is(AZM_GOTO_SLOW, targets[i].azm));
+		SERIAL_CHECK_TRUE(axis_argument_is(ALT_GOTO_SLOW, targets[i].alt));
+		SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(north_raises_declination());
+	}
+	// A sync with the OTA east of the pier keeps that side: three hours west, forty degrees south.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	double ra = fmod(indigo_lst(NULL, longitude) - 3 + 24, 24);
+	SERIAL_CHECK_TRUE(coordinates_change(ra, -40, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(axis_argument_is(AZM_SET_POSITION, 0x600000));
+	SERIAL_CHECK_TRUE(axis_argument_is(ALT_SET_POSITION, 0x1C71C7));
+	SERIAL_CHECK_TRUE(coordinates_are(ra, -40, .01));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true));
+	// The park ends at the home position, the OTA west of the pier.
+	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(axis_argument_is(AZM_GOTO_SLOW, 0x400000));
+	SERIAL_CHECK_TRUE(axis_argument_is(ALT_GOTO_SLOW, 0x400000));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	SERIAL_CHECK_TRUE(number_is(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -90, 1));
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true));
+cleanup:
+	driver_stop();
+}
+
 // ----------------------------------------------------------------- runner
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
@@ -2473,7 +2587,8 @@ int main(void) {
 		{ "tracking_restore_retried", tracking_restore_retried, "normal" },
 		{ "initial_readback_failure", initial_readback_failure, "normal" },
 		{ "guide_rate_shared_with_guider", guide_rate_shared_with_guider, "normal" },
-		{ "hour_angle_targets", hour_angle_targets, "normal" }
+		{ "hour_angle_targets", hour_angle_targets, "normal" },
+		{ "german_side_of_pier", german_side_of_pier, "cgx" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (mkdtemp(fixture_directory) == NULL) {

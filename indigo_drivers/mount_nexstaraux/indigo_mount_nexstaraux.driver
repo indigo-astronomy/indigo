@@ -22,7 +22,7 @@ driver nexstaraux {
 	label = "NexStar AUX Mount";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 24;
+	version = 25;
 	serial {
 		no_ports = true;
 	}
@@ -106,6 +106,10 @@ driver nexstaraux {
 		// themselves, whether the model has an autoguider port, whether it slews fast enough for the
 		// short approach, and from which side each axis approaches a goto target.
 		bool aux_guide, autoguider_port, fast_goto, approach_negative[2];
+		// Whether the model is a German mount, which points at the sky from either side of the pier,
+		// whether the last position read had the OTA east of the pier, and the side the goto in
+		// progress was given, which its slow approaches keep even when the target crosses the meridian.
+		bool german, east, goto_east;
 		// Whether the pulse running on each axis changed the axis rate and has to give it back.
 		bool rate_pulse[2];
 		// The slow approaches made of the goto in progress, and whether the stall watch stopped it.
@@ -130,45 +134,47 @@ driver nexstaraux {
 		static bool nextstar_get_coordinates(indigo_device *device, double *ra, double *dec);
 
 		// The models MC_GET_MODEL reports, with whether they have an autoguider port, which is the only
-		// thing the autoguide rate of the controller is used for, and whether they slew fast enough for
-		// a goto to approach its target from 1 degree away rather than 2.5.
+		// thing the autoguide rate of the controller is used for, whether they slew fast enough for
+		// a goto to approach its target from 1 degree away rather than 2.5, and whether they are German
+		// mounts with a side of pier.
 		typedef struct {
 			const char *name;
 			bool autoguider_port;
 			bool fast_goto;
+			bool german;
 		} nexstaraux_model;
 
 		static const nexstaraux_model nexstaraux_models[] = {
-			{ NULL, false, false },
-			{ "NexStar GPS", false, false },
-			{ "NexStar GPS", false, false },
-			{ "NexStar i", false, false },
-			{ "NexStar SE", false, false },
-			{ "CGE", true, false },
-			{ "Advanced GT", true, false },
-			{ "SLT", false, false },
-			{ "Legend", false, false },
-			{ "CPC", true, false },
-			{ "NexStar GT", false, false },
-			{ "NexStar SE 4/5", false, false },
-			{ "NexStar SE 6/8", true, false },
-			{ "CGE Pro", true, false },
-			{ "CGEM", true, false },
-			{ "LCM", false, false },
-			{ "SkyProdigy", false, false },
-			{ "CPC Deluxe", true, false },
-			{ "NexStar GT", false, false },
-			{ "StarSeeker GT", false, false },
-			{ "AVX", true, true },
-			{ "Cosmos GT", false, true },
-			{ "Evolution", false, true },
-			{ "CGX", true, true },
-			{ "CGX-L", true, true },
-			{ "AstroFi", false, true },
-			{ "Sky-Watcher Alt-Az", false, true },
-			{ "Sky-Watcher EQ", false, true },
-			{ "Sky-Watcher Combo", false, true },
-			{ "Origin", false, true }
+			{ NULL, false, false, false },
+			{ "NexStar GPS", false, false, false },
+			{ "NexStar GPS", false, false, false },
+			{ "NexStar i", false, false, false },
+			{ "NexStar SE", false, false, false },
+			{ "CGE", true, false, true },
+			{ "Advanced GT", true, false, true },
+			{ "SLT", false, false, false },
+			{ "Legend", false, false, false },
+			{ "CPC", true, false, false },
+			{ "NexStar GT", false, false, false },
+			{ "NexStar SE 4/5", false, false, false },
+			{ "NexStar SE 6/8", true, false, false },
+			{ "CGE Pro", true, false, true },
+			{ "CGEM", true, false, true },
+			{ "LCM", false, false, false },
+			{ "SkyProdigy", false, false, false },
+			{ "CPC Deluxe", true, false, false },
+			{ "NexStar GT", false, false, false },
+			{ "StarSeeker GT", false, false, false },
+			{ "AVX", true, true, true },
+			{ "Cosmos GT", false, true, false },
+			{ "Evolution", false, true, false },
+			{ "CGX", true, true, true },
+			{ "CGX-L", true, true, true },
+			{ "AstroFi", false, true, false },
+			{ "Sky-Watcher Alt-Az", false, true, false },
+			{ "Sky-Watcher EQ", false, true, false },
+			{ "Sky-Watcher Combo", false, true, false },
+			{ "Origin", false, true, false }
 		};
 
 		// A bare read on a socket with a receive timeout reports the timeout as a
@@ -318,6 +324,7 @@ driver nexstaraux {
 					// is taken for one with an autoguider port, so the autoguide rate is still read.
 					PRIVATE_DATA->autoguider_port = true;
 					PRIVATE_DATA->fast_goto = false;
+					PRIVATE_DATA->german = PRIVATE_DATA->east = false;
 					strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron");
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "NexStar AUX");
 					if (nexstaraux_command(device, APP, AZM, MC_GET_MODEL, NULL, 0, reply) && reply[1] > 3 && reply[5] < sizeof(nexstaraux_models) / sizeof(nexstaraux_models[0]) && nexstaraux_models[reply[5]].name != NULL) {
@@ -328,6 +335,7 @@ driver nexstaraux {
 						}
 						PRIVATE_DATA->autoguider_port = model->autoguider_port;
 						PRIVATE_DATA->fast_goto = model->fast_goto;
+						PRIVATE_DATA->german = model->german;
 					}
 					// The direction each axis finishes a goto in, as the hand controller is set up.
 					for (int axis = 0; axis < 2; axis++) {
@@ -475,14 +483,23 @@ driver nexstaraux {
 			return MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 		}
 
-		static void nexstaraux_to_axes(indigo_device *device, double ha, double dec, int32_t *raw_ha, int32_t *raw_dec) {
+		// The axes above are those of the OTA west of the pier. A German mount reaches the same sky with
+		// the OTA east of the pier too, and the controller counts that side with the declination axis
+		// past a quarter turn from the equator: it reads 180 degrees less the declination and the polar
+		// axis twelve hours more. Both sides keep the counterweight below the polar axis for half of
+		// the sky. A fork mount has only the first side.
+		static void nexstaraux_to_axes(indigo_device *device, double ha, double dec, bool east, int32_t *raw_ha, int32_t *raw_dec) {
+			if (east) {
+				ha = fmod(ha + 12, 24);
+				dec = 180 - dec;
+			}
 			double axis_ha = nexstaraux_southern(device) ? fmod(48 - ha, 24) : fmod(ha + 12, 24);
 			double axis_dec = nexstaraux_southern(device) ? dec + 180 : dec;
 			*raw_ha = (int32_t)((axis_ha / 24.0) * 0x1000000) % 0x1000000;
 			*raw_dec = (int32_t)((axis_dec / 360.0) * 0x1000000) % 0x1000000;
 		}
 
-		static void nexstaraux_from_axes(indigo_device *device, int raw_ha, int raw_dec, double *ha, double *dec) {
+		static void nexstaraux_from_axes(indigo_device *device, int raw_ha, int raw_dec, double *ha, double *dec, bool *east) {
 			double axis_ha = ((double)raw_ha / 0x1000000) * 24;
 			*ha = nexstaraux_southern(device) ? fmod(48 - axis_ha, 24) : fmod(axis_ha + 12, 24);
 			// The position is a signed fraction of a full rotation, so the upper half of the encoder
@@ -497,6 +514,17 @@ driver nexstaraux {
 					*dec += 360;
 				}
 			}
+			*east = PRIVATE_DATA->german && fabs(*dec) > 90;
+			if (*east) {
+				*ha = fmod(*ha + 12, 24);
+				*dec = (*dec > 0 ? 180 : -180) - *dec;
+			}
+		}
+
+		// A German mount keeps the counterweight below the polar axis by pointing east of the meridian
+		// with the OTA west of the pier and west of it with the OTA east of the pier.
+		static bool nexstaraux_east_for_hour_angle(indigo_device *device, double ha) {
+			return PRIVATE_DATA->german && fmod(ha + 24, 24) < 12;
 		}
 
 		static bool nexstaraux_slew(indigo_device *device, double ra, double dec, bool fast) {
@@ -504,17 +532,19 @@ driver nexstaraux {
 			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 			double ha = fmod(lst - ra + 24, 24);
 			if (fast) {
+				// The side is chosen for the target once, before the approach point moves the hour angle.
+				PRIVATE_DATA->goto_east = nexstaraux_east_for_hour_angle(device, ha);
 				// The approach side is a direction of the axis, which is the opposite direction of the
-				// hour angle south of the equator. The declination axis turns with the declination on
-				// both sides.
+				// hour angle south of the equator. The declination axis turns with the declination in
+				// both hemispheres with the OTA west of the pier and against it with the OTA east of it.
 				double approach = PRIVATE_DATA->fast_goto ? APPROACH_FAST : APPROACH_SLOW;
 				double ha_approach = (PRIVATE_DATA->approach_negative[0] ? approach : -approach) / 15;
 				ha = fmod(ha + (nexstaraux_southern(device) ? -ha_approach : ha_approach) + 24, 24);
-				double approach_dec = dec + (PRIVATE_DATA->approach_negative[1] ? approach : -approach);
+				double approach_dec = dec + (PRIVATE_DATA->approach_negative[1] != PRIVATE_DATA->goto_east ? approach : -approach);
 				dec = fabs(approach_dec) > 90 ? 2 * dec - approach_dec : approach_dec;
 			}
 			int32_t raw_ra = 0, raw_dec = 0;
-			nexstaraux_to_axes(device, ha, dec, &raw_ra, &raw_dec);
+			nexstaraux_to_axes(device, ha, dec, PRIVATE_DATA->goto_east, &raw_ra, &raw_dec);
 			if (nexstaraux_command_24(device, APP, AZM, fast ? MC_GOTO_FAST : MC_GOTO_SLOW, raw_ra, reply) && nexstaraux_command_24(device, APP, ALT, fast ? MC_GOTO_FAST : MC_GOTO_SLOW, raw_dec, reply)) {
 				return true;
 			}
@@ -526,7 +556,8 @@ driver nexstaraux {
 			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 			double ha = fmod(lst - ra + 24, 24);
 			int32_t raw_ra = 0, raw_dec = 0;
-			nexstaraux_to_axes(device, ha, dec, &raw_ra, &raw_dec);
+			// A sync tells the controller where it points on the side of pier it is on.
+			nexstaraux_to_axes(device, ha, dec, PRIVATE_DATA->east, &raw_ra, &raw_dec);
 			if (nexstaraux_command_24(device, APP, AZM, MC_SET_POSITION, raw_ra, reply) && nexstaraux_command_24(device, APP, ALT, MC_SET_POSITION, raw_dec, reply)) {
 				return true;
 			}
@@ -571,7 +602,7 @@ driver nexstaraux {
 				if (nexstaraux_command(device, APP, AZM, MC_GET_POSITION, NULL, 0, reply)) {
 					int raw_ra = reply[5] << 16 | reply[6] << 8 | reply[7];
 					double ha = 0;
-					nexstaraux_from_axes(device, raw_ra, raw_dec, &ha, dec);
+					nexstaraux_from_axes(device, raw_ra, raw_dec, &ha, dec, &PRIVATE_DATA->east);
 					*ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha + 24, 24);
 					return true;
 				}
@@ -686,8 +717,9 @@ driver nexstaraux {
 			return nexstaraux_move_axis(device, AZM, speed);
 		}
 
+		// North turns the declination axis the other way with the OTA east of the pier.
 		static bool nexstaraux_move_dec(indigo_device *device, int speed) {
-			return nexstaraux_move_axis(device, ALT, speed);
+			return nexstaraux_move_axis(device, ALT, PRIVATE_DATA->east ? -speed : speed);
 		}
 
 		// The sidereal, solar and lunar rates in arcseconds per second.
@@ -766,7 +798,7 @@ driver nexstaraux {
 		}
 
 		static bool nexstaraux_guide_dec(indigo_device *device, int direction, unsigned duration) {
-			return nexstaraux_guide(device, ALT, direction, duration);
+			return nexstaraux_guide(device, ALT, PRIVATE_DATA->east ? -direction : direction, duration);
 		}
 
 		// A motor controller that cannot reach the target does not always say so: it can keep
@@ -809,6 +841,11 @@ driver nexstaraux {
 					if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 					}
+				}
+				indigo_item *side_of_pier = PRIVATE_DATA->east ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM;
+				if (PRIVATE_DATA->german && !side_of_pier->sw.value) {
+					indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
+					indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 				}
 				indigo_timetoisogm(time(NULL), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
@@ -956,6 +993,12 @@ driver nexstaraux {
 				MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+			// Only a German mount has a side of pier, and it is defined with the side the mount is on.
+			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = !PRIVATE_DATA->german;
+			double ra = 0, dec = 0;
+			if (PRIVATE_DATA->german && nextstar_get_coordinates(device, &ra, &dec)) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->east ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			}
 		}
 		on_disconnect {
 			// A goto, park or manual motion of this session does not outlive it, so the axes are
@@ -1048,7 +1091,9 @@ driver nexstaraux {
 					return;
 				}
 				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-				double ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) + 24, 24);
+				// A German mount parks at the pole with the counterweight down, six hours east of the
+				// meridian with the OTA west of the pier; a fork parks at the pole on the meridian.
+				double ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) + (PRIVATE_DATA->german ? 6 : 0) + 24, 24);
 				double dec = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0 ? 90 : -90;
 				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = ra;
 				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = dec;

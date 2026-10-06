@@ -706,3 +706,32 @@ alignment: **37/37 OK**. The two park cases report themselves as not run (opt-in
   10 ms to every request, two per pulse.
 
 Test summary for version 24: simulated tests run 67, passed 67; hardware tests run 37, passed 37.
+
+## Side of pier for German mounts (version 25, 2026-10-06)
+
+The driver handled every model with the axes of a fork on a wedge: the declination axis read the
+declination and the polar axis the hour angle plus twelve hours. On a German mount that mapping is
+the OTA west of the pier only, so a GOTO west of the meridian ended with the counterweight up, and a
+mount the hand controller had flipped reported a declination above 90 degrees.
+
+- `CGE`, `Advanced GT`, `CGE Pro`, `CGEM`, `AVX`, `CGX` and `CGX-L` are flagged as German mounts in
+  the model table. `Sky-Watcher EQ` is not: its axis convention is not known.
+- With the declination axis past a quarter turn from the equator the OTA is east of the pier: the
+  declination is 180 degrees less the axis reading and the hour angle twelve hours on. This is the
+  axis convention the INDI celestronaux driver uses for these mounts; the existing mapping is its
+  OTA-west side in both hemispheres.
+- `MOUNT_SIDE_OF_PIER` is defined for German mounts only and reports the side the OTA is on.
+- A GOTO east of the meridian keeps the OTA west of the pier, a GOTO west of it puts the OTA east of
+  the pier, so the counterweight stays down. The side is chosen for the target once and kept by the
+  slow approaches. A sync keeps the side the mount is on.
+- North turns the declination axis the other way with the OTA east of the pier, for manual motion,
+  guide pulses and the declination approach of a GOTO.
+- A German mount parks at the home position, the pole with the counterweight down (six hours east,
+  OTA west of the pier). Fork mounts keep parking at the pole on the meridian.
+
+Tests: the simulator gained the `cgx` profile (model 23, starting at the home position) and
+`german_side_of_pier` covers both sides in both hemispheres, the axis positions sent, north and south
+manual motion and guide pulses on each side, a sync on the east side and the park. Simulator 68/68.
+The NexStar SE 4/5 bench is a fork mount; its hardware run (37/37) confirms that the side of pier
+stays hidden and nothing else changed. No German Celestron mount was available, so the German
+geometry is verified against the simulator only.
