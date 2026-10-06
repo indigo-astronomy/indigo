@@ -988,6 +988,7 @@ registered cases as follows.
 | Coordinate and status readback | `synscan_reads_coordinates_and_state` |
 | Tracking on/off, track rates, guide rates | `synscan_tracking_and_rates` |
 | Manual motion in both axes, stop, abort, fresh command | `synscan_manual_motion` |
+| Side of pier on both sides of the meridian, north direction on each | `synscan_reports_side_of_pier` |
 | SYNC without motion, small reachable slew, post-slew tracking | `synscan_syncs_and_slews` |
 | Abort during a slew followed by a fresh command | `synscan_aborts_slew_and_recovers` |
 | Park, parked-request rejection, unpark | `synscan_parks_and_unparks` |
@@ -1009,9 +1010,9 @@ Scenarios that are not applicable or not covered on this unit, with the reason:
 - PPEC and PPEC training could not be exercised for the same reason: the controller reports no
   PPEC support, so `MOUNT_PEC` and `MOUNT_PEC_TRAINING` stay hidden. Simulator coverage exists.
 - Polarscope brightness could not be exercised: no polarscope LED on this controller.
-- Side-of-pier transitions were not forced. The AZ-GTi used here is a single-arm mount and the
-  driver reports a constant side; provoking a meridian flip needs an equatorial head such as the
-  EQ6 the simulator models.
+- Side-of-pier transitions were not forced in this step. Since 3.0.0.18 `synscan_reports_side_of_pier`
+  covers them on the AZ-GTi in EQ mode: a GOTO to HA -1.5 h reports `WEST` (OTA west of the pier), a GOTO
+  to HA +1.5 h reports `EAST`, and manual north raises the declination on both sides.
 - Transport loss during active work was not injected. The SynScan network transport is UDP and has
   no session to drop, and the driver deliberately treats a UDP timeout as a temporary failure
   rather than a disconnect. The reachable failure mode, an unreachable endpoint, is covered by

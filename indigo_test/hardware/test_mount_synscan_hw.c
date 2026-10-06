@@ -831,6 +831,37 @@ static void synscan_manual_motion(void) {
 	ASSERT_TRUE(set_switch(mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
 }
 
+// A target east of the meridian puts the OTA west of the pier, a target west of it puts the OTA east of the pier,
+// so a GOTO to either side of the meridian must report the matching MOUNT_SIDE_OF_PIER item. The DEC axis counts the
+// other way on the other side, so north must still raise the declination after each GOTO.
+static void synscan_reports_side_of_pier(void) {
+	static const double hour_angles[] = { -1.5, 1.5 };
+	static const char *expected[] = { MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME };
+	ASSERT_TRUE(prepare_mount());
+	for (int i = 0; i < ARRAY_SIZE(hour_angles); i++) {
+		double lst = 0, raw_ra = 0, raw_dec = 0, north = 0, south = 0;
+		bool east = false, west = false;
+		ASSERT_TRUE(number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst));
+		ASSERT_TRUE(slew_coordinates(mount, fmod(lst - hour_angles[i] + 24.0, 24.0), test_declination, MOTION_TIMEOUT));
+		ASSERT_TRUE(number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst));
+		ASSERT_TRUE(number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME, &raw_ra));
+		ASSERT_TRUE(number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, &raw_dec));
+		ASSERT_TRUE(switch_item(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, &east));
+		ASSERT_TRUE(switch_item(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, &west));
+		double ha = ra_difference(lst, raw_ra);
+		printf("    GOTO to HA %+.1f h DEC %.1f reached raw HA %+.4f h DEC %.4f, side of pier %s\n", hour_angles[i], test_declination, ha, raw_dec, east ? "EAST" : west ? "WEST" : "none");
+		ASSERT_TRUE(fabs(ha - hour_angles[i]) < 0.05);
+		ASSERT_TRUE(east != west);
+		ASSERT_STREQ(expected[i], east ? MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME : MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME);
+		ASSERT_TRUE(set_switch(mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+		ASSERT_TRUE(manual_motion_moves(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, &north));
+		ASSERT_TRUE(manual_motion_moves(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, &south));
+		ASSERT_TRUE(set_switch(mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+		ASSERT_TRUE(north > 0.002);
+		ASSERT_TRUE(south < -0.002);
+	}
+}
+
 static void synscan_syncs_and_slews(void) {
 	double ra = 0, dec = 0, target_ra = 0, target_dec = 0, reached_ra = 0, reached_dec = 0;
 	ASSERT_TRUE(prepare_mount());
@@ -1347,6 +1378,7 @@ int main(int argc, char **argv) {
 		{ "synscan_reads_coordinates_and_state", synscan_reads_coordinates_and_state },
 		{ "synscan_tracking_and_rates", synscan_tracking_and_rates },
 		{ "synscan_manual_motion", synscan_manual_motion },
+		{ "synscan_reports_side_of_pier", synscan_reports_side_of_pier },
 		{ "synscan_syncs_and_slews", synscan_syncs_and_slews },
 		{ "synscan_resumes_tracking_after_manual_motion", synscan_resumes_tracking_after_manual_motion },
 		{ "synscan_sync_adds_alignment_point", synscan_sync_adds_alignment_point },
