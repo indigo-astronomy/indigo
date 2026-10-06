@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000001
+#define DRIVER_VERSION 0x03000002
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -151,6 +151,7 @@ indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_inf
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT: {
+			last_action = action;
 			void *private_data = indigo_safe_malloc(sizeof(solver_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
