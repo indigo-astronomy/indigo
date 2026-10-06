@@ -20,7 +20,7 @@ driver qhy {
 	label = "QHY CCD (legacy) Camera";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
-	version = 41;
+	version = 42;
 	multi_device_support = true;
 	cpp = true;
 	include {
@@ -578,6 +578,11 @@ driver qhy {
 			last_action = INDIGO_DRIVER_SHUTDOWN;
 			return INDIGO_FAILED;
 		}
+		// ReleaseQHYCCDResource() does not join the SDK's own threads, one of them was seen in
+		// ReadImageInDDR_Titan() after the driver was unloaded and loaded again in one process. The SDK
+		// is linked into this driver, so its library is pinned and that thread keeps executing mapped
+		// code with the SDK state it started with.
+		indigo_pin_library((void *)InitQHYCCDResource);
 		SetQHYCCDLogLevel(6);
 		if (!qhy_result(InitQHYCCDResource(), "InitQHYCCDResource")) {
 			last_action = INDIGO_DRIVER_SHUTDOWN;

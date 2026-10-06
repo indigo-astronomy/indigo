@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000029
+#define DRIVER_VERSION       0x0300002A
 #define DRIVER_NAME          "indigo_ccd_qhy"
 #define DRIVER_LABEL         "QHY CCD (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -1497,6 +1497,11 @@ indigo_result indigo_ccd_qhy(indigo_driver_action action, indigo_driver_info *in
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
+			// ReleaseQHYCCDResource() does not join the SDK's own threads, one of them was seen in
+			// ReadImageInDDR_Titan() after the driver was unloaded and loaded again in one process. The SDK
+			// is linked into this driver, so its library is pinned and that thread keeps executing mapped
+			// code with the SDK state it started with.
+			indigo_pin_library((void *)InitQHYCCDResource);
 			SetQHYCCDLogLevel(6);
 			if (!qhy_result(InitQHYCCDResource(), "InitQHYCCDResource")) {
 				last_action = INDIGO_DRIVER_SHUTDOWN;

@@ -822,3 +822,18 @@ restored from the `.driver` of each version, regenerated and rebuilt:
 - Simulated tests run: 39; passed: 39 (`build/integration/test_ccd_qhy_sdk`, recorded with
   `tools/run_driver_test.py ccd_qhy` on Linux x64, version 3.0.0.41).
 - Hardware tests run: 1; passed: 0. QHY5L-II-M on a Pegasus Ultimate Powerbox v1.7 hub, macOS arm64.
+
+## Unloading the driver crashed the server through an SDK thread (version 41 to 42, 2026-10-06)
+
+`indigo_test/integration/test_server_driver_stress` loads and unloads all drivers through
+`Server.DRIVERS` of the real `indigo_server`, without hardware. With this driver in the set the server
+died with SIGSEGV in `pthread_mutex_lock` called from `QHYCAM::vendRXD_Ex` /
+`QHY5IIIBASE::ReadImageInDDR_Titan` on an SDK thread, after the driver had been unloaded and loaded
+again. `ReleaseQHYCCDResource()` does not join that thread, and the SDK is linked into the driver
+library, so the unload took the code and state of the running thread away.
+
+`on_init` now pins the library that contains `InitQHYCCDResource()`, which is the driver library
+itself. The stress test passes with the driver in every case. The fake SDK starts no threads, so the
+scenario is covered by the stress test against the real SDK only.
+
+Results (macOS arm64): fake SDK tests run 39, passed 39; `test_server_driver_stress` passed in all three cases with the driver included. Hardware tests run 0. The stress runs and the server-side hang found with them are recorded in `indigo_server/REFACTOR.md`.
