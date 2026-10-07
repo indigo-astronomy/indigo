@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -352,6 +352,15 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
 		connection_result = wcv4ec_open(device);
+		if (connection_result) {
+			//+ aux.on_connect
+			// the cover switch starts at the side the first status frame shows, none when the cover is in between; a move
+			// a disconnect interrupted is no longer followed, so it must not refuse the next request
+			PRIVATE_DATA->operation_running = false;
+			PRIVATE_DATA->operation_start_time = 0;
+			wcv4ec_show_cover(device);
+			//- aux.on_connect
+		}
 		if (connection_result) {
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);

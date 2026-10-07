@@ -86,4 +86,29 @@ before the panel actually changed. Reproduced in the simulator before the fix.
 cd indigo_test && INDIGO_TEST_CASE_FILTER=light_change_ends_when_the_box_reports_it ./build/integration/test_aux_wcv4ec_simulator
 ```
 
-Final test summary: 24 simulated tests run, 24 passed; 0 hardware tests run, 0 passed.
+## Cover side unknown after connect (3.0.0.14, 2026-10-08)
+
+Reported from hardware: right after connect both AUX_COVER items were off. Reproduced in the simulator before the fix.
+
+- **Defect 1 (reproduced):** AUX_COVER was defined with the items from attach (both off) and the status timer writes
+  them only when a move or detection ends, so after connect the switch did not show where the cover was until the
+  first move ended.
+- **Defect 2 (reproduced):** a move interrupted by a disconnect left `operation_running` set, so the first cover
+  request after the reconnect was refused with "Operation in progress" until the timer happened to end the old move.
+- **Fix:** a new `on_connect` block clears `operation_running` / `operation_start_time` and sets the cover switch
+  from the first status frame with `wcv4ec_show_cover()` (CLOSE or OPEN within 6 degrees, neither in between) before
+  the properties are defined.
+- **Regression test:** `connect_shows_the_cover_side` (CLOSE on after the first connect with the cover parked closed;
+  OPEN on after a reconnect with the cover open; a request sent right after reconnecting during a close move is
+  served). 3.0.0.13: CLOSE off after connect, the request after the reconnect ended with OK and CLOSE (refused);
+  3.0.0.14: all checks pass.
+- **Verification (macOS arm64):** full suite 25/25 OK. Regeneration with the unchanged generator changes only the
+  edited blocks and the version. No hardware run yet.
+- **Observed, not changed:** AUX_LIGHT_SWITCH also starts from its attach default (off) whatever the panel brightness
+  reported in the first frame is.
+
+```sh
+cd indigo_test && INDIGO_TEST_CASE_FILTER=connect_shows_the_cover_side ./build/integration/test_aux_wcv4ec_simulator
+```
+
+Final test summary: 25 simulated tests run, 25 passed; 0 hardware tests run, 0 passed.

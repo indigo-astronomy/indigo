@@ -28,7 +28,7 @@ driver wcv4ec {
 	label = "WandererCover V4-EC Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
-	version = 13;
+	version = 14;
 	serial;
 	define {
 		#define DEVICE_ID "WandererCoverV4"
@@ -276,6 +276,13 @@ driver wcv4ec {
 				indigo_update_property(device, AUX_COVER_PROPERTY, "Open/close operation timeout");
 			}
 			indigo_execute_handler_in(device, 1, aux_timer_callback);
+		}
+		on_connect {
+			// the cover switch starts at the side the first status frame shows, none when the cover is in between; a move
+			// a disconnect interrupted is no longer followed, so it must not refuse the next request
+			PRIVATE_DATA->operation_running = false;
+			PRIVATE_DATA->operation_start_time = 0;
+			wcv4ec_show_cover(device);
 		}
 		on_disconnect {
 			wcv4ec_command(device, 9999); // turn light off

@@ -844,6 +844,50 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// At connect the cover switch shows the side the first status frame reports (the simulator boots closed), and a move a
+// disconnect interrupted is not followed any more, so a request sent right after the reconnect is served, not refused
+// as "Operation in progress". The open move takes 4 s at the simulated 15 degrees per second, longer than the reconnect.
+static void connect_shows_the_cover_side(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
+	online = true;
+	assert_switch_item_value(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, true);
+	assert_switch_item_value(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(set_positions(80, 20));
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, 80, .01));
+	SERIAL_CHECK_TRUE(set_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_cover(AUX_COVER_OPEN_ITEM_NAME));
+	disconnect_serial_device(&wcv4ec_aux);
+	SERIAL_CHECK_TRUE(connect_serial_device(&wcv4ec_aux, simulator.port));
+	assert_switch_item_value(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true);
+	assert_switch_item_value(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, false);
+	// close and disconnect while the cover moves
+	SERIAL_CHECK_TRUE(set_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_COVER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	disconnect_serial_device(&wcv4ec_aux);
+	SERIAL_CHECK_TRUE(connect_serial_device(&wcv4ec_aux, simulator.port));
+	simulator_test_client.update_property = cover_watch_update;
+	atomic_store(&cover_results, 0);
+	atomic_store(&cover_watch_on, true);
+	SERIAL_CHECK_TRUE(set_switch(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true));
+	for (int i = 0; i < 3000 && atomic_load(&cover_results) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	atomic_store(&cover_watch_on, false);
+	printf("First cover result after the reconnect: state %d, open %d, close %d\n", atomic_load(&cover_first_state), atomic_load(&cover_first_open), atomic_load(&cover_first_close));
+	SERIAL_CHECK_TRUE(atomic_load(&cover_results) > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&cover_first_state));
+	SERIAL_CHECK_TRUE(atomic_load(&cover_first_open) && !atomic_load(&cover_first_close));
+cleanup:
+	atomic_store(&cover_watch_on, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+	if (online) { stop_serial_driver(&wcv4ec_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void repeated_disconnect_is_tolerated(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -898,6 +942,7 @@ int main(void) {
 		{ "light_change_without_brightness_report_is_not_held", light_change_without_brightness_report_is_not_held },
 		{ "heater_levels_are_exclusive", heater_levels_are_exclusive },
 		{ "reconnect_resumes_polling", reconnect_resumes_polling },
+		{ "connect_shows_the_cover_side", connect_shows_the_cover_side },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "vanished_port_is_refused", vanished_port_is_refused }
 	};
