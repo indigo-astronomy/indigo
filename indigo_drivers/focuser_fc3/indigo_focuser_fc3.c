@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_fc3"
 #define DRIVER_LABEL         "PegasusAstro FocusCube v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus FocusCube3"
@@ -98,6 +98,13 @@ static bool fc3_command(indigo_device *device, char *command, ...) {
 		}
 	}
 	return result > 0;
+}
+
+// The FV and SP queries are answered with the bare value by the controllers in the field (firmware 2.3.0),
+// every other reply is prefixed; the documented "FV:" and "SP:" prefixes are accepted as well.
+static const char *fc3_query_value(indigo_device *device, const char *prefix) {
+	size_t length = strlen(prefix);
+	return strncmp(PRIVATE_DATA->response, prefix, length) ? PRIVATE_DATA->response : PRIVATE_DATA->response + length;
 }
 
 static bool fc3_parse_int(const char *text, int *value) {
@@ -264,8 +271,8 @@ static bool fc3_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (fc3_command(device, "##") && !strncmp(PRIVATE_DATA->response, "FC3_", 4)) {
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
-			if (fc3_command(device, "FV") && !strncmp(PRIVATE_DATA->response, "FV:", 3)) {
-				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+			if (fc3_command(device, "FV") && *fc3_query_value(device, "FV:")) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, fc3_query_value(device, "FV:"));
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
@@ -311,7 +318,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			// every query is mandatory: a controller that does not answer one is refused
 			fc3_status_data status;
 			int speed = 0;
-			connection_result = fc3_status(device, &status) && fc3_command(device, "SP") && !strncmp(PRIVATE_DATA->response, "SP:", 3) && fc3_parse_int(PRIVATE_DATA->response + 3, &speed);
+			connection_result = fc3_status(device, &status) && fc3_command(device, "SP") && fc3_parse_int(fc3_query_value(device, "SP:"), &speed);
 			if (connection_result) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status.position;
 				PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;

@@ -458,6 +458,23 @@ cleanup:
 	driver_stop();
 }
 
+// Firmware 2.3.0 answers FV and SP with the bare value (the simulator default), the documented replies carry
+// the "FV:" and "SP:" prefix; both forms connect with the reported firmware and speed.
+static void prefixed_query_replies(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault("FV", "value FV:9.9.9"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&fc3_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "9.9.9"));
+	disconnect_serial_device(&fc3_focuser);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(fault("SP", "value SP:650"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&fc3_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 650, 0));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, "1.4.1"));
+cleanup:
+	driver_stop();
+}
+
 static void repeated_init_shutdown(void) {
 	for (int i = 0; i < 3; i++) {
 		SERIAL_CHECK_TRUE(driver_start());
@@ -1173,6 +1190,7 @@ int main(void) {
 		{ "handshake_timeout", handshake_timeout, "normal" },
 		{ "status_query_failure", status_query_failure, "bad-status" },
 		{ "firmware_query_failure", firmware_query_failure, "normal" },
+		{ "prefixed_query_replies", prefixed_query_replies, "normal" },
 		{ "repeated_init_shutdown", repeated_init_shutdown, "normal" },
 		{ "shutdown_rejected_while_connected", shutdown_rejected_while_connected, "normal" },
 		{ "reconnect", reconnect, "normal" },

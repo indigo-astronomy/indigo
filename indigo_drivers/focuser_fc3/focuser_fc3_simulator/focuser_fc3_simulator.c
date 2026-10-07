@@ -371,12 +371,14 @@ static void dispatch_command(int handle, const char *buffer) {
 	} else if (!strcmp(buffer, "FI")) {
 		sim_printf(handle, "FI:%d\n", target == position ? 0 : 1);
 	} else if (!strcmp(buffer, "FV")) {
-		sim_printf(handle, "FV:%s\n", fw);
+		// firmware 2.3.0 answers the bare version
+		sim_printf(handle, "%s\n", fw);
 	} else if (!strncmp(buffer, "FD:", 3)) {
 		direction = atoi(buffer + 3);
 		sim_printf(handle, "%s\n", buffer);
 	} else if (!strcmp(buffer, "SP")) {
-		sim_printf(handle, "SP:%d\n", speed);
+		// firmware 2.3.0 answers the bare speed
+		sim_printf(handle, "%d\n", speed);
 	} else if (!strncmp(buffer, "SP:", 3)) {
 		speed = atoi(buffer + 3);
 		sim_printf(handle, "%s\n", buffer);
