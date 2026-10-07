@@ -26,7 +26,7 @@ driver ppb {
 	label = "PegasusAstro Pocket Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, PPBA support by Aaron Freimark <abf@mac.com>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 31;
+	version = 32;
 	serial {
 		pattern {
 			product = "PPB";
@@ -66,7 +66,7 @@ driver ppb {
 				if (ppb_command(device, "P#")) {
 					bool ok = false;
 					if (!strcmp(PRIVATE_DATA->response, "PPB_OK")) {
-						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPB");
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro PPB");
 						PRIVATE_DATA->is_advance = false;
 						PRIVATE_DATA->is_micro = false;
 						PRIVATE_DATA->is_saddle = false;
@@ -75,7 +75,7 @@ driver ppb {
 						AUX_POWER_OUTLET_PROPERTY->count = 2;
 						ok = true;
 					} else if (!strcmp(PRIVATE_DATA->response, "PPBA_OK")) {
-						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBA");
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro PPBA");
 						PRIVATE_DATA->is_advance = true;
 						PRIVATE_DATA->is_micro = false;
 						PRIVATE_DATA->is_saddle = false;
@@ -84,7 +84,7 @@ driver ppb {
 						AUX_POWER_OUTLET_PROPERTY->count = 2;
 						ok = true;
 					} else if (!strcmp(PRIVATE_DATA->response, "PPBM_OK")) {
-						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBM");
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro PPBM");
 						PRIVATE_DATA->is_advance = true;
 						PRIVATE_DATA->is_micro = true;
 						PRIVATE_DATA->is_saddle = false;
@@ -93,7 +93,7 @@ driver ppb {
 						AUX_POWER_OUTLET_PROPERTY->count = 2;
 						ok = true;
 					} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
-						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro SPB");
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro SPB");
 						PRIVATE_DATA->is_advance = false;
 						PRIVATE_DATA->is_micro = false;
 						PRIVATE_DATA->is_saddle = true;

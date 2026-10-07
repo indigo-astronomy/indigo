@@ -58,7 +58,7 @@
 | aux_mgbox | 2026-09-27 07:47 | 3.0.0.13 | linux x64 | simulator | 35 / 35 | ✅ OK |
 |  | 2026-09-27 20:51 | 3.0.0.13 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | aux_ppb | 2026-09-27 06:05 | 3.0.0.31 | linux x64 | simulator | 32 / 32 | ✅ OK |
-|  | 2026-09-27 20:54 | 3.0.0.31 | mac arm64 | simulator | 32 / 32 | ✅ OK |
+|  | 2026-10-07 06:22 | 3.0.0.32 | mac arm64 | simulator | 32 / 32 | ✅ OK |
 | aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
 |  | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
 |  | 2026-09-27 02:04 | 3.0.0.11 | linux x64 | fake SDK | 23 / 23 | ✅ OK |
@@ -73,10 +73,10 @@
 |  | 2026-09-27 20:59 | 3.0.0.8 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | aux_upb | 2026-09-25 12:33 | 3.0.0.30 | mac arm64 | Pegasus UPB v1 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 15:53 | 3.0.0.34 | linux x64 | simulator | 48 / 48 | ✅ OK |
-|  | 2026-09-27 20:59 | 3.0.0.35 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 |  | 2026-10-07 03:12 | 3.0.0.35 | linux arm64 | PeagasusAstro UPB | 15 / 15 | ✅ OK |
+|  | 2026-10-07 06:20 | 3.0.0.36 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | aux_upb3 | 2026-09-27 14:57 | 3.0.0.9 | linux x64 | simulator | 31 / 31 | ✅ OK |
-|  | 2026-10-01 10:31 | 3.0.0.10 | mac arm64 | simulator | 33 / 33 | ✅ OK |
+|  | 2026-10-07 06:22 | 3.0.0.11 | mac arm64 | simulator | 33 / 33 | ✅ OK |
 | aux_usbdp | 2026-09-27 14:54 | 3.0.0.14 | linux x64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-09-27 21:02 | 3.0.0.14 | mac arm64 | simulator | 20 / 20 | ✅ OK |
 | aux_wbplusv3 | 2026-09-27 06:37 | 3.0.0.8 | linux x64 | simulator | 20 / 20 | ✅ OK |

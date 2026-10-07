@@ -342,6 +342,8 @@ static void metadata_and_property_completeness(void) {
 	// PU:b is documented for both models, so the hub switch is available on the v2
 	// box as well, next to its per port controls.
 	assert_property_has_item("X_AUX_HUB", "ENABLED");
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "PegasusAstro UPBv2"));
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);
@@ -361,6 +363,8 @@ static void upb1_model_reduces_the_outlet_inventory(void) {
 	SERIAL_CHECK_TRUE(!has_defined_property("X_AUX_VARIABLE_POWER_OUTLET"));
 	assert_property_has_item("X_AUX_HUB", "ENABLED");
 	assert_property_has_item("X_AUX_HUB", "DISABLED");
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "PegasusAstro UPB"));
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);

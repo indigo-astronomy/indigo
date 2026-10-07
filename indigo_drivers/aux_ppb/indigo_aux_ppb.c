@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_aux_ppb"
 #define DRIVER_LABEL         "PegasusAstro Pocket Powerbox"
 #define AUX_DEVICE_NAME      "Pocket Powerbox"
@@ -146,7 +146,7 @@ static bool ppb_open(indigo_device *device) {
 		if (ppb_command(device, "P#")) {
 			bool ok = false;
 			if (!strcmp(PRIVATE_DATA->response, "PPB_OK")) {
-				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPB");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro PPB");
 				PRIVATE_DATA->is_advance = false;
 				PRIVATE_DATA->is_micro = false;
 				PRIVATE_DATA->is_saddle = false;
@@ -155,7 +155,7 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
 				ok = true;
 			} else if (!strcmp(PRIVATE_DATA->response, "PPBA_OK")) {
-				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBA");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro PPBA");
 				PRIVATE_DATA->is_advance = true;
 				PRIVATE_DATA->is_micro = false;
 				PRIVATE_DATA->is_saddle = false;
@@ -164,7 +164,7 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
 				ok = true;
 			} else if (!strcmp(PRIVATE_DATA->response, "PPBM_OK")) {
-				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBM");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro PPBM");
 				PRIVATE_DATA->is_advance = true;
 				PRIVATE_DATA->is_micro = true;
 				PRIVATE_DATA->is_saddle = false;
@@ -173,7 +173,7 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
 				ok = true;
 			} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
-				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro SPB");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro SPB");
 				PRIVATE_DATA->is_advance = false;
 				PRIVATE_DATA->is_micro = false;
 				PRIVATE_DATA->is_saddle = true;

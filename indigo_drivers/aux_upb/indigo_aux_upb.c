@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000023
+#define DRIVER_VERSION       0x03000024
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -229,11 +229,11 @@ static bool upb_open(indigo_device *device) {
 		bool ok = false;
 		if (upb_command(device, "P#")) {
 			if (!strcmp(PRIVATE_DATA->response, "UPB_OK")) {
-				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro UPB");
 				PRIVATE_DATA->version = 1;
 				ok = true;
 			} else if (!strcmp(PRIVATE_DATA->response, "UPB2_OK")) {
-				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv2");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro UPBv2");
 				PRIVATE_DATA->version = 2;
 				ok = true;
 			}

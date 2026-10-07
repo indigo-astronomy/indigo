@@ -117,6 +117,8 @@ static void identity_and_firmware_reach_info(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
 	indigo_item *revision = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME);
 	SERIAL_CHECK_TRUE(revision != NULL && strstr(revision->text.value, "2.0.7") != NULL);
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "PegasusAstro UPBv3"));
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);

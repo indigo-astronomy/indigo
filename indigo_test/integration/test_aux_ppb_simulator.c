@@ -113,7 +113,7 @@ static void ppb_model_inventory(void) {
 	assert_property_has_item("X_AUX_REBOOT", "REBOOT");
 	assert_property_has_item(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME);
 	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
-	SERIAL_CHECK_TRUE(model != NULL && strstr(model->text.value, "PPB") != NULL);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "PegasusAstro PPB"));
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);
@@ -131,7 +131,7 @@ static void ppba_model_inventory(void) {
 	assert_property_has_item(AUX_DSLR_POWER_PROPERTY_NAME, "9");
 	assert_property_has_item(AUX_DSLR_POWER_PROPERTY_NAME, "12");
 	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
-	SERIAL_CHECK_TRUE(model != NULL && strstr(model->text.value, "PPBA") != NULL);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "PegasusAstro PPBA"));
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);
@@ -145,7 +145,7 @@ static void ppbm_model_inventory(void) {
 	assert_property_has_item(AUX_POWER_OUTLET_STATE_PROPERTY_NAME, AUX_POWER_OUTLET_STATE_1_ITEM_NAME);
 	assert_property_has_item(AUX_DSLR_POWER_PROPERTY_NAME, "5");
 	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
-	SERIAL_CHECK_TRUE(model != NULL && strstr(model->text.value, "PPBM") != NULL);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "PegasusAstro PPBM"));
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);
@@ -159,7 +159,7 @@ static void spb_model_inventory(void) {
 	SERIAL_CHECK_TRUE(!has_defined_property(AUX_DSLR_POWER_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(AUX_POWER_OUTLET_STATE_PROPERTY_NAME));
 	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
-	SERIAL_CHECK_TRUE(model != NULL && strstr(model->text.value, "SPB") != NULL);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "PegasusAstro SPB"));
 cleanup:
 	stop_serial_driver(&aux);
 	stop_external_serial_simulator(&simulator);
