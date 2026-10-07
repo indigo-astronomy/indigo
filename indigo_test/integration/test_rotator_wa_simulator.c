@@ -442,13 +442,16 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-static void wa_stop_failure(void) {
+// The box does not answer stop, so the status read after it is the only readback; when that reply is lost the abort
+// still ends OK (the stop was sent), the aborted move ends ALERT, and the next move works.
+static void wa_status_lost_after_stop(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_WA_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&wa_rotator, simulator.port));
 	SERIAL_CHECK_TRUE(wa_number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 60, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wa_control(&simulator, "ignore_stop"));
-	SERIAL_CHECK_TRUE(wa_switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wa_switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wa_switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wa_number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 1, INDIGO_OK_STATE));
 cleanup:
@@ -624,7 +627,7 @@ int main(int argc, char *argv[]) {
 		{ "wa_completion_overlong", wa_completion_overlong },
 		{ "wa_timeout_recovery", wa_timeout_recovery },
 		{ "wa_setting_failures", wa_setting_failures },
-		{ "wa_stop_failure", wa_stop_failure },
+		{ "wa_status_lost_after_stop", wa_status_lost_after_stop },
 		{ "wa_split_frames", wa_split_frames },
 		{ "wa_transport_loss", wa_transport_loss },
 		{ "wa_abort_queued_start", wa_abort_queued_start },

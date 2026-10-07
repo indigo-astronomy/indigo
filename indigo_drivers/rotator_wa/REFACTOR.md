@@ -115,3 +115,26 @@ cd indigo_test && INDIGO_TEST_CASE_FILTER=wa_abort_with_stop_feedback ./build/in
 ```
 
 Final test summary: 36 simulated tests run, 36 passed; 0 hardware tests run, 0 passed.
+
+## Abort no longer fails on the position read after stop (3.0.0.8, 2026-10-08)
+
+Hardware observation by the maintainer: with 3.0.0.7 ROTATOR_ABORT_MOTION still ended ALERT on an aborted move, so the
+assumption behind 3.0.0.7 (the completion feedback arriving first) was not the cause, or not the only one. No hardware
+log was available, so the real reason the status read after `stop` fails is still unknown.
+
+- **Change:** the box does not answer `stop`, so the status read after it is not a confirmation of the stop. The
+  abort now ends OK when `stop` was written and ALERT only when the write fails, as the hand-written driver before
+  the refactoring did (it set OK after writing `stop` and read the status separately). The position read after `stop`
+  is best effort: a failure is logged ("Failed to read the position after stop") and the last known position is
+  kept. The aborted move still ends ROTATOR_POSITION / ROTATOR_RELATIVE_MOVE ALERT. The completion-line skip of
+  3.0.0.7 is kept.
+- **Tests:** `wa_stop_failure` expected ALERT when the status reply after `stop` was lost (simulator `ignore_stop`)
+  and is replaced by `wa_status_lost_after_stop`, which expects the abort OK, the position ALERT, and a working next
+  move; it fails against 3.0.0.7 by construction (3.0.0.7 sets ALERT exactly when that read fails).
+  `wa_transport_loss` still ends the abort ALERT, because the `stop` write fails on the closed port.
+- **Verification (macOS arm64):** full suite 36/36 OK. Regeneration with the unchanged generator changes only the
+  edited block and the version. No hardware run yet.
+- **Open:** after an abort on the real box the published position may be the last known one rather than where it
+  stopped; a debug log of an abort would show why the status read fails.
+
+Final test summary: 36 simulated tests run, 36 passed; 0 hardware tests run, 0 passed.

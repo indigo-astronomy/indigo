@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_rotator_wa"
 #define DRIVER_LABEL         "WandererAstro rotator"
 #define ROTATOR_DEVICE_NAME  "WandererAstro rotator"
@@ -373,11 +373,16 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, rotator_position_handler);
 		indigo_cancel_pending_handler(device, rotator_relative_move_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
-		bool success = wa_write(device, "stop\n") && wa_status(device);
-		wa_finish(device, false);
-		if (!success) {
+		// the box does not answer stop, so only a failed write fails the abort; the position read after it is best
+		// effort and a failure keeps the last known position
+		if (wa_write(device, "stop\n")) {
+			if (!wa_status(device)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read the position after stop");
+			}
+		} else {
 			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		wa_finish(device, false);
 	}
 	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 	//- rotator.ROTATOR_ABORT_MOTION.on_change
