@@ -88,3 +88,30 @@ Covered by `wa_rejected_change` in `indigo_test/integration/test_rotator_wa_simu
 ```sh
 cd indigo_test && ./build/integration/test_rotator_wa_simulator wa_rejected_change
 ```
+
+## Abort ended ALERT when the stop feedback came first (3.0.0.7, 2026-10-08)
+
+Reported from hardware: ROTATOR_ABORT_MOTION itself ended ALERT when a running move was aborted. Reproduced in the
+simulator before the fix, under the assumption below; no hardware log was available.
+
+- **Assumed device behaviour (not in the protocol PDF):** `stop` makes the box decelerate, it handles no command
+  meanwhile, and it then reports the interrupted move with the usual completion feedback `xx.xxAxxxxxxA` (angle
+  rotated, mechanical position) before it answers the queued `1500001`.
+- **Defect (reproduced):** the abort handler writes `stop` and calls `wa_status()`, which drops pending input, sends
+  `1500001` and parses the first line as the five-field handshake reply. The completion feedback arrived after the
+  drop, was that first line, failed the handshake parse, and the abort ended ALERT although the rotator had stopped.
+- **Fix:** `wa_status()` reads up to three lines after `1500001`; a valid completion line updates the position and is
+  skipped, a line starting with `Wanderer` is parsed as the status reply, anything else still fails.
+- **Simulator:** new control `stop_feedback:<ms>` (persistent for the run): a `stop` during a move blocks the
+  simulator for that long and then sends the completion feedback with the angle actually rotated.
+- **Regression test:** `wa_abort_with_stop_feedback` (300 ms stop; abort of a 120 degree move must end
+  ROTATOR_ABORT_MOTION OK, ROTATOR_POSITION ALERT short of the target, and a fresh move must work). 3.0.0.6: abort
+  not OK; 3.0.0.7: passes.
+- **Verification (macOS arm64):** full suite 36/36 OK. Regeneration with the unchanged generator changes only the
+  edited block and the version. No hardware run yet.
+
+```sh
+cd indigo_test && INDIGO_TEST_CASE_FILTER=wa_abort_with_stop_feedback ./build/integration/test_rotator_wa_simulator
+```
+
+Final test summary: 36 simulated tests run, 36 passed; 0 hardware tests run, 0 passed.

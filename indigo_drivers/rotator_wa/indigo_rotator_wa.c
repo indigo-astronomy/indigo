@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_rotator_wa"
 #define DRIVER_LABEL         "WandererAstro rotator"
 #define ROTATOR_DEVICE_NAME  "WandererAstro rotator"
@@ -157,8 +157,25 @@ static bool wa_parse(indigo_device *device, bool handshake) {
 	return true;
 }
 
+// a move interrupted by stop is still reported with its completion feedback (xx.xxAxxxxxxA), which the box sends
+// once it has stopped and so may come after the stale input was dropped; that line updates the position and the
+// status reply is the next one
 static bool wa_status(indigo_device *device) {
-	return indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && wa_write(device, "1500001\n") && wa_read(device) && wa_parse(device, true);
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || !wa_write(device, "1500001\n")) {
+		return false;
+	}
+	for (int i = 0; i < 3; i++) {
+		if (!wa_read(device)) {
+			return false;
+		}
+		if (!strncmp(PRIVATE_DATA->response, "Wanderer", strlen("Wanderer"))) {
+			return wa_parse(device, true);
+		}
+		if (!wa_parse(device, false)) {
+			return false;
+		}
+	}
+	return false;
 }
 
 static bool wa_open(indigo_device *device) {

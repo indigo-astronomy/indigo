@@ -49,6 +49,9 @@ static char status_fault[128];
 static char completion_fault[128];
 static bool ignore_setting;
 static bool ignore_stop;
+// a stop decelerates for this long, the box handles no command meanwhile, and then reports the interrupted move
+// with the usual completion feedback; 0 stops at once without feedback
+static int stop_feedback_ms;
 static double backlash = 1.2;
 static bool reversed = false;
 
@@ -124,6 +127,8 @@ static void load_control(void) {
 		ignore_setting = true;
 	} else if (!strcmp(control, "ignore_stop")) {
 		ignore_stop = true;
+	} else if (!strncmp(control, "stop_feedback:", 14)) {
+		stop_feedback_ms = atoi(control + 14);
 	} else if (!strncmp(control, "position:", 9)) {
 		serial_motion_sync(&motion, atof(control + 9));
 	}
@@ -192,6 +197,11 @@ static void dispatch_command(const char *command) {
 		if (ignore_stop) {
 			ignore_stop = false;
 			strcpy(status_fault, "silent");
+		} else if (pending && stop_feedback_ms > 0) {
+			usleep(stop_feedback_ms * 1000);
+			moved = serial_motion_update(&motion) - motion.origin;
+			serial_motion_stop(&motion);
+			send_move_complete();
 		} else {
 			serial_motion_stop(&motion);
 			pending = false;

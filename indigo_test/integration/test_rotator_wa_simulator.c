@@ -238,6 +238,30 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A stop takes the box a moment, during which it handles no command, and then it reports the interrupted move with
+// the usual completion feedback (angle rotated, position). That line arrives after the driver dropped stale input and
+// sent the status request, so it is the first line the status read gets; it must not fail the abort.
+static void wa_abort_with_stop_feedback(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_WA_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wa_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(wa_switch_change(WA_SET_ZERO_POSITION_PROPERTY_NAME, WA_SET_ZERO_POSITION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wa_control(&simulator, "stop_feedback:300"));
+	unsigned revision = property_revision(ROTATOR_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wa_number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 120, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	indigo_usleep(500000);
+	SERIAL_CHECK_TRUE(wa_switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wa_position() > 0 && wa_position() < 120);
+	SERIAL_CHECK_TRUE(wa_number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 2, INDIGO_OK_STATE));
+cleanup:
+	if (context.driver_case == &wa_rotator) {
+		stop_serial_driver(&wa_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void wa_busy_abort_recovery(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_WA_SIMULATOR_EXECUTABLE));
@@ -579,6 +603,7 @@ int main(int argc, char *argv[]) {
 		{ "wa_wrap_sync_offset_zero", wa_wrap_sync_offset_zero },
 		{ "wa_noop_and_settings", wa_noop_and_settings },
 		{ "wa_busy_abort_recovery", wa_busy_abort_recovery },
+		{ "wa_abort_with_stop_feedback", wa_abort_with_stop_feedback },
 		{ "wa_disconnect_during_motion", wa_disconnect_during_motion },
 		{ "wa_bad_model", wa_bad_model },
 		{ "wa_bad_position", wa_bad_position },
