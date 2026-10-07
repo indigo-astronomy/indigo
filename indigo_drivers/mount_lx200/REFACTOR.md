@@ -2709,3 +2709,28 @@ MIGRATION_STATUS.md hardware-free count 149 -> 150.
 ### Final test summary for this change
 
 Simulated tests: **147 run, 147 passed** (recorded run 2026-10-07 01:02, Linux arm64, driver 3.0.0.79). Hardware tests: **35 run, 35 passed** (OnStepX 10.28x, recorded run 2026-10-07 00:52, Linux arm64).
+
+## TeenAstro: first hardware run (2026-10-07, 3.0.0.80)
+
+Hardware run on Linux arm64 against `TeenAstro_1.5.2_esp32_s3.bin` on the bench ESP32-S3 (UART0 through the CH343 bridge, `/dev/ttyACM0`). Hardware testing IS performed for this record. Protocol facts are cited against the TeenAstro 1.5 sources (`TeenAstroMainUnit/Command_G.ino`, `Command_others.ino`, `Park.ino`, `Command_M.ino`).
+
+The image answers at 57600 baud, which the driver's own speed detection (9600, 19200, 115200) does not try; a real TeenAstro is reached over its USB CDC port or TCP, where the speed does not matter. `test_mount_lx200_hw` therefore takes `MOUNT_LX200_HW_BAUDRATE` (for example `57600-8N1`). The freshly flashed controller had neither a site nor a park position, so both were set over the port first (`:St+48*13#`, `:Sg-016*59#`, `:hQ#` at the home position), as for the OnStepX bench board.
+
+| ID | Status | Observation and root cause | Fix |
+| --- | --- | --- | --- |
+| LX087 | FIXED | A reconnect to a mount on the solar rate with tracking off published LUNAR. `:GT#` answers `0.00000` while the firmware does not track or runs a goto, and the driver read that frequency as the lowest rate. | The rate comes from the second character of `:GXI#` (`sideralMode`: `0` sidereal, `1` solar, `2` lunar; `3`, a user rate, is left alone). |
+| LX088 | FIXED | `MOUNT_TRACKING` went off for the length of every goto: 53 of 74 samples during one slew. A goto runs with the tracking flag off (`:GXI#` starts with `2`, 2 * goto + tracking) and `:MS#` turns tracking on when the mount arrives. | During a goto (not a park, not a home) the published tracking keeps the setting; `3` counts as tracking as well. |
+| LX089 | FIXED | A park on a controller with no stored park position stayed BUSY for good. `:hP#` answers `0` when `park()` refuses (no position saved, busy, an error, motors off) and the driver sent it without reading the reply. | The reply is read; `0` ends the park ALERT with a message that suggests storing a park position. |
+| LX090 | FIXED | `MOUNT_INFO.MODEL` stayed `Unknown`, so the recorded run named no hardware. TeenAstro has no model query. | The model is the product name `:GVP#` gave the autodetection, as for ESP32Go. |
+
+Two further failures of the first run were the bench state, not the driver: the park refused for want of a park position (LX089 is what the driver did with that refusal), and with the site still at latitude 0 a goto after a sync arrived 0.5 deg short: the mount reached the target declination and drifted back while the RA axis finished, through the latitude-built pointing model the firmware uses without a star alignment. With the real site the same goto lands within 0.01 deg.
+
+Simulator: `:GXI#` carries the rate in its second character, `:GT#` answers `0.00000` without tracking or during a goto, `:hP#` and `:hR#` answer `1`, and `--teen-no-park-position` makes `:hP#` answer `0` until `:hQ#`.
+
+New cases: `lx200_teenastro_reads_the_rate_with_tracking_off` (solar survives a reconnect with tracking off, the model is TeenAstro), `lx200_teenastro_keeps_tracking_through_a_goto`, `lx200_teenastro_refused_park_ends_alert` (ALERT and unparked with a message, parks after `MOUNT_PARK_SET`). All three fail against 3.0.0.79.
+
+MIGRATION_STATUS.md hardware-free count 150 -> 153.
+
+### Final test summary for this change
+
+Simulated tests: **150 run, 150 passed** (recorded run 2026-10-07 02:01, Linux arm64, driver 3.0.0.80). Hardware tests: **35 run, 35 passed** (TeenAstro 1.5.2, recorded run 2026-10-07 01:51, Linux arm64).

@@ -100,6 +100,10 @@ typedef struct {
 	// been written again, and :GX89# answers 1 until then. Observed on OnStepX 10.28x, whose
 	// limits treat a missing date or time as a goto error.
 	bool onstep_clock_unset;
+	// A TeenAstro that never had a park position stored with :hQ#, as a freshly flashed
+	// controller: park() returns 1 for !parkSaved and :hP# answers 0 without moving. TeenAstro
+	// 1.5, Park.ino and Command_others.ino.
+	bool teen_no_park_position;
 	simulator_model model;
 } simulator_options;
 
@@ -158,6 +162,8 @@ typedef struct {
 	// Whether an OnStepX has been given the date and the local time since it started.
 	bool onstep_date_ready;
 	bool onstep_time_ready;
+	// Whether a TeenAstro has a park position stored.
+	bool teen_park_saved;
 } simulator_state;
 
 static simulator_options options = {
@@ -226,6 +232,7 @@ static void usage(const char *name) {
 	printf("  --zwo-altaz             ZWO AM in alt-az mode: Z in :GU#, park and park position refused\n");
 	printf("  --zwo-parked-no-stop    ZWO AM5: a parked mount reports no N in :GU#, as the hardware does\n");
 	printf("  --onstep-clock-unset    OnStepX restarted without a clock: :GX89# answers 1, no goto or tracking until :SC# and :SL#\n");
+	printf("  --teen-no-park-position TeenAstro with no stored park position: :hP# answers 0 until :hQ#\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
@@ -293,6 +300,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.status_king = true;
 		} else if (!strcmp(argv[i], "--onstep-clock-unset")) {
 			options.onstep_clock_unset = true;
+		} else if (!strcmp(argv[i], "--teen-no-park-position")) {
+			options.teen_no_park_position = true;
 		} else if (!strcmp(argv[i], "--unaligned")) {
 			options.unaligned = true;
 		} else if (!strcmp(argv[i], "--park-fails")) {
@@ -947,7 +956,10 @@ static void handle_command(const char *command) {
 	} else if (!strcmp(command, "GX")) {
 		write_response(state.parked ? "Parked#" : parking_requested ? "Parking#" : homing_requested ? "Homing#" : state.slewing ? "Slewing#" : state.tracking ? "Tracking#" : "Idle#");
 	} else if (!strcmp(command, "GXI")) {
-		snprintf(response, sizeof(response), "%c0%c%c000000000W#", state.slewing ? '2' : state.tracking ? '1' : '0', state.parked ? 'P' : parking_requested ? 'I' : 'p', state.at_home ? 'H' : 'x');
+		// The second character is the sidereal mode of the firmware: 0 sidereal, 1 solar, 2 lunar.
+		// TeenAstro 1.5, Command_G.ino, reply[1] = '0' + sideralMode.
+		char mode = state.tracking_rate == 'S' ? '1' : state.tracking_rate == 'L' ? '2' : '0';
+		snprintf(response, sizeof(response), "%c%c%c%c000000000W#", state.slewing ? '2' : state.tracking ? '1' : '0', mode, state.parked ? 'P' : parking_requested ? 'I' : 'p', state.at_home ? 'H' : 'x');
 		write_response(response);
 	} else if (!strcmp(command, "X34")) {
 		// The motion digit of an axis is 0 stopped, 1 tracking and above 1 moving: 2 to 4 while
@@ -1011,6 +1023,7 @@ static void handle_command(const char *command) {
 		}
 		park_ra = ra_motion.position;
 		park_dec = dec_motion.position;
+		state.teen_park_saved = true;
 		write_response("1");
 	} else if (!strncmp(command, "WA", 2) || !strncmp(command, "WB", 2) || !strncmp(command, "WS", 2) || !strncmp(command, "WP", 2) || (!strncmp(command, "SX", 2) && strncmp(command, "SXX", 3)) || !strncmp(command, "Sv", 2) || !strcmp(command, "hQ")) {
 		write_response("1");
@@ -1035,7 +1048,7 @@ static void handle_command(const char *command) {
 			// tracking on, and it is acknowledged with 1.
 			state.tracking = true;
 		}
-		if (options.model == MODEL_ONSTEP || model_is_oat() || (options.model == MODEL_NYX && !strcmp(command, "hR"))) { write_response("1"); }
+		if (options.model == MODEL_ONSTEP || model_is_oat() || options.model == MODEL_TEEN || (options.model == MODEL_NYX && !strcmp(command, "hR"))) { write_response("1"); }
 	} else if (!strcmp(command, "X362")) {
 		start_reference_motion(true);
 		write_response("pB#");
@@ -1217,6 +1230,10 @@ static void handle_command(const char *command) {
 			write_response(state.tracking_rate == 'L' ? "57.9#" : state.tracking_rate == 'S' ? "60.0#" : "60.1#");
 		} else if ((options.model == MODEL_NYX || options.model == MODEL_ONSTEP) && !state.tracking) {
 			write_response("0#");
+		} else if (options.model == MODEL_TEEN && (!state.tracking || state.slewing)) {
+			// TeenAstro reports a frequency only while it tracks and no goto runs, otherwise
+			// 0.00000, whatever rate is selected. TeenAstro 1.5, Command_G.ino.
+			write_response("0.00000#");
 		} else if (state.tracking_rate == 'L') {
 			write_response("57.90000#");
 		} else if (state.tracking_rate == 'S') {
@@ -1412,6 +1429,10 @@ static void handle_command(const char *command) {
 			// The command is taken and nothing happens, which is all a client can observe.
 			return;
 		}
+		if (options.model == MODEL_TEEN && !strcmp(command, "hP") && !state.teen_park_saved) {
+			write_response("0");
+			return;
+		}
 		start_reference_motion(strcmp(command, "hC") != 0 || options.model == MODEL_GEMINI);
 		if (options.model == MODEL_MEADE && options.meade_silent_park && !strcmp(command, "hP")) {
 			meade_silent = true;
@@ -1420,7 +1441,7 @@ static void handle_command(const char *command) {
 		// derives from it does the same. A simulator that answers the home command anyway hides
 		// a driver that waits for a reply the mount never sends.
 		// The ZWO AM answers neither of them.
-		if ((options.model == MODEL_ONSTEP || options.model == MODEL_NYX) && !strcmp(command, "hP")) { write_response("1"); }
+		if ((options.model == MODEL_ONSTEP || options.model == MODEL_NYX || options.model == MODEL_TEEN) && !strcmp(command, "hP")) { write_response("1"); }
 	} else if (!strcmp(command, "PO") || !strcmp(command, "hW") || !strcmp(command, "X370")) {
 		gemini_park_reported = options.model == MODEL_GEMINI && state.parked;
 		state.tracking = true;
@@ -1549,6 +1570,7 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 	gemini_boot = options.model == MODEL_GEMINI && options.gemini_startup ? 'b' : 0;
+	state.teen_park_saved = !options.teen_no_park_position;
 	if (options.model == MODEL_ONSTEP && options.onstep_clock_unset) {
 		// The date survives the restart and the clock runs from the moment it started, so the
 		// controller reports a date and a time close enough to the host not to look unset.

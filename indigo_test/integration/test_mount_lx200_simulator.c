@@ -3805,6 +3805,86 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A TeenAstro with the given simulator options, detected as such and connected.
+static bool start_teen_options(external_serial_simulator *simulator, const char *option) {
+	const char *arguments[] = { "--model", "teen", option, NULL };
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(&lx200_mount)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	if (connect_serial_device(&lx200_mount, simulator->port)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	tear_down_serial_driver(&lx200_mount);
+	return false;
+}
+
+// TeenAstro answers :GT# with 0.00000 while it does not track, which the driver read as the
+// lunar rate: a reconnect to a mount on the solar rate with tracking off published LUNAR. The
+// rate is the second character of :GXI#. Observed on TeenAstro 1.5.2; the model is the product.
+static void lx200_teenastro_reads_the_rate_with_tracking_off(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_teen_options(&simulator, NULL));
+	online = true;
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "TEEN_ASTRO", true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME) != NULL && strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "TeenAstro") == 0);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A TeenAstro goto runs with the tracking flag of the firmware off, :GXI# starts with 2, and
+// :MS# turns tracking on when the mount arrives. Publishing the flag turned MOUNT_TRACKING off
+// for the length of every goto. Observed on TeenAstro 1.5.2.
+static void lx200_teenastro_keeps_tracking_through_a_goto(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_teen_options(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(3, 10, INDIGO_BUSY_STATE));
+	// Every status poll of the slew has to leave the setting alone.
+	for (int i = 0; i < 3 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		int polls = event_count(&simulator, "GXI", NULL);
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "GXI", polls));
+		assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	}
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A TeenAstro refuses :hP# with 0 until a park position was stored with :hQ#, which a freshly
+// installed controller has not. The driver did not read the reply and left MOUNT_PARK busy for
+// good. Observed on TeenAstro 1.5.2.
+static void lx200_teenastro_refused_park_ends_alert(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_teen_options(&simulator, "--teen-no-park-position"));
+	online = true;
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "park position") != NULL);
+	// With a park position stored the same request parks the mount.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_nyx_legacy_wifi_and_elevation(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -4700,6 +4780,9 @@ int main(int argc, char **argv) {
 		{ "lx200_classic_timed_guiding", lx200_classic_timed_guiding },
 		{ "lx200_generic_goto_polling_progress", lx200_generic_goto_polling_progress },
 		{ "lx200_teenastro_set_positions", lx200_teenastro_set_positions },
+		{ "lx200_teenastro_reads_the_rate_with_tracking_off", lx200_teenastro_reads_the_rate_with_tracking_off },
+		{ "lx200_teenastro_keeps_tracking_through_a_goto", lx200_teenastro_keeps_tracking_through_a_goto },
+		{ "lx200_teenastro_refused_park_ends_alert", lx200_teenastro_refused_park_ends_alert },
 		{ "lx200_nyx_legacy_wifi_and_elevation", lx200_nyx_legacy_wifi_and_elevation },
 		{ "lx200_stargo_abort_cancels_queued_park", lx200_stargo_abort_cancels_queued_park },
 		{ "lx200_stargo_park_abort_settles", lx200_stargo_park_abort_settles },

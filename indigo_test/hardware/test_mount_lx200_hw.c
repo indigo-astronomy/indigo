@@ -51,7 +51,9 @@
 // the identity, the site, the coordinates, SYNC, GOTO, abort and the lifecycle.
 //
 // MOUNT_LX200_HW_PORT names the serial port or lx200:// URL. When it is not set, the port the
-// driver detected through its own USB descriptor match is used.
+// driver detected through its own USB descriptor match is used. MOUNT_LX200_HW_BAUDRATE, in the
+// DEVICE_BAUDRATE form such as 57600-8N1, is for a controller that answers at a speed the
+// driver does not try on its own, like the TeenAstro bench image on a UART bridge.
 
 #include <math.h>
 #include <stdlib.h>
@@ -294,7 +296,15 @@ static bool select_port(void) {
 		return false;
 	}
 	printf("Using port %s\n", serial_port);
-	return hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, serial_port, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	if (!hw_set_text(mount, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, serial_port, INDIGO_OK_STATE, SHORT_TIMEOUT)) {
+		return false;
+	}
+	const char *baudrate = getenv("MOUNT_LX200_HW_BAUDRATE");
+	if (baudrate == NULL || !*baudrate) {
+		return true;
+	}
+	printf("Using baud rate %s\n", baudrate);
+	return hw_set_text(mount, DEVICE_BAUDRATE_PROPERTY_NAME, DEVICE_BAUDRATE_ITEM_NAME, baudrate, INDIGO_OK_STATE, SHORT_TIMEOUT);
 }
 
 static bool skip_unless_nyx(const char *what) {

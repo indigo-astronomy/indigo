@@ -67,4 +67,5 @@ Driver is developed and tested with:
 2026-10-06 23:58 3.0.0.77 linux arm64 esp32go 35/35 OK
 2026-10-07 00:04 3.0.0.77 linux arm64 OpenAstroTracker 35/29 Failed
 2026-10-07 00:52 3.0.0.79 linux arm64 On-Step 35/35 OK
-2026-10-07 01:02 3.0.0.79 linux arm64 simulator 147/147 OK
+2026-10-07 01:51 3.0.0.80 linux arm64 TeenAstro 35/35 OK
+2026-10-07 02:01 3.0.0.80 linux arm64 simulator 150/150 OK

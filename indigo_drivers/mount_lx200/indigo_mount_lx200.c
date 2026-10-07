@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300004F
+#define DRIVER_VERSION       0x03000050
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -1490,7 +1490,27 @@ static bool meade_get_tracking_rate(indigo_device *device) {
 	}
 	// Onstep and the NYX have it in the :GU# response. The NYX answers :GT# with 0 while
 	// tracking is disabled, which is not a tracking rate and must not be decoded as one.
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+	if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+		// :GT# answers 0.00000 while the mount does not track or runs a goto, which is no
+		// rate. The second character of :GXI# is the selected one: 0 sidereal, 1 solar,
+		// 2 lunar, 3 a user rate the property has no item for.
+		if (!meade_command(device, ":GXI#") || strlen(PRIVATE_DATA->response) < 2) {
+			return false;
+		}
+		switch (PRIVATE_DATA->response[1]) {
+			case '0':
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+				return true;
+			case '1':
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+				return true;
+			case '2':
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+				return true;
+		}
+		return false;
+	}
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
 		if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 			// An Autostar answers with one decimal: 60.1 on the sidereal rate, 60.0 on the
 			// solar and 57.9 on the lunar one. It has no king rate, and the property shows
@@ -1660,7 +1680,19 @@ static bool meade_park(indigo_device *device) {
 		PRIVATE_DATA->oat_park_expected = true;
 		return meade_no_reply_command(device, ":hP#");
 	}
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+	// TeenAstro answers 1 or 0, and refuses to park until a park position has been stored
+	// with :hQ#, which a freshly installed controller does not have.
+	if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+		if (!meade_simple_reply_command(device, ":hP#")) {
+			return false;
+		}
+		if (*PRIVATE_DATA->response != '1') {
+			indigo_send_message(device, ALERT_PROPERTY, "Park refused, is a park position set?");
+			return false;
+		}
+		return true;
+	}
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 		return meade_no_reply_command(device, ":hP#");
 	}
 	if (MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->ap_firmware_parks && !AP_PARK_POSITION_CURRENT_ITEM->sw.value) {
@@ -3228,6 +3260,8 @@ static void meade_init_teenastro_mount(indigo_device *device) {
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_PEC_PROPERTY->hidden = false;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "TeenAstro");
+	// There is no model query, so the model is the product name :GVP# gave the autodetection.
+	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	if (meade_command(device, ":GVN#")) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", PRIVATE_DATA->response);
 		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
@@ -3236,12 +3270,19 @@ static void meade_init_teenastro_mount(indigo_device *device) {
 
 static void meade_update_teenastro_state(indigo_device *device) {
 	if (meade_command(device, ":GXI#")) {
-		if (PRIVATE_DATA->response[0] == '1') {
+		// The first character is 2 * goto + tracking flag.
+		if (PRIVATE_DATA->response[0] == '1' || PRIVATE_DATA->response[0] == '3') {
 			PRIVATE_DATA->tracking = true;
-		} else if (PRIVATE_DATA->response[0] == '2' || PRIVATE_DATA->response[0] == '3') {
+		}
+		if (PRIVATE_DATA->response[0] == '2' || PRIVATE_DATA->response[0] == '3') {
 			PRIVATE_DATA->slewing = true;
 			if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 				PRIVATE_DATA->homing = true;
+			} else if (PRIVATE_DATA->response[0] == '2' && MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
+				// A goto runs with the tracking flag off and :MS# turns tracking on when the
+				// mount arrives, so the status does not describe the setting while the mount
+				// is on its way. Park and home do stop tracking, so they are left as reported.
+				PRIVATE_DATA->tracking = MOUNT_TRACKING_ON_ITEM->sw.value;
 			}
 		}
 		if (PRIVATE_DATA->response[2] == 'P') {

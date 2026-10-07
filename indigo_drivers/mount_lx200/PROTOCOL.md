@@ -312,7 +312,7 @@ the dialect from the product name; a mount that does not answer `:GVP#` is probe
 | Lunar rate | `:TL#` → ∅ ✓ | — | `:XSS0.965#` → ∅ ✓ | `:TL#` → ∅ ✓ | `:TL#` → ∅ ✓ |
 | King rate | — | — | — | `:TK#` → ∅ ✓ | — |
 | Custom rate and adjustment | `:STdd.ddddd#` → `0`/`1`<br>`:T+#` / `:T-#` ±0.02 Hz, `:TR#` reset → ∅ | — | `:XSSn.nnn#` factor → ∅ ✓; `:XGS#` → factor `#`; `:XGT#` → speed `#`; `:XSTnnnn#` | — | — |
-| Get tracking rate | `:GT#` → `dd.ddddd#` ✓ | — | `:GT#` → `60.0#` | `:GT#` → `50.0#` whatever the rate; the rate is in `:GU#` ✓ | — |
+| Get tracking rate | `:GT#` → `dd.ddddd#`, `0.00000#` while not tracking or during a goto; driver reads `:GXI#` second character‡ ✓ | — | `:GT#` → `60.0#` | `:GT#` → `50.0#` whatever the rate; the rate is in `:GU#` ✓ | — |
 | Tracking status | `:GXI#` (see section 12)‡ ✓; `:GXJT#` → `1#`/`0#` | — | `:GX#` (see section 12) ✓; `:GIT#` → `1#`/`0#` | `:GU#` (see section 12) ✓ | — |
 | Compensation | `:T0#` off, `:T1#` RA only, `:T2#` both axes, `:Tr#` refraction, `:Tn#` none → `0`/`1` | — | — | — | — |
 
@@ -344,7 +344,7 @@ the dialect from the product name; a mount that does not answer `:GVP#` is probe
 
 | Function | TeenAstro | aGotino | OAT | ESP32Go | Generic |
 | --- | --- | --- | --- | --- | --- |
-| Park | `:hP#` → `0`/`1` ✓ | — | `:hP#` home, then park offset, stop all motors → ∅ ✓[^oat] | `:hP#` → ∅: goes home and raises the parked flag; driver uses it as home ✓[^esp32go] | — |
+| Park | `:hP#` → `0`/`1`, `0` without a park position stored with `:hQ#` ✓ | — | `:hP#` home, then park offset, stop all motors → ∅ ✓[^oat] | `:hP#` → ∅: goes home and raises the parked flag; driver uses it as home ✓[^esp32go] | — |
 | Unpark | `:hR#` → `0`/`1` ✓ | — | `:hU#` → `1` (turns tracking on) ✓[^oat] | — (a goto or a sync clears the parked flag) | — |
 | Park status | `:GXI#` (see section 12)‡ ✓ | — | `:GX#` state `Parked`, `Parking` ✓[^oat] | `:PP#` → `1#`/`0#`; `:GU#` second character ✓ | — |
 | Set park position | `:hQ#` → `0`/`1` ✓ | — | — | — | — |
@@ -488,7 +488,7 @@ the dialect from the product name; a mount that does not answer `:GVP#` is probe
 
 | Function | TeenAstro | aGotino | OAT | ESP32Go | Generic |
 | --- | --- | --- | --- | --- | --- |
-| Status word | `:GXI#` → [0] `0` idle, `1` tracking, `2`/`3` slewing; [2] `P` parked, `I` parking; [3] `H` at home; [13] `E`/`W` pier side‡ ✓ | — | `:GX#` → `<state>,<motion>,<RA steps>,<DEC steps>,<TRK steps>,<RA>,<DEC>,<focus>,#`; state `Idle`, `Parked`, `Parking`, `Guiding`, `SlewToTarget`, `FreeSlew`, `ManualSlew`, `Tracking`, `Homing` ✓[^oat] | `:GU#` → `<T/t><P/p><S/s><W/E><rate 1…4>#` (tracking, parked, slewing, pier side, rate) ✓[^esp32go]; `:GK#` two-digit bitmask, `:Gk#` tracking | — |
+| Status word | `:GXI#` → [0] 2 × goto + tracking flag: `0` idle, `1` tracking, `2` goto (the flag is off during a goto, `:MS#` turns tracking on at the end), `3` goto while tracking; [1] rate `0` sidereal, `1` solar, `2` lunar, `3` user; [2] `P` parked, `I` parking; [3] `H` at home; [13] `E`/`W` pier side‡ ✓ | — | `:GX#` → `<state>,<motion>,<RA steps>,<DEC steps>,<TRK steps>,<RA>,<DEC>,<focus>,#`; state `Idle`, `Parked`, `Parking`, `Guiding`, `SlewToTarget`, `FreeSlew`, `ManualSlew`, `Tracking`, `Homing` ✓[^oat] | `:GU#` → `<T/t><P/p><S/s><W/E><rate 1…4>#` (tracking, parked, slewing, pier side, rate) ✓[^esp32go]; `:GK#` two-digit bitmask, `:Gk#` tracking | — |
 | Velocity / motion state | `:GXJS#` slewing, `:GXJM1#` / `:GXJM2#` axis moving, `:GXJB#`, `:GXJC#`, `:GXJm#` → `1#`/`0#` | `:D#` (see section 4) ✓ | `:GIS#` → `1#`/`0#` slewing | — | — |
 | Other status | — | — | `:XGAH#` (see section 8) | — | — |
 
