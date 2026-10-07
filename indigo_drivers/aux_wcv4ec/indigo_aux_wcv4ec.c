@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -104,6 +104,9 @@ typedef struct {
 	double current_position;
 	double input_voltage;
 	int brightness;
+	bool brightness_reported;
+	int light_target;
+	time_t light_start_time;
 	bool ready;
 	//- data
 } wcv4ec_private_data;
@@ -176,6 +179,7 @@ static bool wcv4ec_read_status(indigo_device *device) {
 		PRIVATE_DATA->input_voltage = atof(token);
 		/* inctroduced with firmware 20240618 */
 		token = strtok_r(NULL, "A", &buf);
+		PRIVATE_DATA->brightness_reported = token != NULL;
 		if (token != NULL) {
 			PRIVATE_DATA->brightness = atoi(token);
 		} else {
@@ -198,6 +202,7 @@ static bool wcv4ec_command(indigo_device *device, int command) {
 static bool wcv4ec_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
+		PRIVATE_DATA->light_start_time = 0;
 		indigo_sleep(1);
 		if (wcv4ec_read_status(device)) {
 			if (!strcmp(PRIVATE_DATA->model_id, DEVICE_ID)) {
@@ -216,6 +221,33 @@ static bool wcv4ec_open(indigo_device *device) {
 static void wcv4ec_show_cover(indigo_device *device) {
 	AUX_COVER_CLOSE_ITEM->sw.value = fabs(PRIVATE_DATA->close_position - PRIVATE_DATA->current_position) < 6;
 	AUX_COVER_OPEN_ITEM->sw.value = !AUX_COVER_CLOSE_ITEM->sw.value && fabs(PRIVATE_DATA->open_position - PRIVATE_DATA->current_position) < 6;
+}
+
+// the box applies a brightness some time after the command, so with a firmware that reports it in the status frame
+// (20240618 and later) the requesting property stays BUSY until a frame shows it; 0 turns the light off
+static bool wcv4ec_set_light(indigo_device *device, indigo_property *property, int brightness) {
+	if (!wcv4ec_command(device, brightness > 0 ? brightness : 9999)) {
+		return false;
+	}
+	if (PRIVATE_DATA->brightness_reported) {
+		PRIVATE_DATA->light_target = brightness;
+		PRIVATE_DATA->light_start_time = time(NULL);
+		property->state = INDIGO_BUSY_STATE;
+	}
+	return true;
+}
+
+// a later light request supersedes an earlier one, so a pending change ends on both light properties
+static void wcv4ec_end_light_change(indigo_device *device, indigo_property_state state, const char *message) {
+	PRIVATE_DATA->light_start_time = 0;
+	if (AUX_LIGHT_SWITCH_PROPERTY->state == INDIGO_BUSY_STATE) {
+		AUX_LIGHT_SWITCH_PROPERTY->state = state;
+		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, message);
+	}
+	if (AUX_LIGHT_INTENSITY_PROPERTY->state == INDIGO_BUSY_STATE) {
+		AUX_LIGHT_INTENSITY_PROPERTY->state = state;
+		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, message);
+	}
 }
 
 static void wcv4ec_close(indigo_device *device) {
@@ -294,6 +326,14 @@ static void aux_timer_callback(indigo_device *device) {
 			indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
 		}
 	}
+	if (PRIVATE_DATA->light_start_time > 0) {
+		if (PRIVATE_DATA->brightness == PRIVATE_DATA->light_target) {
+			wcv4ec_end_light_change(device, INDIGO_OK_STATE, NULL);
+		} else if (time(NULL) - PRIVATE_DATA->light_start_time > 10) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Light change timeout");
+			wcv4ec_end_light_change(device, INDIGO_ALERT_STATE, "Light change timeout");
+		}
+	}
 	// timeout if open or close get stuck somewhere
 	if (time(NULL) - PRIVATE_DATA->operation_start_time > 60 && PRIVATE_DATA->operation_start_time > 0) {
 		AUX_COVER_CLOSE_ITEM->sw.value = false;
@@ -365,7 +405,7 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_light_switch_handler(indigo_device *device) {
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_SWITCH.on_change
-	if (!wcv4ec_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? (int)(AUX_LIGHT_INTENSITY_ITEM->number.value) : 9999)) {
+	if (!wcv4ec_set_light(device, AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? (int)(AUX_LIGHT_INTENSITY_ITEM->number.value) : 0)) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_LIGHT_SWITCH.on_change
@@ -376,7 +416,7 @@ static void aux_light_intensity_handler(indigo_device *device) {
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_INTENSITY.on_change
 	if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
-		if (!wcv4ec_command(device, (int)(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
+		if (!wcv4ec_set_light(device, AUX_LIGHT_INTENSITY_PROPERTY, (int)(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM, true);

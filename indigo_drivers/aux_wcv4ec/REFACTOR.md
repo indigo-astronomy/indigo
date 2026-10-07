@@ -56,4 +56,34 @@ was only starting to move or before it moved at all. Reproduced in the simulator
 cd indigo_test && INDIGO_TEST_CASE_FILTER=cover_move_ends_at_the_requested_side ./build/integration/test_aux_wcv4ec_simulator
 ```
 
-Final test summary: 21 simulated tests run, 21 passed; 0 hardware tests run, 0 passed.
+## Light change ended before the box applied it (3.0.0.13, 2026-10-08)
+
+Reported from hardware together with the cover defect above: AUX_LIGHT_SWITCH and AUX_LIGHT_INTENSITY turned OK
+before the panel actually changed. Reproduced in the simulator before the fix.
+
+- **Defect (reproduced):** both handlers ended with OK as soon as the brightness command (1-255 / 9999) was written.
+  The box applies it some time later, and nothing checked that it ever did, although firmware 20240618 and later
+  reports the flat panel brightness as the 6th field of every status frame (protocol PDF 20240702).
+- **Fix:** with a firmware that reports the brightness, `wcv4ec_set_light()` leaves the requesting property BUSY
+  and records the expected brightness (0 for off). The status timer ends the change with OK once a frame shows that
+  brightness, or with ALERT "Light change timeout" after 10 s. A later light request supersedes an earlier one, so
+  the change ends on whichever of the two light properties is BUSY. Firmware before 20240618 (protocol PDF
+  20231225, five fields) reports no brightness, so a request there still ends as soon as the command is written.
+  An intensity of 0 with the light on now sends 9999 (off) instead of the out-of-range command 0.
+- **Simulator:** new `--light-delay <ms>` applies a brightness command that long after it arrives, and the frame
+  leaves out the brightness field for firmware older than 20240618, as the 20231225 protocol describes.
+- **Regression tests:** `light_change_ends_when_the_box_reports_it` (2.5 s delay; on, dim, off must each end with OK
+  no sooner than 2 s), `unconfirmed_light_change_times_out` (brightness never applied; ALERT after at least 10 s),
+  `light_change_without_brightness_report_is_not_held` (firmware 20231225; OK within 2 s). 3.0.0.12: the first two
+  failed with OK after 0.0 s, the third passed. 3.0.0.13: on 3.0 s, dim 4.0 s, off 3.0 s, timeout ALERT after
+  11.0 s, old firmware OK after 0.0 s.
+- **Verification (macOS arm64):** full suite 24/24 OK. Regeneration with the unchanged generator changes only the
+  edited blocks and the version. No hardware run yet; whether the real box reports exactly the commanded PWM level
+  (and 0 when off) is assumed from the protocol PDF.
+- **Observed, not changed:** the heater level is not in the status frame, so X_HEATER still ends after a fixed 1 s.
+
+```sh
+cd indigo_test && INDIGO_TEST_CASE_FILTER=light_change_ends_when_the_box_reports_it ./build/integration/test_aux_wcv4ec_simulator
+```
+
+Final test summary: 24 simulated tests run, 24 passed; 0 hardware tests run, 0 passed.
