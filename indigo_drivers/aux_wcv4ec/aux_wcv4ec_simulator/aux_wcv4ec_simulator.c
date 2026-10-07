@@ -45,6 +45,7 @@ typedef struct {
 	int detect_reply_delay;
 	bool lose_detect_reply;
 	int stall_frame_at;
+	int move_start_delay;
 } simulator_options;
 
 static simulator_options options = {
@@ -55,7 +56,8 @@ static simulator_options options = {
 	.firmware = "20240618",
 	.detect_reply_delay = 0,
 	.lose_detect_reply = false,
-	.stall_frame_at = 0
+	.stall_frame_at = 0,
+	.move_start_delay = 0
 };
 
 static const char *simulator_name = "aux_wcv4ec";
@@ -71,6 +73,7 @@ static void usage(const char *name) {
 	printf("  --detect-reply-delay <ms> Delay the OpenSet/CloseSet reply to 100001/100000\n");
 	printf("  --lose-detect-reply     Teach the angle on 100001/100000 but lose the OpenSet/CloseSet reply on the wire\n");
 	printf("  --stall-frame-at <ms>   Stall the first status frame sent <ms> after start mid-line, one byte every 2 s\n");
+	printf("  --move-start-delay <ms> Keep the cover at its old angle for <ms> after 1000/1001 before the servo moves\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -120,6 +123,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.stall_frame_at = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--move-start-delay")) {
+			if (++i == argc) {
+				fprintf(stderr, "--move-start-delay requires milliseconds\n");
+				return false;
+			}
+			options.move_start_delay = atoi(argv[i]);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -143,6 +152,8 @@ static int brightness = 0;
 static bool do_open = false;
 static bool do_close = false;
 static bool pending_done = false;
+// monotonic time in ms before which a requested move does not start, the frames keep reporting the old angle
+static long move_hold_until = 0;
 
 // one status frame stalls after its first STALL_HEAD bytes and trickles the next STALL_BYTES bytes one every
 // STALL_GAP_US, a gap shorter than the 5 s serial read timeout, so each byte keeps a read without its own
@@ -213,8 +224,19 @@ static void send_status(int fd) {
 	pthread_mutex_unlock(&state_mutex);
 }
 
+static long monotonic_ms(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec * 1000 + now.tv_nsec / 1000000;
+}
+
 static void update_cover_position(void) {
 	pthread_mutex_lock(&state_mutex);
+	if (monotonic_ms() < move_hold_until) {
+		// the servo has not started yet
+		pthread_mutex_unlock(&state_mutex);
+		return;
+	}
 	if (do_open) {
 		if (open_position - current_position > 15) {
 			current_position += 15;
@@ -311,10 +333,12 @@ static void dispatch_command(int fd, const char *buffer) {
 		case 1000:
 			do_open = false;
 			do_close = true;
+			move_hold_until = monotonic_ms() + options.move_start_delay;
 			break;
 		case 1001:
 			do_open = true;
 			do_close = false;
+			move_hold_until = monotonic_ms() + options.move_start_delay;
 			break;
 		case 2000:
 			heater = 0;

@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -96,6 +96,7 @@ typedef struct {
 	//+ data
 	time_t operation_start_time;
 	bool operation_running;
+	indigo_item *operation_target;
 	char model_id[1550];
 	char firmware[20];
 	double close_position;
@@ -238,7 +239,11 @@ static void aux_timer_callback(indigo_device *device) {
 		// a cover request copied after AUX_DETECT_OPEN_CLOSE is BUSY before its handler starts the move and sets
 		// operation_start_time; its value and state belong to that handler, so only the detection is finished here
 		bool cover_pending = AUX_COVER_PROPERTY->state == INDIGO_BUSY_STATE && PRIVATE_DATA->operation_start_time == 0;
-		if (fabs(PRIVATE_DATA->close_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_running) {
+		// a move ends only at the side it was asked for: until the servo starts, the box keeps reporting the side
+		// it is leaving; a detection (no target) ends at whichever side the cover is on
+		bool at_close = fabs(PRIVATE_DATA->close_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_target != AUX_COVER_OPEN_ITEM;
+		bool at_open = fabs(PRIVATE_DATA->open_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_target != AUX_COVER_CLOSE_ITEM;
+		if (at_close && PRIVATE_DATA->operation_running) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Close");
 			if (!cover_pending) {
 				AUX_COVER_CLOSE_ITEM->sw.value = true;
@@ -248,7 +253,7 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 			PRIVATE_DATA->operation_running = false;
 			PRIVATE_DATA->operation_start_time = 0;
-		} else if (fabs(PRIVATE_DATA->open_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_running) {
+		} else if (at_open && PRIVATE_DATA->operation_running) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Open");
 			if (!cover_pending) {
 				AUX_COVER_CLOSE_ITEM->sw.value = false;
@@ -399,6 +404,7 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 		}
 		if (success) {
 			PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
+			PRIVATE_DATA->operation_target = NULL;
 			char status_line[128] = { 0 };
 			// the box sends a status frame every second, so a reply lost on the wire is given up after ten lines or 5 s of silence
 			bool confirmed = false;
@@ -476,10 +482,12 @@ static void aux_cover_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_ALERT_STATE, "Operation in progress");
 		return;
 	}
-	if (wcv4ec_command(device, indigo_get_switch_target(AUX_COVER_PROPERTY, AUX_COVER_OPEN_ITEM_NAME) ? 1001 : 1000)) {
+	bool open = indigo_get_switch_target(AUX_COVER_PROPERTY, AUX_COVER_OPEN_ITEM_NAME);
+	if (wcv4ec_command(device, open ? 1001 : 1000)) {
 		indigo_apply_switch_targets(AUX_COVER_PROPERTY);
 		PRIVATE_DATA->operation_start_time = time(NULL);
 		PRIVATE_DATA->operation_running = true;
+		PRIVATE_DATA->operation_target = open ? AUX_COVER_OPEN_ITEM : AUX_COVER_CLOSE_ITEM;
 		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_sleep(1);
 	} else {

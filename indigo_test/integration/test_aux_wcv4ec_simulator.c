@@ -492,6 +492,42 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A box that keeps reporting the old angle for a while after it accepted 1001 / 1000 (the servo has not started yet)
+// must not end the move: the frames still show the cover at the side it is leaving, and that side is not the one
+// asked for. The first result after each request has to be OK with the requested side, published once the servo
+// has reached it. The simulator holds the servo for 3 s, longer than the handler's 1 s pause plus one frame.
+static void cover_move_ends_at_the_requested_side(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--move-start-delay", "3000", NULL };
+	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	SERIAL_CHECK_TRUE(set_positions(80, 20));
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, 80, .01));
+	simulator_test_client.update_property = cover_watch_update;
+	static const char *sides[] = { AUX_COVER_OPEN_ITEM_NAME, AUX_COVER_CLOSE_ITEM_NAME };
+	for (int side = 0; side < 2; side++) {
+		atomic_store(&cover_results, 0);
+		atomic_store(&cover_watch_on, true);
+		SERIAL_CHECK_TRUE(set_switch(AUX_COVER_PROPERTY_NAME, sides[side], true));
+		for (int i = 0; i < 3000 && atomic_load(&cover_results) == 0; i++) {
+			indigo_usleep(10000);
+		}
+		atomic_store(&cover_watch_on, false);
+		printf("First cover result after the %s request: state %d, open %d, close %d\n", sides[side], atomic_load(&cover_first_state), atomic_load(&cover_first_open), atomic_load(&cover_first_close));
+		SERIAL_CHECK_TRUE(atomic_load(&cover_results) > 0);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&cover_first_state));
+		SERIAL_CHECK_TRUE(atomic_load(&cover_first_open) == (side == 0) && atomic_load(&cover_first_close) == (side == 1));
+	}
+cleanup:
+	atomic_store(&cover_watch_on, false);
+	simulator_test_client.update_property = simulator_client_update_property;
+	if (online) { stop_serial_driver(&wcv4ec_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // TGT-D04: an autodetection refused because the cover is moving has to be reported on the detection property itself,
 // with the momentary trigger released, and must leave the configured angles alone.
 static void detection_refused_while_the_cover_moves(void) {
@@ -756,6 +792,7 @@ int main(void) {
 		{ "reconfiguring_the_travel_is_refused_while_the_cover_moves", reconfiguring_the_travel_is_refused_while_the_cover_moves },
 		{ "autodetect_adopts_the_current_position", autodetect_adopts_the_current_position },
 		{ "cover_request_survives_detection_end", cover_request_survives_detection_end },
+		{ "cover_move_ends_at_the_requested_side", cover_move_ends_at_the_requested_side },
 		{ "detection_refused_while_the_cover_moves", detection_refused_while_the_cover_moves },
 		{ "lost_detection_reply_does_not_block_the_queue", lost_detection_reply_does_not_block_the_queue },
 		{ "fast_detection_reply_is_not_discarded", fast_detection_reply_is_not_discarded },

@@ -31,4 +31,29 @@ cd indigo_test && INDIGO_TEST_CASE_FILTER=fast_detection_reply_is_not_discarded 
 cd indigo_test && INDIGO_TEST_CASE_FILTER=stalled_status_frame_does_not_hold_the_queue ./build/integration/test_aux_wcv4ec_simulator
 ```
 
-Final test summary: 20 simulated tests run, 20 passed; 0 hardware tests run, 0 passed.
+## Cover move ended at the side it was leaving (3.0.0.12, 2026-10-08)
+
+Reported from hardware: after OPEN the cover property sometimes turned OK shortly after the request, while the cover
+was only starting to move or before it moved at all. Reproduced in the simulator before the fix.
+
+- **Defect (reproduced):** the status timer ended a cover move as soon as a frame put the live position within 6° of
+  *either* configured angle. The box keeps reporting the angle it is leaving until the servo has started, so the first
+  frame after the handler's 1 s pause could still show the cover at the old side; the move was then ended with OK and
+  that old side selected (OPEN requested, CLOSE reported) while the cover went on to open. A frame taken in the first
+  few degrees of travel had the same effect.
+- **Fix:** the cover handler records the requested side in `operation_target`, and the timer ends a move only at that
+  side. An autodetection sets no target and still ends at whichever side the cover is on. A move that never reaches
+  its side is still ended with ALERT by the 60 s timeout.
+- **Simulator:** new `--move-start-delay <ms>` keeps the servo at its old angle for that long after 1000 / 1001, so the
+  frames report the side the cover is leaving.
+- **Regression test:** `cover_move_ends_at_the_requested_side` (3 s start delay, open then close; the first non-BUSY
+  result after each request must be OK with the requested side). 3.0.0.11: first result after OPEN was OK with CLOSE
+  selected; 3.0.0.12: OK with the requested side for both directions.
+- **Verification (macOS arm64):** full suite `./build/integration/test_aux_wcv4ec_simulator` 21/21 OK. Regeneration
+  with the unchanged generator changes only the edited blocks and the version. No hardware run yet.
+
+```sh
+cd indigo_test && INDIGO_TEST_CASE_FILTER=cover_move_ends_at_the_requested_side ./build/integration/test_aux_wcv4ec_simulator
+```
+
+Final test summary: 21 simulated tests run, 21 passed; 0 hardware tests run, 0 passed.
