@@ -1854,3 +1854,9 @@ Not covered, with the reason:
 ## Driver-specific property names (version 17, 2026-10-04)
 
 The driver-specific properties now carry the `X_` prefix, approved by the owner as a client-visible change with no backward-compatible alias: `POLARSCOPE` → `X_POLARSCOPE`, `MOUNT_USE_ENCODERS` → `X_MOUNT_USE_ENCODERS`, `MOUNT_AUTOHOME` → `X_MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS` → `X_MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE` → `X_MOUNT_OPERATING_MODE`. Item names are unchanged. The other custom-declared properties (`CCD_EXPOSURE`, `CCD_ABORT_EXPOSURE` on the aux device) are standard INDIGO names. Earlier sections of this file use the new names. The integration and hardware tests assert that the old names are not defined.
+
+## AstroEQ ESP32-S3 rerun (2026-10-07, 3.0.0.18)
+
+Hardware run on Linux arm64 against `AstroEQ_8.25_esp32_s3.bin` on the bench ESP32-S3, native USB `/dev/ttyACM1`, freshly flashed with erased NVS. Hardware testing IS performed for this record. Recorded: 19/19.
+
+Not resolved: the first run after the flash failed 4 of 19. `synscan_parks_and_unparks` ended its park ALERT, after which the next three cases found every property request unanswered and `MOUNT_EQUATORIAL_COORDINATES` in ALERT (failed reads) until `synscan_reconnects` opened a new session, which then passed like every later case. That run had no debug log, and neither the park case alone nor a full run with `SYNSCAN_HW_DEBUG=1` reproduced it, so it is not known whether the controller's USB link stalled or the driver. No change.
