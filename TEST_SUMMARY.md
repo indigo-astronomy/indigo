@@ -74,7 +74,7 @@
 | aux_upb | 2026-09-25 12:33 | 3.0.0.30 | mac arm64 | Pegasus UPB v1 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 15:53 | 3.0.0.34 | linux x64 | simulator | 48 / 48 | ✅ OK |
 |  | 2026-09-27 20:59 | 3.0.0.35 | mac arm64 | simulator | 50 / 50 | ✅ OK |
-|  | 2026-09-30 19:19 | 3.0.0.35 | linux arm64 | PeagasusAstro UPB | 15 / 15 | ✅ OK |
+|  | 2026-10-07 03:12 | 3.0.0.35 | linux arm64 | PeagasusAstro UPB | 15 / 15 | ✅ OK |
 | aux_upb3 | 2026-09-27 14:57 | 3.0.0.9 | linux x64 | simulator | 31 / 31 | ✅ OK |
 |  | 2026-10-01 10:31 | 3.0.0.10 | mac arm64 | simulator | 33 / 33 | ✅ OK |
 | aux_usbdp | 2026-09-27 14:54 | 3.0.0.14 | linux x64 | simulator | 20 / 20 | ✅ OK |
