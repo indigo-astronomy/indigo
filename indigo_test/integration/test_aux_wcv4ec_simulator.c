@@ -713,12 +713,12 @@ static bool wait_for_result_after(const char *property_name, unsigned int revisi
 	return false;
 }
 
-// A light request on a firmware that reports the brightness ends when a frame shows the requested brightness, not
-// as soon as the command is written: the box applies it 2.5 s late here, so each result has to wait at least 2 s.
-static void light_change_ends_when_the_box_reports_it(void) {
+// The box applies a brightness some time after the command (0.5 s here), so a light request ends with OK a second
+// after it was written, not at once.
+static void light_change_ends_a_second_later(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
-	const char *arguments[] = { "--light-delay", "2500", NULL };
+	const char *arguments[] = { "--light-delay", "500", NULL };
 	indigo_property_state state = INDIGO_IDLE_STATE;
 	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, arguments));
 	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
@@ -730,54 +730,32 @@ static void light_change_ends_when_the_box_reports_it(void) {
 	SERIAL_CHECK_TRUE(wait_for_result_after(AUX_LIGHT_SWITCH_PROPERTY_NAME, revision, 15, &state));
 	printf("Light on: state %d after %.1f s\n", state, indigo_monotonic_time() - sent);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
-	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent >= 2);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent >= 0.9);
 	revision = property_revision(AUX_LIGHT_INTENSITY_PROPERTY_NAME);
 	sent = indigo_monotonic_time();
 	SERIAL_CHECK_TRUE(set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 40));
 	SERIAL_CHECK_TRUE(wait_for_result_after(AUX_LIGHT_INTENSITY_PROPERTY_NAME, revision, 15, &state));
 	printf("Light dimmed: state %d after %.1f s\n", state, indigo_monotonic_time() - sent);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
-	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent >= 2);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent >= 0.9);
 	revision = property_revision(AUX_LIGHT_SWITCH_PROPERTY_NAME);
 	sent = indigo_monotonic_time();
 	SERIAL_CHECK_TRUE(set_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_result_after(AUX_LIGHT_SWITCH_PROPERTY_NAME, revision, 15, &state));
 	printf("Light off: state %d after %.1f s\n", state, indigo_monotonic_time() - sent);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
-	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent >= 2);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent >= 0.9);
 cleanup:
 	if (online) { stop_serial_driver(&wcv4ec_aux); }
 	stop_external_serial_simulator(&simulator);
 }
 
-// A brightness the box never shows ends the request with ALERT after the 10 s light timeout.
-static void unconfirmed_light_change_times_out(void) {
+// Firmware older than 20240618 sends a status frame without the brightness field; the driver connects to it and
+// serves a light request the same way.
+static void light_change_without_brightness_report(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
-	const char *arguments[] = { "--light-delay", "30000", NULL };
-	indigo_property_state state = INDIGO_IDLE_STATE;
-	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, arguments));
-	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
-	online = true;
-	SERIAL_CHECK_TRUE(wait_for_first_poll());
-	unsigned int revision = property_revision(AUX_LIGHT_SWITCH_PROPERTY_NAME);
-	double sent = indigo_monotonic_time();
-	SERIAL_CHECK_TRUE(set_switch(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_result_after(AUX_LIGHT_SWITCH_PROPERTY_NAME, revision, 20, &state));
-	printf("Unconfirmed light on: state %d after %.1f s\n", state, indigo_monotonic_time() - sent);
-	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, state);
-	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent >= 10);
-cleanup:
-	if (online) { stop_serial_driver(&wcv4ec_aux); }
-	stop_external_serial_simulator(&simulator);
-}
-
-// Firmware older than 20240618 does not report the brightness, so there is nothing to wait for and a light request
-// ends as soon as the command is written, even though this box applies it 2.5 s late.
-static void light_change_without_brightness_report_is_not_held(void) {
-	external_serial_simulator simulator = { 0 };
-	bool online = false;
-	const char *arguments[] = { "--firmware", "20231225", "--light-delay", "2500", NULL };
+	const char *arguments[] = { "--firmware", "20231225", NULL };
 	indigo_property_state state = INDIGO_IDLE_STATE;
 	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, arguments));
 	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
@@ -789,7 +767,7 @@ static void light_change_without_brightness_report_is_not_held(void) {
 	SERIAL_CHECK_TRUE(wait_for_result_after(AUX_LIGHT_SWITCH_PROPERTY_NAME, revision, 15, &state));
 	printf("Light on without brightness report: state %d after %.1f s\n", state, indigo_monotonic_time() - sent);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
-	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent < 2);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - sent < 3);
 cleanup:
 	if (online) { stop_serial_driver(&wcv4ec_aux); }
 	stop_external_serial_simulator(&simulator);
@@ -937,9 +915,8 @@ int main(void) {
 		{ "fast_detection_reply_is_not_discarded", fast_detection_reply_is_not_discarded },
 		{ "stalled_status_frame_does_not_hold_the_queue", stalled_status_frame_does_not_hold_the_queue },
 		{ "light_switches_and_dims", light_switches_and_dims },
-		{ "light_change_ends_when_the_box_reports_it", light_change_ends_when_the_box_reports_it },
-		{ "unconfirmed_light_change_times_out", unconfirmed_light_change_times_out },
-		{ "light_change_without_brightness_report_is_not_held", light_change_without_brightness_report_is_not_held },
+		{ "light_change_ends_a_second_later", light_change_ends_a_second_later },
+		{ "light_change_without_brightness_report", light_change_without_brightness_report },
 		{ "heater_levels_are_exclusive", heater_levels_are_exclusive },
 		{ "reconnect_resumes_polling", reconnect_resumes_polling },
 		{ "connect_shows_the_cover_side", connect_shows_the_cover_side },

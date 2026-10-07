@@ -111,4 +111,20 @@ Reported from hardware: right after connect both AUX_COVER items were off. Repro
 cd indigo_test && INDIGO_TEST_CASE_FILTER=connect_shows_the_cover_side ./build/integration/test_aux_wcv4ec_simulator
 ```
 
-Final test summary: 25 simulated tests run, 25 passed; 0 hardware tests run, 0 passed.
+## Light change confirmation replaced by a fixed pause (3.0.0.15, 2026-10-08)
+
+The brightness confirmation of 3.0.0.13 did not work with the real box (hardware observation by the maintainer): the
+light requests did not end as the simulator predicted, so the assumption that the 6th status field reports exactly
+the commanded PWM level (0 when off) does not hold, or not on every firmware. The cause was not analysed further.
+
+- **Change:** the confirmation (`brightness_reported`, `light_target`, `light_start_time`, the timer check and the 10 s
+  timeout) is removed. `wcv4ec_set_light()` writes the command, waits 1 s for the box to apply it and the handler
+  ends with OK, as X_HEATER does. An intensity of 0 with the light on still sends 9999 (off).
+- **Simulator:** `--light-delay` and the five-field frame for firmware older than 20240618 are kept.
+- **Tests:** `light_change_ends_when_the_box_reports_it` and `unconfirmed_light_change_times_out` are replaced by
+  `light_change_ends_a_second_later` (0.5 s light delay; on, dim, off each end with OK no sooner than 0.9 s; observed
+  1.0 / 2.0 / 2.0 s, a status read can run in between). `light_change_without_brightness_report_is_not_held` became
+  `light_change_without_brightness_report` (firmware 20231225, OK within 3 s; observed 1.0 s).
+- **Verification (macOS arm64):** full suite 24/24 OK. No hardware run of 3.0.0.15 yet.
+
+Final test summary: 24 simulated tests run, 24 passed; 0 hardware tests run, 0 passed.
