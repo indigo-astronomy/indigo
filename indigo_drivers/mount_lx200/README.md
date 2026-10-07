@@ -69,3 +69,4 @@ Driver is developed and tested with:
 2026-10-07 00:52 3.0.0.79 linux arm64 On-Step 35/35 OK
 2026-10-07 01:51 3.0.0.80 linux arm64 TeenAstro 35/35 OK
 2026-10-07 02:01 3.0.0.80 linux arm64 simulator 150/150 OK
+2026-10-07 02:19 3.0.0.80 linux arm64 aGotino 35/35 OK
