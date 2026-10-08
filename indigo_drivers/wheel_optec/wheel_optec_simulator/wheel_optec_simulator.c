@@ -133,6 +133,10 @@ static bool dispatch_command(int fd, const char command[6]) {
 		current_filter = 1;
 		return write_response(fd, "A\r\n");
 	}
+	if (!memcmp(command, "WIDENT", 6)) {
+		// The wheel ID: A to E for a 5-position wheel, F to H for an 8-position one.
+		return write_response(fd, options.slots <= 5 ? "A\r\n" : "F\r\n");
+	}
 	if (!memcmp(command, "WFILTR", 6)) {
 		char response[4];
 		snprintf(response, sizeof(response), "%d\r\n", current_filter);
@@ -141,10 +145,10 @@ static bool dispatch_command(int fd, const char command[6]) {
 	if (!memcmp(command, "WGOTO", 5)) {
 		int requested_filter = command[5] - '0';
 		if (requested_filter < 1 || requested_filter > options.slots) {
-			return write_response(fd, "ERR=5\r\n");
+			return write_response(fd, "ER=5\r\n");
 		}
 		if (options.goto_error) {
-			return write_response(fd, "ERR=4\r\n");
+			return write_response(fd, "ER=4\r\n");
 		}
 		current_filter = requested_filter;
 		return write_response(fd, "*\r\n");

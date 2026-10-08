@@ -377,7 +377,8 @@
 | wheel_indigo | 2026-09-27 22:40 | 3.0.0.8 | mac arm64 | simulator | 5 / 5 | ✅ OK |
 | wheel_manual | 2026-09-27 22:41 | 3.0.0.7 | mac arm64 | simulator | 2 / 2 | ✅ OK |
 | wheel_mi | 2026-09-27 22:41 | 3.0.0.9 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
-| wheel_optec | 2026-09-27 22:41 | 3.0.0.8 | mac arm64 | simulator | 8 / 8 | ✅ OK |
+| wheel_optec | 2026-10-08 22:01 | 3.0.0.9 | mac arm64 | simulator | 8 / 8 | ✅ OK |
+|  | 2026-10-08 22:02 | 3.0.0.9 | linux arm64 | Optec IFW Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 | wheel_playerone | 2026-09-27 22:42 | 3.0.0.15 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
 | wheel_qhy | 2026-09-27 13:05 | 3.0.0.12 | linux x64 | simulator | 4 / 4 | ✅ OK |
 |  | 2026-10-08 21:24 | 3.0.0.13 | mac arm64 | simulator | 6 / 6 | ✅ OK |

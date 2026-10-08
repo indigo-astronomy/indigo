@@ -48,20 +48,23 @@ void loop() {
     current_filter = '1';
     delay(7000);
     Serial.println("A");
+  } else if (is_ready && !strcmp(command, "WIDENT")) {
+    // The wheel ID: A to E for a 5-position wheel, F to H for an 8-position one.
+    Serial.println(last_filter == '5' ? "A" : "F");
   } else if (is_ready && !strcmp(command, "WFILTR")) {
     Serial.println(current_filter);
   } else if (is_ready && !strncmp(command, "WGOTO", 5)) {
     char new_filter = command[5];
     if (new_filter >= '1' && new_filter <= last_filter) {
       if (goto_err) {
-        Serial.println("ERR=4");
+        Serial.println("ER=4");
       } else {
         current_filter = new_filter;
         delay(3000);
         Serial.println("*");
       }
     } else {
-      Serial.println("ERR=5");
+      Serial.println("ER=5");
     }
   }
 }

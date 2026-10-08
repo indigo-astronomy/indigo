@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_wheel_optec"
 #define DRIVER_LABEL         "Optec Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Optec Filter Wheel"
@@ -54,9 +54,15 @@ typedef struct {
 static bool optec_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		char reply[8];
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "WSMODE") && indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply) - 1, "\n", "\r\n", INDIGO_DELAY(5)) == 1 && reply[0] == '!') {
-			return true;
+		// A reply left over from an earlier session is discarded, and WSMODE is repeated if it is
+		// not answered with '!', as the manual advises.
+		indigo_uni_discard(PRIVATE_DATA->handle);
+		for (int attempt = 0; attempt < 2; attempt++) {
+			char reply[8];
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "WSMODE") && indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply) - 1, "\n", "\r\n", INDIGO_DELAY(5)) == 1 && reply[0] == '!') {
+				return true;
+			}
+			indigo_uni_discard(PRIVATE_DATA->handle);
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
@@ -78,9 +84,27 @@ static bool optec_query(indigo_device *device, int *slot) {
 	return false;
 }
 
+// WIDENT answers the wheel ID: A to E for a 5-position wheel, F to H for an 8-position one.
+static int optec_slots(indigo_device *device) {
+	char reply[8];
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "WIDENT") && indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply) - 1, "\n", "\r\n", INDIGO_DELAY(5)) == 1) {
+		if (reply[0] >= 'A' && reply[0] <= 'E') {
+			return 5;
+		}
+		if (reply[0] >= 'F' && reply[0] <= 'H') {
+			return 8;
+		}
+	}
+	return 0;
+}
+
 static void optec_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_printf(PRIVATE_DATA->handle, "WEXITS");
+		// WEXITS is answered with END.
+		char reply[8];
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "WEXITS")) {
+			indigo_uni_read_section(PRIVATE_DATA->handle, reply, sizeof(reply) - 1, "\n", "\r\n", INDIGO_DELAY(1));
+		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 }
@@ -95,6 +119,12 @@ static void wheel_connection_handler(indigo_device *device) {
 		connection_result = optec_open(device);
 		if (connection_result) {
 			//+ wheel.on_connect
+			int slots = optec_slots(device);
+			if (slots == 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wheel not identified, assuming 8 positions");
+				slots = 8;
+			}
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = slots;
 			if (optec_query(device, &PRIVATE_DATA->slot)) {
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->slot;
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -133,8 +163,14 @@ static void wheel_slot_handler(indigo_device *device) {
 	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ wheel.WHEEL_SLOT.on_change
 	int slot = (int)WHEEL_SLOT_ITEM->number.target;
-	if (!optec_goto(device, slot)) {
+	if (optec_goto(device, slot)) {
+		PRIVATE_DATA->slot = slot;
+	} else {
+		// The wheel did not reach the slot; publish where it is.
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (optec_query(device, &PRIVATE_DATA->slot)) {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
+		}
 	}
 	//- wheel.WHEEL_SLOT.on_change
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);

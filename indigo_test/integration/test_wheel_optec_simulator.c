@@ -82,7 +82,9 @@ static void assert_wheel_class_property_completeness(void) {
 static void metadata_and_property_completeness(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
-	SERIAL_CHECK_TRUE(start_optec(&simulator, NULL));
+	// An 8-position wheel (ID F), so all eight slot names and offsets are published.
+	const char *arguments[] = { "--slots", "8", NULL };
+	SERIAL_CHECK_TRUE(start_optec(&simulator, arguments));
 	SERIAL_CHECK_TRUE(start_serial_driver(&optec_wheel, simulator.port));
 	online = true;
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
@@ -135,19 +137,28 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// The driver always advertises eight slots, so on a five slot wheel the device is what rejects the
-// request. The driver has to surface that as ALERT and stay usable afterwards.
-static void slot_beyond_the_device_capacity_is_refused(void) {
+// WIDENT tells a 5-position wheel (ID A to E) from an 8-position one (F to H), and the driver offers
+// exactly the slots the wheel has. 3.0.0.8 always offered eight, so slots 6 to 8 of a 5-position
+// wheel were refused by the wheel with ER=5.
+static void slot_count_follows_the_wheel_id(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
-	const char *arguments[] = { "--slots", "5", NULL };
-	SERIAL_CHECK_TRUE(start_optec(&simulator, arguments));
+	const char *five[] = { "--slots", "5", NULL };
+	const char *eight[] = { "--slots", "8", NULL };
+	SERIAL_CHECK_TRUE(start_optec(&simulator, five));
 	SERIAL_CHECK_TRUE(start_serial_driver(&optec_wheel, simulator.port));
 	online = true;
+	SERIAL_CHECK_TRUE(find_cached_item(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME)->number.max == 5);
+	SERIAL_CHECK_EQ_INT(5, find_cached_property(WHEEL_SLOT_NAME_PROPERTY_NAME)->count);
 	SERIAL_CHECK_TRUE(select_slot(5));
-	SERIAL_CHECK_TRUE(request_slot(7));
-	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(select_slot(2));
+	disconnect_serial_device(&optec_wheel);
+	stop_external_serial_simulator(&simulator);
+	SERIAL_CHECK_TRUE(start_optec(&simulator, eight));
+	SERIAL_CHECK_TRUE(connect_serial_device(&optec_wheel, simulator.port));
+	SERIAL_CHECK_TRUE(find_cached_item(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME)->number.max == 8);
+	SERIAL_CHECK_EQ_INT(8, find_cached_property(WHEEL_SLOT_NAME_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(select_slot(8));
 cleanup:
 	if (online) { stop_serial_driver(&optec_wheel); }
 	stop_external_serial_simulator(&simulator);
@@ -163,6 +174,9 @@ static void goto_failure_is_reported(void) {
 	online = true;
 	SERIAL_CHECK_TRUE(request_slot(3));
 	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// The wheel stayed on slot 1, and that is the slot published, not the refused one (3.0.0.8
+	// published 3).
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0.001));
 	SERIAL_CHECK_TRUE(request_slot(4));
 	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
 cleanup:
@@ -173,7 +187,8 @@ cleanup:
 // -------------------------------------------------------------------------------- lifecycle
 
 // optec_close() sends WEXITS, which takes the wheel out of serial mode; reconnecting has to send
-// WSMODE again and pick the wheel's current position back up.
+// WSMODE again and pick the wheel's current position back up. The END that answers WEXITS must not
+// be taken for the answer to the next WSMODE (3.0.0.8 refused the reconnect when it read END).
 static void reconnect_re_enters_serial_mode(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -225,7 +240,7 @@ int main(void) {
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "moves_through_first_intermediate_and_last_slots", moves_through_first_intermediate_and_last_slots },
 		{ "reselecting_the_current_slot_completes", reselecting_the_current_slot_completes },
-		{ "slot_beyond_the_device_capacity_is_refused", slot_beyond_the_device_capacity_is_refused },
+		{ "slot_count_follows_the_wheel_id", slot_count_follows_the_wheel_id },
 		{ "goto_failure_is_reported", goto_failure_is_reported },
 		{ "reconnect_re_enters_serial_mode", reconnect_re_enters_serial_mode },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },

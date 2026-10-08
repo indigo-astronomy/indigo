@@ -30,4 +30,5 @@ https://www.optecinc.com/astronomy/catalog/ifw/images/17350_manual.pdf
 
 ## Testing
 
-2026-09-27 22:41 3.0.0.8 mac arm64 simulator 8/8 OK
+2026-10-08 22:01 3.0.0.9 mac arm64 simulator 8/8 OK
+2026-10-08 22:02 3.0.0.9 linux arm64 Optec IFW Arduino simulator (ESP32-S3) 11/11 OK
