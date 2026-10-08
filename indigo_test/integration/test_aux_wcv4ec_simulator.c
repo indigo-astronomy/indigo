@@ -556,6 +556,37 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Regression against 3.0-7, which waited for OpenSet / CloseSet without a limit: the detection can take the box longer
+// than ten status frames (here the reply comes after 15 s while the frames go on every second); it must end OK with the
+// angle taught, not ALERT "Autodetect open/close not confirmed".
+static void slow_detection_is_confirmed(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--detect-reply-delay", "15000", NULL };
+	SERIAL_CHECK_TRUE(start_wcv4ec(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&wcv4ec_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+	unsigned int revision = property_revision(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME);
+	double sent = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(set_switch(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true));
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	for (int i = 0; i < 400; i++) {
+		indigo_property *property = find_cached_property(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME);
+		if (property != NULL && property_revision(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME) > revision && property->state != INDIGO_BUSY_STATE) {
+			state = property->state;
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	printf("Slow detection ended with state %d after %.1f s\n", state, indigo_monotonic_time() - sent);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
+	SERIAL_CHECK_TRUE(wait_for_confirmed_number(AUX_SET_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, SIMULATED_CLOSE_POSITION, .01));
+cleanup:
+	if (online) { stop_serial_driver(&wcv4ec_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // TGT-D04: the box confirms an autodetection with OpenSet / CloseSet between its status frames. When that reply is
 // lost the detection has to end with ALERT after a bounded wait instead of holding the device queue, so a later
 // request is still served.
@@ -569,7 +600,8 @@ static void lost_detection_reply_does_not_block_the_queue(void) {
 	SERIAL_CHECK_TRUE(wait_for_first_poll());
 	unsigned int revision = property_revision(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(set_switch(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_state_after(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision, 30));
+	// the reply is given up after the 60 s detection limit
+	SERIAL_CHECK_TRUE(wait_for_state_after(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision, 75));
 	assert_switch_item_value(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, false);
 	// The queue is free again: a heater request is served and the status frames are read again, showing the angle the
 	// box taught itself although its confirmation never arrived.
@@ -911,6 +943,7 @@ int main(void) {
 		{ "cover_request_survives_detection_end", cover_request_survives_detection_end },
 		{ "cover_move_ends_at_the_requested_side", cover_move_ends_at_the_requested_side },
 		{ "detection_refused_while_the_cover_moves", detection_refused_while_the_cover_moves },
+		{ "slow_detection_is_confirmed", slow_detection_is_confirmed },
 		{ "lost_detection_reply_does_not_block_the_queue", lost_detection_reply_does_not_block_the_queue },
 		{ "fast_detection_reply_is_not_discarded", fast_detection_reply_is_not_discarded },
 		{ "stalled_status_frame_does_not_hold_the_queue", stalled_status_frame_does_not_hold_the_queue },

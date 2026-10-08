@@ -128,3 +128,29 @@ the commanded PWM level (0 when off) does not hold, or not on every firmware. Th
 - **Verification (macOS arm64):** full suite 24/24 OK. No hardware run of 3.0.0.15 yet.
 
 Final test summary: 24 simulated tests run, 24 passed; 0 hardware tests run, 0 passed.
+
+## Detection given up after ten status frames, a regression against 3.0-7 (3.0.0.16, 2026-10-08)
+
+Reported by the maintainer: detecting the open and the close position fails, while 3.0-7 (3.0.0.5) worked. Not
+verified on hardware yet (no device at hand); reproduced in the simulator with a slow detection.
+
+- **Origin:** 3.0.0.5 sent 100001 / 100000 and then read lines with `indigo_uni_read_line()` (5 s per line, no inter-byte
+  timeout) in a loop with no limit until one started with OpenSet / CloseSet, skipping status frames and silences.
+  3.0.0.10 bounded that loop to ten lines or one 5 s silence. The box sends a status frame every second, so a detection
+  that takes it longer than about ten seconds, or that pauses the frames for 5 s, ended ALERT "Autodetect open/close
+  not confirmed" although the box was still detecting.
+- **Fix:** the reply is awaited until a 60 s deadline (the cover operation timeout) instead of ten lines; status frames
+  and read timeouts within the deadline are skipped, a read error still ends the wait. A lost reply now holds the
+  device queue for up to 60 s (3.0.0.5: without a limit).
+- **Regression test:** `slow_detection_is_confirmed` (simulator `--detect-reply-delay 15000`: the reply comes after
+  15 s while the frames go on; the detection must end OK with the angle taught; 3.0.0.15: ALERT after 10.1 s,
+  3.0.0.16: OK after 15.1 s). `lost_detection_reply_does_not_block_the_queue` now waits up to 75 s for the ALERT.
+- **Verification (macOS arm64):** full suite 25/25 OK. Regeneration with the unchanged generator changes only the
+  edited block and the version. How long the real box takes to detect is not known; if it takes longer than 60 s the
+  limit has to grow.
+
+```sh
+cd indigo_test && INDIGO_TEST_CASE_FILTER=slow_detection_is_confirmed ./build/integration/test_aux_wcv4ec_simulator
+```
+
+Final test summary: 25 simulated tests run, 25 passed; 0 hardware tests run, 0 passed.
