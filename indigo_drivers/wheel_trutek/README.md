@@ -29,3 +29,4 @@ http://www.indilib.org/forum/focusers-filter-wheels/2005-trutech-filter-wheel-lo
 ## Testing
 
 2026-09-27 22:43 3.0.0.7 mac arm64 simulator 8/8 OK
+2026-10-08 20:52 3.0.0.7 linux arm64 Trutek Arduino simulator (ESP32-S3) 11/11 OK

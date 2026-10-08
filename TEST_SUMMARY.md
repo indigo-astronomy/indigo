@@ -388,5 +388,6 @@
 |  | 2026-09-30 18:12 | 3.0.0.7 | linux arm64 | SX Filter Wheel #0302 | 12 / 12 | ✅ OK |
 |  | 2026-10-02 21:01 | 3.0.0.7 | mac arm64 | SX Filter Wheel #01010103 | 12 / 12 | ✅ OK |
 | wheel_trutek | 2026-09-27 22:43 | 3.0.0.7 | mac arm64 | simulator | 8 / 8 | ✅ OK |
+|  | 2026-10-08 20:52 | 3.0.0.7 | linux arm64 | Trutek Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 | wheel_xagyl | 2026-09-27 22:44 | 3.0.0.9 | mac arm64 | simulator | 8 / 8 | ✅ OK |
 |  | 2026-10-08 20:35 | 3.0.0.9 | linux arm64 | Xagyl Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |

@@ -22,8 +22,12 @@
 #define Serial SerialUSB
 #endif
 
+// The wheel turns one slot every STEP_TIME ms; the real rotation time is not known.
+#define STEP_TIME 500
+
 int current_filter = 1;
 int target_filter = 1;
+unsigned long last_step = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -34,10 +38,21 @@ void setup() {
 
 void loop() {
   char buffer[4];
+  if (current_filter != target_filter && millis() - last_step >= STEP_TIME) {
+    if (current_filter < target_filter) {
+      current_filter++;
+    } else {
+      current_filter--;
+    }
+    last_step = millis();
+  }
   if (Serial.available() > 3) {
     Serial.readBytes(buffer, 4);
     switch (buffer[1]) {
       case 1:
+        if (current_filter == target_filter) {
+          last_step = millis();
+        }
         target_filter = buffer[2];
         buffer[0] = 0xA5;
         buffer[1] = 0x81;
@@ -61,7 +76,7 @@ void loop() {
         Serial.write(buffer, 4);
         break;
       case 3:
-        current_filter = target_filter = 1;
+        // The slot count; the wheel stays where it is.
         buffer[0] = 0xA5;
         buffer[1] = 0x83;
         buffer[2] = 0x35;
@@ -69,10 +84,5 @@ void loop() {
         Serial.write(buffer, 4);
         break;
     }
-		if (current_filter < target_filter) {
-			current_filter++;
-		} else if (current_filter > target_filter) {
-			current_filter--;
-		}
   }
 }
