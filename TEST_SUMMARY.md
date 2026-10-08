@@ -383,6 +383,7 @@
 | wheel_qhy | 2026-09-27 13:05 | 3.0.0.12 | linux x64 | simulator | 4 / 4 | ✅ OK |
 |  | 2026-09-27 22:42 | 3.0.0.12 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | wheel_quantum | 2026-09-27 22:42 | 3.0.0.6 | mac arm64 | simulator | 8 / 8 | ✅ OK |
+|  | 2026-10-08 21:03 | 3.0.0.6 | linux arm64 | Quantum Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 | wheel_sx | 2026-09-20 23:09 | 3.0.0.6 | mac arm64 | SX filter wheel | 12 / 12 | ✅ OK |
 |  | 2026-09-27 22:42 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 |  | 2026-09-30 18:12 | 3.0.0.7 | linux arm64 | SX Filter Wheel #0302 | 12 / 12 | ✅ OK |
