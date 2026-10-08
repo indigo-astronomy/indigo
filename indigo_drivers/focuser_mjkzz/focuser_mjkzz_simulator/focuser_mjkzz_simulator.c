@@ -154,6 +154,9 @@ static bool write_reply(mjkzz_message *reply, const char *action) {
 		reply->ucIDX++;
 	} else if (!strcmp(action, "badvalue")) {
 		set_message_value(reply, 40000);
+	} else if (!strcmp(action, "othervalue")) {
+		// The manual does not say what a set command returns in ucMSG.
+		set_message_value(reply, 7);
 	}
 	reply->ucSUM = checksum(reply);
 	if (!strcmp(action, "badsum")) {

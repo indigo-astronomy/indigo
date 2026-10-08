@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_mjkzz"
 #define DRIVER_LABEL         "MJKZZ Rail Focuser"
 #define FOCUSER_DEVICE_NAME  "MJKZZ Rail"
@@ -118,7 +118,9 @@ static bool mjkzz_command(indigo_device *device, uint8_t command, uint8_t index,
 	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_write(PRIVATE_DATA->handle, (const char *)&request, sizeof(request)) != sizeof(request) || !mjkzz_read(device)) {
 		return false;
 	}
-	if (RESPONSE.ucADD != (uint8_t)(request.ucADD | 0x80) || RESPONSE.ucCMD != (uint8_t)(request.ucCMD | 0x80) || RESPONSE.ucIDX != request.ucIDX || RESPONSE.ucSUM != mjkzz_checksum(&RESPONSE)) {
+	// The manual guarantees only the address and command with the high bit set and the checksum;
+	// what ucIDX and ucMSG hold in the reply to a set command is not documented.
+	if (RESPONSE.ucADD != (uint8_t)(request.ucADD | 0x80) || RESPONSE.ucCMD != (uint8_t)(request.ucCMD | 0x80) || RESPONSE.ucSUM != mjkzz_checksum(&RESPONSE)) {
 		return false;
 	}
 	if (result) {
@@ -128,8 +130,7 @@ static bool mjkzz_command(indigo_device *device, uint8_t command, uint8_t index,
 }
 
 static bool mjkzz_write_register(indigo_device *device, uint8_t index, int32_t value) {
-	int32_t actual = 0;
-	return mjkzz_command(device, CMD_SREG, index, value, &actual) && actual == value;
+	return mjkzz_command(device, CMD_SREG, index, value, NULL);
 }
 
 static bool mjkzz_position(indigo_device *device, int32_t *position) {
@@ -220,8 +221,7 @@ static void mjkzz_start_motion(indigo_device *device, int32_t target) {
 		mjkzz_motion_state(device, INDIGO_OK_STATE);
 		return;
 	}
-	int32_t accepted = 0;
-	if (!mjkzz_command(device, CMD_SPOS, 0, target, &accepted) || accepted != target) {
+	if (!mjkzz_command(device, CMD_SPOS, 0, target, NULL)) {
 		PRIVATE_DATA->active = false;
 		PRIVATE_DATA->uncertain = !mjkzz_stop(device);
 		mjkzz_motion_state(device, INDIGO_ALERT_STATE);
@@ -350,11 +350,10 @@ static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
 	int32_t requested = (int32_t)FOCUSER_SPEED_ITEM->number.target;
-	int32_t actual = 0;
-	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !mjkzz_command(device, CMD_SSPD, 0, requested, &actual) || actual != requested) {
+	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !mjkzz_command(device, CMD_SSPD, 0, requested, NULL)) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		FOCUSER_SPEED_ITEM->number.value = actual;
+		FOCUSER_SPEED_ITEM->number.value = requested;
 	}
 	//- focuser.FOCUSER_SPEED.on_change
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);

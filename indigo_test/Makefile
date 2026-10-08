@@ -2778,6 +2778,19 @@ FOCUSER_WEMACRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_wemacro.a $(TE
 $(TEST_BUILD)/hardware/test_focuser_wemacro_hw: hardware/test_focuser_wemacro_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_wemacro.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_WEMACRO_HW_TEST_LDFLAGS)
 
+# A physical MJKZZ controller, or the Arduino sketch focuser_mjkzz_simulator.ino on a board, is
+# opt-in and excluded from normal integration tests. THE RAIL MOVES: every move stays within
+# MJKZZ_HW_TRAVEL steps (default 200) of the starting position and the run restores it. The driver
+# writes the motor power and micro step registers at connect. Set MJKZZ_HW_PORT to the port.
+.PHONY: test-focuser-mjkzz-hw
+test-focuser-mjkzz-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_mjkzz_hw
+	$(TEST_BUILD)/hardware/test_focuser_mjkzz_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_MJKZZ_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_mjkzz.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_mjkzz_hw: hardware/test_focuser_mjkzz_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_mjkzz.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_MJKZZ_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

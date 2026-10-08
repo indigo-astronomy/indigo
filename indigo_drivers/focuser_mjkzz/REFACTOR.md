@@ -128,3 +128,29 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 - Multi-command move sequences: a move is the single `SPOS` command.
 
 Validation: `python3 tools/run_driver_test.py focuser_mjkzz` (recorded in README `## Testing`).
+
+## Arduino sketch on an ESP32-S3 (3.0.0.8, 2026-10-08)
+
+No physical MJKZZ controller is available, so the new hardware suite `indigo_test/hardware/test_focuser_mjkzz_hw.c`
+(`make test-focuser-mjkzz-hw`, port in `MJKZZ_HW_PORT`) ran against `focuser_mjkzz_simulator.ino` built for an
+ESP32-S3 DevKitC (`esp32:esp32:esp32s3`, `CDCOnBoot=default`, so `Serial` is UART0 on the board's CH343 bridge) and
+passed 11/11. Two sketch defects were fixed first, both against the bundled manual:
+
+- `CMD_STOP` returned the position but did not stop the rail; it now sets the target to the position.
+- The sketch stepped at 100 steps/s whatever the speed; it now steps every `10 * (speed + 1)` ms, so a larger speed
+  value is slower, as the manual documents. The actual rates of the controller are not known.
+
+### Reply checks that only the sketch confirms
+
+The pre-generator driver checked nothing in a reply. The manual guarantees the address and command with the high
+bit set and the checksum, which the driver now requires. The driver also requires that `ucIDX` is echoed, that
+`SREG` returns the written value and that `SPOS` returns the target; connect fails otherwise. The manual says
+nothing about these fields in a reply and only the sketch and the C simulator confirm them, so they remain
+unverified against a real controller. WeMacro (2026-10-08) failed to connect for exactly this reason: a check
+derived from the simulator did not hold on the device.
+
+3.0.0.9 drops these three checks and the equivalent check of the `SSPD` reply: a reply is accepted when its address
+and command carry the high bit and its checksum is right. The speed is taken from the request, the position from
+`GPOS` and `STOP` as before. Tests: `init_microstep_index` and `poll_index` (another `ucIDX`, previously refused),
+`init_hpwr_value`, `move_reply_value` and `speed_reply_value` (another value in a set command's reply, simulator
+action `othervalue`). Recorded: mac arm64 simulator 46/46 OK, linux arm64 sketch on the ESP32-S3 11/11 OK.

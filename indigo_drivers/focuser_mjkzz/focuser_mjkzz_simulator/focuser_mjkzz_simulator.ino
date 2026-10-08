@@ -109,8 +109,9 @@ void setup() {
 void loop() {
   mjkzz_message message;
   static long unsigned last_time = 0;
-  long unsigned current_time = millis() / 10;
-  if (last_time < current_time) {
+  long unsigned current_time = millis();
+  // One step per 10 ms at speed 0; a larger speed value is slower, as the controller documents.
+  if (current_time - last_time >= 10 * (long unsigned)((speed < 0 ? 0 : speed) + 1)) {
     if (target < position)
       position--;
     else if (target > position)
@@ -200,6 +201,8 @@ void loop() {
       case CMD_EXEC:
         break;
       case CMD_STOP:
+        // Stops all actions and returns the position the rail stopped at.
+        target = position;
         mjkzz_set_int(&message, position);
         break;
     }

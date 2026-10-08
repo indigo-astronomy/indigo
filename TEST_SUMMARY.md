@@ -226,7 +226,8 @@
 | focuser_lacerta | 2026-10-05 15:03 | 3.0.0.9 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_lakeside | 2026-10-05 15:14 | 3.0.0.10 | mac arm64 | simulator | 41 / 41 | ✅ OK |
 | focuser_lunatico | 2026-10-05 16:12 | 3.0.0.16 | mac arm64 | simulator | 56 / 56 | ✅ OK |
-| focuser_mjkzz | 2026-10-05 15:41 | 3.0.0.8 | mac arm64 | simulator | 43 / 43 | ✅ OK |
+| focuser_mjkzz | 2026-10-08 20:19 | 3.0.0.9 | linux arm64 | MJKZZ Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
+|  | 2026-10-08 20:20 | 3.0.0.9 | mac arm64 | simulator | 46 / 46 | ✅ OK |
 | focuser_moonlite | 2026-10-05 15:27 | 3.0.0.14 | mac arm64 | simulator | 44 / 44 | ✅ OK |
 | focuser_mypro2 | 2026-10-05 15:20 | 3.0.0.14 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | focuser_nfocus | 2026-10-05 16:00 | 3.0.0.10 | mac arm64 | simulator | 15 / 15 | ✅ OK |

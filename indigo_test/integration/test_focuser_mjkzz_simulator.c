@@ -717,6 +717,47 @@ cleanup:
 	driver_stop();
 }
 
+// The manual guarantees only the address, the command with its high bit and the checksum of a
+// reply. A reply with another ucIDX or another value in a set command's ucMSG is still accepted.
+static void tolerated_connection(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mjkzz_focuser));
+	SERIAL_CHECK_TRUE(fault(current_key, current_action));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mjkzz_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+cleanup:
+	driver_stop();
+}
+
+static void tolerated_poll(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("p", current_action));
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(10));
+cleanup:
+	driver_stop();
+}
+
+static void tolerated_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("P", current_action));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(100));
+	SERIAL_CHECK_EQ_INT(0, command_count(CMD_STOP));
+cleanup:
+	driver_stop();
+}
+
+static void tolerated_speed(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("S", current_action));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME)->number.value == 2);
+cleanup:
+	driver_stop();
+}
+
 static void poll_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_POSITION_PROPERTY_NAME)]);
@@ -989,10 +1030,12 @@ int main(void) {
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", NULL, NULL },
 		{ "init_version_silent", rejected_connection, "normal", "v", "silent" }, { "init_version_checksum", rejected_connection, "normal", "v", "badsum" },
 		{ "init_hpwr_reject", rejected_connection, "normal", "R:102", "reject" }, { "init_lpwr_partial", rejected_connection, "normal", "R:101", "partial" },
-		{ "init_microstep_index", rejected_connection, "normal", "R:103", "badidx" }, { "init_position_value", rejected_connection, "normal", "p", "badvalue" },
+		{ "init_microstep_index", tolerated_connection, "normal", "R:103", "badidx" },
+		{ "init_hpwr_value", tolerated_connection, "normal", "R:102", "othervalue" }, { "init_position_value", rejected_connection, "normal", "p", "badvalue" },
 		{ "init_speed_overlong", rejected_connection, "normal", "s", "overlong" },
 		{ "poll_checksum", poll_failure, "normal", NULL, "badsum" }, { "poll_address", poll_failure, "normal", NULL, "badaddr" },
-		{ "poll_command", poll_failure, "normal", NULL, "badcmd" }, { "poll_index", poll_failure, "normal", NULL, "badidx" },
+		{ "poll_command", poll_failure, "normal", NULL, "badcmd" }, { "poll_index", tolerated_poll, "normal", NULL, "badidx" },
+		{ "move_reply_value", tolerated_move, "normal", NULL, "othervalue" }, { "speed_reply_value", tolerated_speed, "normal", NULL, "othervalue" },
 		{ "poll_partial", poll_failure, "normal", NULL, "partial" }, { "poll_overlong", poll_failure, "normal", NULL, "overlong" },
 		{ "poll_value", poll_failure, "normal", NULL, "badvalue" }, { "speed_failure", speed_failure, "normal", NULL, "reject" },
 		{ "start_failure", start_failure, "normal", NULL, "badsum" }, { "start_transport_loss", start_transport_loss, "normal", NULL, NULL },

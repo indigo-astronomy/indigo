@@ -20,7 +20,7 @@ driver mjkzz {
 	label = "MJKZZ Rail Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial;
 	include {
 		#include <stdint.h>
@@ -86,7 +86,9 @@ driver mjkzz {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_write(PRIVATE_DATA->handle, (const char *)&request, sizeof(request)) != sizeof(request) || !mjkzz_read(device)) {
 				return false;
 			}
-			if (RESPONSE.ucADD != (uint8_t)(request.ucADD | 0x80) || RESPONSE.ucCMD != (uint8_t)(request.ucCMD | 0x80) || RESPONSE.ucIDX != request.ucIDX || RESPONSE.ucSUM != mjkzz_checksum(&RESPONSE)) {
+			// The manual guarantees only the address and command with the high bit set and the checksum;
+			// what ucIDX and ucMSG hold in the reply to a set command is not documented.
+			if (RESPONSE.ucADD != (uint8_t)(request.ucADD | 0x80) || RESPONSE.ucCMD != (uint8_t)(request.ucCMD | 0x80) || RESPONSE.ucSUM != mjkzz_checksum(&RESPONSE)) {
 				return false;
 			}
 			if (result) {
@@ -96,8 +98,7 @@ driver mjkzz {
 		}
 
 		static bool mjkzz_write_register(indigo_device *device, uint8_t index, int32_t value) {
-			int32_t actual = 0;
-			return mjkzz_command(device, CMD_SREG, index, value, &actual) && actual == value;
+			return mjkzz_command(device, CMD_SREG, index, value, NULL);
 		}
 
 		static bool mjkzz_position(indigo_device *device, int32_t *position) {
@@ -188,8 +189,7 @@ driver mjkzz {
 				mjkzz_motion_state(device, INDIGO_OK_STATE);
 				return;
 			}
-			int32_t accepted = 0;
-			if (!mjkzz_command(device, CMD_SPOS, 0, target, &accepted) || accepted != target) {
+			if (!mjkzz_command(device, CMD_SPOS, 0, target, NULL)) {
 				PRIVATE_DATA->active = false;
 				PRIVATE_DATA->uncertain = !mjkzz_stop(device);
 				mjkzz_motion_state(device, INDIGO_ALERT_STATE);
@@ -282,11 +282,10 @@ driver mjkzz {
 			}
 			on_change {
 				int32_t requested = (int32_t)FOCUSER_SPEED_ITEM->number.target;
-				int32_t actual = 0;
-				if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !mjkzz_command(device, CMD_SSPD, 0, requested, &actual) || actual != requested) {
+				if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !mjkzz_command(device, CMD_SSPD, 0, requested, NULL)) {
 					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					FOCUSER_SPEED_ITEM->number.value = actual;
+					FOCUSER_SPEED_ITEM->number.value = requested;
 				}
 			}
 		}
