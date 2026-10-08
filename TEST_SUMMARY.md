@@ -360,11 +360,10 @@
 |  | 2026-10-03 21:36 | 3.0.0.1 | mac arm64 | PegasusAstro NYX-101 | 20 / 20 | ✅ OK |
 |  | 2026-10-03 21:56 | 3.0.0.1 | linux arm64 | OnStepX environmental sensors, firmware 10.28x | 5 / 3 | ❌ Failed |
 |  | 2026-10-03 21:56 | 3.0.0.1 | linux arm64 | OnStepX rotator, firmware 10.28x | 9 / 6 | ❌ Failed |
-|  | 2026-10-03 22:44 | 3.0.0.1 | mac arm64 | simulator | 318 / 318 | ✅ OK |
-|  | 2026-10-04 01:18 | 3.0.0.1 | linux x64 | Askar-WAF Focuser | 8 / 8 | ✅ OK |
 |  | 2026-10-04 00:07 | 3.0.0.1 | linux arm64 | OnStepX auxiliary features, firmware 10.28x | 4 / 4 | ✅ OK |
 |  | 2026-10-04 00:07 | 3.0.0.1 | linux arm64 | OnStepX focuser 1, firmware 10.28x | 7 / 7 | ✅ OK |
 |  | 2026-10-04 00:07 | 3.0.0.1 | linux arm64 | OnStepX mount, firmware 10.28x | 20 / 16 | ❌ Failed |
+|  | 2026-10-04 01:18 | 3.0.0.1 | linux x64 | Askar-WAF Focuser | 8 / 8 | ✅ OK |
 |  | 2026-10-04 08:21 | 3.0.0.1 | mac arm64 | simulator | 318 / 318 | ✅ OK |
 | wheel_asi | 2026-09-21 00:42 | 3.0.0.15 | mac arm64 | ASI EFW mini | 16 / 16 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.17 | mac arm64 | fake SDK | 5 / 5 | ✅ OK |
