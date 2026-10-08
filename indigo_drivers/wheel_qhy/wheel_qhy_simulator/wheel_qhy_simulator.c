@@ -50,6 +50,8 @@ typedef struct {
 	const char *firmware;
 	qhy_model model;
 	int slots;
+	int slot;
+	int move_time;
 } simulator_options;
 
 static simulator_options options = {
@@ -58,7 +60,9 @@ static simulator_options options = {
 	.ready_file = NULL,
 	.firmware = "20200903",
 	.model = QHY_MODEL_CFW3,
-	.slots = 7
+	.slots = 7,
+	.slot = 1,
+	.move_time = 0
 };
 
 static const char *simulator_name = "wheel_qhy";
@@ -69,7 +73,7 @@ static int current_filter = 0;
 // ----------------------------------------------------------------- runtime
 
 static void usage(const char *name) {
-	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--model cfw1|cfw2|cfw3] [--firmware <text>] [--slots <count>]\n", name);
+	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--model cfw1|cfw2|cfw3] [--firmware <text>] [--slots <count>] [--slot <start slot>] [--move-time <ms>]\n", name);
 }
 
 static bool parse_model(const char *text, qhy_model *model) {
@@ -119,10 +123,19 @@ static bool parse_args(int argc, char *argv[]) {
 			if (!parse_int(argv[++i], 1, 16, &options.slots)) {
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--slot") && i + 1 < argc) {
+			if (!parse_int(argv[++i], 1, 16, &options.slot)) {
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--move-time") && i + 1 < argc) {
+			if (!parse_int(argv[++i], 0, 10000, &options.move_time)) {
+				return false;
+			}
 		} else {
 			return false;
 		}
 	}
+	current_filter = options.slot - 1;
 	if (current_filter >= options.slots) {
 		current_filter = options.slots - 1;
 	}
@@ -187,6 +200,10 @@ static bool dispatch_command(int fd, const char *command, size_t length) {
 		if (requested_filter >= 0 && requested_filter < options.slots) {
 			bool moved = current_filter != requested_filter;
 			current_filter = requested_filter;
+			// The wheel answers a move when it arrives; like the firmware, it reads nothing meanwhile.
+			if (options.move_time > 0 && (moved || options.model == QHY_MODEL_CFW3)) {
+				usleep((useconds_t)options.move_time * 1000);
+			}
 			if (options.model == QHY_MODEL_CFW1) {
 				char response = '-';
 				return moved ? write_response(fd, &response, 1) : true;

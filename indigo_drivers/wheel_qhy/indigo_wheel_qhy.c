@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_wheel_qhy"
 #define DRIVER_LABEL         "QHY CFW Filter Wheel"
 #define WHEEL_DEVICE_NAME    "CFW Filter Wheel"
@@ -80,12 +80,40 @@ static bool qhy_open(indigo_device *device) {
 static bool qhy_command(indigo_device *device, char *command, char *reply, int reply_length, int read_timeout) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (reply_length == 0) {
+				return true;
+			}
 			for (int i = 0; i < read_timeout; i++) {
 				if (indigo_uni_read(PRIVATE_DATA->handle, reply, reply_length) > 0) {
 					return true;
 				}
 				indigo_usleep(INDIGO_DELAY(1));
 			}
+		}
+	}
+	return false;
+}
+
+// A move is answered when the wheel arrives: CFW1 with '-', CFW2 and CFW3 with the command. An answer
+// to an earlier move, such as the turn to slot 1 at connect, can still arrive after the discard, so
+// CFW2 and CFW3 wait for their own echo.
+static bool qhy_move(indigo_device *device, char command) {
+	char request[2] = { command, 0 };
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_write(PRIVATE_DATA->handle, request, 1) <= 0) {
+		return false;
+	}
+	double deadline = indigo_monotonic_time() + 15;
+	while (indigo_monotonic_time() < deadline) {
+		char reply = 0;
+		if (indigo_uni_read(PRIVATE_DATA->handle, &reply, 1) > 0) {
+			if (X_MODEL_1_ITEM->sw.value) {
+				return reply == '-';
+			}
+			if (reply == command) {
+				return true;
+			}
+		} else {
+			indigo_usleep(INDIGO_DELAY(0.1));
 		}
 	}
 	return false;
@@ -118,8 +146,10 @@ static void wheel_connection_handler(indigo_device *device) {
 					if (qhy_command(device, "MXP", reply, 1, 1)) {
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = isdigit(reply[0]) ? reply[0] - '0' : reply[0] - 'A' + 10;
 					}
+					// A wheel that cannot say where it is gets every slot request sent.
+					PRIVATE_DATA->current_slot = 0;
 					if (qhy_command(device, "NOW", reply, 1, 1)) {
-						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
+						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
 					}
 				} else if (X_MODEL_PROPERTY->state == INDIGO_BUSY_STATE) {
 					// A model request copied while the handshake ran is left to its handler.
@@ -132,17 +162,15 @@ static void wheel_connection_handler(indigo_device *device) {
 			} else if (X_MODEL_2_ITEM->sw.value) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW2");
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
-				if (!qhy_command(device, "0", NULL, 0, 0)) {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
+				// The model has no position query, so the wheel is sent to slot 1 without waiting for it.
+				connection_result = qhy_command(device, "0", NULL, 0, 0);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
 			} else if (X_MODEL_1_ITEM->sw.value) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW1");
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
-				if (!qhy_command(device, "0", NULL, 0, 0)) {
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
+				// The model has no position query, so the wheel is sent to slot 1 without waiting for it.
+				connection_result = qhy_command(device, "0", NULL, 0, 0);
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
 			}
@@ -183,17 +211,13 @@ static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
 	int slot = (int)WHEEL_SLOT_ITEM->number.target;
 	if (PRIVATE_DATA->current_slot != slot) {
-		char command[2] = { '0' + slot - 1, 0 };
-		char reply[3] = { 0 };
-		if (qhy_command(device, command, reply, 1, 15)) {
-			if (X_MODEL_1_ITEM->sw.value) {
-				WHEEL_SLOT_PROPERTY->state = (reply[0] == '-' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
-			} else if (X_MODEL_2_ITEM->sw.value || X_MODEL_3_ITEM->sw.value) {
-				WHEEL_SLOT_PROPERTY->state = (reply[0] == command[0] ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
-			}
+		char command = slot <= 10 ? '0' + slot - 1 : 'A' + slot - 11;
+		if (qhy_move(device, command)) {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->current_slot = slot;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->current_slot = 0;
 		}
 	}
 	//- wheel.WHEEL_SLOT.on_change

@@ -28,4 +28,7 @@ Tested with CFW3
 ## Testing
 
 2026-09-27 13:05 3.0.0.12 linux x64 simulator 4/4 OK
-2026-09-27 22:42 3.0.0.12 mac arm64 simulator 4/4 OK
+2026-10-08 21:24 3.0.0.13 mac arm64 simulator 6/6 OK
+2026-10-08 21:25 3.0.0.13 linux arm64 QHY CFW3 Arduino simulator (ESP32-S3) 11/11 OK
+2026-10-08 21:27 3.0.0.13 linux arm64 QHY CFW2 Arduino simulator (ESP32-S3) 11/11 OK
+2026-10-08 21:29 3.0.0.13 linux arm64 QHY CFW1 Arduino simulator (ESP32-S3) 11/11 OK

@@ -242,12 +242,64 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static bool select_slot(int slot, indigo_property_state state) {
+	unsigned int revision = property_state_revision(WHEEL_SLOT_PROPERTY_NAME, state);
+	return indigo_change_number_property_1(&simulator_test_client, qhy_wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, slot) == INDIGO_OK && wait_for_property_state_seen_after(WHEEL_SLOT_PROPERTY_NAME, state, revision);
+}
+
+// A CFW2 has no position query, so the driver sends it to slot 1 at connect without waiting. A wheel
+// that was elsewhere answers that turn when it arrives; a slot requested meanwhile must not take
+// that late '0' for its own answer (3.0.0.12 ended the request ALERT).
+static void qhy_cfw2_move_right_after_connect_waits_for_its_own_echo(void) {
+	const char *arguments[] = { "--model", "cfw2", "--slot", "5", "--move-time", "1000", NULL };
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, WHEEL_QHY_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_qhy_serial_driver(simulator.port, X_MODEL_2_ITEM_NAME));
+	SERIAL_CHECK_TRUE(select_slot(3, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3, 0.001));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&qhy_wheel);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A CFW3 reports its slot at connect, and the driver has to take it as the slot it compares new
+// requests with. 3.0.0.12 kept the slot of the previous session, so a request for that slot sent
+// nothing and reported OK where the wheel was not.
+static void qhy_cfw3_connect_takes_the_reported_slot(void) {
+	const char *arguments[] = { "--model", "cfw3", NULL };
+	external_serial_simulator first = { 0 }, second = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&first, WHEEL_QHY_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_qhy_serial_driver(first.port, X_MODEL_3_ITEM_NAME));
+	SERIAL_CHECK_TRUE(select_slot(3, INDIGO_OK_STATE));
+	disconnect_serial_device(&qhy_wheel);
+	stop_external_serial_simulator(&first);
+	// Another wheel, on slot 1, on another port.
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&second, WHEEL_QHY_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(connect_serial_device(&qhy_wheel, second.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0.001));
+	SERIAL_CHECK_TRUE(select_slot(3, INDIGO_OK_STATE));
+	// Reconnecting reads the slot the wheel really is on.
+	disconnect_serial_device(&qhy_wheel);
+	SERIAL_CHECK_TRUE(connect_serial_device(&qhy_wheel, second.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3, 0.001));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&qhy_wheel);
+	}
+	stop_external_serial_simulator(&first);
+	stop_external_serial_simulator(&second);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "qhy_cfw1_wheel_passes_serial_compliance_checks", qhy_cfw1_wheel_passes_serial_compliance_checks },
 		{ "qhy_cfw2_wheel_passes_serial_compliance_checks", qhy_cfw2_wheel_passes_serial_compliance_checks },
 		{ "qhy_cfw3_wheel_passes_serial_compliance_checks", qhy_cfw3_wheel_passes_serial_compliance_checks },
-		{ "qhy_model_request_survives_the_cfw3_fallback", qhy_model_request_survives_the_cfw3_fallback }
+		{ "qhy_model_request_survives_the_cfw3_fallback", qhy_model_request_survives_the_cfw3_fallback },
+		{ "qhy_cfw2_move_right_after_connect_waits_for_its_own_echo", qhy_cfw2_move_right_after_connect_waits_for_its_own_echo },
+		{ "qhy_cfw3_connect_takes_the_reported_slot", qhy_cfw3_connect_takes_the_reported_slot }
 	};
 	return indigo_run_tests("QHY CFW wheel serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

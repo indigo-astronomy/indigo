@@ -2827,6 +2827,18 @@ WHEEL_QUANTUM_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_quantum.a $(TEST_L
 $(TEST_BUILD)/hardware/test_wheel_quantum_hw: hardware/test_wheel_quantum_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_quantum.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(WHEEL_QUANTUM_HW_TEST_LDFLAGS)
 
+# A physical QHY CFW1, CFW2 or CFW3 filter wheel, or the Arduino sketch wheel_qhy_simulator.ino built
+# for one of them on a board, is opt-in and excluded from normal integration tests. THE WHEEL TURNS.
+# Set QHY_HW_PORT to the port and QHY_HW_MODEL to 1, 2 or 3 (default 3).
+.PHONY: test-wheel-qhy-hw
+test-wheel-qhy-hw: check-lib $(TEST_BUILD)/hardware/test_wheel_qhy_hw
+	$(TEST_BUILD)/hardware/test_wheel_qhy_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+WHEEL_QHY_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_qhy.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_wheel_qhy_hw: hardware/test_wheel_qhy_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_qhy.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(WHEEL_QHY_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are
