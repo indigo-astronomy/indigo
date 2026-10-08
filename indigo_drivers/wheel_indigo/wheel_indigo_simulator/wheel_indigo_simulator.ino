@@ -75,8 +75,9 @@ void loop() {
     Serial.print("WR:");
     Serial.println(moving);
   } else if (command.equals("WI")) {
-    moving = 0;
-    current_filter = 1;
+    // The wheel answers at once and then turns to filter 1, as it does at power-up.
+    target_filter = 1;
+    moving = 1;
     Serial.println("WI:1");
   } else if (command.equals("WQ")) {
   }

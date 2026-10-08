@@ -374,7 +374,8 @@
 |  | 2026-09-27 22:39 | 3.0.0.12 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
 | wheel_atik | 2026-09-27 22:39 | 3.0.0.7 | mac arm64 | fake SDK | 21 / 21 | ✅ OK |
 | wheel_fli | 2026-10-05 20:06 | 3.0.0.14 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
-| wheel_indigo | 2026-09-27 22:40 | 3.0.0.8 | mac arm64 | simulator | 5 / 5 | ✅ OK |
+| wheel_indigo | 2026-10-08 22:27 | 3.0.0.9 | mac arm64 | simulator | 6 / 6 | ✅ OK |
+|  | 2026-10-08 22:29 | 3.0.0.9 | linux arm64 | Pegasus Indigo Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 | wheel_manual | 2026-09-27 22:41 | 3.0.0.7 | mac arm64 | simulator | 2 / 2 | ✅ OK |
 | wheel_mi | 2026-09-27 22:41 | 3.0.0.9 | mac arm64 | fake SDK | 12 / 12 | ✅ OK |
 | wheel_optec | 2026-10-08 22:01 | 3.0.0.9 | mac arm64 | simulator | 8 / 8 | ✅ OK |

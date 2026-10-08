@@ -51,6 +51,7 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --slot <1..7>           Slot the wheel sits on at start\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -70,6 +71,14 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--slot") && i + 1 < argc) {
+			int slot = atoi(argv[++i]);
+			if (slot < 1 || slot > 7) {
+				fprintf(stderr, "--slot requires 1 to 7\n");
+				return false;
+			}
+			current_filter = target_filter = slot;
+			serial_motion_sync(&motion, slot);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -127,9 +136,10 @@ static void dispatch_command(const char *command) {
 		snprintf(response, sizeof(response), "WR:%d\n", moving);
 		write_response(response);
 	} else if (!strcmp(command, "WI")) {
-		moving = 0;
-		current_filter = target_filter = 1;
-		serial_motion_sync(&motion, 1);
+		// The wheel answers at once and then turns to filter 1, as it does at power-up.
+		target_filter = 1;
+		serial_motion_start(&motion, 1, 3);
+		moving = current_filter != target_filter;
 		write_response("WI:1\n");
 	} else if (!strcmp(command, "WQ")) {
 		/* The Arduino sketch intentionally gives no response to WQ. */

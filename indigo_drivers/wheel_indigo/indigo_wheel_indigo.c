@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_wheel_indigo"
 #define DRIVER_LABEL         "PegasusAstro Indigo Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Pegasus Indigo Filter Wheel"
@@ -132,8 +132,11 @@ static void wheel_connection_handler(indigo_device *device) {
 		connection_result = indigo_open(device);
 		if (connection_result) {
 			//+ wheel.on_connect
+			// WI sends the wheel to filter 1, as at power-up; it is there only once WF reports it.
 			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->move_started = indigo_monotonic_time();
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, SETTLE_DELAY, wheel_move_finalizer);
 			//- wheel.on_connect
 		}
 		if (connection_result) {

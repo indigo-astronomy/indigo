@@ -21,3 +21,18 @@ Windows compilation fails because the driver-specific `.driver` block uses POSIX
 ## Final test summary
 
 Simulated tests run: **5**. Simulated tests passed: **5**. Hardware tests run: **0**. Hardware tests passed: **0**.
+
+## Initialisation at connect (3.0.0.9, 2026-10-08)
+
+Against the bundled serial command language (firmware >= 1.1): `WI` initialises the wheel to filter 1, as at
+power-up, and is answered with `WI:1` before the wheel has turned there. 3.0.0.8 published `WHEEL_SLOT` OK on
+filter 1 at once after `WI`. The connect now keeps `WHEEL_SLOT` BUSY and confirms filter 1 through `WF`, with the
+same 30 s deadline as a move. The protocol checks were not tightened by the generator migration: the original
+driver already sent `W#`, `WI` and `WV`, and `FW_OK` is now matched as a prefix.
+
+Both simulators turn the wheel to filter 1 on `WI` instead of jumping there; the C simulator takes `--slot` for
+its start slot. `connect_waits_for_the_wheel_to_reach_filter_1` fails against 3.0.0.8. The fake transport and
+simulator cases wait for the initialisation before their first request, as a client has to.
+
+The new hardware suite `indigo_test/hardware/test_wheel_indigo_hw.c` (`make test-wheel-indigo-hw`) ran against
+`wheel_indigo_simulator.ino` on an ESP32-S3 (11/11); no physical wheel was available.

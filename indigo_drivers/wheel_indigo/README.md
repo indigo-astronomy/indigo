@@ -30,4 +30,5 @@ https://pegasusastro.com/wp-content/uploads/2022/05/IndigoFW_manual.pdf
 
 ## Testing
 
-2026-09-27 22:40 3.0.0.8 mac arm64 simulator 5/5 OK
+2026-10-08 22:27 3.0.0.9 mac arm64 simulator 6/6 OK
+2026-10-08 22:29 3.0.0.9 linux arm64 Pegasus Indigo Arduino simulator (ESP32-S3) 11/11 OK

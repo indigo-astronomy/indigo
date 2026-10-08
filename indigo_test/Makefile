@@ -2851,6 +2851,18 @@ WHEEL_OPTEC_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_optec.a $(TEST_LDFLA
 $(TEST_BUILD)/hardware/test_wheel_optec_hw: hardware/test_wheel_optec_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_optec.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(WHEEL_OPTEC_HW_TEST_LDFLAGS)
 
+# A physical PegasusAstro Indigo filter wheel, or the Arduino sketch wheel_indigo_simulator.ino on a
+# board, is opt-in and excluded from normal integration tests. THE WHEEL TURNS; every connect turns
+# it to filter 1. Set INDIGO_WHEEL_HW_PORT to override the port the driver matched.
+.PHONY: test-wheel-indigo-hw
+test-wheel-indigo-hw: check-lib $(TEST_BUILD)/hardware/test_wheel_indigo_hw
+	$(TEST_BUILD)/hardware/test_wheel_indigo_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+WHEEL_INDIGO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_indigo.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_wheel_indigo_hw: hardware/test_wheel_indigo_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_indigo.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(WHEEL_INDIGO_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

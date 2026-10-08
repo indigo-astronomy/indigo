@@ -26,7 +26,7 @@ driver indigo {
 	label = "PegasusAstro Indigo Filter Wheel";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial {
 		pattern {
 			product = "Indigo";
@@ -109,8 +109,11 @@ driver indigo {
 			}
 		}
 		on_connect {
+			// WI sends the wheel to filter 1, as at power-up; it is there only once WF reports it.
 			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->move_started = indigo_monotonic_time();
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler_in(device, SETTLE_DELAY, wheel_move_finalizer);
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
