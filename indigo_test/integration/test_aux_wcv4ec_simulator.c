@@ -600,8 +600,8 @@ static void lost_detection_reply_does_not_block_the_queue(void) {
 	SERIAL_CHECK_TRUE(wait_for_first_poll());
 	unsigned int revision = property_revision(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(set_switch(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true));
-	// the reply is given up after the 60 s detection limit
-	SERIAL_CHECK_TRUE(wait_for_state_after(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision, 75));
+	// the reply is given up after the 120 s detection limit
+	SERIAL_CHECK_TRUE(wait_for_state_after(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, INDIGO_ALERT_STATE, revision, 135));
 	assert_switch_item_value(AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, false);
 	// The queue is free again: a heater request is served and the status frames are read again, showing the angle the
 	// box taught itself although its confirmation never arrived.

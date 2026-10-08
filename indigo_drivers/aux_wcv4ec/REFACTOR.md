@@ -154,3 +154,11 @@ cd indigo_test && INDIGO_TEST_CASE_FILTER=slow_detection_is_confirmed ./build/in
 ```
 
 Final test summary: 25 simulated tests run, 25 passed; 0 hardware tests run, 0 passed.
+
+## Detection limit raised to 120 s (3.0.0.17, 2026-10-08)
+
+At the maintainer's request the OpenSet / CloseSet reply of an autodetection is awaited up to 120 s instead of 60 s;
+a lost reply now holds the device queue for up to 120 s. `lost_detection_reply_does_not_block_the_queue` waits up to
+135 s for the ALERT. Full suite 25/25 OK (macOS arm64). No hardware run yet.
+
+Final test summary: 25 simulated tests run, 25 passed; 0 hardware tests run, 0 passed.

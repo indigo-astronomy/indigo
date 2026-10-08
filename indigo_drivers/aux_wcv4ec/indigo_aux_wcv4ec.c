@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_aux_wcv4ec"
 #define DRIVER_LABEL         "WandererCover V4-EC Cover"
 #define AUX_DEVICE_NAME      "WandererCover V4-EC"
@@ -425,9 +425,9 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 			PRIVATE_DATA->operation_target = NULL;
 			char status_line[128] = { 0 };
 			// the detection can take a while, with status frames or silence before the reply; 3.0-7 waited for it without
-			// a limit, here a reply lost on the wire is given up after 60 s, the cover operation timeout
+			// a limit, here a reply lost on the wire is given up after 120 s
 			bool confirmed = false;
-			double deadline = indigo_monotonic_time() + 60;
+			double deadline = indigo_monotonic_time() + 120;
 			while (!confirmed && indigo_monotonic_time() < deadline) {
 				long res = indigo_uni_read_section2(PRIVATE_DATA->handle, status_line, sizeof(status_line) - 1, "\n", "\r\n", INDIGO_DELAY(5), INDIGO_DELAY(1));
 				if (res < 0) {
