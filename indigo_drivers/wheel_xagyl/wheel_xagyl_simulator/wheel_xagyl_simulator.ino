@@ -22,8 +22,14 @@
 #define Serial SerialUSB
 #endif
 
+// The wheel turns one slot every STEP_TIME ms in the direction of the shortest path, as the
+// manual describes for "G"; the real rotation time is not documented.
+#define SLOTS 5
+#define STEP_TIME 500
+
 char current_filter = '1';
 char target_filter = '1';
+unsigned long last_step = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -34,6 +40,15 @@ void setup() {
 
 void loop() {
   char command[2];
+  if (current_filter != target_filter && millis() - last_step >= STEP_TIME) {
+    int forward = (target_filter - current_filter + SLOTS) % SLOTS;
+    if (forward <= SLOTS - forward) {
+      current_filter = current_filter == '0' + SLOTS ? '1' : current_filter + 1;
+    } else {
+      current_filter = current_filter == '1' ? '0' + SLOTS : current_filter - 1;
+    }
+    last_step = millis();
+  }
   if (Serial.available() > 1) {
     Serial.readBytes(command, 2);
     switch (command[0]) {
@@ -53,18 +68,19 @@ void loop() {
             Serial.println("S/N: 123456");
             break;
           case '8':
-            Serial.println("FilterSlots 5");
+            Serial.print("FilterSlots ");
+            Serial.println(SLOTS);
             break;
         }
         break;
       case 'G':
-				target_filter = command[1];  
+        if (command[1] >= '1' && command[1] <= '0' + SLOTS) {
+          if (current_filter == target_filter) {
+            last_step = millis();
+          }
+          target_filter = command[1];
+        }
         break;
     }
-		if (current_filter < target_filter) {
-			current_filter++;
-		} else if (current_filter > target_filter) {
-			current_filter--;
-		}
   }
 }

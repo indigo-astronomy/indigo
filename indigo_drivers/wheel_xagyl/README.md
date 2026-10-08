@@ -31,3 +31,4 @@ https://www.xagylastro.com/manuals/FW5125_User_Manual-3.1.5.pdf
 ## Testing
 
 2026-09-27 22:44 3.0.0.9 mac arm64 simulator 8/8 OK
+2026-10-08 20:35 3.0.0.9 linux arm64 Xagyl Arduino simulator (ESP32-S3) 11/11 OK
