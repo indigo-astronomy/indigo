@@ -138,3 +138,41 @@ log was available, so the real reason the status read after `stop` fails is stil
   stopped; a debug log of an abort would show why the status read fails.
 
 Final test summary: 36 simulated tests run, 36 passed; 0 hardware tests run, 0 passed.
+
+## Moves ended ALERT with the old position, regressions against 3.0-7 (3.0.0.9, 2026-10-08)
+
+Hardware observations by the maintainer: GOTO and relative moves ended ALERT "Rotator motion failed or was interrupted"
+and the position stayed at the old value; with an earlier attempt a GOTO from 10 to 30 ended showing 10. The maintainer
+confirmed these are regressions against the 3.0-7 release, which shipped the hand-written driver 3.0.0.3; relative
+moves showed the correct position there. They came in with the generator migration 167afc584 (2026-09-15).
+
+- **Defect 1, completion line read (reproduced):** 3.0.0.3 read the completion feedback with
+  `indigo_uni_read_section(..., "\n", "", INDIGO_DELAY(0.1))`, which has no timeout between bytes once a line has
+  started. The migrated `wa_read()` gave up after 0.1 s between two bytes. When the box pauses inside the line, the
+  driver got half a line, the strict parse failed, the finalizer sent `stop` and ended the move ALERT with the old
+  position, and the rest of the line was left for the next command. The existing `split` fault pauses only 20 ms and
+  did not catch it.
+- **Fix 1:** `wa_read()` waits up to 5 s between bytes (bounded, unlike 3.0.0.3); the first byte is still awaited 1 s.
+- **Defect 2, GOTO command (not reproducible in the simulator):** 3.0.0.3 sent GOTO as `steps + 1000000` ("use fast
+  speed for goto") and relative moves with plain steps; the migration sent GOTO with plain steps. The 2.0 driver and
+  the INDI driver (`wanderer_rotator_base.cpp`, offset on every move) agree on the offset.
+- **Fix 2:** `wa_start_motion()` takes a `fast` flag: GOTO sends `steps + 1000000`, relative moves plain steps. GOTO is
+  below 360 degrees, so the commands stay within 568360..1431640, clear of `1500001`, `1500002`, `1600xxx`, `1700xxx`.
+- **Other differences to 3.0.0.3, not changed:** 3.0.0.3 parsed replies with `atof` and ignored extra fields (the
+  migrated parser accepts exactly two numeric fields in the completion feedback), and it flushed input before every
+  command. The abort differences were fixed in 3.0.0.7 / 3.0.0.8.
+- **Simulator:** new persistent control `completion_gap:<ms>` pauses the completion feedback after its first field; a
+  move command within 500000..1499999 is a fast move of `command - 1000000` steps.
+- **Regression tests:** `wa_completion_with_a_pause` (300 ms pause; GOTO 10, 30, 40 and a relative -15 must end OK at
+  their targets; 3.0.0.8: the first GOTO does not end OK; 3.0.0.9: passes) and `wa_goto_uses_fast_speed` (GOTO
+  commands carry the offset, the relative one does not). The GOTO commands expected by `wa_model_moves` and
+  `wa_wrap_sync_offset_zero` now carry the offset.
+- **Verification (macOS arm64):** full suite 38/38 OK. Regeneration with the unchanged generator changes only the
+  edited blocks and the version. No hardware run yet; the pause inside the completion line is inferred from the
+  symptom and the 3.0-7 reader, no wire log was available.
+
+```sh
+cd indigo_test && INDIGO_TEST_CASE_FILTER=wa_completion_with_a_pause ./build/integration/test_rotator_wa_simulator
+```
+
+Final test summary: 38 simulated tests run, 38 passed; 0 hardware tests run, 0 passed.

@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_rotator_wa"
 #define DRIVER_LABEL         "WandererAstro rotator"
 #define ROTATOR_DEVICE_NAME  "WandererAstro rotator"
@@ -91,7 +91,9 @@ static bool wa_write(indigo_device *device, const char *format, ...) {
 }
 
 static bool wa_read(indigo_device *device) {
-	long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
+	// the box can pause inside a line (the completion feedback after a move), so a pause between bytes is waited out up
+	// to 5 s; the 3.0-7 driver read the rest of a started line without any timeout
+	long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r", INDIGO_DELAY(1), INDIGO_DELAY(5));
 	if (count <= 1 || count >= (long)sizeof(PRIVATE_DATA->response) - 1 || PRIVATE_DATA->response[count - 1] != '\n') {
 		return false;
 	}
@@ -240,11 +242,12 @@ static void motion_finalizer(indigo_device *device) {
 	}
 }
 
-static void wa_start_motion(indigo_device *device, double degrees) {
+// a GOTO is sent as steps + 1000000 (fast speed) and a relative move with plain steps, as the 3.0-7 driver did
+static void wa_start_motion(indigo_device *device, double degrees, bool fast) {
 	int steps = (int)round(degrees * PRIVATE_DATA->steps_degree);
 	if (steps == 0) {
 		wa_finish(device, true);
-	} else if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && wa_write(device, "%d\n", steps)) {
+	} else if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && wa_write(device, "%d\n", fast ? steps + 1000000 : steps)) {
 		PRIVATE_DATA->motion = true;
 		PRIVATE_DATA->motion_deadline = indigo_monotonic_time() + 30 + fabs(degrees) * 2;
 		ROTATOR_POSITION_PROPERTY->state = ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -351,7 +354,7 @@ static void rotator_position_handler(indigo_device *device) {
 		} else if (move > 0 && base + move > PRIVATE_DATA->pivot_position + 180) {
 			move -= 360;
 		}
-		wa_start_motion(device, move); // motion_finalizer completes the operation
+		wa_start_motion(device, move, true); // motion_finalizer completes the operation
 	} else {
 		wa_finish(device, false);
 	}
@@ -360,7 +363,7 @@ static void rotator_position_handler(indigo_device *device) {
 
 static void rotator_relative_move_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_RELATIVE_MOVE.on_change
-	wa_start_motion(device, ROTATOR_RELATIVE_MOVE_ITEM->number.target); /* motion_finalizer */
+	wa_start_motion(device, ROTATOR_RELATIVE_MOVE_ITEM->number.target, false); /* motion_finalizer */
 	//- rotator.ROTATOR_RELATIVE_MOVE.on_change
 }
 
