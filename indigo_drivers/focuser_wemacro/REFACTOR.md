@@ -148,3 +148,50 @@ python3 tools/run_driver_test.py focuser_wemacro
 ```
 
 Final test summary: 26 simulated tests run, 26 passed; 0 hardware tests run, 0 passed.
+
+## First hardware run (3.0.0.10, 2026-10-08)
+
+The new hardware suite `indigo_test/hardware/test_focuser_wemacro_hw.c` (`make test-focuser-wemacro-hw`)
+ran against a WeMacro Rail controller on its CH340 bridge (linux arm64). 3.0.0.9 could not connect at all,
+and the controller differs from what the simulator modelled in five more ways. Every behaviour below was
+measured on the controller and went back into the simulator with a regression test; each test fails against
+3.0.0.9 with only the status header corrected.
+
+| Controller behaviour | Defect in 3.0.0.9 | Test |
+| --- | --- | --- |
+| Status frames are `5A A5 STATE`, the command header with its two bytes swapped. | Strict `A5 5A` check rejected every status; connect failed. | every case, `simulator_protocol` |
+| A frame completing within about 30 ms of a configuration frame (`0x80`) is ignored; 35 ms is accepted. | A move queued right behind a speed or configuration write was dropped and ended ALERT after its deadline. The driver now waits 0.1 s after a configuration frame before the next frame. | `motion_and_controls` |
+| A batch reports every shot (`F7`) and every step between positions (`F5`); the return is `F6`. | `F5` ended the batch ALERT, and COUNT dropped once per shot instead of once per position. | `batch_no_back`, `batch_back` |
+| The shutter reports the end of its pulse with `F7` about 0.3 s after `0x04`. | A move started within that time took the `F7` for its completion and ended ALERT. The shutter is now refused during a move or batch, and the next operation first consumes the owed status. | `configuration_and_shutter` |
+| A stop reports the stopped move with its own direction about 10 ms later, a stopped batch reports `F5` 0.4 to 0.9 s later; an idle stop reports nothing. | A move started right after an abort could complete on the stale status. The next move or batch now consumes the owed status first (0.5 s for a move, 1.5 s for a batch). | `move_after_batch_abort` |
+
+Measured rates: 1289 steps/s at speed 1 and 12809 steps/s at speed 2; the move deadline now assumes 1000 and
+2000 steps/s.
+
+### Simulator fidelity
+
+The simulator now follows the controller as measured, not only where the driver was wrong:
+
+- **No status when the port opens.** The controller never sent the initial `F0` in any connection, so every
+  connect runs the reset sequence. Profile `normal` is silent; `initial` keeps `F0` (possibly sent after power-up,
+  not observed) for `capabilities_initial` and `simulator_protocol`, and `fallback` keeps a wrong initial status.
+  The integration cases count journal events only after connect, so the reset sequence is not counted as theirs.
+- **Real rates** of 1289 and 12809 steps/s, also for short moves (the shared motion model's 0.5 s minimum is
+  bypassed). Cases that interrupt a move use 4000 steps (3.1 s) instead of 400.
+- **Batch timing.** At each position the controller settles for `SETTLE_TIME`, prepares the shot for about 0.95 s,
+  fires a 0.3 s pulse and reports `F7`; further shots of the position follow `SHUTTER_INTERVAL` apart; a step takes
+  0.7 s plus its travel and reports `F5`, the return likewise and reports `F6`.
+- **Stop during a batch** is answered with `F5` after about 8 ms, except while a shot is being prepared or fired:
+  then only when that phase is over (measured 0.36 and 0.87 s). The delay does not depend on the interval.
+- **Move during the shutter pulse** starts only when the pulse has ended.
+- The `slow_stop` profile and its case `batch_reconnect_slow_stop_status` were removed: they reported a status after
+  every stop, but an idle stop reports nothing, so the reset sequence leaves no stray status on the real controller.
+  `wemacro_drain()` stays as a harmless guard.
+
+Still approximate: the first shot of a batch with a non-zero settle time came about 0.5 s earlier than the model
+puts it, and the step overhead was measured only at interval 1 and 100 to 200 step lengths.
+
+```sh
+python3 tools/run_driver_test.py focuser_wemacro
+python3 tools/run_driver_test.py focuser_wemacro --hw --port /dev/serial/by-id/usb-1a86_USB2.0-Serial-if00-port0
+```

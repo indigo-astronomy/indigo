@@ -110,6 +110,25 @@ static bool fault(const char *key, const char *action) {
 	return rename(temporary, fault_path) == 0;
 }
 
+// Events up to this time are not counted. The controller sends no status when the port opens, so
+// every connect runs the reset sequence, whose moves and stop a case must not count as its own.
+static double events_since;
+
+static double last_event_time(void) {
+	FILE *file = fopen(event_path, "r");
+	double last = 0, timestamp;
+	char line[512];
+	if (file != NULL) {
+		while (fgets(line, sizeof(line), file)) {
+			if (sscanf(line, "%lf", &timestamp) == 1) {
+				last = timestamp;
+			}
+		}
+		fclose(file);
+	}
+	return last;
+}
+
 static int event_count(const char *kind, const char *prefix) {
 	FILE *file = fopen(event_path, "r");
 	if (file == NULL) {
@@ -119,7 +138,7 @@ static int event_count(const char *kind, const char *prefix) {
 	double timestamp;
 	int count = 0;
 	while (fgets(line, sizeof(line), file)) {
-		if (sscanf(line, "%lf %31s %399[^\n]", &timestamp, event_kind, payload) == 3 && !strcmp(event_kind, kind) && !strncmp(payload, prefix, strlen(prefix))) {
+		if (sscanf(line, "%lf %31s %399[^\n]", &timestamp, event_kind, payload) == 3 && timestamp > events_since && !strcmp(event_kind, kind) && !strncmp(payload, prefix, strlen(prefix))) {
 			count++;
 		}
 	}
@@ -142,7 +161,11 @@ static int all_received(void) {
 }
 
 static bool start_driver(void) {
-	return bring_up_serial_driver(&wemacro) && connect_serial_device(&wemacro, fixture.port);
+	if (!bring_up_serial_driver(&wemacro) || !connect_serial_device(&wemacro, fixture.port)) {
+		return false;
+	}
+	events_since = last_event_time();
+	return true;
 }
 
 static void stop_driver(void) {
@@ -241,7 +264,8 @@ static bool write_frame(indigo_uni_handle *handle, uint8_t command, uint8_t a, u
 static bool read_status(indigo_uni_handle *handle, uint8_t expected) {
 	uint8_t response[4] = { 0 };
 	long count = indigo_uni_read_section2(handle, (char *)response, 3, "", "", INDIGO_DELAY(3), INDIGO_DELAY(0.1));
-	return count == 3 && response[0] == 0xA5 && response[1] == 0x5A && response[2] == expected;
+	// The controller answers with the two header bytes of a command frame swapped.
+	return count == 3 && response[0] == 0x5A && response[1] == 0xA5 && response[2] == expected;
 }
 
 static void simulator_protocol(void) {
@@ -252,11 +276,22 @@ static void simulator_protocol(void) {
 	SERIAL_CHECK_TRUE(frame[10] == (uint8_t)crc16(frame) && frame[11] == (uint8_t)(crc16(frame) >> 8));
 	SERIAL_CHECK_TRUE(indigo_uni_write(handle, (const char *)frame, sizeof(frame)) == sizeof(frame) && read_status(handle, 0xF5));
 	SERIAL_CHECK_TRUE(write_frame(handle, 0x41, 0, 0, 0, 20) && read_status(handle, 0xF6));
+	// A frame right behind a configuration frame is ignored, as the controller does.
 	SERIAL_CHECK_TRUE(write_frame(handle, 0x8A, 0xFF, 0, 0, 1234));
 	SERIAL_CHECK_TRUE(write_frame(handle, 0x04, 0, 0, 0, 0));
+	SERIAL_CHECK_TRUE(wait_event("REJECT", "after_config", 1));
+	indigo_usleep(100000);
+	// The shutter reports the end of its pulse, and a move sent meanwhile starts only then (1 s at speed 2).
+	SERIAL_CHECK_TRUE(write_frame(handle, 0x04, 0, 0, 0, 0) && read_status(handle, 0xF7));
+	SERIAL_CHECK_TRUE(write_frame(handle, 0x04, 0, 0, 0, 0) && write_frame(handle, 0x40, 0, 0, 0, 12809));
+	double shot = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(read_status(handle, 0xF7) && indigo_monotonic_time() - shot > 0.2);
+	SERIAL_CHECK_TRUE(read_status(handle, 0xF5) && indigo_monotonic_time() - shot > 1.2);
 	SERIAL_CHECK_TRUE(write_frame(handle, 0x80, 0, 0, 0, 10));
+	indigo_usleep(100000);
+	// Two positions of two shots with return: every shot, the step between the positions and the return are reported.
 	SERIAL_CHECK_TRUE(write_frame(handle, 0x1A, 1, 2, 1, 1));
-	SERIAL_CHECK_TRUE(read_status(handle, 0xF7) && read_status(handle, 0xF7) && read_status(handle, 0xF6));
+	SERIAL_CHECK_TRUE(read_status(handle, 0xF7) && read_status(handle, 0xF7) && read_status(handle, 0xF5) && read_status(handle, 0xF7) && read_status(handle, 0xF7) && read_status(handle, 0xF6));
 	make_frame(frame, 0x40, 0, 0, 0, 1);
 	frame[10] ^= 1;
 	SERIAL_CHECK_TRUE(indigo_uni_write(handle, (const char *)frame, sizeof(frame)) == sizeof(frame));
@@ -314,7 +349,7 @@ cleanup:
 }
 
 static void fallback_connection(void) {
-	SERIAL_CHECK_TRUE(start_driver());
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&wemacro) && connect_serial_device(&wemacro, fixture.port));
 	SERIAL_CHECK_TRUE(wait_event("RX", "MOVE_FORWARD", 2));
 	SERIAL_CHECK_TRUE(wait_event("RX", "STOP", 1));
 cleanup:
@@ -340,7 +375,10 @@ cleanup:
 static void motion_and_controls(void) {
 	SERIAL_CHECK_TRUE(start_driver());
 	int configs = event_count("RX", "CONFIG");
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2, INDIGO_OK_STATE));
+	// A move queued right behind the speed write has to wait until the controller accepts frames
+	// again (WeMacro Rail, 2026-10-08).
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 2));
+	SERIAL_CHECK_TRUE(move_steps(20, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "CONFIG cmd=80 a=255", 1));
 	// A setting write sends one command carrying it; the driver-owned reversal and rail configuration send nothing.
 	SERIAL_CHECK_EQ_INT(configs + 1, event_count("RX", "CONFIG"));
@@ -362,6 +400,7 @@ static void motion_and_controls(void) {
 	int moves = event_count("RX", "MOVE_");
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 0, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(moves, event_count("RX", "MOVE_"));
+	SERIAL_CHECK_EQ_INT(0, event_count("REJECT", "after_config"));
 cleanup:
 	stop_driver();
 }
@@ -369,7 +408,7 @@ cleanup:
 static void overlap_and_abort(void) {
 	SERIAL_CHECK_TRUE(start_driver());
 	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4000));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "MOVE_FORWARD", 1));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10));
@@ -411,7 +450,7 @@ cleanup:
 static void disconnect_reconnect(void) {
 	SERIAL_CHECK_TRUE(start_driver());
 	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4000));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "MOVE_FORWARD", 1));
 	disconnect_serial_device(&wemacro);
@@ -438,6 +477,10 @@ static void configuration_and_shutter(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_RAIL_SHUTTER_PROPERTY_NAME, X_RAIL_SHUTTER_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "SHUTTER", 1));
 	SERIAL_CHECK_TRUE(!find_cached_item(X_RAIL_SHUTTER_PROPERTY_NAME, X_RAIL_SHUTTER_ITEM_NAME)->sw.value);
+	// A move right after the shutter must not take the status reporting the end of the shutter pulse
+	// for its own (WeMacro Rail, 2026-10-08).
+	SERIAL_CHECK_TRUE(move_steps(200, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, event_count("REJECT", "after_config"));
 cleanup:
 	stop_driver();
 }
@@ -450,6 +493,8 @@ static void batch_execution(void) {
 		SERIAL_CHECK_TRUE(switch_change(X_RAIL_CONFIG_PROPERTY_NAME, X_RAIL_CONFIG_BEEP_ITEM_NAME, true, INDIGO_OK_STATE));
 	}
 	SERIAL_CHECK_TRUE(batch_change(values, INDIGO_OK_STATE));
+	// Every shot and every step is reported; the batch ends only after the last shot of the last position.
+	SERIAL_CHECK_EQ_INT(6, event_count("TX", "5AA5F7"));
 	SERIAL_CHECK_TRUE(wait_event("RX", "CONFIG cmd=80", 1));
 	SERIAL_CHECK_TRUE(wait_event("RX", !strcmp(current_case, "batch_back") ? "BATCH_EXEC cmd=1A a=0 b=2 c=1 value=2" : "BATCH_EXEC cmd=10 a=0 b=2 c=1 value=2", 1));
 	indigo_item *count = find_cached_item(X_RAIL_EXECUTE_PROPERTY_NAME, X_RAIL_EXECUTE_COUNT_ITEM_NAME);
@@ -472,6 +517,29 @@ static void batch_abort_overlap(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(X_RAIL_EXECUTE_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(0, event_count("RX", "MOVE_"));
 	SERIAL_CHECK_TRUE(batch_change((double[]){ 0, 1, 1, 20, 2 }, INDIGO_OK_STATE));
+cleanup:
+	stop_driver();
+}
+
+// A batch stopped while it prepares a shot reports a step only when that phase is over, up to a
+// second after the stop. A move started right after the abort must not take that status for its
+// own completion (WeMacro Rail, 2026-10-08).
+static void move_after_batch_abort(void) {
+	SERIAL_CHECK_TRUE(start_driver());
+	static const char *items[] = { X_RAIL_EXECUTE_SETTLE_TIME_ITEM_NAME, X_RAIL_EXECUTE_PER_STEP_ITEM_NAME, X_RAIL_EXECUTE_INTERVAL_ITEM_NAME, X_RAIL_EXECUTE_LENGTH_ITEM_NAME, X_RAIL_EXECUTE_COUNT_ITEM_NAME };
+	unsigned before = atomic_load(&revisions[observed_index(X_RAIL_EXECUTE_PROPERTY_NAME)]);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, wemacro.device_name, X_RAIL_EXECUTE_PROPERTY_NAME, ARRAY_SIZE(items), items, (double[]){ 0, 1, 1, 20, 10 }));
+	SERIAL_CHECK_TRUE(new_state(X_RAIL_EXECUTE_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event("RX", "BATCH_EXEC", 1));
+	indigo_usleep(200000);
+	SERIAL_CHECK_EQ_INT(0, event_count("TX", "5AA5F7"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_RAIL_EXECUTE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(move_steps(4000, INDIGO_OK_STATE));
+	// 4000 steps take 3.1 s at speed 1.
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - started > 2.5);
 cleanup:
 	stop_driver();
 }
@@ -539,7 +607,7 @@ static void transport_failure(void) {
 	SERIAL_CHECK_TRUE(start_driver());
 	int index = observed_index(FOCUSER_STEPS_PROPERTY_NAME);
 	unsigned before = atomic_load(&revisions[index]);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4000));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event("RX", "MOVE_FORWARD", 1));
 	before = atomic_load(&revisions[index]);
@@ -603,7 +671,7 @@ static void abort_overtakes_queued_move(void) {
 	}
 	SERIAL_CHECK_TRUE(atomic_load(&gate_entered));
 	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 4000));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_BUSY_STATE));
 	before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, wemacro.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
@@ -718,8 +786,9 @@ static int run_cases(const wemacro_test *cases, int count) {
 int main(void) {
 	simulator_test_client.update_property = observe_update;
 	const wemacro_test tests[] = {
-		{ "simulator_protocol", simulator_protocol, "normal" },
+		{ "simulator_protocol", simulator_protocol, "initial" },
 		{ "capabilities_normal", capabilities, "normal" },
+		{ "capabilities_initial", capabilities, "initial" },
 		{ "capabilities_split", capabilities, "split" },
 		{ "fallback_connection", fallback_connection, "fallback" },
 		{ "initialization_failure_retry", initialization_failure_retry, "silent" },
@@ -736,11 +805,11 @@ int main(void) {
 		{ "batch_no_back", batch_execution, "normal" },
 		{ "batch_back", batch_execution, "normal" },
 		{ "batch_abort_overlap", batch_abort_overlap, "normal" },
+		{ "move_after_batch_abort", move_after_batch_abort, "normal" },
 		{ "batch_malformed_status", batch_failure_recovery, "normal" },
 		{ "batch_wrong_status", batch_failure_recovery, "normal" },
 		{ "batch_silent_status", batch_failure_recovery, "normal" },
 		{ "batch_disconnect_reconnect", batch_disconnect_reconnect, "normal" },
-		{ "batch_reconnect_slow_stop_status", batch_disconnect_reconnect, "slow_stop" },
 		{ "batch_execute_write_failure", batch_execute_write_failure, "normal" },
 		{ "transport_failure", transport_failure, "normal" },
 		{ "shutdown_and_instances", shutdown_and_instances, "normal" }

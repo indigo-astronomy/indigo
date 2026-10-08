@@ -2764,6 +2764,20 @@ FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_focusdre
 $(TEST_BUILD)/hardware/test_focuser_focusdreampro_hw: hardware/test_focuser_focusdreampro_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_FOCUSDREAMPRO_HW_TEST_LDFLAGS)
 
+# Physical WeMacro Rail hardware is opt-in and excluded from normal integration tests.
+# THE RAIL MOVES: every move stays within WEMACRO_HW_TRAVEL steps (default 2000) and is moved back;
+# a move cut short by an abort or a disconnect is compensated from the measured step rate. The
+# shutter output fires. Set WEMACRO_HW_PORT to override the port the driver matched through its
+# CH340 pattern.
+.PHONY: test-focuser-wemacro-hw
+test-focuser-wemacro-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_wemacro_hw
+	$(TEST_BUILD)/hardware/test_focuser_wemacro_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_WEMACRO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_wemacro.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_wemacro_hw: hardware/test_focuser_wemacro_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_wemacro.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_WEMACRO_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

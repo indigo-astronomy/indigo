@@ -30,6 +30,21 @@
 #define STATUS_BACKWARD 0xF6
 #define STATUS_BATCH 0xF7
 
+// Measured on a WeMacro Rail controller (2026-10-08).
+#define SLOW_RATE 1289.0
+#define FAST_RATE 12809.0
+// A shot ends this long after its pulse starts and reports STATUS_BATCH.
+#define SHOT_PULSE 0.3
+// After arriving at a position and settling the controller prepares a shot; a stop is not taken
+// before this phase is over.
+#define SHOT_PREPARE 0.95
+// The time a step between two positions, or the return, takes on top of its travel.
+#define STEP_OVERHEAD 0.7
+// A frame that completes this soon after a configuration frame is ignored.
+#define CONFIG_SETTLE 0.03
+
+typedef enum { BATCH_SETTLE, BATCH_PREPARE, BATCH_PULSE, BATCH_INTERVAL, BATCH_STEP, BATCH_RETURN } batch_phase;
+
 static const char *profile = "normal", *ready_file, *fault_file;
 static FILE *events;
 static bool headless, trace, initial_sent, suppress_status, motion_active, batch_active, batch_back, stalled;
@@ -37,10 +52,16 @@ static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 static uint8_t input[FRAME_SIZE];
 static size_t input_length;
-static double input_time, next_status_time;
+static double input_time, config_time = -1, shutter_status_time, stop_status_time;
 static char status_fault[32];
-static uint8_t motion_status;
-static uint32_t batch_remaining, step_length;
+static uint8_t motion_status, stop_status;
+static uint32_t batch_remaining, batch_count, step_length;
+static uint8_t batch_shots;
+static batch_phase batch_state;
+static double batch_phase_end;
+static bool move_pending;
+static double pending_target;
+static uint8_t pending_status;
 static uint8_t speed, settle_time, shutter_per_step, shutter_interval, config_flags;
 static serial_motion motion;
 
@@ -90,7 +111,8 @@ static bool send_status(uint8_t status) {
 		status_fault[0] = 0;
 		return true;
 	}
-	uint8_t response[3] = { 0xA5, 0x5A, status };
+	// The WeMacro Rail controller answers with the two header bytes of a command frame swapped.
+	uint8_t response[3] = { 0x5A, 0xA5, status };
 	if (!strcmp(status_fault, "malformed")) {
 		response[0] = 0xA4;
 	} else if (!strcmp(status_fault, "wrong")) {
@@ -154,6 +176,24 @@ static void arm_fault(const char *key) {
 	}
 }
 
+static double rate(void) {
+	return speed == 0xFF ? FAST_RATE : SLOW_RATE;
+}
+
+static void start_move(double target) {
+	serial_motion_start(&motion, target, rate());
+	// The shared model takes at least 0.5 s for any move; the rail covers a short move in its real time.
+	if (motion.duration > 0) {
+		motion.duration = fabs(target - motion.origin) / rate();
+	}
+	motion_active = true;
+}
+
+static void batch_enter(batch_phase state, double duration) {
+	batch_state = state;
+	batch_phase_end = serial_motion_time() + (duration > 0 ? duration : 0);
+}
+
 static void dispatch(const uint8_t *frame) {
 	uint16_t expected = crc16(frame, 10);
 	uint16_t actual = frame[10] | ((uint16_t)frame[11] << 8);
@@ -167,12 +207,19 @@ static void dispatch(const uint8_t *frame) {
 	}
 	uint8_t command = frame[2];
 	uint32_t value = frame_value(frame);
+	// The controller ignores a frame that completes within about 30 ms of a configuration frame.
+	if (config_time >= 0 && serial_motion_time() - config_time < CONFIG_SETTLE) {
+		reject("after_config");
+		return;
+	}
 	if (command == 0x04) {
 		if (!reserved_zero(frame) || value != 0) {
 			reject("shutter_fields");
 			return;
 		}
 		accept("SHUTTER", frame);
+		// The shutter reports the end of its pulse.
+		shutter_status_time = serial_motion_time() + SHOT_PULSE;
 		return;
 	}
 	if (command == 0x20) {
@@ -182,10 +229,18 @@ static void dispatch(const uint8_t *frame) {
 		}
 		accept("STOP", frame);
 		serial_motion_stop(&motion);
-		motion_active = batch_active = stalled = false;
-		// The status that follows a stop; the "slow_stop" profile sends it later, after the next command could start.
-		next_status_time = serial_motion_time() + (!strcmp(profile, "slow_stop") ? 0.06 : 0.02);
-		motion_status = STATUS_FORWARD;
+		// A stopped move reports its own direction about 10 ms later, an idle stop reports nothing. A
+		// stopped batch reports a step, once the shot it is preparing or firing is over. The status is
+		// sent even when another move has started in the meantime.
+		if (motion_active || move_pending) {
+			stop_status_time = serial_motion_time() + 0.01;
+			stop_status = motion_status;
+		} else if (batch_active) {
+			bool shot = batch_state == BATCH_PREPARE || batch_state == BATCH_PULSE;
+			stop_status_time = shot ? batch_phase_end : serial_motion_time() + 0.01;
+			stop_status = STATUS_FORWARD;
+		}
+		motion_active = batch_active = move_pending = stalled = false;
 		return;
 	}
 	if (command == 0x40 || command == 0x41) {
@@ -197,10 +252,16 @@ static void dispatch(const uint8_t *frame) {
 		accept(name, frame);
 		arm_fault(name);
 		double position = serial_motion_update(&motion);
-		serial_motion_start(&motion, position + (command == 0x40 ? value : -(double)value), speed == 0xFF ? 400 : 200);
 		motion_status = command == 0x40 ? STATUS_FORWARD : STATUS_BACKWARD;
-		motion_active = true;
 		batch_active = false;
+		if (shutter_status_time > 0 && value > 0) {
+			// A move waits for the shutter pulse to end.
+			move_pending = true;
+			pending_target = position + (command == 0x40 ? value : -(double)value);
+			pending_status = motion_status;
+			return;
+		}
+		start_move(position + (command == 0x40 ? value : -(double)value));
 		if (motion.duration == 0 && !stalled) {
 			// A move of no steps completes at once, before a command that follows it is read.
 			motion_active = false;
@@ -218,6 +279,7 @@ static void dispatch(const uint8_t *frame) {
 		config_flags = command & 0x0A;
 		speed = frame[3];
 		step_length = value;
+		config_time = serial_motion_time();
 		return;
 	}
 	if ((command & ~0x0A) == 0x10) {
@@ -230,11 +292,12 @@ static void dispatch(const uint8_t *frame) {
 		settle_time = frame[3];
 		shutter_per_step = frame[4];
 		shutter_interval = frame[5];
-		batch_remaining = value + 1;
+		batch_remaining = batch_count = value + 1;
+		batch_shots = shutter_per_step;
 		batch_back = (command & 0x08) != 0;
 		batch_active = true;
-		motion_active = false;
-		next_status_time = serial_motion_time() + 0.15;
+		motion_active = move_pending = false;
+		batch_enter(BATCH_SETTLE, settle_time);
 		return;
 	}
 	reject("command");
@@ -248,23 +311,52 @@ static void update_operations(void) {
 			send_status(motion_status);
 		}
 	}
-	if (batch_active && !stalled && serial_motion_time() >= next_status_time) {
-		if (batch_remaining > 0) {
-			send_status(STATUS_BATCH);
-			batch_remaining--;
-			next_status_time = serial_motion_time() + 0.15;
-		} else if (batch_back) {
-			send_status(STATUS_BACKWARD);
-			batch_active = false;
-			next_status_time = 0;
-		} else {
-			batch_active = false;
-			next_status_time = 0;
+	if (batch_active && !stalled && serial_motion_time() >= batch_phase_end) {
+		switch (batch_state) {
+			case BATCH_SETTLE:
+				batch_enter(BATCH_PREPARE, SHOT_PREPARE);
+				break;
+			case BATCH_PREPARE:
+			case BATCH_INTERVAL:
+				batch_enter(BATCH_PULSE, SHOT_PULSE);
+				break;
+			case BATCH_PULSE:
+				// Every shot is reported; the next shot of the same position follows one interval after
+				// this one, and a step follows the last shot of every position but the last one.
+				send_status(STATUS_BATCH);
+				if (--batch_shots > 0) {
+					batch_enter(BATCH_INTERVAL, shutter_interval - SHOT_PULSE);
+				} else if (--batch_remaining > 0) {
+					batch_shots = shutter_per_step;
+					batch_enter(BATCH_STEP, STEP_OVERHEAD + step_length / rate());
+				} else if (batch_back) {
+					batch_enter(BATCH_RETURN, STEP_OVERHEAD + (double)step_length * (batch_count - 1) / rate());
+				} else {
+					batch_active = false;
+				}
+				break;
+			case BATCH_STEP:
+				send_status(STATUS_FORWARD);
+				batch_enter(BATCH_SETTLE, settle_time);
+				break;
+			case BATCH_RETURN:
+				send_status(STATUS_BACKWARD);
+				batch_active = false;
+				break;
 		}
 	}
-	if (!motion_active && !batch_active && next_status_time > 0 && serial_motion_time() >= next_status_time) {
-		next_status_time = 0;
-		send_status(motion_status);
+	if (shutter_status_time > 0 && serial_motion_time() >= shutter_status_time) {
+		shutter_status_time = 0;
+		send_status(STATUS_BATCH);
+		if (move_pending) {
+			move_pending = false;
+			motion_status = pending_status;
+			start_move(pending_target);
+		}
+	}
+	if (stop_status_time > 0 && serial_motion_time() >= stop_status_time) {
+		stop_status_time = 0;
+		send_status(stop_status);
 	}
 }
 
@@ -316,11 +408,11 @@ static bool parse_args(int argc, char **argv) {
 		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
 			profile = argv[++i];
 		} else {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|fallback|silent|slow_stop]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|initial|split|fallback|silent]\n", argv[0]);
 			return false;
 		}
 	}
-	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "fallback") || !strcmp(profile, "silent") || !strcmp(profile, "slow_stop");
+	return !strcmp(profile, "normal") || !strcmp(profile, "initial") || !strcmp(profile, "split") || !strcmp(profile, "fallback") || !strcmp(profile, "silent");
 }
 
 int main(int argc, char **argv) {
@@ -348,7 +440,9 @@ int main(int argc, char **argv) {
 	}
 	event("OPEN", port);
 	while (running) {
-		if (!initial_sent) {
+		// The controller sends nothing when the port opens; the "initial" profile sends the initial
+		// status, which the driver also accepts, and the "fallback" profile a wrong one.
+		if (!initial_sent && (!strcmp(profile, "initial") || !strcmp(profile, "fallback"))) {
 			uint8_t status = !strcmp(profile, "fallback") ? 0xF1 : STATUS_INITIAL;
 			if (send_status(status)) {
 				initial_sent = true;
@@ -378,10 +472,6 @@ int main(int argc, char **argv) {
 	if (events != NULL) {
 		fclose(events);
 	}
-	(void)step_length;
-	(void)settle_time;
-	(void)shutter_per_step;
-	(void)shutter_interval;
 	(void)config_flags;
 	return 0;
 }

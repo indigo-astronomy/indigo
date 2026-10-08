@@ -250,7 +250,8 @@
 |  | 2026-09-30 19:29 | 3.0.0.11 | linux arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
 |  | 2026-10-05 19:52 | 3.0.0.12 | mac arm64 | simulator | 39 / 39 | ✅ OK |
 |  | 2026-10-05 22:18 | 3.0.0.12 | mac arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
-| focuser_wemacro | 2026-10-05 15:34 | 3.0.0.9 | mac arm64 | simulator | 26 / 26 | ✅ OK |
+| focuser_wemacro | 2026-10-08 19:03 | 3.0.0.10 | linux arm64 | WeMacro Rail controller | 16 / 16 | ✅ OK |
+|  | 2026-10-08 19:36 | 3.0.0.10 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | gps_gpsd | 2026-09-27 22:38 | 3.0.0.5 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | gps_nmea | 2026-09-22 21:38 | 3.0.0.20 | mac arm64 | u-blox 7 | 9 / 9 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.21 | mac arm64 | simulator | 5 / 5 | ✅ OK |
