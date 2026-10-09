@@ -63,7 +63,7 @@ static void progress_completion_abort_disconnect(void) {
 		indigo_property *position = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
 		SERIAL_CHECK_TRUE(position->state == INDIGO_ALERT_STATE);
 		SERIAL_CHECK_TRUE(position->items[0].number.value < target);
-		SERIAL_CHECK_TRUE(position->items[0].number.target == position->items[0].number.value);
+		SERIAL_CHECK_TRUE(position->items[0].number.target == target);
 		SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 		SERIAL_CHECK_TRUE(!find_cached_property(FOCUSER_ABORT_MOTION_PROPERTY_NAME)->items[0].sw.value);
 	}
