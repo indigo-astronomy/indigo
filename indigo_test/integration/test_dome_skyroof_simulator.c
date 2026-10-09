@@ -35,7 +35,9 @@
 #endif
 
 #define DOME_SKYROOF_NAME                   "SkyRoof"
-#define HEATER_CONTROL_PROPERTY_NAME        "HEATER_CONTROL"
+#define HEATER_CONTROL_PROPERTY_NAME        "X_HEATER_CONTROL"
+#define MOUNT_PARK_STATUS_PROPERTY_NAME     "X_MOUNT_PARK_STATUS"
+#define MOUNT_PARK_STATUS_ITEM_NAME         "STATUS"
 #define HEATER_CONTROL_OFF_ITEM_NAME        "OFF"
 #define HEATER_CONTROL_ON_ITEM_NAME         "ON"
 
@@ -81,6 +83,12 @@ static void metadata_and_property_completeness(void) {
 	assert_property_has_item(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_item(HEATER_CONTROL_PROPERTY_NAME, HEATER_CONTROL_OFF_ITEM_NAME);
 	assert_property_has_item(HEATER_CONTROL_PROPERTY_NAME, HEATER_CONTROL_ON_ITEM_NAME);
+	assert_property_has_item(MOUNT_PARK_STATUS_PROPERTY_NAME, MOUNT_PARK_STATUS_ITEM_NAME);
+	// The names, model and labels of the 2.0 driver.
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	SERIAL_CHECK_TRUE(model != NULL && !strcmp(model->text.value, "Interactive Astronomy SkyRoof"));
+	indigo_property *shutter = find_cached_property(DOME_SHUTTER_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(shutter != NULL && !strcmp(shutter->label, "Roof state") && shutter->rule == INDIGO_AT_MOST_ONE_RULE);
 
 	// A roll-off roof cannot rotate, park or slave, and the driver hides every property that would
 	// suggest otherwise. Publishing any of them would make clients offer controls that do nothing.
@@ -267,6 +275,54 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// -------------------------------------------------------------------------------- 2.0 behaviour
+
+// The mount park sensor is read with Parkstatus# at the connection: "0#" lights it, "1#" leaves it idle.
+static void mount_park_status_is_read_at_connect(void) {
+	static const char *values[] = { "0", "1" };
+	for (int i = 0; i < 2; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		const char *arguments[] = { "--park-status", values[i], NULL };
+		SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, DOME_SKYROOF_SIMULATOR_EXECUTABLE, arguments));
+		SERIAL_CHECK_TRUE(start_serial_driver(&skyroof_case, simulator.port));
+		online = true;
+		indigo_item *status = find_cached_item(MOUNT_PARK_STATUS_PROPERTY_NAME, MOUNT_PARK_STATUS_ITEM_NAME);
+		SERIAL_CHECK_TRUE(status != NULL && status->light.value == (i == 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE));
+cleanup:
+		if (online) { stop_serial_driver(&skyroof_case); }
+		stop_external_serial_simulator(&simulator);
+		if (indigo_test_failures) {
+			return;
+		}
+	}
+}
+
+// A roof that stops answering, or answers something unknown, while it travels ends the move in ALERT instead
+// of leaving the shutter BUSY for good.
+static void lost_or_unknown_status_alerts_the_roof(void) {
+	static const char *faults[] = { "silent", "garbage" };
+	for (int i = 0; i < 2; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		const char *arguments[] = { "--status-fault", faults[i], NULL };
+		SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, DOME_SKYROOF_SIMULATOR_EXECUTABLE, arguments));
+		SERIAL_CHECK_TRUE(start_serial_driver(&skyroof_case, simulator.port));
+		online = true;
+		SERIAL_CHECK_TRUE(set_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		assert_switch_item_value(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, false);
+		// The roof is still usable afterwards.
+		SERIAL_CHECK_TRUE(move_shutter(DOME_SHUTTER_CLOSED_ITEM_NAME));
+cleanup:
+		if (online) { stop_serial_driver(&skyroof_case); }
+		stop_external_serial_simulator(&simulator);
+		if (indigo_test_failures) {
+			return;
+		}
+	}
+}
+
 // -------------------------------------------------------------------------------- lifecycle
 
 static void repeated_disconnect_is_tolerated(void) {
@@ -310,6 +366,8 @@ int main(void) {
 		{ "abort_without_a_move_is_harmless", abort_without_a_move_is_harmless },
 		{ "queued_abort_contract_holds", queued_abort_contract_holds },
 		{ "heater_control_is_exclusive", heater_control_is_exclusive },
+		{ "mount_park_status_is_read_at_connect", mount_park_status_is_read_at_connect },
+		{ "lost_or_unknown_status_alerts_the_roof", lost_or_unknown_status_alerts_the_roof },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "vanished_port_is_refused", vanished_port_is_refused }
 	};

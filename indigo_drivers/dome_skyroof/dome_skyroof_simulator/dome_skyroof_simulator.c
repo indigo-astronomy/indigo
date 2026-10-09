@@ -47,6 +47,11 @@ static const char *simulator_name = "dome_skyroof";
 static bool roof_open = false;
 static bool heater_on = false;
 static int moving_status_polls = 0;
+// The answer to Parkstatus#: "0#" or "1#".
+static const char *park_status = "0#";
+// The first Status# after the first move command answers with this fault: "silent" (no answer) or "garbage".
+static const char *status_fault = NULL;
+static bool status_fault_armed = false, status_fault_used = false;
 
 static void usage(const char *name) {
 	printf("Interactive Astronomy SkyRoof serial simulator\n");
@@ -54,6 +59,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
+	printf("  --park-status <0|1>     Answer Parkstatus# with 0# (default) or 1#\n");
+	printf("  --status-fault <mode>   Answer the first Status# after the first move with silent|garbage\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -67,6 +74,10 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
+		} else if (!strcmp(argv[i], "--park-status") && i + 1 < argc) {
+			park_status = strcmp(argv[++i], "1") ? "0#" : "1#";
+		} else if (!strcmp(argv[i], "--status-fault") && i + 1 < argc) {
+			status_fault = argv[++i];
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -132,6 +143,13 @@ static void sim_write_response(int fd, const char *response) {
 
 static void dispatch_command(int fd, const char *command) {
 	if (!strcmp(command, "Status#")) {
+		if (status_fault_armed) {
+			status_fault_armed = false;
+			if (!strcmp(status_fault, "garbage")) {
+				sim_write_response(fd, "Busy#");
+			}
+			return;
+		}
 		if (moving_status_polls > 0) {
 			moving_status_polls--;
 			sim_write_response(fd, "Safety#");
@@ -141,16 +159,20 @@ static void dispatch_command(int fd, const char *command) {
 	} else if (!strcmp(command, "Open#")) {
 		roof_open = true;
 		moving_status_polls = 1;
+		status_fault_armed = status_fault != NULL && !status_fault_used;
+		status_fault_used = status_fault_armed || status_fault_used;
 		sim_write_response(fd, "0#");
 	} else if (!strcmp(command, "Close#")) {
 		roof_open = false;
 		moving_status_polls = 1;
+		status_fault_armed = status_fault != NULL && !status_fault_used;
+		status_fault_used = status_fault_armed || status_fault_used;
 		sim_write_response(fd, "0#");
 	} else if (!strcmp(command, "Stop#")) {
 		moving_status_polls = 0;
 		sim_write_response(fd, "0#");
 	} else if (!strcmp(command, "Parkstatus#")) {
-		sim_write_response(fd, "0#");
+		sim_write_response(fd, park_status);
 	} else if (!strcmp(command, "HeaterOn#")) {
 		heater_on = true;
 	} else if (!strcmp(command, "HeaterOff#")) {

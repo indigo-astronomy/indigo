@@ -18,46 +18,64 @@
 
 // Interactive Astronomy SkyRoof driver definition
 
+// version history
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
 driver skyroof {
 	label = "Interactive Astronomy SkyRoof";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 10;
+	version = 11;
 	serial;
-	// include { }
-	// define { }
+	define {
+		// a roof that travels longer than this without arriving is reported as failed
+		#define SKYROOF_MOTION_TIMEOUT 300
+	}
 	data {
 		char response[128];
+		double motion_started;
 	}
 	code {
 		static void dome_shutter_handler(indigo_device *device);
 
-		static bool skyroof_write(indigo_device *device, char *command)	{
-			return indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) > 0;
+		// every command is answered by one CR terminated line, except the heater commands, which have no answer
+		static bool skyroof_command(indigo_device *device, char *command, bool reply) {
+			PRIVATE_DATA->response[0] = 0;
+			if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) <= 0) {
+				return false;
+			}
+			return !reply || indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
 		}
 
-		static bool	skyroof_read(indigo_device *device) {
-			return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
-		}
-
+		// "RoofOpen#" and "RoofClosed#" end a motion, "Safety#" is reported while the roof travels
 		static bool skyroof_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
-				if (skyroof_write(device, "Status#") && skyroof_read(device)) {
+				if (skyroof_command(device, "Status#", true)) {
 					if (!strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
 						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 					} else if (!strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
 						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
 						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-					} else {
+					} else if (!strcmp(PRIVATE_DATA->response, "Safety#")) {
 						DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
 						DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, Status# answered '%s'", PRIVATE_DATA->response);
+						indigo_uni_close(&PRIVATE_DATA->handle);
+						return false;
 					}
-					return true;
-				} else {
-					indigo_uni_close(&PRIVATE_DATA->handle);
+					// "0#" and "1#" are the two states of the mount park sensor
+					if (skyroof_command(device, "Parkstatus#", true) && (!strcmp(PRIVATE_DATA->response, "0#") || !strcmp(PRIVATE_DATA->response, "1#"))) {
+						X_MOUNT_PARK_STATUS_ITEM->light.value = PRIVATE_DATA->response[0] == '0' ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+						X_MOUNT_PARK_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						return true;
+					}
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, Parkstatus# answered '%s'", PRIVATE_DATA->response);
 				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 			return false;
 		}
@@ -66,47 +84,55 @@ driver skyroof {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	dome {
 		name = "SkyRoof";
 		additional_instances = true;
 		code {
+			static void skyroof_shutter_failed(indigo_device *device, const char *message) {
+				DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+				INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, message);
+			}
+
 			static void dome_shutter_finalizer(indigo_device *device) {
 				if (DOME_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-					DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
-					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
+					skyroof_shutter_failed(device, NULL);
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else if (!skyroof_command(device, "Status#", true)) {
+					skyroof_shutter_failed(device, "Roof does not respond");
+				} else if (DOME_SHUTTER_OPENED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
+					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else if (DOME_SHUTTER_CLOSED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
+					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else if (strcmp(PRIVATE_DATA->response, "RoofOpen#") && strcmp(PRIVATE_DATA->response, "RoofClosed#") && strcmp(PRIVATE_DATA->response, "Safety#")) {
+					skyroof_shutter_failed(device, "Unexpected roof status");
+				} else if (indigo_monotonic_time() - PRIVATE_DATA->motion_started > SKYROOF_MOTION_TIMEOUT) {
+					skyroof_shutter_failed(device, "Roof did not arrive");
 				} else {
-					if (skyroof_write(device, "Status#") && skyroof_read(device)) {
-						if (DOME_SHUTTER_OPENED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
-							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-							indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-						} else if (DOME_SHUTTER_CLOSED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
-							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-							indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-						} else {
-							indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
-						}
-					}
+					indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 				}
 			}
 		}
-		// on_timer { }
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
+		on_attach {
+			INFO_PROPERTY->count = 5;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyRoof");
+		}
 		inherited DOME_SHUTTER {
+			on_attach {
+				DOME_SHUTTER_PROPERTY->rule = INDIGO_AT_MOST_ONE_RULE;
+				INDIGO_COPY_VALUE(DOME_SHUTTER_PROPERTY->label, "Roof state");
+				INDIGO_COPY_VALUE(DOME_SHUTTER_OPENED_ITEM->label, "Roof opened");
+				INDIGO_COPY_VALUE(DOME_SHUTTER_CLOSED_ITEM->label, "Roof closed");
+			}
 			on_change {
-				if (skyroof_write(device, DOME_SHUTTER_OPENED_ITEM->sw.value ? "Open#" : "Close#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
+				bool open = indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM_NAME);
+				if (skyroof_command(device, open ? "Open#" : "Close#", true) && !strcmp(PRIVATE_DATA->response, "0#")) {
+					indigo_apply_switch_targets(DOME_SHUTTER_PROPERTY);
+					PRIVATE_DATA->motion_started = indigo_monotonic_time();
 					indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 				} else {
-					INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
+					skyroof_shutter_failed(device, NULL);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited DOME_ABORT_MOTION {
 			on_change {
@@ -114,7 +140,7 @@ driver skyroof {
 				DOME_ABORT_MOTION_ITEM->sw.value = false;
 				if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_cancel_pending_handler(device, dome_shutter_handler);
-					if (skyroof_write(device, "Stop#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
+					if (skyroof_command(device, "Stop#", true) && !strcmp(PRIVATE_DATA->response, "0#")) {
 						DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_cancel_pending_handler(device, dome_shutter_finalizer);
 						indigo_execute_handler_in(device, 0, dome_shutter_finalizer);
@@ -125,27 +151,30 @@ driver skyroof {
 				}
 				indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			}
-			// on_attach { }
-			// on_detach { }
 		}
-		switch HEATER_CONTROL {
-			on_change {
-				if (!skyroof_write(device, HEATER_CONTROL_ON_ITEM->sw.value ? "HeaterOn#" : "HeaterOff#")) {
-					HEATER_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
+		light X_MOUNT_PARK_STATUS {
+			name = "X_MOUNT_PARK_STATUS";
+			group = DOME_MAIN_GROUP;
+			label = "Mount park status";
+			item X_MOUNT_PARK_STATUS {
+				name = "STATUS";
+				label = "Parked";
+				value = INDIGO_IDLE_STATE;
 			}
-			// on_attach { }
-			// on_detach { }
-			name = "HEATER_CONTROL";
+		}
+		switch X_HEATER_CONTROL {
+			name = "X_HEATER_CONTROL";
 			group = DOME_MAIN_GROUP;
 			label = "Heater control";
-			// asynchronous_change = false;
-			item HEATER_CONTROL_OFF {
+			on_change {
+				X_HEATER_CONTROL_PROPERTY->state = skyroof_command(device, X_HEATER_CONTROL_ON_ITEM->sw.value ? "HeaterOn#" : "HeaterOff#", false) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+			item X_HEATER_CONTROL_OFF {
 				name = "OFF";
 				label = "Off";
 				value = true;
 			}
-			item HEATER_CONTROL_ON {
+			item X_HEATER_CONTROL_ON {
 				name = "ON";
 				label = "On";
 				value = false;
@@ -153,45 +182,24 @@ driver skyroof {
 		}
 		inherited DOME_SPEED {
 			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited DOME_DIRECTION {
 			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited DOME_HORIZONTAL_COORDINATES {
 			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited DOME_STEPS {
 			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited DOME_PARK {
 			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited DOME_DIMENSION {
 			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited DOME_SLAVING_PARAMETERS {
 			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 	}
 }

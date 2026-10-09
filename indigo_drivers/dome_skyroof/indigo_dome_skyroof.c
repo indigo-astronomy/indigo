@@ -32,29 +32,44 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_dome_skyroof"
 #define DRIVER_LABEL         "Interactive Astronomy SkyRoof"
 #define DOME_DEVICE_NAME     "SkyRoof"
 #define PRIVATE_DATA         ((skyroof_private_data *)device->private_data)
 
+//+ define
+
+// a roof that travels longer than this without arriving is reported as failed
+#define SKYROOF_MOTION_TIMEOUT 300
+
+//- define
+
 #pragma mark - Property definitions
 
-#define HEATER_CONTROL_PROPERTY        (PRIVATE_DATA->heater_control_property)
-#define HEATER_CONTROL_OFF_ITEM        (HEATER_CONTROL_PROPERTY->items + 0)
-#define HEATER_CONTROL_ON_ITEM         (HEATER_CONTROL_PROPERTY->items + 1)
+#define X_MOUNT_PARK_STATUS_PROPERTY      (PRIVATE_DATA->x_mount_park_status_property)
+#define X_MOUNT_PARK_STATUS_ITEM          (X_MOUNT_PARK_STATUS_PROPERTY->items + 0)
 
-#define HEATER_CONTROL_PROPERTY_NAME   "HEATER_CONTROL"
-#define HEATER_CONTROL_OFF_ITEM_NAME   "OFF"
-#define HEATER_CONTROL_ON_ITEM_NAME    "ON"
+#define X_MOUNT_PARK_STATUS_PROPERTY_NAME "X_MOUNT_PARK_STATUS"
+#define X_MOUNT_PARK_STATUS_ITEM_NAME     "STATUS"
+
+#define X_HEATER_CONTROL_PROPERTY      (PRIVATE_DATA->x_heater_control_property)
+#define X_HEATER_CONTROL_OFF_ITEM      (X_HEATER_CONTROL_PROPERTY->items + 0)
+#define X_HEATER_CONTROL_ON_ITEM       (X_HEATER_CONTROL_PROPERTY->items + 1)
+
+#define X_HEATER_CONTROL_PROPERTY_NAME "X_HEATER_CONTROL"
+#define X_HEATER_CONTROL_OFF_ITEM_NAME "OFF"
+#define X_HEATER_CONTROL_ON_ITEM_NAME  "ON"
 
 #pragma mark - Private data definition
 
 typedef struct {
 	indigo_uni_handle *handle;
-	indigo_property *heater_control_property;
+	indigo_property *x_mount_park_status_property;
+	indigo_property *x_heater_control_property;
 	//+ data
 	char response[128];
+	double motion_started;
 	//- data
 } skyroof_private_data;
 
@@ -64,32 +79,43 @@ typedef struct {
 
 static void dome_shutter_handler(indigo_device *device);
 
-static bool skyroof_write(indigo_device *device, char *command)	{
-	return indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) > 0;
+// every command is answered by one CR terminated line, except the heater commands, which have no answer
+static bool skyroof_command(indigo_device *device, char *command, bool reply) {
+	PRIVATE_DATA->response[0] = 0;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) <= 0) {
+		return false;
+	}
+	return !reply || indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
 }
 
-static bool	skyroof_read(indigo_device *device) {
-	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0;
-}
-
+// "RoofOpen#" and "RoofClosed#" end a motion, "Safety#" is reported while the roof travels
 static bool skyroof_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		if (skyroof_write(device, "Status#") && skyroof_read(device)) {
+		if (skyroof_command(device, "Status#", true)) {
 			if (!strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
 				indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 				DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			} else if (!strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
 				indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
 				DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
+			} else if (!strcmp(PRIVATE_DATA->response, "Safety#")) {
 				DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
 				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, Status# answered '%s'", PRIVATE_DATA->response);
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				return false;
 			}
-			return true;
-		} else {
-			indigo_uni_close(&PRIVATE_DATA->handle);
+			// "0#" and "1#" are the two states of the mount park sensor
+			if (skyroof_command(device, "Parkstatus#", true) && (!strcmp(PRIVATE_DATA->response, "0#") || !strcmp(PRIVATE_DATA->response, "1#"))) {
+				X_MOUNT_PARK_STATUS_ITEM->light.value = PRIVATE_DATA->response[0] == '0' ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				X_MOUNT_PARK_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				return true;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, Parkstatus# answered '%s'", PRIVATE_DATA->response);
 		}
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;
 }
@@ -102,23 +128,27 @@ static void skyroof_close(indigo_device *device) {
 
 //+ dome.code
 
+static void skyroof_shutter_failed(indigo_device *device, const char *message) {
+	DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+	INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, message);
+}
+
 static void dome_shutter_finalizer(indigo_device *device) {
 	if (DOME_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
-		DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
-		INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		skyroof_shutter_failed(device, NULL);
 		INDIGO_UPDATE_PROPERTY_STATE(DOME_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else if (!skyroof_command(device, "Status#", true)) {
+		skyroof_shutter_failed(device, "Roof does not respond");
+	} else if (DOME_SHUTTER_OPENED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else if (DOME_SHUTTER_CLOSED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else if (strcmp(PRIVATE_DATA->response, "RoofOpen#") && strcmp(PRIVATE_DATA->response, "RoofClosed#") && strcmp(PRIVATE_DATA->response, "Safety#")) {
+		skyroof_shutter_failed(device, "Unexpected roof status");
+	} else if (indigo_monotonic_time() - PRIVATE_DATA->motion_started > SKYROOF_MOTION_TIMEOUT) {
+		skyroof_shutter_failed(device, "Roof did not arrive");
 	} else {
-		if (skyroof_write(device, "Status#") && skyroof_read(device)) {
-			if (DOME_SHUTTER_OPENED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
-				DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-			} else if (DOME_SHUTTER_CLOSED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
-				DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-			} else {
-				indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
-			}
-		}
+		indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 	}
 }
 
@@ -131,7 +161,8 @@ static void dome_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = skyroof_open(device);
 		if (connection_result) {
-			indigo_define_property(device, HEATER_CONTROL_PROPERTY, NULL);
+			indigo_define_property(device, X_MOUNT_PARK_STATUS_PROPERTY, NULL);
+			indigo_define_property(device, X_HEATER_CONTROL_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -145,7 +176,8 @@ static void dome_connection_handler(indigo_device *device) {
 		indigo_property *cancelled_properties[] = {
 			DOME_SHUTTER_PROPERTY,
 			DOME_ABORT_MOTION_PROPERTY,
-			HEATER_CONTROL_PROPERTY,
+			X_MOUNT_PARK_STATUS_PROPERTY,
+			X_HEATER_CONTROL_PROPERTY,
 			DOME_SPEED_PROPERTY,
 			DOME_DIRECTION_PROPERTY,
 			DOME_HORIZONTAL_COORDINATES_PROPERTY,
@@ -159,7 +191,8 @@ static void dome_connection_handler(indigo_device *device) {
 				cancelled_properties[i]->state = INDIGO_OK_STATE;
 			}
 		}
-		indigo_delete_property(device, HEATER_CONTROL_PROPERTY, NULL);
+		indigo_delete_property(device, X_MOUNT_PARK_STATUS_PROPERTY, NULL);
+		indigo_delete_property(device, X_HEATER_CONTROL_PROPERTY, NULL);
 		skyroof_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -169,10 +202,13 @@ static void dome_connection_handler(indigo_device *device) {
 
 static void dome_shutter_handler(indigo_device *device) {
 	//+ dome.DOME_SHUTTER.on_change
-	if (skyroof_write(device, DOME_SHUTTER_OPENED_ITEM->sw.value ? "Open#" : "Close#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
+	bool open = indigo_get_switch_target(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM_NAME);
+	if (skyroof_command(device, open ? "Open#" : "Close#", true) && !strcmp(PRIVATE_DATA->response, "0#")) {
+		indigo_apply_switch_targets(DOME_SHUTTER_PROPERTY);
+		PRIVATE_DATA->motion_started = indigo_monotonic_time();
 		indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 	} else {
-		INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		skyroof_shutter_failed(device, NULL);
 	}
 	//- dome.DOME_SHUTTER.on_change
 }
@@ -183,7 +219,7 @@ static void dome_abort_motion_handler(indigo_device *device) {
 	DOME_ABORT_MOTION_ITEM->sw.value = false;
 	if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_pending_handler(device, dome_shutter_handler);
-		if (skyroof_write(device, "Stop#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
+		if (skyroof_command(device, "Stop#", true) && !strcmp(PRIVATE_DATA->response, "0#")) {
 			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_cancel_pending_handler(device, dome_shutter_finalizer);
 			indigo_execute_handler_in(device, 0, dome_shutter_finalizer);
@@ -196,14 +232,11 @@ static void dome_abort_motion_handler(indigo_device *device) {
 	//- dome.DOME_ABORT_MOTION.on_change
 }
 
-static void dome_heater_control_handler(indigo_device *device) {
-	HEATER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
-	//+ dome.HEATER_CONTROL.on_change
-	if (!skyroof_write(device, HEATER_CONTROL_ON_ITEM->sw.value ? "HeaterOn#" : "HeaterOff#")) {
-		HEATER_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	//- dome.HEATER_CONTROL.on_change
-	indigo_update_property(device, HEATER_CONTROL_PROPERTY, NULL);
+static void dome_x_heater_control_handler(indigo_device *device) {
+	//+ dome.X_HEATER_CONTROL.on_change
+	X_HEATER_CONTROL_PROPERTY->state = skyroof_command(device, X_HEATER_CONTROL_ON_ITEM->sw.value ? "HeaterOn#" : "HeaterOff#", false) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	//- dome.X_HEATER_CONTROL.on_change
+	indigo_update_property(device, X_HEATER_CONTROL_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (dome)
@@ -216,14 +249,29 @@ static indigo_result dome_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		//+ dome.on_attach
+		INFO_PROPERTY->count = 5;
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyRoof");
+		//- dome.on_attach
 		DOME_SHUTTER_PROPERTY->hidden = false;
+		//+ dome.DOME_SHUTTER.on_attach
+		DOME_SHUTTER_PROPERTY->rule = INDIGO_AT_MOST_ONE_RULE;
+		INDIGO_COPY_VALUE(DOME_SHUTTER_PROPERTY->label, "Roof state");
+		INDIGO_COPY_VALUE(DOME_SHUTTER_OPENED_ITEM->label, "Roof opened");
+		INDIGO_COPY_VALUE(DOME_SHUTTER_CLOSED_ITEM->label, "Roof closed");
+		//- dome.DOME_SHUTTER.on_attach
 		DOME_ABORT_MOTION_PROPERTY->hidden = false;
-		HEATER_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, HEATER_CONTROL_PROPERTY_NAME, DOME_MAIN_GROUP, "Heater control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (HEATER_CONTROL_PROPERTY == NULL) {
+		X_MOUNT_PARK_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, X_MOUNT_PARK_STATUS_PROPERTY_NAME, DOME_MAIN_GROUP, "Mount park status", INDIGO_OK_STATE, 1);
+		if (X_MOUNT_PARK_STATUS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_switch_item(HEATER_CONTROL_OFF_ITEM, HEATER_CONTROL_OFF_ITEM_NAME, "Off", true);
-		indigo_init_switch_item(HEATER_CONTROL_ON_ITEM, HEATER_CONTROL_ON_ITEM_NAME, "On", false);
+		indigo_init_light_item(X_MOUNT_PARK_STATUS_ITEM, X_MOUNT_PARK_STATUS_ITEM_NAME, "Parked", INDIGO_IDLE_STATE);
+		X_HEATER_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, X_HEATER_CONTROL_PROPERTY_NAME, DOME_MAIN_GROUP, "Heater control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_HEATER_CONTROL_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_HEATER_CONTROL_OFF_ITEM, X_HEATER_CONTROL_OFF_ITEM_NAME, "Off", true);
+		indigo_init_switch_item(X_HEATER_CONTROL_ON_ITEM, X_HEATER_CONTROL_ON_ITEM_NAME, "On", false);
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden = true;
@@ -239,7 +287,8 @@ static indigo_result dome_attach(indigo_device *device) {
 
 static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		INDIGO_DEFINE_MATCHING_PROPERTY(HEATER_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_MOUNT_PARK_STATUS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_HEATER_CONTROL_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, client, property);
 }
@@ -254,8 +303,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(HEATER_CONTROL_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(HEATER_CONTROL_PROPERTY, dome_heater_control_handler);
+	} else if (indigo_property_match_changeable(X_HEATER_CONTROL_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_HEATER_CONTROL_PROPERTY, dome_x_heater_control_handler);
 		return INDIGO_OK;
 	}
 	return indigo_dome_change_property(device, client, property);
@@ -266,7 +315,8 @@ static indigo_result dome_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		dome_connection_handler(device);
 	}
-	indigo_release_property(HEATER_CONTROL_PROPERTY);
+	indigo_release_property(X_MOUNT_PARK_STATUS_PROPERTY);
+	indigo_release_property(X_HEATER_CONTROL_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_dome_detach(device);
 }

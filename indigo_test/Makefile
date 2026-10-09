@@ -3020,6 +3020,18 @@ DOME_TALON6ROR_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_talon6ror.a $(TEST
 $(TEST_BUILD)/hardware/test_dome_talon6ror_hw: hardware/test_dome_talon6ror_hw.c hardware/dome_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_dome_talon6ror.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(DOME_TALON6ROR_HW_TEST_LDFLAGS)
 
+# A physical Interactive Astronomy SkyRoof controller, or the Arduino sketch dome_skyroof_simulator.ino on a
+# board, is opt-in and excluded from normal integration tests. THE ROOF MOVES AND THE HEATER SWITCHES; the run
+# returns the roof to the state it found and leaves the heater off. Set SKYROOF_HW_PORT.
+.PHONY: test-dome-skyroof-hw
+test-dome-skyroof-hw: check-lib $(TEST_BUILD)/hardware/test_dome_skyroof_hw
+	$(TEST_BUILD)/hardware/test_dome_skyroof_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+DOME_SKYROOF_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_skyroof.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_dome_skyroof_hw: hardware/test_dome_skyroof_hw.c hardware/dome_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_dome_skyroof.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(DOME_SKYROOF_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

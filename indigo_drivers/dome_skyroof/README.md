@@ -30,4 +30,5 @@ Developed with simulator only
 
 ## Testing
 
-2026-09-27 22:32 3.0.0.10 mac arm64 simulator 11/11 OK
+2026-10-09 19:25 3.0.0.11 mac arm64 simulator 13/13 OK
+2026-10-09 19:27 3.0.0.11 linux arm64 Interactive Astronomy SkyRoof Arduino simulator (ESP32-S3) 7/7 OK

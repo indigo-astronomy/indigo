@@ -215,7 +215,8 @@
 |  | 2026-10-09 19:14 | 3.0.0.17 | mac arm64 | simulator | 51 / 51 | ✅ OK |
 |  | 2026-10-09 19:15 | 3.0.0.17 | linux arm64 | NexDome firmware 3 Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 | dome_simulator | 2026-09-27 22:32 | 3.0.0.9 | mac arm64 | simulator | 7 / 7 | ✅ OK |
-| dome_skyroof | 2026-09-27 22:32 | 3.0.0.10 | mac arm64 | simulator | 11 / 11 | ✅ OK |
+| dome_skyroof | 2026-10-09 19:25 | 3.0.0.11 | mac arm64 | simulator | 13 / 13 | ✅ OK |
+|  | 2026-10-09 19:27 | 3.0.0.11 | linux arm64 | Interactive Astronomy SkyRoof Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
 | dome_talon6ror | 2026-09-27 14:38 | 3.0.0.6 | linux x64 | simulator | 36 / 36 | ✅ OK |
 |  | 2026-10-09 18:57 | 3.0.0.7 | mac arm64 | simulator | 37 / 37 | ✅ OK |
 |  | 2026-10-09 19:09 | 3.0.0.7 | linux arm64 | Talon6 ROR Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
