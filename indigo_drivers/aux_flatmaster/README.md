@@ -28,4 +28,5 @@ indigo_server indigo_aux_flatmaster
 
 ## Testing
 
-2026-09-27 20:49 3.0.0.11 mac arm64 simulator 8/8 OK
+2026-10-09 14:07 3.0.0.12 mac arm64 simulator 9/9 OK
+2026-10-09 14:08 3.0.0.12 linux arm64 PegasusAstro FlatMaster Arduino simulator (ESP32-S3) 6/6 OK

@@ -43,14 +43,14 @@ void loop() {
     else
       Serial.println("E:0");
   } else if (command.startsWith("L:")) {
+    // Firmware 2.1 and later: 20 (brightest) to 255 (lowest), 20 applied out of range.
     intensity = command.substring(2).toInt();
-    if (intensity > 220) intensity = 220;
-    if (intensity < 20) intensity = 20;
+    if (intensity < 20 || intensity > 255) intensity = 20;
     Serial.print("L:");
     Serial.println(intensity);
   } else if (command.equals("V")) {
-    Serial.println("1.1");
+    Serial.println("V:2.1");
   } else if (command.length() > 0) {
-    Serial.println("ERR");
+    Serial.println("ERR:");
   }
 }

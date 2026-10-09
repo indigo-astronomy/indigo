@@ -26,7 +26,7 @@ driver flatmaster {
 	label = "PegasusAstro FlatMaster";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 11;
+	version = 12;
 	serial {
 		pattern {
 			vid = 0x0403;
@@ -34,10 +34,13 @@ driver flatmaster {
 		}
 	}
 	define {
-		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
+		// L takes 20 (brightest) to the lowest brightness value; firmware 2.1 and later documents 255,
+		// older firmware is driven with 220 as before. The mapping is the vendor's Math.Floor formula.
+		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (PRIVATE_DATA->lowest - 20) / (100 - 0) + 20))
 	}
 	data {
 		char response[12];
+		int lowest;
 	}
 	code {
 		static bool flatmaster_command(indigo_device *device, char *command, ...) {
@@ -59,8 +62,13 @@ driver flatmaster {
 			if (PRIVATE_DATA->handle != NULL) {
 				if (flatmaster_command(device, "#") && !strcmp("OK_FM", PRIVATE_DATA->response)) {
 					if (flatmaster_command(device, "V")) {
+						// Firmware 2.1 and later answer "V:2.x".
+						char *version = strncmp(PRIVATE_DATA->response, "V:", 2) ? PRIVATE_DATA->response : PRIVATE_DATA->response + 2;
+						int major = 0, minor = 0;
+						sscanf(version, "%d.%d", &major, &minor);
+						PRIVATE_DATA->lowest = major > 2 || (major == 2 && minor >= 1) ? 255 : 220;
 						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
-						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, version);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
 					}

@@ -39,13 +39,15 @@ typedef struct {
 	bool trace;
 	const char *ready_file;
 	const char *firmware;
+	const char *command_log;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
-	.firmware = "1.1"
+	.firmware = "V:2.1",
+	.command_log = NULL
 };
 
 static const char *simulator_name = "aux_flatmaster";
@@ -56,7 +58,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --firmware <version>    Reported firmware version, default is 1.1\n");
+	printf("  --firmware <version>    Answer to V, default is V:2.1 (firmware 2.1 and later prefix V:)\n");
+	printf("  --command-log <path>    Append every received command to a file\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -82,6 +85,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.firmware = argv[i];
+		} else if (!strcmp(argv[i], "--command-log")) {
+			if (++i == argc) {
+				fprintf(stderr, "--command-log requires a path\n");
+				return false;
+			}
+			options.command_log = argv[i];
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -171,6 +180,17 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 }
 
 static void dispatch_command(int fd, const char *buffer) {
+	// Firmware 2.1 and later answer V with "V:2.x", take L from 20 (brightest) to 255 (lowest), apply 20
+	// to a value out of that range and answer anything else with "ERR:" (vendor command table, Sep 2021).
+	// Older firmware is modelled with the range 20 to 220 the driver was written for.
+	bool documented = !strncmp(options.firmware, "V:", 2);
+	if (options.command_log != NULL && *buffer) {
+		FILE *file = fopen(options.command_log, "a");
+		if (file != NULL) {
+			fprintf(file, "%s\n", buffer);
+			fclose(file);
+		}
+	}
 	if (!strcmp(buffer, "#")) {
 		sim_printf(fd, "OK_FM\r\n");
 	} else if (!strncmp(buffer, "E:", 2)) {
@@ -178,17 +198,23 @@ static void dispatch_command(int fd, const char *buffer) {
 		sim_printf(fd, power ? "E:1\r\n" : "E:0\r\n");
 	} else if (!strncmp(buffer, "L:", 2)) {
 		intensity = atoi(buffer + 2);
-		if (intensity > 220) {
-			intensity = 220;
-		}
-		if (intensity < 20) {
-			intensity = 20;
+		if (documented) {
+			if (intensity < 20 || intensity > 255) {
+				intensity = 20;
+			}
+		} else {
+			if (intensity > 220) {
+				intensity = 220;
+			}
+			if (intensity < 20) {
+				intensity = 20;
+			}
 		}
 		sim_printf(fd, "L:%d\r\n", intensity);
 	} else if (!strcmp(buffer, "V")) {
 		sim_printf(fd, "%s\r\n", options.firmware);
 	} else if (*buffer) {
-		sim_printf(fd, "ERR\r\n");
+		sim_printf(fd, documented ? "ERR:\r\n" : "ERR\r\n");
 	}
 }
 

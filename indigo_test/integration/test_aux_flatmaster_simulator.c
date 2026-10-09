@@ -149,6 +149,54 @@ cleanup:
 
 // With the light off the driver deliberately withholds the brightness command, but the request is
 // still accepted and remembered for the next switch-on.
+// The lowest brightness follows the firmware: 255 for firmware 2.1 and later (vendor command table,
+// "V:2.x"), 220 for the older firmware the driver was first written for. 3.0.0.11 always used 220,
+// so 0% was not the lowest brightness on a current panel, and published "V:2.1" as the firmware.
+static void lowest_brightness_follows_the_firmware(void) {
+	static const struct { const char *firmware, *published, *lowest, *half; } cases[] = {
+		{ "V:2.1", "2.1", "L:255", "L:137" },
+		{ "1.1", "1.1", "L:220", "L:120" }
+	};
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		char log_path[] = "/tmp/indigo-flatmaster-commands.XXXXXX";
+		int log_fd = mkstemp(log_path);
+		SERIAL_CHECK_TRUE(log_fd >= 0);
+		close(log_fd);
+		const char *arguments[] = { "--firmware", cases[i].firmware, "--command-log", log_path, NULL };
+		SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_FLATMASTER_SIMULATOR_EXECUTABLE, arguments));
+		SERIAL_CHECK_TRUE(start_serial_driver(&flatmaster_aux, simulator.port));
+		online = true;
+		SERIAL_CHECK_TRUE(!strcmp(info_text(INFO_DEVICE_FW_REVISION_ITEM_NAME), cases[i].published));
+		SERIAL_CHECK_TRUE(set_light(true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(set_intensity(0));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 0, 0.001));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE));
+		indigo_usleep(200000);
+		SERIAL_CHECK_TRUE(set_intensity(50));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 50, 0.001));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE));
+		char log[4096] = { 0 };
+		FILE *file = fopen(log_path, "r");
+		SERIAL_CHECK_TRUE(file != NULL);
+		size_t length = fread(log, 1, sizeof(log) - 1, file);
+		fclose(file);
+		log[length] = 0;
+		printf("Firmware %s, commands:\n%s", cases[i].firmware, log);
+		SERIAL_CHECK_TRUE(strstr(log, cases[i].lowest) != NULL);
+		SERIAL_CHECK_TRUE(strstr(log, cases[i].half) != NULL);
+	cleanup:
+		if (online) { stop_serial_driver(&flatmaster_aux); }
+		stop_external_serial_simulator(&simulator);
+		unlink(log_path);
+		if (indigo_test_failures) {
+			return;
+		}
+	}
+}
+
 static void intensity_set_while_dark_is_remembered(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -226,6 +274,7 @@ int main(void) {
 		{ "connect_publishes_both_controls_ok", connect_publishes_both_controls_ok },
 		{ "light_switches_on_and_off", light_switches_on_and_off },
 		{ "intensity_is_accepted_across_the_range", intensity_is_accepted_across_the_range },
+		{ "lowest_brightness_follows_the_firmware", lowest_brightness_follows_the_firmware },
 		{ "intensity_set_while_dark_is_remembered", intensity_set_while_dark_is_remembered },
 		{ "reconnect_restores_the_controls", reconnect_restores_the_controls },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
