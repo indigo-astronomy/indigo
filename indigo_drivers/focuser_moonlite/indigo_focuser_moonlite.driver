@@ -20,7 +20,7 @@ driver moonlite {
 	label = "MoonLite Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 14;
+	version = 15;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -56,20 +56,19 @@ driver moonlite {
 			if (expected < 0) {
 				return true;
 			}
+			// A reply has at most the documented number of digits; compatible controllers send fewer ("1#" for "01#",
+			// which INDI accepts as well), and the 2.0 driver read whatever came before '#'.
 			long count = indigo_uni_read_section2(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
-			if (count != expected + 1 || RESPONSE[count - 1] != '#' || (long)strlen(RESPONSE) != count) {
+			if (count < 2 || count > expected + 1 || RESPONSE[count - 1] != '#' || (long)strlen(RESPONSE) != count) {
 				return false;
 			}
 			RESPONSE[count - 1] = 0;
-			if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.01)) > 0) {
-				indigo_uni_discard(PRIVATE_DATA->handle);
-				return false;
-			}
 			return true;
 		}
 
 		static bool moonlite_hex(indigo_device *device, int digits, unsigned *value) {
 			unsigned result = 0;
+			digits = (int)strlen(RESPONSE);
 			for (int index = 0; index < digits; index++) {
 				unsigned char c = (unsigned char)RESPONSE[index];
 				if (!isxdigit(c)) {

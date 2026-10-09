@@ -465,6 +465,20 @@ cleanup:
 	driver_stop();
 }
 
+// A compatible controller answers without leading zeros ("1#" for the moving state, as INDI accepts, and the
+// position without padding): the focuser connects and a move ends at its target.
+static void short_replies_are_read(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 32900, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(32900));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 32768, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(32768));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	// A GOTO right after connect is judged against the position read at connect.
@@ -1005,7 +1019,7 @@ static int run_cases(const moonlite_test *cases, int count) {
 		current_key = cases[index].key;
 		current_action = cases[index].action;
 		unlink(fault_path);
-		const char *simulator_profile = !strcmp(current_profile, "split") || !strcmp(current_profile, "alternate") ? current_profile : "normal";
+		const char *simulator_profile = !strcmp(current_profile, "split") || !strcmp(current_profile, "alternate") || !strcmp(current_profile, "short") ? current_profile : "normal";
 		const char *args[] = { "--profile", simulator_profile, NULL };
 		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_MOONLITE_SIMULATOR_EXECUTABLE, args)) {
 			failures++;
@@ -1066,7 +1080,7 @@ int main(void) {
 		{ "simulator_protocol", simulator_protocol, "normal", NULL, NULL }, { "simulator_split", simulator_protocol, "split", NULL, NULL },
 		{ "simulator_rejections", simulator_rejections, "normal", NULL, NULL }, { "capabilities", capabilities, "normal", NULL, NULL },
 		{ "capabilities_split", capabilities, "split", NULL, NULL }, { "capabilities_alternate", capabilities, "alternate", NULL, NULL },
-		{ "controls", controls, "normal", NULL, NULL }, { "motion", motion, "normal", NULL, NULL }, { "limits", limits, "normal", NULL, NULL }, { "boundaries", boundaries, "normal", NULL, NULL },
+		{ "controls", controls, "normal", NULL, NULL }, { "motion", motion, "normal", NULL, NULL }, { "short_replies", short_replies_are_read, "short", NULL, NULL }, { "limits", limits, "normal", NULL, NULL }, { "boundaries", boundaries, "normal", NULL, NULL },
 		{ "abort_and_overlap", abort_and_overlap, "normal", NULL, NULL },
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", NULL, NULL },
 		{ "init_version_silent", rejected_connection, "normal", "GV", "silent" }, { "init_version_malformed", rejected_connection, "normal", "GV", "malformed" },

@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_focuser_moonlite"
 #define DRIVER_LABEL         "MoonLite Focuser"
 #define FOCUSER_DEVICE_NAME  "MoonLite"
@@ -99,20 +99,19 @@ static bool moonlite_command(indigo_device *device, int expected, const char *co
 	if (expected < 0) {
 		return true;
 	}
+	// A reply has at most the documented number of digits; compatible controllers send fewer ("1#" for "01#",
+	// which INDI accepts as well), and the 2.0 driver read whatever came before '#'.
 	long count = indigo_uni_read_section2(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
-	if (count != expected + 1 || RESPONSE[count - 1] != '#' || (long)strlen(RESPONSE) != count) {
+	if (count < 2 || count > expected + 1 || RESPONSE[count - 1] != '#' || (long)strlen(RESPONSE) != count) {
 		return false;
 	}
 	RESPONSE[count - 1] = 0;
-	if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.01)) > 0) {
-		indigo_uni_discard(PRIVATE_DATA->handle);
-		return false;
-	}
 	return true;
 }
 
 static bool moonlite_hex(indigo_device *device, int digits, unsigned *value) {
 	unsigned result = 0;
+	digits = (int)strlen(RESPONSE);
 	for (int index = 0; index < digits; index++) {
 		unsigned char c = (unsigned char)RESPONSE[index];
 		if (!isxdigit(c)) {

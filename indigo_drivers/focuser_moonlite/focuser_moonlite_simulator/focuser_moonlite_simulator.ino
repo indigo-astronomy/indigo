@@ -1,6 +1,6 @@
 // MoonLite focuser simulator for Arduino
 //
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,10 +18,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define LCD
-
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
+#define LCD
 #endif
 
 #ifdef LCD
@@ -29,9 +28,11 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-unsigned current_position = 0x8000;
-unsigned target_position = 0x8000;
-float temperature = 0x00EC;
+long current_position = 0x8000;
+long target_position = 0x8000;
+unsigned long last_step = 0;
+// 1/2 C two's complement, 0x002E = 23 C
+float temperature = 0x002E;
 unsigned moving_status = 0x00;
 unsigned speed = 0x02;
 unsigned step_mode = 0x00;
@@ -83,20 +84,26 @@ void print_hex(unsigned value, int length) {
 }
 
 void loop() {
+	// The speed byte (02 fastest to 20 slowest) sets the step rate: 2000 / speed steps per second, 1000 at 02 and
+	// 100 at 20.
+	unsigned long now = millis();
 	if (moving_status == 0x01) {
-		if (target_position > current_position) {
-			current_position++;
-      delay(10);
-		} else if (target_position < current_position) {
-			current_position--;
-      delay(10);
-		} else {
-			moving_status = 0x00;
+		long delta = (long)((now - last_step) * 2000 / (speed ? speed : 2) / 1000);
+		if (delta > 0) {
+			last_step = now;
+			if (target_position > current_position)
+				current_position = current_position + delta < target_position ? current_position + delta : target_position;
+			else if (target_position < current_position)
+				current_position = current_position - delta > target_position ? current_position - delta : target_position;
+			if (current_position == target_position)
+				moving_status = 0x00;
 		}
+	} else {
+		last_step = now;
 	}
 #ifdef LCD
   char buffer[17];
-  sprintf(buffer, "T:%05d C:%05d", target_position, current_position);
+  sprintf(buffer, "T:%05ld C:%05ld", target_position, current_position);
   lcd.setCursor(0, 0);
   lcd.print(buffer);
   sprintf(buffer, "M:%02x S:%02x D:%02x", moving_status, step_mode, speed);
@@ -108,7 +115,7 @@ void loop() {
   		String command = Serial.readStringUntil('#');
   		if (command.equals("C")) {
   		} else if (command.equals("FG")) {
-  			moving_status = 0x01;
+  			moving_status = target_position != current_position ? 0x01 : 0x00;
   		} else if (command.equals("FQ")) {
   			moving_status = 0x00;
   		} else if (command.equals("GC")) {

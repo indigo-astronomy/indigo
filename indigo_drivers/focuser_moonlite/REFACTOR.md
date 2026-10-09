@@ -152,3 +152,35 @@ python3 tools/run_driver_test.py focuser_moonlite
 ```
 
 Final test summary: 44 simulated tests run, 44 passed; 0 hardware tests run, 0 passed.
+
+## Reply widths, sketch and hardware suite (2026-10-09, 3.0.0.15)
+
+The checks were compared with `HighResSteppermotor107.pdf`, INDI's `moonlite` and the 2.0 driver.
+
+### Defect
+
+- ML-01: a reply had to carry exactly the documented number of hex digits, and any byte arriving within 10 ms
+  after it refused it. INDI notes that `:GI#` is answered `1#` as well as `01#` and accepts both, reads the other
+  values with `%X`, and the 2.0 driver read whatever came before `#` with `strtol`; on such a controller every poll
+  of a move failed. A reply may now have one up to the documented number of digits, and bytes after it no longer
+  refuse it (the next command discards them). Test: `short_replies` (simulator profile `short`: `GI` and `GP`
+  without leading zeros; fails on 3.0.0.14, passes on 3.0.0.15).
+
+### Checked and left as they are
+
+- Relative moves count inward as increasing the position, as the 2.0 driver did; INDI uses the opposite sign.
+
+### Sketch
+
+`focuser_moonlite_simulator.ino` stepped once per 10 ms regardless of the speed, started a move on `:FG#` even at
+the target, reported 118 C (0x00EC is the raw value of the C simulator scaled twice) and always drove an LCD
+shield. It now travels 2000 / speed steps per second, reports 23 C (0x002E) and uses the LCD on the Arduino Due
+only.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 45/45.
+- New hardware suite `indigo_test/hardware/test_focuser_moonlite_hw.c` (`make test-focuser-moonlite-hw`,
+  `MOONLITE_HW_PORT`): connection values, absolute moves, steps, the reversed direction, an abort, speed,
+  coefficient and stepping mode read back after a reconnect and restored, the compensation mode, reconnect and
+  INIT/SHUTDOWN. Recorded run against the sketch on an ESP32-S3: 9/9. No physical MoonLite is available.

@@ -24,4 +24,5 @@ indigo_server indigo_focuser_moonlite
 
 ## Testing
 
-2026-10-05 15:27 3.0.0.14 mac arm64 simulator 44/44 OK
+2026-10-09 20:39 3.0.0.15 mac arm64 simulator 45/45 OK
+2026-10-09 20:46 3.0.0.15 linux arm64 MoonLite Arduino simulator (ESP32-S3) 9/9 OK
