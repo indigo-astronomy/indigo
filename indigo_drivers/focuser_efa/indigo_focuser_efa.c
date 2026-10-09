@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_focuser_efa"
 #define DRIVER_LABEL         "Celestron / PlaneWave EFA Focuser"
 #define FOCUSER_DEVICE_NAME  "EFA Focuser"
@@ -108,11 +108,16 @@ static int efa_command(indigo_device *device, uint8_t destination, uint8_t comma
 		}
 	}
 	if (PRIVATE_DATA->flow && !PRIVATE_DATA->celestron) {
+		// Wait for the bus to be free, but send anyway when CTS stays asserted: an adapter that does not wire
+		// CTS reports it asserted for good, and the 2.0 driver went ahead after the wait as well.
 		int state = 1;
 		for (int i = 0; i < 50 && (state = indigo_uni_get_cts(PRIVATE_DATA->handle)) > 0; i++) {
 			indigo_usleep(10000);
 		}
-		if (state != 0 || indigo_uni_set_rts(PRIVATE_DATA->handle, true) < 0) {
+		if (state > 0) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CTS not cleared, sending anyway");
+		}
+		if (indigo_uni_set_rts(PRIVATE_DATA->handle, true) < 0) {
 			return -1;
 		}
 	}
@@ -187,7 +192,9 @@ static bool efa_position(indigo_device *device) {
 }
 
 static int efa_state(indigo_device *device) {
-	if (efa_command(device, 0x12, 0x13, NULL, 0) != 1 || (RESPONSE[0] != 0 && RESPONSE[0] != 254 && RESPONSE[0] != 255)) {
+	// 255 ends the goto and 254 is a failure; the PDF defines only 0 and 255, and the 2.0 driver kept polling
+	// on any other value, which the stall check bounds
+	if (efa_command(device, 0x12, 0x13, NULL, 0) != 1) {
 		return -1;
 	}
 	return RESPONSE[0];

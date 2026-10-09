@@ -1,6 +1,6 @@
 // PlaneWave EFA focuser simulator for Arduino
 //
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // Lakeside focuser command set is extracted from INDI driver written
@@ -21,13 +21,16 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define LCD
-
-#define CELESTRON
+// Define CELESTRON for a Celestron Focus Motor, leave it undefined for a PlaneWave EFA.
+//#define CELESTRON
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
+#define LCD
 #endif
+
+// The focuser travels at TICKS_PER_SECOND encoder ticks; a full EFA travel of 3.8 million ticks takes a few minutes.
+#define TICKS_PER_SECOND 20000
 
 #ifdef LCD
 #include <LiquidCrystal.h>
@@ -41,6 +44,7 @@ uint32_t max_position = 1000000;
 bool calibration_state = false;
 bool stop_detect = true;
 bool fans_on = false;
+unsigned long last_step = 0;
 
 void setup() {
 #ifdef LCD
@@ -48,7 +52,8 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("EFA");
 #endif
-  Serial.begin(9600);
+  // The EFA PC port runs at 19200 baud.
+  Serial.begin(19200);
   Serial.setTimeout(1000);
   while (!Serial)
     ;
@@ -58,12 +63,17 @@ void setup() {
 }
 
 void loop() {
-  if (target_position > current_position && current_position < max_position) {
-    current_position++;
-		delay(30);
-  } else if (target_position < current_position && current_position > min_position) {
-    current_position--;
-		delay(30);
+  unsigned long now = millis();
+  uint32_t delta = (uint32_t)((now - last_step) * TICKS_PER_SECOND / 1000);
+  if (delta > 0) {
+    last_step = now;
+    if (target_position > current_position && current_position < max_position) {
+      uint32_t limit = target_position < max_position ? target_position : max_position;
+      current_position = current_position + delta < limit ? current_position + delta : limit;
+    } else if (target_position < current_position && current_position > min_position) {
+      uint32_t limit = target_position > min_position ? target_position : min_position;
+      current_position = current_position - delta > limit && current_position > delta ? current_position - delta : limit;
+    }
   }
 #ifdef LCD
   char buffer[17];
@@ -75,10 +85,13 @@ void loop() {
   lcd.print(buffer);
 #endif
   if (Serial.available() && Serial.read() == 0x3B) {
-    char count = Serial.read();
+    // NUM, then NUM bytes and the checksum; a packet cut short is dropped
+    char count = 0;
+    if (Serial.readBytes(&count, 1) != 1 || count < 3 || count > 12)
+      return;
     char packet[16] = { 0x3B, count };
-    for (int i = 0; i <= count; i++)
-      packet[i + 2] = Serial.read();
+    if (Serial.readBytes(packet + 2, count + 1) != (size_t)(count + 1))
+      return;
 #ifndef CELESTRON
     Serial.write(packet, count + 3);
 #endif
@@ -178,10 +191,12 @@ void loop() {
           break;
 #endif          
 #ifndef CELESTRON
-        case 0x26: // TEMP_GET - 2 or 3 bytes??
-          packet[1] = 6;
-          packet[6] = 0x5C;
-          packet[7] = 0x01;
+        case 0x26: // TEMP_GET
+          // As the response sample of the protocol: two data bytes, least significant first, 1/16 C
+          // (0x015C = 21.75 C); 7F 7F would mark a missing sensor.
+          packet[1] = 5;
+          packet[5] = 0x5C;
+          packet[6] = 0x01;
           break;
         case 0xEE: // MTR_GET_STOP_DETECT
           packet[1] = 4;

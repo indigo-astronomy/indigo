@@ -717,12 +717,29 @@ static void motion_failure(void) {
 		// The stall stop comes after 100 unchanged 0.1 s polls; leave margin for a loaded host.
 		indigo_usleep(9000000);
 	} else {
-		SERIAL_CHECK_TRUE(fault(!strcmp(current_profile, "badstate") ? "13" : "01", current_profile));
+		SERIAL_CHECK_TRUE(fault("01", current_profile));
 	}
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(commands("12 24 0 1") > 0);
 	SERIAL_CHECK_TRUE(abort_ok());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// The goto-over state is defined as 0 (moving) and 255 (over); 254 is a failure. Any other value is taken as still
+// moving, as the 2.0 driver did, and the goto ends at its target.
+static void unknown_goto_state_keeps_polling(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 100 && commands("12 17") == 0; i++) {
+		indigo_usleep(20000);
+	}
+	SERIAL_CHECK_TRUE(fault("13", "badstate"));
+	unsigned before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 1000);
+	SERIAL_CHECK_EQ_INT(0, commands("12 24 0 1"));
 cleanup:
 	driver_stop();
 }
@@ -975,7 +992,7 @@ int main(void) {
 		{ "start_failure", command_failure, "reject" },
 		{ "transport_loss", command_failure, "close" },
 		{ "motion_read_failure", motion_failure, "checksum" },
-		{ "motion_badstate", motion_failure, "badstate" },
+		{ "unknown_goto_state_keeps_polling", unknown_goto_state_keeps_polling, "normal" },
 		{ "stalled_motion", motion_failure, "stall" },
 		{ "calibration", calibration, "celestron" },
 		{ "calibration_start_failure", calibration, "c_startfail" },

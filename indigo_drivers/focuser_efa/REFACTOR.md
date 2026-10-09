@@ -122,3 +122,43 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 The first recorded run ended 62/64. `motion_read_failure` failed because its position-readback fault could be taken by an idle poll still in flight when the GOTO was accepted; the old driver turned that poll failure into an ALERT over the pending request (the defect fixed above), so the case passed by accident. The fault is now injected only after the move command was sent. The second failing case was not printed by the run and did not recur in two further runs of the binary; the most likely candidate is `stalled_motion`, whose fixed 4 s + 8 s wait left little margin over the 100 × 0.1 s stall bound on a loaded host, so the wait was widened to 9 s + 8 s.
 
 Validation: `python3 tools/run_driver_test.py focuser_efa` (recorded in README `## Testing`).
+
+## Protocol checks, CTS wait and hardware suite (2026-10-09, 3.0.0.23)
+
+The checks were compared with `PlaneWave EFA Communication Protocols.pdf`, INDI's `planewave_efa` and the 2.0
+driver.
+
+### Defects
+
+- EFA-01: a command was dropped when CTS did not clear within 0.5 s. The 2.0 driver waited about as long and then
+  sent anyway; a USB adapter that does not wire CTS reports it asserted for good, so the 3.0 driver could not
+  connect through it at all (found on an ESP32-S3 bench with a CH343 bridge). The wait stays, the command is sent
+  after it. The PTY simulator has no modem lines, so this is covered by the hardware run only: 3.0.0.22 refuses
+  the connection on the bench, 3.0.0.23 connects.
+- EFA-02: a goto-over (`0x13`) reply other than 0, 254 or 255 aborted the move. The PDF defines 0 and 255, the
+  2.0 driver failed only on 254 and kept polling otherwise, which the 100-poll stall check bounds. Any other value
+  now means still moving. The `motion_badstate` case, which encoded the strict reading, is replaced by
+  `unknown_goto_state_keeps_polling` (fails on 3.0.0.22, passes on 3.0.0.23).
+
+### Checked and left as they are
+
+- The temperature reply is read in both forms the sources describe: two data bytes least significant first, as
+  the PDF response sample and INDI, and address plus two bytes most significant first, as the PDF text and the 2.0
+  driver.
+
+### Sketch
+
+`focuser_efa_simulator.ino` ran at 9600 baud (the protocol uses 19200), read packet bytes before they had
+arrived, moved 33 ticks per second (a long move would take hours), answered the temperature with an implausible
+value and was a Celestron Focus Motor unless edited; it now runs at 19200, reads whole packets, travels 20000
+ticks/s, answers the temperature as the PDF sample, builds a PlaneWave EFA by default (`#define CELESTRON` for the
+other model) and drives the LCD on the Arduino Due only.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 64/64.
+- New hardware suite `indigo_test/hardware/test_focuser_efa_hw.c` (`make test-focuser-efa-hw`, `EFA_HW_PORT`),
+  adapting to the model: absolute moves including a coarse-slew move, steps, an abort, encoder sync, the maximum
+  limit, the fans and the temperature (EFA) or the calibration (Celestron), reconnect and INIT/SHUTDOWN. Recorded
+  runs against the sketch on an ESP32-S3: PlaneWave EFA 11/11, Celestron Focus Motor 11/11. No physical focuser is
+  available.
