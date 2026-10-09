@@ -52,6 +52,11 @@ static double position(void) {
 	return cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 }
 
+static bool target_is(double target) {
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	return item != NULL && fabs(item->number.target - target) < .5;
+}
+
 static bool set_switch(const char *property_name, const char *item_name) {
 	return indigo_change_switch_property_1(&simulator_test_client, astromechanics_focuser.device_name, property_name, item_name, true) == INDIGO_OK;
 }
@@ -237,8 +242,11 @@ static void failed_poll_during_motion_ends_alert(void) {
 	printf("Position after a failed poll %.0f\n", last);
 	SERIAL_CHECK_TRUE(last >= 500 && last < 5000);
 	SERIAL_CHECK_TRUE(strstr(last_position_message, "could not be read") != NULL);
+	// the failed move keeps the requested target
+	SERIAL_CHECK_TRUE(target_is(5000));
 	indigo_usleep(500000);
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(target_is(5000));
 	disarm_fault(&simulator);
 	SERIAL_CHECK_TRUE(goto_position(1000));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
@@ -247,7 +255,7 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// A lens that accepts a move and does not move ends ALERT within bounded time.
+// A lens that accepts a move and does not move ends ALERT within bounded time, keeping the requested target.
 static void stalled_move_ends_alert(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -262,7 +270,29 @@ static void stalled_move_ends_alert(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(fabs(position() - 700) < .5);
 	SERIAL_CHECK_TRUE(strstr(last_position_message, "does not reach") != NULL);
+	SERIAL_CHECK_TRUE(target_is(3000));
 	SERIAL_CHECK_TRUE(goto_position(3000));
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_focuser); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A move command that cannot be sent (the port is gone) ends ALERT at the last position and keeps the requested target.
+static void failed_start_keeps_the_requested_target(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, FOCUSER_ASTROMECHANICS_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_focuser, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(goto_position(800));
+	stop_external_serial_simulator(&simulator);
+	last_position_message[0] = 0;
+	SERIAL_CHECK_TRUE(set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(strstr(last_position_message, "could not be sent") != NULL);
+	SERIAL_CHECK_TRUE(fabs(position() - 800) < .5);
+	SERIAL_CHECK_TRUE(target_is(2500));
 cleanup:
 	if (online) { stop_serial_driver(&astromechanics_focuser); }
 	stop_external_serial_simulator(&simulator);
@@ -684,6 +714,7 @@ int main(void) {
 		{ "connect_reads_a_split_position_reply", connect_reads_a_split_position_reply },
 		{ "failed_poll_during_motion_ends_alert", failed_poll_during_motion_ends_alert },
 		{ "stalled_move_ends_alert", stalled_move_ends_alert },
+		{ "failed_start_keeps_the_requested_target", failed_start_keeps_the_requested_target },
 		{ "refused_requests_send_no_command", refused_requests_send_no_command },
 		{ "disconnect_during_motion_and_reconnect", disconnect_during_motion_and_reconnect },
 		{ "motion_running_at_connect", motion_running_at_connect },

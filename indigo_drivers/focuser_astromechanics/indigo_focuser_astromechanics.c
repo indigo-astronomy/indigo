@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS Focuser"
 #define FOCUSER_DEVICE_NAME  "ASTROMECHANICS Focuser"
@@ -168,8 +168,8 @@ static void astromechanics_start_motion(indigo_device *device, int position) {
 		PRIVATE_DATA->external_motion = false;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
+		/* the move that could not be sent keeps the requested target */
 		PRIVATE_DATA->moving = false;
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		message = "Move command could not be sent";
 	}

@@ -25,5 +25,5 @@ Tested with simulator only
 
 ## Testing
 
-2026-10-05 20:03 3.0.0.8 mac arm64 simulator 21/21 OK
 2026-10-09 19:38 3.0.0.8 linux arm64 ASTROMECHANICS Arduino simulator (ESP32-S3) 9/9 OK
+2026-10-10 02:08 3.0.0.9 mac arm64 simulator 22/22 OK
