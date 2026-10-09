@@ -33,9 +33,6 @@ driver fbc {
 			pid = 0x6001;
 		}
 	}
-	define {
-		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
-	}
 	data {
 		char response[80];
 	}

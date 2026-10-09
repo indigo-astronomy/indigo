@@ -31,3 +31,4 @@ Driver is developed and tested with:
 ## Testing
 
 2026-09-27 20:49 3.0.0.9 mac arm64 simulator 10/10 OK
+2026-10-09 14:00 3.0.0.9 linux arm64 Lacerta FBC Arduino simulator (ESP32-S3) 8/8 OK

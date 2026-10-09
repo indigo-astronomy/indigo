@@ -2887,6 +2887,18 @@ AUX_ASTROMECHANICS_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_astromechanics.
 $(TEST_BUILD)/hardware/test_aux_astromechanics_hw: hardware/test_aux_astromechanics_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_astromechanics.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_ASTROMECHANICS_HW_TEST_LDFLAGS)
 
+# A physical Lacerta FBC in SerialMode, or the Arduino sketch aux_fbc_simulator.ino on a board, is
+# opt-in and excluded from normal integration tests. THE PANEL LIGHTS UP AND THE SHUTTER OUTPUT FIRES.
+# Set FBC_HW_PORT to override the port the driver matched.
+.PHONY: test-aux-fbc-hw
+test-aux-fbc-hw: check-lib $(TEST_BUILD)/hardware/test_aux_fbc_hw
+	$(TEST_BUILD)/hardware/test_aux_fbc_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_FBC_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_fbc.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_fbc_hw: hardware/test_aux_fbc_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_fbc.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_FBC_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

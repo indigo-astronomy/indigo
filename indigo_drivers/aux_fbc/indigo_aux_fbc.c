@@ -38,12 +38,6 @@
 #define AUX_DEVICE_NAME      "Lacerta FBC"
 #define PRIVATE_DATA         ((fbc_private_data *)device->private_data)
 
-//+ define
-
-#define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
-
-//- define
-
 #pragma mark - Property definitions
 
 #define AUX_LIGHT_INTENSITY_PROPERTY   (PRIVATE_DATA->aux_light_intensity_property)
