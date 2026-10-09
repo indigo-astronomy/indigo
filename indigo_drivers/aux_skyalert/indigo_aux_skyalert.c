@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_aux_skyalert"
 #define DRIVER_LABEL         "Interactive Astronomy SkyAlert"
 #define AUX_DEVICE_NAME      "Interactive Astronomy SkyAlert"
@@ -60,6 +60,8 @@ typedef struct {
 	indigo_property *aux_weather_property;
 	//+ data
 	char response[32];
+	bool weather_invalid;
+	bool info_invalid;
 	//- data
 } skyalert_private_data;
 
@@ -71,28 +73,38 @@ static bool skyalert_read_value(indigo_device *device, double *value) {
 	return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%lf", value) == 1 && isfinite(*value);
 }
 
+// The record has to arrive complete, starting with "Data". A field that is not a finite number
+// (an Arduino prints a failed sensor reading as "nan") keeps the item's last value and only puts
+// the property it belongs to in ALERT, it does not discard the other readings.
 static bool skyalert_read_record(indigo_device *device) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_printf(PRIVATE_DATA->handle, "send\r") <= 0 || indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) <= 0 || strcmp(PRIVATE_DATA->response, "Data")) {
 		return false;
 	}
 	double values[8];
-	for (int i = 0; i < 7; i++) {
-		if (!skyalert_read_value(device, values + i)) {
+	bool valid[8];
+	char firmware[sizeof(PRIVATE_DATA->response)];
+	for (int i = 0; i < 9; i++) {
+		char *line = i == 7 ? firmware : PRIVATE_DATA->response;
+		if (indigo_uni_read_section(PRIVATE_DATA->handle, line, sizeof(PRIVATE_DATA->response) - 1, "\r", "\r", INDIGO_DELAY(1)) <= 0) {
 			return false;
 		}
+		if (i != 7) {
+			int j = i < 7 ? i : 7;
+			valid[j] = sscanf(line, "%lf", values + j) == 1 && isfinite(values[j]);
+		}
 	}
-	char firmware[sizeof(PRIVATE_DATA->response)];
-	if (indigo_uni_read_section(PRIVATE_DATA->handle, firmware, sizeof(firmware) - 1, "\r", "\r", INDIGO_DELAY(1)) <= 0 || !skyalert_read_value(device, values + 7)) {
-		return false;
+	indigo_item *items[8] = { AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_SKY_TEMPERATURE_ITEM, AUX_WEATHER_RAIN_ITEM, AUX_INFO_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_WIND_SPEED_ITEM, AUX_INFO_POWER_ITEM, AUX_WEATHER_PRESSURE_ITEM };
+	PRIVATE_DATA->weather_invalid = PRIVATE_DATA->info_invalid = false;
+	for (int i = 0; i < 8; i++) {
+		if (valid[i]) {
+			// The pressure is reported in pascal.
+			items[i]->number.value = i == 7 ? values[i] / 100 : values[i];
+		} else if (i == 3 || i == 6) {
+			PRIVATE_DATA->info_invalid = true;
+		} else {
+			PRIVATE_DATA->weather_invalid = true;
+		}
 	}
-	AUX_WEATHER_TEMPERATURE_ITEM->number.value = values[0];
-	AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = values[1];
-	AUX_WEATHER_RAIN_ITEM->number.value = values[2];
-	AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = values[3];
-	AUX_WEATHER_HUMIDITY_ITEM->number.value = values[4];
-	AUX_WEATHER_WIND_SPEED_ITEM->number.value = values[5];
-	AUX_INFO_POWER_ITEM->number.value = values[6];
-	AUX_WEATHER_PRESSURE_ITEM->number.value = values[7] / 100;
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 	return true;
 }
@@ -130,7 +142,8 @@ static void aux_timer_callback(indigo_device *device) {
 	// driver polled it every 10 seconds; the generated 3.0 driver read the record only in
 	// skyalert_open(), so the published weather never changed after connection.
 	if (skyalert_read_record(device)) {
-		AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_WEATHER_PROPERTY->state = PRIVATE_DATA->weather_invalid ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		AUX_INFO_PROPERTY->state = PRIVATE_DATA->info_invalid ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 	} else {
 		AUX_WEATHER_PROPERTY->state = AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 	}

@@ -27,4 +27,5 @@ Developed with a simulator only
 
 ## Testing
 
-2026-09-27 20:55 3.0.0.8 mac arm64 simulator 10/10 OK
+2026-10-09 15:03 3.0.0.9 mac arm64 simulator 11/11 OK
+2026-10-09 15:07 3.0.0.9 linux arm64 Interactive Astronomy SkyAlert Arduino simulator (ESP32-S3) 6/6 OK

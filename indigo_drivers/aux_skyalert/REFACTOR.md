@@ -66,7 +66,7 @@ reading arriving after connection - and passes all eight after it.
 
 ## Hardware-Test Decision
 
-No physical Interactive Astronomy SkyAlert is available. No hardware run was performed and none of the results below are presented as verification of real sensor behavior.
+No physical Interactive Astronomy SkyAlert is available. No hardware run was performed at the time and none of the results below are presented as verification of real sensor behavior; a run against the Arduino sketch was added on 2026-10-09 (see below).
 
 ## Validation Evidence
 
@@ -75,7 +75,45 @@ No physical Interactive Astronomy SkyAlert is available. No hardware run was per
 - `build/integration/test_aux_skyalert_simulator` passed 8 of 8 cases; `build/integration/test_aux_skyalert_transport` passed 2 of 2 against the polling driver.
 - `ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 build/integration/test_aux_skyalert_simulator_asan` passed all 8 cases with the production driver source instrumented and no sanitizer report. LeakSanitizer is unavailable on this macOS runtime and is not claimed.
 
+## Strict field parsing relaxed (2026-10-09, 3.0.0.9)
+
+No protocol document of the SkyAlert is published; the driver added in 2021 was written against a simulator
+as well, and it read each field with `indigo_atod()`, so a field that was not a number became 0 and the record
+was still used. DRV-082 (3.0.0.5) made every one of the eight numeric fields a hard requirement: a field that
+did not parse as a finite number discarded the whole record, refused the connection and turned both
+properties ALERT on every poll. That requirement came from the bundled simulator only.
+
+### Defect
+
+- SKY-01: one unreadable sensor field made the whole station unusable. The SkyAlert firmware is an Arduino
+  sketch, and an Arduino prints a failed floating point reading (a missing humidity or pressure sensor) as
+  `nan`; with 3.0.0.8 such a station never connected. Now the record still has to arrive complete with the
+  `Data` header, but a field that is not a finite number only keeps its item's last value and puts the
+  property it belongs to (`AUX_WEATHER` or `AUX_INFO`) in ALERT for that poll; the other readings are published
+  and the device connects. Test: `an_unreadable_field_alerts_only_its_property` (fails on 3.0.0.8, passes on
+  3.0.0.9); the fake transport case now expects `NaN` and `bad` temperatures to connect with the weather
+  property in ALERT.
+
+### Checked and left as they are
+
+- The `Data` header, the ten line record and 115200 baud are unchanged from the 2021 driver.
+- The pressure is divided by 100 (DRV-082). The simulator's `101791.83` is a pascal value with two decimals,
+  which is how the usual Arduino barometer libraries report it, and the item is labelled hPa.
+
+### Sketch
+
+`aux_skyalert_simulator.ino` ran at 9600 baud while the driver opens the port at 115200, so on a board with a
+real UART (rather than a native USB port that ignores the rate) the driver never got an answer. It now runs at
+115200 and advances the temperature and the sky brightness per record like the C simulator.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 11/11 (9 simulator, 2 fake transport).
+- New hardware suite `indigo_test/hardware/test_aux_skyalert_hw.c` (`make test-aux-skyalert-hw`,
+  `SKYALERT_HW_PORT`); recorded run against the sketch on an ESP32-S3: 6/6.
+
 ## Final Test Summary
 
-- Simulated tests: **10 run, 10 passed** (8 simulator, 2 transport), plus the same 8 simulator cases under ASan/UBSan.
-- Hardware tests: **0 run, 0 passed**; no compatible physical device is available.
+- Simulated tests: **11 run, 11 passed** (9 simulator, 2 transport), recorded through `tools/run_driver_test.py`,
+  driver version 9, macOS arm64.
+- Hardware tests: **6 run, 6 passed** against the Arduino sketch on an ESP32-S3; no physical SkyAlert is available.

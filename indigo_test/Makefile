@@ -2936,6 +2936,18 @@ AUX_PPB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_ppb.a $(TEST_LDFLAGS)
 $(TEST_BUILD)/hardware/test_aux_ppb_hw: hardware/test_aux_ppb_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_ppb.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_PPB_HW_TEST_LDFLAGS)
 
+# A physical Interactive Astronomy SkyAlert, or the Arduino sketch aux_skyalert_simulator.ino on a board, is
+# opt-in and excluded from normal integration tests. Nothing is written to the device. Set SKYALERT_HW_PORT
+# to the port.
+.PHONY: test-aux-skyalert-hw
+test-aux-skyalert-hw: check-lib $(TEST_BUILD)/hardware/test_aux_skyalert_hw
+	$(TEST_BUILD)/hardware/test_aux_skyalert_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_SKYALERT_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_skyalert.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_skyalert_hw: hardware/test_aux_skyalert_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_skyalert.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_SKYALERT_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

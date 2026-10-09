@@ -251,8 +251,8 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// A record the driver cannot parse must not connect the device: a non-"Data" header, a record that
-// stops early, a field that is not a number and a field that is not finite.
+// A record the driver cannot parse must not connect the device: a non-"Data" header or a record that
+// stops early. A single unreadable field does not refuse the record, see the next case.
 static void unparseable_records_are_refused(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -260,10 +260,7 @@ static void unparseable_records_are_refused(void) {
 		{ "drop", "*" },
 		{ "header", "*" },
 		{ "truncate", "5" },
-		{ "truncate", "9" },
-		{ "garbage", "3" },
-		{ "infinite", "3" },
-		{ "garbage", "9" }
+		{ "truncate", "9" }
 	};
 	SERIAL_CHECK_TRUE(start_skyalert(&simulator, NULL));
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
@@ -282,6 +279,48 @@ static void unparseable_records_are_refused(void) {
 	// The leftover of a truncated record must not be mistaken for the next one.
 	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, simulator.port));
 	SERIAL_CHECK_TRUE(weather_is(AUX_WEATHER_HUMIDITY_ITEM_NAME, 66.3));
+cleanup:
+	if (online) {
+		disconnect_serial_device(&skyalert);
+		tear_down_serial_driver(&skyalert);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// No protocol document says what the device sends for a failed sensor; an Arduino prints such a
+// reading as "nan". A field that is not a finite number keeps the item's last value and puts only the
+// property it belongs to in ALERT, the rest of the record is still read and the device connects.
+static void an_unreadable_field_alerts_only_its_property(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_skyalert(&simulator, NULL));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
+	online = true;
+	enumerate_simulator_device();
+	// The pressure, the last field, is unreadable in the record the connection is made with.
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "garbage", "9"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_events(&simulator, "send", 2, 5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(weather_is(AUX_WEATHER_PRESSURE_ITEM_NAME, 1017.9183));
+	// The humidity belongs to the weather property.
+	unsigned int weather_revision = property_revision(AUX_WEATHER_PROPERTY_NAME);
+	unsigned int info_revision = property_revision(AUX_INFO_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "garbage", "5"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE, weather_revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_INFO_PROPERTY_NAME, INDIGO_OK_STATE, info_revision));
+	SERIAL_CHECK_TRUE(weather_is(AUX_WEATHER_HUMIDITY_ITEM_NAME, 66.3));
+	SERIAL_CHECK_TRUE(weather_is(AUX_WEATHER_PRESSURE_ITEM_NAME, 1017.9183));
+	SERIAL_CHECK_TRUE(context.connected);
+	weather_revision = property_revision(AUX_WEATHER_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE, weather_revision));
+	// The sky brightness belongs to the info property.
+	weather_revision = property_revision(AUX_WEATHER_PROPERTY_NAME);
+	info_revision = property_revision(AUX_INFO_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "infinite", "4"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_INFO_PROPERTY_NAME, INDIGO_ALERT_STATE, info_revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE, weather_revision));
+	SERIAL_CHECK_TRUE(context.connected);
 cleanup:
 	if (online) {
 		disconnect_serial_device(&skyalert);
@@ -429,6 +468,7 @@ int main(void) {
 		{ "identity_inventory_and_record_contract", identity_inventory_and_record_contract },
 		{ "firmware_is_reported_from_the_record", firmware_is_reported_from_the_record },
 		{ "unparseable_records_are_refused", unparseable_records_are_refused },
+		{ "an_unreadable_field_alerts_only_its_property", an_unreadable_field_alerts_only_its_property },
 		{ "readings_are_refreshed_by_polling", readings_are_refreshed_by_polling },
 		{ "a_failed_poll_is_reported_and_polling_stops_on_disconnect", a_failed_poll_is_reported_and_polling_stops_on_disconnect },
 		{ "failed_open_leaves_the_device_disconnected", failed_open_leaves_the_device_disconnected },

@@ -121,11 +121,22 @@ static void partial_record_and_error_recovery(void) {
 		SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 		SERIAL_CHECK_EQ_INT(opens, closes);
 	}
-	for (int mode = 2; mode <= 4; mode++) {
+	// An empty line is a record that stopped early.
+	failed_index = 1;
+	failure_mode = 2;
+	indigo_change_switch_property_1(&simulator_test_client, skyalert.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(opens, closes);
+	// A temperature that is not a finite number connects; only the weather property is in ALERT and the
+	// other fields are read.
+	for (int mode = 3; mode <= 4; mode++) {
 		failed_index = 1;
 		failure_mode = mode;
-		indigo_change_switch_property_1(&simulator_test_client, skyalert.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
-		SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, "fake"));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_INFO_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, 66.3, 0.001));
+		disconnect_serial_device(&skyalert);
 		SERIAL_CHECK_EQ_INT(opens, closes);
 	}
 	failed_index = -1;
