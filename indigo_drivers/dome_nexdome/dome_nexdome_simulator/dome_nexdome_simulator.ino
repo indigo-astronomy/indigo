@@ -141,8 +141,10 @@ char ShutterVersion[SHUTTER_VERSION_LENGTH];
 unsigned long int ShutterHibernateTimer=0;
 unsigned long int LastCommandTime=0;
 
-int BatteryVolts=0;
-int ShutterBatteryVolts=0;
+// The firmware reports hundredths of volt read from VPIN; a board without that divider reports a
+// steady 12 V supply from power-up rather than 0 V until the first battery check.
+int BatteryVolts=1250;
+int ShutterBatteryVolts=1240;
 int LowVoltCutoff=0;
 bool DomeIsReversed=false;
 int rg11State = NOT_RAINING;
@@ -884,7 +886,7 @@ void ProcessSerialCommand()
       //Wireless.print("b ");
       //Wireless.println(newcutoff);
     }
-    ShutterBatteryVolts = 751; /*7.51 V*/
+    ShutterBatteryVolts = 1240; /*12.40 V*/
     Computer.print("K ");
     Computer.print(BatteryVolts);
     Computer.print(" ");
@@ -1206,7 +1208,7 @@ int CheckBattery()
   volts=volts*3;
   //v=(float)volts/(float)100;
   //BatteryVolts=volts;
-  BatteryVolts = 752; /*7.52 V*/
+  BatteryVolts = 1250; /*12.50 V*/
   //Computer.println(volts);
   return 0;
 }

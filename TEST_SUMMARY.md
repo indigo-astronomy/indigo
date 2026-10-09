@@ -210,12 +210,15 @@
 | dome_dragonfly | 2026-09-27 22:18 | 3.0.0.10 | mac arm64 | simulator | 22 / 22 | ✅ OK |
 | dome_nexdome | 2026-09-27 04:14 | 3.0.0.14 | linux x64 | simulator | 46 / 46 | ✅ OK |
 |  | 2026-09-27 22:19 | 3.0.0.14 | mac arm64 | simulator | 46 / 46 | ✅ OK |
+|  | 2026-10-09 18:40 | 3.0.0.14 | linux arm64 | NexDome firmware 1.10 Arduino simulator (ESP32-S3) | 10 / 10 | ✅ OK |
 | dome_nexdome3 | 2026-09-27 01:43 | 3.0.0.16 | linux x64 | simulator | 51 / 51 | ✅ OK |
-|  | 2026-09-27 22:30 | 3.0.0.16 | mac arm64 | simulator | 51 / 51 | ✅ OK |
+|  | 2026-10-09 19:14 | 3.0.0.17 | mac arm64 | simulator | 51 / 51 | ✅ OK |
+|  | 2026-10-09 19:15 | 3.0.0.17 | linux arm64 | NexDome firmware 3 Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 | dome_simulator | 2026-09-27 22:32 | 3.0.0.9 | mac arm64 | simulator | 7 / 7 | ✅ OK |
 | dome_skyroof | 2026-09-27 22:32 | 3.0.0.10 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | dome_talon6ror | 2026-09-27 14:38 | 3.0.0.6 | linux x64 | simulator | 36 / 36 | ✅ OK |
-|  | 2026-09-27 22:33 | 3.0.0.6 | mac arm64 | simulator | 36 / 36 | ✅ OK |
+|  | 2026-10-09 18:57 | 3.0.0.7 | mac arm64 | simulator | 37 / 37 | ✅ OK |
+|  | 2026-10-09 19:09 | 3.0.0.7 | linux arm64 | Talon6 ROR Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
 | focuser_asi | 2026-10-05 19:55 | 3.0.0.37 | mac arm64 | fake SDK | 23 / 23 | ✅ OK |
 | focuser_askar | 2026-09-24 17:14 | 3.0.0.7 | linux x64 | simulator | 10 / 10 | ✅ OK |
 |  | 2026-10-05 16:18 | 3.0.0.9 | mac arm64 | simulator | 24 / 24 | ✅ OK |

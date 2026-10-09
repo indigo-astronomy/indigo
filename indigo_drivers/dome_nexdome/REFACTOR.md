@@ -273,3 +273,19 @@ change.
 - Simulated tests of this change: baseline 46 run, 46 passed (3.0.0.13); temporary window case 3 run, 0 passed on 3.0.0.13
   (expected), 3/3 on 3.0.0.14; temporary observed-motion cases 3/3 on 3.0.0.13, 5/5 on 3.0.0.14; recorded run 46/46.
   Hardware tests: 0 run, 0 passed.
+
+## Strict checks and hardware suite (2026-10-09)
+
+The reply checks were compared with `nexdome_protocol.txt` (the firmware 1.10 source) and the 2.0 driver: each
+reply starts with the upper-case command letter, `v` answers `VNexDome V <major>.<minor>` (with ` NexShutter V ...`
+and an extra line break when a shutter is paired, which the driver skips), `m`, `q`, `u` and `y` carry exactly
+their documented fields. None of them was derived from the simulator alone; the driver is unchanged (3.0.0.14).
+
+Sketch: `dome_nexdome_simulator.ino` reported a 0 V rotator supply until its first battery check, so the driver
+announced a low supply right after the connection; it now reports 12.5 V and 12.4 V from power-up.
+
+New hardware suite `indigo_test/hardware/test_dome_nexdome_hw.c` (`make test-dome-nexdome-hw`, `NEXDOME_HW_PORT`)
+on `dome_hw_common.h`: slews, steps, an aborted rotation, the shutter, a home search followed by a calibration (and
+one refused away from home), park and a slew refused while parked, reconnect and INIT/SHUTDOWN. Recorded run
+against the sketch on an ESP32-S3: 10/10. No physical NexDome is available.
+
