@@ -100,7 +100,7 @@ Every case below failed against a build of the version 14 source kept outside th
 
 | Id | Observable impact | Fix | Regression test |
 | --- | --- | --- | --- |
-| `DRV-178` | An aborted move ended OK. | Abort ends both motion properties ALERT, value = target = the position read after the stop. | `abort_during_motion`, `abort_queued_behind_start` |
+| `DRV-178` | An aborted move ended OK. | Abort ends both motion properties ALERT, value = the position read after the stop, the target keeps the request. | `abort_during_motion`, `abort_queued_behind_start` |
 | `DRV-179` | An abort while idle sent `FLIStepMotorAsync(dev, 0)`. | Nothing moving (no move running, neither motion property BUSY) answers OK without a command. | `abort_while_idle` |
 | `DRV-180` | A refused stop published the move ALERT and cancelled its completion poll while the focuser kept moving. | The abort ends ALERT, the move stays BUSY and is polled until it ends; a retried abort stops it. | `abort_refused_stop_keeps_move` |
 | `DRV-181` | Disconnecting during a move closed the handle without stopping the focuser. | `on_disconnect` sends the stop when a move is running; an idle disconnect sends nothing. | `disconnect_during_motion_stops` |

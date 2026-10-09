@@ -323,7 +323,7 @@ static void abort_during_motion(void) {
 	FLI_CHECK_TRUE(fli_switch_is(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false));
 	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
 	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
-	FLI_CHECK_TRUE(position_is(0, 1000, 1000));
+	FLI_CHECK_TRUE(position_is(0, 1000, 2000));
 	// two readbacks a poll period apart prove the focuser stopped short of the target
 	FLI_CHECK_EQ_INT(1000, (int)fli_fake_devices[0].stepper_position);
 	FLI_CHECK_EQ_INT(0, (int)fli_fake_devices[0].steps_remaining);
@@ -395,7 +395,7 @@ static void abort_refused_stop_keeps_move(void) {
 	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
 	FLI_CHECK_EQ_INT(3, atomic_load(&fli_fake.step_motor_calls));
 	FLI_CHECK_EQ_INT(0, (int)fli_fake_devices[0].steps_remaining);
-	FLI_CHECK_TRUE(position_is(0, 1000, 1000));
+	FLI_CHECK_TRUE(position_is(0, 1000, 2000));
 cleanup:
 	fli_driver_down(indigo_focuser_fli);
 }
@@ -423,7 +423,7 @@ static void abort_queued_behind_start(void) {
 	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
 	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
 	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
-	FLI_CHECK_TRUE(position_is(0, 1000, 1000));
+	FLI_CHECK_TRUE(position_is(0, 1000, 2000));
 	indigo_usleep(1000000);
 	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_POSITION_PROPERTY_NAME));
 cleanup:
@@ -472,7 +472,7 @@ static void stalled_move_ends_alert(void) {
 	FLI_CHECK_TRUE(message_contains(0, FOCUSER_POSITION_PROPERTY_NAME, "does not move"));
 	FLI_CHECK_EQ_INT(2, atomic_load(&fli_fake.step_motor_calls));
 	FLI_CHECK_EQ_INT(0, (int)atomic_load(&fli_fake.last_steps));
-	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000));
+	FLI_CHECK_TRUE(position_is(0, 1000, 2000));
 	// the focuser reports the move finished away from the target
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_BUSY_STATE));
 	FLI_CHECK_TRUE(wait_steps(3));
@@ -480,7 +480,7 @@ static void stalled_move_ends_alert(void) {
 	FLI_CHECK_TRUE(fli_wait_state(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	FLI_CHECK_EQ_INT(INDIGO_ALERT_STATE, fli_property_state(0, FOCUSER_STEPS_PROPERTY_NAME));
 	FLI_CHECK_TRUE(message_contains(0, FOCUSER_POSITION_PROPERTY_NAME, "short of the target"));
-	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
+	FLI_CHECK_TRUE(position_is(0, 2000, 3000));
 	fli_fake_devices[0].step_hold = 0;
 	FLI_CHECK_TRUE(fli_set_number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500, INDIGO_OK_STATE));
 	FLI_CHECK_TRUE(fli_number_is(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500));

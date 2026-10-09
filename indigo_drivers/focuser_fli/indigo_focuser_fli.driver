@@ -26,7 +26,7 @@ driver fli {
 	label = "FLI Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 16;
+	version = 17;
 	multi_device_support = true;
 	include {
 		#include <libfli.h>
@@ -420,9 +420,8 @@ driver fli {
 					} else {
 						FOCUSER_POSITION_ITEM->number.value = position - PRIVATE_DATA->zero_position;
 					}
-					// an aborted move ends at the stopped position, never at the requested target
+					// an aborted move ends at the stopped position and keeps the requested target
 					PRIVATE_DATA->target_position = (long)FOCUSER_POSITION_ITEM->number.value;
-					FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 					FOCUSER_STEPS_ITEM->number.value = 0;
 					fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser motion aborted");
 				}

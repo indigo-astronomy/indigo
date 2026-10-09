@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_focuser_fli"
 #define DRIVER_LABEL         "FLI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -436,9 +436,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		} else {
 			FOCUSER_POSITION_ITEM->number.value = position - PRIVATE_DATA->zero_position;
 		}
-		// an aborted move ends at the stopped position, never at the requested target
+		// an aborted move ends at the stopped position and keeps the requested target
 		PRIVATE_DATA->target_position = (long)FOCUSER_POSITION_ITEM->number.value;
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_STEPS_ITEM->number.value = 0;
 		fli_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser motion aborted");
 	}

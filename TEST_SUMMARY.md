@@ -237,7 +237,7 @@
 |  | 2026-09-30 19:16 | 3.0.0.10 | linux arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
 |  | 2026-10-05 15:13 | 3.0.0.11 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 |  | 2026-10-05 21:02 | 3.0.0.11 | mac arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
-| focuser_fli | 2026-10-05 16:25 | 3.0.0.16 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
+| focuser_fli | 2026-10-10 01:43 | 3.0.0.17 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 | focuser_focusdreampro | 2026-09-22 21:05 | 3.0.0.9 | mac arm64 | AstroGadget FocusDreamPro | 15 / 15 | ✅ OK |
 |  | 2026-09-30 19:34 | 3.0.0.11 | linux arm64 | simulator | 18 / 18 | ✅ OK |
 |  | 2026-09-30 19:36 | 3.0.0.11 | linux arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
