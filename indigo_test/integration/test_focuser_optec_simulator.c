@@ -382,6 +382,56 @@ cleanup:
 	driver_stop();
 }
 
+static int events(const char *kind) {
+	FILE *file = fopen(event_path, "r");
+	if (!file) {
+		return -1;
+	}
+	char line[512], name[16];
+	double timestamp;
+	int count = 0;
+	while (fgets(line, sizeof(line), file)) {
+		if (sscanf(line, "%lf %15s", &timestamp, name) == 2 && !strcmp(name, kind)) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+// A controller that answers FI/FO with '*' only when the move ends and ignores input meanwhile (as INDI and
+// the 2.0 driver expected): a 3 s move ends OK at its target and nothing is sent to the controller while it moves.
+static void blocking_move(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 600, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]), INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(5600));
+	SERIAL_CHECK_EQ_INT(0, events("IGNORED"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 600, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]), INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(5000));
+	SERIAL_CHECK_EQ_INT(0, events("IGNORED"));
+	// an ER=2 report before the '*' does not end the move
+	SERIAL_CHECK_TRUE(fault("FO0200", "limit"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]), INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(5200));
+cleanup:
+	driver_stop();
+}
+
+// The manual documents the temperature as T=nn.n, without a sign; 2.0 and INDI read it with scanf.
+static void unsigned_temperature(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 24.5, .01));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void external_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	unsigned position_before = atomic_load(&position_busy);
@@ -709,7 +759,7 @@ static int run_cases(const optec_test *cases, int count) {
 		}
 		current_profile = cases[index].profile;
 		unlink(fault_path);
-		const char *simulator_profile = !strcmp(current_profile, "split") || !strcmp(current_profile, "alternate") || !strcmp(current_profile, "tcf-s") || !strcmp(current_profile, "no-probe") ? current_profile : "normal";
+		const char *simulator_profile = !strcmp(current_profile, "split") || !strcmp(current_profile, "alternate") || !strcmp(current_profile, "tcf-s") || !strcmp(current_profile, "no-probe") || !strcmp(current_profile, "blocking") || !strcmp(current_profile, "unsigned") ? current_profile : "normal";
 		const char *args[] = { "--profile", simulator_profile, NULL };
 		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_OPTEC_SIMULATOR_EXECUTABLE, args)) {
 			failures++;
@@ -764,7 +814,7 @@ int main(void) {
 		{ "simulator_rejections", simulator_rejections, "tcf-s" },
 		{ "capabilities", capabilities, "normal" }, { "capabilities_split", capabilities, "split" }, { "capabilities_alternate", capabilities, "alternate" },
 		{ "no_probe", no_probe, "no-probe" }, { "temperature_implausible", temperature_implausible, "normal" },
-		{ "short_move", short_move, "normal" }, { "external_motion", external_motion, "normal" },
+		{ "short_move", short_move, "normal" }, { "blocking_move", blocking_move, "blocking" }, { "unsigned_temperature", unsigned_temperature, "unsigned" }, { "external_motion", external_motion, "normal" },
 		{ "settings_during_motion", settings_during_motion, "normal" }, { "request_versus_poll", request_versus_poll, "normal" },
 		{ "shutdown_while_connected", shutdown_while_connected, "normal" },
 		{ "relative_motion", relative_motion, "normal" }, { "controls", controls, "normal" },

@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_optec"
 #define DRIVER_LABEL         "Optec TCF-S Focuser"
 #define FOCUSER_DEVICE_NAME  "Optec TCF-S"
@@ -53,6 +53,8 @@
 #define OPTEC_MIN_POSITION   0
 #define OPTEC_MAX_POSITION   9999
 #define OPTEC_STALL_POLLS    50
+// the move reply is awaited for 10 ms per step plus 5 s (Optec's own driver allows 6 ms per step plus 1 s)
+#define OPTEC_REPLY_POLLS(steps) ((int)((steps) / 100.0 / 0.1) + 50)
 
 //- define
 
@@ -62,8 +64,8 @@ typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
 	char response[64];
-	int position, expected_position, last_position, stalled, recovery_position, recovery_samples;
-	bool active, uncertain, automatic_mode, external, reversed, failed;
+	int position, expected_position, last_position, stalled, recovery_position, recovery_samples, reply_polls;
+	bool active, uncertain, automatic_mode, external, reversed, failed, acknowledged;
 	//- data
 } optec_private_data;
 
@@ -87,15 +89,13 @@ static bool optec_command(indigo_device *device, int expected, const char *comma
 	if (expected < 0) {
 		return true;
 	}
+	// the reply is validated by its parser; its length is not fixed (the manual shows T=nn.n, firmware
+	// sends a sign), and bytes after it are dropped as INDI and the 2.0 driver did
 	long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\n", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
-	if ((expected > 0 ? count != expected + 1 : count < 2) || PRIVATE_DATA->response[count - 1] != '\r' || (long)strlen(PRIVATE_DATA->response) != count) {
+	if (count < 2 || PRIVATE_DATA->response[count - 1] != '\r' || (long)strlen(PRIVATE_DATA->response) != count) {
 		return false;
 	}
 	PRIVATE_DATA->response[count - 1] = 0;
-	if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.01)) > 0) {
-		indigo_uni_discard(PRIVATE_DATA->handle);
-		return false;
-	}
 	return true;
 }
 
@@ -116,15 +116,20 @@ static bool optec_exact(indigo_device *device, const char *expected, const char 
 		return false;
 	}
 	PRIVATE_DATA->response[count - 1] = 0;
-	return !strcmp(PRIVATE_DATA->response, expected) && indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.01)) == 0;
+	return !strcmp(PRIVATE_DATA->response, expected);
 }
 
+// a decimal number, right justified with zeros or spaces (2.0 and INDI read it with scanf)
 static bool optec_digits(const char *text, int digits, int min, int max, int *value) {
-	if ((int)strlen(text) != digits) {
+	while (*text == ' ') {
+		text++;
+	}
+	int length = (int)strlen(text);
+	if (length < 1 || length > digits) {
 		return false;
 	}
 	int result = 0;
-	for (int index = 0; index < digits; index++) {
+	for (int index = 0; index < length; index++) {
 		if (!isdigit((unsigned char)text[index])) {
 			return false;
 		}
@@ -160,13 +165,21 @@ static int optec_temperature(indigo_device *device) {
 	if (!strcmp(PRIVATE_DATA->response, "ER=1")) {
 		return -1;
 	}
-	if (strlen(PRIVATE_DATA->response) != 7 || strncmp(PRIVATE_DATA->response, "T=", 2) || (PRIVATE_DATA->response[2] != '+' && PRIVATE_DATA->response[2] != '-') || !isdigit((unsigned char)PRIVATE_DATA->response[3]) || !isdigit((unsigned char)PRIVATE_DATA->response[4]) || PRIVATE_DATA->response[5] != '.' || !isdigit((unsigned char)PRIVATE_DATA->response[6])) {
-		return false;
+	// the manual shows both T=nn.n and T=±nn.n; any decimal reading is accepted as INDI does
+	if (strncmp(PRIVATE_DATA->response, "T=", 2)) {
+		return 0;
+	}
+	const char *text = PRIVATE_DATA->response + 2;
+	while (*text == ' ') {
+		text++;
+	}
+	if (!isdigit((unsigned char)*text) && *text != '+' && *text != '-') {
+		return 0;
 	}
 	char *end;
 	errno = 0;
-	double value = strtod(PRIVATE_DATA->response + 2, &end);
-	if (errno || *end || !isfinite(value) || value < -40 || value > 100) {
+	double value = strtod(text, &end);
+	if (errno || end == text || *end || !isfinite(value) || value < -40 || value > 100) {
 		return 0;
 	}
 	FOCUSER_TEMPERATURE_ITEM->number.value = value;
@@ -211,17 +224,44 @@ static void optec_motion_state(indigo_device *device, indigo_property_state stat
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 
+static void motion_failed(indigo_device *device) {
+	PRIVATE_DATA->active = false;
+	PRIVATE_DATA->uncertain = true;
+	PRIVATE_DATA->recovery_samples = 0;
+	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	optec_motion_state(device, INDIGO_ALERT_STATE);
+}
+
 static void motion_finalizer(indigo_device *device) {
 	if (!IS_CONNECTED || !PRIVATE_DATA->active) {
 		return;
 	}
+	if (!PRIVATE_DATA->acknowledged) {
+		// The controller replies '*' to FI/FO when the move ends (Optec's own driver, INDI and 2.0 wait for
+		// it so), and nothing is sent to it meanwhile. A move into a travel limit may report ER=2 first.
+		long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\r", "\n", INDIGO_DELAY(0.05), INDIGO_DELAY(0.1));
+		if (count > 0 && !strncmp(PRIVATE_DATA->response, "ER=", 3)) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Report during the move: %s", PRIVATE_DATA->response);
+			indigo_execute_handler_in(device, 0.05, motion_finalizer);
+			return;
+		}
+		if (count > 0) {
+			if (count < 2 || PRIVATE_DATA->response[0] != '*' || PRIVATE_DATA->response[count - 1] != '\r') {
+				motion_failed(device);
+				return;
+			}
+			PRIVATE_DATA->acknowledged = true;
+		} else if (count < 0 || --PRIVATE_DATA->reply_polls <= 0) {
+			motion_failed(device);
+			return;
+		} else {
+			indigo_execute_handler_in(device, 0.05, motion_finalizer);
+			return;
+		}
+	}
 	int position = 0;
 	if (!optec_position(device, &position)) {
-		PRIVATE_DATA->active = false;
-		PRIVATE_DATA->uncertain = true;
-		PRIVATE_DATA->recovery_samples = 0;
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
-		optec_motion_state(device, INDIGO_ALERT_STATE);
+		motion_failed(device);
 		return;
 	}
 	if (position == PRIVATE_DATA->expected_position) {
@@ -376,15 +416,16 @@ static void focuser_steps_handler(indigo_device *device) {
 	} else if (actual_steps == 0) {
 		PRIVATE_DATA->failed = false;
 		optec_motion_state(device, INDIGO_OK_STATE);
-	} else if (optec_exact(device, "*", physical_inward ? "FI%04d" : "FO%04d", actual_steps)) {
-		PRIVATE_DATA->external = PRIVATE_DATA->failed = false;
+	} else if (optec_command(device, -1, physical_inward ? "FI%04d" : "FO%04d", actual_steps)) {
+		PRIVATE_DATA->external = PRIVATE_DATA->failed = PRIVATE_DATA->acknowledged = false;
+		PRIVATE_DATA->reply_polls = OPTEC_REPLY_POLLS(actual_steps);
 		PRIVATE_DATA->expected_position = target;
 		PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 		PRIVATE_DATA->stalled = 0;
 		PRIVATE_DATA->active = true;
 		FOCUSER_POSITION_ITEM->number.target = target;
 		optec_motion_state(device, INDIGO_BUSY_STATE);
-		indigo_execute_handler_in(device, 0.1, motion_finalizer);
+		indigo_execute_handler_in(device, 0.05, motion_finalizer);
 	} else {
 		PRIVATE_DATA->uncertain = true;
 		PRIVATE_DATA->recovery_samples = 0;

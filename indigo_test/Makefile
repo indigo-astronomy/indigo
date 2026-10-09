@@ -3116,6 +3116,18 @@ FOCUSER_NSTEP_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_nstep.a $(TEST_L
 $(TEST_BUILD)/hardware/test_focuser_nstep_hw: hardware/test_focuser_nstep_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_nstep.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_NSTEP_HW_TEST_LDFLAGS)
 
+# A physical Optec TCF-S/TCF-S3, or the Arduino sketch focuser_optec_simulator.ino on a board, is opt-in and
+# excluded from normal integration tests. THE FOCUSER MOVES; the run writes back the coefficient and steps back to
+# the position it found. Set OPTEC_HW_PORT.
+.PHONY: test-focuser-optec-hw
+test-focuser-optec-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_optec_hw
+	$(TEST_BUILD)/hardware/test_focuser_optec_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_OPTEC_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_optec.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_optec_hw: hardware/test_focuser_optec_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_optec.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_OPTEC_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

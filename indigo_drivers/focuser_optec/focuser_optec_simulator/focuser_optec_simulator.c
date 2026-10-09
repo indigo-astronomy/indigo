@@ -31,6 +31,8 @@ static int serial_fd = -1, maximum = 9999;
 static int slope[2] = { 86, 42 }, sign_value[2], delay_value[2];
 static double temperature = 24.5, sleep_temperature, telemetry_time, automatic_temperature;
 static serial_motion motion;
+// profile "blocking": the '*' reply to FI/FO is sent when the move ends and input is ignored meanwhile
+static bool reply_pending;
 static controller_mode mode = FREE_MODE, sleep_previous_mode = AUTO_A_MODE;
 static int sleep_position, automatic_position;
 
@@ -223,7 +225,8 @@ static bool dispatch(const char *command) {
 		if (!strcmp(profile, "no-probe")) {
 			return write_reply("ER=1", action);
 		}
-		snprintf(reply, sizeof(reply), "T=%+05.1f", temperature);
+		// the "unsigned" profile uses the manual's T=nn.n form, without a sign
+		snprintf(reply, sizeof(reply), !strcmp(profile, "unsigned") ? "T=%04.1f" : "T=%+05.1f", temperature);
 		return write_reply(reply, action);
 	}
 	if (!strcmp(command, "FREADA") || !strcmp(command, "FREADB")) {
@@ -245,6 +248,11 @@ static bool dispatch(const char *command) {
 		} else {
 			stalled = false;
 			serial_motion_start(&motion, target, 200);
+		}
+		if (!strcmp(profile, "blocking") && !stalled) {
+			reply_pending = true;
+			// a move into a travel limit reports ER=2 before the '*'
+			return strcmp(action, "limit") || write_reply("ER=2", "");
 		}
 		return write_reply("*", action);
 	}
@@ -292,14 +300,14 @@ static bool parse_args(int argc, char **argv) {
 		} else if (index + 1 < argc && !strcmp(argv[index], "--profile")) {
 			profile = argv[++index];
 		} else if (!strcmp(argv[index], "--help") || !strcmp(argv[index], "-h")) {
-			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|tcf-s|no-probe]\n", argv[0]);
+			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|tcf-s|no-probe|blocking|unsigned]\n", argv[0]);
 			exit(0);
 		} else {
 			fprintf(stderr, "Unknown/incomplete option: %s\n", argv[index]);
 			return false;
 		}
 	}
-	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "alternate") || !strcmp(profile, "tcf-s") || !strcmp(profile, "no-probe");
+	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "alternate") || !strcmp(profile, "tcf-s") || !strcmp(profile, "no-probe") || !strcmp(profile, "blocking") || !strcmp(profile, "unsigned");
 }
 
 int main(int argc, char **argv) {
@@ -336,6 +344,10 @@ int main(int argc, char **argv) {
 	size_t used = 0;
 	while (running) {
 		update_motion();
+		if (reply_pending && motion.duration <= 0) {
+			reply_pending = false;
+			write_reply("*", "");
+		}
 		if ((mode == AUTO_A_MODE || mode == AUTO_B_MODE) && !quiet && serial_motion_time() - telemetry_time >= 1) {
 			char reply[32];
 			snprintf(reply, sizeof(reply), "P=%04d", (int)motion.position);
@@ -357,6 +369,11 @@ int main(int argc, char **argv) {
 			for (ssize_t index = 0; index < count; index++) {
 				if (used + 1 >= sizeof(command)) {
 					used = 0;
+				}
+				if (reply_pending) {
+					char ignored[2] = { bytes[index], 0 };
+					event("IGNORED", ignored);
+					continue;
 				}
 				command[used++] = bytes[index];
 				command[used] = 0;

@@ -35,7 +35,7 @@ modified by this work.
   has no model-identification command, so the public portable limit remains
   0–9999 and model-specific end-stop behavior stays controller-owned.
 - Movement accepts exactly four decimal digits and is limited to 0–7000 steps
-  per request (9999 for TCF-S3), with `*` acknowledgement. Published maximum
+  per request (9999 for TCF-S3); the `*` reply comes when the move ends (see 3.0.0.12 below). Published maximum
   motion rate is 200 steps/s.
 - Compensation magnitude is 000–999 and `FLAnnn` contains exactly three digits.
   Sign is read with `FTxxxA` and written with `FZAxxn`; positive is 0 and
@@ -241,3 +241,37 @@ The pre-fix result comes from a separate binary built against a copy of the 3.0.
 
 - Simulated tests: 40 run, 40 passed (recorded run of 3.0.0.11, macOS arm64).
 - Hardware tests: 0 run, 0 passed.
+
+## Strict checks against the manual, Optec's driver, INDI and 2.0 (3.0.0.12)
+
+References: the technical manual (rev. 11), Optec's own ASCOM driver 6.0.6, INDI `tcfs.cpp`, and the 2.0 driver. Checks derived only from the simulator were relaxed.
+
+| Defect | Fix | Covered by |
+| --- | --- | --- |
+| The `*` reply to `FInnnn`/`FOnnnn` was read as an immediate acknowledgement, with a 1 s timeout. The controller sends it only when the move ends: Optec's driver waits `1000 + 6 ms × steps` for it, and INDI and 2.0 wait for it too. Every move longer than about 200 steps ended ALERT, and the driver then polled `FPOSRO` while the controller was not listening. | The move command is sent without waiting. The finalizer waits for `*` without blocking and sends nothing meanwhile, allowing 10 ms per step plus 5 s. After `*`, position polling confirms the target as before, so a controller that acknowledges early still works. An `ER=` report before `*` (a move into a travel limit) does not end the wait. | `blocking_move` |
+| `FTMPRO` had to be exactly `T=±nn.n`. The manual's command table shows `T=nn.n` without a sign; 2.0 and INDI parsed it with scanf. | Any decimal reading after `T=` is accepted, still within −40…100 °C. | `unsigned_temperature` |
+| Fixed-width numbers (`P=nnnn`, `A=nnnn`, `A=n`) had to have exactly the documented number of digits, and any byte arriving within 10 ms after a reply failed the command. | Up to the documented number of digits is accepted, with leading spaces skipped. Bytes after a reply are dropped, as INDI flushes them and 2.0 ignored them. | existing malformed, partial and overlong cases still refuse garbage |
+
+The simulator gained two profiles:
+- `blocking`: `*` is sent when the move ends and input is ignored meanwhile.
+- `unsigned`: `T=nn.n`.
+
+It also gained a `limit` fault, which sends `ER=2` before the `*`. The `normal` profile keeps the immediate `*`, so the position polling paths stay covered.
+
+The Arduino sketch was rewritten to follow the hardware:
+- replies end with LF CR (it used CR LF)
+- `*` and `CENTER` are sent when the move ends
+- input is ignored while the motor runs, which moves at 200 steps/s
+- telemetry in the automatic modes is sent once a second (it was every 10 ms)
+- only `FMMODE`/`FQUITn` are accepted in the automatic modes
+
+Hardware suite `test_focuser_optec_hw.c` (`make test-focuser-optec-hw`, `OPTEC_HW_PORT`) covers:
+- the values read at connection
+- moves by steps both ways, including a 1000-step move
+- the reversed direction
+- compensation refused during a move
+- the coefficient read back and kept over a reconnect
+- the automatic mode removing and restoring the motion controls
+- reconnect, SHUTDOWN refusal, and INIT/SHUTDOWN
+
+It was run against the sketch on an ESP32-S3.
