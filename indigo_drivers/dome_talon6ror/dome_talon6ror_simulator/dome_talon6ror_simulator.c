@@ -92,6 +92,8 @@
 #define ACTION_PARK 15
 
 static const char *ready_file, *fault_file, *control_file;
+// Bytes appended after the checksum of the status and configuration frames, as a later firmware might send.
+static int extra_bytes;
 static FILE *events;
 static bool trace, headless;
 static volatile sig_atomic_t running = 1;
@@ -332,8 +334,9 @@ static size_t make_status(uint8_t *reply) {
 	status[20] = checksum(status, 20);
 	reply[0] = '&';
 	reply[1] = 'G';
-	reply[2 + STATUS_LENGTH] = '#';
-	return STATUS_LENGTH + 3;
+	memset(reply + 2 + STATUS_LENGTH, 0x80, extra_bytes);
+	reply[2 + STATUS_LENGTH + extra_bytes] = '#';
+	return STATUS_LENGTH + 3 + extra_bytes;
 }
 
 static size_t make_configuration(uint8_t *reply) {
@@ -341,8 +344,9 @@ static size_t make_configuration(uint8_t *reply) {
 	reply[0] = '&';
 	reply[1] = 'p';
 	memcpy(reply + 2, configuration, CONFIGURATION_LENGTH);
-	reply[2 + CONFIGURATION_LENGTH] = '#';
-	return CONFIGURATION_LENGTH + 3;
+	memset(reply + 2 + CONFIGURATION_LENGTH, 0x80, extra_bytes);
+	reply[2 + CONFIGURATION_LENGTH + extra_bytes] = '#';
+	return CONFIGURATION_LENGTH + 3 + extra_bytes;
 }
 
 static size_t copy_text(uint8_t *reply, const char *text) {
@@ -558,6 +562,11 @@ static bool parse_arguments(int argc, char **argv) {
 			trace = true;
 		} else if (i + 1 < argc && !strcmp(argv[i], "--ready-file")) {
 			ready_file = argv[++i];
+		} else if (i + 1 < argc && !strcmp(argv[i], "--extra-bytes")) {
+			extra_bytes = atoi(argv[++i]);
+			if (extra_bytes < 0 || extra_bytes > 8) {
+				extra_bytes = 0;
+			}
 		} else if (i + 1 < argc && !strcmp(argv[i], "--position")) {
 			serial_motion_sync(&roof, atoi(argv[++i]));
 		} else if (i + 1 < argc && !strcmp(argv[i], "--travel-time")) {
@@ -569,7 +578,7 @@ static bool parse_arguments(int argc, char **argv) {
 		} else if (i + 1 < argc && !strcmp(argv[i], "--conditions")) {
 			configuration[47] = 0x80 | (atoi(argv[++i]) & 0x07);
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--position TICKS] [--travel-time S] [--parked 0|1] [--last-action N] [--conditions BITS]\n", argv[0]);
+			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--position TICKS] [--travel-time S] [--parked 0|1] [--last-action N] [--conditions BITS] [--extra-bytes N]\n", argv[0]);
 			exit(0);
 		} else {
 			fprintf(stderr, "Unknown/incomplete option '%s'\n", argv[i]);

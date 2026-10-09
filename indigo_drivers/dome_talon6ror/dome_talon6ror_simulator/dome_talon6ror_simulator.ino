@@ -1,6 +1,6 @@
 // Talon6 simulator for Arduino
 //
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -24,19 +24,28 @@
 #endif
 
 #define CLOSED  0
-#define OPENED 819100L
+// The open end is the full travel in encoder ticks configured in bytes 36 to 38 of the configuration.
+#define OPENED full_travel()
 
 #define STOPPED 0
 #define OPEN    1
 #define CLOSE  -1
 
+// A full travel takes TRAVEL_TIME ms whatever the speed of the board, the position follows the time.
+#define TRAVEL_TIME 15000L
+
 long position = CLOSED;
 int direction = STOPPED;
+unsigned long last_step = 0;
 int last_action = 0;
 
 uint8_t configuration[55] = { 
   0x80, 0x81, 0xB4, 0x80, 0x81, 0x8C, 0x80, 0x80, 0x82, 0x80, 0x80, 0xE4, 0x80, 0x80, 0x8E, 0x80, 0x80, 0x94, 0x80, 0x80, 0xF8, 0x80, 0x80, 0xBC, 0x80, 0x80, 0xB6, 0x80, 0x80, 0xBC, 0x80, 0x80, 0x80, 0x80, 0x80, 0xF8, 0x83, 0x86, 0xD0, 0x80, 0x80, 0x85, 0x80, 0x80, 0x80, 0x84, 0xA0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0xF8, 0x9E
 };
+
+long full_travel() {
+  return ((long)(configuration[36] & 0x7F) << 14) | ((configuration[37] & 0x7F) << 7) | (configuration[38] & 0x7F);
+}
 
 uint8_t status[21] = {
   0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80
@@ -51,12 +60,18 @@ void setup() {
 }
 
 void loop() {
-  if (position > CLOSED && direction == CLOSE)
-    position--;
-  else if (position < OPENED && direction == OPEN)
-    position++;
-  else
-    direction = STOPPED;
+  unsigned long now = millis();
+  long delta = (long)((now - last_step) * OPENED / TRAVEL_TIME);
+  if (delta > 0) {
+    last_step = now;
+    if (direction == CLOSE) {
+      position = position - delta > CLOSED ? position - delta : CLOSED;
+    } else if (direction == OPEN) {
+      position = position + delta < OPENED ? position + delta : OPENED;
+    }
+    if ((direction == CLOSE && position == CLOSED) || (direction == OPEN && position == OPENED))
+      direction = STOPPED;
+  }
   if (Serial.available()) {
     String command = Serial.readStringUntil('#');
     if (command.equals("&V%")) {
@@ -113,8 +128,9 @@ void loop() {
       last_action = 2;
       Serial.print("&#");
     } else if (command.equals("&S%")) {
+      // 13 is a motor stall in the manual, a stop on request is the emergency stop 14
       direction = STOPPED;
-      last_action = 13;
+      last_action = 14;
       Serial.print("&#");
     } else if (command.equals("&p%")) {
       Serial.print("&p");

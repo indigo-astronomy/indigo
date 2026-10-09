@@ -1246,6 +1246,21 @@ cleanup:
 	driver_down();
 }
 
+// Bytes a later firmware may append after the checksum of the status and configuration frames do not
+// refuse the controller; the checksum sits at a fixed offset, as the 2.0 driver read it.
+static void longer_frames_are_accepted(void) {
+	CHECK(start_connected());
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME));
+	CHECK_EQ(INDIGO_OK_STATE, state_of(DOME_SHUTTER_PROPERTY_NAME));
+	unsigned before = revision_of(DOME_SHUTTER_PROPERTY_NAME);
+	CHECK_EQ(INDIGO_OK, request_switch(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	CHECK(wait_settled(DOME_SHUTTER_PROPERTY_NAME, before, INDIGO_OK_STATE, 15));
+	CHECK(switch_of(DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME));
+	CHECK(wait_value(X_POSITION_PROPERTY_NAME, X_POSITION_ITEM_NAME, FULL_TRAVEL, 0, 3));
+cleanup:
+	driver_down();
+}
+
 static void open_when_already_open(void) {
 	CHECK(start_connected());
 	CHECK(open_roof(INDIGO_OK_STATE, 10));
@@ -2039,6 +2054,7 @@ static const talon6ror_case cases[] = {
 	{ "metadata_before_connection", metadata_before_connection, NULL, false },
 	{ "connect_sequence", connect_sequence, NULL, false },
 	{ "connect_with_open_roof", connect_with_open_roof, "--position 50000 --last-action 1", false },
+	{ "longer_frames_are_accepted", longer_frames_are_accepted, "--extra-bytes 3", false },
 	{ "connection_failures_and_recovery", connection_failures_and_recovery, NULL, false },
 	{ "open_and_close_roof", open_and_close_roof, NULL, false },
 	{ "open_when_already_open", open_when_already_open, "--position 50000", false },

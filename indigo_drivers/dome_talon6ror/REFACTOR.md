@@ -360,3 +360,28 @@ No hardware run for this change.
   dropped the `abort idle` poll (plain `reference_trace` 3 run, 0 passed with it), 3 run, 0 passed with a second
   version that still failed at `disconnect` (plain 3/3), and 3/3 with the final change (plain 3/3);
   recorded run 36/36. Hardware tests: 0 run, 0 passed.
+
+## Frame length, sketch and hardware suite (2026-10-09, 3.0.0.7)
+
+### Defect
+
+- T6R-13: the generated driver required the status frame to be exactly 22 bytes and the configuration frame exactly
+  56 bytes. The 2.0 driver checked only the checksum at its fixed offset, so a firmware appending bytes after it was
+  accepted; the exact lengths came from the simulator. Both frames now have to be at least that long. The C simulator
+  gained `--extra-bytes N`. Test: `longer_frames_are_accepted` (fails on 3.0.0.6, passes on 3.0.0.7).
+
+### Sketch
+
+`dome_talon6ror_simulator.ino` moved the roof by one tick per `loop()`, so the travel time depended on the board,
+ended the travel at 819100 ticks while the configuration it reports gives 50000, and answered a stop with last
+action 13, which the manual defines as a motor stall (T6R-09). The roof now travels the configured full travel in
+15 s and a stop reports the emergency stop 14.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 37/37.
+- New hardware suite `indigo_test/hardware/test_dome_talon6ror_hw.c` (`make test-dome-talon6ror-hw`,
+  `TALON6_HW_PORT`): status and sensors, open and close with the end sensors, an aborted opening closed from where
+  it stopped, a configuration write read back after a reconnect and restored, reconnect and INIT/SHUTDOWN. Recorded
+  run against the sketch on an ESP32-S3: 7/7. No physical Talon6 is available.
+

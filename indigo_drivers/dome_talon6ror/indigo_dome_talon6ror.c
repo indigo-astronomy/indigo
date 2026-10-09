@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_dome_talon6ror"
 #define DRIVER_LABEL         "Talon6 ROR"
 #define DOME_DEVICE_NAME     "Talon6 ROR"
@@ -318,7 +318,8 @@ static bool talon6ror_open(indigo_device *device) {
 		memcpy(revision, PRIVATE_DATA->response + 1, 7);
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, revision);
 		indigo_update_property(device, INFO_PROPERTY, NULL);
-		if (talon6ror_command(device, "&p") && PRIVATE_DATA->response[0] == 'p' && PRIVATE_DATA->response_length == TALON6ROR_CONFIGURATION_LENGTH) {
+		if (talon6ror_command(device, "&p") && PRIVATE_DATA->response[0] == 'p' && PRIVATE_DATA->response_length >= TALON6ROR_CONFIGURATION_LENGTH) {
+			// the checksum sits at a fixed offset; bytes a later firmware may append are ignored, as the 2.0 driver did
 			if (PRIVATE_DATA->response[55] == talon6ror_checksum(PRIVATE_DATA->response + 1, 54)) {
 				memcpy(PRIVATE_DATA->configuration, PRIVATE_DATA->response, TALON6ROR_CONFIGURATION_LENGTH);
 				PRIVATE_DATA->configuration[0] = 'a';
@@ -512,7 +513,7 @@ static void dome_status_poll(indigo_device *device) {
 	}
 	if (talon6ror_command(device, "&G") && PRIVATE_DATA->response[0] == 'G') {
 		uint8_t *response = PRIVATE_DATA->response;
-		if (PRIVATE_DATA->response_length == TALON6ROR_STATUS_LENGTH && response[21] == talon6ror_checksum(response + 1, 20)) {
+		if (PRIVATE_DATA->response_length >= TALON6ROR_STATUS_LENGTH && response[21] == talon6ror_checksum(response + 1, 20)) {
 			int state = (response[1] & 0x70) >> 4;
 			int action = response[1] & 0x0F;
 			if (state != PRIVATE_DATA->failed_state) {
