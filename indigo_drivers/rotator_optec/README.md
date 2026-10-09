@@ -32,4 +32,5 @@ Tested with a simulator only
 
 ## Testing
 
-2026-09-27 22:45 3.0.0.5 mac arm64 simulator 11/11 OK
+2026-10-09 22:42 3.0.0.6 mac arm64 simulator 12/12 OK
+2026-10-09 22:45 3.0.0.6 linux arm64 Pyxis Arduino simulator (ESP32-S3) 9/9 OK

@@ -90,3 +90,34 @@ numbers. Background and the defect that motivated the refusal macro are in `indi
 
 Verification: the complete simulator suite was re-run after regeneration —
 `indigo_test/build/integration/test_rotator_optec_simulator`, macOS arm64, 11/11 passed on 2026-09-21 12:43.
+
+## Checks against the manual, INDI and 2.0 (3.0.0.6)
+
+The references are the bundled manual 17645 (section 4), INDI `pyxis.cpp` and the 2.0 driver.
+
+| Defect | Fix | Covered by |
+| --- | --- | --- |
+| The connection, and every operation, required a `!` reply to `CWAKUP`. The manual says CWAKUP "is only recognized when the Pyxis is in the SLEEP mode". After power-up and homing the Pyxis waits awake in the serial loop, so 3.0 could not connect to a freshly powered rotator. 2.0 treated a silent `CWAKUP` as already awake. INDI connects with `CCLINK` alone. | No reply within 0.3 s means the rotator is awake. Only a wrong reply fails. `CCLINK` still confirms the serial loop. | every connecting case (the simulator leaves `CWAKUP` unanswered while awake) |
+| Every move had a fixed total deadline of 5 s + 0.36 s per rate unit (7.9 s at the default rate). The manual gives 120 ms per degree for the 2-inch model and 785 ms per degree for the 3-inch model at their default rates. Moves longer than about 65° on the 2-inch model, and almost every move on the 3-inch model, ended ALERT while the rotator was still turning. | Every `!` (one per motor step) renews a 5 s deadline, so only a silence ends a move. | `optec_long_move_completes` (with only the old deadline restored, it fails after 1898 steps) |
+| Any byte other than `!` and `F` in the motion stream failed the move, including a line end after `F`. 2.0 and INDI read up to `F`. | CR and LF are ignored, and nothing after `F` is read as part of the move. | — |
+
+The simulator now models two things:
+- `CWAKUP` gets no answer while the rotator is awake.
+- `--steps-per-degree` (15 for the 2-inch model) sets how many `!` steps a degree takes.
+
+The Arduino sketch was rewritten:
+- It takes 15 steps per degree, with the rate as the pulse delay in ms (120 ms per degree at rate 8).
+- It reads without blocking.
+- It ignores input while the motor runs, and leaves `CWAKUP` unanswered while awake.
+- It answers `ER=2` and `ER=3` as documented.
+
+Hardware suite `test_rotator_optec_hw.c` (`make test-rotator-optec-hw`, `PYXIS_HW_PORT`):
+- connects to an awake rotator
+- moves to absolute angles, including a 120° move (about 14 s)
+- homes
+- refuses a request during a move
+- checks that small steps invalidate the angle until the next homing
+- checks rate and direction, with the direction read back over a reconnect
+- covers reconnect, refused SHUTDOWN, and INIT/SHUTDOWN
+
+It was run against the sketch on an ESP32-S3.

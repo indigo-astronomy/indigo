@@ -26,12 +26,13 @@ driver optec {
 	label = "Optec Pyxis Rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 5;
+	version = 6;
 	multi_device_support = true;
 	serial;
 	define {
 		#define OPTEC_RESPONSE_SIZE	64
 		#define OPTEC_MOTION_POLL		0.05
+		// the longest silence allowed during a move; every step is answered with '!'
 		#define OPTEC_MOTION_MARGIN	5.0
 		#define OPTEC_NO_MOTION		0
 		#define OPTEC_POSITION_MOTION	1
@@ -81,8 +82,17 @@ driver optec {
 			return indigo_uni_read(PRIVATE_DATA->handle, PRIVATE_DATA->response, 1) == 1 && PRIVATE_DATA->response[0] == '!';
 		}
 
+		// The manual: CWAKUP "is only recognized when the Pyxis is in the SLEEP mode". An awake Pyxis (after power-up
+		// and homing it waits awake in the serial loop) does not answer, which the 2.0 driver took as awake; only a
+		// wrong answer is a failure. CCLINK then confirms the serial loop.
 		static bool optec_wakeup(indigo_device *device) {
-			if (!optec_line_command(device, "CWAKUP") || strcmp(PRIVATE_DATA->response, "!")) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || !optec_write(device, "CWAKUP")) {
+				return false;
+			}
+			if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.3)) <= 0) {
+				return true;
+			}
+			if (!optec_read_line(device) || strcmp(PRIVATE_DATA->response, "!")) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to wake up");
 				return false;
 			}
@@ -129,18 +139,21 @@ driver optec {
 			static void motion_finalizer(indigo_device *device) {
 				bool complete = false;
 				bool failed = false;
-				for (int pass = 0; pass < 4 && indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.001)) > 0; pass++) {
+				for (int pass = 0; pass < 4 && !complete && indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.001)) > 0; pass++) {
 					long count = indigo_uni_read_available(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1);
 					if (count <= 0) {
 						failed = true;
 						break;
 					}
-					for (long i = 0; i < count; i++) {
+					for (long i = 0; i < count && !complete; i++) {
 						if (PRIVATE_DATA->response[i] == '!') {
+							// every step renews the deadline: a move takes 120 ms (2-inch) to 785 ms (3-inch) per degree
+							// at the default rates, so only a silence ends it
 							PRIVATE_DATA->motion_steps++;
+							PRIVATE_DATA->motion_deadline = indigo_monotonic_time() + OPTEC_MOTION_MARGIN;
 						} else if (PRIVATE_DATA->response[i] == 'F') {
 							complete = true;
-						} else {
+						} else if (PRIVATE_DATA->response[i] != '\r' && PRIVATE_DATA->response[i] != '\n') {
 							failed = true;
 						}
 					}
@@ -183,7 +196,7 @@ driver optec {
 				}
 				PRIVATE_DATA->motion = motion;
 				PRIVATE_DATA->motion_steps = 0;
-				PRIVATE_DATA->motion_deadline = indigo_monotonic_time() + OPTEC_MOTION_MARGIN + 0.36 * (X_RATE_ITEM->number.value > 0 ? X_RATE_ITEM->number.value : 1);
+				PRIVATE_DATA->motion_deadline = indigo_monotonic_time() + OPTEC_MOTION_MARGIN;
 				indigo_execute_handler_in(device, OPTEC_MOTION_POLL, motion_finalizer);
 				return true;
 			}

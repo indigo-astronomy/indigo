@@ -337,6 +337,39 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The Pyxis answers every motor step with '!' and a long move takes long: 15 steps per degree on the 2-inch model
+// (5280 per revolution), 120 ms per degree at the default rate. 3.0.0.5 gave every move 5 s + 0.36 s per rate unit in
+// total and failed a 270 degree move at rate 2 (8.1 s) although the rotator was still stepping; the steps now renew
+// the deadline. The simulator also leaves CWAKUP unanswered while awake, as the manual describes, and the
+// connection still succeeds.
+static void optec_long_move_completes(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *args[] = { "--steps-per-degree", "15", NULL };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, ROTATOR_OPTEC_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&optec_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(change_number_after(OPTEC_RATE_PROPERTY_NAME, OPTEC_RATE_ITEM_NAME, 2, INDIGO_OK_STATE));
+	unsigned int revision = property_revision(ROTATOR_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, optec_rotator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 270));
+	bool settled = false;
+	for (int i = 0; i < 200 && !settled; i++) {
+		indigo_property *property = find_cached_property(ROTATOR_POSITION_PROPERTY_NAME);
+		settled = property_revision(ROTATOR_POSITION_PROPERTY_NAME) > revision && property != NULL && property->state != INDIGO_BUSY_STATE;
+		if (!settled) {
+			indigo_usleep(100000);
+		}
+	}
+	SERIAL_CHECK_TRUE(settled);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME) - 270) < 0.001);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&optec_rotator);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 static void optec_disconnect_during_motion_and_reinitialize(void) {
 	external_serial_simulator simulator = { 0 };
 	double started = 0;
@@ -376,7 +409,8 @@ int main(void) {
 		{ "optec_final_readback_failure_recovers", optec_final_readback_failure_recovers },
 		{ "optec_home_error_recovers", optec_home_error_recovers },
 		{ "optec_motion_timeout_recovers", optec_motion_timeout_recovers },
-		{ "optec_disconnect_during_motion_and_reinitialize", optec_disconnect_during_motion_and_reinitialize }
+		{ "optec_disconnect_during_motion_and_reinitialize", optec_disconnect_during_motion_and_reinitialize },
+		{ "optec_long_move_completes", optec_long_move_completes }
 	};
 	return indigo_run_tests("Optec Pyxis rotator serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

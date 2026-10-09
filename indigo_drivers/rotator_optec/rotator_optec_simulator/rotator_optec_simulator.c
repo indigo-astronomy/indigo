@@ -34,6 +34,8 @@ typedef struct {
 	const char *fault_reply;
 	int fault_occurrence;
 	const char *stall_command;
+	// motor steps per degree: the 2-inch Pyxis makes 5280 steps per revolution (about 15 per degree)
+	int steps_per_degree;
 } simulator_options;
 
 typedef struct {
@@ -43,13 +45,15 @@ typedef struct {
 	int target;
 	int direction;
 	int rate;
+	int steps;
 	double next_step;
 } simulator_state;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
-	.fault_occurrence = 1
+	.fault_occurrence = 1,
+	.steps_per_degree = 1
 };
 
 static simulator_state state = {
@@ -79,6 +83,7 @@ static void usage(const char *name) {
 	printf("  --fault-reply <cmd> <n> <reply>    Override the nth matching command reply\n");
 	printf("  --drop-reply <cmd> <n>             Drop the nth matching command reply\n");
 	printf("  --stall-motion <cmd>               Start no progress for matching motion\n");
+	printf("  --steps-per-degree <n>             Motor steps (one '!' each) per degree (the 2-inch Pyxis: 15)\n");
 	printf("  -h, --help                         Show this help and exit\n");
 }
 
@@ -135,6 +140,10 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.stall_command = argv[i];
+		} else if (!strcmp(argv[i], "--steps-per-degree")) {
+			if (++i == argc || !parse_positive(argv[i], &options.steps_per_degree)) {
+				return false;
+			}
 		} else {
 			return false;
 		}
@@ -199,6 +208,7 @@ static void start_motion(const char *command, int target) {
 	}
 	state.target = target;
 	state.moving = true;
+	state.steps = 0;
 	state.next_step = monotonic_time();
 }
 
@@ -211,7 +221,10 @@ static void update_motion(void) {
 		write_response("F");
 		return;
 	}
-	state.position += state.position > state.target ? -1 : 1;
+	if (++state.steps >= options.steps_per_degree) {
+		state.steps = 0;
+		state.position += state.position > state.target ? -1 : 1;
+	}
 	write_response("!");
 	double interval = state.rate > 1 ? state.rate / 1000.0 : 0.001;
 	state.next_step = monotonic_time() + interval;
@@ -237,7 +250,7 @@ static void handle_command(const char *command) {
 	if (!strcmp(command, "CSLEEP")) {
 		state.sleeping = true;
 	} else if (!strcmp(command, "CWAKUP")) {
-		write_line("!");
+		// CWAKUP "is only recognized when the Pyxis is in the SLEEP mode": an awake Pyxis does not answer it
 	} else if (!strcmp(command, "CCLINK")) {
 		write_line("!");
 	} else if (!strcmp(command, "CHOMES")) {
