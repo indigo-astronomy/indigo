@@ -26,7 +26,7 @@ driver upb {
 	label = "PegasusAstro Ultimate Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 36;
+	version = 37;
 	serial {
 		pattern {
 			product = "UPB";
@@ -327,7 +327,8 @@ driver upb {
 					}
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-					PRIVATE_DATA->automatic_dew = token[0] == '1';
+					// The v2 reports an integer: 1 all dew channels, 2 to 7 a subset of them; any of them is automatic.
+					PRIVATE_DATA->automatic_dew = atoi(token) != 0;
 					if (upb_adopt(AUX_DEW_CONTROL_PROPERTY) && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != PRIVATE_DATA->automatic_dew) {
 						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 						updateAutoHeater = true;

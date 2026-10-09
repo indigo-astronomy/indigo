@@ -195,7 +195,8 @@ void loop() {
   } else if (command.startsWith("PC")) {
     Serial.println("2.1:12:46");
   } else if (command.startsWith("PD:")) {
-    autodev = command.charAt(3) == '0' ? 0 : 1;
+    // The v2 takes 0 to 7: off, all dew channels, or a subset of them, and reports the number back.
+    autodev = command.substring(3).toInt();
     Serial.println(command);
   } else if (command.equals("PV")) {
     Serial.println("1.0");

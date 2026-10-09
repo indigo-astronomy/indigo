@@ -376,13 +376,38 @@ reproducible.
   when `SI` reports no motion, also while a position request is queued and not yet sent, so the
   following FOCUSER_STEPS request is accepted instead of refused.
 
+## Strict checks against the v2 command table, v2 automatic dew in the poll (2026-10-09, 3.0.0.37)
+
+The protocol checks were compared with `Ultimate_Powerbox_Serial_Command_Table.pdf`,
+`Ultimate_Powerbox_v2_Serial_Command_Table.pdf` and INDI's `pegasus_upb`. The exact identities `UPB_OK` and
+`UPB2_OK`, the `UPB` prefix of the connect status frame and the `PS` prefix are those of the tables and of a
+real v1 box.
+
+### Defect
+
+- UPB-07: a v2 box with automatic dew on a subset of its channels was shown in manual mode. The v2 reports the
+  mode as an integer (0 off, 1 all channels, 2 to 7 a subset). The connect read it with `atoi() != 0`, the poll
+  with `token[0] == '1'`, so a box in mode 2 to 7 came up AUTOMATIC and the first poll switched it to MANUAL.
+  The poll now reads the integer as well. Test: `v2_channel_autodew_stays_automatic` (fails on 3.0.0.36, passes
+  on 3.0.0.37). The C simulator gained `--autodew-mode N`; the sketch stores the number `PD:n` sends.
+
+### Open, not changed
+
+- The v2 per-port current scale. The driver divides every v2 port current by 300 and the third dew current by
+  600; the v2 table gives 400 for the first power output and 300 for the others; INDI divides by 480 and the
+  third dew current by 700. Without a v2 box the right scale cannot be decided.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 51/51.
+- Hardware suite on the real UPB v1 on indigosky: 15/15. Against `aux_upb_simulator.ino` built as a v2 on an
+  ESP32-S3: 15/15.
+- The run against 3.0.0.36 also failed `focuser_overlapping_request_is_rejected`, the known intermittent case
+  (TGT-D29); it passed in the recorded 3.0.0.37 run.
+
 ## Final test summary
 
-- Simulated tests run: 50; passed: 50 on macOS arm64 with version 35, except the intermittent
-  `focuser_overlapping_request_is_rejected` (TGT-D29, also failing with version 34).
-- Earlier: 48 run, 48 passed (recorded run of `test_aux_upb_simulator` through
-  `tools/run_driver_test.py`, driver version 34, Linux x64). The previous macOS arm64 runs of the 40
-  earlier cases and the ASan + UBSan note above refer to driver version 30.
-- Hardware tests run: 1; passed: 1 (`upb_usb_port_changes_survive_the_poll`, Pegasus UPB v1 firmware 1.4,
-  driver version 30). The last full hardware run, 14 run and 14 passed, was on driver version 28 and
-  did not include this case. Versions 32 to 34 were not run on hardware.
+- Simulated tests run: 51; passed: 51 (recorded run through `tools/run_driver_test.py`, driver version 37,
+  macOS arm64). `focuser_overlapping_request_is_rejected` remains intermittent (TGT-D29).
+- Hardware tests run: 30; passed: 30 (15 on the real UPB v1 on indigosky, 15 against the v2 Arduino sketch on an
+  ESP32-S3, driver version 37). No v2 box was available.

@@ -546,6 +546,22 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The v2 reports the automatic dew mode as an integer: 1 for all dew channels, 2 to 7 for a subset of them.
+// A subset is automatic as well, at the connect and in every poll after it.
+static void v2_channel_autodew_stays_automatic(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "upb2", "--autodew-mode", "5", NULL };
+	SERIAL_CHECK_TRUE(start_upb(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&aux, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+	// Two status polls later the mode is still automatic.
+	indigo_usleep(4500000);
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_DEW_CONTROL_PROPERTY_NAME, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 // TGT-D22: when the status frame of the connect goes unanswered the connect still succeeds without reading the dew
 // control mode, so the one-of-many dew control is defined with its initial items; exactly one of them has to be on,
 // and the poll then adopts the automatic mode the box reports.
@@ -1389,6 +1405,7 @@ int main(void) {
 		{ "heater_state_and_current_follow_the_duty_cycle", heater_state_and_current_follow_the_duty_cycle },
 		{ "automatic_dew_control_round_trips", automatic_dew_control_round_trips },
 		{ "autodew_state_is_adopted_from_the_device", autodew_state_is_adopted_from_the_device },
+		{ "v2_channel_autodew_stays_automatic", v2_channel_autodew_stays_automatic },
 		{ "dew_control_has_one_mode_when_the_connect_status_fails", dew_control_has_one_mode_when_the_connect_status_fails },
 		{ "each_usb_port_switches_on_its_own", each_usb_port_switches_on_its_own },
 		{ "usb_hub_switches_on_the_v1_box", usb_hub_switches_on_the_v1_box },

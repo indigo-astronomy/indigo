@@ -29,5 +29,6 @@ Tested with physical device.
 
 2026-09-25 12:33 3.0.0.30 mac arm64 Pegasus UPB v1 1/1 OK
 2026-09-27 15:53 3.0.0.34 linux x64 simulator 48/48 OK
-2026-10-07 03:12 3.0.0.35 linux arm64 PeagasusAstro UPB 15/15 OK
-2026-10-07 06:20 3.0.0.36 mac arm64 simulator 50/50 OK
+2026-10-09 18:11 3.0.0.37 mac arm64 simulator 51/51 OK
+2026-10-09 18:13 3.0.0.37 linux arm64 PegasusAstro UPB 15/15 OK
+2026-10-09 18:15 3.0.0.37 linux arm64 PegasusAstro UPBv2 Arduino simulator (ESP32-S3) 15/15 OK

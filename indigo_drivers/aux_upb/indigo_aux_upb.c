@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -481,7 +481,8 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-			PRIVATE_DATA->automatic_dew = token[0] == '1';
+			// The v2 reports an integer: 1 all dew channels, 2 to 7 a subset of them; any of them is automatic.
+			PRIVATE_DATA->automatic_dew = atoi(token) != 0;
 			if (upb_adopt(AUX_DEW_CONTROL_PROPERTY) && AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != PRIVATE_DATA->automatic_dew) {
 				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, PRIVATE_DATA->automatic_dew ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
 				updateAutoHeater = true;
