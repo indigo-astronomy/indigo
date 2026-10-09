@@ -71,3 +71,20 @@ Not applicable, with the reason:
 - Hardware: no lens controller available, no physical run.
 
 The shared `integration/test_focuser_motion.c` (also built for `focuser_dmfc`, `focuser_usbv3` and `focuser_primaluce`) was not changed: its abort branch is skipped here because `FOCUSER_ABORT_MOTION` is not defined, and the driver-specific motion checks live in this driver's own suite.
+
+## Protocol check, sketch and hardware suite (2026-10-09)
+
+The reply checks were compared with `User Manual PROTOCOL.pdf` (three commands: `P#`, `Mxxxx#` with four
+digits, e.g. `M5200#`, and `Axx#`) and INDI's `astromech_focuser`: the position reply of one to four digits and
+`#` matches the documented four-digit range. Nothing was derived from the simulator alone; the driver is unchanged
+(3.0.0.8).
+
+Sketch: `focuser_astromechanics_simulator.ino` jumped to an `M` target at once and always drove an LCD shield. The
+lens now travels at 1000 steps/s, so `P#` reports the way, out-of-range targets are ignored, and the LCD is used on
+the Arduino Due only.
+
+New hardware suite `indigo_test/hardware/test_focuser_astromechanics_hw.c` (`make test-focuser-astromechanics-hw`,
+`ASTROMECHANICS_HW_PORT`) on the shared focuser helpers `focuser_hw_common.h`: property contract, absolute moves and
+steps both ways, a second move refused while one runs, the aperture, a reconnect while the lens still moves (no
+stop command), a reconnect at rest and INIT/SHUTDOWN. Recorded run against the sketch on an ESP32-S3: 9/9. No
+physical controller is available.

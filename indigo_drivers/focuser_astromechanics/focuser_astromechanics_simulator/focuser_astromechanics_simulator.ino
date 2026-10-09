@@ -1,6 +1,6 @@
 // ASTROMECHANICS focuser simulator for Arduino
 //
-// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,10 +18,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define LCD
-
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
+#define LCD
 #endif
 
 #ifdef LCD
@@ -29,8 +28,14 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-unsigned position = 0;
+// The lens moves to an M target at STEPS_PER_SECOND; P# reports where it is on the way. There is no
+// stop command and no reply to M and A.
+#define STEPS_PER_SECOND 1000
+
+long position = 0;
+long target = 0;
 unsigned aperture = 0;
+unsigned long last_step = 0;
 
 void setup() {
 #ifdef LCD
@@ -47,18 +52,29 @@ void setup() {
 
 void loop() {
   char buffer[17];
+  unsigned long now = millis();
+  long delta = (long)((now - last_step) * STEPS_PER_SECOND / 1000);
+  if (delta > 0) {
+    last_step = now;
+    if (position < target)
+      position = position + delta < target ? position + delta : target;
+    else if (position > target)
+      position = position - delta > target ? position - delta : target;
+  }
 #ifdef LCD
-  sprintf(buffer, "P:%04d A:%02d", position, aperture);
+  sprintf(buffer, "P:%04ld A:%02u", position, aperture);
   lcd.setCursor(0, 1);
   lcd.print(buffer);
 #endif
   if (Serial.available()) {
     String command = Serial.readStringUntil('#');
     if (command.equals("P")) {
-      sprintf(buffer, "%04d#\n", position);
+      sprintf(buffer, "%04ld#\n", position);
       Serial.print(buffer);
     } else if (command.startsWith("M")) {
-      position = atol(command.c_str() + 1);
+      long value = atol(command.c_str() + 1);
+      if (value >= 0 && value <= 9999)
+        target = value;
     } else if (command.startsWith("A")) {
       aperture = atol(command.c_str() + 1);
     } else if (command.equals("V")) {

@@ -3032,6 +3032,18 @@ DOME_SKYROOF_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_skyroof.a $(TEST_LDF
 $(TEST_BUILD)/hardware/test_dome_skyroof_hw: hardware/test_dome_skyroof_hw.c hardware/dome_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_dome_skyroof.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(DOME_SKYROOF_HW_TEST_LDFLAGS)
 
+# A physical ASTROMECHANICS lens controller, or the Arduino sketch focuser_astromechanics_simulator.ino on a
+# board, is opt-in and excluded from normal integration tests. THE LENS FOCUS MOVES AND THE APERTURE CLOSES; the
+# run restores the position and aperture it found. Set ASTROMECHANICS_HW_PORT.
+.PHONY: test-focuser-astromechanics-hw
+test-focuser-astromechanics-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_astromechanics_hw
+	$(TEST_BUILD)/hardware/test_focuser_astromechanics_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_ASTROMECHANICS_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_astromechanics.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_astromechanics_hw: hardware/test_focuser_astromechanics_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_astromechanics.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_ASTROMECHANICS_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are
