@@ -52,7 +52,7 @@ nSTEP exposes the full manual-mode focuser surface plus optional controls:
 - Baseline connection treats malformed optional reads as non-fatal and never rolls back a partially opened session. The generated migration will make identity, temperature/compensation/mode reads, position, speed, phase wiring and the `:CC1`/`:CS001#` startup writes transactional via `connection_result`, closing on failure so a failed connect leaves no descriptor open and can be retried.
 - Motion completion is status-only polling in the timer callback. nSTEP does have absolute position readback (`:RP`), so the migration keeps position polling but moves motion completion to a named `motion_finalizer` that polls `S` (and refreshes `:RP`), transitions `FOCUSER_STEPS`/`FOCUSER_POSITION` BUSY → OK/ALERT, enforces a bounded malformed/silent stall limit, and sends stop on persistent status failure so the driver stays recoverable after abort.
 - The timer callback continues to poll `:RT` temperature (when present) and `:RP` position at the idle cadence; motion polling runs at the faster cadence through the finalizer.
-- `FOCUSER_SPEED` uses the `:CO`/`:RO` pair with `255 - value`, which is self-consistent (unlike nFOCUS, which had a `:CO`/`:CF` bug). No behavioral speed bug is expected here; the migration will preserve the `:CO<nnn>#` command and range 1–254.
+- `FOCUSER_SPEED` uses the `:CO`/`:RO` pair with `255 - value`, which is self-consistent (unlike nFOCUS, which had a `:CO`/`:CF` bug). No behavioral speed bug is expected here; the migration will preserve the `:CO<nnn>#` command and range 1–254 (3.0.0.11 reads a register outside it clamped).
 - Compensation display is `:RB / :RA` (step ÷ coefficient) with divide-by-zero guarded; setting compensation writes `:TT±010#:TS<nnn>#`. Mode automatic writes `:TA2:TC30#`, manual `:TA0`. These are preserved.
 - The previous integration test is a single smoke scenario. It will be replaced with isolated direct-protocol and driver-behavior scenarios mirroring the nFOCUS suite, extended for nSTEP-only capabilities (position readback, stepping mode, phase wiring, backlash, compensation, mode).
 - The host simulator will be extended to use shared `serial_motion` (elapsed-time relative motion with absolute position), an event journal, one-shot/sticky fault injection and optional absent-temperature mode, and trimmed to the driver's real command surface.
@@ -115,3 +115,21 @@ Relative-only device: no GOTO, SYNC, limits or travel ends (moves are at most 99
 
 - Simulated tests: 23 run, 23 passed (`python3 tools/run_driver_test.py focuser_nstep`, macOS arm64).
 - Hardware tests: 0 run, 0 passed.
+
+## Strict checks against INDI and 2.0 (3.0.0.11)
+
+Rigel does not publish the serial protocol; the 2.0 driver and INDI's `nstep.cpp` (2016, 2017 and 2019 versions) are the references. Checks derived only from the simulator were relaxed.
+
+| Defect | Fix | Covered by |
+| --- | --- | --- |
+| Numbers padded with spaces (`" 275"`, `"     50"`, `"  3"`) were refused; 2.0 read them with `atoi`/`atol` and INDI with `sscanf`. | Leading spaces are skipped. | `padded_replies_are_read` |
+| A byte after a fixed-length reply (a CR after the status byte) failed the read and stalled the move. | Trailing bytes are discarded without failing. | `padded_replies_are_read` |
+| A failed or implausible first temperature reading refused the connection; 2.0 and INDI connected without it. | The connection goes on; the sensor stays defined with `FOCUSER_TEMPERATURE` ALERT and the timer retries it. | `connect_tolerates_readings` |
+| `:RO` outside 1–254 refused the connection. | 0–255 is accepted; the speed is clamped to 1–254. | `connect_tolerates_readings` |
+| An abort was confirmed only if the very first status read after the stop reported the motor idle; the time the controller takes is not documented. A controller that reported motion once more left the abort ALERT and the move tracked as running. | The status is polled for up to a second after the stop. | `stop_reported_late` |
+
+Kept with the reason: the direction digit of `:F` (1 = inward) follows 2.0 and INDI 2016 (later INDI versions use the opposite digit; the phase wiring setting reverses the motor anyway); the stall detection relies on `:RP` following the motor during a move, which INDI also polls.
+
+The simulator gained `--profile padded` and the fault actions `zero` (on `:RO`) and `linger` (on `:F10000#`). The Arduino sketch was rewritten: blocking reads, timed motion at 80 steps/s with `:RP` following it, `S` reports motion, `:F10000#` stops, every setting read back from its own register (`:RG` used to answer with the step count).
+
+Hardware suite `test_focuser_nstep_hw.c` (`make test-focuser-nstep-hw`, `NSTEP_HW_PORT`): values at connection, moves by steps both ways and in every stepping mode, abort, settings refused during a move, speed/backlash/compensation/phase wiring read back and kept over a reconnect, compensation mode removing and restoring the manual controls, reconnect, SHUTDOWN refusal, INIT/SHUTDOWN. Run against the sketch on an ESP32-S3.

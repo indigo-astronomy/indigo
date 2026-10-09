@@ -27,4 +27,5 @@ indigo_server indigo_focuser_nstep
 
 ## Testing
 
-2026-10-05 16:14 3.0.0.10 mac arm64 simulator 23/23 OK
+2026-10-09 21:11 3.0.0.11 mac arm64 simulator 26/26 OK
+2026-10-09 21:14 3.0.0.11 linux arm64 nSTEP Arduino simulator (ESP32-S3) 10/10 OK

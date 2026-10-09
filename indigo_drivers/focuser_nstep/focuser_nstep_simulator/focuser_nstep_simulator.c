@@ -23,6 +23,8 @@ typedef struct {
 	bool headless;
 	bool trace;
 	bool temperature_present;
+	// fixed-width numbers padded with spaces instead of zeros, and a CR after the status byte
+	bool padded;
 	const char *ready_file;
 	const char *event_file;
 	const char *fault_file;
@@ -49,6 +51,8 @@ static char ro_value[4] = "003";
 static char cs_value[4] = "001";
 static serial_motion motion;
 static bool stalled;
+// status reads that still report motion after a stop
+static int lingering;
 static int initial_position = 50;
 static int temperature_tenths = 275;
 
@@ -61,6 +65,7 @@ static void usage(const char *name) {
 	printf("  --fault-file <path>     Read one-shot fault injection commands\n");
 	printf("  --temperature absent    Report the optional sensor as absent\n");
 	printf("  --profile alternate     Start with non-default settings, position and temperature\n");
+	printf("  --profile padded        Pad numbers with spaces and end the status byte with a CR\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -103,8 +108,12 @@ static bool parse_args(int argc, char *argv[]) {
 			}
 			options.fault_file = argv[i];
 		} else if (!strcmp(argv[i], "--profile")) {
-			if (++i == argc || strcmp(argv[i], "alternate")) {
-				fprintf(stderr, "--profile requires alternate\n");
+			if (++i < argc && !strcmp(argv[i], "padded")) {
+				options.padded = true;
+				continue;
+			}
+			if (i == argc || strcmp(argv[i], "alternate")) {
+				fprintf(stderr, "--profile requires alternate or padded\n");
 				return false;
 			}
 			// a controller left in a non-default state by an earlier session
@@ -409,6 +418,17 @@ static bool dispatch_fault(int handle, const char *command, int length) {
 		write_reply(handle, "-888", 4);
 		return true;
 	}
+	if (!strcmp(action, "linger") && !strncmp(command, ":F10000#", 8)) {
+		// the motor stops, but the next status read still reports motion
+		serial_motion_stop(&motion);
+		lingering = 1;
+		return true;
+	}
+	if (!strcmp(action, "zero") && !strncmp(command, ":RO", 3)) {
+		// an on-time outside the driver's speed range, set by other software
+		write_reply(handle, "000", 3);
+		return true;
+	}
 	if (!strcmp(action, "implausible") && !strncmp(command, ":RT", 3)) {
 		write_reply(handle, "+999", 4);
 		return true;
@@ -435,10 +455,16 @@ static void dispatch_command(int handle, const char *command, int length) {
 		sim_printf(handle, "S");
 	} else if (length == 1 && command[0] == 'S') {
 		serial_motion_update(&motion);
-		sim_printf(handle, stalled || motion.duration > 0 ? "1" : "0");
+		sim_printf(handle, stalled || lingering-- > 0 || motion.duration > 0 ? "1" : "0");
+		if (lingering < 0) {
+			lingering = 0;
+		}
+		if (options.padded) {
+			sim_printf(handle, "\r");
+		}
 	} else if (!strncmp(command, ":RT", 3)) {
 		if (options.temperature_present) {
-			sim_printf(handle, "%+04d", temperature_tenths);
+			sim_printf(handle, options.padded ? "%4d" : "%+04d", temperature_tenths);
 		} else {
 			sim_printf(handle, "-888");
 		}
@@ -453,10 +479,14 @@ static void dispatch_command(int handle, const char *command, int length) {
 	} else if (!strncmp(command, ":RW", 3)) {
 		write_reply(handle, &rw_value, 1);
 	} else if (!strncmp(command, ":RO", 3)) {
-		write_reply(handle, ro_value, 3);
+		if (options.padded) {
+			sim_printf(handle, "%3d", atoi(ro_value));
+		} else {
+			write_reply(handle, ro_value, 3);
+		}
 	} else if (!strncmp(command, ":RP", 3)) {
 		double position = stalled ? motion.position : serial_motion_update(&motion);
-		sim_printf(handle, "%+07d", (int)(position < 0 ? position - 0.5 : position + 0.5));
+		sim_printf(handle, options.padded ? "%7d" : "%+07d", (int)(position < 0 ? position - 0.5 : position + 0.5));
 	} else if (!strncmp(command, ":CS", 3) && length >= 7) {
 		copy_digits(cs_value, sizeof(cs_value), command + 3);
 	} else if (!strncmp(command, ":CO", 3) && length >= 7) {

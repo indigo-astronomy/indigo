@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_nstep"
 #define DRIVER_LABEL         "Rigel Systems nSTEP Focuser"
 #define FOCUSER_DEVICE_NAME  "nSTEP"
@@ -121,14 +121,16 @@ static bool nstep_command(indigo_device *device, int reply_length, const char *c
 		RESPONSE[0] = 0;
 		return false;
 	}
-	if (indigo_uni_discard(PRIVATE_DATA->handle) > 0) {
-		RESPONSE[0] = 0;
-		return false;
-	}
+	// bytes after the fixed-length reply are dropped, as INDI and the 2.0 driver ignored them
+	indigo_uni_discard(PRIVATE_DATA->handle);
 	return true;
 }
 
+// fixed-width fields may be padded with spaces; the 2.0 driver read them with atoi, INDI with sscanf
 static bool nstep_integer(const char *text, int minimum, int maximum, int *value) {
+	while (text && *text == ' ') {
+		text++;
+	}
 	if (!text || !*text || isspace((unsigned char)*text)) {
 		return false;
 	}
@@ -166,10 +168,12 @@ static bool nstep_temperature(indigo_device *device, bool *present) {
 
 static bool nstep_speed(indigo_device *device, int *speed) {
 	int raw = 0;
-	if (!nstep_command(device, 3, ":RO") || !nstep_integer(RESPONSE, 1, 254, &raw)) {
+	// the register holds 0 to 255; a value outside the speed range, set elsewhere, is shown clamped, not refused
+	if (!nstep_command(device, 3, ":RO") || !nstep_integer(RESPONSE, 0, 255, &raw)) {
 		return false;
 	}
 	*speed = 255 - raw;
+	*speed = *speed < 1 ? 1 : *speed > 254 ? 254 : *speed;
 	return true;
 }
 
@@ -246,11 +250,19 @@ static void nstep_motion_state(indigo_device *device, indigo_property_state stat
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
-// sends the stop and confirms it with the motion status and a position readback
+// sends the stop and confirms it with the motion status and a position readback; the time the controller
+// takes to report the motor stopped is not documented, so the status is polled for up to a second
 static bool nstep_stop_confirmed(indigo_device *device) {
 	bool moving = true;
 	int position = 0;
-	bool stopped = nstep_stop(device) && nstep_moving(device, &moving) && !moving && nstep_position(device, &position);
+	bool sent = nstep_stop(device);
+	for (int i = 0; sent && i < 10; i++) {
+		if (!nstep_moving(device, &moving) || !moving) {
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	bool stopped = sent && !moving && nstep_position(device, &position);
 	if (stopped) {
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->last_position = position;
 	}
@@ -372,8 +384,11 @@ static void focuser_connection_handler(indigo_device *device) {
 			//+ focuser.on_connect
 			int position = 0;
 			bool temperature_present = true;
-			connection_result = nstep_temperature(device, &temperature_present);
-			if (connection_result && temperature_present) {
+			// a failed or implausible first reading does not refuse the connection (2.0 and INDI connected without it);
+			// the sensor is taken as present and the reading is retried by the timer
+			bool temperature_read = nstep_temperature(device, &temperature_present);
+			connection_result = true;
+			if (temperature_present) {
 				connection_result = nstep_read_compensation(device) && nstep_read_mode(device) && nstep_read_backlash(device);
 			}
 			if (connection_result) {
@@ -388,7 +403,8 @@ static void focuser_connection_handler(indigo_device *device) {
 			if (connection_result) {
 				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
 				PRIVATE_DATA->stalled = PRIVATE_DATA->unchanged = 0;
-				PRIVATE_DATA->temperature_state = temperature_present ? INDIGO_OK_STATE : NSTEP_TEMPERATURE_ABSENT;
+				PRIVATE_DATA->temperature_state = !temperature_read ? INDIGO_ALERT_STATE : temperature_present ? INDIGO_OK_STATE : NSTEP_TEMPERATURE_ABSENT;
+				FOCUSER_TEMPERATURE_PROPERTY->state = temperature_read ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				FOCUSER_TEMPERATURE_PROPERTY->hidden = FOCUSER_COMPENSATION_PROPERTY->hidden = FOCUSER_MODE_PROPERTY->hidden = !temperature_present;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position = position;
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;

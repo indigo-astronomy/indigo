@@ -864,6 +864,69 @@ cleanup:
 	stop_fixture();
 }
 
+// Numbers padded with spaces (" 275", "     50", "  3") and a CR after the status byte, which the 2.0 driver read
+// with atoi and INDI with sscanf: the focuser connects with the values and a move ends OK at the target.
+static void padded_replies_are_read(void) {
+	fixture_profile = "padded";
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	fixture_profile = NULL;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 27.5, .01));
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50);
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME) == 252);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, revision(FOCUSER_STEPS_PROPERTY_NAME), INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 75);
+cleanup:
+	driver_stop();
+	stop_fixture();
+}
+
+// A first temperature reading that fails or is implausible does not refuse the connection, as in 2.0 and INDI:
+// the sensor stays defined with ALERT and the next valid reading restores OK. An on-time register outside the
+// speed range is shown clamped instead of refusing the connection.
+static void connect_tolerates_readings(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault(":RT", "sticky_implausible"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nstep_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME) != NULL && !find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME)->hidden);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_COMPENSATION_PROPERTY_NAME) != NULL && !find_cached_property(FOCUSER_COMPENSATION_PROPERTY_NAME)->hidden);
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	unlink(fault_path);
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, revision(FOCUSER_TEMPERATURE_PROPERTY_NAME), INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME) == 27.5);
+	disconnect_serial_device(&nstep_focuser);
+	SERIAL_CHECK_TRUE(fault(":RO", "zero"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&nstep_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME) == 254);
+cleanup:
+	unlink(fault_path);
+	driver_stop();
+	stop_fixture();
+}
+
+// A controller that still reports motion right after the stop is polled until it reports the motor stopped:
+// the abort is confirmed (OK) and the move ends ALERT at the stopped position, with a single stop sent.
+static void stop_reported_late(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(start_long_move());
+	SERIAL_CHECK_TRUE(fault(":F10000#", "linger"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	double stopped = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(stopped > 50 && stopped < 450);
+	SERIAL_CHECK_EQ_INT(1, command_count(":F10000#"));
+cleanup:
+	unlink(fault_path);
+	driver_stop();
+	stop_fixture();
+}
+
 // After the transport is lost every later request ends ALERT without stale BUSY and disconnect still completes.
 static void transport_loss(bool motion) {
 	SERIAL_CHECK_TRUE(start_fixture(NULL));
@@ -917,6 +980,9 @@ int main(void) {
 		{ "disconnect_during_motion", disconnect_during_motion },
 		{ "external_motion", external_motion },
 		{ "temperature_runtime", temperature_runtime },
+		{ "padded_replies_are_read", padded_replies_are_read },
+		{ "connect_tolerates_readings", connect_tolerates_readings },
+		{ "stop_reported_late", stop_reported_late },
 		{ "transport_loss_motion", transport_loss_motion },
 		{ "transport_loss_idle", transport_loss_idle },
 	};
