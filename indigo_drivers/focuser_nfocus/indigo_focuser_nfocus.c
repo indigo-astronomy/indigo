@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_nfocus"
 #define DRIVER_LABEL         "Rigel Systems nFOCUS Focuser"
 #define FOCUSER_DEVICE_NAME  "nFOCUS"
@@ -92,14 +92,16 @@ static bool nfocus_command(indigo_device *device, int reply_length, const char *
 		RESPONSE[0] = 0;
 		return false;
 	}
-	if (indigo_uni_discard(PRIVATE_DATA->handle) > 0) {
-		RESPONSE[0] = 0;
-		return false;
-	}
+	// bytes after the fixed-length reply are dropped, as INDI and the 2.0 driver ignored them
+	indigo_uni_discard(PRIVATE_DATA->handle);
 	return true;
 }
 
+// fixed-width fields may be padded with spaces; the 2.0 driver read them with atoi, INDI with sscanf
 static bool nfocus_integer(const char *text, int minimum, int maximum, int *value) {
+	while (text && *text == ' ') {
+		text++;
+	}
 	if (!text || !*text || isspace((unsigned char)*text)) {
 		return false;
 	}
@@ -115,10 +117,12 @@ static bool nfocus_integer(const char *text, int minimum, int maximum, int *valu
 
 static bool nfocus_speed(indigo_device *device, int *speed) {
 	int raw = 0;
-	if (!nfocus_command(device, 3, ":RO") || !nfocus_integer(RESPONSE, 5, 254, &raw)) {
+	// the on-time the driver writes is 5 to 254; another value set elsewhere is shown clamped, not refused
+	if (!nfocus_command(device, 3, ":RO") || !nfocus_integer(RESPONSE, 0, 255, &raw)) {
 		return false;
 	}
 	*speed = 255 - raw;
+	*speed = *speed < 1 ? 1 : *speed > 250 ? 250 : *speed;
 	return true;
 }
 
@@ -284,8 +288,11 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
+	// The speed is read back from the on-time (:RO); the 2.0 driver meant to write the on- and off-time
+	// alike but overwrote the :CO command with :CF before sending, so the on-time, and the speed read
+	// at the next connection, never changed. Both are written.
 	int requested = (int)FOCUSER_SPEED_ITEM->number.target;
-	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !nfocus_command(device, 0, ":CF%03d#", 255 - requested)) {
+	if (!IS_CONNECTED || PRIVATE_DATA->active || PRIVATE_DATA->uncertain || !nfocus_command(device, 0, ":CO%03d#", 255 - requested) || !nfocus_command(device, 0, ":CF%03d#", 255 - requested)) {
 		/* the refused speed is not shown as the device speed */
 		FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;

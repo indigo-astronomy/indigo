@@ -69,7 +69,7 @@ Every case below failed against a build of the version 9 source kept outside the
 | Interface, ranges, negative capability contract (relative-only: no position, sync, limits, reverse, backlash, compensation, mode) | `capabilities` |
 | Temperature present / absent at connect, reconnect defines exactly the present sensor | `capabilities`, `temperature_absent_connection`, `temperature_sentinel_failure_and_reconnect` |
 | Refused connect (identity, speed read): ALERT, nothing defined, port released, next connect works | `connection_failure_recovery`, `startup_read_validation` |
-| Speed: one `:CF` command, no `:CO`, read back after reconnect, refused during a move without a command | `speed_control`, `speed_readback_and_refusal` |
+| Speed: `:CO` and `:CF` written, read back from `:RO` after reconnect, refused during a move without a command | `speed_control`, `speed_readback_and_refusal` |
 | Relative moves inward/outward, zero step without a command | `relative_motion` |
 | Move during a move refused with ALERT and no command | `busy_guard_and_abort` |
 | Aborted move ALERT, no completion stop, fresh move; idle abort and OFF request without a command | `busy_guard_and_abort`, `abort_idle_and_off_request` |
@@ -86,4 +86,18 @@ Not applicable, with the reason:
 - Identity variants and firmware queries: the protocol has only the `0x06 → n` handshake.
 - Requests versus polls: no writable setting is polled; temperature is read-only.
 - Shared controllers: one focuser per port.
-- Hardware: no nFOCUS available, no physical run.
+
+## Strict checks against INDI and 2.0 (3.0.0.11)
+
+The 3.0 driver was checked against the 2.0 driver and INDI's `nfocus.cpp`/`nstep` family; checks derived only from the simulator were relaxed.
+
+| ID | Defect | Fix | Covered by |
+| --- | --- | --- | --- |
+| NF-07 | Fixed-width replies padded with spaces (`" 275"`, `"  5"`) were refused; 2.0 read them with `atoi` and INDI with `sscanf`. | Leading spaces are skipped. | `padded_replies_are_read` |
+| NF-08 | A CR after the status byte failed the status read and stalled the move. | Trailing bytes are discarded without failing. | `padded_replies_are_read` |
+| NF-09 | `:RO` outside 5–254 refused the connection although the on-time register holds 0–255 and can be set by other software. | `:RO` accepts 0–255; the published speed is clamped to 1–250. | — (malformed replies still refused: `startup_read_validation`) |
+| NF-10 | Only the off-time (`:CF`) was written, but the speed is read back from the on-time (`:RO`), so a set speed was lost at the next connection. 2.0 meant to write both and overwrote the `:CO` command before sending it. | `:CO` and `:CF` are both written. | `speed_control`, `speed_readback_and_refusal` |
+
+The simulator keeps the on-time, off-time and step mode in separate registers (`:RF` framed as a read), has a `padded` profile, and the Arduino sketch was rewritten: blocking reads, timed motion at 80 steps/s, `S` reports motion, `:F11000#` stops, `:CO`/`:CF`/`:CS` and `:RO`/`:RF`/`:RS` separate.
+
+Hardware suite `test_focuser_nfocus_hw.c` (`make test-focuser-nfocus-hw`, `NFOCUS_HW_PORT`): values at connection, relative moves both ways, abort, speed refused during a move, speed kept over a reconnect, reconnect, SHUTDOWN refusal, INIT/SHUTDOWN. Run against the sketch on an ESP32-S3.

@@ -265,7 +265,10 @@ static void simulator_protocol(void) {
 	SERIAL_CHECK_TRUE(direct_exchange(handle, "\006", 1, reply, 1) && !strcmp(reply, "n"));
 	SERIAL_CHECK_TRUE(direct_exchange(handle, ":RT", 3, reply, 4) && !strcmp(reply, "+275"));
 	SERIAL_CHECK_TRUE(direct_exchange(handle, ":RO", 3, reply, 3) && !strcmp(reply, "005"));
-	SERIAL_CHECK_TRUE(direct_write(handle, ":CF135#"));
+	SERIAL_CHECK_TRUE(direct_write(handle, ":CO135#"));
+	SERIAL_CHECK_TRUE(direct_exchange(handle, ":RO", 3, reply, 3) && !strcmp(reply, "135"));
+	SERIAL_CHECK_TRUE(direct_write(handle, ":CF140#"));
+	SERIAL_CHECK_TRUE(direct_exchange(handle, ":RF", 3, reply, 3) && !strcmp(reply, "140"));
 	SERIAL_CHECK_TRUE(direct_exchange(handle, ":RO", 3, reply, 3) && !strcmp(reply, "135"));
 	SERIAL_CHECK_TRUE(direct_write(handle, ":CS007#"));
 	SERIAL_CHECK_TRUE(direct_exchange(handle, ":RS", 3, reply, 3) && !strcmp(reply, "007"));
@@ -354,12 +357,27 @@ cleanup:
 	stop_fixture();
 }
 
+// Fixed-width fields padded with spaces (" 275", "  5") and a CR after the status byte, which the 2.0 driver read
+// with atoi and INDI with sscanf: the focuser connects and a move ends OK.
+static void padded_replies_are_read(void) {
+	SERIAL_CHECK_TRUE(start_fixture("padded"));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 27.5, .01));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 25, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+	stop_fixture();
+}
+
 static void speed_control(void) {
 	SERIAL_CHECK_TRUE(start_fixture(NULL));
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 120, INDIGO_OK_STATE));
+	// the on-time, which the speed is read back from, and the off-time are both written
+	SERIAL_CHECK_TRUE(wait_for_command_count(":CO135#", 1));
 	SERIAL_CHECK_TRUE(wait_for_command_count(":CF135#", 1));
-	SERIAL_CHECK_TRUE(command_count(":CO135#") == 0);
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 120, .01));
 cleanup:
 	driver_stop();
@@ -493,12 +511,13 @@ static void speed_readback_and_refusal(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 400, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_command_count(":F01400#", 1));
-	int writes = command_prefix_count(":CF");
+	int writes = command_prefix_count(":CO") + command_prefix_count(":CF");
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 60, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(fabs(find_cached_item(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME)->number.value - 120) < .01);
-	SERIAL_CHECK_EQ_INT(writes, command_prefix_count(":CF"));
+	SERIAL_CHECK_EQ_INT(writes, command_prefix_count(":CO") + command_prefix_count(":CF"));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 60, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count(":CO195#", 1));
 	SERIAL_CHECK_TRUE(wait_for_command_count(":CF195#", 1));
 cleanup:
 	driver_stop();
@@ -582,6 +601,7 @@ int main(void) {
 		{ "connection_failure_recovery", connection_failure_recovery },
 		{ "startup_read_validation", startup_read_validation },
 		{ "speed_control", speed_control },
+		{ "padded_replies", padded_replies_are_read },
 		{ "relative_motion", relative_motion },
 		{ "busy_guard_and_abort", busy_guard_and_abort },
 		{ "status_failure_alerts_and_recovers", status_failure_alerts_and_recovers },

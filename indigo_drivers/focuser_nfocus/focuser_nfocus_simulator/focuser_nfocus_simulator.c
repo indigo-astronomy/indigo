@@ -23,6 +23,8 @@ typedef struct {
 	bool headless;
 	bool trace;
 	bool temperature_present;
+	// fixed-width fields padded with spaces and a CR after the status byte
+	bool padded;
 	const char *ready_file;
 	const char *event_file;
 	const char *fault_file;
@@ -41,7 +43,9 @@ static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 
 static char speed_in[4] = "001";
+// on-time (:CO / :RO) and off-time (:CF / :RF) are separate registers
 static char speed_out[4] = "005";
+static char speed_off[4] = "005";
 static serial_motion motion;
 
 static void usage(const char *name) {
@@ -95,15 +99,17 @@ static bool parse_args(int argc, char *argv[]) {
 			options.fault_file = argv[i];
 		} else if (!strcmp(argv[i], "--temperature")) {
 			if (++i == argc) {
-				fprintf(stderr, "--temperature requires present or absent\n");
+				fprintf(stderr, "--temperature requires present, absent or padded\n");
 				return false;
 			}
 			if (!strcmp(argv[i], "present")) {
 				options.temperature_present = true;
 			} else if (!strcmp(argv[i], "absent")) {
 				options.temperature_present = false;
+			} else if (!strcmp(argv[i], "padded")) {
+				options.temperature_present = options.padded = true;
 			} else {
-				fprintf(stderr, "--temperature requires present or absent\n");
+				fprintf(stderr, "--temperature requires present, absent or padded\n");
 				return false;
 			}
 		} else {
@@ -287,7 +293,7 @@ static int read_nfocus_command(int handle, char *buffer, int length) {
 	}
 
 	int command_length = 3;
-	if (!strncmp(buffer, ":RT", 3) || !strncmp(buffer, ":RO", 3) || !strncmp(buffer, ":RS", 3)) {
+	if (!strncmp(buffer, ":RT", 3) || !strncmp(buffer, ":RO", 3) || !strncmp(buffer, ":RF", 3) || !strncmp(buffer, ":RS", 3)) {
 		trace_command(buffer, command_length);
 		return command_length;
 	}
@@ -373,18 +379,32 @@ static void dispatch_command(int handle, const char *command, int length) {
 	} else if (length == 1 && command[0] == 'S') {
 		serial_motion_update(&motion);
 		sim_printf(handle, motion.duration > 0 ? "1" : "0");
+		if (options.padded) {
+			sim_printf(handle, "\r");
+		}
 	} else if (!strncmp(command, ":RT", 3)) {
-		sim_printf(handle, options.temperature_present ? "+275" : "-888");
+		sim_printf(handle, options.padded ? " 275" : options.temperature_present ? "+275" : "-888");
 	} else if (!strncmp(command, ":RO", 3)) {
-		write_reply(handle, speed_out, 3);
+		if (options.padded) {
+			char padded[4];
+			snprintf(padded, sizeof(padded), "%3d", atoi(speed_out));
+			write_reply(handle, padded, 3);
+		} else {
+			write_reply(handle, speed_out, 3);
+		}
 	} else if (!strncmp(command, ":RS", 3)) {
 		write_reply(handle, speed_in, 3);
 	} else if (!strncmp(command, ":CS", 3) && length >= 7) {
 		memcpy(speed_in, command + 3, 3);
 		speed_in[3] = '\0';
-	} else if ((!strncmp(command, ":CO", 3) || !strncmp(command, ":CF", 3)) && length >= 7) {
+	} else if (!strncmp(command, ":CO", 3) && length >= 7) {
 		memcpy(speed_out, command + 3, 3);
 		speed_out[3] = '\0';
+	} else if (!strncmp(command, ":CF", 3) && length >= 7) {
+		memcpy(speed_off, command + 3, 3);
+		speed_off[3] = '\0';
+	} else if (!strncmp(command, ":RF", 3)) {
+		write_reply(handle, speed_off, 3);
 	} else if (!strncmp(command, ":F11000#", 8)) {
 		serial_motion_stop(&motion);
 	} else if (!strncmp(command, ":F", 2) && length >= 8) {

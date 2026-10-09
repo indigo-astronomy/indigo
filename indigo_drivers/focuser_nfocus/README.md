@@ -28,4 +28,5 @@ Unclear - how to abort movement? what is #CF command?
 
 ## Testing
 
-2026-10-05 16:00 3.0.0.10 mac arm64 simulator 15/15 OK
+2026-10-09 20:59 3.0.0.11 mac arm64 simulator 16/16 OK
+2026-10-09 20:59 3.0.0.11 linux arm64 nFOCUS Arduino simulator (ESP32-S3) 8/8 OK
