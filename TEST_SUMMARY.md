@@ -90,6 +90,8 @@
 |  | 2026-10-07 06:22 | 3.0.0.11 | mac arm64 | simulator | 33 / 33 | ✅ OK |
 | aux_usbdp | 2026-09-27 14:54 | 3.0.0.14 | linux x64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-09-27 21:02 | 3.0.0.14 | mac arm64 | simulator | 20 / 20 | ✅ OK |
+|  | 2026-10-09 18:19 | 3.0.0.14 | linux arm64 | USB_Dewpoint v2 Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
+|  | 2026-10-09 18:21 | 3.0.0.14 | linux arm64 | USB_Dewpoint v1 Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 | aux_wbplusv3 | 2026-09-27 06:37 | 3.0.0.8 | linux x64 | simulator | 20 / 20 | ✅ OK |
 |  | 2026-09-27 21:03 | 3.0.0.8 | mac arm64 | simulator | 20 / 20 | ✅ OK |
 | aux_wbprov3 | 2026-09-27 06:53 | 3.0.0.8 | linux x64 | simulator | 20 / 20 | ✅ OK |

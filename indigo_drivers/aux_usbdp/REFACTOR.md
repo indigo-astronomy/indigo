@@ -162,3 +162,20 @@ cd indigo_test && ./build/integration/test_aux_usbdp_simulator
 
 - Simulated tests run: 20; passed: 20.
 - Hardware tests run: 0; passed: 0. No USB_Dewpoint was available.
+
+## Strict checks and hardware suite (2026-10-09)
+
+The protocol checks were compared with `protocol.txt` and the 2.0 driver: the exact v1 identity `UDP`, the
+`UDP2` prefix of the v2 identity (`UDP2(1446)`), 19200 baud and both status formats are those of the 2.0 driver,
+so no check derived only from the simulator was found and the driver is unchanged (3.0.0.14).
+
+Open, unchanged from 2.0: a v1 also publishes the calibration and threshold properties, although `protocol.txt`
+lists only `SWHOIS` and `SGETAL` for it; a request there goes unanswered and ends in ALERT. The v1 status frame
+`! WARM ! ...` sent while the dewpoint is passed is logged as unparsable and leaves the readings unchanged.
+
+Sketch: `aux_usbdp_simulator.ino` compared a six byte command buffer it had not filled when `readBytes()` timed
+out; a partial command is now discarded.
+
+New hardware suite `indigo_test/hardware/test_aux_usbdp_hw.c` (`make test-aux-usbdp-hw`, `USBDP_HW_PORT`). It
+adapts to the identified model and on a v2 reads every setting back from the status frame. Recorded runs against
+the sketch on an ESP32-S3: v2 9/9, v1 9/9. No physical USB_Dewpoint is available.

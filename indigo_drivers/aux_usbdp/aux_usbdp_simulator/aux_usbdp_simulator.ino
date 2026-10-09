@@ -97,8 +97,11 @@ void loop() {
     }
   }
 
-  char cmd[7];
-  Serial.readBytes(cmd, 6);
+  // Every command is exactly six bytes; a partial one (a read timeout) is discarded.
+  char cmd[7] = { 0 };
+  if (Serial.readBytes(cmd, 6) != 6) {
+    return;
+  }
   cmd[6] = 0;
   char response[80];
   String command = String(cmd);

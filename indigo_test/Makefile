@@ -2960,6 +2960,18 @@ AUX_SQM_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_sqm.a $(TEST_LDFLAGS)
 $(TEST_BUILD)/hardware/test_aux_sqm_hw: hardware/test_aux_sqm_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_sqm.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_SQM_HW_TEST_LDFLAGS)
 
+# A physical USB_Dewpoint (v1 or v2), or the Arduino sketch aux_usbdp_simulator.ino on a board, is opt-in
+# and excluded from normal integration tests. THE HEATERS RUN; the run restores every v2 setting it found.
+# Set USBDP_HW_PORT to the port.
+.PHONY: test-aux-usbdp-hw
+test-aux-usbdp-hw: check-lib $(TEST_BUILD)/hardware/test_aux_usbdp_hw
+	$(TEST_BUILD)/hardware/test_aux_usbdp_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_USBDP_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_usbdp.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_usbdp_hw: hardware/test_aux_usbdp_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_usbdp.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_USBDP_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are
