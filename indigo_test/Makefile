@@ -2863,6 +2863,18 @@ WHEEL_INDIGO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_indigo.a $(TEST_LDF
 $(TEST_BUILD)/hardware/test_wheel_indigo_hw: hardware/test_wheel_indigo_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_wheel_indigo.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(WHEEL_INDIGO_HW_TEST_LDFLAGS)
 
+# A physical Artesky Flat Box USB, or the Arduino sketch aux_arteskyflat_simulator.ino on a board, is
+# opt-in and excluded from normal integration tests. THE PANEL LIGHTS UP; the run leaves it off and
+# restores the intensity. Set ARTESKYFLAT_HW_PORT to the port.
+.PHONY: test-aux-arteskyflat-hw
+test-aux-arteskyflat-hw: check-lib $(TEST_BUILD)/hardware/test_aux_arteskyflat_hw
+	$(TEST_BUILD)/hardware/test_aux_arteskyflat_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_ARTESKYFLAT_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_arteskyflat.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_arteskyflat_hw: hardware/test_aux_arteskyflat_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_arteskyflat.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_ARTESKYFLAT_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

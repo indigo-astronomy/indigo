@@ -117,3 +117,16 @@ New and reorganized cases:
   build/integration/test_aux_arteskyflat_simulator CC='clang -Wall -Wextra -Werror
   -Wno-unused-function -Wno-unused-parameter'` passed.
 - Hardware tests: **0 run, 0 passed**; no compatible physical device is available.
+
+## Reply format against the vendor library (2026-10-09)
+
+The strict reply check added on 2026-09-13 (exactly `*<operation><two-digit id><three-digit value>`, the value
+echoed) was derived from the simulator. It matches the vendor's own library: `libartesky_x64.dll` of libartesky
+SDK 1.0.0 (github.com/Artesky/artesky-projects-devel) carries the strings `>L000`, `*L19000`, `>D000`, `*D19000`,
+`*B19` with `%03d`, `>J000`, `*J19`, `>S000` and `*S19`. Unlike the Alnitak generic commands, which answer light on
+and off with `OOO`, the box answers with digits and product id 19, so the check stays. The library also reads a
+welcome message after opening the port; the driver discards pending input before every command, so it does not
+depend on it.
+
+The new hardware suite `indigo_test/hardware/test_aux_arteskyflat_hw.c` (`make test-aux-arteskyflat-hw`) ran
+against `aux_arteskyflat_simulator.ino` on an ESP32-S3 (6/6); no physical box was available.
