@@ -199,3 +199,34 @@ cd indigo_test && PRODIGY_TEST_FILTER=request_survives_poll ./build/integration/
 The first two recorded runs failed `abort` (60/61): under the recorded run's timing the abort overtook the queued start, so the focuser stopped at its origin, a legitimate ALERT outcome the case did not expect. The case now waits for the move to make progress before it aborts, so it always lands mid-move as the rules require; the third recorded run passed.
 
 Final test summary: 61 simulated tests in the recorded run, 61 passed (see README `## Testing`); 0 hardware tests run, 0 passed.
+
+## Strict checks against the command table, INDI and 2.0 (3.0.0.11)
+
+The references were the bundled serial command table (firmware ≥ 1.4), INDI `pegasus_prodigyMF.cpp` and the 2.0 driver. Checks derived only from the simulator were relaxed.
+
+| Defect | Fix | Covered by |
+| --- | --- | --- |
+| A focuser without a temperature probe reports `-127` in the `A` status. The connection required a temperature within −100…100, so such a focuser could not be connected. INDI shows that value as ALERT, and 2.0 connected regardless. | Any temperature reading is accepted at connect. A value outside −100…100 is not published, and `FOCUSER_TEMPERATURE` starts ALERT; the timer keeps retrying `T`. | `no_probe` |
+| The `A` status needed exactly ten fields, and motor mode, LED, reverse and encoder all had to be 0 or 1. INDI and 2.0 skip these four. The table marks them "always 0", yet its own example shows `1:1` for LED and reverse. | The four informational fields accept any integer, and fields a later firmware appends are ignored. | existing malformed `A` cases still refuse a broken status |
+
+Kept with the reason:
+- Replies are echoes as documented (`M:nnnn`, `H`→`0`, `D:b:b:b:b`, `Z:1`).
+- The speed range 100–1000 matches INDI.
+
+The simulator gained a `no-probe` profile. The Arduino sketch was rewritten:
+- It answers `B`, which it never did before, so 3.0 could not connect to it.
+- It moves at the stored speed instead of jumping.
+- `I` reports motion, `H` stops, `Z` travels to 0.
+- `Q` restarts and stays silent for a second.
+- Reads are non-blocking.
+
+Hardware suite `test_focuser_prodigy_hw.c` (`make test-focuser-prodigy-hw`, `PRODIGY_HW_PORT`) covers:
+- the values read at connection
+- absolute moves, and moves by steps in both directions
+- abort, sync, limits and park
+- speed and backlash, read back and kept over a reconnect
+- every power and USB port, switched and kept over a reconnect
+- restart, refused while the focuser is connected
+- reconnect, SHUTDOWN refusal and INIT/SHUTDOWN
+
+It was run against the sketch on an ESP32-S3.

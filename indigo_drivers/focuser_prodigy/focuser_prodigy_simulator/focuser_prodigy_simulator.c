@@ -305,6 +305,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	serial_motion_sync(&motion, !strcmp(profile, "alternate") ? 500 : 50);
+	if (!strcmp(profile, "no-probe")) {
+		// the firmware reports -127 without a temperature probe
+		temperature = -127;
+	}
 	const char *journal = getenv("INDIGO_PRODIGY_EVENTS");
 	events = journal ? fopen(journal, "w") : NULL;
 	signal(SIGTERM, signal_handler);

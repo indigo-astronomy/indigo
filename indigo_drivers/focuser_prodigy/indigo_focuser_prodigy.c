@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_prodigy"
 #define DRIVER_LABEL         "PegasusAstro Prodigy Microfocuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus Prodigy Focuser"
@@ -365,11 +365,13 @@ static void focuser_connection_handler(indigo_device *device) {
 			//+ focuser.on_connect
 			PRIVATE_DATA->failed_move = false;
 			connection_result = prodigy_command(device, true, "A");
+			// status:version:motor_mode:temperature:position:moving:led:reverse:encoder:backlash; fields a later
+			// firmware appends are ignored, as INDI and the 2.0 driver did
 			char *fields[10], *cursor = PRIVATE_DATA->response;
 			for (int i = 0; i < 10 && connection_result; i++) {
 				fields[i] = cursor;
 				char *colon = strchr(cursor, ':');
-				connection_result = i == 9 ? colon == NULL : colon != NULL;
+				connection_result = i == 9 || colon != NULL;
 				if (colon) {
 					*colon = 0;
 					cursor = colon + 1;
@@ -379,15 +381,24 @@ static void focuser_connection_handler(indigo_device *device) {
 			if (connection_result) {
 				connection_result = !strcmp(fields[0], "OK_PRDG") && prodigy_version(fields[1]);
 				for (int i = 2; i < 10 && connection_result; i++) {
-					double min = i == 3 ? -100 : i == 4 ? -999999 : 0;
-					double max = i == 3 ? 100 : i == 4 ? 999999 : i == 9 ? 9999 : 1;
+					// motor mode, LED, reverse and encoder are informational (INDI and 2.0 skip them); the
+					// temperature is any reading, -127 without a probe
+					bool informational = i == 2 || i == 6 || i == 7 || i == 8;
+					double min = i == 3 ? -1000 : i == 4 ? -999999 : informational ? -999999 : 0;
+					double max = i == 3 ? 1000 : i == 4 ? 999999 : informational ? 999999 : i == 9 ? 9999 : 1;
 					connection_result = prodigy_number(fields[i], min, max, values + i - 2, i != 3);
 				}
 			}
 			if (connection_result) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Prodigy Microfocuser");
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, fields[1]);
-				FOCUSER_TEMPERATURE_ITEM->number.value = values[1];
+				// a reading outside -100..100 (-127 without a probe) is no value; the timer retries it
+				if (values[1] >= -100 && values[1] <= 100) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = values[1];
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 				PRIVATE_DATA->position = (int)values[2];
 				PRIVATE_DATA->moving = (int)values[3];
 				PRIVATE_DATA->backlash = (int)values[7];

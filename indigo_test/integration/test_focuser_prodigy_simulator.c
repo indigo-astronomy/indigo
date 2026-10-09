@@ -291,6 +291,18 @@ static bool sync_to(int position) {
 	return switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE) && number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, INDIGO_OK_STATE) && switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true, INDIGO_OK_STATE);
 }
 
+// Without a temperature probe the firmware reports -127 (INDI shows it as ALERT, 2.0 connected regardless): the
+// focuser connects, the temperature is ALERT and moves work.
+static void no_probe(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME)->number.value + 127) > 1);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(at_position(300));
+cleanup:
+	driver_stop();
+}
+
 static void capabilities(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&prodigy_focuser));
 	SERIAL_CHECK_TRUE(!has_defined_property("X_FOCUSER_PARK"));
@@ -964,6 +976,7 @@ int main(void) {
 		{ "capabilities", capabilities, "normal" },
 		{ "split", capabilities, "split" },
 		{ "firmware_minor", capabilities, "firmware_minor" },
+		{ "no_probe", no_probe, "no-probe" },
 		{ "movement", movement, "normal" },
 		{ "limits", limits, "normal" },
 		{ "abort", abort_motion, "normal" },
