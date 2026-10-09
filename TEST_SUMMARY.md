@@ -204,6 +204,7 @@
 |  | 2026-10-07 07:16 | 3.0.0.30 | linux arm64 | SVBONY SV205 USB Camera | 11 / 11 | ✅ OK |
 | dome_baader | 2026-09-27 16:38 | 3.0.0.16 | linux x64 | simulator | 53 / 53 | ✅ OK |
 |  | 2026-09-27 22:03 | 3.0.0.16 | mac arm64 | simulator | 53 / 53 | ✅ OK |
+|  | 2026-10-09 18:25 | 3.0.0.16 | linux arm64 | Baader Classic Dome Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 | dome_beaver | 2026-09-27 03:37 | 3.0.0.9 | linux x64 | simulator | 48 / 48 | ✅ OK |
 |  | 2026-09-27 22:11 | 3.0.0.9 | mac arm64 | simulator | 48 / 48 | ✅ OK |
 | dome_dragonfly | 2026-09-27 22:18 | 3.0.0.10 | mac arm64 | simulator | 22 / 22 | ✅ OK |

@@ -546,3 +546,17 @@ Row TGT-D27 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for th
 - Simulated tests of this change: new case on 3.0.0.15 3 run, 0 passed (expected); on 3.0.0.16 5/5; one complete
   default run before the fixture update 53 run, 52 passed (`reference_trace` failed on the expected lines); trace
   captures 3/3; recorded run 53/53. Hardware tests: 0 run, 0 passed.
+
+## Strict checks and hardware suite (2026-10-09)
+
+The reply checks were compared with the 2.0 driver and INDI's `baader_dome`: every command and reply is a fixed
+9-byte frame starting with `d#` (INDI reads exactly 9 bytes as well), the azimuth is `d#azi`/`d#azr` and four
+digits, the shutter `d#shut_` and two digits or `ope`/`clo`/`run`, the emergency flags four `0`/`1`. None of them
+was derived from the simulator alone; the driver is unchanged (3.0.0.16).
+
+New hardware suite `indigo_test/hardware/test_dome_baader_hw.c` (`make test-dome-baader-hw`, `BAADER_HW_PORT`)
+on the shared dome helpers `dome_hw_common.h`: azimuth slews, steps both ways, an aborted rotation, shutter and
+flap (the flap refused while the shutter is closed), park and a slew refused while parked, reconnect and
+INIT/SHUTDOWN, restoring the state it found. Recorded run against `dome_baader_simulator.ino` on an ESP32-S3: 9/9.
+No physical Baader dome is available.
+
