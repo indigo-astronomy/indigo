@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_aux_sqm"
 #define DRIVER_LABEL         "Unihedron SQM"
 #define AUX_DEVICE_NAME      "Unihedron SQM"
@@ -75,24 +75,29 @@ typedef struct {
 
 //+ code
 
+// A meter with interval reporting enabled (firmware feature 13 and later, stored in EEPROM and active
+// from power-up) sends "r,..." reports on its own. Such a report can arrive between the request and
+// its reply, so lines that do not start with the command letter and a comma are skipped.
 static bool sqm_command(indigo_device *device, const char *command) {
-	long result = indigo_uni_discard(PRIVATE_DATA->handle);
-	if (result >= 0) {
-		result = indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command));
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command)) <= 0) {
+		return false;
 	}
-	if (result > 0) {
-		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1));
+	for (int i = 0; i < 4; i++) {
+		if (indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\r\n", INDIGO_DELAY(1)) <= 0) {
+			return false;
+		}
+		if (PRIVATE_DATA->response[0] == command[0] && PRIVATE_DATA->response[1] == ',') {
+			return true;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Skipped '%s' waiting for the reply to '%s'", PRIVATE_DATA->response, command);
 	}
-	return result > 0;
+	return false;
 }
-
 static bool sqm_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (sqm_command(device, "ix")) {
-			if (PRIVATE_DATA->response[0] == 'i' && PRIVATE_DATA->response[1] == ',') {
-				return true;
-			}
+			return true;
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}

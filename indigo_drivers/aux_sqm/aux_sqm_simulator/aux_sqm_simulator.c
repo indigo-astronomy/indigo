@@ -30,6 +30,7 @@
 #include <signal.h>
 #include <limits.h>
 #include <math.h>
+#include <time.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
@@ -41,6 +42,7 @@ typedef struct {
 	const char *ready_file;
 	char control_file[PATH_MAX];
 	char event_file[PATH_MAX];
+	int interval;
 } simulator_options;
 
 static simulator_options options = {
@@ -57,7 +59,9 @@ static void usage(const char *name) {
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  Faults: drop, prefix, short, nan, garbage, close; reading <mpsas> sets the value\n");
+	printf("  --interval <seconds>    Interval reporting period stored in EEPROM (default 0, off)\n");
+	printf("  Faults: drop, prefix, short, nan, garbage, close, report (an interval report right\n");
+	printf("  before the reply); reading <mpsas> sets the value\n");
 	printf("  Runtime control is read once from <ready-file>.control as ACTION SELECTOR [VALUE]\n");
 	printf("  and every complete command is recorded in <ready-file>.events.\n");
 	printf("  -h, --help              Show this help and exit\n");
@@ -79,6 +83,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--interval")) {
+			if (++i == argc) {
+				fprintf(stderr, "--interval requires a period in seconds\n");
+				return false;
+			}
+			options.interval = atoi(argv[i]);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -121,8 +131,33 @@ static bool sim_printf(int fd, const char *format, ...) {
 	return serial_simulator_write_all(fd, buffer, (size_t)length);
 }
 
+// Interval reporting, section 8.7 of the SQM-LU-DL manual: the meter sends a reading on its own every
+// period seconds, with its serial number appended. The EEPROM period is active from power-up, "P" sets
+// the EEPROM and RAM periods, "p" only the RAM one.
+static int interval_eeprom, interval_ram;
+static double next_report;
+static double reading_brightness = 20.70;
+
+static double now(void) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
+static void send_interval_report(int fd) {
+	sim_printf(fd, "r,%c%05.2fm,0000022921Hz,0000000020c,0000000.000s, 039.4C,00000413\r\n", reading_brightness < 0 ? '-' : ' ', fabs(reading_brightness));
+}
+
+static void interval_tick(int fd) {
+	if (interval_ram > 0 && now() >= next_report) {
+		send_interval_report(fd);
+		next_report = now() + interval_ram;
+	}
+}
+
 static int sim_read_byte(int fd, char *byte) {
 	while (running) {
+		interval_tick(fd);
 		ssize_t count = read(fd, byte, 1);
 		if (count == 1) {
 			return 0;
@@ -227,14 +262,14 @@ static void send_unit_information(int fd, const simulator_control *control) {
 		return;
 	}
 	if (!strcmp(control->action, "prefix")) {
-		sim_printf(fd, "x,00000002,00000003,00000001,00000413\n");
+		sim_printf(fd, "x,00000002,00000003,00000001,00000413\r\n");
 		return;
 	}
 	if (!strcmp(control->action, "short")) {
-		sim_printf(fd, "i\n");
+		sim_printf(fd, "i\r\n");
 		return;
 	}
-	sim_printf(fd, "i,00000002,00000003,00000001,00000413\n");
+	sim_printf(fd, "i,00000002,00000003,00000001,00000413\r\n");
 }
 
 // Reading response, table 8.3 of the SQM-LU-DL manual: "r," then the reading in mag/arcsec2, the
@@ -246,6 +281,7 @@ static void send_reading(int fd, const simulator_control *control) {
 	double brightness = control->has_value ? control->value : 20.70 - 0.01 * samples;
 	int counts = 20 + samples;
 	samples++;
+	reading_brightness = brightness;
 	if (!strcmp(control->action, "drop")) {
 		return;
 	}
@@ -256,28 +292,44 @@ static void send_reading(int fd, const simulator_control *control) {
 		return;
 	}
 	if (!strcmp(control->action, "prefix")) {
-		sim_printf(fd, "x,%c%05.2fm,0000022921Hz,%010dc,0000000.000s, 039.4C\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
+		sim_printf(fd, "x,%c%05.2fm,0000022921Hz,%010dc,0000000.000s, 039.4C\r\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
 		return;
 	}
 	if (!strcmp(control->action, "short")) {
-		sim_printf(fd, "r,%c%05.2fm,0000022921Hz,%010dc\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
+		sim_printf(fd, "r,%c%05.2fm,0000022921Hz,%010dc\r\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
 		return;
 	}
 	if (!strcmp(control->action, "nan")) {
-		sim_printf(fd, "r,   NaNm,0000022921Hz,%010dc,0000000.000s, 039.4C\n", counts);
+		sim_printf(fd, "r,   NaNm,0000022921Hz,%010dc,0000000.000s, 039.4C\r\n", counts);
 		return;
 	}
 	if (!strcmp(control->action, "garbage")) {
-		sim_printf(fd, "r,%c%05.2fm,  bogusHz,%010dc,0000000.000s, 039.4C\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
+		sim_printf(fd, "r,%c%05.2fm,  bogusHz,%010dc,0000000.000s, 039.4C\r\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
 		return;
 	}
-	sim_printf(fd, "r,%c%05.2fm,0000022921Hz,%010dc,0000000.000s, 039.4C\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
+	sim_printf(fd, "r,%c%05.2fm,0000022921Hz,%010dc,0000000.000s, 039.4C\r\n", brightness < 0 ? '-' : ' ', fabs(brightness), counts);
+}
+
+static void send_interval_settings(int fd) {
+	sim_printf(fd, "I,%010ds,%010ds,00000000.00m,00000000.00m\r\n", interval_eeprom, interval_ram);
 }
 
 static void dispatch_command(int fd, const char *cmd) {
 	record_command(cmd);
 	simulator_control control = take_control(cmd);
-	if (!strcmp(cmd, "i")) {
+	if (!strcmp(control.action, "report")) {
+		send_interval_report(fd);
+	}
+	if (!strcmp(cmd, "I")) {
+		send_interval_settings(fd);
+	} else if ((cmd[0] == 'p' || cmd[0] == 'P') && strlen(cmd) == 11) {
+		interval_ram = atoi(cmd + 1);
+		if (cmd[0] == 'P') {
+			interval_eeprom = interval_ram;
+		}
+		next_report = now() + interval_ram;
+		send_interval_settings(fd);
+	} else if (!strcmp(cmd, "i")) {
 		send_unit_information(fd, &control);
 	} else if (!strcmp(cmd, "r") || !strcmp(cmd, "u")) {
 		send_reading(fd, &control);
@@ -310,6 +362,9 @@ int main(int argc, char *argv[]) {
 		serial_fd = -1;
 		return 1;
 	}
+
+	interval_eeprom = interval_ram = options.interval;
+	next_report = now() + interval_ram;
 
 	if (!options.headless) {
 		printf("Unihedron SQM simulator is running on %s\n", port);

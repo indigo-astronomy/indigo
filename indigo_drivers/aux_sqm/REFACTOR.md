@@ -50,7 +50,37 @@ No physical Unihedron SQM is available. No hardware run was performed and none o
 - `ASAN_OPTIONS=halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 build/integration/test_aux_sqm_simulator_asan` passed all 8 cases with the production driver source instrumented and no sanitizer report. LeakSanitizer is unavailable on this macOS runtime and is not claimed.
 - The driver was not changed, so no regeneration or version bump was required; it stays at 3.0.0.20.
 
+## Interval reports skipped while waiting for a reply (2026-10-09, 3.0.0.22)
+
+The driver's checks were compared with `SQM-LU-DL_Users_manual.pdf`: the `i,` handshake prefix (table 8.6), the
+`rx` record with its unit suffixes and sign columns (table 8.3; fields beyond column 54 may be added by later
+firmware and are ignored) and 115200 baud all match the manual.
+
+### Defect
+
+- SQM-01: a meter with interval reporting enabled could not be connected reliably. From firmware feature 13 the
+  meter sends readings on its own (section 8.7); a period stored in EEPROM is active from power-up. A report
+  (`r,...,<serial>`) arriving between `ix` and its reply was taken as the reply, failed the `i,` check and refused
+  the meter. `sqm_command()` now reads up to four lines and takes the first one starting with the command letter
+  and a comma; a report arriving before the reply to `rx` is itself a valid reading.
+  Test: `interval_reports_do_not_break_the_handshake` (fails on 3.0.0.21, passes on 3.0.0.22); the fake transport
+  case now refuses a meter that never answers `i,` and accepts one with a report ahead of the reply.
+
+### Simulators
+
+The C simulator and the sketch implement interval reporting (`p`/`P` set the RAM / EEPROM period, `I` reports
+the settings in the table 8.38 format, reports carry the serial number); the C simulator also takes `--interval`
+and a `report` control that sends a report right before the next reply, and ends its lines with CR LF as the
+manual does. The sketch's readings advance per record like the C simulator.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 11/11 (9 simulator, 2 fake transport).
+- New hardware suite `indigo_test/hardware/test_aux_sqm_hw.c` (`make test-aux-sqm-hw`, `SQM_HW_PORT`). It enables
+  1 s interval reports in RAM over the raw port, connects five times and polls, and restores the RAM period it
+  found. Recorded run against the sketch on an ESP32-S3: 7/7.
+
 ## Final Test Summary
 
-- Simulated tests: **10 run, 10 passed** (8 simulator, 2 transport), plus the same 8 simulator cases under ASan/UBSan.
-- Hardware tests: **0 run, 0 passed**; no compatible physical device is available.
+- Simulated tests: **11 run, 11 passed** (9 simulator, 2 transport), recorded, driver version 22, macOS arm64.
+- Hardware tests: **7 run, 7 passed** against the Arduino sketch on an ESP32-S3; no physical SQM is available.

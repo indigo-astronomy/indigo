@@ -311,6 +311,41 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A meter with interval reporting enabled sends "r,..." reports on its own (section 8.7 of the manual),
+// and one can arrive between "ix" and its reply. The handshake has to skip it rather than refuse the
+// meter; a report arriving before the reply to "rx" is a valid reading.
+static void interval_reports_do_not_break_the_handshake(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--interval", "1", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_SQM_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&sqm_case));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(arm_control(&simulator, "report", "i", NULL));
+	SERIAL_CHECK_TRUE(connect_serial_device(&sqm_case, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	disconnect_serial_device(&sqm_case);
+	SERIAL_CHECK_TRUE(arm_control(&simulator, "report", "r", NULL));
+	SERIAL_CHECK_TRUE(connect_serial_device(&sqm_case, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_is(AUX_INFO_PROPERTY_NAME, X_AUX_SENSOR_FREQUENCY_ITEM_NAME, 22921, 1e-6));
+	disconnect_serial_device(&sqm_case);
+	// With reports every second the meter connects every time.
+	for (int i = 0; i < 3; i++) {
+		indigo_usleep(700000);
+		SERIAL_CHECK_TRUE(connect_serial_device(&sqm_case, simulator.port));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_OK_STATE));
+		disconnect_serial_device(&sqm_case);
+	}
+cleanup:
+	if (online) {
+		disconnect_serial_device(&sqm_case);
+		tear_down_serial_driver(&sqm_case);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // A reading the driver cannot parse must be reported on both published properties rather than
 // accepted. The first poll runs immediately after connect, so each fault is aimed at it.
 static void unparseable_readings_are_reported(void) {
@@ -457,6 +492,7 @@ int main(void) {
 		{ "identity_inventory_and_reading_contract", identity_inventory_and_reading_contract },
 		{ "bortle_class_follows_the_reading", bortle_class_follows_the_reading },
 		{ "handshake_failures_leave_the_device_disconnected", handshake_failures_leave_the_device_disconnected },
+		{ "interval_reports_do_not_break_the_handshake", interval_reports_do_not_break_the_handshake },
 		{ "unparseable_readings_are_reported", unparseable_readings_are_reported },
 		{ "readings_are_refreshed_by_polling", readings_are_refreshed_by_polling },
 		{ "a_failed_poll_recovers_and_polling_stops_on_disconnect", a_failed_poll_recovers_and_polling_stops_on_disconnect },

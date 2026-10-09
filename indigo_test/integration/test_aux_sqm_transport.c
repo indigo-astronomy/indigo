@@ -75,7 +75,12 @@ long sqm_test_read(indigo_uni_handle *port, char *buffer, long length, const cha
 		invalid_io++;
 	}
 	if (!strcmp(command, "ix")) {
-		return snprintf(buffer, length, "%s", atomic_exchange(&bad_handshake, 0) ? "bad" : "i,00000002,00000003,00000001,00000413");
+		// bad_handshake counts the lines answered before the reply; an interval report is one of them.
+		if (atomic_load(&bad_handshake) > 0) {
+			atomic_fetch_sub(&bad_handshake, 1);
+			return snprintf(buffer, length, "%s", "r, 20.70m,0000022921Hz,0000000020c,0000000.000s, 039.4C,00000413");
+		}
+		return snprintf(buffer, length, "%s", "i,00000002,00000003,00000001,00000413");
 	}
 	reads++;
 	if (atomic_exchange(&fail_read, 0)) {
@@ -131,9 +136,16 @@ static void failed_initialization(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&sqm));
 	fail_open = 1;
 	SERIAL_CHECK_TRUE(!connect_serial_device(&sqm, "fake"));
-	bad_handshake = 1;
+	// A meter that never answers "ix" with "i," is refused.
+	bad_handshake = 100;
 	SERIAL_CHECK_TRUE(!connect_serial_device(&sqm, "fake"));
 	SERIAL_CHECK_EQ_INT(opens, closes);
+	// An interval report ahead of the reply is skipped.
+	bad_handshake = 1;
+	SERIAL_CHECK_TRUE(connect_serial_device(&sqm, "fake"));
+	SERIAL_CHECK_EQ_INT(0, bad_handshake);
+	disconnect_serial_device(&sqm);
+	bad_handshake = 0;
 	SERIAL_CHECK_TRUE(connect_serial_device(&sqm, "fake"));
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_aux_sqm(INDIGO_DRIVER_SHUTDOWN, NULL));
 cleanup:

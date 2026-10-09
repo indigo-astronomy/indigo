@@ -2948,6 +2948,18 @@ AUX_SKYALERT_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_skyalert.a $(TEST_LDF
 $(TEST_BUILD)/hardware/test_aux_skyalert_hw: hardware/test_aux_skyalert_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_skyalert.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_SKYALERT_HW_TEST_LDFLAGS)
 
+# A physical Unihedron SQM-LU, or the Arduino sketch aux_sqm_simulator.ino on a board, is opt-in and
+# excluded from normal integration tests. The run changes the interval reporting period in RAM only and
+# restores it. Set SQM_HW_PORT to the port.
+.PHONY: test-aux-sqm-hw
+test-aux-sqm-hw: check-lib $(TEST_BUILD)/hardware/test_aux_sqm_hw
+	$(TEST_BUILD)/hardware/test_aux_sqm_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_SQM_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_sqm.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_sqm_hw: hardware/test_aux_sqm_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_sqm.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_SQM_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are
