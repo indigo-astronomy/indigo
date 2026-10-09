@@ -1,6 +1,6 @@
 // RoboFocus focuser simulator for Arduino
 //
-// Copyright (c) 2020-2025 CloudMakers, s. r. o.
+// Copyright (c) 2020-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,7 +18,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define LCD
+// RoboFocus serial protocol (manual for firmware 3.x, appendix 1), 9600 8N1. Every data set is nine bytes:
+// 'F', a command letter, six characters and a checksum (the low byte of the sum of the first eight). Values are
+// ASCII digits, except the duty cycle, step delay and step size of FC, which are binary. A frame with a bad
+// checksum or illegal characters is ignored. During a move the controller sends 'I' or 'O' per step and the
+// position FDnnnnnn when the move ends; any byte received during a move stops it, answered with the position.
+
+// #define LCD
 
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
@@ -29,147 +35,192 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-unsigned current_position = 2;
-unsigned target_position = 2;
-unsigned max_position = 0xFFFF;
-char backlash[7] = "200020";
-char configuration[7] = "000@@@";
-char power[7] = "001111";
-unsigned temperature = 600;
+// 50 steps per second, the top of the manual's 10-50 ticks per second
+#define TICK_MS 20
+
+long position = 32000;
+long target = 32000;
+long maximum = 64000;
+char backlash_direction = '2';
+int backlash = 20;
+uint8_t duty = 128, step_delay = 10, step_size = 4;
+char power[4] = { '2', '2', '1', '1' };
+int temperature = 600;
+unsigned long last_tick = 0;
+uint8_t frame[9];
+int used = 0;
+unsigned long frame_started = 0;
 
 void setup() {
 #ifdef LCD
   lcd.begin(16, 2);
-  lcd.setCursor(0, 0);
   lcd.print("RoboFocus sim");
-  lcd.setCursor(0, 1);
-  lcd.print("Not connected");
 #endif
   Serial.begin(9600);
-  Serial.setTimeout(1000);
   while (!Serial)
     ;
-#ifdef LCD
-  lcd.clear();
-#endif
 }
 
-void print_response(const char *format, ...) {
-  char response[10] = { 0 };
+uint8_t checksum(const uint8_t *data) {
   unsigned sum = 0;
-  va_list args;
-  va_start(args, format);
-  vsnprintf(response, sizeof(response), format, args);
-  va_end(args);
-  for (int i = 0; i < 9; i++)
-    sum += response[i];
-  response[9] = sum & 0xFF;
-  Serial.write(response, 9);
+  for (int i = 0; i < 8; i++)
+    sum += data[i];
+  return sum & 0xFF;
+}
+
+void send(const uint8_t payload[8]) {
+  uint8_t out[9];
+  memcpy(out, payload, 8);
+  out[8] = checksum(out);
+  Serial.write(out, 9);
+}
+
+void send_value(char command, long value) {
+  char text[10];
+  snprintf(text, sizeof(text), "F%c%06ld", command, value);
+  send((const uint8_t *)text);
+}
+
+bool digits(const uint8_t *data, int count, long *value) {
+  long result = 0;
+  for (int i = 0; i < count; i++) {
+    if (data[i] < '0' || data[i] > '9')
+      return false;
+    result = result * 10 + data[i] - '0';
+  }
+  *value = result;
+  return true;
+}
+
+bool all_zero(const uint8_t *data) {
+  for (int i = 0; i < 6; i++)
+    if (data[i] != '0')
+      return false;
+  return true;
+}
+
+void start(long requested) {
+  target = requested < 1 ? 1 : requested > maximum ? maximum : requested;
+  last_tick = millis();
+  if (target == position)
+    send_value('D', position);
+}
+
+void dispatch() {
+  long value;
+  const uint8_t *data = frame + 2;
+  switch (frame[1]) {
+    case 'V':
+      send_value('V', 3020);
+      break;
+    case 'G':
+      if (digits(data, 6, &value)) {
+        if (value)
+          start(value);
+        else
+          send_value('D', position);
+      }
+      break;
+    case 'I':
+      if (digits(data, 6, &value))
+        start(position - value);
+      break;
+    case 'O':
+      if (digits(data, 6, &value))
+        start(position + value);
+      break;
+    case 'S':
+      if (digits(data, 6, &value)) {
+        if (value)
+          position = target = value;
+        send_value('D', position);
+      }
+      break;
+    case 'L':
+      if (digits(data, 6, &value)) {
+        if (value)
+          maximum = value;
+        send_value('L', maximum);
+      }
+      break;
+    case 'P': {
+      if (!all_zero(data)) {
+        for (int i = 0; i < 4; i++)
+          if (data[i + 2] == '1' || data[i + 2] == '2')
+            power[i] = data[i + 2];
+      }
+      uint8_t payload[8] = { 'F', 'P', '0', '0', (uint8_t)power[0], (uint8_t)power[1], (uint8_t)power[2], (uint8_t)power[3] };
+      send(payload);
+      break;
+    }
+    case 'C': {
+      if (!all_zero(data)) {
+        if (data[3] > 250 || data[4] < 1 || data[4] > 64 || data[5] < 1 || data[5] > 64)
+          return;
+        duty = data[3];
+        step_delay = data[4];
+        step_size = data[5];
+      }
+      uint8_t payload[8] = { 'F', 'C', '0', '0', '0', duty, step_delay, step_size };
+      send(payload);
+      break;
+    }
+    case 'B': {
+      if (!all_zero(data)) {
+        if ((data[0] != '2' && data[0] != '3') || !digits(data + 1, 5, &value) || value > 255)
+          return;
+        backlash_direction = data[0];
+        backlash = value;
+      }
+      char text[10];
+      snprintf(text, sizeof(text), "FB%c%05d", backlash_direction, backlash);
+      send((const uint8_t *)text);
+      break;
+    }
+    case 'T':
+      send_value('T', temperature);
+      break;
+  }
 }
 
 void loop() {
-	if (target_position > current_position) {
-    Serial.write('O');
-		current_position++;
-    if (target_position == current_position)
-      print_response("FD%06d", current_position);
-    delay(10);
-	} else if (target_position < current_position) {
-    Serial.write('I');
-		current_position--;
-    if (target_position == current_position)
-      print_response("FD%06d", current_position);
-    delay(10);
-	}
-#ifdef LCD
-  char buffer[17];
-  sprintf(buffer, "T:%05d C:%05d", target_position, current_position);
-  lcd.setCursor(0, 0);
-  lcd.print(buffer);
-  sprintf(buffer, "%s %s %s", backlash, configuration + 3, power + 2);
-  lcd.setCursor(0, 1);
-  lcd.print(buffer);
-#endif
-	if (Serial.available()) {
-    char request[10] = { 0 };
-    if (target_position != current_position) {
-      target_position = current_position;
-      print_response("FD%06d", current_position);
+  unsigned long now = millis();
+  if (position != target) {
+    if (Serial.available()) {
+      // any byte stops the move; the rest of a frame sent with it is dropped
+      target = position;
+      send_value('D', position);
+      delay(20);
+      while (Serial.available())
+        Serial.read();
+      used = 0;
+      return;
     }
-    Serial.readBytes(request, 1);
-    if (request[0] == 'F') {
-      Serial.readBytes(request + 1, 8);
-      request[9] = 0; // TODO check checksum
-      switch (request[1]) {
-        case 'V': {
-          print_response("FV%06d", 0);
-          break;
-        }
-        case 'G': {
-          unsigned value = atoi(request + 3);
-          if (value) {
-            target_position = value;
-            if (target_position > max_position)
-              target_position = max_position;
-          } else {
-            print_response("FD%06d", current_position);
-          }
-          break;
-        }
-        case 'I': {
-          unsigned value = atoi(request + 3);
-          target_position = current_position - value;
-          if (target_position < 1)
-            target_position = 1;
-          break;
-        }
-        case 'O': {
-          unsigned value = atoi(request + 3);
-          target_position = current_position + value;
-          if (target_position > max_position)
-            target_position = max_position;
-          break;
-        }
-        case 'L': {
-          unsigned value = atoi(request + 3);
-          if (value)
-            max_position = value;
-          print_response("FL%06d", max_position);
-          break;
-        }
-        case 'S': {
-          unsigned value = atoi(request + 3);
-          if (value)
-            target_position = current_position = value;
-          print_response("FD%06d", current_position);
-          break;
-        }
-        case 'B': {
-          unsigned value = atoi(request + 3);
-          if (value)
-            strncpy(backlash, request + 2, 6);
-          print_response("FB%s", backlash);
-          break;
-        }
-        case 'C': {
-          unsigned value = atoi(request + 3);
-          if (value)
-            strncpy(configuration, request + 2, 6);
-          print_response("FC%s", configuration);
-          break;
-        }
-        case 'P': {
-          unsigned value = atoi(request + 3);
-          if (value)
-            strncpy(power, request + 2, 6);
-          print_response("FP%s", power);
-          break;
-        }
-        case 'T': {
-          print_response("FT%06d", temperature);
-          break;
-        }
-      }
+    while (position != target && now - last_tick >= TICK_MS) {
+      bool outward = target > position;
+      position += outward ? 1 : -1;
+      Serial.write(outward ? 'O' : 'I');
+      last_tick += TICK_MS;
+      if (position == target)
+        send_value('D', position);
     }
-	}
+    return;
+  }
+  // a frame not completed within 100 ms is dropped
+  if (used && now - frame_started > 100)
+    used = 0;
+  while (Serial.available()) {
+    uint8_t c = Serial.read();
+    if (used == 0) {
+      if (c != 'F')
+        continue;
+      frame_started = now;
+    }
+    frame[used++] = c;
+    if (used == 9) {
+      used = 0;
+      if (frame[8] == checksum(frame))
+        dispatch();
+    }
+  }
 }

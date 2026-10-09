@@ -123,3 +123,43 @@ No temperature compensation, focuser mode, speed control or controller-side reve
 
 - Simulated tests: 32 run, 32 passed (`python3 tools/run_driver_test.py focuser_robofocus`, macOS arm64).
 - Hardware tests: 0 run, 0 passed.
+
+## Strict checks against the manual, INDI and 2.0 (3.0.0.6)
+
+The references were the bundled manual (firmware 3.x, appendix 1), INDI `robofocus.cpp` and the 2.0 driver. Checks that came only from the simulator were relaxed.
+
+| Defect | Fix | Covered by |
+| --- | --- | --- |
+| The configuration query was `FC` followed by six binary zeros, and the reply had to carry binary zeros in the spare bytes A–C. The manual's data sets are ASCII ("the character of value 48" is 0), and 2.0 and INDI both query with ASCII `FC000000`. A controller ignores a frame with illegal characters, so the connection could fail on hardware. | The query, and the spare bytes of a write, are ASCII `0`, as in 2.0. Only duty cycle, step delay and step size stay binary. The spare bytes of the reply are no longer checked. | every connecting case: the simulator now ignores the binary query |
+| A temperature that failed or read implausibly refused the connection. A missing or broken probe made the focuser unusable, while INDI and 2.0 connected and only marked the temperature. | The connection proceeds with `FOCUSER_TEMPERATURE` ALERT. The timer retries, and a good reading restores OK. | `connect_tolerates_temperature`, `broken_probe` |
+| A byte arriving within 10 ms after a valid frame failed the command. | Bytes after the frame are dropped, as INDI and 2.0 did. | `poll_trailing_byte` (replaces `poll_overlong`) |
+
+These were checked against the old driver with only the `FC` fix applied: exactly the three new cases fail.
+
+Kept, with the reason:
+- The `FC` layout (A–C spare, D duty, E delay, F step size) follows the manual. INDI places the values in A–C, which is wrong.
+- The backlash sign is a convention: N=2 adds compensation to IN motion and N=3 to OUT motion. INDI maps positive to 3; 2.0 and 3.0 map it to 2.
+
+Simulator changes:
+- The configuration query is answered only in ASCII.
+- The spare bytes are `0`.
+- A `bad-probe` profile reads the full ADC scale.
+
+Arduino sketch: rewritten.
+- The LCD is off by default; it did not build on the ESP32.
+- The checksum is now sent. The ninth byte used to be NUL.
+- Incoming frames are checked and resynchronised.
+- Motion runs at 50 ticks/s, with `I`/`O` per step and the final `FD`. Any byte stops a move.
+- `FC` keeps its binary fields and `FB` follows the manual (N=1 refused, as in V3).
+- Arithmetic is signed; `FI` underflowed before.
+
+Hardware suite `test_focuser_robofocus_hw.c` (`make test-focuser-robofocus-hw`, `ROBOFOCUS_HW_PORT`) covers:
+- values at connection
+- absolute moves, steps both ways and the reversed direction
+- abort and sync
+- the maximum travel, written and enforced
+- the four power channels
+- motor configuration and backlash, kept over a reconnect
+- reconnect, SHUTDOWN refusal, INIT/SHUTDOWN
+
+It was run against the sketch on an ESP32-S3.

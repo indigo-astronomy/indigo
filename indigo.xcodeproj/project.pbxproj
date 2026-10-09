@@ -5741,6 +5741,7 @@
 		C0DE20261009191500000001 /* test_dome_nexdome3_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome3_hw.c; sourceTree = "<group>"; };
 		C0DE20261009190900000001 /* test_dome_talon6ror_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_talon6ror_hw.c; sourceTree = "<group>"; };
 		C0DE20261009192700000001 /* test_dome_skyroof_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_skyroof_hw.c; sourceTree = "<group>"; };
+		C0DE2026100922090001 /* test_focuser_robofocus_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_robofocus_hw.c; sourceTree = "<group>"; };
 		C0DE2026100921530001 /* test_focuser_prodigy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_prodigy_hw.c; sourceTree = "<group>"; };
 		C0DE2026100921330001 /* test_focuser_optec_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_optec_hw.c; sourceTree = "<group>"; };
 		C0DE2026100921140001 /* test_focuser_nstep_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_nstep_hw.c; sourceTree = "<group>"; };
@@ -14874,6 +14875,7 @@
 				C0DE20261009191500000001 /* test_dome_nexdome3_hw.c */,
 				C0DE20261009190900000001 /* test_dome_talon6ror_hw.c */,
 				C0DE20261009192700000001 /* test_dome_skyroof_hw.c */,
+				C0DE2026100922090001 /* test_focuser_robofocus_hw.c */,
 				C0DE2026100921530001 /* test_focuser_prodigy_hw.c */,
 				C0DE2026100921330001 /* test_focuser_optec_hw.c */,
 				C0DE2026100921140001 /* test_focuser_nstep_hw.c */,

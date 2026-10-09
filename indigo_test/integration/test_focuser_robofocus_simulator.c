@@ -515,6 +515,43 @@ static int open_descriptors(void) {
 	return count;
 }
 
+// A byte after a valid frame is dropped, as INDI and the 2.0 driver did: the poll is good and the position stays OK.
+static void trailing_byte_accepted(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	int polls = request_count('G', 0);
+	SERIAL_CHECK_TRUE(fault("FD", "overlong"));
+	SERIAL_CHECK_TRUE(wait_for_requests('G', 0, polls + 2));
+	SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(32000, position_value());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 32050, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(32050));
+cleanup:
+	driver_stop();
+}
+
+// The configuration is queried with the manual's ASCII FC000000 (2.0 and INDI send the same); a controller ignores a
+// request with illegal characters, so the binary zeros 3.0.0.5 sent got no reply and the connection failed.
+// A temperature that does not answer or reads implausibly (a missing or broken probe) does not refuse the
+// connection, as in INDI and 2.0: it is ALERT and a later good reading restores OK.
+static void connect_tolerates_temperature(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&robofocus_focuser));
+	SERIAL_CHECK_TRUE(fault("FT", "silent"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&robofocus_focuser, fixture.port));
+	SERIAL_CHECK_TRUE(context.connected && has_defined_property(ROBOFOCUS_CONFIG_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+static void broken_probe(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(cached_state(FOCUSER_TEMPERATURE_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 32050, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(at_position(32050));
+cleanup:
+	driver_stop();
+}
+
 static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&robofocus_focuser));
 	int descriptors = open_descriptors();
@@ -830,7 +867,7 @@ static void simulator_protocol(void) {
 	SERIAL_CHECK_TRUE(protocol_exchange(handle, "FS001000", 'D', NULL));
 	SERIAL_CHECK_TRUE(protocol_exchange(handle, "FL005000", 'L', NULL));
 	SERIAL_CHECK_TRUE(protocol_exchange(handle, "FP002121", 'P', NULL));
-	uint8_t config[8] = { 'F', 'C', 0, 0, 0, 200, 20, 8 };
+	uint8_t config[8] = { 'F', 'C', '0', '0', '0', 200, 20, 8 };
 	SERIAL_CHECK_TRUE(protocol_exchange(handle, (char *)config, 'C', NULL));
 	SERIAL_CHECK_TRUE(protocol_exchange(handle, "FB300035", 'B', NULL));
 	SERIAL_CHECK_TRUE(protocol_exchange(handle, "FT000000", 'T', NULL));
@@ -858,7 +895,7 @@ static int run_cases(const robofocus_test *cases, int count) {
 		if (filter && !strstr(cases[i].name, filter)) continue;
 		current_profile = cases[i].profile;
 		unlink(fault_path);
-		const char *args[] = { "--profile", !strcmp(current_profile, "alternate") ? "alternate" : !strcmp(current_profile, "split") ? "split" : !strcmp(current_profile, "stall") ? "stall" : "normal", NULL };
+		const char *args[] = { "--profile", !strcmp(current_profile, "alternate") ? "alternate" : !strcmp(current_profile, "split") ? "split" : !strcmp(current_profile, "stall") ? "stall" : !strcmp(current_profile, "bad-probe") ? "bad-probe" : "normal", NULL };
 		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_ROBOFOCUS_SIMULATOR_EXECUTABLE, args)) { failures++; break; }
 		if (!strcmp(cases[i].name, "instances")) {
 			unsetenv("INDIGO_ROBOFOCUS_EVENTS"); unsetenv("INDIGO_ROBOFOCUS_FAULT");
@@ -909,14 +946,15 @@ int main(void) {
 		{ "controls", controls, "normal" },
 		{ "poll_bad_checksum", poll_and_motion_failure, "poll_bad_checksum" },
 		{ "poll_partial", poll_and_motion_failure, "poll_partial" },
-		{ "poll_overlong", poll_and_motion_failure, "poll_overlong" },
+		{ "poll_trailing_byte", trailing_byte_accepted, "normal" },
 		{ "motion_bad_checksum", poll_and_motion_failure, "motion_bad_checksum" },
 		{ "stalled_motion", poll_and_motion_failure, "stall" },
 		{ "power_failure", setting_failure, "power_failure" },
 		{ "config_failure", setting_failure, "config_failure" },
 		{ "init_FV_bad_checksum", rejected_connection, "init_FV_bad_checksum" },
 		{ "init_FC_partial", rejected_connection, "init_FC_partial" },
-		{ "init_FT_silent", rejected_connection, "init_FT_silent" },
+		{ "connect_tolerates_temperature", connect_tolerates_temperature, "normal" },
+		{ "broken_probe", broken_probe, "bad-probe" },
 		{ "init_FV_silent", rejected_connection, "init_FV_silent" },
 		{ "init_FL_malformed", rejected_connection, "init_FL_malformed" },
 		{ "external_state_and_reconnect", external_state_and_reconnect, "normal" },

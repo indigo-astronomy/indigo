@@ -30,7 +30,8 @@ static FILE *events;
 static volatile sig_atomic_t running = 1;
 static bool headless, trace, moving, stalled, stall_injected;
 static int serial_fd = -1, maximum = 64000, temperature = 600, last_tick_position;
-static uint8_t configuration[6] = { 0, 0, 0, 128, 10, 4 };
+// spare bytes A-C are ASCII '0' like every data set; duty cycle, step delay and step size are binary
+static uint8_t configuration[6] = { '0', '0', '0', 128, 10, 4 };
 static uint8_t power_channels[4] = { '1', '1', '1', '1' };
 static uint8_t backlash_direction = '2';
 static int backlash = 20;
@@ -311,9 +312,14 @@ static void dispatch(const uint8_t request[9]) {
 			break;
 		}
 		case 'C': {
-			if (!all_zero(request + 2, 6)) {
-				if (request[2] || request[3] || request[4] || request[5] > 250 || request[6] < 1 || request[6] > 64 || request[7] < 1 || request[7] > 64) break;
-				memcpy(configuration, request + 2, 6);
+			// the query is FC000000 in ASCII; a request with an illegal character is ignored like any other
+			bool query = true;
+			for (int i = 2; i < 8; i++) {
+				query = query && request[i] == '0';
+			}
+			if (!query) {
+				if (request[5] > 250 || request[6] < 1 || request[6] > 64 || request[7] < 1 || request[7] > 64) break;
+				memcpy(configuration + 3, request + 5, 3);
 			}
 			uint8_t payload[8] = { 'F', 'C', configuration[0], configuration[1], configuration[2], configuration[3], configuration[4], configuration[5] };
 			if (!injected("FC", payload)) reply(payload, false);
@@ -353,11 +359,15 @@ int main(int argc, char **argv) {
 		else if (i + 1 < argc && !strcmp(argv[i], "--ready-file")) ready_file = argv[++i];
 		else if (i + 1 < argc && !strcmp(argv[i], "--profile")) profile = argv[++i];
 		else {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|stall|bad-probe]\n", argv[0]);
 			return 1;
 		}
 	}
-	if (strcmp(profile, "normal") && strcmp(profile, "split") && strcmp(profile, "alternate") && strcmp(profile, "stall")) return 1;
+	if (strcmp(profile, "normal") && strcmp(profile, "split") && strcmp(profile, "alternate") && strcmp(profile, "stall") && strcmp(profile, "bad-probe")) return 1;
+	if (!strcmp(profile, "bad-probe")) {
+		// a broken or missing probe reads the full ADC scale (+238 C)
+		temperature = 1023;
+	}
 	int initial = !strcmp(profile, "alternate") ? 1234 : 32000;
 	if (!strcmp(profile, "alternate")) {
 		maximum = 50000; temperature = 535;

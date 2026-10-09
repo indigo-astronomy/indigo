@@ -3140,6 +3140,18 @@ FOCUSER_PRODIGY_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_prodigy.a $(TE
 $(TEST_BUILD)/hardware/test_focuser_prodigy_hw: hardware/test_focuser_prodigy_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_prodigy.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_PRODIGY_HW_TEST_LDFLAGS)
 
+# A physical RoboFocus, or the Arduino sketch focuser_robofocus_simulator.ino on a board, is opt-in and excluded from
+# normal integration tests. THE FOCUSER MOVES AND THE POWER CHANNELS SWITCH; the run writes back the settings and
+# returns to the position it found. Set ROBOFOCUS_HW_PORT.
+.PHONY: test-focuser-robofocus-hw
+test-focuser-robofocus-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_robofocus_hw
+	$(TEST_BUILD)/hardware/test_focuser_robofocus_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_ROBOFOCUS_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_robofocus.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_robofocus_hw: hardware/test_focuser_robofocus_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_robofocus.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_ROBOFOCUS_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

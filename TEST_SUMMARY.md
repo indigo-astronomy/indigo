@@ -272,7 +272,8 @@
 |  | 2026-10-09 21:53 | 3.0.0.11 | linux arm64 | Prodigy Arduino simulator (ESP32-S3) | 13 / 13 | ✅ OK |
 | focuser_qhy | 2026-09-27 12:50 | 3.0.0.10 | linux x64 | simulator | 32 / 32 | ✅ OK |
 |  | 2026-10-05 15:31 | 3.0.0.11 | mac arm64 | simulator | 44 / 44 | ✅ OK |
-| focuser_robofocus | 2026-10-05 15:14 | 3.0.0.5 | mac arm64 | simulator | 32 / 32 | ✅ OK |
+| focuser_robofocus | 2026-10-09 22:05 | 3.0.0.6 | mac arm64 | simulator | 33 / 33 | ✅ OK |
+|  | 2026-10-09 22:09 | 3.0.0.6 | linux arm64 | RoboFocus Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-27 13:10 | 3.0.0.19 | linux x64 | simulator | 56 / 56 | ✅ OK |
 |  | 2026-10-05 15:52 | 3.0.0.20 | mac arm64 | simulator | 61 / 61 | ✅ OK |
 | focuser_usbv3 | 2026-09-22 01:09 | 3.0.0.10 | mac arm64 | USB_Focus v3 | 16 / 16 | ✅ OK |

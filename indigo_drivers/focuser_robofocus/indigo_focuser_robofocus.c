@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_focuser_robofocus"
 #define DRIVER_LABEL         "RoboFocus Focuser"
 #define FOCUSER_DEVICE_NAME  "RoboFocus"
@@ -180,14 +180,8 @@ static int robofocus_read_motion(indigo_device *device, int *direction) {
 }
 
 static bool robofocus_command(indigo_device *device, const uint8_t payload[8]) {
-	if (!robofocus_write(device, payload, true) || !robofocus_read_frame(device, 1, NULL, NULL)) {
-		return false;
-	}
-	if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(0.01)) > 0) {
-		indigo_uni_discard(PRIVATE_DATA->handle);
-		return false;
-	}
-	return true;
+	// bytes after the frame are dropped, as INDI and the 2.0 driver did
+	return robofocus_write(device, payload, true) && robofocus_read_frame(device, 1, NULL, NULL);
 }
 
 static bool robofocus_ascii_value(indigo_device *device, int offset, int count, int minimum, int maximum, int *value) {
@@ -277,13 +271,15 @@ static bool robofocus_power(indigo_device *device, bool write) {
 }
 
 static bool robofocus_config(indigo_device *device, bool write) {
-	uint8_t payload[8] = { 'F', 'C', 0, 0, 0, 0, 0, 0 };
+	// the manual's data sets are ASCII: the query is FC000000 and the spare bytes A-C are '0' (2.0 and INDI
+	// send the same); only the duty cycle, step delay and step size are binary
+	uint8_t payload[8] = { 'F', 'C', '0', '0', '0', '0', '0', '0' };
 	if (write) {
 		payload[5] = (uint8_t)X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.target;
 		payload[6] = (uint8_t)X_FOCUSER_CONFIG_STEP_DELAY_ITEM->number.target;
 		payload[7] = (uint8_t)X_FOCUSER_CONFIG_STEP_SIZE_ITEM->number.target;
 	}
-	if (!robofocus_command(device, payload) || RESPONSE[0] != 'F' || RESPONSE[1] != 'C' || RESPONSE[2] != 0 || RESPONSE[3] != 0 || RESPONSE[4] != 0 || RESPONSE[5] > 250 || RESPONSE[6] < 1 || RESPONSE[6] > 64 || RESPONSE[7] < 1 || RESPONSE[7] > 64) {
+	if (!robofocus_command(device, payload) || RESPONSE[0] != 'F' || RESPONSE[1] != 'C' || RESPONSE[5] > 250 || RESPONSE[6] < 1 || RESPONSE[6] > 64 || RESPONSE[7] < 1 || RESPONSE[7] > 64) {
 		return false;
 	}
 	X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.value = X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM->number.target = RESPONSE[5];
@@ -491,11 +487,15 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = robofocus_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			connection_result = robofocus_position(device, true) && robofocus_maximum(device, 0) && robofocus_power(device, false) && robofocus_config(device, false) && robofocus_backlash(device, false) && robofocus_temperature(device);
+			connection_result = robofocus_position(device, true) && robofocus_maximum(device, 0) && robofocus_power(device, false) && robofocus_config(device, false) && robofocus_backlash(device, false);
+			// a failed or implausible temperature (a missing or broken probe) does not refuse the connection, as in
+			// INDI and 2.0; it is ALERT and the timer retries it
+			bool temperature = connection_result && robofocus_temperature(device);
 			if (connection_result) {
 				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = PRIVATE_DATA->poll_failed = false;
 				robofocus_ranges(device, false);
-				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = FOCUSER_LIMITS_PROPERTY->state = FOCUSER_TEMPERATURE_PROPERTY->state = X_FOCUSER_POWER_CHANNELS_PROPERTY->state = X_FOCUSER_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = FOCUSER_LIMITS_PROPERTY->state = X_FOCUSER_POWER_CHANNELS_PROPERTY->state = X_FOCUSER_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+				FOCUSER_TEMPERATURE_PROPERTY->state = temperature ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				robofocus_close(device);
