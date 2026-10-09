@@ -30,4 +30,4 @@ Select the serial port before connecting. Migration decisions and validation res
 
 ## Testing
 
-2026-10-05 15:03 3.0.0.9 mac arm64 simulator 50/50 OK
+2026-10-10 02:23 3.0.0.10 mac arm64 simulator 50/50 OK

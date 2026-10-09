@@ -232,10 +232,11 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 
 | Defect | Impact | Fix | Regression test |
 | --- | --- | --- | --- |
-| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | Abort of an active move ends both ALERT at the stopped position (value = target). | `abort`, `abort_queued` |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | Abort of an active move ends both ALERT at the stopped position (value; the target keeps the request). | `abort`, `abort_queued` |
 | Abort while idle sent `H` | A stop command was sent with nothing moving. | Abort with no commanded, external or uncertain motion and no BUSY move ends OK without `H`. | `abort` (H count stays 1) |
 | A good poll did not clear a failed poll | After one failed idle position poll `FOCUSER_POSITION` stayed ALERT until the next move. | A failed idle poll is remembered; the next good poll restores OK. A failed or aborted move is not affected. | `poll_malformed`, `poll_short`, `poll_overlong`, `poll_silent`, `poll_partial`, `poll_flood` |
 | Uncommanded motion was published OK | Hand-controller motion and motion running at connect only changed the value, never BUSY. | The idle poll publishes `FOCUSER_POSITION` BUSY with target = measured value while the position changes and OK once it settles; abort and disconnect stop it with `H`. A failed move stays ALERT. | `external_position`, `moving_at_connect` |
+| Ended move overwrote the requested target | An aborted (also an overtaken queued) move published the target at the stopped position; after a failed readback or a stall the first idle poll moved the target to the settled position. | 3.0.0.10: abort publishes the stopped position as the value only; the first idle reading after the driver ended its own move settles only the value, a later change is uncommanded motion. | `abort`, `abort_queued`, `stop_failure`, `motion_poll_failure`, `stalled_motion` |
 | No-sensor sentinel reported ALERT | Workbook row 32: 99.9 means no sensor, not a failure. | 99.9 publishes `FOCUSER_TEMPERATURE` IDLE (once, framework update suppression) with the last valid value; failed readings stay ALERT. | `sensor_absent`, `temperature` |
 | ALERT survived reconnect | A session ending with an aborted move reconnected with `FOCUSER_POSITION` ALERT. | Connect sets `FOCUSER_POSITION`/`FOCUSER_STEPS` OK. | `abort` (reconnect step) |
 
@@ -253,7 +254,7 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 - Position poll failure keeps the last value, next good poll restores OK, move works: `poll_*`. Temperature sentinel/failure/recovery: `temperature`, `sensor_absent`.
 - Uncommanded motion BUSY then OK, no command, relative move from it: `external_position`, `moving_at_connect`.
 - Relative/absolute/no-op/clipping/reversal: `relative`, `noop`, `normal`. Move refused while another is BUSY: `overlap`, `rejected_change`.
-- Abort mid-move, ALERT on both properties, value = target = stopped, `H` once, two equal fresh readbacks, idle abort without `H`, OFF request without command, reconnect OK, fresh move: `abort`. Abort overtaking a queued GOTO (no `M`, one `H`): `abort_queued`.
+- Abort mid-move, ALERT on both properties, value = stopped, target = request also after polls, `H` once, two equal fresh readbacks, idle abort without `H`, OFF request without command, reconnect OK, fresh move: `abort`. Abort overtaking a queued GOTO (no `M`, one `H`): `abort_queued`.
 - Refused stop keeps the move BUSY, retry works: `stop_failure`. Failed readback during motion stops, ends ALERT and is not turned OK by idle polls: `motion_poll_failure`; stall: `stalled_motion`.
 - Disconnect during motion sends `H` once before the port closes, nothing follows, reconnect OK at the real stopped position: `disconnect_motion`, `disconnect_read`.
 - Transport loss during a move and idle: later requests ALERT, nothing BUSY, disconnect completes: `transport_loss`, `transport_loss_idle`.
