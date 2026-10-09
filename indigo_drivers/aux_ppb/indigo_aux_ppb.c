@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000020
+#define DRIVER_VERSION       0x03000021
 #define DRIVER_NAME          "indigo_aux_ppb"
 #define DRIVER_LABEL         "PegasusAstro Pocket Powerbox"
 #define AUX_DEVICE_NAME      "Pocket Powerbox"
@@ -172,7 +172,9 @@ static bool ppb_open(indigo_device *device) {
 				AUX_DSLR_POWER_PROPERTY->hidden = false;
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
 				ok = true;
-			} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
+			} else if (!strncmp(PRIVATE_DATA->response, "SPB", 3)) {
+				// No command table of the Saddle box is published; INDI accepts any identity
+				// containing "SPB", so only the model prefix is required here.
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro SPB");
 				PRIVATE_DATA->is_advance = false;
 				PRIVATE_DATA->is_micro = false;

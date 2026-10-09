@@ -1,6 +1,6 @@
 // Pegasus pocket powerbox simulator for Arduino
 //
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -22,15 +22,23 @@
 #define Serial SerialUSB
 #endif
 
+// Select the simulated model, the default is the original Pocket Powerbox (PPB).
 //#define PPBA
+//#define PPBM
 //#define SPB
+
+#if defined(PPBA) || defined(PPBM)
+#define ADVANCE
+#endif
 
 bool power_1234 = true;
 byte power_5 = 0;
 byte power_6 = 0;
 bool power_dslr = true;
 bool autodev = true;
-#ifdef PPBA
+// The power-on outlet mask PE stores; it does not switch the outlets now.
+String boot_mask = "1111";
+#ifdef ADVANCE
 bool power_alert = 0;
 int power_adj = 5;
 int dew_aggr = 210;
@@ -45,85 +53,109 @@ void setup() {
 
 void loop() {
   String command = Serial.readStringUntil('\n');
+  command.trim();
+  if (command.length() == 0) {
+    return;
+  }
   if (command.equals("P#")) {
-#ifdef PPBA
+#if defined(PPBA)
     Serial.println("PPBA_OK");
-#else
-#ifdef SPB
-Serial.println("SPB");
+#elif defined(PPBM)
+    Serial.println("PPBM_OK");
+#elif defined(SPB)
+    Serial.println("SPB");
 #else
     Serial.println("PPB_OK");
 #endif
-#endif
   } else if (command.startsWith("PE:")) {
-    power_1234 = command.charAt(5) == '1';
-    power_dslr = command.charAt(6) == '1';
+    // Only the power-on state is stored, the outlets keep their current state.
+    boot_mask = command.substring(3);
     Serial.println("PE:1");
   } else if (command.startsWith("P1:")) {
     power_1234 = command.charAt(3) == '1';
     Serial.println(command);
   } else if (command.startsWith("P2:")) {
+    // 0 and 1 switch the output; on the Advance and Micro 3, 5, 8, 9 and 12 only select the
+    // voltage and leave the output as it is.
     int value = command.substring(3).toInt();
-    switch (value) {
-      case 0:
-        power_dslr = false;
-        break;
-      case 1:
-        power_dslr = true;
-        break;
-#ifdef PPBA
-      default:
-        power_dslr = true;
-        power_adj = value;
-        break;
+    if (value == 0) {
+      power_dslr = false;
+    } else if (value == 1) {
+      power_dslr = true;
+#ifdef ADVANCE
+    } else {
+      power_adj = value;
 #endif
     }
     Serial.println(command);
-  } else if (command.startsWith("P3:")) {
-    power_5 = command.substring(3).toInt();
-    Serial.println(command);
-  } else if (command.startsWith("P4:")) {
-    power_6 = command.substring(3).toInt();
-    Serial.println(command);
-  } else if (command.startsWith("PF")) {
-  } else if (command.startsWith("PA")) {
-#ifdef PPBA
+  } else if (command.startsWith("P3:") || command.startsWith("P4:")) {
+    // The PPB names the dew outputs by their power port in the reply: P3 answers P5:nnn and
+    // P4 answers P6:nnn. The Advance and Micro echo the command number.
+    int channel = command.charAt(1) - '3';
+    int value = command.substring(3).toInt();
+    if (channel == 0) {
+      power_5 = value;
+    } else {
+      power_6 = value;
+    }
+#ifdef ADVANCE
+    Serial.print(channel == 0 ? "P3:" : "P4:");
+#else
+    Serial.print(channel == 0 ? "P5:" : "P6:");
+#endif
+    Serial.println(value);
+  } else if (command.equals("PF")) {
+    // Reboot, no answer.
+  } else if (command.equals("PA")) {
+#if defined(PPBA)
     Serial.print("PPBA:12.2:");
+#elif defined(PPBM)
+    Serial.print("PPBM:12.2:");
 #else
     Serial.print("PPB:12.2:");
 #endif
-    Serial.print((power_1234 || power_dslr || power_5 || power_6) * 65);
+    // The current is in 1/65 A, 1 A with any load switched on.
+    Serial.print((power_1234 || power_dslr || power_5 || power_6) ? 65 : 0);
     Serial.print(".0:23.2:59:14.7:");
     Serial.print(power_1234 ? '1' : '0');
     Serial.print(':');
-		Serial.print(power_dslr ? '1' : '0');
-		Serial.print(':');
+#ifdef SPB
+    // The Saddle box has no DSLR output.
+    Serial.print('0');
+#else
+    Serial.print(power_dslr ? '1' : '0');
+#endif
+    Serial.print(':');
     Serial.print(power_5);
     Serial.print(':');
     Serial.print(power_6);
     Serial.print(':');
-#ifdef PPBA
+#ifdef ADVANCE
     Serial.print(autodev ? '1' : '0');
     Serial.print(':');
-    Serial.print(power_alert);
+    Serial.print(power_alert ? '1' : '0');
     Serial.print(':');
     Serial.println(power_adj);
-#else    
+#else
     Serial.println(autodev ? '1' : '0');
 #endif
   } else if (command.startsWith("PL:")) {
     Serial.println(command);
   } else if (command.equals("PV")) {
     Serial.println("1.5");
-#ifdef PPBA
+#ifdef ADVANCE
   } else if (command.startsWith("DA:")) {
     dew_aggr = command.substring(3).toInt();
     Serial.println(command);
+  } else if (command.equals("PD:99")) {
+    Serial.print("PD:");
+    Serial.println(dew_aggr);
   } else if (command.startsWith("PD:")) {
+    // The Advance answers with the dew aggressiveness instead of an echo.
     autodev = command.charAt(3) == '1';
     Serial.print("PD:");
     Serial.println(dew_aggr);
-#else    
+#else
   } else if (command.startsWith("PD:")) {
     autodev = command.charAt(3) == '1';
     Serial.println(command);

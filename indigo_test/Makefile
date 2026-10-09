@@ -2923,6 +2923,19 @@ AUX_FLIPFLAT_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_flipflat.a $(TEST_LDF
 $(TEST_BUILD)/hardware/test_aux_flipflat_hw: hardware/test_aux_flipflat_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_flipflat.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_FLIPFLAT_HW_TEST_LDFLAGS)
 
+# A physical PegasusAstro Pocket Powerbox (PPB, Advance, Micro) or Saddle Powerbox, or the Arduino sketch
+# aux_ppb_simulator.ino on a board, is opt-in and excluded from normal integration tests. THE OUTLETS SWITCH
+# OFF AND ON, THE HEATERS RUN AND THE BOX REBOOTS; the run restores the states it found and stores them as
+# the power-on default. Set PPB_HW_PORT to the port.
+.PHONY: test-aux-ppb-hw
+test-aux-ppb-hw: check-lib $(TEST_BUILD)/hardware/test_aux_ppb_hw
+	$(TEST_BUILD)/hardware/test_aux_ppb_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_PPB_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_ppb.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_ppb_hw: hardware/test_aux_ppb_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_ppb.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_PPB_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

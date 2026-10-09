@@ -26,7 +26,7 @@ driver ppb {
 	label = "PegasusAstro Pocket Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, PPBA support by Aaron Freimark <abf@mac.com>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 32;
+	version = 33;
 	serial {
 		pattern {
 			product = "PPB";
@@ -92,7 +92,9 @@ driver ppb {
 						AUX_DSLR_POWER_PROPERTY->hidden = false;
 						AUX_POWER_OUTLET_PROPERTY->count = 2;
 						ok = true;
-					} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
+					} else if (!strncmp(PRIVATE_DATA->response, "SPB", 3)) {
+						// No command table of the Saddle box is published; INDI accepts any identity
+						// containing "SPB", so only the model prefix is required here.
 						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PegasusAstro SPB");
 						PRIVATE_DATA->is_advance = false;
 						PRIVATE_DATA->is_micro = false;

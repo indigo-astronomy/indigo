@@ -44,6 +44,10 @@ static bool autodev = true;
 static bool power_alert = false;
 static int dslr_adj = 5;
 static double voltage = 12.2, temperature = 23.2, humidity = 59, dewpoint = 14.7;
+// The power-on outlet mask PE stores; it does not switch the outlets now.
+static char boot_mask[5] = "1111";
+// Replaces the model's answer to P#.
+static const char *identity;
 // Fault injection: the named command answers with MODE instead of its reply.
 // invalid - an unparsable line, short - a truncated status frame, silent - no
 // answer at all, close - the port is closed, which is how a transport loss looks.
@@ -80,6 +84,7 @@ static void usage(const char *name) {
 	printf("  --no-autodew            Start with automatic dew control off\n");
 	printf("  --power-alert           Report the power alert flag (PPBA and PPBM)\n");
 	printf("  --dslr <volts>          Initial DSLR output voltage (PPBA and PPBM)\n");
+	printf("  --identity <reply>      Answer P# with <reply> instead of the model's identity\n");
 	printf("  --voltage <volts>       Reported input voltage\n");
 	printf("  --weather <t> <h> <d>   Reported temperature, humidity and dewpoint\n");
 	printf("  --fault <cmd> <mode>    Answer <cmd> with invalid|short|silent|close\n");
@@ -124,6 +129,12 @@ static bool parse_args(int argc, char *argv[]) {
 			temperature = atof(argv[++i]);
 			humidity = atof(argv[++i]);
 			dewpoint = atof(argv[++i]);
+		} else if (!strcmp(argv[i], "--identity")) {
+			if (++i == argc) {
+				fprintf(stderr, "--identity requires a reply\n");
+				return false;
+			}
+			identity = argv[i];
 		} else if (!strcmp(argv[i], "--voltage")) {
 			if (++i == argc) {
 				fprintf(stderr, "--voltage requires a value\n");
@@ -276,8 +287,11 @@ static void dispatch_command(int fd, const char *cmd) {
 	if (inject_fault(fd, cmd)) {
 		return;
 	}
+	bool advance = options.model == MODEL_PPBA || options.model == MODEL_PPBM;
 	if (!strcmp(cmd, "P#")) {
-		if (options.model == MODEL_PPBA)
+		if (identity != NULL)
+			sim_printf(fd, "%s\n", identity);
+		else if (options.model == MODEL_PPBA)
 			sim_printf(fd, "PPBA_OK\n");
 		else if (options.model == MODEL_PPBM)
 			sim_printf(fd, "PPBM_OK\n");
@@ -292,7 +306,7 @@ static void dispatch_command(int fd, const char *cmd) {
 	} else if (!strcmp(cmd, "PA")) {
 		// Current raw: driver divides by 65 to get amps; send 65 when load is present
 		int current_raw = (power1 || power2 || dew1 > 0 || dew2 > 0) ? 65 : 0;
-		if (options.model == MODEL_PPBA || options.model == MODEL_PPBM) {
+		if (advance) {
 			sim_printf(fd, "%s:%.1f:%d.0:%.1f:%.0f:%.1f:%d:%d:%d:%d:%d:%d:%d\n",
 				options.model == MODEL_PPBM ? "PPBM" : "PPBA", voltage, current_raw, temperature, humidity, dewpoint, power1, power2, dew1, dew2, autodev, power_alert, dslr_adj);
 		} else {
@@ -305,32 +319,38 @@ static void dispatch_command(int fd, const char *cmd) {
 		power1 = cmd[3] == '1';
 		sim_printf(fd, "%s\n", cmd);
 	} else if (!strncmp(cmd, "P2:", 3)) {
+		// 0 and 1 switch the output; on the Advance and Micro 3, 5, 8, 9 and 12 only select the
+		// voltage and leave the output as it is (indilib/indi#2471, PPBADV_Gen2C firmware).
 		int val = atoi(cmd + 3);
 		if (val == 0) {
 			power2 = false;
-		} else {
+		} else if (val == 1) {
 			power2 = true;
-			if (val > 1)
-				dslr_adj = val;
+		} else if (advance) {
+			dslr_adj = val;
 		}
 		sim_printf(fd, "%s\n", cmd);
-	} else if (!strncmp(cmd, "P3:", 3)) {
-		dew1 = atoi(cmd + 3);
-		sim_printf(fd, "%s\n", cmd);
-	} else if (!strncmp(cmd, "P4:", 3)) {
-		dew2 = atoi(cmd + 3);
-		sim_printf(fd, "%s\n", cmd);
+	} else if (!strncmp(cmd, "P3:", 3) || !strncmp(cmd, "P4:", 3)) {
+		// The PPB names the dew outputs by their power port in the reply: P3 answers P5:nnn and
+		// P4 answers P6:nnn. The Advance and Micro echo the command number.
+		int channel = cmd[1] - '3';
+		int value = atoi(cmd + 3);
+		if (channel == 0)
+			dew1 = value;
+		else
+			dew2 = value;
+		sim_printf(fd, "P%d:%d\n", (advance ? 3 : 5) + channel, value);
 	} else if (!strncmp(cmd, "PD:", 3)) {
 		autodev = cmd[3] == '1';
 		// PPBA responds with current dew aggressiveness; PPB/SPB echo the command
-		if (options.model == MODEL_PPBA || options.model == MODEL_PPBM)
+		if (advance)
 			sim_printf(fd, "PD:210\n");
 		else
 			sim_printf(fd, "%s\n", cmd);
 	} else if (!strncmp(cmd, "PE:", 3)) {
-		power1 = cmd[3] == '1';
-		if (options.model != MODEL_SPB && cmd[4] != '\0')
-			power2 = cmd[4] == '1';
+		// Only the power-on state is stored, the outlets keep their current state.
+		snprintf(boot_mask, sizeof(boot_mask), "%s", cmd + 3);
+		serial_simulator_trace_line(options.trace, "**", boot_mask);
 		sim_printf(fd, "PE:1\n");
 	} else if (!strcmp(cmd, "PF")) {
 		// Reboot: driver sends via indigo_uni_printf directly, no response expected
@@ -365,7 +385,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (!options.headless) {
-		const char *model_name = options.model == MODEL_PPBA ? "PPBA" : (options.model == MODEL_SPB ? "SPB" : "PPB");
+		const char *model_name = options.model == MODEL_PPBA ? "PPBA" : options.model == MODEL_PPBM ? "PPBM" : options.model == MODEL_SPB ? "SPB" : "PPB";
 		printf("Pocket Powerbox %s simulator is running on %s\n", model_name, port);
 		fflush(stdout);
 	}

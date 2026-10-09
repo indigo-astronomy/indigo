@@ -90,8 +90,48 @@ Findings TGT-043 to TGT-045 and the aux_ppb part of TGT-B07 of `indigo_drivers/R
   aux_ppb`: 32/32.
 - Not verified on hardware.
 
+## Strict checks audited against the vendor tables and INDI (2026-10-09, 3.0.0.33)
+
+The driver's protocol checks were compared with the two vendor command tables in this directory
+(`Pocket_Powerbox_Serial_Command_Table.pdf`, firmware 1.1 and later; `Pocket_Powerbox_Advance_Serial_Command_Table.pdf`,
+Micro and Advance, firmware 2.5 and later) and with INDI's `pegasus_ppb`, `pegasus_ppba` and `pegasus_spb`.
+Only the identity is compared byte for byte; every other reply only has to arrive.
+
+### Defect
+
+- PPB-04: the Saddle Powerbox was recognised only by the exact identity `SPB`. No command table of the Saddle box
+  is published, and INDI accepts any identity that contains `SPB`, so a firmware answering with a suffix (as
+  every other Pegasus box does, `PPB_OK`, `PPBA_OK`) was refused. The identity now only has to start with `SPB`.
+  Test: `spb_identity_is_matched_by_its_prefix` (fails on 3.0.0.32, passes on 3.0.0.33).
+
+### Checked and left as they are
+
+- The status current is divided by 65 for every model. The PPB table says 600, but INDI divides by 65 for the PPB,
+  PPBA and SPB alike, the Advance table gives 65 "for compatibility issues with PPB", and the original driver used 65.
+- `P2:<volts>` on the Advance and Micro only selects the voltage of the adjustable output and does not switch it on
+  (indilib/indi#2471). The driver keeps the voltage (`X_DSLR_POWER`) and the outlet switch (`P2:0`/`P2:1`) apart,
+  which matches it.
+
+### Simulators
+
+Both simulators followed the driver rather than the tables. Now:
+
+- `P2:<volts>` selects the voltage only and leaves the output as it is (test `dslr_voltage_leaves_the_outlet_switch_alone`).
+- The PPB answers `P3`/`P4` with `P5:nnn`/`P6:nnn`, the Advance and Micro echo `P3:nnn`/`P4:nnn`.
+- `PE` stores the power-on mask and no longer switches the outlets; the sketch also read the wrong characters of it.
+- The C simulator gained `--identity <reply>`; the sketch gained the Micro (`#define PPBM`) and the Saddle box
+  without a DSLR output, and the Advance answers `PD:99` with the dew aggressiveness.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 34/34.
+- New hardware suite `indigo_test/hardware/test_aux_ppb_hw.c` (`make test-aux-ppb-hw`, `PPB_HW_PORT`), adapting to
+  the identified model. Recorded runs against `aux_ppb_simulator.ino` on an ESP32-S3: Advance 12/12, PPB 12/12,
+  Saddle 12/12.
+
 ## Final test summary
 
-- Simulated tests run: 32; passed: 32 (recorded run of `test_aux_ppb_simulator` through
-  `tools/run_driver_test.py`, driver version 31, Linux x64). The earlier 29/29 run was on driver version 29.
-- Hardware tests run: 0; passed: 0. No Pocket Powerbox was available.
+- Simulated tests run: 34; passed: 34 (recorded run of `test_aux_ppb_simulator` through
+  `tools/run_driver_test.py`, driver version 33, macOS arm64).
+- Hardware tests run: 36; passed: 36 (the Arduino sketch on an ESP32-S3 as Advance, PPB and Saddle box, 12 cases
+  each, driver version 33). No physical Pocket Powerbox was available.
