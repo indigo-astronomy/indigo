@@ -34,6 +34,8 @@ void loop() {
   if (Serial.available()) {
     String command = Serial.readStringUntil('#');
     if (command.equals("V")) {
+      // The meter answers when the measurement is over, up to 120 s under a dark sky.
+      delay(3000);
       Serial.print("17.34\n");
     }
   }

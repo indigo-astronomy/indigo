@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS LPM"
 #define AUX_DEVICE_NAME      "ASTROMECHANICS LPM"
@@ -51,6 +51,8 @@ typedef struct {
 	indigo_property *aux_weather_property;
 	//+ data
 	char response[16];
+	bool measuring;
+	double deadline;
 	//- data
 } astromechanics_private_data;
 
@@ -58,16 +60,9 @@ typedef struct {
 
 //+ code
 
-static bool astromechanics_command(indigo_device *device, char *command) {
-	long result = indigo_uni_discard(PRIVATE_DATA->handle);
-	if (result >= 0) {
-		result = indigo_uni_printf(PRIVATE_DATA->handle, command);
-		if (result > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n#", "\n#", INDIGO_DELAY(1));
-		}
-	}
-	return result > 0;
-}
+// V# is answered when the measurement is over, which takes up to 120 s under a dark sky.
+#define MEASUREMENT_TIMEOUT  130
+#define POLL_INTERVAL        10
 
 static bool astromechanics_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
@@ -87,15 +82,33 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ aux.on_timer
-	if (astromechanics_command(device, "V#")) {
+	// The request is sent once and the answer waited for in short steps, so a long measurement
+	// neither blocks the queue nor ends ALERT before the meter could answer.
+	if (!PRIVATE_DATA->measuring) {
+		if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && indigo_uni_printf(PRIVATE_DATA->handle, "V#") > 0) {
+			PRIVATE_DATA->measuring = true;
+			PRIVATE_DATA->deadline = indigo_monotonic_time() + MEASUREMENT_TIMEOUT;
+		} else {
+			AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+			indigo_execute_handler_in(device, POLL_INTERVAL, aux_timer_callback);
+			return;
+		}
+	}
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n#", "\n#", INDIGO_DELAY(0.5)) > 0) {
+		PRIVATE_DATA->measuring = false;
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(PRIVATE_DATA->response);
 		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
 		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (indigo_monotonic_time() < PRIVATE_DATA->deadline) {
+		indigo_execute_handler_in(device, 0.5, aux_timer_callback);
+		return;
 	} else {
+		PRIVATE_DATA->measuring = false;
 		AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
-	indigo_execute_handler_in(device, 10, aux_timer_callback);
+	indigo_execute_handler_in(device, POLL_INTERVAL, aux_timer_callback);
 	//- aux.on_timer
 }
 
@@ -103,6 +116,11 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
 		connection_result = astromechanics_open(device);
+		if (connection_result) {
+			//+ aux.on_connect
+			PRIVATE_DATA->measuring = false;
+			//- aux.on_connect
+		}
 		if (connection_result) {
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

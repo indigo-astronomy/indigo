@@ -39,13 +39,15 @@ typedef struct {
 	bool trace;
 	const char *ready_file;
 	double sky_brightness;
+	double sampling_time;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
-	.sky_brightness = 17.34
+	.sky_brightness = 17.34,
+	.sampling_time = 0
 };
 
 static const char *simulator_name = "aux_astromechanics";
@@ -57,6 +59,7 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>        Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                    Log protocol requests and replies\n");
 	printf("  --sky-brightness <mag>     Reported sky brightness [mag/arcsec2], default is 17.34\n");
+	printf("  --sampling-time <s>        Time a measurement takes before V# is answered, default is 0\n");
 	printf("  -h, --help                 Show this help and exit\n");
 }
 
@@ -82,6 +85,12 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.sky_brightness = atof(argv[i]);
+		} else if (!strcmp(argv[i], "--sampling-time")) {
+			if (++i == argc) {
+				fprintf(stderr, "--sampling-time requires seconds\n");
+				return false;
+			}
+			options.sampling_time = atof(argv[i]);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -169,6 +178,10 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 
 static void dispatch_command(int fd, const char *buffer) {
 	if (!strcmp(buffer, "V")) {
+		// The meter answers when the measurement is over, up to 120 s under a dark sky.
+		if (options.sampling_time > 0) {
+			usleep((useconds_t)(options.sampling_time * 1000000));
+		}
 		// Report sky brightness in mag/arcsec2, terminated by a newline.
 		sim_printf(fd, "%.2f\n", options.sky_brightness);
 	} else {

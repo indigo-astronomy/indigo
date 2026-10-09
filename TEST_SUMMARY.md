@@ -43,7 +43,8 @@
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | fake SDK | 16 / 16 | ✅ OK |
 |  | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | Raspberry Pi 5 | 3 / 3 | ✅ OK |
 |  | 2026-09-27 02:07 | 3.0.0.7 | linux x64 | fake SDK | 20 / 20 | ✅ OK |
-| aux_astromechanics | 2026-09-27 20:47 | 3.0.0.7 | mac arm64 | simulator | 6 / 6 | ✅ OK |
+| aux_astromechanics | 2026-10-09 13:34 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |
+|  | 2026-10-09 13:42 | 3.0.0.8 | linux arm64 | ASTROMECHANICS LPM Arduino simulator (ESP32-S3) | 4 / 4 | ✅ OK |
 | aux_cloudwatcher | 2026-09-27 07:28 | 3.0.0.15 | linux x64 | simulator | 17 / 17 | ✅ OK |
 |  | 2026-09-27 20:47 | 3.0.0.15 | mac arm64 | simulator | 17 / 17 | ✅ OK |
 | aux_dragonfly | 2026-09-27 01:32 | 3.0.0.8 | linux x64 | simulator | 17 / 17 | ✅ OK |

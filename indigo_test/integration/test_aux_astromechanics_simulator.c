@@ -135,6 +135,23 @@ cleanup:
 
 // -------------------------------------------------------------------------------- lifecycle
 
+// V# is answered when the measurement is over, up to 120 s under a dark sky (LPM PRO manual). A
+// reading that takes longer than a second must still be published; 3.0.0.7 gave up after one second
+// and ended ALERT.
+static void a_long_measurement_is_waited_for(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--sky-brightness", "21.40", "--sampling-time", "3", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_ASTROMECHANICS_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, 21.40, .005));
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_WEATHER_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+cleanup:
+	if (online) { stop_serial_driver(&astromechanics_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void reconnect_resumes_polling(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -189,6 +206,7 @@ int main(void) {
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "default_reading_is_published_with_its_bortle_class", default_reading_is_published_with_its_bortle_class },
 		{ "bortle_class_follows_the_reported_brightness", bortle_class_follows_the_reported_brightness },
+		{ "a_long_measurement_is_waited_for", a_long_measurement_is_waited_for },
 		{ "reconnect_resumes_polling", reconnect_resumes_polling },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "vanished_port_is_refused", vanished_port_is_refused }
