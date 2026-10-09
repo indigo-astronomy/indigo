@@ -30,4 +30,4 @@ Known issues: In very rare occasions, because of a firmware issue, the focuser m
 ## Testing
 
 2026-09-27 12:50 3.0.0.10 linux x64 simulator 32/32 OK
-2026-10-05 15:31 3.0.0.11 mac arm64 simulator 44/44 OK
+2026-10-10 02:12 3.0.0.12 mac arm64 simulator 44/44 OK

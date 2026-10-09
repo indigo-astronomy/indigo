@@ -178,6 +178,19 @@ static int positions_after_abort(int *positions, int size) {
 	return count;
 }
 
+static bool target_is(double target) {
+	return find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == target;
+}
+
+// Waits until the abort's readback and two idle polls after it were answered.
+static bool polled_after_abort(void) {
+	int positions[8], count = 0;
+	for (int i = 0; i < 60 && (count = positions_after_abort(positions, 8)) < 3; i++) {
+		indigo_usleep(100000);
+	}
+	return count >= 3;
+}
+
 static bool wait_commands(const char *request, int expected) {
 	for (int i = 0; i < 100; i++) {
 		if (commands(request) >= expected) {
@@ -457,23 +470,24 @@ static void abort_and_overlap(void) {
 	unsigned before = atomic_load(&revisions[1]);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":6,\"tar\":150000}") == 1 && commands("{\"cmd_id\":6,\"tar\":160000}") == 0 && commands("{\"cmd_id\":3}") == 1);
-	// An aborted move ends ALERT on both motion properties at the stopped position, never at the requested target.
+	// An aborted move ends ALERT on both motion properties at the stopped position, keeping the requested target.
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	double stopped = position->number.value;
-	SERIAL_CHECK_TRUE(position->number.target == stopped && stopped > 50000 && stopped < 150000);
-	// The stop is real: the abort's readback and a later poll report the same position, and the poll keeps ALERT.
+	SERIAL_CHECK_TRUE(position->number.target == 150000 && stopped > 50000 && stopped < 150000);
+	// The stop is real: the abort's readback and two later polls report the same position, the polls keep ALERT and the target.
 	int positions[8], count = 0;
-	for (int i = 0; i < 60 && (count = positions_after_abort(positions, 8)) < 2; i++) {
+	for (int i = 0; i < 60 && (count = positions_after_abort(positions, 8)) < 3; i++) {
 		indigo_usleep(100000);
 	}
-	SERIAL_CHECK_TRUE(count >= 2);
+	SERIAL_CHECK_TRUE(count >= 3);
 	for (int i = 0; i < count; i++) {
 		SERIAL_CHECK_EQ_INT((int)stopped, positions[i]);
 	}
 	indigo_usleep(300000);
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(target_is(150000));
 	// Abort while idle and a request with the item OFF are answered without a command.
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, false, INDIGO_OK_STATE));
@@ -498,9 +512,11 @@ static void stop_refused(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value < 150000);
+	SERIAL_CHECK_TRUE(target_is(150000));
 	// An immediate retry stops the focuser and a fresh move works.
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(2, commands("{\"cmd_id\":3}"));
+	SERIAL_CHECK_TRUE(target_is(150000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(60000));
 cleanup:
@@ -757,6 +773,10 @@ static void abort_queued(void) {
 	SERIAL_CHECK_EQ_INT(1, commands("{\"cmd_id\":3}"));
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 50000);
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	// The target stays the never-sent request, also after idle polls.
+	SERIAL_CHECK_TRUE(target_is(52000));
+	SERIAL_CHECK_TRUE(polled_after_abort());
+	SERIAL_CHECK_TRUE(target_is(52000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000, INDIGO_OK_STATE));
 cleanup:
 	atomic_store(&gate_release, true);
@@ -811,7 +831,10 @@ static void start_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(inject("MOVE", current_profile));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_ALERT_STATE));
+	// A failed start keeps the requested target, also through the recovering abort.
+	SERIAL_CHECK_TRUE(target_is(60000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(target_is(60000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -828,7 +851,9 @@ static void motion_read_failure(void) {
 	indigo_usleep(4500000);
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(target_is(80000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(target_is(80000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -841,9 +866,10 @@ static void stalled_motion(void) {
 	unsigned before = atomic_load(&revisions[1]);
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":3}") >= 1);
-	// Later good idle polls do not turn the stalled move OK.
+	// Later good idle polls do not turn the stalled move OK nor rewrite the requested target.
 	indigo_usleep(4500000);
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(target_is(80000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 51000, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();

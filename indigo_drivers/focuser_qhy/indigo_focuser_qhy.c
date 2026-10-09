@@ -70,7 +70,7 @@ typedef struct {
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_qhy"
 #define DRIVER_LABEL         "QHY Q-Focuser"
 #define FOCUSER_DEVICE_NAME  "Q-Focuser"
@@ -423,8 +423,9 @@ static void motion_finalizer(indigo_device *device) {
 		PRIVATE_DATA->moving = false;
 		PRIVATE_DATA->motion_uncertain = !recovered;
 		if (recovered) {
+			// The failed move ends at the stopped position and keeps the requested target.
 			PRIVATE_DATA->current_position = PRIVATE_DATA->last_position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_POSITION_ITEM->number.value = position;
 		}
 		qhy_motion_state(device, INDIGO_ALERT_STATE);
 		return;
@@ -445,8 +446,9 @@ static void motion_finalizer(indigo_device *device) {
 		PRIVATE_DATA->moving = false;
 		PRIVATE_DATA->motion_uncertain = !recovered;
 		if (recovered) {
+			// The stalled move ends at the stopped position and keeps the requested target.
 			PRIVATE_DATA->current_position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_POSITION_ITEM->number.value = position;
 		}
 		qhy_motion_state(device, INDIGO_ALERT_STATE);
 		return;
@@ -508,7 +510,7 @@ static void qhy_compensate(indigo_device *device, double temperature) {
 		}
 		PRIVATE_DATA->motion_uncertain = false;
 		PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = PRIVATE_DATA->last_position = position;
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		FOCUSER_POSITION_ITEM->number.value = position;
 	}
 	// The reference moves on only with a started correction, a failed one is retried from the kept reference.
 	if (qhy_start_motion(device, PRIVATE_DATA->current_position + correction)) {
@@ -861,12 +863,17 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		if (pending) {
 			int position = 0;
 			bool recovered = IS_CONNECTED && qhy_abort(device) && qhy_get_position(device, &position);
+			bool external = PRIVATE_DATA->external;
 			PRIVATE_DATA->moving = PRIVATE_DATA->external = false;
 			PRIVATE_DATA->motion_uncertain = !recovered;
 			if (recovered) {
 				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = PRIVATE_DATA->last_position = position;
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-				// An aborted move ends ALERT at the stopped position.
+				FOCUSER_POSITION_ITEM->number.value = position;
+				if (external) {
+					// Motion the driver did not command has no requested target.
+					FOCUSER_POSITION_ITEM->number.target = position;
+				}
+				// An aborted move ends ALERT at the stopped position and keeps the requested target.
 				qhy_motion_state(device, INDIGO_ALERT_STATE);
 			} else {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
