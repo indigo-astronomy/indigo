@@ -1,6 +1,6 @@
 // Lakeside focuser simulator for Arduino
 //
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // Lakeside focuser command set is extracted from INDI driver written
@@ -64,11 +64,14 @@
 
 
 
-#define LCD
-
 #ifdef ARDUINO_SAM_DUE
 #define Serial SerialUSB
+#define LCD
 #endif
+
+// The focuser travels STEPS_PER_SECOND and reports its position every REPORT_MS while it moves.
+#define STEPS_PER_SECOND 400
+#define REPORT_MS 50
 
 #ifdef LCD
 #include <LiquidCrystal.h>
@@ -77,8 +80,9 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
 unsigned direction = 0;
 unsigned temperature = 23;
-unsigned current_position = 0x8000;
-unsigned target_position = 0x8000;
+long current_position = 0x8000;
+long target_position = 0x8000;
+unsigned long last_step = 0, last_report = 0;
 unsigned backlash = 0;
 unsigned max_travel = 0xFFFF;
 unsigned step_size = 1;
@@ -89,9 +93,16 @@ unsigned slope_direction[2] = { 0, 1 };
 unsigned slope_deadband[2] = { 5, 10 };
 unsigned slope_period[2] = { 1, 10 };
 
-void response(char *prefix, unsigned value) {
-  char buffer[10];
-  sprintf(buffer, "%s%u#", prefix, value);
+void response(const char *prefix, long value) {
+  char buffer[16];
+  sprintf(buffer, "%s%ld#", prefix, value);
+  Serial.print(buffer);
+}
+
+// The temperature is padded with spaces on the left, as INDI documents it ("T   46#").
+void padded_response(const char *prefix, long value) {
+  char buffer[16];
+  sprintf(buffer, "%s%5ld#", prefix, value);
   Serial.print(buffer);
 }
 
@@ -111,24 +122,29 @@ void setup() {
 }
 
 void loop() {
-  if (target_position > current_position) {
-    current_position++;
-    response("P", current_position);
-    if (target_position == current_position)
-      Serial.print("DONE#");
-    else
-      delay(30);
-  } else if (target_position < current_position) {
-    current_position--;
-    response("P", current_position);
-    if (target_position == current_position)
-      Serial.print("DONE#");
-    else
-      delay(30);
+  unsigned long now = millis();
+  if (target_position != current_position) {
+    long delta = (long)((now - last_step) * STEPS_PER_SECOND / 1000);
+    if (delta > 0) {
+      last_step = now;
+      if (target_position > current_position)
+        current_position = current_position + delta < target_position ? current_position + delta : target_position;
+      else
+        current_position = current_position - delta > target_position ? current_position - delta : target_position;
+      if (target_position == current_position) {
+        response("P", current_position);
+        Serial.print("DONE#");
+      } else if (now - last_report >= REPORT_MS) {
+        last_report = now;
+        response("P", current_position);
+      }
+    }
+  } else {
+    last_step = now;
   }
 #ifdef LCD
   char buffer[17];
-  sprintf(buffer, "T:%05d C:%05d", target_position, current_position);
+  sprintf(buffer, "T:%05ld C:%05ld", target_position, current_position);
   lcd.setCursor(0, 0);
   lcd.print(buffer);
 #endif
@@ -139,7 +155,7 @@ void loop() {
     } else if (command.equals("?D")) {
       response("D", direction);
     } else if (command.equals("?T")) {
-      response("T", temperature * 2);
+      padded_response("T", temperature * 2);
     } else if (command.equals("?P")) {
       response("P", current_position);
     } else if (command.equals("?B")) {
@@ -172,9 +188,11 @@ void loop() {
       }
 #endif
     } else if (command.startsWith("CI")) {
-      target_position -= atol(command.c_str() + 2);
+      long value = target_position - atol(command.c_str() + 2);
+      target_position = value < 0 ? 0 : value;
     } else if (command.startsWith("CO")) {
-      target_position += atol(command.c_str() + 2);
+      long value = target_position + atol(command.c_str() + 2);
+      target_position = value > 65535 ? 65535 : value;
     } else if (command.equals("CH")) {
       target_position = current_position;
     } else if (command.equals("?1")) {
@@ -217,6 +235,8 @@ void loop() {
     } else if (command.startsWith("CRf")) {
       slope_period[1] = atol(command.c_str() + 3);
       Serial.print("OK#");
+    } else {
+      Serial.print("!#");
     }
   }
 }

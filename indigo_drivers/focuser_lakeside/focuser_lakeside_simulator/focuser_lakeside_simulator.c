@@ -172,7 +172,13 @@ static void update_motion(void) {
 	if (position != last_reported_position) {
 		last_reported_position = position;
 		if (!inject("progress", 'P')) {
-			reply("P%d#", position);
+			if (!strcmp(profile, "padded")) {
+				// numbers padded with spaces and a Kelvin report between the positions
+				reply("P%5d#", position);
+				reply("K%5d#", 592);
+			} else {
+				reply("P%d#", position);
+			}
 		}
 	}
 	if (motion.duration == 0) {
@@ -194,7 +200,11 @@ static void start_move(int target) {
 }
 
 static void value_reply(char prefix, int value) {
-	reply("%c%d#", prefix, value);
+	if (!strcmp(profile, "padded")) {
+		reply("%c%5d#", prefix, value);
+	} else {
+		reply("%c%d#", prefix, value);
+	}
 }
 
 static void dispatch(const char *command) {
@@ -221,7 +231,12 @@ static void dispatch(const char *command) {
 	} else if (!strcmp(command, "?D")) {
 		value_reply('D', reverse);
 	} else if (!strcmp(command, "?T")) {
-		value_reply('T', (int)(temperature * 2));
+		if (!strcmp(profile, "padded")) {
+			// no probe connected
+			reply("TN/A#");
+		} else {
+			value_reply('T', (int)(temperature * 2));
+		}
 	} else if (!strcmp(command, "CTF")) {
 		automatic = false;
 	} else if (!strcmp(command, "CTN")) {
@@ -291,7 +306,7 @@ int main(int argc, char **argv) {
 		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
 			profile = argv[++i];
 		} else {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|start_state|moving]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|start_state|moving|padded]\n", argv[0]);
 			return 1;
 		}
 	}

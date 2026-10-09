@@ -591,6 +591,32 @@ cleanup:
 	driver_stop();
 }
 
+// An unreadable temperature does not refuse the focuser, as in the 2.0 driver: it connects with the temperature in
+// ALERT.
+static void temperature_failure_connects(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lakeside_focuser));
+	SERIAL_CHECK_TRUE(fault("?T", "malformed"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lakeside_focuser, fixture.port));
+	// the poll right after the connection reads it again
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
+// Numbers padded with spaces, a missing probe ("TN/A#") and other reports during a move (the Kelvin "K" report),
+// as INDI documents them: the focuser connects, the temperature is idle and a move ends at its target.
+static void padded_replies_are_read(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_TEMPERATURE_PROPERTY_NAME)->state == INDIGO_IDLE_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 32768);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == 33268);
+	SERIAL_CHECK_TRUE(commands("CH") == 0);
+cleanup:
+	driver_stop();
+}
+
 static void poll_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	const char *command = strstr(current_profile, "temperature") ? "?T" : "?P";
@@ -675,6 +701,12 @@ static void motion_reply_failure(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, !strcmp(current_profile, "completion_failure") ? 20 : 500, INDIGO_BUSY_STATE));
+	if (strcmp(current_profile, "completion_failure")) {
+		// a malformed progress report is skipped, as the 2.0 driver and INDI did, and the move ends at its target
+		SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(commands("CH") == 0);
+		goto cleanup;
+	}
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(commands("CH") > 0);
 	// Later good idle polls do not turn the failed move OK.
@@ -822,7 +854,7 @@ static int run_cases(const lakeside_test *cases, int count) {
 		}
 		current_profile = cases[i].profile;
 		unlink(fault_path);
-		const char *simulator_profile = !strcmp(current_profile, "split") || !strcmp(current_profile, "alternate") || !strcmp(current_profile, "start_state") || !strcmp(current_profile, "moving") ? current_profile : "normal";
+		const char *simulator_profile = !strcmp(current_profile, "split") || !strcmp(current_profile, "alternate") || !strcmp(current_profile, "start_state") || !strcmp(current_profile, "moving") || !strcmp(current_profile, "padded") ? current_profile : "normal";
 		const char *args[] = { "--profile", simulator_profile, NULL };
 		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_LAKESIDE_SIMULATOR_EXECUTABLE, args)) {
 			failures++;
@@ -882,16 +914,16 @@ int main(void) {
 		{ "init_probe_silent", rejected_connection, "??_silent" }, { "init_probe_overlong", rejected_connection, "??_overlong" },
 		{ "init_slope_reject", rejected_connection, "CRg1_reject" }, { "init_position_malformed", rejected_connection, "?P" },
 		{ "init_backlash_partial", rejected_connection, "?B_partial" }, { "init_direction_malformed", rejected_connection, "?D" },
-		{ "init_temperature_malformed", rejected_connection, "?T" }, { "init_profile_malformed", rejected_connection, "?1" },
+		{ "init_temperature_malformed", temperature_failure_connects, "normal" }, { "init_profile_malformed", rejected_connection, "?1" },
 		{ "poll_position_malformed", poll_failure, "position" }, { "poll_position_partial", poll_failure, "position_partial" },
 		{ "poll_position_overlong", poll_failure, "position_overlong" }, { "poll_temperature_malformed", poll_failure, "temperature" },
 		{ "backlash_failure", control_failure, "backlash_failure" }, { "compensation_failure", control_failure, "compensation_failure" },
 		{ "slope_failure", control_failure, "slope_failure" }, { "external_state", external_state, "normal" },
-		{ "stalled_motion", stalled_motion, "normal" }, { "motion_reply_failure", motion_reply_failure, "progress_failure" },
+		{ "stalled_motion", stalled_motion, "normal" }, { "motion_progress_skipped", motion_reply_failure, "progress_failure" },
 		{ "completion_failure", motion_reply_failure, "completion_failure" }, { "stop_failure", stop_failure, "normal" },
 		{ "start_transport_loss", start_transport_loss, "normal" }, { "controls_during_motion", controls_during_motion, "normal" },
 		{ "disconnect_motion", disconnect_motion, "normal" }, { "reconnect", reconnect, "normal" },
-		{ "instances", instances, "normal" }
+		{ "instances", instances, "normal" }, { "padded_replies", padded_replies_are_read, "padded" }
 	};
 	return run_cases(tests, ARRAY_SIZE(tests));
 }

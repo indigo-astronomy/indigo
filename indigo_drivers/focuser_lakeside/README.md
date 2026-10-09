@@ -25,4 +25,5 @@ Tested with simulator only
 
 ## Testing
 
-2026-10-05 15:14 3.0.0.10 mac arm64 simulator 41/41 OK
+2026-10-09 20:33 3.0.0.11 mac arm64 simulator 42/42 OK
+2026-10-09 20:37 3.0.0.11 linux arm64 LakesideAstro Arduino simulator (ESP32-S3) 8/8 OK

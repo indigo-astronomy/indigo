@@ -131,3 +131,42 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 - Reconnect to another model: the driver distinguishes no models.
 
 Validation: `python3 tools/run_driver_test.py focuser_lakeside` (recorded in README `## Testing`).
+
+## Reply parsing against INDI, sketch and hardware suite (2026-10-09, 3.0.0.11)
+
+No protocol document is bundled; the checks were compared with INDI's `lakeside` and the 2.0 driver, which read
+numbers with `atol` and skipped anything unexpected during a move.
+
+### Defects
+
+- LS-01: a number padded with spaces was refused. INDI documents the temperature as `Tnnnnn#` padded with spaces on
+  the left and reads every value with `%5d`; the 3.0 parser refused any leading space, so a real controller's
+  temperature (and every other padded value) failed. Leading spaces are skipped now.
+- LS-02: a focuser without a temperature probe could not connect. It answers `?T#` with `TN/A#` (INDI), which
+  failed the connection; an unreadable temperature failed it too, where the 2.0 driver only marked the property.
+  `TN/A#` leaves the temperature IDLE, an unreadable one ALERT, and neither refuses the focuser.
+- LS-03: any line other than `Pnnnnn#` or `DONE#` during a move stopped the focuser and ended the move ALERT. INDI
+  decodes further reports during a move (the Kelvin temperature `Knnnnn#`) and the 2.0 driver skipped them; such
+  lines are skipped now, and the existing 4 s bound still ends a move that never reports `DONE`.
+
+Tests: `padded_replies` (simulator profile `padded`: padded numbers, `TN/A#`, `K` reports during the move) and
+`init_temperature_malformed` (connects with the temperature ALERT) fail on 3.0.0.10 and pass on 3.0.0.11;
+`motion_progress_skipped` (was `motion_reply_failure`) expects the move to end at its target.
+
+`rejected_change` depends on a 0.2 s abort window and failed in full runs with both 3.0.0.10 and 3.0.0.11 on a
+loaded host; it passes in isolation and in the recorded run.
+
+### Sketch
+
+`focuser_lakeside_simulator.ino` moved one step per 30 ms with a position report per step, let `CI` below zero and
+`CO` past 65535 wrap around, answered nothing to unknown commands and always drove an LCD shield. It now travels 400
+steps/s with a report every 50 ms, clamps the travel, answers `!#` to unknown commands, pads the temperature as
+INDI documents and uses the LCD on the Arduino Due only.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 42/42.
+- New hardware suite `indigo_test/hardware/test_focuser_lakeside_hw.c` (`make test-focuser-lakeside-hw`,
+  `LAKESIDE_HW_PORT`): connection values, relative moves (the position is read-only), an abort, backlash and slope
+  compensation read back after a reconnect and restored, the active slope and the compensation mode, reconnect and
+  INIT/SHUTDOWN. Recorded run against the sketch on an ESP32-S3: 8/8. No physical focuser is available.

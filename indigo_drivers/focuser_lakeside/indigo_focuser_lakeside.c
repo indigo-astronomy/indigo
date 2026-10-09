@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_lakeside"
 #define DRIVER_LABEL         "LakesideAstro Focuser"
 #define FOCUSER_DEVICE_NAME  "LakesideAstro Focuser"
@@ -117,7 +117,12 @@ static bool lakeside_ack(indigo_device *device, const char *command, ...) {
 	return result > 0 && lakeside_read(device, 1) && !strcmp(RESPONSE, "OK");
 }
 
+// The controller pads numbers with spaces on the left ("T   45#", as INDI documents), the 2.0 driver read them
+// with atol; the padding is skipped.
 static bool lakeside_integer(const char *text, int minimum, int maximum, int *value) {
+	while (text && *text == ' ') {
+		text++;
+	}
 	if (!text || !*text || isspace((unsigned char)*text)) {
 		return false;
 	}
@@ -167,13 +172,20 @@ static bool lakeside_position(indigo_device *device) {
 	return true;
 }
 
-static bool lakeside_temperature(indigo_device *device) {
+// "TN/A#" is the answer without a probe: no reading, but no failure either.
+static indigo_property_state lakeside_temperature(indigo_device *device) {
 	int half_degrees = 0;
-	if (!lakeside_value(device, 'T', -200, 200, &half_degrees, "?T#")) {
-		return false;
+	if (!lakeside_command(device, true, "?T#")) {
+		return INDIGO_ALERT_STATE;
+	}
+	if (!strcmp(RESPONSE, "TN/A")) {
+		return INDIGO_IDLE_STATE;
+	}
+	if (RESPONSE[0] != 'T' || !lakeside_integer(RESPONSE + 1, -200, 200, &half_degrees)) {
+		return INDIGO_ALERT_STATE;
 	}
 	FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = half_degrees / 2.0;
-	return true;
+	return INDIGO_OK_STATE;
 }
 
 static bool lakeside_read_slope(indigo_device *device, int profile) {
@@ -232,6 +244,13 @@ static void motion_finalizer(indigo_device *device) {
 	}
 	int position = 0;
 	if (RESPONSE[0] != 'P' || !lakeside_integer(RESPONSE + 1, 0, 65535, &position)) {
+		// Anything else the controller reports during a move is skipped, as the 2.0 driver and INDI did; the
+		// stall bound still ends a move that never reports DONE.
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Skipped '%s' during the move", RESPONSE);
+		if (++PRIVATE_DATA->stalled < 40) {
+			indigo_execute_handler_in(device, 0.1, motion_finalizer);
+			return;
+		}
 		lakeside_command(device, false, "CH#");
 		PRIVATE_DATA->active = false;
 		PRIVATE_DATA->uncertain = true;
@@ -297,7 +316,7 @@ static void focuser_timer_callback(indigo_device *device) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		FOCUSER_TEMPERATURE_PROPERTY->state = lakeside_temperature(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		FOCUSER_TEMPERATURE_PROPERTY->state = lakeside_temperature(device);
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	indigo_execute_handler_in(device, 1, focuser_timer_callback);
@@ -311,7 +330,9 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ focuser.on_connect
 			int position = 0, backlash = 0, reverse = 0;
-			connection_result = lakeside_command(device, false, "CTF#") && lakeside_ack(device, "CRg1#") && lakeside_value(device, 'P', 0, 65535, &position, "?P#") && lakeside_value(device, 'B', 0, 65535, &backlash, "?B#") && lakeside_value(device, 'D', 0, 1, &reverse, "?D#") && lakeside_temperature(device) && lakeside_read_slope(device, 1);
+			// a missing or unreadable probe does not refuse the focuser, as in the 2.0 driver
+			indigo_property_state temperature = INDIGO_ALERT_STATE;
+			connection_result = lakeside_command(device, false, "CTF#") && lakeside_ack(device, "CRg1#") && lakeside_value(device, 'P', 0, 65535, &position, "?P#") && lakeside_value(device, 'B', 0, 65535, &backlash, "?B#") && lakeside_value(device, 'D', 0, 1, &reverse, "?D#") && ((temperature = lakeside_temperature(device)), true) && lakeside_read_slope(device, 1);
 			if (connection_result) {
 				PRIVATE_DATA->position = position;
 				PRIVATE_DATA->active_slope = 1;
@@ -321,6 +342,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = backlash;
 				indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, reverse ? FOCUSER_REVERSE_MOTION_DISABLED_ITEM : FOCUSER_REVERSE_MOTION_ENABLED_ITEM, true);
 				indigo_set_switch(FOCUSER_MODE_PROPERTY, FOCUSER_MODE_MANUAL_ITEM, true);
+				FOCUSER_TEMPERATURE_PROPERTY->state = temperature;
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				lakeside_close(device);

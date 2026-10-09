@@ -3068,6 +3068,18 @@ FOCUSER_DMFC_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_dmfc.a $(TEST_LDF
 $(TEST_BUILD)/hardware/test_focuser_dmfc_hw: hardware/test_focuser_dmfc_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_dmfc.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_DMFC_HW_TEST_LDFLAGS)
 
+# A physical LakesideAstro focuser, or the Arduino sketch focuser_lakeside_simulator.ino on a board, is opt-in and
+# excluded from normal integration tests. THE FOCUSER MOVES; the run writes back the backlash and compensation it
+# found and returns to the position it found. Set LAKESIDE_HW_PORT.
+.PHONY: test-focuser-lakeside-hw
+test-focuser-lakeside-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_lakeside_hw
+	$(TEST_BUILD)/hardware/test_focuser_lakeside_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_LAKESIDE_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_lakeside.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_lakeside_hw: hardware/test_focuser_lakeside_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_lakeside.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_LAKESIDE_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are
