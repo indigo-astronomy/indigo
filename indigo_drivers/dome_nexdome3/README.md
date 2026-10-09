@@ -32,4 +32,5 @@ Driver is tesed with:
 ## Testing
 
 2026-09-27 01:43 3.0.0.16 linux x64 simulator 51/51 OK
-2026-09-27 22:30 3.0.0.16 mac arm64 simulator 51/51 OK
+2026-10-09 19:14 3.0.0.17 mac arm64 simulator 51/51 OK
+2026-10-09 19:15 3.0.0.17 linux arm64 NexDome firmware 3 Arduino simulator (ESP32-S3) 11/11 OK

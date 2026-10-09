@@ -300,3 +300,28 @@ Rows TGT-008, TGT-009 and the dome_nexdome3 part of TGT-B08 of `indigo_drivers/R
   failures); development single-case runs with the fix 5 run, 2 passed (a test mistake: the simulator answers `SRR`
   from inside the command, so `mute` does not suppress the status and `lost` is needed; two diagnostic reruns);
   complete run 51/51; opt-in network cases 3/3; recorded run 51/51. Hardware tests: 0 run, 0 passed.
+
+## Strict checks, parked refusal and hardware suite (2026-10-09, 3.0.0.17)
+
+The message parsers were compared with `Documents/Firmware-Protocol.md`: `:SER,p,a,c,h,d#`, `:SES,p,l,o,c#`,
+`:BVnnn#`, `:PRR`/`P`, `:HRR`, `:DRR` and the `:AR`/`:VR`/`:RR` pairs are read exactly as documented, and replies are
+matched to the pending command by their code. None of them was derived from the simulator alone.
+
+### Defect
+
+- NX3-18: a slew refused while the dome is parked was published as ALERT with the azimuth it refused. The request
+  had already been copied into the value, and only the `PRR` reply the handler sends afterwards put the real heading
+  back, so a client saw the dome at the refused azimuth (90 instead of 0 in the reference trace). The refusal now
+  publishes the last known heading. Test: `moves_refused_when_parked` checks the first ALERT publication (fails on
+  3.0.0.16, passes on 3.0.0.17); `fixtures/dome_nexdome3/generated_reference_trace.txt` updated for the three lines
+  that carried the refused azimuth. Found by the hardware suite.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 51/51.
+- New hardware suite `indigo_test/hardware/test_dome_nexdome3_hw.c` (`make test-dome-nexdome3-hw`,
+  `NEXDOME3_HW_PORT`) on `dome_hw_common.h`: slews, steps, an aborted rotation, the shutter, a home search, the
+  velocities written and read back and saved to and reloaded from EEPROM with the values found, park and a slew
+  refused while parked, reconnect and INIT/SHUTDOWN. Recorded run against `dome_nexdome3_simulator.ino` on an
+  ESP32-S3: 11/11. No physical NexDome is available.
+

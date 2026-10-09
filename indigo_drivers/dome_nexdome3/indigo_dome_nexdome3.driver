@@ -22,7 +22,7 @@ driver nexdome3 {
 	label = "NexDome3";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 16;
+	version = 17;
 	serial;
 	include {
 		#include <math.h>
@@ -768,6 +768,8 @@ driver nexdome3 {
 			on_change {
 				double target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 				if (DOME_PARK_PARKED_ITEM->sw.value) {
+					// the copied request is not where the dome is: show the last known heading with the refusal
+					DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = nexdome3_azimuth(device, PRIVATE_DATA->position);
 					DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked.");
 					nexdome3_command(device, "PRR");

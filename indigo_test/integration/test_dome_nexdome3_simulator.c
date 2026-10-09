@@ -162,6 +162,9 @@ typedef struct {
 	char name[INDIGO_NAME_SIZE];
 	unsigned revision, busy, alert, ok_closed, ok_parked, defines, deletes;
 	int defined_state;
+	// the first item of the first ALERT publication since the last reset, the azimuth of DOME_HORIZONTAL_COORDINATES
+	double alert_value;
+	bool alert_value_set;
 	char last_trace[1024];
 } observed_property;
 
@@ -559,6 +562,10 @@ static void note_state(observed_property *entry, indigo_property *property) {
 		entry->busy++;
 	} else if (property->state == INDIGO_ALERT_STATE) {
 		entry->alert++;
+		if (property->type == INDIGO_NUMBER_VECTOR && property->count > 0 && !entry->alert_value_set) {
+			entry->alert_value = property->items[0].number.value;
+			entry->alert_value_set = true;
+		}
 	}
 	// a shutter request completed while the closed switch is selected
 	if (!strcmp(property->name, DOME_SHUTTER_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
@@ -681,6 +688,23 @@ static unsigned ok_closed_of(const char *name) {
 	pthread_mutex_lock(&observe_mutex);
 	observed_property *entry = observed_entry(name, false);
 	unsigned result = entry ? entry->ok_closed : 0;
+	pthread_mutex_unlock(&observe_mutex);
+	return result;
+}
+
+static void reset_alert_value(const char *name) {
+	pthread_mutex_lock(&observe_mutex);
+	observed_property *entry = observed_entry(name, false);
+	if (entry) {
+		entry->alert_value_set = false;
+	}
+	pthread_mutex_unlock(&observe_mutex);
+}
+
+static double alert_value_of(const char *name) {
+	pthread_mutex_lock(&observe_mutex);
+	observed_property *entry = observed_entry(name, false);
+	double result = entry && entry->alert_value_set ? entry->alert_value : NAN;
 	pthread_mutex_unlock(&observe_mutex);
 	return result;
 }
@@ -1420,8 +1444,11 @@ static void moves_refused_when_parked(void) {
 	CHECK(start_connected());
 	CHECK(wait_state(DOME_PARK_PROPERTY_NAME, INDIGO_OK_STATE, 2));
 	CHECK(switch_of(DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME));
+	reset_alert_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME);
 	CHECK(goto_azimuth(90, INDIGO_ALERT_STATE, 5));
 	CHECK(wait_message(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, "Dome is parked."));
+	// the refusal shows where the dome is, not the azimuth it refused
+	CHECK_NEAR(0, alert_value_of(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME), 1e-4);
 	CHECK(wait_rx("PRR", 2, 3));
 	CHECK(move_steps(DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME, 10, INDIGO_ALERT_STATE, 5));
 	CHECK(wait_message(DOME_STEPS_PROPERTY_NAME, "Dome is parked."));

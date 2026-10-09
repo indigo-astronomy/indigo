@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_dome_nexdome3"
 #define DRIVER_LABEL         "NexDome3"
 #define DOME_DEVICE_NAME     "NexDome3"
@@ -936,6 +936,8 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	//+ dome.DOME_HORIZONTAL_COORDINATES.on_change
 	double target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
+		// the copied request is not where the dome is: show the last known heading with the refusal
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = nexdome3_azimuth(device, PRIVATE_DATA->position);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked.");
 		nexdome3_command(device, "PRR");
