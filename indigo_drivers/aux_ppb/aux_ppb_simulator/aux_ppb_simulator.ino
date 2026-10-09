@@ -36,7 +36,7 @@ byte power_5 = 0;
 byte power_6 = 0;
 bool power_dslr = true;
 bool autodev = true;
-// The power-on outlet mask PE stores; it does not switch the outlets now.
+// The power-on outlet mask PE stores; it does not switch the outlets now, a reboot applies it.
 String boot_mask = "1111";
 #ifdef ADVANCE
 bool power_alert = 0;
@@ -105,7 +105,12 @@ void loop() {
 #endif
     Serial.println(value);
   } else if (command.equals("PF")) {
-    // Reboot, no answer.
+    // Reboot, no answer. The outlets come back in the power-on state PE stored, of which the
+    // firmware uses only the last two digits: the 12 V outputs, then the DSLR output.
+    if (boot_mask.length() == 4) {
+      power_1234 = boot_mask.charAt(2) == '1';
+      power_dslr = boot_mask.charAt(3) == '1';
+    }
   } else if (command.equals("PA")) {
 #if defined(PPBA)
     Serial.print("PPBA:12.2:");

@@ -44,7 +44,7 @@ static bool autodev = true;
 static bool power_alert = false;
 static int dslr_adj = 5;
 static double voltage = 12.2, temperature = 23.2, humidity = 59, dewpoint = 14.7;
-// The power-on outlet mask PE stores; it does not switch the outlets now.
+// The power-on outlet mask PE stores; it does not switch the outlets now, a reboot applies it.
 static char boot_mask[5] = "1111";
 // Replaces the model's answer to P#.
 static const char *identity;
@@ -353,7 +353,13 @@ static void dispatch_command(int fd, const char *cmd) {
 		serial_simulator_trace_line(options.trace, "**", boot_mask);
 		sim_printf(fd, "PE:1\n");
 	} else if (!strcmp(cmd, "PF")) {
-		// Reboot: driver sends via indigo_uni_printf directly, no response expected
+		// Reboot, no answer. The outlets come back in the power-on state PE stored, of which the
+		// firmware uses only the last two digits: the 12 V outputs, then the DSLR output.
+		if (strlen(boot_mask) == 4) {
+			power1 = boot_mask[2] == '1';
+			if (options.model != MODEL_SPB)
+				power2 = boot_mask[3] == '1';
+		}
 	} else {
 		serial_simulator_trace_line(options.trace, "??", cmd);
 	}

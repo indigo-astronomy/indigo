@@ -435,6 +435,33 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The firmware uses only the last two digits of PE (12 V outputs, then the DSLR output), so the
+// stored states are what the outlets come back in after a reboot.
+static void saved_outlet_states_return_after_a_reboot(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_model(&simulator, "ppba"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_switch(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME, INDIGO_OK_STATE));
+	// Storing the default switches nothing; the outlets are then turned the other way.
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_switch(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(set_switch("X_AUX_REBOOT", "REBOOT", true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_1_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(AUX_POWER_OUTLET_PROPERTY_NAME, AUX_POWER_OUTLET_2_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&aux);
+	stop_external_serial_simulator(&simulator);
+}
+
 // ------------------------------------------------------------- lifecycle
 
 static void reconnect_resumes_polling(void) {
@@ -672,6 +699,7 @@ int main(void) {
 		{ "outlet_names_relabel_the_heaters", outlet_names_relabel_the_heaters },
 		{ "reboot_is_momentary", reboot_is_momentary },
 		{ "saving_outlet_states_is_momentary", saving_outlet_states_is_momentary },
+		{ "saved_outlet_states_return_after_a_reboot", saved_outlet_states_return_after_a_reboot },
 		{ "reconnect_resumes_polling", reconnect_resumes_polling },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "shutdown_is_refused_while_connected", shutdown_is_refused_while_connected },

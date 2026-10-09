@@ -22,8 +22,8 @@
 // or Saddle Powerbox, or for the Arduino sketch aux_ppb_simulator.ino running on a board. It checks the
 // identified model and its outlet inventory, reads the sensors, switches every outlet, sets the heater
 // duty cycles, the dew control mode and (Advance and Micro) the adjustable output voltage, each read
-// back from the status poll, stores the outlet states as the power-on default, reboots the box,
-// reconnects and runs driver INIT/SHUTDOWN.
+// back from the status poll, stores the outlet states as the power-on default, reboots the box and
+// checks the outlets come back in them, reconnects and runs driver INIT/SHUTDOWN.
 //
 // THE OUTLETS SWITCH OFF AND ON, THE HEATERS RUN AND THE BOX REBOOTS. Disconnect anything that must not
 // lose power. The session restores the outlets, heaters, dew mode and DSLR voltage it found and stores
@@ -307,8 +307,13 @@ static void ppb_stores_the_outlet_states_as_default(void) {
 	}
 }
 
-// The reboot is momentary and has no answer; the box comes back and is reconnected.
+// The reboot is momentary and has no answer. The box comes back with the outlets in the power-on state
+// stored by the previous case, which is the state the session found, so the outlets are switched the
+// other way first.
 static void ppb_reboots(void) {
+	for (int i = 0; i < outlet_count; i++) {
+		ASSERT_TRUE(set_outlet(i, !initial_outlets[i]));
+	}
 	ASSERT_TRUE(hw_set_switch(box, AUX_REBOOT_PROPERTY_NAME, "REBOOT", INDIGO_OK_STATE, SHORT_TIMEOUT));
 	bool value = true;
 	ASSERT_TRUE(hw_switch_item(box, AUX_REBOOT_PROPERTY_NAME, "REBOOT", &value) && !value);
@@ -317,6 +322,10 @@ static void ppb_reboots(void) {
 	ASSERT_TRUE(hw_connect(box, SHORT_TIMEOUT));
 	ASSERT_TRUE(wait_for_first_poll());
 	ASSERT_TRUE(hw_wait_settled(box, AUX_POWER_OUTLET_PROPERTY_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
+	wait_for_polls();
+	for (int i = 0; i < outlet_count; i++) {
+		ASSERT_TRUE(outlet_is(i, initial_outlets[i]));
+	}
 }
 
 static void ppb_reconnects(void) {

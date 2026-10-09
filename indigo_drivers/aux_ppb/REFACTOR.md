@@ -129,9 +129,33 @@ Both simulators followed the driver rather than the tables. Now:
   the identified model. Recorded runs against `aux_ppb_simulator.ino` on an ESP32-S3: Advance 12/12, PPB 12/12,
   Saddle 12/12.
 
+## Power-on outlet states in the last two digits of PE (2026-10-09, 3.0.0.34)
+
+### Defect
+
+- PPB-05: "Save current outlet states as default" stored nothing useful. Of the four digits of `PE:bbbb` the firmware
+  uses only the last two, the 12 V outputs and then the DSLR output; the first two are kept for compatibility
+  (confirmed by Pegasus Astro support). The driver, like the driver before the generator migration, wrote the outlet
+  states into the first two digits and `00` into the last two, so after saving the box powered up with both outputs
+  off. The states now go into the last two digits (`PE:00` followed by the 12 V and DSLR states; the Saddle box
+  writes only the third digit).
+
+### Simulators
+
+A reboot (`PF`) brings the outlets back in the state the last two digits of the stored mask give, in the C
+simulator and in the sketch.
+
+### Verification
+
+- `saved_outlet_states_return_after_a_reboot` fails on 3.0.0.33 (the DSLR output comes back off) and passes on 3.0.0.34.
+- The hardware case `ppb_reboots` switches the outlets the other way, reboots and checks they come back in the stored
+  state.
+- Recorded simulator run on macOS arm64: 35/35. Recorded hardware runs against the sketch on an ESP32-S3: Advance
+  12/12, PPB 12/12, Saddle 12/12.
+
 ## Final test summary
 
-- Simulated tests run: 34; passed: 34 (recorded run of `test_aux_ppb_simulator` through
-  `tools/run_driver_test.py`, driver version 33, macOS arm64).
+- Simulated tests run: 35; passed: 35 (recorded run of `test_aux_ppb_simulator` through
+  `tools/run_driver_test.py`, driver version 34, macOS arm64).
 - Hardware tests run: 36; passed: 36 (the Arduino sketch on an ESP32-S3 as Advance, PPB and Saddle box, 12 cases
-  each, driver version 33). No physical Pocket Powerbox was available.
+  each, driver version 34). No physical Pocket Powerbox was available.

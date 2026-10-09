@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000021
+#define DRIVER_VERSION       0x03000022
 #define DRIVER_NAME          "indigo_aux_ppb"
 #define DRIVER_LABEL         "PegasusAstro Pocket Powerbox"
 #define AUX_DEVICE_NAME      "Pocket Powerbox"
@@ -523,8 +523,10 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change
 	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
+		// The firmware uses only the last two digits, the 12 V outputs and then the DSLR output;
+		// the first two are there for compatibility.
 		char command[] = "PE:0000";
-		char *port_mask = command + 3;
+		char *port_mask = command + 5;
 		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 			port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
 		}

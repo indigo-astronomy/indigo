@@ -26,7 +26,7 @@ driver ppb {
 	label = "PegasusAstro Pocket Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, PPBA support by Aaron Freimark <abf@mac.com>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 33;
+	version = 34;
 	serial {
 		pattern {
 			product = "PPB";
@@ -515,8 +515,10 @@ driver ppb {
 			label = "Save current outlet states as default";
 			on_change {
 				if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
+					// The firmware uses only the last two digits, the 12 V outputs and then the DSLR output;
+					// the first two are there for compatibility.
 					char command[] = "PE:0000";
-					char *port_mask = command + 3;
+					char *port_mask = command + 5;
 					for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 						port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
 					}
