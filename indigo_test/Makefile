@@ -3152,6 +3152,18 @@ FOCUSER_ROBOFOCUS_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_robofocus.a 
 $(TEST_BUILD)/hardware/test_focuser_robofocus_hw: hardware/test_focuser_robofocus_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_robofocus.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_ROBOFOCUS_HW_TEST_LDFLAGS)
 
+# A physical Baader SteelDriveII, or the Arduino sketch focuser_steeldrive2_simulator.ino on a board, is opt-in and
+# excluded from normal integration tests. THE FOCUSER MOVES AND THE HEATER OUTPUT CHANGES; the run writes back the
+# settings and returns to the position it found (no factory reset). Set STEELDRIVE2_HW_PORT.
+.PHONY: test-focuser-steeldrive2-hw
+test-focuser-steeldrive2-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_steeldrive2_hw
+	$(TEST_BUILD)/hardware/test_focuser_steeldrive2_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+FOCUSER_STEELDRIVE2_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_steeldrive2.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_focuser_steeldrive2_hw: hardware/test_focuser_steeldrive2_hw.c hardware/focuser_hw_common.h hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_steeldrive2.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_STEELDRIVE2_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

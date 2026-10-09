@@ -473,7 +473,12 @@ static void dispatch(char *command) {
 		int position = (int)lround(serial_motion_update(&motion));
 		double average = (temp0 + temp0_offset + temp1 + temp1_offset) / 2;
 		char line[512];
-		snprintf(line, sizeof(line), "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d;FOCUS:%d;TEMP0:%.2f;TEMP1:%.2f;TEMP_AVG:%.2f;TCOMP:%d;PWM:%d", device_name, position, motion_state(), limit, focus, temp0 + temp0_offset, temp1 + temp1_offset, average, tcomp, pwm);
+		if (!strcmp(profile, "documented")) {
+			// the manual's example answer has no $BS prefix; an item a later firmware might add is appended
+			snprintf(line, sizeof(line), "STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d;FOCUS:%d;TEMP0:%.2f;TEMP1:%.2f;TEMP_AVG:%.2f;TCOMP:%d;PWM:%d;RCX:0", device_name, position, motion_state(), limit, focus, temp0 + temp0_offset, temp1 + temp1_offset, average, tcomp, pwm);
+		} else {
+			snprintf(line, sizeof(line), "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d;FOCUS:%d;TEMP0:%.2f;TEMP1:%.2f;TEMP_AVG:%.2f;TCOMP:%d;PWM:%d", device_name, position, motion_state(), limit, focus, temp0 + temp0_offset, temp1 + temp1_offset, average, tcomp, pwm);
+		}
 		if (!injected_reply("SUMMARY", line)) {
 			send_line(line, false, false);
 		}
@@ -546,11 +551,11 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
 			profile = argv[++i];
 		} else {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|missing_sensor|stall]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split|alternate|missing_sensor|stall|documented]\n", argv[0]);
 			return false;
 		}
 	}
-	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "alternate") || !strcmp(profile, "missing_sensor") || !strcmp(profile, "stall");
+	return !strcmp(profile, "normal") || !strcmp(profile, "split") || !strcmp(profile, "alternate") || !strcmp(profile, "missing_sensor") || !strcmp(profile, "stall") || !strcmp(profile, "documented");
 }
 
 static void stop_signal(int signal) {

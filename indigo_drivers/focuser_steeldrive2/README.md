@@ -26,4 +26,5 @@ Tested with physical device.
 ## Testing
 
 2026-09-27 13:10 3.0.0.19 linux x64 simulator 56/56 OK
-2026-10-05 15:52 3.0.0.20 mac arm64 simulator 61/61 OK
+2026-10-09 22:25 3.0.0.21 mac arm64 simulator 63/63 OK
+2026-10-09 22:27 3.0.0.21 linux arm64 SteelDriveII Arduino simulator (ESP32-S3) 14/14 OK

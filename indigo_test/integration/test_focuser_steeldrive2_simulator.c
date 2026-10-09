@@ -995,6 +995,26 @@ cleanup:
 	driver_stop(&focuser);
 }
 
+// A FOCUSER_LIMITS request copied while the focuser poll waits for its SUMMARY reply must reach the controller as
+// requested; the poll rewrote the limit target with the one it read, so the handler sent the old limit back and the
+// request was silently lost (found by the hardware suite).
+static void limits_request_survives_poll_read(void) {
+	SERIAL_CHECK_TRUE(start_focuser());
+	SERIAL_CHECK_TRUE(at_position(1000));
+	SERIAL_CHECK_TRUE(fault("SUMMARY", "slow"));
+	for (int i = 0; i < 200 && access(fault_path, F_OK) == 0; i++) {
+		indigo_usleep(5000);
+	}
+	SERIAL_CHECK_TRUE(access(fault_path, F_OK) != 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focuser.device_name, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 1250));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 1250, .01));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, request_count("$BS SET LIMIT:1250"));
+	SERIAL_CHECK_EQ_INT(0, request_count("$BS SET LIMIT:2000"));
+cleanup:
+	driver_stop(&focuser);
+}
+
 typedef struct {
 	const char *name;
 	void (*run)(void);
@@ -1077,6 +1097,9 @@ int main(void) {
 		{ "focuser_capabilities_split", focuser_capabilities, "split" },
 		{ "focuser_missing_sensor", focuser_capabilities, "missing_sensor" },
 		{ "focuser_movement", focuser_movement, "normal" },
+		{ "limits_request_survives_poll_read", limits_request_survives_poll_read, "normal" },
+		// the manual's SUMMARY answer without the $BS prefix, with an item appended: connects and moves
+		{ "focuser_documented_summary", focuser_movement, "documented" },
 		{ "focuser_abort_overlap_disconnect", focuser_abort_overlap_disconnect, "normal" },
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal" },
 		{ "focuser_zeroing", focuser_zeroing, "normal" },

@@ -173,3 +173,40 @@ shared tree was not reverted.
 `python3 tools/run_driver_test.py focuser_steeldrive2`: 61/61 passed (3.0.0.20, macOS arm64).
 
 Final test summary: 61 simulated tests run, 61 passed; 0 hardware tests run, 0 passed.
+
+## Strict checks against the documentation, INDI and 2.0, and a poll defect found by the hardware suite (3.0.0.21)
+
+The references were the bundled technical documentation (0.770), INDI `steeldrive2.cpp` and the 2.0 driver.
+
+| Defect | Fix | Covered by |
+| --- | --- | --- |
+| `SUMMARY` had to have exactly ten items in a fixed order, and the answer had to start with `$BS`. The manual's own example answer has no `$BS` prefix ("STATUS NAME:BP_SD_41;…"). INDI accepts ten or more items. 2.0 read the items by key, in any order. | Items are read by key; their order and any added items do not matter. A `STATUS` answer without the `$BS` prefix is accepted. | `focuser_documented_summary` |
+| `STATE` had to be one of the four listed values. The documentation's spelling cannot be confirmed from the PDF text, and 2.0 took every state other than `STOPPED` as motion. | `STOPPED` and `ZEROED` mean at rest; any other state means motion. | `focuser_documented_summary` (state values unchanged) |
+| A `FOCUSER_LIMITS` request accepted while the poll was reading `SUMMARY` lost its value. The poll rewrote the limit target with the limit it had just read, so the handler sent the old limit back and reported OK. This is the same pattern as TGT-D17 for the position. | The poll leaves `FOCUSER_LIMITS` alone while a request is pending (BUSY). | `limits_request_survives_poll_read` |
+
+Kept, and why:
+- `SINGLESTEPS` ≤ `JOGSTEPS`: this is the documented valid range.
+- Every command is echoed: this is documented.
+- The CRC handling follows section 3.2.5.
+
+The simulator gained a `documented` profile: a `SUMMARY` answer without `$BS` and with an extra item. The Arduino sketch was rewritten to follow the documentation:
+- Reads no longer block. Every line is echoed, its CRC suffix included.
+- CRC is checked when enabled.
+- Parameters live in a table with documented ranges. `GET TCOMP_SENSOR` answered 1000, which 3.0 refused, so 3.0 could not connect to the old sketch.
+- The motor travels at 500 steps/s, and `SUMMARY` reports the motion state.
+- `ZEROING` uses the end stop when enabled.
+- `RESET`/`REBOOT` greet with `$BS Hello World!`.
+
+Hardware suite `test_focuser_steeldrive2_hw.c` (`make test-focuser-steeldrive2-hw`, `STEELDRIVE2_HW_PORT`) covers:
+- values at connection
+- absolute moves, steps both ways, the reversed direction
+- abort and sync
+- the travel limit, written and enforced, with a limit below the focuser refused
+- name, saved values, compensation settings, sensor and end stop, all read back and kept over a reconnect
+- compensation mode, which refuses manual moves
+- zeroing
+- heater output and automatic dew
+- reboot refused while the aux device shares the connection
+- reconnect, SHUTDOWN refusal and INIT/SHUTDOWN
+
+The factory RESET is not run, because it would erase the controller settings. The suite was run against the sketch on an ESP32-S3. Its first run found the limits defect: the refusal was never published, because the request had been rewritten.

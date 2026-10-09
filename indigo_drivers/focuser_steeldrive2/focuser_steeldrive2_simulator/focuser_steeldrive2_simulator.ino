@@ -1,6 +1,6 @@
 // SteelDriveII focuser simulator for Arduino
 //
-// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// Copyright (c) 2019-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,14 +18,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Based on SteelDrive II Focuser Technical documentation v0.733 by Baader Planetarium
+// Based on the SteelDrive II technical documentation 0.770 by Baader Planetarium.
+//
+// 19200 8N1, lines end with CR LF. Every character received is echoed, so each command line comes back before its
+// answer. Commands start with "$BS"; with CRC_ENABLE every line carries "*XX", the CRC-8 of the text before it, and
+// a command without a valid one is ignored. The motor travels at 500 steps/s; SUMMARY reports GOING_UP, GOING_DOWN,
+// STOPPED or ZEROED. RESET and REBOOT restart the controller, which greets with "$BS Hello World!".
 
 #ifdef ARDUINO_SAM_DUE
-#include <avr/dtostrf.h>
 #define Serial SerialUSB
 #endif
 
-const char to_hex[] = "0123456789ABCDEF";
+#define STEP_US 2000
 
 const uint8_t crc_array[256] = {
   0x00, 0x5e, 0xbc, 0xe2, 0x61, 0x3f, 0xdd, 0x83, 0xc2, 0x9c, 0x7e, 0x20, 0xa3, 0xfd, 0x1f, 0x41,
@@ -46,272 +50,253 @@ const uint8_t crc_array[256] = {
   0x74, 0x2a, 0xc8, 0x96, 0x15, 0x4b, 0xa9, 0xf7, 0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35,
 };
 
-const char PROGMEM ok_reply[] = "$BS OK";
-
 bool use_crc = false;
-bool boot = true;
-char name[16] = "BP_SD_01";
-int bklgt = 50;
-int use_endstop = 0;
-int pos = 1000;
-int limit = 2000;
-int focus = 1234;
-int jogstep = 50;
-int singlestep = 1;
-double temp0 = 22.45;
-double temp1 = 21.78;
-double temp0_ofs = 0;
-double temp1_ofs = 0;
-int tcomp = 0;
-double tcomp_factor = 2.5;
-int tcomp_period = 1000;
-double tcomp_delta = 0.5;
-int tcomp_sensor = 1000;
-int pwm = 50;
-int target = 0;
-bool moving = false;
-int pid_ctrl = 0;
-double pid_target;
-int pid_sensor = 0;
-int ambient_sensor = 0;
-double pid_dew_ofs = 0;
-int auto_dew = 0;
+char name[20] = "BP_SD_01";
+long position = 1000, target = 1000, limit = 2000;
+bool zeroing = false, zeroed = false;
+unsigned long last_step = 0;
+char line[128];
+int used = 0;
+
+struct parameter {
+  const char *name;
+  bool real;
+  double minimum, maximum, value, initial;
+};
+
+parameter parameters[] = {
+  { "FOCUS", false, 0, 2147483647, 1234, 1234 },
+  { "JOGSTEPS", false, 1, 2147483647, 50, 50 },
+  { "SINGLESTEPS", false, 1, 2147483647, 1, 1 },
+  { "BKLGT", false, 0, 100, 50, 50 },
+  { "TEMP0_OFS", true, -50, 50, 0, 0 },
+  { "TEMP1_OFS", true, -50, 50, 0, 0 },
+  { "TCOMP", false, 0, 1, 0, 0 },
+  { "TCOMP_FACTOR", true, -100000, 100000, 2.5, 2.5 },
+  { "TCOMP_PERIOD", false, 0, 2147483647, 1000, 1000 },
+  { "TCOMP_DELTA", true, 0, 100, 0.5, 0.5 },
+  { "TCOMP_SENSOR", false, 0, 2, 2, 2 },
+  { "USE_ENDSTOP", false, 0, 1, 0, 0 },
+  { "PWM", false, 0, 100, 50, 50 },
+  { "PID_CTRL", false, 0, 1, 0, 0 },
+  { "PID_SENSOR", false, 0, 2, 0, 0 },
+  { "AMBIENT_SENSOR", false, 0, 1, 1, 1 },
+  { "AUTO_DEW", false, 0, 1, 0, 0 },
+  { "PID_TARGET", true, -50, 50, 0, 0 },
+  { "PID_DEW_OFS", true, -50, 50, 0, 0 },
+};
+#define PARAMETERS (sizeof(parameters) / sizeof(parameters[0]))
+
+parameter *find(const char *key) {
+  for (unsigned i = 0; i < PARAMETERS; i++)
+    if (!strcmp(parameters[i].name, key))
+      return parameters + i;
+  return NULL;
+}
+
+double get(const char *key) {
+  return find(key)->value;
+}
+
+uint8_t crc8(const char *text, size_t length) {
+  uint8_t crc = 0;
+  for (size_t i = 0; i < length; i++)
+    crc = crc_array[(uint8_t)text[i] ^ crc];
+  return crc;
+}
+
+void send(const char *text) {
+  Serial.print(text);
+  if (use_crc && strcmp(text, "$BS Hello World!")) {
+    char suffix[4];
+    snprintf(suffix, sizeof(suffix), "*%02X", crc8(text, strlen(text)));
+    Serial.print(suffix);
+  }
+  Serial.print("\r\n");
+}
+
+void reset_controller() {
+  for (unsigned i = 0; i < PARAMETERS; i++)
+    parameters[i].value = parameters[i].initial;
+  strcpy(name, "BP_SD_01");
+  limit = 2000;
+  position = target = 1000;
+  zeroing = zeroed = false;
+}
 
 void setup() {
   Serial.begin(19200);
-  Serial.setTimeout(1000);
   while (!Serial)
     ;
+  send("$BS Hello World!");
+}
+
+void step() {
+  unsigned long now = micros();
+  while (position != target && now - last_step >= STEP_US) {
+    position += position < target ? 1 : -1;
+    last_step += STEP_US;
+  }
+  if (position == target && zeroing) {
+    zeroing = false;
+    zeroed = true;
+  }
+}
+
+const char *state() {
+  if (position != target)
+    return target > position ? "GOING_UP" : "GOING_DOWN";
+  return zeroed ? "ZEROED" : "STOPPED";
+}
+
+void format(char *text, size_t size, const parameter *p) {
+  if (p->real)
+    snprintf(text, size, "$BS STATUS %s:%.2f", p->name, p->value);
+  else
+    snprintf(text, size, "$BS STATUS %s:%ld", p->name, (long)p->value);
+}
+
+bool number(const char *text, double *value) {
+  char *end;
+  if (!*text)
+    return false;
+  *value = strtod(text, &end);
+  return *end == 0;
+}
+
+void start(long requested) {
+  target = requested < 0 ? 0 : requested > limit ? limit : requested;
+  last_step = micros();
+  zeroed = false;
+}
+
+void dispatch(char *command) {
+  char reply[200];
+  double value;
+  double t0 = 22.45 + get("TEMP0_OFS"), t1 = 21.78 + get("TEMP1_OFS");
+  if (!strcmp(command, "$BS CRC_ENABLE")) {
+    use_crc = true;
+    send("$BS OK");
+  } else if (!strcmp(command, "$BS CRC_DISABLE")) {
+    use_crc = false;
+    send("$BS OK");
+  } else if (!strcmp(command, "$BS GET VERSION")) {
+    send("$BS STATUS VERSION:0.770");
+  } else if (!strcmp(command, "$BS GET NAME")) {
+    snprintf(reply, sizeof(reply), "$BS STATUS NAME:%s", name);
+    send(reply);
+  } else if (!strncmp(command, "$BS SET NAME:", 13) && command[13] && strlen(command + 13) <= 19) {
+    strcpy(name, command + 13);
+    send("$BS OK");
+  } else if (!strcmp(command, "$BS GET POS")) {
+    snprintf(reply, sizeof(reply), "$BS STATUS POS:%ld", position);
+    send(reply);
+  } else if (!strncmp(command, "$BS SET POS:", 12) && number(command + 12, &value) && value >= 0) {
+    position = target = (long)value;
+    zeroed = position == 0;
+    send("$BS OK");
+  } else if (!strcmp(command, "$BS GET LIMIT")) {
+    snprintf(reply, sizeof(reply), "$BS STATUS LIMIT:%ld", limit);
+    send(reply);
+  } else if (!strncmp(command, "$BS SET LIMIT:", 14) && number(command + 14, &value) && value >= 0) {
+    limit = (long)value;
+    if (position > limit)
+      position = target = limit;
+    send("$BS OK");
+  } else if (!strncmp(command, "$BS GO ", 7) && number(command + 7, &value)) {
+    start((long)value);
+    send("$BS OK");
+  } else if (!strcmp(command, "$BS STOP")) {
+    target = position;
+    zeroing = zeroed = false;
+    send("$BS OK");
+  } else if (!strcmp(command, "$BS ZEROING")) {
+    if (get("USE_ENDSTOP")) {
+      start(0);
+      zeroing = true;
+    } else {
+      position = target = 0;
+      zeroed = true;
+    }
+    send("$BS OK");
+  } else if (!strcmp(command, "$BS INFO")) {
+    snprintf(reply, sizeof(reply), "$BS STATUS NAME:%s;POS:%ld;STATE:%s;LIMIT:%ld", name, position, state(), limit);
+    send(reply);
+  } else if (!strcmp(command, "$BS SUMMARY")) {
+    snprintf(reply, sizeof(reply), "$BS STATUS NAME:%s;POS:%ld;STATE:%s;LIMIT:%ld;FOCUS:%ld;TEMP0:%.2f;TEMP1:%.2f;TEMP_AVG:%.2f;TCOMP:%ld;PWM:%ld", name, position, state(), limit, (long)get("FOCUS"), t0, t1, (t0 + t1) / 2, (long)get("TCOMP"), (long)get("PWM"));
+    send(reply);
+  } else if (!strcmp(command, "$BS GET TEMP0")) {
+    snprintf(reply, sizeof(reply), "$BS STATUS TEMP0:%.2f", t0);
+    send(reply);
+  } else if (!strcmp(command, "$BS GET TEMP1")) {
+    snprintf(reply, sizeof(reply), "$BS STATUS TEMP1:%.2f", t1);
+    send(reply);
+  } else if (!strcmp(command, "$BS RESET")) {
+    send("$BS OK");
+    send("$BS DEBUG:FACTORY RESET...");
+    send("$BS DEBUG: LOADING DEFAULTS...");
+    use_crc = false;
+    reset_controller();
+    send("$BS Hello World!");
+  } else if (!strcmp(command, "$BS REBOOT")) {
+    use_crc = false;
+    position = target;
+    delay(500);
+    send("$BS Hello World!");
+  } else if (!strncmp(command, "$BS GET ", 8) && find(command + 8)) {
+    format(reply, sizeof(reply), find(command + 8));
+    send(reply);
+  } else if (!strncmp(command, "$BS SET ", 8) && strchr(command, ':')) {
+    char *colon = strchr(command, ':');
+    *colon = 0;
+    parameter *p = find(command + 8);
+    double maximum = p && !strcmp(p->name, "SINGLESTEPS") ? get("JOGSTEPS") : p ? p->maximum : 0;
+    if (p && number(colon + 1, &value) && value >= p->minimum && value <= maximum && (p->real || value == (long)value)) {
+      p->value = value;
+      if (!strcmp(p->name, "JOGSTEPS") && get("SINGLESTEPS") > value)
+        find("SINGLESTEPS")->value = value;
+      if (!strcmp(p->name, "PWM"))
+        find("PID_CTRL")->value = 0;
+      send("$BS OK");
+    } else {
+      send("$BS ERROR: Unknown command!");
+    }
+  } else {
+    send("$BS ERROR: Unknown command!");
+  }
+}
+
+void process(char *text) {
+  // every character is echoed, the CRC suffix included
+  Serial.print(text);
+  Serial.print("\r\n");
+  if (strncmp(text, "$BS", 3))
+    return;
+  bool exception = !strncmp(text, "$BS RESET", 9) || !strncmp(text, "$BS REBOOT", 10) || !strncmp(text, "$BS CRC_DISABLE", 15);
+  char *star = strrchr(text, '*');
+  if (star) {
+    if (strlen(star) != 3 || strtol(star + 1, NULL, 16) != crc8(text, star - text))
+      return;
+    *star = 0;
+  } else if (use_crc && !exception) {
+    return;
+  }
+  dispatch(text);
 }
 
 void loop() {
-  char command[64], response[64], *pnt;
-  unsigned char crc = 0;
-  if (boot) {
-    Serial.println(F("$BS Hello World!"));
-    boot = false;
-  }
-  if (moving) {
-    if (target > pos) {
-      pos++;
-      delay(10);
-    } else if (target < pos) {
-      pos--;
-      delay(10);
-    } else {
-      moving = false;
+  step();
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\r')
+      continue;
+    if (c == '\n') {
+      line[used] = 0;
+      if (used)
+        process(line);
+      used = 0;
+    } else if (used < (int)sizeof(line) - 1) {
+      line[used++] = c;
     }
   }
-	if (Serial.available()) {
-    pnt = command;
-    while (true) {
-      char ch = Serial.read();
-      Serial.print(ch);
-      if (ch == '\r')
-        continue;
-      if (ch == '\n')
-        break;
-      if (ch == '*')
-         ch = 0;
-      *pnt++ = ch;
-    }
-    *pnt = 0;
-    response[0] = 0;
-    if (random(10) == 0)
-      Serial.println(F("$BS DEBUG: Initialization of temperature measurement failed for sensor #1"));
-    if (!strcmp_PF(command, F("$BS GET VERSION"))) {
-      strcpy_PF(response, F("$BS STATUS VERSION:0.700(Apr 5 2019)"));
-    } else if (!strcmp_PF(command, F("$BS CRC_ENABLE"))) {
-      use_crc = true;
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS CRC_DISABLE"))) {
-      use_crc = false;
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS REBOOT"))) {
-      delay(1000);
-      boot = true;
-      return;
-    } else if (!strcmp_PF(command, F("$BS RESET"))) {
-      use_crc = false;
-      boot = true;
-      strcpy(name, "BP_SD_01");
-      bklgt = 50;
-      use_endstop = 0;
-      focus = 1234;
-      jogstep = 50;
-      singlestep = 1;
-      Serial.println(ok_reply);
-      Serial.println(F("$BS DEBUG:FACTORY RESET..."));
-      Serial.println(F("$BS DEBUG: LOADING DEFAULTS..."));
-      return;
-    } else if (!strncmp_PF(command, F("$BS SET NAME:"), 13)) {
-      strncpy(name, command + 13, sizeof(name));
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET NAME"))) {
-      sprintf(response, "$BS STATUS NAME:%s", name);
-    } else if (!strncmp_PF(command, F("$BS SET BKLGT:"), 14)) {
-      bklgt = atoi(command + 14);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET BKLGT"))) {
-      sprintf(response, "$BS STATUS BKLGT:%d", bklgt);
-    } else if (!strncmp_PF(command, F("$BS SET USE_ENDSTOP:"), 20)) {
-      use_endstop = atoi(command + 20);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET USE_ENDSTOP"))) {
-      sprintf(response, "$BS STATUS USE_ENDSTOP:%d", use_endstop);
-    } else if (!strcmp_PF(command, F("$BS INFO"))) {
-			sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d", name, pos, moving ? (target > pos ? "GOING_UP" : "GOING_DOWN") : "STOPPED", limit);
-    } else if (!strcmp_PF(command, F("$BS SUMMARY"))) {
-      char temp0_str[6];
-      char temp1_str[6];
-      char temp_avg_str[6];
-      dtostrf(temp0, 4, 2, temp0_str);
-      dtostrf(temp1, 4, 2, temp1_str);
-      dtostrf((temp0 + temp1) / 2, 4, 2, temp_avg_str);
-      sprintf(response, "$BS STATUS NAME:%s;POS:%d;STATE:%s;LIMIT:%d;FOCUS:%d;TEMP0:%s;TEMP1:%s;TEMP_AVG:%s;TCOMP:%d;PWM:%d", name, pos, moving ? (target > pos ? "GOING_UP" : "GOING_DOWN") : "STOPPED", limit, focus, temp0_str, temp1_str, temp_avg_str, tcomp, pwm);
-    } else if (!strcmp_PF(command, F("$BS ZEROING"))) {
-      pos = 0;
-      strcpy_PF(response, ok_reply);
-    } else if (!strncmp_PF(command, F("$BS SET POS:"), 12)) {
-      pos = atoi(command + 12);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET POS"))) {
-      sprintf(response, "$BS STATUS POS:%d", pos);
-    } else if (!strncmp_PF(command, F("$BS SET LIMIT:"), 14)) {
-      limit = atoi(command + 14);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET LIMIT"))) {
-      sprintf(response, "$BS STATUS LIMIT:%d", limit);
-    } else if (!strncmp_PF(command, F("$BS SET FOCUS:"), 14)) {
-      focus = atoi(command + 14);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET FOCUS"))) {
-      sprintf(response, "$BS STATUS FOCUS:%d", focus);
-    } else if (!strncmp_PF(command, F("$BS SET JOGSTEPS:"), 17)) {
-      jogstep = atoi(command + 17);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET JOGSTEPS"))) {
-      sprintf(response, "$BS STATUS JOGSTEPS:%d", jogstep);
-    } else if (!strncmp_PF(command, F("$BS SET SINGLESTEPS:"), 21)) {
-      singlestep = atoi(command + 21);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET SINGLESTEPS"))) {
-      sprintf(response, "$BS STATUS SINGLESTEPS:%d", singlestep);
-    } else if (!strncmp_PF(command, F("$BS SET TCOMP:"), 14)) {
-      tcomp = atoi(command + 14);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TCOMP"))) {
-      sprintf(response, "$BS STATUS TCOMP:%d", tcomp);
-    } else if (!strncmp_PF(command, F("$BS SET TCOMP_FACTOR:"), 21)) {
-      tcomp_factor = atof(command + 21);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TCOMP_FACTOR"))) {
-      char str[6];
-      dtostrf(tcomp_factor, 5, 2, str);
-      sprintf(response, "$BS STATUS TCOMP_FACTOR:%s", str);
-    } else if (!strncmp_PF(command, F("$BS SET TCOMP_PERIOD:"), 21)) {
-      tcomp_period = atof(command + 21);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TCOMP_PERIOD"))) {
-      sprintf(response, "$BS STATUS TCOMP_PERIOD:%d", tcomp_period);      
-    } else if (!strncmp_PF(command, F("$BS SET TCOMP_DELTA:"), 21)) {
-      tcomp_delta = atoi(command + 21);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TCOMP_DELTA"))) {
-      char str[6];
-      dtostrf(tcomp_delta, 5, 2, str);
-      sprintf(response, "$BS STATUS TCOMP_DELTA:%s", str);      
-    } else if (!strncmp_PF(command, F("$BS SET TCOMP_SENSOR:"), 21)) {
-      tcomp_sensor = atoi(command + 21);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TCOMP_SENSOR"))) {
-      sprintf(response, "$BS STATUS TCOMP_SENSOR:%d", tcomp_sensor);      
-    } else if (!strncmp_PF(command, F("$BS GO "), 7)) {
-      target = atoi(command + 7);
-      if (target < 0)
-        target = 0;
-      else if (target > limit)
-        target = limit;
-      moving = true;
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS STOP"))) {
-      moving = false;
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TCOMP0"))) {
-      char str[6];
-      dtostrf(temp0, 4, 2, str);
-      sprintf(response, "$BS STATUS TCOMP0:%s", str);      
-    } else if (!strcmp_PF(command, F("$BS GET TCOMP1"))) {
-      char str[6];
-      dtostrf(temp1, 4, 2, str);
-      sprintf(response, "$BS STATUS TCOMP1:%s", str);      
-    } else if (!strncmp_PF(command, F("$BS SET TEMP0_OFS:"), 18)) {
-      temp0_ofs = atof(command + 18);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TEMP0_OFS"))) {
-      char str[6];
-      dtostrf(temp0_ofs, 5, 2, str);
-      sprintf(response, "$BS STATUS TEMP0_OFS:%s", str);
-    } else if (!strncmp_PF(command, F("$BS SET TEMP1_OFS:"), 18)) {
-      temp1_ofs = atof(command + 18);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET TEMP1_OFS"))) {
-      char str[6];
-      dtostrf(temp1_ofs, 5, 2, str);
-      sprintf(response, "$BS STATUS TEMP1_OFS:%s", str);
-    } else if (!strncmp_PF(command, F("$BS SET PID_CTRL:"), 17)) {
-      pid_ctrl = atoi(command + 17);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET PID_CTRL"))) {
-      sprintf(response, "$BS STATUS PID_CTRL:%d", pid_ctrl);
-    } else if (!strncmp_PF(command, F("$BS SET PID_TARGET:"), 19)) {
-      pid_target = atof(command + 19);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET PID_TARGET"))) {
-      char str[6];
-      dtostrf(pid_target, 5, 2, str);
-      sprintf(response, "$BS STATUS PID_TARGET:%s", str);
-    } else if (!strncmp_PF(command, F("$BS SET PID_SENSOR:"), 19)) {
-      pid_sensor = atoi(command + 19);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET PID_SENSOR"))) {
-      sprintf(response, "$BS STATUS PID_SENSOR:%d", pid_sensor);
-    } else if (!strncmp_PF(command, F("$BS SET PWM:"), 12)) {
-      pwm = atoi(command + 12);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET PWM"))) {
-      sprintf(response, "$BS STATUS PWM:%d", pwm);
-    } else if (!strncmp_PF(command, F("$BS SET AMBIENT_SENSOR:"), 23)) {
-      ambient_sensor = atoi(command + 23);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET AMBIENT_SENSOR"))) {
-      sprintf(response, "$BS STATUS AMBIENT_SENSOR:%d", ambient_sensor);
-    } else if (!strncmp_PF(command, F("$BS SET PID_DEW_OFS:"), 20)) {
-      pid_dew_ofs = atof(command + 19);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET PID_DEW_OFS"))) {
-      char str[6];
-      dtostrf(pid_dew_ofs, 5, 2, str);
-      sprintf(response, "$BS STATUS PID_DEW_OFS:%s", str);
-    } else if (!strncmp_PF(command, F("$BS SET AUTO_DEW:"), 18)) {
-      auto_dew = atoi(command + 18);
-      strcpy_PF(response, ok_reply);
-    } else if (!strcmp_PF(command, F("$BS GET AUTO_DEW"))) {
-      sprintf(response, "$BS STATUS AUTO_DEW:%d", auto_dew);
-    } else {
-			strcpy_PF(response, F("$BS ERROR: Unknown command!"));
-    }
-
-    if (use_crc) {
-      pnt = response;
-      while (*pnt) {
-        crc = crc_array[*pnt++ ^ crc];
-      }
-      *pnt++ = '*';
-      *pnt++ = to_hex[crc / 16];
-      *pnt++ = to_hex[crc % 16];
-      *pnt = 0;
-    }
-    Serial.println(response);    
-	}
 }
