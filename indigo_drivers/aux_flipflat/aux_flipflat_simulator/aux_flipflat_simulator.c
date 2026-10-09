@@ -63,8 +63,13 @@ static void usage(const char *name) {
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --device-id <id>        Model id (10, 15, 19, 98, 99), default is 99\n");
 	printf("  --firmware <version>    Reported firmware version, default is 123\n");
+	printf("  --cover <1|2>           Cover closed (1) or open (2) at start, default is 1\n");
+	printf("  --cover-time <ms>       Time the cover takes to open or close, default is 2000\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
+
+static int cover = 1;         // 1 = closed, 2 = open
+static int cover_time_ms = 2000;
 
 static bool parse_args(int argc, char *argv[]) {
 	for (int i = 1; i < argc; i++) {
@@ -94,6 +99,10 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.firmware = argv[i];
+		} else if (!strcmp(argv[i], "--cover") && i + 1 < argc) {
+			cover = atoi(argv[++i]) == 2 ? 2 : 1;
+		} else if (!strcmp(argv[i], "--cover-time") && i + 1 < argc) {
+			cover_time_ms = atoi(argv[++i]);
 		} else {
 			fprintf(stderr, "Unknown option '%s'\n", argv[i]);
 			return false;
@@ -107,7 +116,6 @@ static bool parse_args(int argc, char *argv[]) {
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 
-static int cover = 1;         // 1 = closed, 2 = open
 static int light = 0;         // 0 = off, 1 = on
 static int brightness = 128;  // 0..255
 static long long move_end_ms = 0;
@@ -200,11 +208,11 @@ static void dispatch_command(int fd, const char *buffer) {
 		sim_printf(fd, "*P%02dOOO\n", id);
 	} else if (!strcmp(buffer, ">OOOO")) {
 		cover = 2;
-		move_end_ms = now_ms() + 2000;
+		move_end_ms = now_ms() + cover_time_ms;
 		sim_printf(fd, "*O%02dOOO\n", id);
 	} else if (!strcmp(buffer, ">COOO")) {
 		cover = 1;
-		move_end_ms = now_ms() + 2000;
+		move_end_ms = now_ms() + cover_time_ms;
 		sim_printf(fd, "*C%02dOOO\n", id);
 	} else if (!strcmp(buffer, ">LOOO")) {
 		light = 1;

@@ -63,8 +63,8 @@ static bool set_intensity(double percent) {
 
 // -------------------------------------------------------------------------------- model gating
 
-// The default simulator reports a Flip-Flap, which has both a cover and a light.
-static void flip_flap_exposes_cover_light_and_intensity(void) {
+// The default simulator reports a Flip-Flat (id 99), which has both a cover and a light.
+static void flip_flat_exposes_cover_light_and_intensity(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_flipflat(&simulator, NULL));
@@ -84,7 +84,8 @@ static void flip_flap_exposes_cover_light_and_intensity(void) {
 	assert_property_has_item(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_OFF_ITEM_NAME);
 	assert_property_has_item(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME);
 	printf("Model '%s' firmware '%s'\n", info_text(INFO_DEVICE_MODEL_ITEM_NAME), info_text(INFO_DEVICE_FW_REVISION_ITEM_NAME));
-	SERIAL_CHECK_TRUE(!strcmp(info_text(INFO_DEVICE_MODEL_ITEM_NAME), "Flip-Flap"));
+	// 3.0.0.10 published the misspelt "Flip-Flap".
+	SERIAL_CHECK_TRUE(!strcmp(info_text(INFO_DEVICE_MODEL_ITEM_NAME), "Flip-Flat"));
 cleanup:
 	if (online) { stop_serial_driver(&flipflat); }
 	stop_external_serial_simulator(&simulator);
@@ -117,6 +118,42 @@ static void dust_cover_hides_the_light(void) {
 	assert_not_defined_property(AUX_LIGHT_SWITCH_PROPERTY_NAME);
 	assert_not_defined_property(AUX_LIGHT_INTENSITY_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(!strcmp(info_text(INFO_DEVICE_MODEL_ITEM_NAME), "Flip-Mask/Remote Dust Cover"));
+cleanup:
+	if (online) { stop_serial_driver(&flipflat); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A dust cover has no light, and the status that tells whether its cover is open has to be read at
+// connect all the same; 3.0.0.10 read it only when the light was published.
+static void dust_cover_state_is_read_at_connect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--device-id", "98", "--cover", "2", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_FLIPFLAT_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&flipflat, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_COVER_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+	assert_switch_item_value(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&flipflat); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A cover that takes longer than 10 s still ends OK; the driver waits 30 s, as the INDI driver does.
+// 3.0.0.10 gave up after 10 s and ended ALERT.
+static void a_slow_cover_is_waited_for(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--cover-time", "12000", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_FLIPFLAT_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&flipflat, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(switch_on(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_COVER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 200 && find_cached_property(AUX_COVER_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(AUX_COVER_PROPERTY_NAME)->state);
 cleanup:
 	if (online) { stop_serial_driver(&flipflat); }
 	stop_external_serial_simulator(&simulator);
@@ -272,9 +309,11 @@ cleanup:
 
 int main(void) {
 	const indigo_test_case tests[] = {
-		{ "flip_flap_exposes_cover_light_and_intensity", flip_flap_exposes_cover_light_and_intensity },
+		{ "flip_flat_exposes_cover_light_and_intensity", flip_flat_exposes_cover_light_and_intensity },
 		{ "flat_man_hides_the_cover", flat_man_hides_the_cover },
 		{ "dust_cover_hides_the_light", dust_cover_hides_the_light },
+		{ "dust_cover_state_is_read_at_connect", dust_cover_state_is_read_at_connect },
+		{ "a_slow_cover_is_waited_for", a_slow_cover_is_waited_for },
 		{ "unknown_model_exposes_every_control", unknown_model_exposes_every_control },
 		{ "flat_man_xl_and_l_are_recognised", flat_man_xl_and_l_are_recognised },
 		{ "cover_opens_and_closes", cover_opens_and_closes },

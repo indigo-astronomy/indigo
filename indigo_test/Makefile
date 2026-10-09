@@ -2911,6 +2911,18 @@ AUX_FLATMASTER_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_flatmaster.a $(TEST
 $(TEST_BUILD)/hardware/test_aux_flatmaster_hw: hardware/test_aux_flatmaster_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_flatmaster.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_FLATMASTER_HW_TEST_LDFLAGS)
 
+# A physical Alnitak Flip-Flat, Flat-Man or Flip-Mask, or the Arduino sketch aux_flipflat_simulator.ino on a
+# board, is opt-in and excluded from normal integration tests. THE COVER MOVES AND THE PANEL LIGHTS UP; the
+# run leaves the light off and the cover as found. Set FLIPFLAT_HW_PORT to the port.
+.PHONY: test-aux-flipflat-hw
+test-aux-flipflat-hw: check-lib $(TEST_BUILD)/hardware/test_aux_flipflat_hw
+	$(TEST_BUILD)/hardware/test_aux_flipflat_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_FLIPFLAT_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_flipflat.a $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_flipflat_hw: hardware/test_aux_flipflat_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_flipflat.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_FLIPFLAT_HW_TEST_LDFLAGS)
+
 # The MLAstro RPA firmware on a bare ESP32 board is opt-in and excluded from normal integration tests.
 # NOTHING MOVES: without the TMC2209 motor drivers the firmware stays in ERROR and rejects every
 # motion command, which the suite asserts. Settings change only in controller memory and are

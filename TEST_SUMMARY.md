@@ -56,7 +56,8 @@
 |  | 2026-10-09 14:00 | 3.0.0.9 | linux arm64 | Lacerta FBC Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
 | aux_flatmaster | 2026-10-09 14:07 | 3.0.0.12 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 |  | 2026-10-09 14:08 | 3.0.0.12 | linux arm64 | PegasusAstro FlatMaster Arduino simulator (ESP32-S3) | 6 / 6 | ✅ OK |
-| aux_flipflat | 2026-09-27 20:49 | 3.0.0.10 | mac arm64 | simulator | 11 / 11 | ✅ OK |
+| aux_flipflat | 2026-10-09 14:14 | 3.0.0.11 | mac arm64 | simulator | 13 / 13 | ✅ OK |
+|  | 2026-10-09 14:16 | 3.0.0.11 | linux arm64 | Alnitak Flip-Flat Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
 | aux_geoptikflat | 2026-09-27 20:50 | 3.0.0.9 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | aux_joystick | 2026-09-27 20:51 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_mgbox | 2026-09-27 07:47 | 3.0.0.13 | linux x64 | simulator | 35 / 35 | ✅ OK |
