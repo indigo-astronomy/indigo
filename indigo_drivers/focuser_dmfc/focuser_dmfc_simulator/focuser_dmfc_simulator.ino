@@ -1,6 +1,6 @@
 // DMFC Pegasus focuser simulator for Arduino
 //
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -22,26 +22,48 @@
 #define Serial SerialUSB
 #endif
 
-int motor_mode = 0;
+int motor_mode = 1;
 float temperature = 22.4;
-int position = 50;
-int moving_status = 0;
-int led_status = 0;
+long position = 50;
+long target = 50;
+int led_status = 1;
 int reverse = 0;
 int disabled_encoder = 0;
 int backlash_value = 100;
+int speed = 400;
+unsigned long last_step = 0;
+
+// The motor travels at `speed` steps per second towards `target`; H stops it where it is.
+void move_motor() {
+  unsigned long now = millis();
+  long delta = (long)((now - last_step) * speed / 1000);
+  if (delta > 0) {
+    last_step = now;
+    if (position < target)
+      position = position + delta < target ? position + delta : target;
+    else if (position > target)
+      position = position - delta > target ? position - delta : target;
+  } else if (position == target) {
+    last_step = now;
+  }
+}
 
 void setup() {
   Serial.begin(19200);
-  Serial.setTimeout(1000);
+  Serial.setTimeout(100);
   while (!Serial)
     ;
 }
 
+// Replies end with a new line; C, G, H, M, S and W have no reply (DMFC-Serial-Command-Table.pdf).
 void loop() {
+  move_motor();
+  if (!Serial.available())
+    return;
   String command = Serial.readStringUntil('\n');
+  command.trim();
   if (command.equals("#")) {
-    Serial.println("OK_DMFCN");
+    Serial.print("OK_DMFCN\n");
   } else if (command.equals("A")) {
     Serial.print("OK_DMFCN:2.6:");
     Serial.print(motor_mode);
@@ -50,7 +72,7 @@ void loop() {
     Serial.print(":");
     Serial.print(position);
     Serial.print(":");
-    Serial.print(moving_status);
+    Serial.print(position != target ? 1 : 0);
     Serial.print(":");
     Serial.print(led_status);
     Serial.print(":");
@@ -58,44 +80,63 @@ void loop() {
     Serial.print(":");
     Serial.print(disabled_encoder);
     Serial.print(":");
-    Serial.println(backlash_value);
+    Serial.print(backlash_value);
+    Serial.print("\n");
+  } else if (command.equals("V")) {
+    Serial.print("2.6\n");
+  } else if (command.equals("B")) {
+    Serial.print("B:");
+    Serial.print((float)speed);
+    Serial.print("\n");
   } else if (command.equals("L")) {
     Serial.print("L:");
-    Serial.println(led_status);
+    Serial.print(led_status);
+    Serial.print("\n");
   } else if (command.equals("L:1")) {
-    Serial.println("L:0");
     led_status = 0;
+    Serial.print("L:0\n");
   } else if (command.equals("L:2")) {
-    Serial.println("L:1");
     led_status = 1;
+    Serial.print("L:1\n");
   } else if (command.startsWith("S:")) {
-    Serial.println(command);
+    int value = command.substring(2).toInt();
+    if (value > 0)
+      speed = value;
   } else if (command.startsWith("G:")) {
-    position += command.substring(2).toInt();
+    target = position + command.substring(2).toInt();
   } else if (command.startsWith("M:")) {
-    position = command.substring(2).toInt();
-	} else if (command.startsWith("W:")) {
-		position = command.substring(2).toInt();
-  } else if (command.startsWith("H")) {
-    Serial.println(command);
+    target = command.substring(2).toInt();
+  } else if (command.startsWith("W:")) {
+    target = position = command.substring(2).toInt();
+  } else if (command.equals("H")) {
+    target = position;
   } else if (command.startsWith("N:")) {
     reverse = command.substring(2).toInt();
     Serial.print("N:");
-    Serial.println(reverse);
+    Serial.print(reverse);
+    Serial.print("\n");
   } else if (command.startsWith("R:")) {
     motor_mode = command.substring(2).toInt();
-    Serial.println(motor_mode);
+    Serial.print(motor_mode);
+    Serial.print("\n");
   } else if (command.startsWith("E:")) {
     disabled_encoder = command.substring(2).toInt();
-    Serial.println(command);
+    Serial.print("E:");
+    Serial.print(disabled_encoder);
+    Serial.print("\n");
   } else if (command.startsWith("C:")) {
     backlash_value = command.substring(2).toInt();
-    Serial.println(command);
   } else if (command.equals("T")) {
-    Serial.println(temperature);
+    Serial.print(temperature);
+    Serial.print("\n");
   } else if (command.equals("P")) {
-    Serial.println(position);
+    Serial.print(position);
+    Serial.print("\n");
   } else if (command.equals("I")) {
-    Serial.println(moving_status);
+    Serial.print(position != target ? 1 : 0);
+    Serial.print("\n");
+  } else if (command.equals("X")) {
+    Serial.print(position);
+    Serial.print("\n");
   }
 }

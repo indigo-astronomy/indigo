@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000014
+#define DRIVER_VERSION       0x03000015
 #define DRIVER_NAME          "indigo_focuser_dmfc"
 #define DRIVER_LABEL         "PegasusAstro DMFC Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus DMFC"
@@ -157,7 +157,10 @@ static bool dmfc_parse_temperature(const char *text, double *value) {
 }
 
 // "OK_<model>:<version>:<motor>:<temperature>:<position>:<moving>:<led>:<reverse>:<encoder>:<backlash>";
-// a missing or malformed field rejects the line, except the temperature, which is only marked invalid.
+// a missing or malformed field rejects the line, except the temperature, which is only marked invalid, and
+// the motor type, which other controllers of the family report differently (INDI skips it for FocusCube):
+// a value other than 0 or 1 keeps the type last known. Fields a later firmware appends are ignored, as INDI
+// and the 2.0 driver did.
 static bool dmfc_status(indigo_device *device, dmfc_status_data *status) {
 	if (!dmfc_command(device, "A") || strncmp(PRIVATE_DATA->response, "OK_", 3)) {
 		return false;
@@ -168,9 +171,12 @@ static bool dmfc_status(indigo_device *device, dmfc_status_data *status) {
 		fields[i] = strtok_r(NULL, ":", &pnt);
 	}
 	int moving = 0;
-	if (fields[9] == NULL || strtok_r(NULL, ":", &pnt) != NULL || !dmfc_parse_flag(fields[2], &status->motor) || !dmfc_parse_int(fields[4], &status->position) || !dmfc_parse_flag(fields[5], &moving) || !dmfc_parse_flag(fields[6], &status->led) || !dmfc_parse_flag(fields[7], &status->reverse) || !dmfc_parse_flag(fields[8], &status->encoder_disabled) || !dmfc_parse_int(fields[9], &status->backlash)) {
+	if (fields[9] == NULL || !dmfc_parse_int(fields[4], &status->position) || !dmfc_parse_flag(fields[5], &moving) || !dmfc_parse_flag(fields[6], &status->led) || !dmfc_parse_flag(fields[7], &status->reverse) || !dmfc_parse_flag(fields[8], &status->encoder_disabled) || !dmfc_parse_int(fields[9], &status->backlash)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Malformed status");
 		return false;
+	}
+	if (!dmfc_parse_flag(fields[2], &status->motor)) {
+		status->motor = PRIVATE_DATA->motor;
 	}
 	status->moving = moving;
 	status->temperature_valid = dmfc_parse_temperature(fields[3], &status->temperature);
@@ -304,8 +310,11 @@ static void focuser_timer_callback(indigo_device *device) {
 		// the last valid reading stays published
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_TEMPERATURE_PROPERTY, INDIGO_ALERT_STATE, "Temperature read failed");
 	}
+	// The moving state is read before the position: a motor that stops between the two reads is then still
+	// moving with a fresh position, and the next poll ends the move at the final one. Read the other way
+	// round, the move ended with the position read just before the motor arrived.
 	int position = 0, moving = 0;
-	if (!dmfc_command(device, "P") || !dmfc_parse_int(PRIVATE_DATA->response, &position) || !dmfc_command(device, "I") || !dmfc_parse_flag(PRIVATE_DATA->response, &moving)) {
+	if (!dmfc_command(device, "I") || !dmfc_parse_flag(PRIVATE_DATA->response, &moving) || !dmfc_command(device, "P") || !dmfc_parse_int(PRIVATE_DATA->response, &position)) {
 		dmfc_poll_failed(device);
 	} else {
 		bool changed = FOCUSER_POSITION_ITEM->number.value != position;

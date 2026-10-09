@@ -41,8 +41,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --profile <name>        normal, configured, no-handshake, bad-status or\n");
-	printf("                          external-motion, default is normal\n");
+	printf("  --profile <name>        normal, configured, no-handshake, bad-status, longer-status,\n");
+	printf("                          late-arrival or external-motion, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_DMFC_EVENTS names a file receiving every accepted request, one per line.\n");
@@ -272,6 +272,9 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (!strcmp(command, "A")) {
 		if (!strcmp(options.profile, "bad-status")) {
 			sim_printf(handle, "ERR\n");
+		} else if (!strcmp(options.profile, "longer-status")) {
+			// a controller of the family whose motor field is neither 0 nor 1 and which appends a field
+			sim_printf(handle, "OK_DMFCN:2.6:2:%.1f:%d:%d:%d:%d:%d:%d:0\n", temperature, position, moving_status, led_status, reverse, disabled_encoder, backlash_value);
 		} else {
 			sim_printf(handle, "OK_DMFCN:2.6:%d:%.1f:%d:%d:%d:%d:%d:%d\n", motor_mode, temperature, position, moving_status, led_status, reverse, disabled_encoder, backlash_value);
 		}
@@ -279,6 +282,11 @@ static void dispatch_command(int handle, const char *command) {
 		sim_printf(handle, "%.1f\n", temperature);
 	} else if (!strcmp(command, "P")) {
 		sim_printf(handle, "%d\n", position);
+		if (!strcmp(options.profile, "late-arrival") && motion.duration > 0) {
+			// the motor reaches its target right after the position was read
+			serial_motion_sync(&motion, (int)motion.target);
+			position = (int)motion.target;
+		}
 	} else if (!strcmp(command, "I")) {
 		sim_printf(handle, "%d\n", moving_status);
 	} else if (!strncmp(command, "G:", 2)) {

@@ -226,7 +226,8 @@
 | focuser_astroasis | 2026-10-05 16:27 | 3.0.0.16 | mac arm64 | fake SDK | 40 / 40 | ✅ OK |
 | focuser_astromechanics | 2026-10-05 20:03 | 3.0.0.8 | mac arm64 | simulator | 21 / 21 | ✅ OK |
 |  | 2026-10-09 19:38 | 3.0.0.8 | linux arm64 | ASTROMECHANICS Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
-| focuser_dmfc | 2026-10-05 19:50 | 3.0.0.20 | mac arm64 | simulator | 37 / 37 | ✅ OK |
+| focuser_dmfc | 2026-10-09 20:15 | 3.0.0.21 | mac arm64 | simulator | 39 / 39 | ✅ OK |
+|  | 2026-10-09 20:19 | 3.0.0.21 | linux arm64 | PegasusAstro DMFC Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 | focuser_dsd | 2026-10-05 15:50 | 3.0.0.21 | mac arm64 | simulator | 57 / 57 | ✅ OK |
 | focuser_efa | 2026-10-09 19:50 | 3.0.0.23 | mac arm64 | simulator | 64 / 64 | ✅ OK |
 |  | 2026-10-09 20:01 | 3.0.0.23 | linux arm64 | PlaneWave EFA Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |

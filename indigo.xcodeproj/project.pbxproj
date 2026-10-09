@@ -5741,6 +5741,7 @@
 		C0DE20261009191500000001 /* test_dome_nexdome3_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome3_hw.c; sourceTree = "<group>"; };
 		C0DE20261009190900000001 /* test_dome_talon6ror_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_talon6ror_hw.c; sourceTree = "<group>"; };
 		C0DE20261009192700000001 /* test_dome_skyroof_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_skyroof_hw.c; sourceTree = "<group>"; };
+		C0DE2026100920190001 /* test_focuser_dmfc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_dmfc_hw.c; sourceTree = "<group>"; };
 		C0DE2026100920030001 /* test_focuser_efa_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_efa_hw.c; sourceTree = "<group>"; };
 		C0DE2026100919380001 /* test_focuser_astromechanics_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_astromechanics_hw.c; sourceTree = "<group>"; };
 		C0DE20261009140800000002 /* Flatmaster_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Flatmaster_Serial_Command_Table.pdf; sourceTree = "<group>"; };
@@ -14867,6 +14868,7 @@
 				C0DE20261009191500000001 /* test_dome_nexdome3_hw.c */,
 				C0DE20261009190900000001 /* test_dome_talon6ror_hw.c */,
 				C0DE20261009192700000001 /* test_dome_skyroof_hw.c */,
+				C0DE2026100920190001 /* test_focuser_dmfc_hw.c */,
 				C0DE2026100920030001 /* test_focuser_efa_hw.c */,
 				C0DE2026100919380001 /* test_focuser_astromechanics_hw.c */,
 				C0DE20260924224800000001 /* test_polaralign_mlastro_hw.c */,

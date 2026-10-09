@@ -129,3 +129,42 @@ Against the pre-fix 3.0.0.19 driver (built from a copy of its sources) 22 of the
 
 - Simulated tests run: 36 in the recorded run (see README `## Testing`), with `test_focuser_dmfc_motion` alongside.
 - Hardware tests run: 0; passed: 0.
+
+## Status line, poll order, sketch and hardware suite (2026-10-09, 3.0.0.21)
+
+The checks were compared with `DMFC-Serial-Command-Table.pdf`, INDI's `dmfc` and `pegasus_focuscube` and the 2.0
+driver.
+
+### Defects
+
+- DMFC-01: the status line `A` was refused when it carried more than ten fields or a motor type other than 0 or
+  1. The 2.0 driver and INDI ignore further fields, INDI skips the motor field of the FocusCube, which this driver
+  also matches; a controller of the family reporting either was refused at the connection. Further fields are
+  ignored and an unknown motor type keeps the type last known. Test: `longer_status_is_read` (simulator profile
+  `longer-status`; fails on 3.0.0.20, passes on 3.0.0.21).
+- DMFC-02: the poll read the position (`P`) before the moving state (`I`). A motor that arrived between the two
+  reads ended the move OK at the position read before it arrived (2048 for a 2050 target in the hardware run),
+  corrected only by a later idle poll. The moving state is read first now, so the next poll ends the move at the
+  arrival position. Test: `move_ends_at_the_arrival_position` (simulator profile `late-arrival`; on 3.0.0.20 the
+  move to 4000 ended OK at 971, on 3.0.0.21 at 4000).
+
+### Checked and left as they are
+
+- Relative moves count inward as increasing the position (`G:+n`), as the 2.0 driver and the other Pegasus drivers
+  of INDIGO (UPB, Prodigy) do; INDI uses the opposite sign. Without a controller to compare, the INDIGO convention
+  stays.
+
+### Sketch
+
+`focuser_dmfc_simulator.ino` had no `V` and no `B` (the driver needs the speed to connect), moved instantly,
+always reported idle, and answered `S`, `H` and `C`, which the command table defines without a reply. It now
+answers `V`, `B` and `X`, travels at the speed `S` sets, reports the motion in `A` and `I`, stops on `H`, and
+answers only the commands that have a reply.
+
+### Verification
+
+- Recorded simulator run on macOS arm64: 39/39.
+- New hardware suite `indigo_test/hardware/test_focuser_dmfc_hw.c` (`make test-focuser-dmfc-hw`, `DMFC_HW_PORT`):
+  status, absolute moves, steps both ways, an abort, sync, backlash, direction, LED, encoder and motor type read
+  back after a reconnect and restored, reconnect and INIT/SHUTDOWN. Recorded run against the sketch on an ESP32-S3:
+  9/9. No physical DMFC is available.

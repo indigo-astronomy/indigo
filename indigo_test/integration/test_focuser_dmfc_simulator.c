@@ -369,6 +369,32 @@ cleanup:
 	driver_stop();
 }
 
+// A controller of the family that reports a motor type other than 0 or 1 and appends a field to the status
+// line is still read: the position and the settings come from the line, the motor type keeps its last value.
+static void longer_status_is_read(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(50));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.4, .05));
+	SERIAL_CHECK_TRUE(goto_position(150, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(150));
+cleanup:
+	driver_stop();
+}
+
+// A motor that arrives between the poll's two reads: the move has to end at the position it arrived at, not at
+// the one read just before.
+static void move_ends_at_the_arrival_position(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// checked at the OK publication itself: a later idle poll corrects a stale position anyway
+	// moves of several seconds at 1000 steps/s, so the motor arrives while the poll runs
+	SERIAL_CHECK_TRUE(goto_position(4000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(target_is(4000));
+	SERIAL_CHECK_TRUE(goto_position(1200, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(target_is(1200));
+cleanup:
+	driver_stop();
+}
+
 // A controller that answers the handshake with something other than OK_ must
 // not be reported as connected, and must leave no driver properties behind.
 static void handshake_rejected(void) {
@@ -1091,6 +1117,8 @@ int main(void) {
 		{ "metadata", metadata, "normal" },
 		{ "property_contract", property_contract, "normal" },
 		{ "status_readback", status_readback, "configured" },
+		{ "longer_status_is_read", longer_status_is_read, "longer-status" },
+		{ "move_ends_at_the_arrival_position", move_ends_at_the_arrival_position, "late-arrival" },
 		{ "handshake_rejected", handshake_rejected, "no-handshake" },
 		{ "handshake_timeout", handshake_timeout, "normal" },
 		{ "status_query_failure", status_query_failure, "bad-status" },
