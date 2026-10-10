@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_prodigy"
 #define DRIVER_LABEL         "PegasusAstro Prodigy Microfocuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus Prodigy Focuser"
@@ -219,7 +219,6 @@ static void motion_finalizer(indigo_device *device) {
 		PRIVATE_DATA->active = false;
 		PRIVATE_DATA->uncertain = PRIVATE_DATA->failed_move = true;
 		prodigy_echo(device, "H", "0");
-		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 		prodigy_motion_state(device, INDIGO_ALERT_STATE);
 		return;
 	}
@@ -252,7 +251,6 @@ static bool prodigy_start(indigo_device *device, int target, bool relative, bool
 	if (!accepted) {
 		PRIVATE_DATA->uncertain = PRIVATE_DATA->failed_move = true;
 		prodigy_echo(device, "H", "0");
-		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 		return false;
 	}
 	PRIVATE_DATA->active = true;
@@ -338,11 +336,15 @@ static void focuser_timer_callback(indigo_device *device) {
 		if (!PRIVATE_DATA->active && (PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
 			// an external move the poll follows owns the BUSY state it published
 			bool following = PRIVATE_DATA->moving;
+			int previous = PRIVATE_DATA->position;
 			if (!prodigy_status(device)) {
 				prodigy_motion_state(device, INDIGO_ALERT_STATE);
 			} else if (following || PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE)) {
-				// a request accepted while the poll was in flight owns the motion properties
-				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+				// a request accepted while the poll was in flight owns the motion properties; the target follows only motion
+				// the driver did not command, a move of the driver that ended ALERT or whose stop is unconfirmed keeps it
+				if (!PRIVATE_DATA->uncertain && (following || PRIVATE_DATA->moving || (PRIVATE_DATA->position != previous && !PRIVATE_DATA->failed_move))) {
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+				}
 				// an ALERT of a failed or aborted move stays, one of a failed poll does not
 				prodigy_motion_state(device, PRIVATE_DATA->uncertain || (PRIVATE_DATA->failed_move && !PRIVATE_DATA->moving) ? INDIGO_ALERT_STATE : PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
 			}
@@ -519,13 +521,12 @@ static void focuser_position_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_POSITION.on_change
 	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 		// a sync re-establishes the coordinate of a stopped focuser, also after an
-		// uncertain stop; a failed one keeps the real position and the next is accepted
+		// uncertain stop; a failed one keeps the real position as the value and the requested
+		// sync value as the target, and the next is accepted
 		int target = (int)FOCUSER_POSITION_ITEM->number.target;
 		bool ok = !PRIVATE_DATA->rebooting && prodigy_set(device, 'W', target) && prodigy_status(device) && PRIVATE_DATA->position == target && !PRIVATE_DATA->moving;
 		if (ok) {
 			PRIVATE_DATA->uncertain = false;
-		} else {
-			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 		}
 		PRIVATE_DATA->failed_move = !ok;
 		prodigy_motion_state(device, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
@@ -572,9 +573,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				X_FOCUSER_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, X_FOCUSER_PARK_PROPERTY, "Park aborted");
 			}
-			// an aborted move ends ALERT at the position where it stopped
+			// an aborted move ends ALERT at the position where it stopped and keeps the requested target
 			PRIVATE_DATA->failed_move = true;
-			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 			prodigy_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;

@@ -148,8 +148,14 @@ static void prodigy_aborts_a_move(void) {
 	double stopped = focuser_hw_position(focuser);
 	printf("    stopped at %g on the way from %g to %g\n", stopped, base, base + TRAVEL);
 	ASSERT_TRUE(stopped > base && stopped < base + TRAVEL);
-	indigo_usleep(1500000);
+	// the aborted move keeps the requested target, also across idle polls
+	double requested = 0;
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &requested));
+	ASSERT_EQ_INT((int)(base + TRAVEL), (int)requested);
+	indigo_usleep(2500000);
 	ASSERT_EQ_INT((int)stopped, (int)focuser_hw_position(focuser));
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &requested));
+	ASSERT_EQ_INT((int)(base + TRAVEL), (int)requested);
 	ASSERT_TRUE(focuser_hw_goto(focuser, base, INDIGO_OK_STATE, MOVE_TIMEOUT));
 }
 
