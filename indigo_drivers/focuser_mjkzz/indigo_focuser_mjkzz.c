@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_focuser_mjkzz"
 #define DRIVER_LABEL         "MJKZZ Rail Focuser"
 #define FOCUSER_DEVICE_NAME  "MJKZZ Rail"
@@ -140,9 +140,6 @@ static bool mjkzz_position(indigo_device *device, int32_t *position) {
 	}
 	PRIVATE_DATA->position = actual;
 	FOCUSER_POSITION_ITEM->number.value = actual;
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
-		FOCUSER_POSITION_ITEM->number.target = actual;
-	}
 	if (position) {
 		*position = actual;
 	}
@@ -154,8 +151,9 @@ static bool mjkzz_stop(indigo_device *device) {
 	if (!mjkzz_command(device, CMD_STOP, 0, 0, &position) || position < MJKZZ_MIN_POSITION || position > MJKZZ_MAX_POSITION) {
 		return false;
 	}
+	// the stopped position is the value only, the target keeps the request
 	PRIVATE_DATA->position = position;
-	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+	FOCUSER_POSITION_ITEM->number.value = position;
 	return true;
 }
 
@@ -259,9 +257,6 @@ static void focuser_timer_callback(indigo_device *device) {
 				PRIVATE_DATA->external = false;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				if (!PRIVATE_DATA->uncertain) {
-					FOCUSER_POSITION_ITEM->number.target = position;
-				}
 				if (PRIVATE_DATA->poll_failed) {
 					// A good poll restores only the state a failed poll took away; a failed or aborted move stays ALERT.
 					PRIVATE_DATA->poll_failed = false;
@@ -269,7 +264,9 @@ static void focuser_timer_callback(indigo_device *device) {
 				}
 				if (changed && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
 					// Motion the driver did not command (rotary switch, running at connect): BUSY until it settles.
+					// Only such motion moves the target; an idle poll leaves the last request alone.
 					PRIVATE_DATA->external = true;
+					FOCUSER_POSITION_ITEM->number.target = position;
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				} else if (!changed && PRIVATE_DATA->external) {
 					PRIVATE_DATA->external = false;
@@ -391,7 +388,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		PRIVATE_DATA->active = PRIVATE_DATA->external = false;
 		if (IS_CONNECTED && mjkzz_stop(device)) {
 			PRIVATE_DATA->uncertain = false;
-			// An aborted move ends ALERT at the stopped position.
+			// An aborted move ends ALERT with the stopped position as the value and the requested target.
 			mjkzz_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;

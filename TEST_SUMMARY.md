@@ -250,7 +250,7 @@
 |  | 2026-10-09 20:37 | 3.0.0.11 | linux arm64 | LakesideAstro Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
 | focuser_lunatico | 2026-10-05 16:12 | 3.0.0.16 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | focuser_mjkzz | 2026-10-08 20:19 | 3.0.0.9 | linux arm64 | MJKZZ Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
-|  | 2026-10-08 20:20 | 3.0.0.9 | mac arm64 | simulator | 46 / 46 | ✅ OK |
+|  | 2026-10-10 02:30 | 3.0.0.10 | mac arm64 | simulator | 46 / 46 | ✅ OK |
 | focuser_moonlite | 2026-10-09 20:39 | 3.0.0.15 | mac arm64 | simulator | 45 / 45 | ✅ OK |
 |  | 2026-10-09 20:46 | 3.0.0.15 | linux arm64 | MoonLite Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 | focuser_mypro2 | 2026-10-05 15:20 | 3.0.0.14 | mac arm64 | simulator | 35 / 35 | ✅ OK |

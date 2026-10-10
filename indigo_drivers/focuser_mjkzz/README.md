@@ -26,4 +26,4 @@ Driver is developed and tested with the simulator.
 ## Testing
 
 2026-10-08 20:19 3.0.0.9 linux arm64 MJKZZ Arduino simulator (ESP32-S3) 11/11 OK
-2026-10-08 20:20 3.0.0.9 mac arm64 simulator 46/46 OK
+2026-10-10 02:30 3.0.0.10 mac arm64 simulator 46/46 OK

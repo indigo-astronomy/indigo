@@ -95,12 +95,13 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 
 | Defect | Impact | Fix | Regression test |
 | --- | --- | --- | --- |
-| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | A STOP-confirmed abort of a pending, active, uncommanded or uncertain move ends both ALERT at the STOP position (value = target). | `abort_motion`, `abort_queued`, `rejected_change` |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | A STOP-confirmed abort of a pending, active, uncommanded or uncertain move ends both ALERT with the STOP position as the value and the requested target kept (3.0.0.10). | `abort_motion`, `abort_queued`, `rejected_change` |
 | Abort while idle sent STOP | A stop command was sent with nothing moving. | Abort with nothing pending ends OK without a command. | `abort_motion` (STOP count stays 1) |
 | Idle poll turned a failed move OK | Any good 1 s poll set `FOCUSER_POSITION` OK after a stall, a failed readback or an abort, while `FOCUSER_STEPS` stayed ALERT. | A good poll restores OK only after a failed poll. | `motion_read_failure`, `stalled_motion`, `abort_motion` |
 | Poll took a pending GOTO's target | A GOTO copied while the idle `GPOS` reply was outstanding had its target overwritten by the measured position and OK published over its BUSY, so the handler saw a no-op and the rail never moved. | The poll writes only the measured value while a request is BUSY; target and state are published only when no request is pending. | `request_during_poll` |
 | Uncommanded motion was published OK | Rotary-switch motion and motion running at connect only changed the value. | The idle poll publishes `FOCUSER_POSITION` BUSY with target = measured value while the position changes, OK once it settles; a relative move is refused meanwhile, abort and disconnect send STOP. A failed move stays ALERT. | `manual_motion`, `moving_at_connect`, `external_state` |
 | ALERT survived reconnect | A session ending with an aborted move reconnected with ALERT. | Connect sets `FOCUSER_POSITION`/`FOCUSER_STEPS` OK. | `abort_motion` (reconnect step) |
+| Aborted or failed move overwrote the requested target (3.0.0.10) | `mjkzz_stop` published the STOP position as value and target for an abort, a stall, a failed readback or start; every idle poll then rewrote the target with the position. | The end of a move publishes the reached position as the value only; the idle poll moves the target only for uncommanded motion. | `abort_motion`, `abort_queued`, `start_failure`, `motion_read_failure`, `stalled_motion`, `stop_failure` |
 
 ### Simulator additions
 
@@ -115,7 +116,7 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 - Position poll failure keeps the value, next good poll restores OK, a move works: `poll_*`.
 - Uncommanded motion: `manual_motion`, `moving_at_connect`, `external_state`.
 - Absolute/no-op right after connect/signed/boundary, both motion properties BUSY: `absolute_motion`, `boundary_motion`. Relative both directions, zero step, past the end sent as a move to the end: `relative_motion`. Overlap refusal: `overlap`, `rejected_change`.
-- Abort mid-move (ALERT both, value = target = stopped, STOP once, three equal readbacks, not turned OK by polls, idle and OFF abort without a command, reconnect OK, fresh move): `abort_motion`. Abort overtaking a queued GOTO: `abort_queued`. Refused stop and retry: `stop_failure`.
+- Abort mid-move (ALERT both, value = stopped, target = requested also over the idle polls, STOP once, three equal readbacks, not turned OK by polls, idle and OFF abort without a command, reconnect OK, fresh move): `abort_motion`. Abort overtaking a queued GOTO: `abort_queued`. Refused stop and retry: `stop_failure`.
 - Start failure stops and recovers: `start_failure`. Readback failure and stall during motion send STOP and stay ALERT: `motion_read_failure`, `stalled_motion`.
 - Disconnect during motion sends STOP once, nothing follows, reconnect OK at the stopped position: `disconnect_motion`. Transport loss at move start and idle: `start_transport_loss`, `idle_transport_loss`.
 - Speed: one command per write, refusal keeps the device value, retry, refused during motion, read back after reconnect: `speed_control`, `speed_failure`, `speed_during_motion`, `reconnect`.

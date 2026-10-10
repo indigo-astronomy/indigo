@@ -20,7 +20,7 @@ driver mjkzz {
 	label = "MJKZZ Rail Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	include {
 		#include <stdint.h>
@@ -108,9 +108,6 @@ driver mjkzz {
 			}
 			PRIVATE_DATA->position = actual;
 			FOCUSER_POSITION_ITEM->number.value = actual;
-			if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
-				FOCUSER_POSITION_ITEM->number.target = actual;
-			}
 			if (position) {
 				*position = actual;
 			}
@@ -122,8 +119,9 @@ driver mjkzz {
 			if (!mjkzz_command(device, CMD_STOP, 0, 0, &position) || position < MJKZZ_MIN_POSITION || position > MJKZZ_MAX_POSITION) {
 				return false;
 			}
+			// the stopped position is the value only, the target keeps the request
 			PRIVATE_DATA->position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_POSITION_ITEM->number.value = position;
 			return true;
 		}
 
@@ -249,9 +247,6 @@ driver mjkzz {
 						PRIVATE_DATA->external = false;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
-						if (!PRIVATE_DATA->uncertain) {
-							FOCUSER_POSITION_ITEM->number.target = position;
-						}
 						if (PRIVATE_DATA->poll_failed) {
 							// A good poll restores only the state a failed poll took away; a failed or aborted move stays ALERT.
 							PRIVATE_DATA->poll_failed = false;
@@ -259,7 +254,9 @@ driver mjkzz {
 						}
 						if (changed && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
 							// Motion the driver did not command (rotary switch, running at connect): BUSY until it settles.
+							// Only such motion moves the target; an idle poll leaves the last request alone.
 							PRIVATE_DATA->external = true;
+							FOCUSER_POSITION_ITEM->number.target = position;
 							FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						} else if (!changed && PRIVATE_DATA->external) {
 							PRIVATE_DATA->external = false;
@@ -338,7 +335,7 @@ driver mjkzz {
 					PRIVATE_DATA->active = PRIVATE_DATA->external = false;
 					if (IS_CONNECTED && mjkzz_stop(device)) {
 						PRIVATE_DATA->uncertain = false;
-						// An aborted move ends ALERT at the stopped position.
+						// An aborted move ends ALERT with the stopped position as the value and the requested target.
 						mjkzz_motion_state(device, INDIGO_ALERT_STATE);
 					} else {
 						PRIVATE_DATA->uncertain = true;

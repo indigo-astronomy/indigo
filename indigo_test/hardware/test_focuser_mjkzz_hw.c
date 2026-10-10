@@ -183,8 +183,8 @@ static void mjkzz_rejects_an_overlapping_move(void) {
 	ASSERT_TRUE(move_to(initial_position));
 }
 
-// Abort stops the rail mid-move, ends both motion properties ALERT at the stopped position and
-// leaves the driver able to take a fresh move.
+// Abort stops the rail mid-move, ends both motion properties ALERT with the stopped position as the
+// value and the requested target kept, and leaves the driver able to take a fresh move.
 static void mjkzz_aborts_a_move(void) {
 	double target = initial_position + travel;
 	ASSERT_TRUE(set_speed(SLOWEST_SPEED));
@@ -199,11 +199,13 @@ static void mjkzz_aborts_a_move(void) {
 	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &stopped_target));
 	printf("    aborted at %g, between %g and %g\n", stopped, initial_position, target);
 	ASSERT_TRUE(stopped > initial_position && stopped < target);
-	ASSERT_NEAR(stopped, stopped_target, 0);
-	// The rail really stopped: two idle polls later the position is the same and the move stays ALERT.
+	ASSERT_NEAR(target, stopped_target, 0);
+	// The rail really stopped: two idle polls later the position is the same, the move stays ALERT and the target as requested.
 	indigo_usleep(2500000);
 	ASSERT_NEAR(stopped, position(), 0);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, hw_property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME));
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &stopped_target));
+	ASSERT_NEAR(target, stopped_target, 0);
 	ASSERT_TRUE(set_speed(FASTEST_SPEED));
 	ASSERT_TRUE(move_to(initial_position));
 }
