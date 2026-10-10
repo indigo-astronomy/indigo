@@ -468,6 +468,12 @@ refusal condition, the idle poll and the abort check it instead of the property 
 |---|---|---|---|
 | D21 | An aborted, stalled, refused or short move overwrote the requested `FOCUSER_POSITION` target with the reached position, and every idle poll (2 s) rewrote it with the measured one. | `focuser_motion_failed`, `focuser_movement_ended` and the idle poll set the value only; the target follows the position only for uncommanded motion and the calibration run. | `abort_motion`, `abort_overtakes_queued_move`, `stalled_move`, `move_readback_failures`, `move_command_failures`, `test_focuser_primaluce_motion` |
 
+## Both motion properties busy from the accepted request (3.0.0.24, 2026-10-10)
+
+| # | Defect | Fix | Regression test |
+|---|---|---|---|
+| D22 | An accepted move published only its own property BUSY until its handler ran, so a request of the other motion property refused in that window ended that property ALERT in the middle of the move (found by `primaluce_refuses_an_overlapping_request` on the SESTO SENSO 2, whose overlap case also still expected the refusals to end ALERT instead of the BUSY message only). | The `on_change_request` of `FOCUSER_POSITION` and `FOCUSER_STEPS` publishes the other motion property BUSY too, so the refusal is a BUSY message and neither property publishes ALERT. The hardware overlap case expects the message with both properties BUSY and the target of the running move kept. | `refusal_while_move_queued`; hardware `primaluce_refuses_an_overlapping_request` |
+
 ## Final test summary
 
 - Simulated tests: 54 run, 54 passed (recorded run of 3.0.0.22, macOS arm64).

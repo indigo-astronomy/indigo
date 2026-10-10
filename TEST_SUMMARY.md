@@ -234,14 +234,14 @@
 |  | 2026-10-10 14:04 | 3.0.0.25 | mac arm64 | simulator | 66 / 66 | ✅ OK |
 | focuser_fc3 | 2026-10-10 03:28 | 3.0.0.11 | mac arm64 | simulator | 39 / 39 | ✅ OK |
 | focuser_fcusb | 2026-09-21 23:46 | 3.0.0.9 | mac arm64 | FCUSB | 10 / 10 | ✅ OK |
-|  | 2026-09-30 19:16 | 3.0.0.10 | linux arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
 |  | 2026-10-05 15:13 | 3.0.0.11 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 |  | 2026-10-05 21:02 | 3.0.0.11 | mac arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
+|  | 2026-10-10 18:57 | 3.0.0.11 | linux arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
 | focuser_fli | 2026-10-10 01:43 | 3.0.0.17 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
 | focuser_focusdreampro | 2026-09-22 21:05 | 3.0.0.9 | mac arm64 | AstroGadget FocusDreamPro | 15 / 15 | ✅ OK |
 |  | 2026-09-30 19:34 | 3.0.0.11 | linux arm64 | simulator | 18 / 18 | ✅ OK |
-|  | 2026-09-30 19:36 | 3.0.0.11 | linux arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
 |  | 2026-10-05 20:52 | 3.0.0.12 | mac arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
+|  | 2026-10-10 18:53 | 3.0.0.14 | linux arm64 | AGadget FocusDreamPro | 15 / 15 | ✅ OK |
 |  | 2026-10-10 21:50 | 3.0.0.15 | mac arm64 | simulator | 36 / 36 | ✅ OK |
 | focuser_ioptron | 2026-09-27 00:32 | 3.0.0.10 | linux x64 | simulator | 42 / 42 | ✅ OK |
 |  | 2026-10-10 03:50 | 3.0.0.12 | mac arm64 | simulator | 47 / 47 | ✅ OK |
@@ -262,11 +262,11 @@
 |  | 2026-10-10 02:38 | 3.0.0.13 | mac arm64 | simulator | 42 / 42 | ✅ OK |
 | focuser_optecfl | 2026-10-10 13:51 | 3.0.0.9 | mac arm64 | simulator | 51 / 51 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
-|  | 2026-09-30 18:48 | 3.0.0.15 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-03 19:54 | 3.0.0.16 | linux arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
 |  | 2026-10-05 22:14 | 3.0.0.22 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-05 22:15 | 3.0.0.22 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
-|  | 2026-10-10 02:42 | 3.0.0.23 | mac arm64 | simulator | 54 / 54 | ✅ OK |
+|  | 2026-10-10 19:09 | 3.0.0.24 | mac arm64 | simulator | 55 / 55 | ✅ OK |
+|  | 2026-10-10 19:20 | 3.0.0.24 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-10-09 21:53 | 3.0.0.11 | linux arm64 | Prodigy Arduino simulator (ESP32-S3) | 13 / 13 | ✅ OK |
 |  | 2026-10-10 03:54 | 3.0.0.12 | mac arm64 | simulator | 62 / 62 | ✅ OK |
@@ -281,6 +281,7 @@
 |  | 2026-09-30 19:29 | 3.0.0.11 | linux arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
 |  | 2026-10-05 22:18 | 3.0.0.12 | mac arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
 |  | 2026-10-10 14:01 | 3.0.0.14 | mac arm64 | simulator | 41 / 41 | ✅ OK |
+|  | 2026-10-10 18:55 | 3.0.0.14 | linux arm64 | simulator | 41 / 41 | ✅ OK |
 | focuser_wemacro | 2026-10-08 19:03 | 3.0.0.10 | linux arm64 | WeMacro Rail controller | 16 / 16 | ✅ OK |
 |  | 2026-10-08 19:36 | 3.0.0.10 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | gps_gpsd | 2026-09-27 22:38 | 3.0.0.5 | mac arm64 | simulator | 17 / 17 | ✅ OK |

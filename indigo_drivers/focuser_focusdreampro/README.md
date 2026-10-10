@@ -31,6 +31,6 @@ You may need to install Silicon Labs CP2102 driver for host operating system).
 
 2026-09-22 21:05 3.0.0.9 mac arm64 AstroGadget FocusDreamPro 15/15 OK
 2026-09-30 19:34 3.0.0.11 linux arm64 simulator 18/18 OK
-2026-09-30 19:36 3.0.0.11 linux arm64 AGadget FocusDreamPro 15/15 OK
 2026-10-05 20:52 3.0.0.12 mac arm64 AGadget FocusDreamPro 15/15 OK
+2026-10-10 18:53 3.0.0.14 linux arm64 AGadget FocusDreamPro 15/15 OK
 2026-10-10 21:50 3.0.0.15 mac arm64 simulator 36/36 OK

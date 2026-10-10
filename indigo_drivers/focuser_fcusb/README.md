@@ -32,6 +32,6 @@ Driver is tested with the physical hardware.
 ## Testing
 
 2026-09-21 23:46 3.0.0.9 mac arm64 FCUSB 10/10 OK
-2026-09-30 19:16 3.0.0.10 linux arm64 FCUSB Focuser 10/10 OK
 2026-10-05 15:13 3.0.0.11 mac arm64 fake SDK 24/24 OK
 2026-10-05 21:02 3.0.0.11 mac arm64 FCUSB Focuser 10/10 OK
+2026-10-10 18:57 3.0.0.11 linux arm64 FCUSB Focuser 10/10 OK

@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 23;
+	version = 24;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -1998,8 +1998,11 @@ driver primaluce {
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				// The accepted move is pending until its handler runs.
+				// The accepted move is pending until its handler runs. Both motion properties are busy from now on, so a
+				// request refused meanwhile is answered with a BUSY message and does not end FOCUSER_STEPS ALERT.
 				PRIVATE_DATA->pending = true;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			}
 			on_change {
 				PRIVATE_DATA->pending = false;
@@ -2040,8 +2043,10 @@ driver primaluce {
 				message = "Another motion operation is pending";
 			}
 			on_change_request {
-				// The accepted move is pending until its handler runs.
+				// The accepted move is pending until its handler runs; FOCUSER_POSITION is busy with it from now on.
 				PRIVATE_DATA->pending = true;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 			on_change {
 				int steps = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ? (int)FOCUSER_STEPS_ITEM->number.target : -(int)FOCUSER_STEPS_ITEM->number.target;

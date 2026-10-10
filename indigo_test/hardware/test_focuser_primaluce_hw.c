@@ -735,40 +735,46 @@ static void primaluce_refuses_an_overlapping_request(void) {
 	unsigned before = revision(focuser, FOCUSER_POSITION_PROPERTY_NAME);
 	indigo_change_number_property_1(&client, FOCUSER_DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target);
 	ASSERT_TRUE(wait_state(focuser, FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_BUSY_STATE, SHORT_TIMEOUT));
-	// A relative move requested while the absolute move runs must be refused explicitly, and the
-	// refusal must carry the driver's own values rather than the rejected request.
-	unsigned steps_before = revision(focuser, FOCUSER_STEPS_PROPERTY_NAME);
+	// A relative move requested while the absolute move runs must be refused explicitly. The refusal is
+	// a BUSY message only: the motion properties keep the running move's state and target.
+	double kept = 0;
 	indigo_change_number_property_1(&client, FOCUSER_DEVICE_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100);
-	ASSERT_TRUE(wait_state(focuser, FOCUSER_STEPS_PROPERTY_NAME, steps_before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(wait_for_message("Another motion operation is pending", SHORT_TIMEOUT));
+	ASSERT_TRUE(property_state(focuser, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE && property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	ASSERT_TRUE(number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &kept) && fabs(kept - target) < 0.5);
 	// A second absolute move must be refused the same way instead of being dropped without a word.
 	forget_messages();
-	unsigned again_before = revision(focuser, FOCUSER_POSITION_PROPERTY_NAME);
 	indigo_change_number_property_1(&client, FOCUSER_DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, initial_position);
-	ASSERT_TRUE(wait_state(focuser, FOCUSER_POSITION_PROPERTY_NAME, again_before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(wait_for_message("Another motion operation is pending", SHORT_TIMEOUT));
+	ASSERT_TRUE(property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	ASSERT_TRUE(number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &kept) && fabs(kept - target) < 0.5);
 	ASSERT_TRUE(wait_settled(focuser, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT));
 	// The same refusal has to protect a running relative move, which needs the position property to
 	// carry the motion state of that move.
 	forget_messages();
 	ASSERT_TRUE(set_switch(focuser, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT));
 	unsigned steps_started = revision(focuser, FOCUSER_STEPS_PROPERTY_NAME);
+	double previous_target = 0, relative_target = 0;
+	ASSERT_TRUE(number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &previous_target));
 	indigo_change_number_property_1(&client, FOCUSER_DEVICE_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, long_travel);
 	ASSERT_TRUE(wait_state(focuser, FOCUSER_STEPS_PROPERTY_NAME, steps_started, INDIGO_BUSY_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(wait_settled(focuser, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE, SHORT_TIMEOUT));
-	unsigned position_before = revision(focuser, FOCUSER_POSITION_PROPERTY_NAME);
+	// FOCUSER_POSITION is busy from the accepted request on; its target is the relative move's once the handler ran
+	// (unchanged only when the focuser already stands at the end of travel).
+	for (int i = 0; i < 100 && number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &relative_target) && relative_target == previous_target; i++) {
+		indigo_usleep(20000);
+	}
 	indigo_change_number_property_1(&client, FOCUSER_DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, initial_position);
-	ASSERT_TRUE(wait_state(focuser, FOCUSER_POSITION_PROPERTY_NAME, position_before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
 	ASSERT_TRUE(wait_for_message("Another motion operation is pending", SHORT_TIMEOUT));
+	ASSERT_TRUE(property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	ASSERT_TRUE(number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &kept) && fabs(kept - relative_target) < 0.5);
 	// Refusing the position property must not disarm the guard of the relative move that is still
 	// running, so a second relative request has to be refused as well.
 	forget_messages();
-	unsigned steps_again = revision(focuser, FOCUSER_STEPS_PROPERTY_NAME);
-	fprintf(stderr, "    before the second relative request: FOCUSER_POSITION state %d, FOCUSER_STEPS state %d\n", property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME), property_state(focuser, FOCUSER_STEPS_PROPERTY_NAME));
 	indigo_change_number_property_1(&client, FOCUSER_DEVICE_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100);
-	ASSERT_TRUE(wait_state(focuser, FOCUSER_STEPS_PROPERTY_NAME, steps_again, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
-	fprintf(stderr, "    after the second relative request: FOCUSER_POSITION state %d value %g, FOCUSER_STEPS state %d, revisions %u -> %u\n", property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME), cached_position(), property_state(focuser, FOCUSER_STEPS_PROPERTY_NAME), steps_again, revision(focuser, FOCUSER_STEPS_PROPERTY_NAME));
 	ASSERT_TRUE(wait_for_message("Another motion operation is pending", SHORT_TIMEOUT));
+	ASSERT_TRUE(property_state(focuser, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	ASSERT_TRUE(number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &kept) && fabs(kept - relative_target) < 0.5);
 	ASSERT_TRUE(wait_settled(focuser, FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT));
 	ASSERT_TRUE(move_to(initial_position, MOTION_TIMEOUT));
 }
