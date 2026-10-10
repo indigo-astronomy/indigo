@@ -319,3 +319,14 @@ for this change.
   arguments 3/3 on 3.0.0.8; `observed_shutter_motion_completes` 1 run, 0 passed on 3.0.0.8 (expected), 2/2 on 3.0.0.9;
   temporary window cases 6 run, 0 passed on 3.0.0.8 (expected), 6/6 on 3.0.0.9; recorded run 48/48. Hardware tests: 0
   run, 0 passed.
+
+## Cancelled queued slew keeps its target (2026-10-11, 3.0.0.10)
+
+An urgent `DOME_ABORT_MOTION` that cancelled a `DOME_HORIZONTAL_COORDINATES` or `DOME_STEPS` request still waiting in
+the queue settled the property with value = target = the current azimuth, so the request the client had made was lost
+(an abort of a running rotation already kept it, as do the other device classes). The abort now publishes the current
+azimuth as the value only; the target keeps the request that was never sent. `urgent_abort_cancels_queued_goto`
+asserts target 180 after the abort and two polls; with the previous line restored the case fails ("expected 180,
+got 90").
+
+Simulated tests: 48 run, 48 passed. Hardware tests: 0 run, 0 passed.

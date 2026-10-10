@@ -206,7 +206,7 @@
 |  | 2026-10-09 18:25 | 3.0.0.16 | linux arm64 | Baader Classic Dome Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 |  | 2026-10-11 01:11 | 3.0.0.17 | mac arm64 | simulator | 53 / 53 | ✅ OK |
 | dome_beaver | 2026-09-27 03:37 | 3.0.0.9 | linux x64 | simulator | 48 / 48 | ✅ OK |
-|  | 2026-09-27 22:11 | 3.0.0.9 | mac arm64 | simulator | 48 / 48 | ✅ OK |
+|  | 2026-10-11 00:28 | 3.0.0.10 | mac arm64 | simulator | 48 / 48 | ✅ OK |
 | dome_dragonfly | 2026-09-27 22:18 | 3.0.0.10 | mac arm64 | simulator | 22 / 22 | ✅ OK |
 | dome_nexdome | 2026-09-27 04:14 | 3.0.0.14 | linux x64 | simulator | 46 / 46 | ✅ OK |
 |  | 2026-09-27 22:19 | 3.0.0.14 | mac arm64 | simulator | 46 / 46 | ✅ OK |
