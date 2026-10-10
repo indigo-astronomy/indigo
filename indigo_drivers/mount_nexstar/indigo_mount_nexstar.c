@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000030
+#define DRIVER_VERSION       0x03000031
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -1300,7 +1300,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, mount_motion_dec_handler);
 	indigo_cancel_pending_handler(device, mount_park_handler);
 	indigo_cancel_pending_handler(device, mount_park_finalizer);
-	// A GOTO stopped (or cancelled before it was sent) ends ALERT, never OK at the target.
+	// A GOTO stopped (or cancelled before it was sent) ends ALERT, never OK at the target, and keeps the requested coordinates as target.
 	bool interrupted = PRIVATE_DATA->goto_active || (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->coordinates_busy);
 	bool ok = nexstar_abort_motion(device);
 	PRIVATE_DATA->park_in_progress = false;
@@ -1316,8 +1316,6 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = ok && !interrupted ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, NULL);
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;

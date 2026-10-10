@@ -1252,3 +1252,15 @@ mount, guider and GPS devices are standard INDIGO properties. The persisted `TRA
 configuration is not migrated; the property starts at its default (AUTO) until saved again.
 
 The simulator, mountsim and hardware tests use the new names and assert that the old names are not defined.
+
+## Aborted GOTO keeps the requested target (2026-10-10)
+
+Version 49. `MOUNT_ABORT_MOTION` set the `MOUNT_EQUATORIAL_COORDINATES` RA/DEC targets to the current coordinates on
+every abort, so an aborted GOTO lost the coordinates the client had requested (the other mount drivers keep them).
+The two assignments were removed: an aborted GOTO still ends ALERT short of the target, the values follow the
+position polls and the targets keep the request. `nexstar_abort_lands_mid_slew` asserts the requested 9 h / 50°
+targets after the stop and two polls.
+
+### Final test summary for this change
+
+Simulated tests: 38 run, 38 passed. Hardware tests: 0 run, 0 passed.

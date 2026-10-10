@@ -1812,6 +1812,9 @@ static void nexstar_abort_lands_mid_slew(void) {
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == ra);
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) == dec);
 	SERIAL_CHECK_TRUE(ra > 3.01 && ra < 8.99 && dec > 20.01 && dec < 49.99);
+	// The aborted GOTO keeps the requested coordinates as target, also after the polls.
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target == 9);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target == 50);
 	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4D"));
 	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54"));
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
