@@ -54,7 +54,7 @@ static external_serial_simulator fixture;
 static char fixture_dir[] = "/tmp/indigo-askar.XXXXXX";
 static char event_path[256], fault_path[256];
 static const char *observed_names[] = { CONNECTION_PROPERTY_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_PROPERTY_NAME, X_FOCUSER_MOTOR_MODE_PROPERTY_NAME };
-static atomic_uint revisions[8], motion_busy, motion_alert;
+static atomic_uint revisions[8], motion_busy, motion_alert, ports_defined;
 
 static int observed_index(const char *name) {
 	for (int i = 0; i < ARRAY_SIZE(observed_names); i++) {
@@ -78,6 +78,28 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 		}
 	}
 	return result;
+}
+
+// DEVICE_PORTS is defined at attach and once more when the port scan the attach queues has finished its Wi-Fi discovery. The scan
+// may delete it before the attach defines it, so only the number of definitions tells when the scan is done.
+static indigo_result observe_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name) && !strcmp(property->name, DEVICE_PORTS_PROPERTY_NAME)) {
+		atomic_fetch_add(&ports_defined, 1);
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
+
+// Brings the driver up and waits for the port scan of the attach, so the UDP socket of its Wi-Fi discovery is not counted as a
+// descriptor of the driver.
+static bool bring_up_after_port_scan(void) {
+	atomic_store(&ports_defined, 0);
+	if (!bring_up_serial_driver(&askar_focuser)) {
+		return false;
+	}
+	for (int i = 0; i < 100 && atomic_load(&ports_defined) < 2; i++) {
+		indigo_usleep(100000);
+	}
+	return atomic_load(&ports_defined) >= 2;
 }
 
 static bool new_state(const char *name, unsigned before, indigo_property_state state) {
@@ -543,7 +565,7 @@ static int open_descriptor_count(void) {
 // released; a reply split across reads is reassembled.
 static void position_reply_framing(void) {
 	simulator_test_client.update_property = observe_update;
-	SERIAL_CHECK_TRUE(bring_up_serial_driver(&askar_focuser));
+	SERIAL_CHECK_TRUE(bring_up_after_port_scan());
 	int descriptors = open_descriptor_count();
 	SERIAL_CHECK_TRUE(fault('p', "partial"));
 	SERIAL_CHECK_TRUE(!connect_serial_device(&askar_focuser, fixture.port));
@@ -729,7 +751,7 @@ cleanup:
 static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(fault('p', "malformed"));
 	simulator_test_client.update_property = observe_update;
-	SERIAL_CHECK_TRUE(bring_up_serial_driver(&askar_focuser));
+	SERIAL_CHECK_TRUE(bring_up_after_port_scan());
 	int descriptors = 0;
 	for (int fd = 0; fd < 1024; fd++) {
 		if (fcntl(fd, F_GETFD) >= 0) {
@@ -878,6 +900,7 @@ static const char *moving_args[] = { "--position", "50000", "--moving-to", "7000
 
 int main(void) {
 	simulator_test_client.send_message = capture_message;
+	simulator_test_client.define_property = observe_define;
 	const askar_test tests[] = {
 		{ "protocol", protocol },
 		{ "capabilities", capabilities },
