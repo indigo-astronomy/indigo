@@ -796,6 +796,11 @@ static const char *text_of(const char *name, const char *item_name) {
 	return text;
 }
 
+static double target_of(const char *name, const char *item_name) {
+	indigo_item item;
+	return item_of(name, item_name, &item) ? item.number.target : NAN;
+}
+
 static double azimuth_value(void) {
 	return value_of(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
 }
@@ -2039,6 +2044,8 @@ static void urgent_abort_cancels_queued_goto(void) {
 	CHECK_EQ(INDIGO_OK_STATE, state_of(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME));
 	CHECK_EQ(INDIGO_OK_STATE, state_of(DOME_STEPS_PROPERTY_NAME));
 	CHECK_NEAR(90, azimuth_value(), 1e-4);
+	// the cancelled request was never sent and stays the target
+	CHECK_NEAR(180, target_of(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME), 1e-4);
 	CHECK(goto_azimuth(180, INDIGO_OK_STATE, 10));
 	CHECK_EQ(1, rx_count("g 180.00"));
 cleanup:
