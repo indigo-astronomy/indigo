@@ -1103,6 +1103,8 @@ static void sync_position(void) {
 	CHECK(goto_position(6000, INDIGO_ALERT_STATE, 5));
 	CHECK_STR("(5000)", last_reply_to("[GPOS]"));
 	CHECK_EQ(5000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	// a failed sync keeps the requested target
+	CHECK_EQ(6000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(goto_position(4000, INDIGO_OK_STATE, 5));
 	CHECK(change_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE, 5));
 	CHECK(goto_position(6000, INDIGO_OK_STATE, 10));
@@ -1180,13 +1182,13 @@ static void abort_motion_and_idle(void) {
 	CHECK(change_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, 5));
 	CHECK(wait_rx("[STOP]", 1, 1));
 	CHECK(rx_before("[STOP]", "[GPOS]"));
-	// the aborted move ends ALERT on both properties at the stopped position, never at the target
+	// the aborted move ends ALERT on both properties at the stopped position, never at the target, and keeps the requested target
 	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 3));
 	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
 	CHECK(!switch_of(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME));
 	double position = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	CHECK(position > 1000 && position < 60000);
-	CHECK_EQ(position, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(60000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	// the stop is confirmed by the motion status and the position readback after it
 	CHECK_STR("(0)", last_reply_to("[GMOV]"));
 	char reply[32];
@@ -1196,6 +1198,8 @@ static void abort_motion_and_idle(void) {
 	indigo_usleep(1200000);
 	CHECK_EQ(polls, rx_count("[GMOV]"));
 	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_EQ(position, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(60000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	double back = floor(position / 2);
 	CHECK(goto_position(back, INDIGO_OK_STATE, 10));
 	CHECK_EQ(back, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
@@ -1755,11 +1759,37 @@ static void urgent_abort_cancels_queued_move(void) {
 	CHECK(rx_before("[GCHD%]", "[STOP]"));
 	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
 	CHECK(state_of(FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_BUSY_STATE);
+	// the target stays the request of the never-sent move
 	CHECK_EQ(1000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
-	CHECK_EQ(1000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(20000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(wait_settled(CURRENT_CONTROL_PROPERTY, 0, INDIGO_OK_STATE, 5));
 	CHECK(goto_position(3000, INDIGO_OK_STATE, 10));
 	CHECK_STR("(3000)", last_reply_to("[GPOS]"));
+cleanup:
+	driver_down();
+}
+
+// An abort of a queued move whose stop is not confirmed is followed until the controller reports it stopped; that is
+// not motion the driver did not command, so the target stays the request of the never-sent move.
+static void unconfirmed_abort_of_queued_move(void) {
+	CHECK(start_connected());
+	const char *items[] = { "MOVE_CURRENT", "HOLD_CURRENT" };
+	double values[] = { 60, 70 };
+	unsigned position = revision_of(FOCUSER_POSITION_PROPERTY_NAME), abort = revision_of(FOCUSER_ABORT_MOTION_PROPERTY_NAME);
+	CHECK(inject("GMOV", "silent", 1));
+	CHECK_EQ(INDIGO_OK, indigo_change_number_property(&simulator_test_client, DEVICE_NAME, CURRENT_CONTROL_PROPERTY, 2, items, values));
+	CHECK_EQ(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 20000));
+	CHECK_EQ(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, DEVICE_NAME, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	CHECK(wait_settled(FOCUSER_ABORT_MOTION_PROPERTY_NAME, abort, INDIGO_ALERT_STATE, 5));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, position, INDIGO_ALERT_STATE, 5));
+	indigo_usleep(1000000);
+	CHECK_EQ(0, rx_count("[STRG020000]") + rx_count("[SMOV]"));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK(state_of(FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_BUSY_STATE);
+	CHECK_EQ(1000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(20000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK(wait_settled(CURRENT_CONTROL_PROPERTY, 0, INDIGO_OK_STATE, 5));
+	CHECK(goto_position(3000, INDIGO_OK_STATE, 10));
 cleanup:
 	driver_down();
 }
@@ -1818,7 +1848,7 @@ static void stop_ignored_then_retried(void) {
 	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 3));
 	double position = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	CHECK(position > 1000 && position < 60000);
-	CHECK_EQ(position, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(60000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK_EQ(2, rx_count("[STOP]"));
 	CHECK(goto_position(position - 1000, INDIGO_OK_STATE, 10));
 cleanup:
@@ -1836,7 +1866,8 @@ static void stalled_move_stops(void) {
 	CHECK_EQ(1, rx_count("[STOP]"));
 	double position = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	CHECK(position > 1000 && position < 60000);
-	CHECK_EQ(position, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	// the stalled move keeps the requested target
+	CHECK_EQ(60000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(goto_position(position + 1000, INDIGO_OK_STATE, 10));
 cleanup:
 	driver_down();
@@ -1850,7 +1881,8 @@ static void move_command_refusals(void) {
 	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
 	CHECK_EQ(0, rx_count("[SMOV]"));
 	CHECK(strstr(position_message, "!101)") != NULL);
-	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000);
+	// a refused move keeps the requested target
+	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 5000);
 	CHECK(control("max_move", "1000000"));
 	CHECK(inject("SMOV", "error", 1));
 	int polls = rx_count("[GMOV]");
@@ -1859,7 +1891,7 @@ static void move_command_refusals(void) {
 	CHECK(strstr(position_message, "!100)") != NULL);
 	indigo_usleep(800000);
 	CHECK_EQ(polls, rx_count("[GMOV]"));
-	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000);
+	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 5000);
 	CHECK(goto_position(5000, INDIGO_OK_STATE, 10));
 	CHECK_STR("(5000)", last_reply_to("[GPOS]"));
 cleanup:
@@ -1975,7 +2007,7 @@ cleanup:
 	driver_down();
 }
 
-// SYNC right after connect and to the published value reaches the controller; a failed SYNC keeps the real position as value and target.
+// SYNC right after connect and to the published value reaches the controller; a failed SYNC keeps the real position as value and the requested target.
 static void sync_right_after_connect(void) {
 	CHECK(start_connected());
 	CHECK(change_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE, 5));
@@ -1983,7 +2015,8 @@ static void sync_right_after_connect(void) {
 	CHECK_EQ(1, rx_count("[SPOS001000]"));
 	CHECK(inject("SPOS", "error", 1));
 	CHECK(goto_position(7000, INDIGO_ALERT_STATE, 5));
-	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000);
+	// the real position as value, the requested sync value as target
+	CHECK(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 1000 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 7000);
 	CHECK(goto_position(7000, INDIGO_OK_STATE, 5));
 	CHECK_EQ(0, rx_prefix_count("[STRG") + rx_count("[SMOV]"));
 cleanup:
@@ -2040,6 +2073,8 @@ static void compensation_failure_retried(void) {
 	CHECK(control("temperature", "23.5"));
 	CHECK(wait_fresh_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 6));
 	CHECK_EQ(1000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	// the refused correction keeps its target
+	CHECK_EQ(1200, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(wait_rx("[STRG001200]", 2, 6));
 	CHECK(wait_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1200, 0, 5));
 	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, 0, INDIGO_OK_STATE, 5));
@@ -2369,6 +2404,7 @@ static const dsd_case cases[] = {
 	{ "additional_instance", additional_instance, "af2", false },
 	{ "configuration_save", configuration_save, "af2", false },
 	{ "urgent_abort_cancels_queued_move", urgent_abort_cancels_queued_move, "af2", false },
+	{ "unconfirmed_abort_of_queued_move", unconfirmed_abort_of_queued_move, "af2", false },
 	{ "busy_motion_requests_rejected", busy_motion_requests_rejected, "af2", false },
 	{ "stop_ignored_then_retried", stop_ignored_then_retried, "af2", false },
 	{ "stalled_move_stops", stalled_move_stops, "af2", false },

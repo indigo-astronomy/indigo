@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_focuser_dsd"
 #define DRIVER_LABEL         "Deep Sky Dad Focuser"
 #define FOCUSER_DEVICE_NAME  "Focuser DSD AF"
@@ -263,12 +263,14 @@ static void dsd_motion_state(indigo_device *device, indigo_property_state state)
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
+// A move ends at the measured position; only motion the driver did not command moves the target there,
+// a commanded or aborted one keeps the requested target.
 static void dsd_end_motion(indigo_device *device, indigo_property_state state) {
-	PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-	if (state != INDIGO_OK_STATE) {
+	if (PRIVATE_DATA->external && !PRIVATE_DATA->aborted) {
 		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
 	}
+	PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
 	dsd_motion_state(device, state);
 }
 
@@ -302,10 +304,6 @@ static void motion_finalizer(indigo_device *device) {
 	PRIVATE_DATA->poll_failures = 0;
 	PRIVATE_DATA->current_position = position;
 	if (moving == 0) {
-		if (PRIVATE_DATA->external) {
-			// motion the driver did not command ends at the measured position
-			FOCUSER_POSITION_ITEM->number.target = position;
-		}
 		dsd_end_motion(device, PRIVATE_DATA->aborted ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 		return;
 	}
@@ -323,9 +321,12 @@ static void motion_finalizer(indigo_device *device) {
 			return;
 		}
 	} else {
-		// motion the driver did not command (running at connect) is published BUSY at the measured position
+		// motion the driver did not command (running at connect) is published BUSY at the measured position;
+		// an aborted move whose stop was not confirmed keeps the requested target
 		PRIVATE_DATA->external = true;
-		FOCUSER_POSITION_ITEM->number.target = position;
+		if (!PRIVATE_DATA->aborted) {
+			FOCUSER_POSITION_ITEM->number.target = position;
+		}
 		FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	}
 	FOCUSER_POSITION_ITEM->number.value = position;
@@ -360,9 +361,10 @@ static bool dsd_start_motion(indigo_device *device, int position) {
 	return true;
 }
 
+// a refused move keeps the requested target
 static void dsd_start_failed(indigo_device *device) {
 	PRIVATE_DATA->moving = false;
-	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, *PRIVATE_DATA->refusal ? PRIVATE_DATA->refusal : NULL);
@@ -437,15 +439,15 @@ static void dsd_compensate_focus(indigo_device *device, double new_temp) {
 	PRIVATE_DATA->target_position = dsd_clamp_position(device, target);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	// a refused correction keeps its target as a refused request does
+	FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
 	if (dsd_start_motion(device, PRIVATE_DATA->target_position)) {
-		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_execute_handler_in(device, DSD_POLL_DELAY, motion_finalizer);
 		// the reference moves only with a started correction, a failed one is retried from it
 		PRIVATE_DATA->prev_temp = new_temp;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	} else {
-		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, *PRIVATE_DATA->refusal ? PRIVATE_DATA->refusal : NULL);
 	}
@@ -726,9 +728,7 @@ static void focuser_position_handler(indigo_device *device) {
 			} else {
 				state = INDIGO_ALERT_STATE;
 			}
-			if (state != INDIGO_OK_STATE) {
-				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
-			}
+			// a failed sync keeps the requested target with the real position as value
 			dsd_motion_state(device, state);
 		}
 	}
@@ -774,7 +774,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 			stopped = false;
 		}
 		if (stopped) {
-			// an aborted move ends ALERT at the stopped position
+			// an aborted move ends ALERT at the stopped position, the target stays the request
 			dsd_end_motion(device, INDIGO_ALERT_STATE);
 		} else {
 			// the controller did not confirm the stop: the move is not reported completed and is still tracked
