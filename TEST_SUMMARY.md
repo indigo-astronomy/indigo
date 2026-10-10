@@ -374,7 +374,7 @@
 | rotator_lunatico | 2026-10-10 04:05 | 3.0.0.16 | mac arm64 | simulator | 54 / 54 | ✅ OK |
 | rotator_optec | 2026-10-09 22:42 | 3.0.0.6 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 |  | 2026-10-09 22:45 | 3.0.0.6 | linux arm64 | Pyxis Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
-| rotator_simulator | 2026-09-27 22:46 | 3.0.0.8 | mac arm64 | simulator | 9 / 9 | ✅ OK |
+| rotator_simulator | 2026-10-10 10:34 | 3.0.0.9 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 | rotator_wa | 2026-09-27 22:46 | 3.0.0.6 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | system_alpaca | 2026-10-03 16:16 | 3.0.0.1 | linux arm64 | simulator | 309 / 309 | ✅ OK |
 |  | 2026-10-03 19:04 | 3.0.0.1 | mac arm64 | OmniSim 0.5.0 | 20 / 20 | ✅ OK |

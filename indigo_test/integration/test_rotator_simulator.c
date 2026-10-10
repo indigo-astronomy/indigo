@@ -85,6 +85,22 @@ static void assert_rotator_reports_position(double position) {
 	ASSERT_NEAR(position, position_item->number.target, 0.001);
 }
 
+static void assert_rotator_abort_keeps_target(double origin, double target) {
+	// The stopped angle is published as the value only; later timer ticks rewrite neither the value nor the requested target.
+	indigo_usleep(300000);
+	indigo_item *position_item = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	ASSERT_TRUE(position_item != NULL);
+	double stopped = position_item->number.value;
+	ASSERT_TRUE(stopped > origin && stopped < target);
+	ASSERT_NEAR(target, position_item->number.target, 0.001);
+	indigo_usleep(300000);
+	position_item = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	ASSERT_TRUE(position_item != NULL);
+	ASSERT_NEAR(stopped, position_item->number.value, 0.000001);
+	ASSERT_NEAR(target, position_item->number.target, 0.001);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
+}
+
 static void assert_rotator_direction_is(const char *item_name) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_DIRECTION_PROPERTY_NAME, item_name, true));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
@@ -137,9 +153,19 @@ static void simulator_passes_rotator_compliance_checks(void) {
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, far_position));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	// The BUSY acknowledgement carries the requested value; wait for a published intermediate angle.
+	for (int i = 0; i < 300; i++) {
+		double progress = cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+		if (progress > rotator_target_in_range(41.5) && progress < far_position - 1) {
+			break;
+		}
+		indigo_usleep(10000);
+	}
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	assert_rotator_abort_keeps_target(rotator_target_in_range(40), far_position);
+	assert_rotator_moves_to(rotator_target_in_range(50));
 
 	double sync_position = rotator_target_in_range(10);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true));
@@ -214,6 +240,9 @@ static void simulator_rejects_overlapping_goto_requests(void) {
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	assert_rotator_abort_keeps_target(0, 150);
+	double stopped = cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	assert_rotator_moves_to(stopped + 2);
 	stop_connected_simulator(&rotator_simulator);
 }
 

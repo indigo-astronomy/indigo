@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_rotator_simulator"
 #define DRIVER_LABEL         "Field Rotator Simulator"
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"
@@ -49,7 +49,7 @@
 
 typedef struct {
 	//+ data
-	double target_position, current_position;
+	double target_position, current_position, requested_position;
 	//- data
 } simulator_private_data;
 
@@ -92,9 +92,13 @@ static double simulator_position_delta(double current_position, double target_po
 	return delta;
 }
 
-static void simulator_update_rotator_position(indigo_device *device) {
-	ROTATOR_POSITION_ITEM->number.target = simulator_public_position(device, PRIVATE_DATA->target_position);
+static void simulator_update_rotator_value(indigo_device *device) {
 	ROTATOR_POSITION_ITEM->number.value = simulator_public_position(device, PRIVATE_DATA->current_position);
+}
+
+static void simulator_update_rotator_position(indigo_device *device) {
+	ROTATOR_POSITION_ITEM->number.target = simulator_public_position(device, PRIVATE_DATA->requested_position);
+	simulator_update_rotator_value(device);
 }
 
 //- code
@@ -108,7 +112,7 @@ static void rotator_timer_callback(indigo_device *device) {
 	//+ rotator.on_timer
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
 		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		simulator_update_rotator_position(device);
+		simulator_update_rotator_value(device);
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	} else {
 		double delta = simulator_position_delta(PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
@@ -119,7 +123,7 @@ static void rotator_timer_callback(indigo_device *device) {
 			} else {
 				PRIVATE_DATA->current_position = simulator_normalize_position(PRIVATE_DATA->target_position);
 			}
-			simulator_update_rotator_position(device);
+			simulator_update_rotator_value(device);
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			if (delta > 0) {
 				indigo_execute_handler_in(device, 0.1, rotator_timer_callback);
@@ -128,7 +132,7 @@ static void rotator_timer_callback(indigo_device *device) {
 			}
 		} else {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			simulator_update_rotator_position(device);
+			simulator_update_rotator_value(device);
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 	}
@@ -137,13 +141,17 @@ static void rotator_timer_callback(indigo_device *device) {
 
 static void rotator_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		//+ rotator.on_connect
+		PRIVATE_DATA->target_position = PRIVATE_DATA->requested_position = PRIVATE_DATA->current_position;
+		simulator_update_rotator_position(device);
+		//- rotator.on_connect
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ rotator.on_disconnect
 		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		simulator_update_rotator_position(device);
+		simulator_update_rotator_value(device);
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		//- rotator.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
@@ -170,12 +178,12 @@ static void rotator_position_handler(indigo_device *device) {
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_POSITION.on_change
 	if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-		PRIVATE_DATA->target_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.target);
+		PRIVATE_DATA->target_position = PRIVATE_DATA->requested_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.target);
 		PRIVATE_DATA->current_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.value);
 		simulator_update_rotator_position(device);
 	} else {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		PRIVATE_DATA->target_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.target);
+		PRIVATE_DATA->target_position = PRIVATE_DATA->requested_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.target);
 		simulator_update_rotator_position(device);
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0.1, rotator_timer_callback);
 	}
@@ -198,8 +206,9 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 	if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_pending_handler(device, rotator_position_handler);
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->requested_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.target);
 		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		simulator_update_rotator_position(device);
+		simulator_update_rotator_value(device);
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	}
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
