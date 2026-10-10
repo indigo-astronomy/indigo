@@ -151,7 +151,7 @@ static void robofocus_moves_by_steps(void) {
 	ASSERT_EQ_INT((int)base, (int)focuser_hw_position(focuser));
 }
 
-// An aborted move ends ALERT at the position where it stopped, and the motor stays there.
+// An aborted move ends ALERT at the position where it stopped, keeps the requested target, and the motor stays there.
 static void robofocus_aborts_a_move(void) {
 	ASSERT_TRUE(focuser_hw_start_goto(focuser, base + TRAVEL, SHORT_TIMEOUT));
 	indigo_usleep(2000000);
@@ -163,6 +163,10 @@ static void robofocus_aborts_a_move(void) {
 	ASSERT_TRUE(stopped > base && stopped < base + TRAVEL);
 	indigo_usleep(2000000);
 	ASSERT_EQ_INT((int)stopped, (int)focuser_hw_position(focuser));
+	// the idle polls since the abort have not rewritten the target
+	double target = NAN;
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &target));
+	ASSERT_EQ_INT((int)(base + TRAVEL), (int)target);
 	ASSERT_TRUE(focuser_hw_goto(focuser, base, INDIGO_OK_STATE, MOVE_TIMEOUT));
 }
 

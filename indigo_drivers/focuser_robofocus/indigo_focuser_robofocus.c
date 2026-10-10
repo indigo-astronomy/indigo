@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_focuser_robofocus"
 #define DRIVER_LABEL         "RoboFocus Focuser"
 #define FOCUSER_DEVICE_NAME  "RoboFocus"
@@ -351,7 +351,7 @@ static bool robofocus_stop(indigo_device *device) {
 	}
 	PRIVATE_DATA->active = false;
 	PRIVATE_DATA->uncertain = !stopped;
-	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	// the target keeps the request
 	return stopped;
 }
 
@@ -400,7 +400,6 @@ static void motion_finalizer(indigo_device *device) {
 			PRIVATE_DATA->active = false;
 			indigo_uni_discard(PRIVATE_DATA->handle);
 			PRIVATE_DATA->uncertain = !robofocus_position(device, false);
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 			robofocus_motion_state(device, INDIGO_ALERT_STATE);
 			return;
 		}
@@ -463,8 +462,8 @@ static void focuser_timer_callback(indigo_device *device) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			} else if (PRIVATE_DATA->external || PRIVATE_DATA->poll_failed) {
+				// the target is the measured value since the change, or the last request after a failure
 				PRIVATE_DATA->external = PRIVATE_DATA->poll_failed = false;
-				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
@@ -568,7 +567,7 @@ static void focuser_position_handler(indigo_device *device) {
 				indigo_uni_discard(PRIVATE_DATA->handle);
 				robofocus_position(device, false);
 			}
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			// the value is the real position, the target keeps the requested sync value
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			PRIVATE_DATA->position = actual;
@@ -606,7 +605,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, motion_finalizer);
 		PRIVATE_DATA->external = false;
 		if (PRIVATE_DATA->active || PRIVATE_DATA->uncertain) {
-			// an aborted move ends ALERT at the stopped position
+			// an aborted move ends ALERT at the stopped position and keeps the requested target
 			if (!robofocus_stop(device)) {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -614,7 +613,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		} else if (pending) {
 			// the move was still queued: stop once, never send it
 			indigo_uni_write(PRIVATE_DATA->handle, "\r", 1);
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->position;
 			robofocus_motion_state(device, INDIGO_ALERT_STATE);
 		}
 	}
