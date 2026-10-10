@@ -374,14 +374,14 @@ in this round; the latest hardware record stays at 3.0.0.19.
 
 | # | Defect | Fix | Regression test (fails against 3.0.0.19) |
 |---|---|---|---|
-| D9 | An aborted, stalled or failed move ended ALERT with the requested target, not at the stopped position. | Every move that ends short of its target sets target to the measured position. | `abort_motion`, `stalled_move` |
+| D9 | An aborted, stalled or failed move ended ALERT with the requested target, not at the stopped position. | Every move that ends short of its target publishes the measured position as value (the target keeps the request since 3.0.0.23, D21). | `abort_motion`, `stalled_move` |
 | D10 | Disconnecting during a move let the motor run on: the port closed without a stop. | `on_disconnect` sends `MOT_ABORT` (fallback `MOT_STOP`) while a move, an uncommanded motion or a focuser calibration runs. | `disconnect_during_motion` |
 | D11 | `FOCUSER_ABORT_MOTION.ABORT_MOTION` stayed ON after the abort, and an abort while idle sent `MOT_ABORT`. | The item is released in every path; an idle abort sends nothing and ends OK, or ALERT when the controller did not answer the last request. | `abort_while_idle`, `abort_refused` |
 | D12 | An abort that overtook a queued move was followed by that move. | The abort marks the pending move, which is then never sent and ends ALERT. | `abort_overtakes_queued_move` |
 | D13 | The position was only read during the driver's own moves: uncommanded motion (hand keypad, a move running at connect) and a failed idle read were never published. | The position is polled every 2 s while no move of the driver runs (0.5 s while it changes); uncommanded motion is BUSY with the target following the measurement and OK once it stops; a failed or incomplete read is ALERT with the last position and the next good read restores OK. A poll whose reply arrives after a request was accepted leaves the request alone. | `external_motion_observed`, `hand_keypad_motion`, `position_poll_failure`, `request_versus_poll` |
 | D14 | `EXT_T` -127 (no probe, observed on the attached SESTO SENSO 2) was published as a temperature, and a failed temperature poll published nothing. | -127 is published IDLE; a failed poll publishes `FOCUSER_TEMPERATURE` and `X_STATE` ALERT with the last values; the next poll restores OK. | `no_probe`, `status_polling` |
 | D15 | A single lost readback during a move ended it ALERT while the motor kept running; a stalled motor (MST `move`, position unchanged) stayed BUSY forever. | One or two lost readbacks are retried; a third stops the motor and ends ALERT. A motor that does not advance for 25 polls (5 s) is stopped and ends ALERT. | `move_readback_failures`, `stalled_move` |
-| D16 | An absolute move kept `FOCUSER_STEPS` OK, a refused move kept the requested value as position, and the controller's refusal reason never reached the client. | Both properties are BUSY for every move; a refused move ends both ALERT at the position read last, with "Move refused: <reason>". | `absolute_move`, `move_command_failures` |
+| D16 | An absolute move kept `FOCUSER_STEPS` OK, a refused move kept the requested value as position, and the controller's refusal reason never reached the client. | Both properties are BUSY for every move; a refused move ends both ALERT with the position read last as value, with "Move refused: <reason>". | `absolute_move`, `move_command_failures` |
 | D17 | Backlash and focuser calibration were accepted during a move. | `reject_change` refuses both without a command while a move runs. | `settings_during_motion` |
 | D18 | A rejected backlash, speed, hold current, LED or WiFi write left the requested value published; a failed calibration start left `START` ON. | The value or item the controller keeps is restored; the calibration items are released. | `settings_reported_failures`, `focuser_calibration` |
 | D19 | A WiFi mode change restarts the controller even while the rotator shares the connection. | Refused with ALERT while the rotator is connected. | `controller_restart_refused_with_sibling` |
@@ -407,7 +407,7 @@ shared tree was not reverted.
 | Poll failures and recovery, no-probe sentinel, uncommanded motion | `position_poll_failure`, `status_polling`, `no_probe`, `external_motion_observed`, `hand_keypad_motion` |
 | Absolute/relative moves, both properties BUSY, GOTO to the current position, clamping | `absolute_move`, `relative_move`, `relative_move_clamped`, `calibrated_travel` |
 | Overlapping move refused, running move keeps its target and single command | `overlap_rejected` |
-| Abort mid-move ending ALERT at the stopped position, idle abort, refused stop and retry, abort overtaking a queued move | `abort_motion`, `abort_while_idle`, `abort_refused`, `abort_overtakes_queued_move`, `test_focuser_primaluce_motion` |
+| Abort mid-move ending ALERT at the stopped position with the requested target, idle abort, refused stop and retry, abort overtaking a queued move | `abort_motion`, `abort_while_idle`, `abort_refused`, `abort_overtakes_queued_move`, `test_focuser_primaluce_motion` |
 | Move rejection, unacknowledged and malformed start, refusal reason, power message | `move_command_failures`, `motor_without_power` |
 | Stall, lost and persistent readback during a move | `stalled_move`, `move_readback_failures` |
 | Disconnect and transport loss during motion | `disconnect_during_motion`, `transport_loss_during_motion`, `transport_loss` |
@@ -461,6 +461,12 @@ a `FOCUSER_POSITION` or `FOCUSER_STEPS` request is accepted and cleared when its
 refusal condition, the idle poll and the abort check it instead of the property state.
 `refusal_keeps_queued_move` (slow poll reply, accepted GOTO, refused second GOTO) fails against
 3.0.0.21.
+
+## Target kept after a move ends (3.0.0.23, 2026-10-10)
+
+| # | Defect | Fix | Regression test |
+|---|---|---|---|
+| D21 | An aborted, stalled, refused or short move overwrote the requested `FOCUSER_POSITION` target with the reached position, and every idle poll (2 s) rewrote it with the measured one. | `focuser_motion_failed`, `focuser_movement_ended` and the idle poll set the value only; the target follows the position only for uncommanded motion and the calibration run. | `abort_motion`, `abort_overtakes_queued_move`, `stalled_move`, `move_readback_failures`, `move_command_failures`, `test_focuser_primaluce_motion` |
 
 ## Final test summary
 

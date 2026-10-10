@@ -276,7 +276,7 @@ static bool property_hidden(int d, const char *name) {
 	return true;
 }
 
-static bool number_item(int d, const char *name, const char *item, double *value) {
+static bool number_field(int d, const char *name, const char *item, bool target, double *value) {
 	pthread_mutex_lock(&mutex);
 	int p = slot(d, name);
 	bool found = false;
@@ -284,7 +284,7 @@ static bool number_item(int d, const char *name, const char *item, double *value
 		indigo_property *property = devices[d].properties[p];
 		for (int i = 0; i < property->count && !found; i++) {
 			if (!strcmp(property->items[i].name, item)) {
-				*value = property->items[i].number.value;
+				*value = target ? property->items[i].number.target : property->items[i].number.value;
 				found = true;
 			}
 		}
@@ -294,6 +294,14 @@ static bool number_item(int d, const char *name, const char *item, double *value
 		fprintf(stderr, "    missing number item %s.%s\n", name, item);
 	}
 	return found;
+}
+
+static bool number_item(int d, const char *name, const char *item, double *value) {
+	return number_field(d, name, item, false, value);
+}
+
+static bool number_item_target(int d, const char *name, const char *item, double *value) {
+	return number_field(d, name, item, true, value);
 }
 
 static bool switch_item(int d, const char *name, const char *item, bool *value) {
@@ -782,6 +790,11 @@ static void primaluce_aborts_a_move_and_recovers(void) {
 	// The draw tube moved, and it stopped short of the requested target.
 	ASSERT_TRUE(stopped > initial_position + 0.5);
 	ASSERT_TRUE(stopped < target - 0.5);
+	// The target keeps the request through two idle position polls (2 s apart).
+	double published_target = 0;
+	indigo_usleep(4500000);
+	ASSERT_TRUE(number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &published_target));
+	ASSERT_TRUE(fabs(published_target - target) < 0.5);
 	// The position published after the abort must be the one the controller actually holds, which a
 	// reconnect reads straight from the hardware.
 	ASSERT_TRUE(disconnect_device(focuser));

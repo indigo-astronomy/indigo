@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -806,8 +806,8 @@ static const char *power_message(const char *state) {
 }
 
 static void focuser_motion_failed(indigo_device *device, const char *state) {
-	// Both motion properties end the move ALERT at the position the focuser has, and the
-	// reason the controller gave reaches the client.
+	// Both motion properties end the move ALERT with the position the focuser has as value and
+	// the request as target, and the reason the controller gave reaches the client.
 	const char *message = power_message(state);
 	char reason[INDIGO_VALUE_SIZE];
 	if (message == NULL && *PRIVATE_DATA->last_error) {
@@ -815,7 +815,6 @@ static void focuser_motion_failed(indigo_device *device, const char *state) {
 		message = reason;
 	}
 	PRIVATE_DATA->abort_requested = false;
-	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -863,11 +862,8 @@ static bool focuser_stop(indigo_device *device, char **reason) {
 }
 
 static void focuser_movement_ended(indigo_device *device, indigo_property_state state) {
-	// An interrupted or failed move ends at the position the focuser reached, never at the
-	// requested one.
-	if (state != INDIGO_OK_STATE) {
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
-	}
+	// An interrupted or failed move publishes the position the focuser reached as value; the
+	// target keeps the request.
 	PRIVATE_DATA->abort_requested = false;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
 }
@@ -943,16 +939,21 @@ static void focuser_poll_position(indigo_device *device) {
 		return;
 	}
 	if (read) {
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		// The target follows only calibration and uncommanded motion; after a move of the
+		// driver it keeps the request.
+		FOCUSER_POSITION_ITEM->number.value = position;
 		if (PRIVATE_DATA->calibrating) {
 			// The calibration run is the driver's own motion: it is followed, but not taken
 			// for an uncommanded move, which would leave the position BUSY and refuse END.
+			FOCUSER_POSITION_ITEM->number.target = position;
 		} else if (moving) {
 			PRIVATE_DATA->external_motion = true;
 			PRIVATE_DATA->poll_alert = false;
+			FOCUSER_POSITION_ITEM->number.target = position;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else if (PRIVATE_DATA->external_motion) {
 			PRIVATE_DATA->external_motion = false;
+			FOCUSER_POSITION_ITEM->number.target = position;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (PRIVATE_DATA->poll_alert) {
 			PRIVATE_DATA->poll_alert = false;
@@ -1772,8 +1773,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	// A running motion is owned by the focuser movement finalizer, so the motion
 	// properties are left busy here. That finalizer observes the stop, reads the position
-	// the draw tube actually reached and publishes it as ALERT because the requested
-	// target was not reached. A move still queued behind this abort is never sent.
+	// the draw tube actually reached and publishes it as value, ALERT because the requested
+	// target, which stays published, was not reached. A move still queued behind this abort
+	// is never sent.
 	bool requested = FOCUSER_ABORT_MOTION_ITEM->sw.value;
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	bool moving = PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
