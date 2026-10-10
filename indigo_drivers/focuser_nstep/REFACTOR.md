@@ -139,3 +139,9 @@ Hardware suite `test_focuser_nstep_hw.c` (`make test-focuser-nstep-hw`, `NSTEP_H
 | Defect | Fix | Covered by |
 | --- | --- | --- |
 | An aborted, stalled or status-failed move overwrote the `FOCUSER_POSITION` target (the expected end of the move) with the reached position; after a stop that was not confirmed the idle readback took the stopped motor for hand-control motion and moved the target as well. | A move publishes the reached position as the value only. The target changes at connect, when a move is sent (also kept when the `:F` write fails) and for motion the driver did not command; position changes read while the last stop is unconfirmed (`uncertain`) keep it. | `busy_guard_and_abort` (two idle readbacks), `stop_ignored_then_retried`, `queued_abort`, `stalled_move` (two idle readbacks), `status_failure_alerts_and_recovers` (two idle readbacks); hardware `nstep_aborts_a_move` |
+
+## Requested target kept when motion after an unconfirmed stop is aborted (3.0.0.13)
+
+| Defect | Fix | Covered by |
+| --- | --- | --- |
+| After a stop that was not confirmed (`uncertain`), motion read by the idle poll set `external` while keeping the target; an abort whose stop was then confirmed cleared `uncertain` first, so `nstep_end_motion` took the move for hand control and replaced the requested `FOCUSER_POSITION` target with the stopped position. | The abort handler keeps `external` only for motion that is genuinely uncommanded (`external && !uncertain`) before clearing `uncertain`; the move ends ALERT at the stopped position with the requested target. | `abort_after_unconfirmed_stop` |
