@@ -1112,6 +1112,14 @@ Found by the focuser "Stop and failure" rule of `indigo_test/DRIVER_TESTING_RULE
 
 `python3 tools/run_driver_test.py system_alpaca --no-record`: 318/318 passed (3.0.0.3, macOS arm64, development run; a first run under heavy machine load failed `ccd_image_faults` and `ccd_image_transfer_channel`, which passed on the rerun).
 
+The same rule for the rotator (2026-10-10, version 3.0.0.4):
+
+| ID | Location | Impact | Cause | Fix | Regression case |
+|---|---|---|---|---|---|
+| ROT-6 | `rotator_set_state()` (also through `rotator_finish()`), rotator abort handler, `on_poll` | An aborted, failed, timed-out or refused move, a failed Sync and an abort that cancelled a queued request set the `ROTATOR_POSITION` target to the measured angle, and every idle poll did the same, so the request was lost; the `X_ALPACA_MECHANICAL_POSITION` target of a stopped or refused MoveMechanical went back to the mechanical position as well. | The target was written wherever a move ended in ALERT and whenever IsMoving was false; the mechanical target was set to the mechanical position at the end of every move and on every poll. | Only the values follow the device when a move of the driver ends; the targets keep the request. The poll moves the target only for motion the driver did not start (TargetPosition when it is seen first, the position when it is over) or a Position that changed while idle, and not while a move of the driver may still end (`own`, cleared by the first idle poll); TargetPosition is not read for such motion either. The mechanical target keeps the request of the last mechanical move of the driver (`mechanical_request`) and follows the mechanical position otherwise. `ROTATOR_RELATIVE_MOVE` still goes back to 0 when a move ends: its angle is used up. The abort of a motion of the device itself keeps its target at the stopped angle. | `rotator_abort` (also after three idle polls, and an abort that overtakes a queued absolute or mechanical request), `rotator_sync`, `rotator_capability_variants`, `rotator_polling`, `rotator_request_failures` (also after three idle polls) |
+
+`python3 tools/run_driver_test.py system_alpaca --no-record`: 318/318 passed (3.0.0.4, macOS arm64, development run, `INDIGO_TEST_JOBS=2`; first run, no rerun needed).
+
 Observations outside the driver, not changed (D10) and reported to the user:
 
 - `indigo_libs/indigo_bus.c`, `indigo_set_switch()`: a one-of-many property is marked changed on every call, also when the selected item is selected again (cause of MOUNT-2, DOME-6, LB-4).

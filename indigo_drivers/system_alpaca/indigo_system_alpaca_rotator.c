@@ -27,19 +27,28 @@
  Mapping of the Alpaca members onto the INDIGO properties:
 
  - Position: value of ROTATOR_POSITION; its target is the angle a move of this driver goes to. Alpaca angles are 0 <= angle < 360;
-   a request of -180 ... 360 is brought into that range before it is sent, so 360 is sent as 0 and -90 as 270.
+   a request of -180 ... 360 is brought into that range before it is sent, so 360 is sent as 0 and -90 as 270. However a move of the
+   driver ends (arrival, Halt, failure, timeout, a request that did not start), only the value is the Position read last and the
+   target keeps the request, also the one of a request that an abort cancelled before it was sent; a failed Sync keeps its target
+   as well. Until the device is seen idle once more, its motion is the end of that move and not motion of the device, so the target
+   is not moved by it either.
  - TargetPosition: the target of a move the driver did not start (another client) and of a move that runs at connection time.
  - MoveAbsolute, Sync: a change of ROTATOR_POSITION, as ROTATOR_ON_POSITION_SET says. Sync exists from IRotatorV3 on;
    ROTATOR_ON_POSITION_SET is hidden for older devices and removed if the device answers NotImplemented.
- - Move: ROTATOR_RELATIVE_MOVE, the signed angle is sent as it is.
+ - Move: ROTATOR_RELATIVE_MOVE, the signed angle is sent as it is. The target of ROTATOR_POSITION is the position plus the angle;
+   ROTATOR_RELATIVE_MOVE itself is 0 again when the move is over, however it ended: the angle is used up.
  - MechanicalPosition (IRotatorV3): ROTATOR_RAW_POSITION (read-only) and the value of X_ALPACA_MECHANICAL_POSITION.
  - MoveMechanical (IRotatorV3): a change of X_ALPACA_MECHANICAL_POSITION. The target of ROTATOR_POSITION is then the mechanical
-   target plus the sync offset.
+   target plus the sync offset. The target of X_ALPACA_MECHANICAL_POSITION keeps the request of the last mechanical move of the
+   driver, however it ended, the way the target of ROTATOR_POSITION does; after any other move, and with no request of its own, it
+   is the mechanical position.
  - IsMoving: completion of every move (rotator_move_finalizer), for no longer than ROTATOR_MOVE_TIMEOUT_FACTOR times the long
-   request timeout. Motion the driver did not start shows as ROTATOR_POSITION in the BUSY state. While IsMoving or Position can
-   not be read (the device answers with an error) ROTATOR_POSITION is in ALERT with the last position; it is OK again with the
-   first position that is read.
- - Halt: ROTATOR_ABORT_MOTION.
+   request timeout. Motion the driver did not start shows as ROTATOR_POSITION in the BUSY state, with TargetPosition as the target,
+   and then OK, with the target at the position where the motion ended; so does a Position that changed while the rotator was idle.
+   While IsMoving or Position can not be read (the device answers with an error) ROTATOR_POSITION is in ALERT with the last
+   position; it is OK again with the first position that is read.
+ - Halt: ROTATOR_ABORT_MOTION. A move stopped by Halt ends in ALERT at once; the target of a motion of the device itself is then
+   the angle where it stopped.
  - CanReverse, Reverse: ROTATOR_DIRECTION (REVERSED is Reverse=True), hidden if the rotator can not reverse.
  - StepSize: ROTATOR_STEPS_PER_REVOLUTION as 360 / StepSize, read-only, hidden if the member is not implemented.
 
@@ -94,6 +103,8 @@ typedef struct {
 	bool has_step_size;					///< StepSize is implemented
 	bool moving;								///< IsMoving at the time of the connection
 	bool external;							///< ROTATOR_POSITION is BUSY because the device moves without a request of this driver
+	bool own;										///< a move this driver started may still run: motion and a change of Position are its end until the device is seen idle
+	bool mechanical_request;		///< the target of X_ALPACA_MECHANICAL_POSITION is a request of a client and is kept after the move ended
 	bool unreadable;						///< ROTATOR_POSITION is in ALERT because the polling can not read the position
 	double position;
 	double target;
@@ -145,17 +156,16 @@ static alpaca_result rotator_read_position(indigo_device *device) {
 	return result;
 }
 
-// Give all motion properties the same state. A move that is over leaves no relative move and no mechanical target behind,
-// and a failed one no target at all.
+// Give all motion properties the same state. A move that is over leaves no relative move behind (its angle is used up), and a
+// mechanical target only if it was requested; the target of ROTATOR_POSITION keeps the request, however the move ended.
 static void rotator_set_state(indigo_device *device, indigo_property_state state) {
 	system_alpaca_lock(device);
 	ROTATOR_POSITION_PROPERTY->state = ROTATOR_RELATIVE_MOVE_PROPERTY->state = X_ALPACA_MECHANICAL_POSITION_PROPERTY->state = state;
 	if (state != INDIGO_BUSY_STATE) {
 		ROTATOR_RELATIVE_MOVE_ITEM->number.value = ROTATOR_RELATIVE_MOVE_ITEM->number.target = 0;
-		X_ALPACA_MECHANICAL_POSITION_ITEM->number.target = X_ALPACA_MECHANICAL_POSITION_ITEM->number.value;
-	}
-	if (state == INDIGO_ALERT_STATE) {
-		ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value;
+		if (!ROTATOR_DATA->mechanical_request) {
+			X_ALPACA_MECHANICAL_POSITION_ITEM->number.target = X_ALPACA_MECHANICAL_POSITION_ITEM->number.value;
+		}
 	}
 	system_alpaca_unlock(device);
 }
@@ -215,6 +225,7 @@ static alpaca_result rotator_start(indigo_device *device, const char *member, do
 	}
 	if (result == ALPACA_OK) {
 		data->external = false;
+		data->own = true;
 		rotator_set_state(device, INDIGO_BUSY_STATE);
 		rotator_update(device);
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -229,7 +240,7 @@ static alpaca_result rotator_start(indigo_device *device, const char *member, do
 
 static bool rotator_on_probe(indigo_device *device) {
 	rotator_data *data = ROTATOR_DATA;
-	data->can_reverse = data->reverse = data->has_mechanical = data->has_target = data->has_step_size = data->moving = data->external = data->unreadable = false;
+	data->can_reverse = data->reverse = data->has_mechanical = data->has_target = data->has_step_size = data->moving = data->external = data->own = data->mechanical_request = data->unreadable = false;
 	data->position = data->target = data->mechanical = data->step_size = 0;
 	if (system_alpaca_probe_bool(device, "canreverse", &data->can_reverse) != ALPACA_OK) {
 		return false;
@@ -289,6 +300,7 @@ static bool rotator_on_connect(indigo_device *device) {
 		indigo_set_switch(ROTATOR_ON_POSITION_SET_PROPERTY, ROTATOR_ON_POSITION_SET_GOTO_ITEM, true);
 	}
 	data->external = data->moving;
+	data->own = data->mechanical_request = false;
 	system_alpaca_lock(device);
 	ROTATOR_POSITION_PROPERTY->state = data->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 	ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
@@ -315,7 +327,7 @@ static bool rotator_on_connect(indigo_device *device) {
 static void rotator_on_disconnect(indigo_device *device) {
 	rotator_data *data = ROTATOR_DATA;
 	system_alpaca_operation_end(device, &data->move);
-	data->external = data->unreadable = false;
+	data->external = data->own = data->mechanical_request = data->unreadable = false;
 	// the properties are still defined, so a request may be accepted while they are reset; its handler finds the session closed
 	system_alpaca_lock(device);
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
@@ -349,7 +361,7 @@ static void rotator_on_poll(indigo_device *device) {
 		has_mechanical = system_alpaca_state_double(device, "MechanicalPosition", &mechanical) == ALPACA_OK;
 	}
 	// the target of a move the driver did not start is asked for when the move is seen for the first time
-	if (has_position && moving && !data->external && data->has_target) {
+	if (has_position && moving && !data->external && !data->own && data->has_target) {
 		has_target = system_alpaca_get_double(device, "targetposition", &target) == ALPACA_OK;
 	}
 	system_alpaca_lock(device);
@@ -362,24 +374,35 @@ static void rotator_on_poll(indigo_device *device) {
 			publish_direction = true;
 		}
 		if (has_position) {
+			// motion of the device itself, or a Position that changed while the rotator was idle, moves the targets: to TargetPosition
+			// when the motion is seen first, to the position when it is over; the end of a move of the driver (motion that goes on
+			// after it ended, until the device is seen idle) moves the values only
+			if (!data->own && (moving ? !data->external : (data->external || position != ROTATOR_POSITION_ITEM->number.value))) {
+				data->mechanical_request = false;
+				if (!moving) {
+					ROTATOR_POSITION_ITEM->number.target = position;
+				} else if (has_target) {
+					ROTATOR_POSITION_ITEM->number.target = target;
+				}
+			}
 			if (has_mechanical) {
-				ROTATOR_RAW_POSITION_ITEM->number.value = X_ALPACA_MECHANICAL_POSITION_ITEM->number.value = X_ALPACA_MECHANICAL_POSITION_ITEM->number.target = mechanical;
+				ROTATOR_RAW_POSITION_ITEM->number.value = X_ALPACA_MECHANICAL_POSITION_ITEM->number.value = mechanical;
+				if (!data->mechanical_request) {
+					X_ALPACA_MECHANICAL_POSITION_ITEM->number.target = mechanical;
+				}
 			}
 			if (moving && ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				data->external = true;
-				if (has_target) {
-					ROTATOR_POSITION_ITEM->number.target = target;
-				}
 			} else if (!moving && (data->external || (data->unreadable && ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE))) {
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				data->external = false;
 			}
+			if (!moving) {
+				data->own = false;
+			}
 			data->unreadable = false;
 			ROTATOR_POSITION_ITEM->number.value = position;
-			if (!moving) {
-				ROTATOR_POSITION_ITEM->number.target = position;
-			}
 			publish_position = true;
 		} else if (!alpaca_is_transport_error(position_result) && ROTATOR_POSITION_PROPERTY->state == INDIGO_OK_STATE) {
 			// the device answers and does not tell where it is: the position that is shown is not the one of the device any more
@@ -427,6 +450,7 @@ static void rotator_position_handler(indigo_device *device) {
 			ROTATOR_ON_POSITION_SET_PROPERTY->hidden = true;
 		}
 	} else {
+		ROTATOR_DATA->mechanical_request = false;
 		rotator_start(device, "moveabsolute", angle);
 	}
 }
@@ -441,6 +465,7 @@ static void rotator_relative_move_handler(indigo_device *device) {
 	} else {
 		// ROTATOR_RELATIVE_MOVE is BUSY, so no request for ROTATOR_POSITION is accepted meanwhile
 		ROTATOR_POSITION_ITEM->number.target = indigo_range360(ROTATOR_POSITION_ITEM->number.value + angle);
+		ROTATOR_DATA->mechanical_request = false;
 		rotator_start(device, "move", angle);
 	}
 }
@@ -453,6 +478,7 @@ static void rotator_mechanical_position_handler(indigo_device *device) {
 	X_ALPACA_MECHANICAL_POSITION_ITEM->number.target = angle;
 	// X_ALPACA_MECHANICAL_POSITION is BUSY, so no request for ROTATOR_POSITION is accepted meanwhile
 	ROTATOR_POSITION_ITEM->number.target = indigo_range360(ROTATOR_POSITION_ITEM->number.value + angle - X_ALPACA_MECHANICAL_POSITION_ITEM->number.value);
+	ROTATOR_DATA->mechanical_request = true;
 	if (system_alpaca_not_implemented(rotator_start(device, "movemechanical", angle), 1)) {
 		// the device has no MoveMechanical in spite of its interface version: the mechanical position can only be read
 		system_alpaca_set_unsupported(device, "movemechanical");
@@ -483,6 +509,16 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, rotator_mechanical_position_handler);
 	system_alpaca_lock(device);
 	bool settle = !data->move.active && rotator_is_busy(device) && (result == ALPACA_OK || !data->external);
+	if (settle) {
+		// the stopped move of the driver, or a request that never started, keeps its targets (a cancelled mechanical request is the
+		// only BUSY property); the target of a motion of the device itself follows the position, up to where it stopped
+		if (X_ALPACA_MECHANICAL_POSITION_PROPERTY->state == INDIGO_BUSY_STATE && ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+			data->mechanical_request = true;
+		}
+		if (data->external && !data->own) {
+			ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value;
+		}
+	}
 	system_alpaca_unlock(device);
 	if (settle) {
 		data->external = false;
