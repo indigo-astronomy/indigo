@@ -178,7 +178,7 @@ answers only the commands that have a reply.
   changed. A move now publishes the reached position as the value only; the target changes only at connect, with a
   new request (a relative move's computed target, also when refused), with a successful sync and for motion the
   driver did not command (BUSY then OK, target = measured). After a failed or aborted move the idle polls follow the
-  stopping motor without touching the target (`settling`) until the controller reports it stopped. A failed sync
+  stopping motor without touching the target (`settling`) until the controller reports it stopped.
   Test: `motion_progress_and_abort` (two polls after the
   abort), `stalled_move` (two polls after the stall), `motion_poll_failures`, `overlap_rejected`,
   `request_survives_idle_status_read`, `transport_loss` (refused GOTO); `test_focuser_dmfc_motion`; hardware

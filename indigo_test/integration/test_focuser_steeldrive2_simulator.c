@@ -950,9 +950,6 @@ cleanup:
 	driver_stop(&aux);
 }
 
-// TGT-B03: a FOCUSER_POSITION request copied while the 0.5 s focuser poll comes due ahead of its handler must still
-// move the focuser; the poll must neither overwrite the requested target nor publish over the pending BUSY. The first
-// result published after the request is the end of the motion to the requested position.
 // An abort that overtakes a move still queued sends the STOP once, never sends the move, ends ALERT and keeps the
 // target of the never-sent move, also after idle polls.
 static void queued_abort(void) {
@@ -976,6 +973,9 @@ cleanup:
 	driver_stop(&focuser);
 }
 
+// TGT-B03: a FOCUSER_POSITION request copied while the 0.5 s focuser poll comes due ahead of its handler must still
+// move the focuser; the poll must neither overwrite the requested target nor publish over the pending BUSY. The first
+// result published after the request is the end of the motion to the requested position.
 static void position_request_survives_poll(void) {
 	atomic_store(&focuser_device, NULL);
 	SERIAL_CHECK_TRUE(start_focuser());

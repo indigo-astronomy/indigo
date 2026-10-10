@@ -33,4 +33,4 @@ You may need to install Silicon Labs CP2102 driver for host operating system).
 2026-09-30 19:34 3.0.0.11 linux arm64 simulator 18/18 OK
 2026-09-30 19:36 3.0.0.11 linux arm64 AGadget FocusDreamPro 15/15 OK
 2026-10-05 20:52 3.0.0.12 mac arm64 AGadget FocusDreamPro 15/15 OK
-2026-10-10 02:27 3.0.0.13 mac arm64 simulator 35/35 OK
+2026-10-10 13:56 3.0.0.14 mac arm64 simulator 36/36 OK
