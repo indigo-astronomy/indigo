@@ -542,6 +542,45 @@ cleanup:
 	driver_stop();
 }
 
+static void manual_after_alert(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	// Aborted hand-control motion has no request: it ends ALERT with the target at the stopped position.
+	unsigned busy = atomic_load(&motion_busy);
+	SERIAL_CHECK_TRUE(fault("manual", "40010"));
+	for (int i = 0; i < 100 && atomic_load(&motion_busy) == busy; i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > busy);
+	unsigned before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(abort_ok());
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	double stopped = item->number.value;
+	SERIAL_CHECK_TRUE(stopped > 10 && stopped < 40010 && item->number.target == stopped);
+	SERIAL_CHECK_TRUE(target_kept(stopped));
+	// A driver move aborted mid-way also ends ALERT; hand-control motion after it is still uncommanded motion:
+	// BUSY, the target follows it, OK once it settles.
+	int target = is_celestron() ? 90000 : 2000000;
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_above(stopped));
+	before = atomic_load(&revisions[1]);
+	SERIAL_CHECK_TRUE(abort_ok());
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(item->number.target == target);
+	int manual = (int)item->number.value + 3000;
+	char action[32];
+	snprintf(action, sizeof(action), "%d", manual);
+	busy = atomic_load(&motion_busy);
+	SERIAL_CHECK_TRUE(fault("manual", action));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, manual, .01) && wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(atomic_load(&motion_busy) > busy);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == manual);
+	SERIAL_CHECK_EQ_INT(1, commands(is_celestron() ? "12 02" : "12 24 9"));
+cleanup:
+	driver_stop();
+}
+
 static void moving_at_connect(void) {
 	unsigned busy = atomic_load(&motion_busy);
 	SERIAL_CHECK_TRUE(driver_start());
@@ -987,6 +1026,8 @@ int main(void) {
 		{ "abort_queued", abort_queued, "normal" },
 		{ "request_during_poll", request_during_poll, "normal" },
 		{ "manual_motion", manual_motion, "normal" },
+		{ "manual_after_alert_efa", manual_after_alert, "normal" },
+		{ "manual_after_alert_celestron", manual_after_alert, "celestron" },
 		{ "moving_at_connect", moving_at_connect, "moving" },
 		{ "start_state_efa", start_state, "start_state" },
 		{ "start_state_celestron", start_state, "c_start" },

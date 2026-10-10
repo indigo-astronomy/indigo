@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000018
+#define DRIVER_VERSION       0x03000019
 #define DRIVER_NAME          "indigo_focuser_efa"
 #define DRIVER_LABEL         "Celestron / PlaneWave EFA Focuser"
 #define FOCUSER_DEVICE_NAME  "EFA Focuser"
@@ -410,8 +410,8 @@ static void focuser_timer_callback(indigo_device *device) {
 					PRIVATE_DATA->poll_failed = false;
 					efa_motion_state(device, INDIGO_OK_STATE);
 				}
-				if (PRIVATE_DATA->position != previous && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
-					// Motion the driver did not command (hand control, running at connect): BUSY until it settles, the target follows it.
+				if (PRIVATE_DATA->position != previous && !PRIVATE_DATA->uncertain) {
+					// Motion the driver did not command (hand control, running at connect, also after a move that ended ALERT): BUSY until it settles, the target follows it.
 					PRIVATE_DATA->external = true;
 					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -601,8 +601,11 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				X_FOCUSER_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, "Calibration aborted");
 			}
+			if (PRIVATE_DATA->external) {
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+			}
 			PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = false;
-			// An aborted move or calibration ends ALERT at the stopped position, the target keeps the request.
+			// An aborted move or calibration ends ALERT at the stopped position, the target keeps the request; aborted uncommanded motion has no request, its target is the stopped position.
 			efa_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;
