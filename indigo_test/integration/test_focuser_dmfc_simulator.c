@@ -216,10 +216,24 @@ static bool sync_position(double position) {
 	return switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE) && number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, position, INDIGO_OK_STATE);
 }
 
-static bool target_is(double expected) {
+// A move that ends short of its target publishes the reached value and keeps the requested target.
+static bool ended_at(double value, double target) {
 	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	if (item == NULL || item->number.target != expected || item->number.value != expected) {
-		fprintf(stderr, "FOCUSER_POSITION: value %g, target %g, expected both %g\n", item ? item->number.value : NAN, item ? item->number.target : NAN, expected);
+	if (item == NULL || item->number.target != target || item->number.value != value) {
+		fprintf(stderr, "FOCUSER_POSITION: value %g, target %g, expected value %g, target %g\n", item ? item->number.value : NAN, item ? item->number.target : NAN, value, target);
+		return false;
+	}
+	return true;
+}
+
+static bool target_is(double expected) {
+	return ended_at(expected, expected);
+}
+
+static bool requested_target_is(double expected) {
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	if (item == NULL || item->number.target != expected) {
+		fprintf(stderr, "FOCUSER_POSITION: target %g, expected %g\n", item ? item->number.target : NAN, expected);
 		return false;
 	}
 	return true;
@@ -567,17 +581,17 @@ static void motion_progress_and_abort(void) {
 	SERIAL_CHECK_TRUE(position_in_motion(1000, 90000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_commands("H", 1));
-	// The aborted move ends ALERT on both properties at the stopped position.
+	// The aborted move ends ALERT on both properties at the stopped position with the requested target.
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(1, commands("H"));
 	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	printf("Aborted at %g of 90000\n", stopped);
 	SERIAL_CHECK_TRUE(stopped > 1000 && stopped < 90000);
-	SERIAL_CHECK_TRUE(target_is(stopped));
-	// Two fresh polls find the focuser where it stopped and keep the ALERT.
+	SERIAL_CHECK_TRUE(ended_at(stopped, 90000));
+	// Two fresh polls find the focuser where it stopped and keep the ALERT and the target.
 	SERIAL_CHECK_TRUE(wait_for_polls(2));
-	SERIAL_CHECK_TRUE(target_is(stopped));
+	SERIAL_CHECK_TRUE(ended_at(stopped, 90000));
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	// A fresh move has to be accepted right after the abort.
 	SERIAL_CHECK_TRUE(sync_position(2000));
@@ -615,6 +629,7 @@ static void overlap_rejected(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(requested_target_is(90000));
 	// The same guard protects a running relative move from an absolute request.
 	SERIAL_CHECK_TRUE(sync_position(1000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, INDIGO_OK_STATE));
@@ -654,6 +669,7 @@ static void request_survives_idle_status_read(void) {
 	SERIAL_CHECK_TRUE(assert_rejected_number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(requested_target_is(90000));
 cleanup:
 	driver_stop();
 }
@@ -838,6 +854,8 @@ static void transport_loss(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(goto_position(2000, INDIGO_ALERT_STATE));
+	// a refused move keeps the requested target and the last read position
+	SERIAL_CHECK_TRUE(ended_at(1000, 2000));
 	// nothing moves, so an abort has nothing to stop and sends nothing
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	// The driver must still release the dead handle cleanly.
@@ -980,10 +998,12 @@ static void sync_contract(void) {
 	SERIAL_CHECK_TRUE(last_argument_is("W:", 50));
 	SERIAL_CHECK_TRUE(fault("W:", "ignore"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(target_is(50));
-	// the idle poll keeps the ALERT of the failed sync
+	// the failed sync keeps the real position as value and the requested target
+	SERIAL_CHECK_TRUE(ended_at(50, 2000));
+	// the idle polls keep the ALERT and the target of the failed sync
 	SERIAL_CHECK_TRUE(wait_for_polls(2));
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(ended_at(50, 2000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(target_is(2000));
 	SERIAL_CHECK_EQ_INT(0, commands("M:"));
@@ -1008,7 +1028,10 @@ static void stalled_move(void) {
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(1, commands("H"));
 	SERIAL_CHECK_EQ_INT((int)ok, (int)property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(target_is(1000));
+	// the stalled move keeps its target, also after idle polls
+	SERIAL_CHECK_TRUE(ended_at(1000, 5000));
+	SERIAL_CHECK_TRUE(wait_for_polls(2));
+	SERIAL_CHECK_TRUE(ended_at(1000, 5000));
 	SERIAL_CHECK_TRUE(goto_position(1300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(1300));
 cleanup:
@@ -1037,8 +1060,11 @@ static void motion_poll_failures(void) {
 	}
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(requested_target_is(90000));
+	// idle polls publish where the stopped motor is but keep the requested target
 	SERIAL_CHECK_TRUE(wait_for_polls(2));
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(requested_target_is(90000));
 	SERIAL_CHECK_EQ_INT((int)ok, (int)property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(sync_position(2000));
 	SERIAL_CHECK_TRUE(goto_position(2300, INDIGO_BUSY_STATE));

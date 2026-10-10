@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_focuser_dmfc"
 #define DRIVER_LABEL         "PegasusAstro DMFC Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus DMFC"
@@ -89,8 +89,9 @@ typedef struct {
 	// for a request that is copied and queued but whose handler has not sent the move yet.
 	bool moving;
 	// external_motion: the driver did not command the move; stop_pending: the last abort could not be
-	// sent; poll_failed: the ALERT on FOCUSER_POSITION comes from a failed idle poll, not a failed move
-	bool external_motion, stop_pending, poll_failed;
+	// sent; poll_failed: the ALERT on FOCUSER_POSITION comes from a failed idle poll, not a failed move;
+	// settling: a failed or aborted move ended, idle polls until the controller is stopped still belong to it
+	bool external_motion, stop_pending, poll_failed, settling;
 	int poll_failures, stall_polls;
 	// the settings the controller last confirmed and the limits the client last accepted
 	int backlash, speed, reverse, motor, encoder_disabled, led, min_limit, max_limit;
@@ -250,17 +251,18 @@ static void dmfc_update_ranges(indigo_device *device, bool redefine) {
 
 static void dmfc_start_motion(indigo_device *device) {
 	PRIVATE_DATA->moving = true;
-	PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
+	PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 	PRIVATE_DATA->poll_failures = PRIVATE_DATA->stall_polls = 0;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 }
 
-// A move ends with both motion properties in the same state; a failed or aborted move and a move
-// the driver did not command end with the target at the measured position.
+// A move ends with both motion properties in the same state at the measured position; only a move
+// the driver did not command moves the target there, a commanded one keeps the requested target.
 static void dmfc_end_motion(indigo_device *device, indigo_property_state state, const char *message) {
-	if (state == INDIGO_ALERT_STATE || PRIVATE_DATA->external_motion) {
+	if (PRIVATE_DATA->external_motion) {
 		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 	}
+	PRIVATE_DATA->settling = state == INDIGO_ALERT_STATE && !PRIVATE_DATA->external_motion;
 	PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
 	PRIVATE_DATA->poll_failures = PRIVATE_DATA->stall_polls = 0;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
@@ -334,21 +336,29 @@ static void focuser_timer_callback(indigo_device *device) {
 			}
 		} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			// a request the bus accepted waits for its handler; the poll leaves it alone
-		} else if (moving) {
+		} else if (moving && !PRIVATE_DATA->settling) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own from %d", position);
 			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 			dmfc_start_motion(device);
 			PRIVATE_DATA->external_motion = true;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else if (changed || PRIVATE_DATA->poll_failed) {
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-			if (PRIVATE_DATA->poll_failed) {
-				// only an ALERT left by a failed poll is cleared, never one of a failed move
-				PRIVATE_DATA->poll_failed = false;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			if (changed || PRIVATE_DATA->poll_failed) {
+				FOCUSER_POSITION_ITEM->number.value = position;
+				if (changed && !PRIVATE_DATA->settling) {
+					// moved between two polls without a command
+					FOCUSER_POSITION_ITEM->number.target = position;
+				}
+				if (PRIVATE_DATA->poll_failed) {
+					// only an ALERT left by a failed poll is cleared, never one of a failed move
+					PRIVATE_DATA->poll_failed = false;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			// the stopped controller ends the settling of a failed or aborted move
+			PRIVATE_DATA->settling = moving;
 		}
 	}
 	indigo_execute_handler_in(device, 1, focuser_timer_callback);
@@ -382,7 +392,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status.position;
-				PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				if (status.moving) {
 					// a move the driver did not command is followed until the controller stops
@@ -418,7 +428,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->moving || PRIVATE_DATA->stop_pending) {
 			dmfc_command(device, "H");
 		}
-		PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+		PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -564,12 +574,14 @@ static void focuser_steps_handler(indigo_device *device) {
 	int delta = inward ? steps : -steps;
 	if (steps == 0) {
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	} else if (dmfc_command(device, "G:%d", delta)) {
-		FOCUSER_POSITION_ITEM->number.target = position + delta;
-		dmfc_start_motion(device);
 	} else {
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
-		FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		// a refused move keeps the requested target
+		FOCUSER_POSITION_ITEM->number.target = position + delta;
+		if (dmfc_command(device, "G:%d", delta)) {
+			dmfc_start_motion(device);
+		} else {
+			FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	//- focuser.FOCUSER_STEPS.on_change
@@ -594,7 +606,7 @@ static void focuser_position_handler(indigo_device *device) {
 		} else if (dmfc_command(device, "M:%d", position)) {
 			dmfc_start_motion(device);
 		} else {
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			// a refused move keeps the requested target
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -609,7 +621,8 @@ static void focuser_position_handler(indigo_device *device) {
 			if (dmfc_parse_int(PRIVATE_DATA->response, &readback)) {
 				FOCUSER_POSITION_ITEM->number.value = readback;
 			}
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			// a failed sync keeps the requested target; a change the next poll finds is the sync, not motion
+			PRIVATE_DATA->settling = true;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -633,7 +646,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				if (dmfc_command(device, "P") && dmfc_parse_int(PRIVATE_DATA->response, &position)) {
 					FOCUSER_POSITION_ITEM->number.value = position;
 				}
-				// an aborted move ends ALERT at the position where it stopped
+				// an aborted move ends ALERT at the position where it stopped, the target stays the request
 				dmfc_end_motion(device, INDIGO_ALERT_STATE, NULL);
 			} else {
 				// the motor may still run, so the move stays BUSY
