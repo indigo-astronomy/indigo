@@ -527,7 +527,7 @@ Compliance scenarios:
 - Assert state/control properties: `DOME_SHUTTER` and `DOME_PARK`.
 - Validate azimuth, altitude, park position, speed, step, and dimension ranges where visible.
 - Exercise a GOTO azimuth or relative step move on simulators/fake I/O and verify `BUSY -> OK`.
-- Exercise abort while moving and verify movement properties are not left `BUSY`.
+- Exercise abort while moving and verify movement properties are not left `BUSY`. An aborted or failed rotation publishes the reached azimuth as the `DOME_HORIZONTAL_COORDINATES` value only: the target keeps the last request, also when an abort cancels a request that was never sent, and no later poll rewrites it. The target changes only with a new request, at connect, on a successful sync and for rotation the driver did not command.
 - Exercise shutter open/close and park/unpark only on simulators or fake I/O that can complete deterministically.
 - Treat flap, home, UTC, set-host-time, and on-coordinate-set properties as optional.
 
