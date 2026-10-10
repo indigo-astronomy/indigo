@@ -480,3 +480,14 @@ refusal condition, the idle poll and the abort check it instead of the property 
 - Hardware tests: 18 run, 18 passed on the SESTO SENSO 2 over USB serial and 18 run, 18 passed over
   WiFi (3.0.0.22, macOS arm64, with `PRIMALUCE_HW_CALIBRATE=1`; the stored calibration was read and
   restored in both runs).
+
+## ARCO abort stays ALERT (2026-10-11, 3.0.0.25)
+
+The rotator abort set `ROTATOR_POSITION` ALERT but left the movement finalizer running; once the motor reported
+`stop`, the finalizer published OK when the angle equalled the target, so an abort that stopped the rotator at its
+target ended OK. The finalizer now judges arrival only while the move is BUSY; after an abort it publishes the angle
+the rotator stopped at and keeps ALERT. `rotator_abort` asserts ALERT and the requested target two seconds after the
+abort, also for a request to the current angle; the exact case of a running move stopped at its target is not
+reproducible with the simulator and is covered by the code change only.
+
+Simulated tests: 55 run, 55 passed. Hardware tests: 0 run, 0 passed.

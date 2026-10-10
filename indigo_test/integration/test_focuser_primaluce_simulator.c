@@ -1405,6 +1405,18 @@ static void rotator_abort(void) {
 	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT2\":{\"MOT_STOP\"", 1));
 	SERIAL_CHECK_TRUE(state_seen(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	// The aborted move stays ALERT with its target after the motor has stopped and the movement poll has ended.
+	indigo_usleep(2000000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 300);
+	// Also when the rotator already is at the target when the abort arrives.
+	double angle = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value;
+	alerts = property_state_revision(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, angle, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_seen(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	indigo_usleep(2000000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
 	// A failed stop is reported instead of being published as a stop.
 	SERIAL_CHECK_TRUE(fault("\"MOT2\":{\"MOT_STOP\"", "silent"));
 	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_ALERT_STATE));

@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000018
+#define DRIVER_VERSION       0x03000019
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -1019,7 +1019,7 @@ static void rotator_movement_finalizer(indigo_device *device) {
 		char *state = get_string(device, GET_MOT2_MST);
 		if (state != NULL && strcmp(state, "stop")) {
 			indigo_execute_handler_in(device, 0.2, rotator_movement_finalizer);
-		} else {
+		} else if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			for (int i = 0; i < 10; i++) {
 				indigo_usleep(100000);
 				rotator_read_angle(device);
@@ -1031,6 +1031,9 @@ static void rotator_movement_finalizer(indigo_device *device) {
 			if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		} else {
+			// an aborted move publishes the angle it stopped at and stays ALERT, also when that is the target
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 	} else {
