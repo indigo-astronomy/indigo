@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_moonlite"
 #define DRIVER_LABEL         "MoonLite Focuser"
 #define FOCUSER_DEVICE_NAME  "MoonLite"
@@ -137,10 +137,6 @@ static bool moonlite_position(indigo_device *device, int *position) {
 	}
 	PRIVATE_DATA->position = (int)value;
 	FOCUSER_POSITION_ITEM->number.value = value;
-	// A pending move request owns the target until its handler runs.
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
-		FOCUSER_POSITION_ITEM->number.target = value;
-	}
 	if (position) {
 		*position = (int)value;
 	}
@@ -162,7 +158,8 @@ static bool moonlite_stop(indigo_device *device) {
 	if (!moonlite_command(device, -1, ":FQ#") || !moonlite_moving(device, &moving) || moving || !moonlite_position(device, &position)) {
 		return false;
 	}
-	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+	// the stopped position is the value only, the target keeps the request
+	FOCUSER_POSITION_ITEM->number.value = position;
 	return true;
 }
 
@@ -223,8 +220,8 @@ static void motion_finalizer(indigo_device *device) {
 			return;
 		}
 		PRIVATE_DATA->active = false;
+		// a stop short of the target publishes the reached position as the value only
 		PRIVATE_DATA->uncertain = position != PRIVATE_DATA->expected_position;
-		FOCUSER_POSITION_ITEM->number.target = position;
 		moonlite_motion_state(device, PRIVATE_DATA->uncertain ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 		return;
 	}
@@ -278,9 +275,14 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	//+ focuser.on_timer
 	if (!PRIVATE_DATA->active && FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-		bool read = moonlite_position(device, NULL);
+		int previous = PRIVATE_DATA->position, position = 0;
+		bool read = moonlite_position(device, &position);
 		// A move request accepted while the reply was outstanding owns the motion properties until its handler runs.
 		if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			// Only motion the driver did not command (hand control, automatic mode) moves the target; the rest of an unconfirmed stop does not.
+			if (read && position != previous && !PRIVATE_DATA->uncertain) {
+				FOCUSER_POSITION_ITEM->number.target = position;
+			}
 			FOCUSER_POSITION_PROPERTY->state = read && !PRIVATE_DATA->failed ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
@@ -437,7 +439,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		PRIVATE_DATA->active = false;
 		if (IS_CONNECTED && moonlite_stop(device)) {
 			PRIVATE_DATA->uncertain = false;
-			// An aborted move ends ALERT at the stopped position.
+			// An aborted move ends ALERT with the stopped position as the value and the requested target.
 			moonlite_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;

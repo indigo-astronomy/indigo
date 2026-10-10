@@ -130,6 +130,10 @@ static void moonlite_aborts_a_move(void) {
 	ASSERT_TRUE(stopped > base && stopped < base + TRAVEL);
 	indigo_usleep(1500000);
 	ASSERT_EQ_INT((int)stopped, (int)focuser_hw_position(focuser));
+	// the stopped position is the value only: the target keeps the request, also over the idle polls
+	double requested = -1;
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &requested));
+	ASSERT_NEAR(base + TRAVEL, requested, 0);
 	ASSERT_TRUE(set_number(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 1));
 	ASSERT_TRUE(focuser_hw_goto(focuser, base, INDIGO_OK_STATE, MOVE_TIMEOUT));
 }

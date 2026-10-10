@@ -92,8 +92,8 @@ motion sends the stop before the port closes (the driver already did, now pinned
 
 ### Defects found and fixed (all reproduced against a pre-fix 3.0.0.13 build of the same test)
 
-- **Aborted move ended OK.** It now ends both motion properties ALERT at the stopped position (value =
-  target). Test: `abort_and_overlap` (`aborted_at()`).
+- **Aborted move ended OK.** It now ends both motion properties ALERT with the stopped position as the value
+  and, since 3.0.0.16, the requested target kept. Test: `abort_and_overlap` (`aborted_at()`).
 - **A failed move was turned OK by the next idle poll.** After a failed readback, a stall or an abort the
   0.25/0.75 s position poll published OK again. `moonlite_motion_state()` now records whether the last move
   ended ALERT and the poll keeps publishing ALERT until the next move. Tests: `motion_position_failure`,
@@ -104,6 +104,12 @@ motion sends the stop before the port closes (the driver already did, now pinned
   "moved" to where the focuser already was. The poll no longer touches the target or the state of a pending
   request. Test: `position_request_survives_poll` (simulator fault `delay`); `steps_request_survives_poll`
   covers the relative request.
+- **An aborted or failed move overwrote the requested target (3.0.0.16).** `moonlite_stop()` and a stop short of
+  the target published the reached position as value and target, and every idle poll rewrote the target with
+  the position. The end of a move now publishes the reached position as the value only; the idle poll moves the
+  target only when the position changed without a move of the driver's own (hand control, automatic mode).
+  Tests: `abort_and_overlap`, `abort_overtakes_queued_move`, `start_target_*`, `motion_*_failure`,
+  `execute_failure`, `stalled_motion`, `stop_failure`.
 - **Abort while idle sent `:FQ#`.** It now ends OK without a command when nothing is moving, queued or
   uncertain. Test: `abort_and_overlap`.
 - **`FOCUSER_LIMITS` did not narrow the `FOCUSER_POSITION` and `FOCUSER_STEPS` ranges, and accepted an interval
