@@ -260,7 +260,7 @@
 |  | 2026-10-09 21:14 | 3.0.0.11 | linux arm64 | nSTEP Arduino simulator (ESP32-S3) | 10 / 10 | ✅ OK |
 | focuser_optec | 2026-10-09 21:33 | 3.0.0.12 | linux arm64 | Optec TCF-S3 Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 |  | 2026-10-10 02:38 | 3.0.0.13 | mac arm64 | simulator | 42 / 42 | ✅ OK |
-| focuser_optecfl | 2026-10-05 15:43 | 3.0.0.6 | mac arm64 | simulator | 50 / 50 | ✅ OK |
+| focuser_optecfl | 2026-10-10 02:40 | 3.0.0.8 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 |  | 2026-09-30 18:48 | 3.0.0.15 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-03 19:54 | 3.0.0.16 | linux arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |

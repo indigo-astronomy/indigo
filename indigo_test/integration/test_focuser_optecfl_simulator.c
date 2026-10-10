@@ -271,15 +271,15 @@ static indigo_property_state property_state(const char *name) {
 	return property ? property->state : -1;
 }
 
-// Both motion properties ended in state, at the position the focuser reached: value equals target.
-static bool motion_ended(indigo_property_state state) {
+// Both motion properties ended in state with the target of the request, whatever position the focuser reached.
+static bool motion_ended(indigo_property_state state, double target) {
 	for (int retry = 0; retry < 200; retry++) {
 		if (property_state(FOCUSER_POSITION_PROPERTY_NAME) == state && property_state(FOCUSER_STEPS_PROPERTY_NAME) == state) {
 			break;
 		}
 		indigo_usleep(50000);
 	}
-	if (property_state(FOCUSER_POSITION_PROPERTY_NAME) != state || property_state(FOCUSER_STEPS_PROPERTY_NAME) != state || position_value() != position_target()) {
+	if (property_state(FOCUSER_POSITION_PROPERTY_NAME) != state || property_state(FOCUSER_STEPS_PROPERTY_NAME) != state || position_target() != target) {
 		fprintf(stderr, "Motion ended with position %d, steps %d, value %g, target %g\n", property_state(FOCUSER_POSITION_PROPERTY_NAME), property_state(FOCUSER_STEPS_PROPERTY_NAME), position_value(), position_target());
 		return false;
 	}
@@ -619,7 +619,7 @@ static void overlap_rejected(void) {
 	for (int retry = 0; retry < 300 && !(position_value() == 20000 && property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE); retry++) {
 		indigo_usleep(50000);
 	}
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE) && position_value() == 20000);
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE, 20000) && position_value() == 20000);
 	SERIAL_CHECK_EQ_INT(1, commands("<F1MA"));
 cleanup:
 	driver_down();
@@ -645,7 +645,11 @@ static void sync_rejected_for_optec_type(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_ALERT_STATE));
 	// The driver must not even attempt the command for a homing focuser.
 	SERIAL_CHECK_EQ_INT(0, commands("<F1SCCP"));
-	SERIAL_CHECK_TRUE(position_value() == 0 && position_target() == 0);
+	// The refused sync keeps the real position as value and the requested one as target, also through idle polls.
+	SERIAL_CHECK_TRUE(position_value() == 0 && position_target() == 700);
+	int polls = commands("<F1GETSTATUS>");
+	SERIAL_CHECK_TRUE(wait_for_command("<F1GETSTATUS>", polls + 2));
+	SERIAL_CHECK_TRUE(position_value() == 0 && position_target() == 700);
 cleanup:
 	driver_down();
 }
@@ -660,10 +664,14 @@ static void sync_accepted_for_other_type(void) {
 	// A sync the controller refuses keeps the real position, and the next one is accepted.
 	SERIAL_CHECK_TRUE(fault("<F1SCCP000500>", "reply=NOPE"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(position_value() == 0 && position_target() == 0);
+	// The failed sync keeps the requested value as target, also through idle polls.
+	SERIAL_CHECK_TRUE(position_value() == 0 && position_target() == 500);
+	int polls = commands("<F1GETSTATUS>");
+	SERIAL_CHECK_TRUE(wait_for_command("<F1GETSTATUS>", polls + 2));
+	SERIAL_CHECK_TRUE(position_value() == 0 && position_target() == 500);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(3, commands("<F1SCCP"));
-	SERIAL_CHECK_TRUE(at_position(700));
+	SERIAL_CHECK_TRUE(at_position(700) && position_target() == 700);
 	// Sync updates coordinates without commanding motion.
 	SERIAL_CHECK_EQ_INT(0, commands("<F1MA"));
 cleanup:
@@ -679,15 +687,15 @@ static void abort_during_motion(void) {
 	SERIAL_CHECK_TRUE(wait_for_motion_progress(40000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(1, commands("<F1HALT>"));
-	// The aborted move ends ALERT at the stopped position, never at the requested target.
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	// The aborted move ends ALERT at the stopped position, the target keeps the request.
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 40000));
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
 	double stopped = position_value();
 	SERIAL_CHECK_TRUE(stopped > 0 && stopped < 40000);
 	// Two later readbacks report the same position.
 	int polls = commands("<F1GETSTATUS>");
 	SERIAL_CHECK_TRUE(wait_for_command("<F1GETSTATUS>", polls + 2));
-	SERIAL_CHECK_TRUE(position_value() == stopped && position_target() == stopped);
+	SERIAL_CHECK_TRUE(position_value() == stopped && position_target() == 40000);
 	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 cleanup:
 	driver_down();
@@ -700,10 +708,11 @@ static void abort_overtakes_start(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 40000));
 	double stopped = position_value();
 	indigo_usleep(2000000);
-	SERIAL_CHECK_TRUE(position_value() == stopped);
+	// Idle polls keep the target of the move the abort cancelled or stopped.
+	SERIAL_CHECK_TRUE(position_value() == stopped && position_target() == 40000);
 	SERIAL_CHECK_TRUE(stopped < 40000);
 	SERIAL_CHECK_TRUE(commands("<F1HALT>") == 1 && commands("<F1MA") <= 1);
 cleanup:
@@ -736,7 +745,11 @@ static void abort_failure_reported(void) {
 	indigo_usleep(1500000);
 	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 40000));
+	// Later idle polls do not rewrite the requested target.
+	int polls = commands("<F1GETSTATUS>");
+	SERIAL_CHECK_TRUE(wait_for_command("<F1GETSTATUS>", polls + 2));
+	SERIAL_CHECK_TRUE(position_target() == 40000 && position_value() < 40000);
 cleanup:
 	driver_down();
 }
@@ -746,7 +759,7 @@ static void move_after_abort(void) {
 	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_motion_progress(40000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 40000));
 	SERIAL_CHECK_TRUE(goto_position(600, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(at_position(600));
 cleanup:
@@ -848,7 +861,7 @@ static void malformed_reply(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "reply=GARBAGE"));
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 300));
 	SERIAL_CHECK_TRUE(position_value() == 0);
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(at_position(300));
@@ -860,7 +873,7 @@ static void partial_reply(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "partial"));
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 300));
 	SERIAL_CHECK_TRUE(position_value() == 0);
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(at_position(300));
@@ -872,7 +885,7 @@ static void overlong_reply(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "overlong"));
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 300));
 	SERIAL_CHECK_TRUE(position_value() == 0);
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(at_position(300));
@@ -884,7 +897,7 @@ static void missing_acknowledgement(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "noack"));
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 300));
 	SERIAL_CHECK_TRUE(position_value() == 0);
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(at_position(300));
@@ -896,7 +909,7 @@ static void silent_reply(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "silent"));
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 300));
 	SERIAL_CHECK_TRUE(position_value() == 0);
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(at_position(300));
@@ -954,7 +967,7 @@ static void transport_loss(void) {
 	SERIAL_CHECK_TRUE(start_single());
 	SERIAL_CHECK_TRUE(fault("<F1MA000300>", "close"));
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 300));
 	// Every later request ends ALERT and the hub is not reopened behind the client's back.
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(property_state(FOCUSER_STEPS_PROPERTY_NAME) != INDIGO_BUSY_STATE);
@@ -990,8 +1003,12 @@ static void stalled_move(void) {
 	SERIAL_CHECK_TRUE(fault("<F1MA002000>", "stall"));
 	SERIAL_CHECK_TRUE(goto_position(2000, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_command("<F1HALT>", 1));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 2000));
 	SERIAL_CHECK_TRUE(position_value() == 0);
+	// Idle polls neither turn the stall OK nor rewrite the requested target.
+	int polls = commands("<F1GETSTATUS>");
+	SERIAL_CHECK_TRUE(wait_for_command("<F1GETSTATUS>", polls + 2));
+	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && position_target() == 2000);
 	SERIAL_CHECK_TRUE(goto_position(300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(at_position(300));
 cleanup:
@@ -1015,11 +1032,11 @@ static void move_poll_failures(void) {
 	SERIAL_CHECK_EQ_INT(1, commands("<F1HALT>"));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(remove_fault());
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 40000));
 	// A later idle poll does not turn the failure into OK.
 	int polls = commands("<F1GETSTATUS>");
 	SERIAL_CHECK_TRUE(wait_for_command("<F1GETSTATUS>", polls + 2));
-	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && position_target() == 40000);
 	double stopped = position_value();
 	SERIAL_CHECK_TRUE(stopped > 8000 && stopped < 40000);
 	SERIAL_CHECK_TRUE(goto_position(stopped - 1000, INDIGO_BUSY_STATE));
@@ -1040,7 +1057,7 @@ static void settings_during_motion(void) {
 	SERIAL_CHECK_EQ_INT(0, commands("<F1SCDT"));
 	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 40000));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME, true, INDIGO_OK_STATE));
 cleanup:

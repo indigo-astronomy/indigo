@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_focuser_optecfl"
 #define DRIVER_LABEL         "Optec FocusLynx Focuser"
 #define FOCUSER_1_DEVICE_NAME "Optec FocusLynx #1"
@@ -364,9 +364,10 @@ static bool optecfl_driver_move(indigo_device *device) {
 	return (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && !PRIVATE_DATA->external_motion[FOCUSER_SLOT];
 }
 
-// Ends a move: an interrupted or failed one at the position the focuser reached, never at the requested one.
+// Ends a move: the value is the position the focuser reached, the target keeps the request. Only aborted
+// uncommanded motion takes the reached position as target too.
 static void optecfl_move_ended(indigo_device *device, indigo_property_state state, const char *message) {
-	if (state != INDIGO_OK_STATE) {
+	if (PRIVATE_DATA->external_motion[FOCUSER_SLOT]) {
 		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 	}
 	PRIVATE_DATA->external_motion[FOCUSER_SLOT] = false;
@@ -470,14 +471,17 @@ static void optecfl_poll(indigo_device *device) {
 	}
 	if (read) {
 		PRIVATE_DATA->poll_failures[slot] = 0;
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status_position;
+		// Only uncommanded motion moves the target; after a driver move it keeps the request.
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status_position;
 		if (PRIVATE_DATA->status_moving) {
 			// Motion nobody requested here, e.g. from the hand controller.
 			PRIVATE_DATA->external_motion[slot] = true;
 			PRIVATE_DATA->poll_alert[slot] = false;
+			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status_position;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else if (PRIVATE_DATA->external_motion[slot]) {
 			PRIVATE_DATA->external_motion[slot] = false;
+			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status_position;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (PRIVATE_DATA->poll_alert[slot]) {
 			PRIVATE_DATA->poll_alert[slot] = false;
@@ -531,12 +535,11 @@ static void optecfl_set_position(indigo_device *device) {
 		if (optecfl_echo(device, "M", "<F%dMA%06d>", FOCUSER_ID, position)) {
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			// The focuser stays where it was.
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			// The focuser stays where it was; the target keeps the request.
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (!PRIVATE_DATA->can_sync[FOCUSER_SLOT]) {
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+		// A refused sync keeps the requested value as target; only a successful one sets the value.
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "This focuser type must home and does not support sync");
@@ -545,8 +548,7 @@ static void optecfl_set_position(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.value = position;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		// The controller keeps the position it had.
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+		// The controller keeps the position it had; the target keeps the requested value.
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -571,7 +573,6 @@ static void optecfl_move_steps(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.target = position;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -593,7 +594,7 @@ static void optecfl_abort(indigo_device *device) {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		return;
 	}
-	// The aborted move ends ALERT at the position the focuser stopped at.
+	// The aborted move ends ALERT with the position the focuser stopped at as value.
 	if (optecfl_read_status(device)) {
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status_position;
 	}

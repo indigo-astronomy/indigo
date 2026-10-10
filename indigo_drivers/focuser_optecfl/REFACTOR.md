@@ -175,12 +175,12 @@ hardware test was run.
 
 | # | Defect | Fix | Regression test (fails against 3.0.0.5) |
 |---|---|---|---|
-| DRV-153 | An aborted move ended OK (and `FOCUSER_STEPS` with it), with the target of the request or the controller's `Targ Pos`. | `HALT` is followed by a status read; both motion properties end ALERT with value and target equal to the stopped position. | `abort_during_motion`, `abort_overtakes_start`, `move_after_abort`, `abort_failure_reported` |
+| DRV-153 | An aborted move ended OK (and `FOCUSER_STEPS` with it), with the target of the request or the controller's `Targ Pos`. | `HALT` is followed by a status read; both motion properties end ALERT with the stopped position as value (the target keeps the request since 3.0.0.8, DRV-219). | `abort_during_motion`, `abort_overtakes_start`, `move_after_abort`, `abort_failure_reported` |
 | DRV-154 | An abort while idle sent `HALT`, which also disables temperature compensation on the controller. | Without a running or queued move the abort ends OK without a command. | `abort_while_idle` |
 | DRV-155 | Disconnecting during a move closed the hub without halting the focuser. | `on_disconnect` sends `HALT` while a move is running or queued; after reconnect the position is OK at the stopped position. | `disconnect_during_motion` |
 | DRV-156 | A failed status poll published nothing, malformed `Curr Pos` values were parsed as 0, and a failure during a move left it BUSY while the motor ran unobserved. | Values are validated; an idle failure publishes `FOCUSER_POSITION` and `FOCUSER_TEMPERATURE` ALERT with the last values and the next good poll restores OK; during a move a third consecutive failure halts the focuser and ends ALERT. A later idle poll does not turn that ALERT into OK. | `poll_failure_recovery`, `move_poll_failures` |
 | DRV-157 | A motor reporting `IsMoving = 1` without advancing stayed BUSY forever, and a move that stopped short of its target was reported OK. | Five polls without progress halt the focuser and end ALERT; a move that stops elsewhere than its target ends ALERT. | `stalled_move` |
-| DRV-158 | A rejected, unacknowledged or malformed move or sync left the requested target published. | The target returns to the position the focuser has; both motion properties end ALERT. | `malformed_reply`, `partial_reply`, `overlong_reply`, `missing_acknowledgement`, `transport_loss`, `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
+| DRV-158 | A rejected, unacknowledged or malformed move or sync left the requested target published. | The value stays the position the focuser has (since 3.0.0.8, DRV-219, the target keeps the requested move or sync value); both motion properties end ALERT. | `malformed_reply`, `partial_reply`, `overlong_reply`, `missing_acknowledgement`, `transport_loss`, `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
 | DRV-159 | `FOCUSER_LIMITS` was writable although the protocol has no command for the travel, `FOCUSER_STEPS` kept the range 0–99999, and a device type change did not propagate the new range of `FOCUSER_POSITION`. | `FOCUSER_LIMITS` is read-only; both motion properties take their maximum from `Max Pos` and are defined again when the type changes it. | `property_contract`, `limits_follow_max_pos` |
 | DRV-160 | Reverse motion and the device type were accepted during a move. | `reject_change` refuses both without a command while a move runs or is queued. | `settings_during_motion` |
 
@@ -209,7 +209,7 @@ shared tree was not reverted.
 | Poll failure and recovery, probe absent IDLE, uncommanded motion | `poll_failure_recovery`, `temperature_probe_absent`, `external_motion_observed`, `hand_controller_motion` |
 | GOTO, GOTO to the current position, boundaries, relative moves, reversal, clamping | `absolute_goto`, `goto_no_op`, `goto_boundaries`, `steps_*` |
 | Overlapping request refused, running move ends at its target with one command | `overlap_rejected` |
-| SYNC: refused for homing types without a command, accepted for the published value, failure keeps the position, next sync accepted | `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
+| SYNC: refused for homing types without a command, accepted for the published value, failure keeps the position as value and the request as target, next sync accepted | `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
 | Abort mid-move, overtaking a queued move, while idle, refused and retried | `abort_during_motion`, `abort_overtakes_start`, `abort_while_idle`, `abort_failure_reported`, `move_after_abort` |
 | Move start failures and transport loss | `malformed_reply`, `partial_reply`, `overlong_reply`, `missing_acknowledgement`, `silent_reply`, `transport_loss` |
 | Stall and readback failures during a move | `stalled_move`, `move_poll_failures` |
@@ -228,6 +228,12 @@ shared tree was not reverted.
 ### Validation
 
 `python3 tools/run_driver_test.py focuser_optecfl` runs the 50 scenarios.
+
+## Target kept after a move ends (3.0.0.8, 2026-10-10)
+
+| # | Defect | Fix | Regression test |
+|---|---|---|---|
+| DRV-219 | An aborted, stalled, refused or short move, or a refused or failed sync, overwrote the requested `FOCUSER_POSITION` target with the real position, and every idle poll rewrote it with `Curr Pos`. | `optecfl_move_ended`, the refused GOTO/steps/sync paths and the idle poll set the value only; only a successful sync sets value = target, and the target follows `Curr Pos` only for uncommanded motion. | `abort_during_motion`, `abort_overtakes_start`, `abort_failure_reported`, `move_after_abort`, `stalled_move`, `move_poll_failures`, `malformed_reply`, `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
 
 ## Final test summary
 
