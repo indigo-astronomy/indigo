@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_focuser_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -144,6 +144,7 @@ typedef struct {
 	bool pending;
 	bool external_motion;
 	bool poll_failed;
+	bool settling;
 	int target_position;
 	int stall_polls;
 	int motion_position;
@@ -234,6 +235,7 @@ static int focuser_clamp_target(indigo_device *device, int target) {
 static void focuser_move_started(indigo_device *device, int target, bool external) {
 	PRIVATE_DATA->moving = true;
 	PRIVATE_DATA->external_motion = external;
+	PRIVATE_DATA->settling = false;
 	PRIVATE_DATA->target_position = target;
 	PRIVATE_DATA->stall_polls = 0;
 	PRIVATE_DATA->motion_position = PRIVATE_DATA->status.position;
@@ -247,6 +249,8 @@ static void focuser_motion_failed(indigo_device *device, const char *message) {
 	}
 	PRIVATE_DATA->moving = false;
 	PRIVATE_DATA->external_motion = false;
+	/* the value is settled by the next idle poll, the target keeps the request */
+	PRIVATE_DATA->settling = true;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	focuser_publish_motion(device, message);
@@ -390,9 +394,15 @@ static void focuser_position_poll(indigo_device *device, bool success) {
 	}
 	bool changed = false;
 	if (FOCUSER_POSITION_ITEM->number.value != position) {
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		FOCUSER_POSITION_ITEM->number.value = position;
+		if (!PRIVATE_DATA->settling) {
+			/* moved between polls without a command, the target follows */
+			FOCUSER_POSITION_ITEM->number.target = position;
+		}
 		changed = true;
 	}
+	/* only the first reading after the driver ended its own move settles it */
+	PRIVATE_DATA->settling = false;
 	if (PRIVATE_DATA->poll_failed) {
 		PRIVATE_DATA->poll_failed = false;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -490,6 +500,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->compensation_last_temp = -273.15;
 				PRIVATE_DATA->moving = false;
 				PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->settling = false;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status.position;
 				if (PRIVATE_DATA->status.moving) {
 					/* motion the driver did not command is running at connect */
@@ -625,7 +636,11 @@ static void focuser_position_handler(indigo_device *device) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			message = "Failed to read the focuser position after the sync";
 		}
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status.position;
+		/* a failed SYNC keeps the real position as value and the requested sync value as target */
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_OK_STATE) {
+			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status.position;
+		}
 		focuser_publish_motion(device, message);
 	}
 	//- focuser.FOCUSER_POSITION.on_change
@@ -717,6 +732,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	}
 	PRIVATE_DATA->moving = false;
 	PRIVATE_DATA->external_motion = false;
+	PRIVATE_DATA->settling = true;
 	/* AOFocuserGetStatus() sometimes fails after a stop with comm error, so retry */
 	for (int retry = 0; retry < 3; retry++) {
 		res = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
@@ -730,8 +746,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	} else {
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
 	}
-	/* an aborted move ends at the stopped position, never at the requested target */
-	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	/* an aborted move ends at the stopped position and keeps the requested target */
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	focuser_publish_motion(device, "Focuser motion aborted");
@@ -1420,7 +1435,7 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 #include "indigo_focuser_astroasis.h"
 
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x03000010, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x03000011, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

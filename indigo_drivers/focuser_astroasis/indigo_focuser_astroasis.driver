@@ -24,7 +24,7 @@ driver astroasis {
 	label = "Astroasis Oasis Focuser";
 	author = "Frank Chen <frank.chen@astroasis.com>";
 	copyright = "Copyright (C) 2024-2026 Astroasis Vision Technology, Inc.";
-	version = 16;
+	version = 17;
 	supported_architecture = "!defined(__i386__)";
 	include {
 		#include <AOFocus.h>
@@ -50,6 +50,7 @@ driver astroasis {
 		bool pending;
 		bool external_motion;
 		bool poll_failed;
+		bool settling;
 		int target_position;
 		int stall_polls;
 		int motion_position;
@@ -217,6 +218,7 @@ driver astroasis {
 			static void focuser_move_started(indigo_device *device, int target, bool external) {
 				PRIVATE_DATA->moving = true;
 				PRIVATE_DATA->external_motion = external;
+				PRIVATE_DATA->settling = false;
 				PRIVATE_DATA->target_position = target;
 				PRIVATE_DATA->stall_polls = 0;
 				PRIVATE_DATA->motion_position = PRIVATE_DATA->status.position;
@@ -230,6 +232,8 @@ driver astroasis {
 				}
 				PRIVATE_DATA->moving = false;
 				PRIVATE_DATA->external_motion = false;
+				/* the value is settled by the next idle poll, the target keeps the request */
+				PRIVATE_DATA->settling = true;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				focuser_publish_motion(device, message);
@@ -373,9 +377,15 @@ driver astroasis {
 				}
 				bool changed = false;
 				if (FOCUSER_POSITION_ITEM->number.value != position) {
-					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+					FOCUSER_POSITION_ITEM->number.value = position;
+					if (!PRIVATE_DATA->settling) {
+						/* moved between polls without a command, the target follows */
+						FOCUSER_POSITION_ITEM->number.target = position;
+					}
 					changed = true;
 				}
+				/* only the first reading after the driver ended its own move settles it */
+				PRIVATE_DATA->settling = false;
 				if (PRIVATE_DATA->poll_failed) {
 					PRIVATE_DATA->poll_failed = false;
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -493,6 +503,7 @@ driver astroasis {
 				PRIVATE_DATA->compensation_last_temp = -273.15;
 				PRIVATE_DATA->moving = false;
 				PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->settling = false;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status.position;
 				if (PRIVATE_DATA->status.moving) {
 					/* motion the driver did not command is running at connect */
@@ -581,7 +592,11 @@ driver astroasis {
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = "Failed to read the focuser position after the sync";
 					}
-					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status.position;
+					/* a failed SYNC keeps the real position as value and the requested sync value as target */
+					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
+					if (FOCUSER_POSITION_PROPERTY->state == INDIGO_OK_STATE) {
+						FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status.position;
+					}
 					focuser_publish_motion(device, message);
 				}
 			}
@@ -685,6 +700,7 @@ driver astroasis {
 				}
 				PRIVATE_DATA->moving = false;
 				PRIVATE_DATA->external_motion = false;
+				PRIVATE_DATA->settling = true;
 				/* AOFocuserGetStatus() sometimes fails after a stop with comm error, so retry */
 				for (int retry = 0; retry < 3; retry++) {
 					res = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
@@ -698,8 +714,7 @@ driver astroasis {
 				} else {
 					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
 				}
-				/* an aborted move ends at the stopped position, never at the requested target */
-				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+				/* an aborted move ends at the stopped position and keeps the requested target */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				focuser_publish_motion(device, "Focuser motion aborted");

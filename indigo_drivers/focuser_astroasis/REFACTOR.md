@@ -278,7 +278,7 @@ Every case below failed against a build of the version 13 source kept outside th
 
 | ID | Observable impact | Fix | Regression test |
 | --- | --- | --- | --- |
-| FOC-13 | An aborted move ended `FOCUSER_POSITION`/`FOCUSER_STEPS` OK, with the target left at the requested position. | Abort ends both ALERT with value = target = the position read after the stop. | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move` |
+| FOC-13 | An aborted move ended `FOCUSER_POSITION`/`FOCUSER_STEPS` OK, with the target left at the requested position. | Abort ends both ALERT with value = the position read after the stop; the target keeps the request (version 17). | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move` |
 | FOC-14 | An abort while idle sent `AOFocuserStopMove()`; an abort request with the item OFF also stopped the focuser. | Nothing moving (no motion running, neither motion property BUSY) answers OK without a command; an OFF request is answered without a command. | `abort_motion` |
 | FOC-15 | A refused `AOFocuserStopMove()` published the move OK and cancelled its completion poll while the focuser kept moving. | The abort ends ALERT with the controller error, the move stays BUSY and its completion poll continues; a retried abort stops it. | `abort_motion` |
 | FOC-16 | The position was not read at connect: `FOCUSER_POSITION` showed 0 until the first poll, and a GOTO right after connect was compared with that 0. | `on_connect` reads `AOFocuserGetStatus()`; a failure refuses the connection and closes the handle. | `connect_publishes_device_state`, `connect_status_failure_refused` |
@@ -303,7 +303,7 @@ The fake SDK gained `stop_short` (the firmware stops a move short of its target 
 | Relative moves, direction, device-side reverse, zero step, clamping at both ends | `relative_steps_and_direction`, `requests_refused_during_motion` |
 | Move/setting requests during a move refused with ALERT and no command, running move ends at its target with one command | `requests_refused_during_motion`, `FOC-09` |
 | Limits: range propagation, written to the device, below the current position refused | `FOC-04`, `settings_config_writes`, `requests_refused_during_motion` |
-| Mid-move abort ALERT, value = target = stopped position, two fresh equal readbacks, fresh move; idle abort without stop; OFF request; refused stop and retry; abort overtaking a queued move | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move` |
+| Mid-move abort ALERT, value = stopped position, target = request, two fresh equal readbacks, fresh move; idle abort without stop; OFF request; refused stop and retry; abort overtaking a queued move | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move` |
 | Start failure with the controller error in the message, failed/stalled move sends the stop, never arrival, not turned OK by a later poll | `FOC-03`, `motion_poll_failure_and_recovery`, `stalled_motion_ends_alert` |
 | Disconnect / USB removal during motion: one stop before close, no poll afterwards, reconnect OK at the real position | `disconnect_and_removal_during_motion` |
 | Settings writes, rejected writes keep the device value, immediate retry | `settings_config_writes`, `FOC-08` |
@@ -330,6 +330,12 @@ Not applicable or not changed, with the reason:
 | FOC-23 | The refusal of a second GOTO turned `FOCUSER_POSITION` ALERT while the accepted GOTO was still waiting in the device queue; neither motion property was BUSY any more and the driver was not yet moving, so a following `FOCUSER_STEPS` request was accepted and a second move command was queued behind the first. | A pending flag set by `on_change_request` for every accepted `FOCUSER_POSITION` or `FOCUSER_STEPS` request, cleared when the handler runs, by abort and by disconnect, is part of the motion condition used by the refusals, the idle abort and the idle poll. | `refusal_keeps_queued_move_pending` (failed against version 14, passes against 15) |
 
 Found while aligning `focuser_astromechanics`, where the same window let a second `M` command through.
+
+### Requested target kept (2026-10-10, version 17)
+
+| ID | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| FOC-24 | An aborted move (also one overtaken in the queue) overwrote the requested target with the stopped position, and the first idle poll after an abort, a failed read or a stall moved the target to the settled position. | Abort and failure endings publish the stopped position as the value only; the first idle reading after the driver ended its own move settles only the value, a later change is uncommanded motion and moves the target. A failed SYNC keeps the requested sync value as target. | `abort_motion`, `abort_status_communication_retry`, `urgent_abort_cancels_queued_move`, `motion_poll_failure_and_recovery`, `stalled_motion_ends_alert`, `FOC-03 move_start_failure_alerts`, `goto_sync_and_noop` |
 
 ### Generated completion of the motion handlers (2026-10-05, version 16)
 
