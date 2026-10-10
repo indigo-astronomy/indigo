@@ -220,7 +220,7 @@
 | dome_talon6ror | 2026-09-27 14:38 | 3.0.0.6 | linux x64 | simulator | 36 / 36 | ✅ OK |
 |  | 2026-10-09 18:57 | 3.0.0.7 | mac arm64 | simulator | 37 / 37 | ✅ OK |
 |  | 2026-10-09 19:09 | 3.0.0.7 | linux arm64 | Talon6 ROR Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
-| focuser_asi | 2026-10-05 19:55 | 3.0.0.37 | mac arm64 | fake SDK | 23 / 23 | ✅ OK |
+| focuser_asi | 2026-10-10 02:25 | 3.0.0.39 | mac arm64 | fake SDK | 23 / 23 | ✅ OK |
 | focuser_askar | 2026-09-24 17:14 | 3.0.0.7 | linux x64 | simulator | 10 / 10 | ✅ OK |
 |  | 2026-10-05 16:18 | 3.0.0.9 | mac arm64 | simulator | 24 / 24 | ✅ OK |
 | focuser_astroasis | 2026-10-05 16:27 | 3.0.0.16 | mac arm64 | fake SDK | 40 / 40 | ✅ OK |

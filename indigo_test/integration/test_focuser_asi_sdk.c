@@ -333,6 +333,19 @@ static void set_number(const char *property, const char *item, double value) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, eaf.device_name, property, item, value));
 }
 
+// waits until the poll has run count more times, so an idle poll had the chance to rewrite the motion properties
+static bool wait_polls(int count) {
+	int polls = atomic_load(&poll_calls);
+	for (int i = 0; i < 600 && atomic_load(&poll_calls) < polls + count; i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&poll_calls) >= polls + count;
+}
+
+static bool target_is(int target) {
+	return find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == target;
+}
+
 static bool finish_motion_at(int target) {
 	atomic_store(&position, target);
 	atomic_store(&motor, false);
@@ -382,19 +395,27 @@ static void polling_failure_and_safe_retry(void) {
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
+	ASSERT_TRUE(target_is(300));
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	indigo_usleep(300000);
 	ASSERT_EQ_INT(moves + 1, atomic_load(&move_calls));
+	// the motor coasts after the unconfirmed stop: the idle poll publishes the value, not uncommanded motion
+	int coasted = atomic_load(&position) + 7;
+	atomic_store(&position, coasted);
 	atomic_store(&motor, false);
 	atomic_store(&fail_poll, false);
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, coasted, 0));
+	ASSERT_TRUE(wait_polls(2));
+	ASSERT_TRUE(target_is(400));
+	ASSERT_EQ_INT(moves + 1, atomic_load(&move_calls));
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
 	ASSERT_TRUE(wait_atomic(&move_calls, moves + 2));
 	ASSERT_TRUE(finish_motion_at(400));
 }
 
 // A refused stop ends the abort ALERT and the move is not reported completed; an immediate retry stops it,
-// and the aborted move ends ALERT at the stop point with value equal to target, never OK.
+// and the aborted move ends ALERT at the stop point with the requested target kept, never OK.
 static void abort_waits_for_stop_and_resets_switch(void) {
 	int moves = atomic_load(&move_calls), stops = atomic_load(&stop_calls);
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300);
@@ -416,13 +437,14 @@ static void abort_waits_for_stop_and_resets_switch(void) {
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
 	ASSERT_NEAR(350, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
-	ASSERT_NEAR(350, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	ASSERT_NEAR(300, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
 	ASSERT_EQ_INT(stops + 2, atomic_load(&stop_calls));
-	// the next idle poll agrees and does not turn the aborted move OK
-	int polls = atomic_load(&poll_calls);
-	ASSERT_TRUE(wait_atomic(&poll_calls, polls + 1));
+	// later idle polls agree, do not turn the aborted move OK and keep the requested target
+	ASSERT_TRUE(wait_polls(2));
 	indigo_usleep(100000);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	ASSERT_NEAR(350, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_TRUE(target_is(300));
 }
 
 static void compensation_recovers_without_losing_baseline(void) {
@@ -665,8 +687,11 @@ static void abort_overtakes_queued_move(void) {
 	ASSERT_EQ_INT(moves, atomic_load(&move_calls));
 	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
 	ASSERT_NEAR(origin, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
-	ASSERT_NEAR(origin, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	// the target stays the never-sent request, also after idle polls
+	ASSERT_TRUE(target_is(origin + 700));
 	ASSERT_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	ASSERT_TRUE(wait_polls(2));
+	ASSERT_TRUE(target_is(origin + 700));
 	disconnect_device();
 }
 
@@ -714,7 +739,7 @@ static void hand_controller_motion(void) {
 	disconnect_device();
 }
 
-// A move the SDK keeps reporting while the position does not change is stopped and ends ALERT; a fresh move works.
+// A move the SDK keeps reporting while the position does not change is stopped and ends ALERT keeping the requested target; a fresh move works.
 static void stalled_move(void) {
 	connect_device();
 	int stops = atomic_load(&stop_calls);
@@ -726,10 +751,22 @@ static void stalled_move(void) {
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
 	ASSERT_EQ_INT(stops + 1, atomic_load(&stop_calls));
-	ASSERT_NEAR(origin, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	ASSERT_NEAR(origin, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_TRUE(target_is(origin + 900));
 	atomic_store(&motor, false);
+	ASSERT_TRUE(wait_polls(2));
+	ASSERT_TRUE(target_is(origin + 900));
 	start_move(origin + 100);
 	ASSERT_TRUE(finish_motion_at(origin + 100));
+	// a refused start ends ALERT where the focuser is and keeps the requested target
+	atomic_store(&fail_move, true);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, origin + 200);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&fail_move, false);
+	ASSERT_NEAR(origin + 100, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_TRUE(target_is(origin + 200));
+	ASSERT_TRUE(wait_polls(2));
+	ASSERT_TRUE(target_is(origin + 200));
 	disconnect_device();
 }
 
@@ -752,7 +789,7 @@ static void temperature_readings(void) {
 }
 
 // Limits, backlash, reverse, compensation and mode requested during a move end ALERT without an SDK call, and a
-// maximum excluding the position is refused without a call; a refused SYNC keeps the real position.
+// maximum excluding the position is refused without a call; a refused SYNC keeps the real position and the requested target.
 static void settings_during_motion_and_refusals(void) {
 	connect_device();
 	int origin = atomic_load(&position);
@@ -783,10 +820,12 @@ static void settings_during_motion_and_refusals(void) {
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 222);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_NEAR(origin + 400, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
-	ASSERT_NEAR(origin + 400, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, 0);
+	ASSERT_TRUE(target_is(222));
 	atomic_store(&fail_reset, false);
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, origin + 400);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_NEAR(origin + 400, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	ASSERT_TRUE(target_is(origin + 400));
 	set_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	disconnect_device();
