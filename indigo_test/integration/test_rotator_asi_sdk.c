@@ -336,11 +336,15 @@ static bool motion_state(indigo_property_state state) {
 	return wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, state) && wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, state);
 }
 
-static bool finish_motion(int centidegrees) {
+static bool end_motion(int centidegrees, indigo_property_state state) {
 	atomic_store(&position[0], centidegrees);
 	atomic_store(&motor[0], false);
 	atomic_store(&hand_control[0], false);
-	return motion_state(INDIGO_OK_STATE) && wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, centidegrees / 100.0, 0.001);
+	return motion_state(state) && wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, centidegrees / 100.0, 0.001);
+}
+
+static bool finish_motion(int centidegrees) {
+	return end_motion(centidegrees, INDIGO_OK_STATE);
 }
 
 static void metadata_schema_and_reconnect(void) {
@@ -476,7 +480,8 @@ static void abort_motor_and_hand_controller(void) {
 	atomic_store(&fail[OP_STOP], false);
 	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	ASSERT_TRUE(finish_motion(3000));
+	// The aborted move ends ALERT, never OK.
+	ASSERT_TRUE(end_motion(3000, INDIGO_ALERT_STATE));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	// The stopped angle is the value only; the target keeps the aborted request, also after later poll periods.
 	ASSERT_NEAR(30, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
@@ -496,9 +501,11 @@ static void abort_motor_and_hand_controller(void) {
 	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
-	ASSERT_TRUE(finish_motion(3500));
+	ASSERT_TRUE(end_motion(3500, INDIGO_ALERT_STATE));
+	// An abort while idle sends the stop but leaves the state of the aborted move.
 	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
 }
 
 static void limits_and_settings(void) {

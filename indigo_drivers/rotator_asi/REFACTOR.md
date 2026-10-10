@@ -285,3 +285,14 @@ Regression coverage in `indigo_test/integration/test_rotator_asi_sdk.c`: `abort 
 
 - Simulated tests run: 11; passed: 11.
 - Hardware tests run: 0; passed: 0.
+
+## Aborted move ends ALERT (2026-10-11, 3.0.0.10)
+
+An abort ran the movement finalizer, which published `ROTATOR_POSITION` and `ROTATOR_RELATIVE_MOVE` OK as soon as the
+motor reported stopped, so an aborted move looked completed; an abort while idle also turned a failed or aborted move
+OK. The abort now records whether a move was running or queued (`aborted_move`); that move ends ALERT with "Rotator
+motion aborted", and an idle abort leaves the state of the last move as it is (the finalizer only turns BUSY into OK).
+"abort confirmation and hand controller" asserts ALERT after the stop with the hand controller and without it, and the
+state kept by a later idle abort.
+
+Simulated tests: 11 run, 11 passed. Hardware tests: 0 run, 0 passed.

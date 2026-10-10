@@ -24,7 +24,7 @@ driver asi {
 	label = "ZWO CAA Rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 9;
+	version = 10;
 	multi_device_support = true;
 	include {
 		#include <stdbool.h>
@@ -39,6 +39,7 @@ driver asi {
 		bool sdk_open;
 		bool moving;
 		bool abort_pending;
+		bool aborted_move;
 		CAA_INFO info;
 		char model[64];
 		char custom_suffix[9];
@@ -177,7 +178,7 @@ driver asi {
 			}
 			PRIVATE_DATA->sdk_open = false;
 			PRIVATE_DATA->moving = false;
-			PRIVATE_DATA->abort_pending = false;
+			PRIVATE_DATA->abort_pending = PRIVATE_DATA->aborted_move = false;
 		}
 	}
 	on_init {
@@ -255,7 +256,16 @@ driver asi {
 					return;
 				}
 				PRIVATE_DATA->moving = moving || hand_control;
-				rotator_update_motion(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE, NULL);
+				if (PRIVATE_DATA->moving) {
+					rotator_update_motion(device, INDIGO_BUSY_STATE, NULL);
+				} else if (PRIVATE_DATA->aborted_move) {
+					// an aborted move ends ALERT where it stopped, never OK
+					PRIVATE_DATA->aborted_move = false;
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Rotator motion aborted");
+				} else {
+					// a move that ends is OK, an abort while idle leaves the state of the last move as it is
+					rotator_update_motion(device, ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_OK_STATE : ROTATOR_POSITION_PROPERTY->state, NULL);
+				}
 				if (PRIVATE_DATA->abort_pending) {
 					if (hand_control) {
 						PRIVATE_DATA->abort_pending = false;
@@ -290,6 +300,7 @@ driver asi {
 				PRIVATE_DATA->target_position = (float)target;
 				ROTATOR_POSITION_ITEM->number.target = target;
 				PRIVATE_DATA->moving = true;
+				PRIVATE_DATA->aborted_move = false;
 				rotator_update_motion(device, INDIGO_BUSY_STATE, NULL);
 				indigo_execute_handler_in(device, 0.5, rotator_move_finalizer);
 			}
@@ -341,7 +352,7 @@ driver asi {
 			}
 			if (connection_result) {
 				PRIVATE_DATA->moving = false;
-				PRIVATE_DATA->abort_pending = false;
+				PRIVATE_DATA->abort_pending = PRIVATE_DATA->aborted_move = false;
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 				ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->min_position = 0;
@@ -451,6 +462,8 @@ driver asi {
 		}
 		inherited ROTATOR_ABORT_MOTION {
 			on_change {
+				// a running move, or one still queued, ends ALERT; an abort while idle leaves the position OK
+				PRIVATE_DATA->aborted_move = PRIVATE_DATA->moving || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
 				indigo_cancel_pending_handler(device, rotator_position_handler);
 				indigo_cancel_pending_handler(device, rotator_relative_move_handler);
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;

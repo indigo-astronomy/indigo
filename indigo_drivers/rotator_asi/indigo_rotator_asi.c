@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_rotator_asi"
 #define DRIVER_LABEL         "ZWO CAA Rotator"
 #define ROTATOR_DEVICE_NAME  "%s"
@@ -82,6 +82,7 @@ typedef struct {
 	bool sdk_open;
 	bool moving;
 	bool abort_pending;
+	bool aborted_move;
 	CAA_INFO info;
 	char model[64];
 	char custom_suffix[9];
@@ -173,7 +174,7 @@ static void asi_close(indigo_device *device) {
 	}
 	PRIVATE_DATA->sdk_open = false;
 	PRIVATE_DATA->moving = false;
-	PRIVATE_DATA->abort_pending = false;
+	PRIVATE_DATA->abort_pending = PRIVATE_DATA->aborted_move = false;
 }
 
 //- code
@@ -238,7 +239,16 @@ static void rotator_move_finalizer(indigo_device *device) {
 		return;
 	}
 	PRIVATE_DATA->moving = moving || hand_control;
-	rotator_update_motion(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE, NULL);
+	if (PRIVATE_DATA->moving) {
+		rotator_update_motion(device, INDIGO_BUSY_STATE, NULL);
+	} else if (PRIVATE_DATA->aborted_move) {
+		// an aborted move ends ALERT where it stopped, never OK
+		PRIVATE_DATA->aborted_move = false;
+		rotator_update_motion(device, INDIGO_ALERT_STATE, "Rotator motion aborted");
+	} else {
+		// a move that ends is OK, an abort while idle leaves the state of the last move as it is
+		rotator_update_motion(device, ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_OK_STATE : ROTATOR_POSITION_PROPERTY->state, NULL);
+	}
 	if (PRIVATE_DATA->abort_pending) {
 		if (hand_control) {
 			PRIVATE_DATA->abort_pending = false;
@@ -273,6 +283,7 @@ static void rotator_start_move(indigo_device *device, double target) {
 	PRIVATE_DATA->target_position = (float)target;
 	ROTATOR_POSITION_ITEM->number.target = target;
 	PRIVATE_DATA->moving = true;
+	PRIVATE_DATA->aborted_move = false;
 	rotator_update_motion(device, INDIGO_BUSY_STATE, NULL);
 	indigo_execute_handler_in(device, 0.5, rotator_move_finalizer);
 }
@@ -311,7 +322,7 @@ static void rotator_connection_handler(indigo_device *device) {
 			}
 			if (connection_result) {
 				PRIVATE_DATA->moving = false;
-				PRIVATE_DATA->abort_pending = false;
+				PRIVATE_DATA->abort_pending = PRIVATE_DATA->aborted_move = false;
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 				ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->min_position = 0;
@@ -454,6 +465,8 @@ static void rotator_relative_move_handler(indigo_device *device) {
 
 static void rotator_abort_motion_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_ABORT_MOTION.on_change
+	// a running move, or one still queued, ends ALERT; an abort while idle leaves the position OK
+	PRIVATE_DATA->aborted_move = PRIVATE_DATA->moving || ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
 	indigo_cancel_pending_handler(device, rotator_position_handler);
 	indigo_cancel_pending_handler(device, rotator_relative_move_handler);
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
