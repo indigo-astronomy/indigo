@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_focuser_steeldrive2"
 #define DRIVER_LABEL         "Baader Planetarium SteelDriveII Focuser"
 #define FOCUSER_DEVICE_NAME  "SteelDriveII (focuser)"
@@ -609,10 +609,10 @@ static void steeldrive2_publish_focuser(indigo_device *device, indigo_property_s
 	indigo_update_property(device, X_STATUS_PROPERTY, NULL);
 }
 
+// The value is the position reached, the target keeps the request also when the move ended short.
 static void steeldrive2_finish_motion(indigo_device *device, indigo_property_state state) {
 	PRIVATE_DATA->active = false;
 	PRIVATE_DATA->failed = state != INDIGO_OK_STATE;
-	FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 	steeldrive2_publish_focuser(device, state);
 	if (PRIVATE_DATA->zeroing) {
 		PRIVATE_DATA->zeroing = false;
@@ -657,9 +657,9 @@ static void motion_finalizer(indigo_device *device) {
 	steeldrive2_finish_motion(device, PRIVATE_DATA->position != PRIVATE_DATA->target ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 }
 
-// A refused move ends both motion properties ALERT at the position the focuser has, with the controller's reason.
+// A refused move ends both motion properties ALERT at the position the focuser has, with the controller's reason;
+// the target keeps the request.
 static void steeldrive2_motion_refused(indigo_device *device) {
-	FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 	PRIVATE_DATA->failed = true;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -687,9 +687,8 @@ static bool steeldrive2_start_motion(indigo_device *device, int target, bool zer
 	if (!accepted) {
 		return false;
 	}
-	if (!zeroing) {
-		FOCUSER_POSITION_ITEM->number.target = target;
-	}
+	// zeroing ends at 0
+	FOCUSER_POSITION_ITEM->number.target = target;
 	PRIVATE_DATA->active = true;
 	PRIVATE_DATA->zeroing = zeroing;
 	PRIVATE_DATA->stalled = PRIVATE_DATA->failures = 0;
@@ -713,14 +712,16 @@ static void focuser_timer_callback(indigo_device *device) {
 	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && !pending) {
 		bool read = steeldrive2_summary(device);
 		// A request can also be copied on the bus thread during the status round trip, so it is checked again after
-		// the read and the poll never writes the target.
+		// the read and the poll writes the target only for motion the driver did not command.
 		pending = !PRIVATE_DATA->external && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE);
 		if (pending) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' status read left to the pending motion request", device->name);
 		} else if (read) {
-			// Uncommanded motion is published with the target following the measured position; a failed move
-			// stays ALERT.
-			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+			// Uncommanded motion (moving or moved while no move of the driver runs) is published with the target
+			// following the measured position; a failed or aborted move keeps its target and stays ALERT.
+			if (PRIVATE_DATA->moving || PRIVATE_DATA->external || PRIVATE_DATA->position != FOCUSER_POSITION_ITEM->number.value) {
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+			}
 			steeldrive2_publish_focuser(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : PRIVATE_DATA->failed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 		} else {
 			PRIVATE_DATA->external = false;
@@ -989,8 +990,9 @@ static void focuser_position_handler(indigo_device *device) {
 		bool accepted = !PRIVATE_DATA->active && !PRIVATE_DATA->moving && !PRIVATE_DATA->uncertain && steeldrive2_ok(device, "$BS SET POS:%d", requested) && steeldrive2_summary(device) && PRIVATE_DATA->position == requested && !PRIVATE_DATA->moving;
 		if (accepted) {
 			PRIVATE_DATA->target = PRIVATE_DATA->position;
+			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 		} else {
-			// The position the controller really has is kept and the next sync is accepted.
+			// The position the controller really has is kept, the target keeps the request and the next sync is accepted.
 			steeldrive2_summary(device);
 		}
 		steeldrive2_finish_motion(device, accepted ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
@@ -1029,7 +1031,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_x_start_zeroing_handler);
 		if (PRIVATE_DATA->active || PRIVATE_DATA->moving || PRIVATE_DATA->uncertain || queued) {
 			if (steeldrive2_stop(device)) {
-				// The aborted move ends ALERT at the position the focuser stopped at.
+				// The aborted move ends ALERT at the position the focuser stopped at and keeps the requested target.
 				indigo_cancel_pending_handler(device, motion_finalizer);
 				if (PRIVATE_DATA->zeroing || X_START_ZEROING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					X_START_ZEROING_ITEM->sw.value = false;
@@ -1038,6 +1040,10 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				}
 				PRIVATE_DATA->zeroing = false;
 				PRIVATE_DATA->target = PRIVATE_DATA->position;
+				if (PRIVATE_DATA->external) {
+					// motion the driver did not command keeps following the measured position
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+				}
 				steeldrive2_finish_motion(device, INDIGO_ALERT_STATE);
 			} else {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;

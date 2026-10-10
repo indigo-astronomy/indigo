@@ -277,8 +277,8 @@ static indigo_property_state cached_state(const char *name) {
 	return property == NULL ? -1 : property->state;
 }
 
-// Both motion properties ended in state at the position the focuser has: value equals target.
-static bool motion_ended(indigo_property_state state) {
+// Both motion properties ended in state; the target is the request, also when the move ended short of it.
+static bool motion_ended(indigo_property_state state, double target) {
 	for (int i = 0; i < 200; i++) {
 		if (cached_state(FOCUSER_POSITION_PROPERTY_NAME) == state && cached_state(FOCUSER_STEPS_PROPERTY_NAME) == state) {
 			break;
@@ -286,7 +286,7 @@ static bool motion_ended(indigo_property_state state) {
 		indigo_usleep(50000);
 	}
 	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	if (position == NULL || cached_state(FOCUSER_POSITION_PROPERTY_NAME) != state || cached_state(FOCUSER_STEPS_PROPERTY_NAME) != state || position->number.value != position->number.target) {
+	if (position == NULL || cached_state(FOCUSER_POSITION_PROPERTY_NAME) != state || cached_state(FOCUSER_STEPS_PROPERTY_NAME) != state || position->number.target != target) {
 		fprintf(stderr, "Motion ended with position %d, steps %d, value %g, target %g\n", cached_state(FOCUSER_POSITION_PROPERTY_NAME), cached_state(FOCUSER_STEPS_PROPERTY_NAME), position ? position->number.value : -1, position ? position->number.target : -1);
 		return false;
 	}
@@ -481,14 +481,14 @@ static void focuser_abort_overlap_disconnect(void) {
 	indigo_change_number_property_1(&simulator_test_client, focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1800);
 	SERIAL_CHECK_TRUE(switch_change(&focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(0, request_count("$BS GO 1800"));
-	// The aborted move ends ALERT on both motion properties at the stopped position.
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	// The aborted move ends ALERT on both motion properties at the stopped position and keeps the requested target.
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 1900));
 	double stopped = position_value();
 	SERIAL_CHECK_TRUE(stopped < 1900);
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
 	int polls = request_count("$BS SUMMARY");
 	SERIAL_CHECK_TRUE(wait_for_request("$BS SUMMARY", polls + 2));
-	SERIAL_CHECK_TRUE(position_value() == stopped && position_target() == stopped && cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(position_value() == stopped && position_target() == 1900 && cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 	// An abort while idle sends no STOP.
 	int stops = request_count("$BS STOP");
 	SERIAL_CHECK_TRUE(switch_change(&focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
@@ -517,7 +517,7 @@ static void rejected_change_alerts_and_keeps_values(void) {
 	SERIAL_CHECK_TRUE(assert_rejected_number_change_on(focuser.device_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change_on(focuser.device_name, "X_START_ZEROING", "START"));
 	SERIAL_CHECK_TRUE(switch_change(&focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 1900));
 	SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
 cleanup:
 	driver_stop(&focuser);
@@ -566,18 +566,18 @@ static void focuser_failure_recovery(void) {
 		SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100, INDIGO_OK_STATE) && at_position(1100));
 	} else if (!strcmp(current_case, "go_failure")) {
 		SERIAL_CHECK_TRUE(fault("GO", "error") && number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, INDIGO_ALERT_STATE));
-		// The refused move keeps the position the focuser has.
-		SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE) && position_value() == 1000);
+		// The refused move keeps the position the focuser has and the requested target.
+		SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 1500) && position_value() == 1000);
 		SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, INDIGO_OK_STATE));
 	} else if (!strcmp(current_case, "stall_failure")) {
 		unsigned before = atomic_load(&revisions[1]);
 		SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, INDIGO_BUSY_STATE));
 		SERIAL_CHECK_TRUE(new_state_long(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
-		SERIAL_CHECK_TRUE(wait_for_request("$BS STOP", 1) && motion_ended(INDIGO_ALERT_STATE));
-		// A later idle poll does not turn the failure into OK, and a fresh move works without an abort.
+		SERIAL_CHECK_TRUE(wait_for_request("$BS STOP", 1) && motion_ended(INDIGO_ALERT_STATE, 1500));
+		// A later idle poll neither turns the failure into OK nor rewrites the target, and a fresh move works without an abort.
 		int polls = request_count("$BS SUMMARY");
 		SERIAL_CHECK_TRUE(wait_for_request("$BS SUMMARY", polls + 2));
-		SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+		SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && position_target() == 1500 && position_value() < 1500);
 		SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 900, INDIGO_OK_STATE) && at_position(900));
 	} else {
 		SERIAL_CHECK_TRUE(fault("SET_NAME", "error") && text_change(&focuser, X_NAME_PROPERTY_NAME, "NAME", "FAIL", INDIGO_ALERT_STATE));
@@ -615,7 +615,7 @@ cleanup:
 	driver_stop(&focuser);
 }
 
-// A refused SYNC keeps the real position and the next one is accepted.
+// A refused SYNC keeps the real position and the requested target, and the next one is accepted.
 static void sync_failure(void) {
 	SERIAL_CHECK_TRUE(start_focuser());
 	SERIAL_CHECK_TRUE(switch_change(&focuser, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
@@ -623,7 +623,11 @@ static void sync_failure(void) {
 	SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(1, request_count("$BS SET POS:1000"));
 	SERIAL_CHECK_TRUE(fault("SET_POS", "error") && number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(position_value() == 1000 && position_target() == 1000);
+	// The value is the real position, the target keeps the requested sync value, also after two idle polls.
+	SERIAL_CHECK_TRUE(position_value() == 1000 && position_target() == 700);
+	int polls = request_count("$BS SUMMARY");
+	SERIAL_CHECK_TRUE(wait_for_request("$BS SUMMARY", polls + 2));
+	SERIAL_CHECK_TRUE(position_value() == 1000 && position_target() == 700 && cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 700, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(at_position(700) && request_count("$BS GO 700") == 0);
 cleanup:
@@ -640,7 +644,11 @@ static void abort_refused(void) {
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(switch_change(&focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE) && position_value() < 1900);
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 1900) && position_value() < 1900);
+	double stopped = position_value();
+	int polls = request_count("$BS SUMMARY");
+	SERIAL_CHECK_TRUE(wait_for_request("$BS SUMMARY", polls + 2));
+	SERIAL_CHECK_TRUE(position_value() == stopped && position_target() == 1900 && cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 cleanup:
 	driver_stop(&focuser);
 }
@@ -945,6 +953,29 @@ cleanup:
 // TGT-B03: a FOCUSER_POSITION request copied while the 0.5 s focuser poll comes due ahead of its handler must still
 // move the focuser; the poll must neither overwrite the requested target nor publish over the pending BUSY. The first
 // result published after the request is the end of the motion to the requested position.
+// An abort that overtakes a move still queued sends the STOP once, never sends the move, ends ALERT and keeps the
+// target of the never-sent move, also after idle polls.
+static void queued_abort(void) {
+	atomic_store(&focuser_device, NULL);
+	SERIAL_CHECK_TRUE(start_focuser());
+	SERIAL_CHECK_TRUE(at_position(1000));
+	int stops = request_count("$BS STOP");
+	SERIAL_CHECK_TRUE(hold_queue(atomic_load(&focuser_device)));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, focuser.device_name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 1500));
+	int polls = request_count("$BS SUMMARY");
+	SERIAL_CHECK_TRUE(wait_for_request("$BS SUMMARY", polls + 2));
+	SERIAL_CHECK_EQ_INT(0, request_count("$BS GO 1500"));
+	SERIAL_CHECK_EQ_INT(stops + 1, request_count("$BS STOP"));
+	SERIAL_CHECK_TRUE(position_value() == 1000 && position_target() == 1500 && cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(number_change(&focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100, INDIGO_OK_STATE) && at_position(1100));
+cleanup:
+	atomic_store(&gate_release, true);
+	driver_stop(&focuser);
+}
+
 static void position_request_survives_poll(void) {
 	atomic_store(&focuser_device, NULL);
 	SERIAL_CHECK_TRUE(start_focuser());
@@ -1112,6 +1143,7 @@ int main(void) {
 		{ "uncommanded_motion", uncommanded_motion, "normal" },
 		{ "sync_failure", sync_failure, "normal" },
 		{ "abort_refused", abort_refused, "normal" },
+		{ "queued_abort", queued_abort, "normal" },
 		{ "settings_during_motion", settings_during_motion, "normal" },
 		{ "automatic_mode", automatic_mode, "normal" },
 		{ "aux_capabilities_normal", aux_capabilities, "normal" },

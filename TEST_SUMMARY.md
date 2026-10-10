@@ -275,8 +275,8 @@
 | focuser_robofocus | 2026-10-09 22:09 | 3.0.0.6 | linux arm64 | RoboFocus Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 |  | 2026-10-10 02:52 | 3.0.0.7 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-27 13:10 | 3.0.0.19 | linux x64 | simulator | 56 / 56 | ✅ OK |
-|  | 2026-10-09 22:25 | 3.0.0.21 | mac arm64 | simulator | 63 / 63 | ✅ OK |
 |  | 2026-10-09 22:27 | 3.0.0.21 | linux arm64 | SteelDriveII Arduino simulator (ESP32-S3) | 14 / 14 | ✅ OK |
+|  | 2026-10-10 02:54 | 3.0.0.22 | mac arm64 | simulator | 64 / 64 | ✅ OK |
 | focuser_usbv3 | 2026-09-22 01:09 | 3.0.0.10 | mac arm64 | USB_Focus v3 | 16 / 16 | ✅ OK |
 |  | 2026-09-30 19:29 | 3.0.0.11 | linux arm64 | USB_Focus v3 Focuser | 16 / 16 | ✅ OK |
 |  | 2026-10-05 19:52 | 3.0.0.12 | mac arm64 | simulator | 39 / 39 | ✅ OK |
