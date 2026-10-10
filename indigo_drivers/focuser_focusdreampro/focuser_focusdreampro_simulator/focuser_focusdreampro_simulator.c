@@ -69,7 +69,8 @@ static bool stalled, split;
 //   INDIGO_FOCUSDREAMPRO_EVENTS  every request as "<time> RX <request>"
 //   INDIGO_FOCUSDREAMPRO_FAULT   "<request prefix> <action> [count]"; actions: silent, error (ERR), malformed
 //                                (<letter>:x), delay (reply held 400 ms), ignore (H not executed, no reply),
-//                                stall (M: reports motion but never moves), false (T:false), implausible
+//                                stall (M: reports motion but never moves), short (M: stops halfway to the
+//                                requested position), false (T:false), implausible
 //                                (T:150.0), close; or "external <position>" (motion the driver did not command)
 //                                and "split 1" (every reply written in two parts)
 static const char *event_path, *fault_path;
@@ -220,6 +221,11 @@ static void handle_command(const char *command) {
 			return;
 		} else if (!strcmp(action, "stall")) {
 			stalled = true;
+			send_line(command);
+			return;
+		} else if (!strcmp(action, "short") && !strncmp(command, "M:", 2)) {
+			int from = (int)serial_motion_update(&motion);
+			serial_motion_start(&motion, clamp_position(from + (atoi(command + 2) - from) / 2), 1.0 / (STEP_OVERHEAD_S + STEP_DELAY_UNIT_S * step_delay));
 			send_line(command);
 			return;
 		} else if (!strcmp(action, "delay")) {

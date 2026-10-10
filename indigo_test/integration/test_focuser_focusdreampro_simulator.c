@@ -709,6 +709,29 @@ cleanup:
 	driver_stop();
 }
 
+// A move whose motor stops short of the target is no arrival: both motion properties end ALERT with the stop point as the value and the request as the target; a fresh move works.
+static void stopped_short(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(select_fastest_speed());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("M: short 1"));
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, focusdreampro.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(position_is(300, 0) && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 600);
+	SERIAL_CHECK_EQ_INT(0, request_count("H", false));
+	// two idle polls later the state and the target are unchanged
+	int polls = request_count("P", false);
+	SERIAL_CHECK_TRUE(wait_requests("P", polls + 2));
+	indigo_usleep(100000);
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 600);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 600, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(600, 0) && state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE);
+cleanup:
+	driver_stop();
+}
+
 // A halt the controller ignores ends the abort ALERT while the move is still tracked; an immediate retry stops it.
 static void stop_ignored_then_retried(void) {
 	unsigned before;
@@ -1030,6 +1053,7 @@ int main(void) {
 		{ "poll_failures", poll_failures, "normal" },
 		{ "poll_failure_during_motion", poll_failure_during_motion, "normal" },
 		{ "stalled_move", stalled_move, "normal" },
+		{ "stopped_short", stopped_short, "normal" },
 		{ "stop_ignored_then_retried", stop_ignored_then_retried, "normal" },
 		{ "queued_abort", queued_abort, "normal" },
 		{ "poll_versus_request", poll_versus_request, "normal" },
