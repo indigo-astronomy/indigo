@@ -78,9 +78,9 @@
 | focuser_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 21 / 0 | |
 | focuser_askar           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 24 / 0 | |
 | focuser_astroasis       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 40 / 0 | |
-| focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 21 / 0 | |
+| focuser_astromechanics  | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | focuser_dmfc            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 36 / 0 | |
-| focuser_dsd             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 57 / 0 | |
+| focuser_dsd             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 58 / 0 | |
 | focuser_efa             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 64 / 0 | |
 | focuser_fc3             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 38 / 0 | |
 | focuser_fcusb           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 10 | |
@@ -101,8 +101,8 @@
 | focuser_primaluce       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 53 / 18 | |
 | focuser_prodigy         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 61 / 0 | |
 | focuser_qhy             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 44 / 0 | |
-| focuser_robofocus       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
-| focuser_steeldrive2     | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 61 / 0 | |
+| focuser_robofocus       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 33 / 0 | |
+| focuser_steeldrive2     | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 62 / 0 | |
 | focuser_usbv3           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 38 / 16 | |
 | focuser_wemacro         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 26 / 0 | |
 | focuser_wemacro_bt      | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⛔ macOS only |
