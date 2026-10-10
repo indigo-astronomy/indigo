@@ -352,6 +352,20 @@ static bool finish_motion_at(int target) {
 	return wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, 0);
 }
 
+// An idle poll failure after a failed move, then good polls: the failed move stays ALERT on both motion
+// properties with the requested target and the readback as value; only a new request clears it.
+static bool failed_move_kept(int target, int value) {
+	atomic_store(&fail_poll, true);
+	bool polled = wait_polls(2);
+	atomic_store(&fail_poll, false);
+	polled = polled && wait_polls(2) && wait_polls(1);
+	bool kept = polled && find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE && find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE && target_is(target) && find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value == value;
+	if (!kept) {
+		fprintf(stderr, "Failed move not kept: polled %d, states %d/%d, target %g, value %g\n", polled, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value);
+	}
+	return kept;
+}
+
 static void failed_connect_releases_sdk(void) {
 	atomic_store(&fail_position, true);
 	int closed = atomic_load(&close_calls);
@@ -409,6 +423,11 @@ static void polling_failure_and_safe_retry(void) {
 	ASSERT_TRUE(wait_polls(2));
 	ASSERT_TRUE(target_is(400));
 	ASSERT_EQ_INT(moves + 1, atomic_load(&move_calls));
+	// good polls after the failed request clear only the poll ALERT, the failed move stays ALERT
+	ASSERT_TRUE(wait_polls(1));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
+	ASSERT_TRUE(failed_move_kept(400, coasted));
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
 	ASSERT_TRUE(wait_atomic(&move_calls, moves + 2));
 	ASSERT_TRUE(finish_motion_at(400));
@@ -756,8 +775,16 @@ static void stalled_move(void) {
 	atomic_store(&motor, false);
 	ASSERT_TRUE(wait_polls(2));
 	ASSERT_TRUE(target_is(origin + 900));
+	ASSERT_TRUE(failed_move_kept(origin + 900, origin));
 	start_move(origin + 100);
 	ASSERT_TRUE(finish_motion_at(origin + 100));
+	// an idle poll failure with no failed move pending publishes ALERT and the next good poll restores OK
+	atomic_store(&fail_poll, true);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(origin + 100, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.value, 0);
+	atomic_store(&fail_poll, false);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state);
 	// a refused start ends ALERT where the focuser is and keeps the requested target
 	atomic_store(&fail_move, true);
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, origin + 200);
@@ -767,6 +794,9 @@ static void stalled_move(void) {
 	ASSERT_TRUE(target_is(origin + 200));
 	ASSERT_TRUE(wait_polls(2));
 	ASSERT_TRUE(target_is(origin + 200));
+	ASSERT_TRUE(failed_move_kept(origin + 200, origin + 100));
+	start_move(origin + 300);
+	ASSERT_TRUE(finish_motion_at(origin + 300));
 	disconnect_device();
 }
 

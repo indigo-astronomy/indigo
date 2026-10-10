@@ -43,4 +43,4 @@ This procedure should be followed only once, then your EAF should be auto discov
 
 ## Testing
 
-2026-10-10 02:25 3.0.0.39 mac arm64 fake SDK 23/23 OK
+2026-10-10 10:50 3.0.0.40 mac arm64 fake SDK 23/23 OK

@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000027
+#define DRIVER_VERSION       0x03000028
 #define DRIVER_NAME          "indigo_focuser_asi"
 #define DRIVER_LABEL         "ZWO ASI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -108,7 +108,8 @@ typedef struct {
 	int current_position, target_position, max_position, backlash;
 	double prev_temp;
 	bool has_temperature_sensor;
-	bool moving, external, aborted, poll_alert, unconfirmed;
+	// failed: the last move or sync ended ALERT, which an idle poll keeps until the next request
+	bool moving, external, aborted, poll_alert, unconfirmed, failed;
 	int poll_failures, stalled_polls, last_polled;
 	//- data
 } asi_private_data;
@@ -173,6 +174,7 @@ static void asi_close(indigo_device *device) {
 static void focuser_finish_motion(indigo_device *device, indigo_property_state state, const char *message) {
 	bool external = PRIVATE_DATA->external;
 	PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = PRIVATE_DATA->unconfirmed = false;
+	PRIVATE_DATA->failed = state == INDIGO_ALERT_STATE;
 	PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	if (external) {
@@ -264,6 +266,7 @@ static bool focuser_motion_ready(indigo_device *device) {
 	int res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_hc);
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
+		PRIVATE_DATA->failed = true;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Cannot verify focuser motion state");
@@ -343,12 +346,14 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+		PRIVATE_DATA->failed = true;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return;
 	}
 	PRIVATE_DATA->moving = true;
+	PRIVATE_DATA->failed = false;
 	PRIVATE_DATA->prev_temp = new_temp;
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
@@ -390,7 +395,7 @@ static void focuser_timer_callback(indigo_device *device) {
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		} else if (moving || moving_hc || position != PRIVATE_DATA->last_polled) {
-			PRIVATE_DATA->poll_alert = PRIVATE_DATA->unconfirmed = false;
+			PRIVATE_DATA->poll_alert = PRIVATE_DATA->unconfirmed = PRIVATE_DATA->failed = false;
 			PRIVATE_DATA->moving = PRIVATE_DATA->external = true;
 			PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;
 			PRIVATE_DATA->current_position = PRIVATE_DATA->last_polled = position;
@@ -400,9 +405,12 @@ static void focuser_timer_callback(indigo_device *device) {
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
 		} else if (PRIVATE_DATA->poll_alert) {
+			// a good poll clears only its own ALERT, a failed move stays ALERT until the next request
 			PRIVATE_DATA->poll_alert = false;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			if (!PRIVATE_DATA->failed) {
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
 		}
 	}
 	float temp = NAN;
@@ -508,7 +516,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Battery info is supported for device %d", PRIVATE_DATA->dev_id);
 			}
 			PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
-			PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = PRIVATE_DATA->poll_alert = PRIVATE_DATA->unconfirmed = false;
+			PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = PRIVATE_DATA->poll_alert = PRIVATE_DATA->unconfirmed = PRIVATE_DATA->failed = false;
 			PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;
 			PRIVATE_DATA->current_position = PRIVATE_DATA->last_polled = PRIVATE_DATA->target_position;
 			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
@@ -638,6 +646,7 @@ static void focuser_position_handler(indigo_device *device) {
 	PRIVATE_DATA->target_position = (int)target;
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value && PRIVATE_DATA->target_position == PRIVATE_DATA->current_position) {
 		// nothing to move: no command, no waiting for a poll
+		PRIVATE_DATA->failed = false;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -645,10 +654,11 @@ static void focuser_position_handler(indigo_device *device) {
 		int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 		if (res != EAF_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+			PRIVATE_DATA->failed = true;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			PRIVATE_DATA->moving = true;
-			PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
+			PRIVATE_DATA->external = PRIVATE_DATA->aborted = PRIVATE_DATA->failed = false;
 			PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
@@ -665,6 +675,7 @@ static void focuser_position_handler(indigo_device *device) {
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		// a failed SYNC keeps the real position as value and the requested sync value as target
+		PRIVATE_DATA->failed = res != EAF_SUCCESS;
 		PRIVATE_DATA->last_polled = PRIVATE_DATA->current_position;
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		if (res == EAF_SUCCESS) {
@@ -733,6 +744,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	}
 	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
 	if (res != EAF_SUCCESS) {
+		PRIVATE_DATA->failed = true;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Failed to read focuser position");
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -745,6 +757,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
 	if (PRIVATE_DATA->target_position == PRIVATE_DATA->current_position) {
 		// a zero step move (or one clamped to the current end) completes without a command
+		PRIVATE_DATA->failed = false;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -753,10 +766,11 @@ static void focuser_steps_handler(indigo_device *device) {
 	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 	if (res != EAF_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+		PRIVATE_DATA->failed = true;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		PRIVATE_DATA->moving = true;
-		PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
+		PRIVATE_DATA->external = PRIVATE_DATA->aborted = PRIVATE_DATA->failed = false;
 		PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
