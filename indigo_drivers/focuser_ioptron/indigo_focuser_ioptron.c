@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_ioptron"
 #define DRIVER_LABEL         "iOptron iEAF Focuser"
 #define FOCUSER_DEVICE_NAME  "iOptron iEAF"
@@ -151,14 +151,8 @@ static void ioptron_motion_state(indigo_device *device, indigo_property_state st
 }
 
 static void ioptron_publish(indigo_device *device) {
+	// Only the measured value: the target keeps the last request, the callers set it at connect, after a zero sync and for motion the driver did not command.
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->position;
-	// The periodic timer evaluates its admission condition before the status read, so a
-	// change request accepted meanwhile has already copied its target and published BUSY.
-	// Re-check the same condition here, otherwise the stale poll would overwrite that
-	// target with the current position and the queued handler would move nowhere.
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain && (PRIVATE_DATA->moving || (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE))) {
-		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
-	}
 	double temperature = PRIVATE_DATA->temperature / 100.0 - 273.15;
 	if (temperature >= FOCUSER_TEMPERATURE_ITEM->number.min && temperature <= FOCUSER_TEMPERATURE_ITEM->number.max) {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
@@ -256,6 +250,8 @@ static void focuser_timer_callback(indigo_device *device) {
 	//+ focuser.on_timer
 	bool idle = FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE;
 	if (!PRIVATE_DATA->active && (PRIVATE_DATA->moving || idle)) {
+		int previous = PRIVATE_DATA->position;
+		bool uncertain = PRIVATE_DATA->uncertain;
 		bool read = ioptron_status(device);
 		// A move request accepted while the status reply was outstanding owns FOCUSER_POSITION and
 		// FOCUSER_STEPS until its queued handler runs, the poll must not publish over its BUSY.
@@ -268,8 +264,11 @@ static void focuser_timer_callback(indigo_device *device) {
 			}
 			ioptron_publish(device);
 			if (!requested) {
-				// Also motion the driver did not command, published BUSY by the poll, ends with the target at the measured position.
-				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+				// Motion the driver did not command, published BUSY by the poll, ends with the target at the measured position. A move
+				// of the driver that ended ALERT or whose stop is unconfirmed keeps the requested target.
+				if (!uncertain && (PRIVATE_DATA->moving || (PRIVATE_DATA->position != previous && !PRIVATE_DATA->failed))) {
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+				}
 				ioptron_motion_state(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : PRIVATE_DATA->failed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 			}
 		} else {
@@ -290,6 +289,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			if (connection_result) {
 				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = PRIVATE_DATA->failed = false;
 				ioptron_publish(device);
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 				ioptron_motion_state(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
@@ -395,8 +395,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				indigo_cancel_pending_handler(device, motion_finalizer);
 				PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
 				ioptron_publish(device);
-				// An aborted move ends ALERT at the stopped position, also for the idle polls that follow.
-				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+				// An aborted move ends ALERT at the stopped position with the requested target, also for the idle polls that follow.
 				PRIVATE_DATA->failed = true;
 				ioptron_motion_state(device, INDIGO_ALERT_STATE);
 			} else {
@@ -421,6 +420,7 @@ static void focuser_x_focuser_zero_sync_handler(indigo_device *device) {
 					X_FOCUSER_ZERO_SYNC_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					PRIVATE_DATA->failed = false;
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 					ioptron_motion_state(device, INDIGO_OK_STATE);
 				}
 			} else {

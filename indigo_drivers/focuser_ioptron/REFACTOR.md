@@ -115,7 +115,7 @@ motion sends the stop before the port closes.
 ### Defects found and fixed (all reproduced against a pre-fix 3.0.0.10 build of the same test)
 
 - **Aborted move ended OK.** The abort handler published both motion properties OK after the stop. It now
-  sets the target to the stopped position and ends both ALERT. Test: `abort` (`aborted_at()`), also
+  publishes the stopped position as the value, keeps the requested target and ends both ALERT. Test: `abort` (`aborted_at()`), also
   `rejected_change`, which waits for the aborted move.
 - **A failed move was turned OK by the next idle poll.** After a stall, a lost readback during motion, a move
   that ended short of its target or an abort, the 1 s poll published OK one second later. A `failed` flag now
@@ -133,6 +133,13 @@ motion sends the stop before the port closes.
   measured position. Test: `uncommanded_motion`.
 - **Abort while idle sent a stop.** It now ends OK without `:FQ#` and leaves the position alone when nothing is
   moving, queued or uncertain. Test: `abort`.
+- **An aborted or failed move overwrote the requested target (3.0.0.12).** The abort, `ioptron_publish()` and
+  every idle poll wrote the measured position into the `FOCUSER_POSITION` target, also after an abort that
+  overtook a queued move, a stall, a lost readback or a refused start. They now publish the value only; the
+  target changes only at connect, with a new request, after a successful zero sync and for motion the driver
+  did not command (moving reported, or a position change between polls while neither failed nor uncertain).
+  Tests: `abort` (`aborted_at()`), `abort_overtakes_queued_move`, `motion_read_failure`, `stalled_motion`,
+  `start_failure`, `transport_loss`, `movement`.
 
 ### Simulator additions
 
@@ -150,7 +157,7 @@ motion sends the stop before the port closes.
 | Uncommanded motion at connect and from the hand controller | `uncommanded_motion` |
 | Relative move clamped at both ends on the wire (`:FM  99999#`, `:FM      0#`) | `movement` |
 | SYNC for the value already published reaches the controller | `zero` |
-| Mid-move abort, stop sent once, two equal readbacks short of the target, ALERT with value = target, idle abort without stop, abort request OFF, relative move abort | `abort` |
+| Mid-move abort, stop sent once, two equal readbacks short of the target, ALERT with value = stopped position and the requested target kept across idle polls, idle abort without stop, abort request OFF, relative move abort | `abort` |
 | Abort overtakes a queued move | `abort_overtakes_queued_move` |
 | Failed refused switch shows the device's state and is back OFF; failed stop leaves the move BUSY | `zero_failure`, `reverse_failure`, `stop_failure` |
 | Failed move keeps the published position, both properties ALERT | `start_failure` |
