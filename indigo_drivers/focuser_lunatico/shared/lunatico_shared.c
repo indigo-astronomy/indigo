@@ -943,6 +943,8 @@ static bool lunatico_rotator_position(indigo_device *device) {
 }
 
 static void lunatico_rotator_abort(indigo_device *device) {
+	// a running move, or one still queued, ends ALERT; an abort while idle leaves the state of the last move
+	bool in_motion = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
 	indigo_property_state state = INDIGO_OK_STATE;
 	if (!lunatico_stop(device)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_stop() failed");
@@ -956,8 +958,12 @@ static void lunatico_rotator_abort(indigo_device *device) {
 		PORT_STATE.rotator_position = lunatico_rotator_degrees(device, position);
 	}
 	ROTATOR_POSITION_ITEM->number.value = PORT_STATE.rotator_position;
-	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	if (in_motion) {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Rotator motion aborted");
+	} else {
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	}
 	// The generated handler suppresses its epilogue because this block schedules
 	// a finalizer, so the abort publishes its own outcome.
 	ROTATOR_ABORT_MOTION_PROPERTY->state = state;

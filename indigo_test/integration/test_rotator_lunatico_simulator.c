@@ -264,6 +264,9 @@ static void abort_stops_motion_and_allows_a_fresh_move(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(ROTATOR_POSITION_PROPERTY_NAME));
 	double stopped = cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
 	SERIAL_CHECK_TRUE(stopped > 0 && stopped < 170);
+	// The aborted move ends ALERT, never OK, and keeps the requested target.
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 170);
 	// The rotator has to accept a fresh move after the abort.
 	SERIAL_CHECK_TRUE(sync_to(&main_rotator, 0));
 	SERIAL_CHECK_TRUE(select_goto_mode(&main_rotator));
@@ -280,6 +283,8 @@ static void abort_while_idle_is_accepted(void) {
 	SERIAL_CHECK_TRUE(lunatico_set_switch(&main_rotator, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(lunatico_sent("!step stop 0#"));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, .11));
+	// Nothing moved, so the position stays OK.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
 cleanup:
 	stop();
 }

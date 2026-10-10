@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_focuser_lunatico"
 #define DRIVER_LABEL         "Lunatico Astronomia Focuser"
 #define FOCUSER_MAIN_DEVICE_NAME "Focuser Lunatico (Main)"

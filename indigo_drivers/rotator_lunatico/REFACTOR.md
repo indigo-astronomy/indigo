@@ -230,3 +230,13 @@ behaviour is covered by `test_focuser_lunatico_simulator`; this driver's suite w
   arm64, development run). Two earlier runs under heavy machine load each failed `exp_focuser`
   once (the `!step goto 1 1200 0#` of its first move did not arrive within 10 s); the case passed
   alone 11 times and in full direct runs of both binaries.
+
+## Aborted rotator move ends ALERT (2026-10-11, 3.0.0.17)
+
+`lunatico_rotator_abort()` (shared `focuser_lunatico/shared/lunatico_shared.c`) published `ROTATOR_POSITION` OK after
+every abort. A move that was running or queued (BUSY) now ends ALERT with "Rotator motion aborted"; an abort while idle
+leaves the state unchanged. `abort_stops_motion_and_allows_a_fresh_move` asserts ALERT and the requested target 170,
+`abort_while_idle_is_accepted` asserts OK. The shared change also bumps `focuser_lunatico` (3.0.0.18), whose rotator
+ports use the same function.
+
+Simulated tests: 54 run, 54 passed. Hardware tests: 0 run, 0 passed.

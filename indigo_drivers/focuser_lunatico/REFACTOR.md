@@ -957,3 +957,12 @@ development run). No hardware test was run.
 
 - Simulated tests: 56 run, 56 passed (`test_focuser_lunatico_simulator`, recorded).
 - Hardware tests: 0 run, 0 passed.
+
+## Aborted rotator move ends ALERT (2026-10-11, 3.0.0.18)
+
+The rotator ports of this driver use `lunatico_rotator_abort()` from the shared code, which published `ROTATOR_POSITION`
+OK after every abort; a running or queued move now ends ALERT and an idle abort leaves the state unchanged (see
+`rotator_lunatico/REFACTOR.md`, 3.0.0.17). The focuser code is unchanged. With `INDIGO_TEST_JOBS=4` the focuser suite
+fails a timing case now and then also without this change (`single_read_failure` 2 of 3 runs and `stop_failure`
+once, on the previous code and on this one); the recorded run, with `INDIGO_TEST_JOBS=2`, failed `stalled_move` the same way (56/55); the rotator suite is 54/54.
+
