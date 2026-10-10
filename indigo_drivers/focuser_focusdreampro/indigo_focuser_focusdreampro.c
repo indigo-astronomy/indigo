@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_focuser_focusdreampro"
 #define DRIVER_LABEL         "AGadget FocusDreamPro Focuser"
 #define FOCUSER_DEVICE_NAME  "FocusDreamPro"
@@ -71,7 +71,8 @@ typedef struct {
 	indigo_property *x_focuser_duty_cycle_property;
 	//+ data
 	char response[32];
-	bool moving, external, aborted, settling, poll_alert, temperature_absent;
+	// failed: the last move or sync ended ALERT, which an idle poll keeps until the next request
+	bool moving, external, aborted, settling, poll_alert, failed, temperature_absent;
 	int poll_failures, stalled_polls, last_polled, speed, duty_cycle;
 	//- data
 } focusdreampro_private_data;
@@ -189,12 +190,14 @@ static void focusdreampro_motion_state(indigo_device *device, indigo_property_st
 static void focusdreampro_end_motion(indigo_device *device, indigo_property_state state, const char *message) {
 	// the reached position is the value only, the target keeps the request
 	PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
+	PRIVATE_DATA->failed = state == INDIGO_ALERT_STATE;
 	focusdreampro_motion_state(device, state, message);
 }
 
 // a goto (M:) to a position other than the current one; the poll completes it
 static void focusdreampro_start_motion(indigo_device *device, int position) {
 	FOCUSER_POSITION_ITEM->number.target = position;
+	PRIVATE_DATA->failed = false;
 	if (position == PRIVATE_DATA->last_polled) {
 		// nothing to move: no command, no waiting for a poll
 		focusdreampro_motion_state(device, INDIGO_OK_STATE, NULL);
@@ -204,6 +207,7 @@ static void focusdreampro_start_motion(indigo_device *device, int position) {
 		PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;
 		focusdreampro_motion_state(device, INDIGO_BUSY_STATE, NULL);
 	} else {
+		PRIVATE_DATA->failed = true;
 		focusdreampro_motion_state(device, INDIGO_ALERT_STATE, "Move refused by the controller");
 	}
 }
@@ -316,6 +320,7 @@ static void focuser_timer_callback(indigo_device *device) {
 				if (!PRIVATE_DATA->moving) {
 					// motion the driver did not command is published BUSY at the measured position
 					PRIVATE_DATA->external = true;
+					PRIVATE_DATA->failed = false;
 					FOCUSER_POSITION_ITEM->number.target = position;
 				}
 				focusdreampro_motion_state(device, INDIGO_BUSY_STATE, NULL);
@@ -326,9 +331,12 @@ static void focuser_timer_callback(indigo_device *device) {
 				}
 				focusdreampro_end_motion(device, PRIVATE_DATA->aborted ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
 			} else if (PRIVATE_DATA->poll_alert) {
+				// a good poll clears only its own ALERT, a failed move stays ALERT until the next request
 				PRIVATE_DATA->poll_alert = false;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				if (!PRIVATE_DATA->failed) {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
 			}
 		}
 	}
@@ -356,7 +364,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_TEMPERATURE_PROPERTY->hidden = absent;
 				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->temperature_absent = absent;
-				PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = PRIVATE_DATA->settling = PRIVATE_DATA->poll_alert = false;
+				PRIVATE_DATA->moving = PRIVATE_DATA->external = PRIVATE_DATA->aborted = PRIVATE_DATA->settling = PRIVATE_DATA->poll_alert = PRIVATE_DATA->failed = false;
 				PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;
 				PRIVATE_DATA->speed = (int)FOCUSER_SPEED_ITEM->number.target;
 				PRIVATE_DATA->duty_cycle = (int)X_FOCUSER_DUTY_CYCLE_ITEM->number.target;
@@ -441,6 +449,7 @@ static void focuser_position_handler(indigo_device *device) {
 		if (synced) {
 			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		}
+		PRIVATE_DATA->failed = !synced;
 		focusdreampro_motion_state(device, synced ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, synced ? NULL : "Sync refused by the controller");
 	} else {
 		focusdreampro_start_motion(device, position);

@@ -282,6 +282,29 @@ static void driver_stop(void) {
 	ASSERT_EQ_INT(INDIGO_OK, result);
 }
 
+// An idle poll failure after a failed move, then good polls: the failed move stays ALERT on both motion
+// properties with the requested target and a value that follows the readback; only a new request clears it.
+static bool failed_move_kept(double target) {
+	if (!fault("P error 1")) {
+		return false;
+	}
+	int polls = request_count("P", false);
+	if (!wait_requests("P", polls + 1)) {
+		return false;
+	}
+	double value = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	polls = request_count("P", false);
+	if (!wait_requests("P", polls + 3)) {
+		return false;
+	}
+	indigo_usleep(100000);
+	bool kept = state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == target && cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == value;
+	if (!kept) {
+		fprintf(stderr, "Failed move not kept: states %d/%d, target %g, value %g (was %g)\n", state_of(FOCUSER_POSITION_PROPERTY_NAME), state_of(FOCUSER_STEPS_PROPERTY_NAME), target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME), cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME), value);
+	}
+	return kept;
+}
+
 // ----------------------------------------------------------------- scenarios
 
 static void metadata(void) {
@@ -560,6 +583,7 @@ static void move_rejected(void) {
 	// The rejected requests must not have moved anything; the target keeps the refused request.
 	SERIAL_CHECK_TRUE(position_is(0, 1));
 	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 100);
+	SERIAL_CHECK_TRUE(failed_move_kept(100));
 cleanup:
 	driver_stop();
 }
@@ -680,6 +704,10 @@ static void poll_failure_during_motion(void) {
 	SERIAL_CHECK_TRUE(wait_requests("P", polls + 2));
 	indigo_usleep(100000);
 	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 200000);
+	// a later idle poll failure and good polls do not turn the failed move OK
+	SERIAL_CHECK_TRUE(failed_move_kept(200000));
+	double reached = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(reached > 0 && reached < 200000);
 	SERIAL_CHECK_TRUE(select_fastest_speed());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 50, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(position_is(50, 0));
@@ -703,6 +731,8 @@ static void stalled_move(void) {
 	SERIAL_CHECK_TRUE(wait_requests("P", polls + 2));
 	indigo_usleep(100000);
 	SERIAL_CHECK_TRUE(state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 3000);
+	SERIAL_CHECK_TRUE(failed_move_kept(3000));
+	SERIAL_CHECK_TRUE(position_is(0, 0));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(position_is(300, 0));
 cleanup:
