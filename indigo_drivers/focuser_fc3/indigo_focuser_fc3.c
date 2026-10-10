@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_fc3"
 #define DRIVER_LABEL         "PegasusAstro FocusCube v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus FocusCube3"
@@ -61,8 +61,9 @@ typedef struct {
 	int poll_failures, stall_polls;
 	// motion_active: a move runs; external_motion: the driver did not command it;
 	// stop_pending: the last abort was not acknowledged; poll_failed: the ALERT on
-	// FOCUSER_POSITION comes from a failed idle poll, not from a failed move
-	bool motion_active, external_motion, stop_pending, poll_failed;
+	// FOCUSER_POSITION comes from a failed idle poll, not from a failed move; settling: a failed
+	// or aborted move ended, idle polls until the controller is stopped still belong to it
+	bool motion_active, external_motion, stop_pending, poll_failed, settling;
 	//- data
 } fc3_private_data;
 
@@ -180,13 +181,14 @@ static void fc3_update_ranges(indigo_device *device, bool redefine) {
 	}
 }
 
-// A move ends with both motion properties in the same state; a failed or
-// aborted move and a move the driver did not command end with the target
-// at the measured position.
+// A move ends with both motion properties in the same state at the measured
+// position; only a move the driver did not command moves the target there, a
+// commanded one keeps the requested target.
 static void fc3_end_motion(indigo_device *device, indigo_property_state state, const char *message) {
-	if (state == INDIGO_ALERT_STATE || PRIVATE_DATA->external_motion) {
+	if (PRIVATE_DATA->external_motion) {
 		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 	}
+	PRIVATE_DATA->settling = state == INDIGO_ALERT_STATE && !PRIVATE_DATA->external_motion;
 	PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
 	PRIVATE_DATA->stall_polls = PRIVATE_DATA->poll_failures = 0;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state;
@@ -196,7 +198,7 @@ static void fc3_end_motion(indigo_device *device, indigo_property_state state, c
 
 static void fc3_start_motion(indigo_device *device) {
 	PRIVATE_DATA->motion_active = true;
-	PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = false;
+	PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 	PRIVATE_DATA->stall_polls = PRIVATE_DATA->poll_failures = 0;
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 }
@@ -248,21 +250,29 @@ static void fc3_poll_motion(indigo_device *device, fc3_status_data *status) {
 		}
 	} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		// a request the bus accepted waits for its handler; the poll leaves it alone
-	} else if (status->running) {
+	} else if (status->running && !PRIVATE_DATA->settling) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own from %d", status->position);
 		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status->position;
 		fc3_start_motion(device);
 		PRIVATE_DATA->external_motion = true;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	} else if (changed || PRIVATE_DATA->poll_failed) {
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status->position;
-		if (PRIVATE_DATA->poll_failed) {
-			// only an ALERT left by a failed poll is cleared, never one of a failed move
-			PRIVATE_DATA->poll_failed = false;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		if (changed || PRIVATE_DATA->poll_failed) {
+			FOCUSER_POSITION_ITEM->number.value = status->position;
+			if (changed && !PRIVATE_DATA->settling) {
+				// moved between two polls without a command
+				FOCUSER_POSITION_ITEM->number.target = status->position;
+			}
+			if (PRIVATE_DATA->poll_failed) {
+				// only an ALERT left by a failed poll is cleared, never one of a failed move
+				PRIVATE_DATA->poll_failed = false;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		// the stopped controller ends the settling of a failed or aborted move
+		PRIVATE_DATA->settling = status->running;
 	}
 }
 
@@ -321,7 +331,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			connection_result = fc3_status(device, &status) && fc3_command(device, "SP") && fc3_parse_int(fc3_query_value(device, "SP:"), &speed);
 			if (connection_result) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = status.position;
-				PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 				PRIVATE_DATA->stall_polls = PRIVATE_DATA->poll_failures = 0;
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				if (status.running) {
@@ -363,7 +373,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		//+ focuser.on_disconnect
 		// a running move is stopped before the port closes
 		fc3_command(device, "FH");
-		PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+		PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -456,12 +466,14 @@ static void focuser_steps_handler(indigo_device *device) {
 	if (steps == 0) {
 		// already at the limit: nothing to move
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	} else if (fc3_set(device, "FG", delta, NULL)) {
-		FOCUSER_POSITION_ITEM->number.target = position + delta;
-		fc3_start_motion(device);
 	} else {
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
-		FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		// a refused move keeps the requested target
+		FOCUSER_POSITION_ITEM->number.target = position + delta;
+		if (fc3_set(device, "FG", delta, NULL)) {
+			fc3_start_motion(device);
+		} else {
+			FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	//- focuser.FOCUSER_STEPS.on_change
@@ -486,7 +498,7 @@ static void focuser_position_handler(indigo_device *device) {
 		} else if (fc3_set(device, "FM", position, NULL)) {
 			fc3_start_motion(device);
 		} else {
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			// a refused move keeps the requested target
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -495,7 +507,8 @@ static void focuser_position_handler(indigo_device *device) {
 		if (fc3_set(device, "FN", position, NULL)) {
 			FOCUSER_POSITION_ITEM->number.value = position;
 		} else {
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			// a failed sync keeps the requested target; a change the next poll finds is the sync, not motion
+			PRIVATE_DATA->settling = true;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -519,7 +532,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				if (fc3_status(device, &status)) {
 					FOCUSER_POSITION_ITEM->number.value = status.position;
 				}
-				// an aborted move ends ALERT at the position where it stopped
+				// an aborted move ends ALERT at the position where it stopped, the target stays the request
 				fc3_end_motion(device, INDIGO_ALERT_STATE, NULL);
 			} else {
 				// the controller may still be moving, so the move stays BUSY

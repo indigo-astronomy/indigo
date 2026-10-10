@@ -232,7 +232,7 @@
 | focuser_efa | 2026-10-09 19:50 | 3.0.0.23 | mac arm64 | simulator | 64 / 64 | ✅ OK |
 |  | 2026-10-09 20:01 | 3.0.0.23 | linux arm64 | PlaneWave EFA Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 |  | 2026-10-09 20:03 | 3.0.0.23 | linux arm64 | Celestron Focus Motor Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
-| focuser_fc3 | 2026-10-05 15:42 | 3.0.0.9 | mac arm64 | simulator | 38 / 38 | ✅ OK |
+| focuser_fc3 | 2026-10-10 03:28 | 3.0.0.11 | mac arm64 | simulator | 39 / 39 | ✅ OK |
 | focuser_fcusb | 2026-09-21 23:46 | 3.0.0.9 | mac arm64 | FCUSB | 10 / 10 | ✅ OK |
 |  | 2026-09-30 19:16 | 3.0.0.10 | linux arm64 | FCUSB Focuser | 10 / 10 | ✅ OK |
 |  | 2026-10-05 15:13 | 3.0.0.11 | mac arm64 | fake SDK | 24 / 24 | ✅ OK |
