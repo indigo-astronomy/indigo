@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000019
+#define DRIVER_VERSION       0x0300001A
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -518,9 +518,11 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, mount_motion_ra_handler);
 	indigo_cancel_pending_handler(device, manual_motion_finalizer);
 	if (PRIVATE_DATA->slew_in_progress || manual_motion_in_progress || coordinate_operation_pending) {
+		if (PRIVATE_DATA->slew_in_progress || (coordinate_operation_pending && !manual_motion_in_progress)) {
+			// an aborted or never started GOTO, park or homing keeps its request as target, also in raw coordinates, so a later alignment change does not replace it
+			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
+		}
 		PRIVATE_DATA->slew_in_progress = PRIVATE_DATA->parking = PRIVATE_DATA->going_home = false;
-		MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
-		MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);

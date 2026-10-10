@@ -582,6 +582,19 @@ static void mount_abort_allows_fresh_goto(void) {
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == ra);
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) == dec);
 	assert_switch_item_value(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, false);
+	// The aborted GOTO keeps the requested coordinates as target, also when a change of the alignment mode recomputes the
+	// target from the raw coordinates
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target == 6);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target == 30);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM_NAME, true));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - 6) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target - 30) < 0.001);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME, true));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - 6) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target - 30) < 0.001);
 	double target_ra = fmod(ra + 0.2, 24);
 	double target_dec = dec < 88 ? dec + 1.5 : dec - 1.5;
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(target_ra, target_dec));

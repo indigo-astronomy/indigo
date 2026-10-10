@@ -307,3 +307,17 @@ Version 25. The suite was checked against the "Mount Drivers" chapter and the "M
 | Manual motion ownership (mount_simulator cases) | `integration/test_detach_abort.c`, `simulator_*` cases; all row items covered, unchanged |
 
 Not applicable or deliberately not covered: every transport, protocol, reply-parsing, detection, baud and polling-failure item (the simulator has no transport); track rates other than sidereal and custom rate values (accepted but not modelled in the motion); `MOUNT_GUIDE_RATE` sharing with the guider (the guider uses its own `GUIDER_RATE`, the mount's guide rate is framework-held and unused); park/home set-current (framework); alignment math (framework). A guide pulse sent while the mount is parked or slewing completes OK without moving the mount; the test of a pulse during a GOTO asserts only that the GOTO lands on its target and the pulse completes.
+
+## Aborted GOTO keeps its target in raw coordinates (2026-10-11, 3.0.0.26)
+
+`MOUNT_ABORT_MOTION` set the `MOUNT_RAW_COORDINATES` targets to the raw position. The `MOUNT_EQUATORIAL_COORDINATES`
+targets kept the request, but the framework recomputes them from the raw targets when the alignment mode, the selected
+points or the point list change (`indigo_mount_driver.c`), so such a change after an abort replaced the requested
+coordinates with the stopped position. An aborted GOTO, park or homing, and one cancelled before its handler ran, now
+converts the requested coordinates to raw targets with `indigo_translated_to_raw()`, as the GOTO handler does; an
+abort of manual motion leaves the raw targets at the position as before. `mount_abort_allows_fresh_goto` asserts the
+6 h / 30° targets after the abort and after switching the alignment mode to single point and back; with the old reset
+restored it fails at the first check after the mode change.
+
+Simulated tests: 27 run, 27 passed. Hardware tests: 0 run, 0 passed.
+
