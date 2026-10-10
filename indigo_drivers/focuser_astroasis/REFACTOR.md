@@ -331,6 +331,12 @@ Not applicable or not changed, with the reason:
 
 Found while aligning `focuser_astromechanics`, where the same window let a second `M` command through.
 
+### Aborted uncommanded motion (2026-10-10, version 18)
+
+| ID | Observable impact | Fix | Regression test |
+| --- | --- | --- | --- |
+| FOC-25 | Aborting motion started from the Bluetooth application (or running at connect) left the target at the position where that motion was first seen; the abort also marked the next idle poll as settling, so nothing corrected it. | When the aborted motion was not commanded by the driver, the abort sets the target to the stopped position and the next idle poll lets the target follow the settled value (version 18). Commanded moves keep the requested target. | `FOC-25 aborted_external_motion_target_follows` (failed against version 17, passes against 18) |
+
 ### Requested target kept (2026-10-10, version 17)
 
 | ID | Observable impact | Fix | Regression test |

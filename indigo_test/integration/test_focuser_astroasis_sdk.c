@@ -2429,6 +2429,37 @@ cleanup:
 	finish_test();
 }
 
+static void defect_aborted_external_motion_target_follows(void) {
+	CHECK(start_driver(1));
+	CHECK(connect_and_wait_position(0));
+	// motion started from the Bluetooth application is followed BUSY
+	SET_FAKE(0, motion_polls, 40);
+	int busy = state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	start_external_motion(0, 5000);
+	for (int i = 0; i < WAIT_STEPS && state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE) == busy; i++) {
+		indigo_usleep(10000);
+	}
+	CHECK(state_revision(0, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE) > busy);
+	double seen = number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true);
+	CHECK(wait_position_between(0, seen, 5000));
+	CHECK(set_switch_and_wait(0, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	CHECK_EQ(1, fake_calls(0, FN_STOP));
+	// the aborted uncommanded motion ends ALERT with value and target at the stopped position
+	int stopped = FAKE(0, position);
+	CHECK(stopped > seen && stopped < 5000);
+	CHECK_EQ(INDIGO_ALERT_STATE, state(0, FOCUSER_POSITION_PROPERTY_NAME));
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	// later idle polls keep both
+	CHECK(wait_temperature_reads(2));
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, false), 0);
+	CHECK_NEAR(stopped, number(0, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, true), 0);
+	CHECK_EQ(0, fake_calls(0, FN_MOVE_TO));
+	CHECK_EQ(0, fake_calls(0, FN_MOVE));
+cleanup:
+	finish_test();
+}
+
 static void capacity_and_slot_reuse(void) {
 	reset_all(6);
 	CHECK_EQ(INDIGO_OK, indigo_focuser_astroasis(INDIGO_DRIVER_INIT, NULL));
@@ -2812,7 +2843,8 @@ int main(int argc, char **argv) {
 		{ "FOC-08 failed_writes_restore_values", defect_failed_writes_restore_values },
 		{ "FOC-09 busy_motion_request_preserves_target", defect_busy_motion_request_preserves_target },
 		{ "FOC-10 reset_off_request_answered", defect_reset_off_request_answered },
-		{ "FOC-11 attach_failure_not_detached", defect_attach_failure_not_detached }
+		{ "FOC-11 attach_failure_not_detached", defect_attach_failure_not_detached },
+		{ "FOC-25 aborted_external_motion_target_follows", defect_aborted_external_motion_target_follows }
 	};
 	if (argc > 1) {
 		indigo_test_case selected[ARRAY_SIZE(tests)];
