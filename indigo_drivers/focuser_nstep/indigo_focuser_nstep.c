@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_focuser_nstep"
 #define DRIVER_LABEL         "Rigel Systems nSTEP Focuser"
 #define FOCUSER_DEVICE_NAME  "nSTEP"
@@ -361,23 +361,25 @@ static void focuser_timer_callback(indigo_device *device) {
 	if (!PRIVATE_DATA->active && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
 		int position = 0;
 		if (nstep_position(device, &position) && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
-			if (position != PRIVATE_DATA->last_position) {
-				// motion the driver did not command (hand control, automatic compensation) is published BUSY at the measured
-				// position; after a stop that was not confirmed it is the driver's own move, which keeps the requested target
-				PRIVATE_DATA->external = true;
+			if (position != PRIVATE_DATA->last_position && PRIVATE_DATA->uncertain) {
+				// after a stop that was not confirmed it is the rest of the driver's own failed move: value only, the target
+				// keeps the request and the state stays ALERT
 				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->last_position = position;
-				if (!PRIVATE_DATA->uncertain) {
-					FOCUSER_POSITION_ITEM->number.target = position;
-				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			} else if (position != PRIVATE_DATA->last_position) {
+				// motion the driver did not command (hand control, automatic compensation) is published BUSY at the measured position
+				PRIVATE_DATA->external = true;
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position = position;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			} else if (PRIVATE_DATA->external) {
+				// a move refused during uncommanded motion stays ALERT with its target
 				PRIVATE_DATA->external = false;
 				FOCUSER_POSITION_ITEM->number.value = position;
 				if (!PRIVATE_DATA->uncertain) {
 					FOCUSER_POSITION_ITEM->number.target = position;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				}
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		}

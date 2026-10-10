@@ -617,6 +617,18 @@ static void status_failure_alerts_and_recovers(void) {
 	// the unconfirmed stop leaves the move the driver's own: idle readbacks of where it stopped keep the target
 	SERIAL_CHECK_TRUE(wait_for_two_idle_readbacks());
 	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// the motor coasting on after the unconfirmed stop is the rest of the failed move: the value follows the readback,
+	// no BUSY, and good idle polls never turn the failed move OK
+	double stopped = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	unsigned busy = atomic_load(&position_busy);
+	SERIAL_CHECK_TRUE(fault(":RP", "move40"));
+	SERIAL_CHECK_TRUE(wait_for_two_idle_readbacks());
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == stopped + 40);
+	SERIAL_CHECK_TRUE(wait_for_two_idle_readbacks());
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150 && value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == stopped + 40);
+	SERIAL_CHECK_EQ_INT(busy, atomic_load(&position_busy));
 	unlink(fault_path);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
@@ -808,6 +820,7 @@ static void stalled_move(void) {
 	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
 	SERIAL_CHECK_TRUE(wait_for_two_idle_readbacks());
 	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, revision(FOCUSER_STEPS_PROPERTY_NAME), INDIGO_OK_STATE));
 cleanup:
