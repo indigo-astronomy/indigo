@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_rotator_asi"
 #define DRIVER_LABEL         "ZWO CAA Rotator"
 #define ROTATOR_DEVICE_NAME  "%s"
@@ -245,10 +245,7 @@ static void rotator_move_finalizer(indigo_device *device) {
 			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (!moving) {
 			PRIVATE_DATA->abort_pending = false;
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-			ROTATOR_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
 			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, hand_control ? "Release the hand controller to stop motion" : NULL);
 	}

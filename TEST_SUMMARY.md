@@ -369,7 +369,7 @@
 |  | 2026-09-27 05:29 | 3.0.0.6 | linux x64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-09-27 22:40 | 3.0.0.6 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | polaralign_simulator | 2026-09-27 22:42 | 3.0.0.5 | mac arm64 | simulator | 11 / 11 | ✅ OK |
-| rotator_asi | 2026-09-27 22:41 | 3.0.0.8 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
+| rotator_asi | 2026-10-10 10:34 | 3.0.0.9 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | rotator_falcon | 2026-09-27 22:41 | 3.0.0.10 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | rotator_lunatico | 2026-10-10 04:05 | 3.0.0.16 | mac arm64 | simulator | 54 / 54 | ✅ OK |
 | rotator_optec | 2026-10-09 22:42 | 3.0.0.6 | mac arm64 | simulator | 12 / 12 | ✅ OK |

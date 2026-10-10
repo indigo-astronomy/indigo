@@ -419,6 +419,8 @@ static void failed_motion_and_polling(void) {
 	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 50));
 	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
 	ASSERT_FALSE(atomic_load(&motor[0]));
+	ASSERT_NEAR(10, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
+	ASSERT_NEAR(50, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
 	atomic_store(&fail[OP_MOVE], false);
 	const enum operation failures[] = { OP_STATUS, OP_POSITION };
 	for (unsigned i = 0; i < ARRAY_SIZE(failures); i++) {
@@ -427,9 +429,11 @@ static void failed_motion_and_polling(void) {
 		atomic_store(&fail[failures[i]], true);
 		ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
 		ASSERT_NEAR(10, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
+		ASSERT_NEAR(50, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
 		int polls = atomic_load(&calls[OP_STATUS]);
 		indigo_usleep(600000);
 		ASSERT_EQ_INT(polls, atomic_load(&calls[OP_STATUS]));
+		ASSERT_NEAR(50, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
 		atomic_store(&fail[failures[i]], false);
 		int moves = atomic_load(&calls[OP_MOVE]);
 		ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 60));
@@ -474,10 +478,21 @@ static void abort_motor_and_hand_controller(void) {
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(finish_motion(3000));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The stopped angle is the value only; the target keeps the aborted request, also after later poll periods.
+	ASSERT_NEAR(30, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
+	ASSERT_NEAR(70, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	indigo_usleep(1100000);
+	ASSERT_NEAR(30, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
+	ASSERT_NEAR(70, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 75));
+	ASSERT_TRUE(wait_atomic(&requested[0], 7500));
+	ASSERT_TRUE(finish_motion(7500));
+	ASSERT_NEAR(75, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	ASSERT_EQ_INT(2, atomic_load(&calls[OP_MOVE]));
 	atomic_store(&hand_control[0], true);
 	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 80));
 	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
-	ASSERT_EQ_INT(1, atomic_load(&calls[OP_MOVE]));
+	ASSERT_EQ_INT(2, atomic_load(&calls[OP_MOVE]));
 	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));

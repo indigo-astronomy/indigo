@@ -274,3 +274,14 @@ cd indigo_test && ./build/integration/test_rotator_asi_sdk
 
 - Simulated tests run: 11; passed: 11.
 - Hardware tests run: 0; passed: 0.
+
+## Aborted move kept the requested target (2026-10-10)
+
+Found defect: an aborted move overwrote the requested target with the stopped angle. Once the motor reported stopped after `CAAStop()`, `rotator_move_finalizer()` set `PRIVATE_DATA->target_position` and `ROTATOR_POSITION.POSITION` target to the read angle, and a later request refused by `rotator_motion_ready()` republished that stopped angle as the target.
+
+Fix: the abort ending publishes the stopped angle as the value only; the target keeps the aborted request (also the never-sent request of an abort that overtakes a queued move) and the private target stays the last commanded angle, so the refused-request path restores the running move's target. The target changes only at connect, with a new GOTO or relative move, and on a successful SYNC. Failed starts, refused targets and status or position read failures already published the value only; the tests now pin that. States are unchanged. Driver version is now `0x03000009`.
+
+Regression coverage in `indigo_test/integration/test_rotator_asi_sdk.c`: `abort confirmation and hand controller` checks value = stopped angle and target = requested after the abort and again after more than two poll periods, then a fresh move; `move/status/position failures and polling recovery` checks the target keeps the request after a failed `CAAMoveTo()` and after status and position read failures, also after the poll period.
+
+- Simulated tests run: 11; passed: 11.
+- Hardware tests run: 0; passed: 0.

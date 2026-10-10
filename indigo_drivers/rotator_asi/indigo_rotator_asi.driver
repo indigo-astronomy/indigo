@@ -24,7 +24,7 @@ driver asi {
 	label = "ZWO CAA Rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 8;
+	version = 9;
 	multi_device_support = true;
 	include {
 		#include <stdbool.h>
@@ -262,10 +262,7 @@ driver asi {
 						ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else if (!moving) {
 						PRIVATE_DATA->abort_pending = false;
-						PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-						ROTATOR_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
 						ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 					}
 					indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, hand_control ? "Release the hand controller to stop motion" : NULL);
 				}
