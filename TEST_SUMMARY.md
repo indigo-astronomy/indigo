@@ -253,7 +253,7 @@
 |  | 2026-10-10 02:30 | 3.0.0.10 | mac arm64 | simulator | 46 / 46 | ✅ OK |
 | focuser_moonlite | 2026-10-09 20:46 | 3.0.0.15 | linux arm64 | MoonLite Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 |  | 2026-10-10 02:31 | 3.0.0.16 | mac arm64 | simulator | 45 / 45 | ✅ OK |
-| focuser_mypro2 | 2026-10-05 15:20 | 3.0.0.14 | mac arm64 | simulator | 35 / 35 | ✅ OK |
+| focuser_mypro2 | 2026-10-10 02:33 | 3.0.0.15 | mac arm64 | simulator | 35 / 35 | ✅ OK |
 | focuser_nfocus | 2026-10-09 20:59 | 3.0.0.11 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 |  | 2026-10-09 20:59 | 3.0.0.11 | linux arm64 | nFOCUS Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
 | focuser_nstep | 2026-10-09 21:11 | 3.0.0.11 | mac arm64 | simulator | 26 / 26 | ✅ OK |

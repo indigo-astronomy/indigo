@@ -27,7 +27,7 @@ driver mypro2 {
 	label = "myFocuserPro2 Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2020-2026 Rumen G. Bogdanovski";
-	version = 14;
+	version = 15;
 	serial {
 		configurable_speed = true;
 	}
@@ -59,8 +59,9 @@ driver mypro2 {
 		bool has_temperature_sensor, disconnection_queued;
 		// motion_active: a move runs; external_motion: the driver did not command it;
 		// stop_pending: an abort could not confirm the stop; poll_failed: the ALERT on
-		// FOCUSER_POSITION comes from a failed idle poll, not from a failed move
-		bool motion_active, external_motion, stop_pending, poll_failed;
+		// FOCUSER_POSITION comes from a failed idle poll, not from a failed move;
+		// settling: a move ended with an unconfirmed stop, its rest is not motion of its own
+		bool motion_active, external_motion, stop_pending, poll_failed, settling;
 	}
 	code {
 		static void focuser_connection_handler(indigo_device *device);
@@ -268,11 +269,11 @@ driver mypro2 {
 			return (int)position;
 		}
 
-		// An ALERT publishes the real position as both value and target, so a failed or
-		// aborted move is never shown at the requested position.
+		// The real position is published as the value only: a failed or aborted move keeps
+		// the requested target, a failed move the driver did not command ends at the measured one.
 		static void mypro2_motion_state(indigo_device *device, indigo_property_state state) {
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			if (state == INDIGO_ALERT_STATE) {
+			if (state == INDIGO_ALERT_STATE && PRIVATE_DATA->external_motion) {
 				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
 			}
 			if (state != INDIGO_BUSY_STATE) {
@@ -295,6 +296,7 @@ driver mypro2 {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Motion status read failed, stopping the focuser");
 				mypro2_command(device, false, ":27#");
 				mypro2_motion_state(device, INDIGO_ALERT_STATE);
+				PRIVATE_DATA->settling = true;
 				return;
 			}
 			if (moving != 0 && position == PRIVATE_DATA->current_position && position != PRIVATE_DATA->target_position) {
@@ -302,6 +304,7 @@ driver mypro2 {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser stalled at %d, stopping it", position);
 					mypro2_command(device, false, ":27#");
 					mypro2_motion_state(device, INDIGO_ALERT_STATE);
+					PRIVATE_DATA->settling = true;
 					return;
 				}
 			} else {
@@ -348,7 +351,7 @@ driver mypro2 {
 		// A target equal to the current position ends at once without a command.
 		static bool mypro2_start_motion(indigo_device *device, int target) {
 			PRIVATE_DATA->target_position = target;
-			PRIVATE_DATA->external_motion = false;
+			PRIVATE_DATA->external_motion = PRIVATE_DATA->settling = false;
 			PRIVATE_DATA->stall_polls = 0;
 			FOCUSER_POSITION_ITEM->number.target = target;
 			if (target == PRIVATE_DATA->current_position) {
@@ -387,6 +390,13 @@ driver mypro2 {
 				}
 				return;
 			}
+			if (moving && PRIVATE_DATA->settling) {
+				// the driver's own move runs on after an unconfirmed stop: value only, the state stays
+				PRIVATE_DATA->current_position = position;
+				FOCUSER_POSITION_ITEM->number.value = position;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				return;
+			}
 			if (moving) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own from %d", position);
 				PRIVATE_DATA->current_position = position;
@@ -400,11 +410,15 @@ driver mypro2 {
 			}
 			bool recovered = FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE && PRIVATE_DATA->poll_failed;
 			if (position != PRIVATE_DATA->current_position || recovered) {
+				// only motion the driver did not command moves the target, the rest of its own move does not
+				if (position != PRIVATE_DATA->current_position && !PRIVATE_DATA->settling) {
+					FOCUSER_POSITION_ITEM->number.target = position;
+				}
 				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-				FOCUSER_POSITION_ITEM->number.target = position;
 				// an ALERT left by a failed or aborted move stays, only a failed poll is cleared
 				mypro2_motion_state(device, recovered || FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
 			}
+			PRIVATE_DATA->settling = false;
 		}
 
 		static void mypro2_compensate_focus(indigo_device *device, double new_temp) {
@@ -499,7 +513,7 @@ driver mypro2 {
 			connection_result = connection_result && mypro2_get_int(device, ":08#", 'M', &PRIVATE_DATA->max_position) && mypro2_command(device, false, ":15%d#", (int)FOCUSER_SPEED_ITEM->number.value) && mypro2_update_reverse(device) && mypro2_update_coils_mode(device) && mypro2_update_step_mode(device) && mypro2_update_settle_time(device);
 			if (connection_result) {
 				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-				PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+				PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->backlash = backlash_in;
@@ -531,7 +545,7 @@ driver mypro2 {
 			// a running move is stopped before the port closes
 			mypro2_command(device, false, ":27#");
 			mypro2_command(device, false, ":48#");
-			PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = false;
+			PRIVATE_DATA->motion_active = PRIVATE_DATA->external_motion = PRIVATE_DATA->stop_pending = PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 		}
 		on_timer {
@@ -772,8 +786,9 @@ driver mypro2 {
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						PRIVATE_DATA->stop_pending = true;
 					}
-					// an aborted move ends ALERT at the position where it stopped
+					// an aborted move ends ALERT with the value where it stopped and the requested target
 					mypro2_motion_state(device, INDIGO_ALERT_STATE);
+					PRIVATE_DATA->settling = PRIVATE_DATA->stop_pending;
 				}
 				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 				indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
