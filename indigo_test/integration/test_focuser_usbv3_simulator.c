@@ -253,10 +253,16 @@ static void driver_stop(void) {
 
 // ----------------------------------------------------------------- testing rules alignment
 
-static bool target_is(double expected) {
+static double position_target(void) {
 	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	if (item == NULL || item->number.target != expected || item->number.value != expected) {
-		fprintf(stderr, "FOCUSER_POSITION: value %g, target %g, expected both %g\n", item ? item->number.value : NAN, item ? item->number.target : NAN, expected);
+	return item == NULL ? NAN : item->number.target;
+}
+
+// A move that ends short of its target (abort, failure) keeps the requested target.
+static bool target_is(double value, double target) {
+	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	if (item == NULL || item->number.target != target || item->number.value != value) {
+		fprintf(stderr, "FOCUSER_POSITION: value %g, target %g, expected %g, %g\n", item ? item->number.value : NAN, item ? item->number.target : NAN, value, target);
 		return false;
 	}
 	return true;
@@ -551,12 +557,12 @@ static void abort_motion(void) {
 	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	printf("Aborted at %g of 60000\n", stopped);
 	SERIAL_CHECK_TRUE(stopped > 1000 && stopped < 60000);
-	// The aborted move ends ALERT at the stopped position; two fresh idle polls
-	// read the same position and keep the ALERT.
-	SERIAL_CHECK_TRUE(target_is(stopped));
+	// The aborted move ends ALERT at the stopped position with the requested target; two
+	// fresh idle polls read the same position and keep the ALERT and the target.
+	SERIAL_CHECK_TRUE(target_is(stopped, 60000));
 	int polls = commands("FPOSRO");
 	SERIAL_CHECK_TRUE(wait_for_commands("FPOSRO", polls + 2));
-	SERIAL_CHECK_TRUE(target_is(stopped));
+	SERIAL_CHECK_TRUE(target_is(stopped, 60000));
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	// A fresh move has to be accepted right after the abort.
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, stopped + 200, INDIGO_BUSY_STATE));
@@ -617,6 +623,12 @@ static void motion_readback_failure(void) {
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1100, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(wait_for_commands("FQUITx", 1));
+	// The failed move keeps the requested target, also after two idle polls show where it stopped.
+	SERIAL_CHECK_TRUE(position_target() == 1100);
+	int polls = commands("FPOSRO");
+	SERIAL_CHECK_TRUE(wait_for_commands("FPOSRO", polls + 2));
+	SERIAL_CHECK_TRUE(position_target() == 1100);
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	// A malformed readback is refused the same way.
 	SERIAL_CHECK_TRUE(after_poll());
 	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "garbage", 3));
@@ -672,7 +684,7 @@ static void external_motion_observed(void) {
 	// The controller stops at 1200 on its own; the driver follows that move and a
 	// relative move from there is sent as the requested step count.
 	SERIAL_CHECK_TRUE(position_is(1200));
-	SERIAL_CHECK_TRUE(target_is(1200));
+	SERIAL_CHECK_TRUE(target_is(1200, 1200));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(command_sent("O00100"));
@@ -910,6 +922,9 @@ static void abort_failure_reported(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
 	SERIAL_CHECK_EQ_INT(2, commands("FQUITx"));
+	// The move stopped by the retry keeps the requested target.
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(stopped > 1000 && stopped < 60000 && target_is(stopped, 60000));
 cleanup:
 	driver_stop();
 }
@@ -923,7 +938,7 @@ static void external_motion_during_session(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(4000));
-	SERIAL_CHECK_TRUE(target_is(4000));
+	SERIAL_CHECK_TRUE(target_is(4000, 4000));
 	SERIAL_CHECK_EQ_INT(0, commands("O"));
 	SERIAL_CHECK_EQ_INT(0, commands("I"));
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
@@ -942,7 +957,7 @@ static void idle_poll_failure_recovery(void) {
 	unsigned int alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(fault_times("FPOSRO", "garbage", 3));
 	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
-	SERIAL_CHECK_TRUE(target_is(1000));
+	SERIAL_CHECK_TRUE(target_is(1000, 1000));
 	SERIAL_CHECK_TRUE(position_is(1000));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(1300));
@@ -963,7 +978,7 @@ static void request_survives_poll(void) {
 	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_EQ_INT((int)ok, (int)property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(position_is(4000));
-	SERIAL_CHECK_TRUE(target_is(4000));
+	SERIAL_CHECK_TRUE(target_is(4000, 4000));
 	SERIAL_CHECK_EQ_INT(1, commands("O"));
 cleanup:
 	driver_stop();

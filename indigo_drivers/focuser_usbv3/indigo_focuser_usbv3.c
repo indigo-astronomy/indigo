@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -264,6 +264,7 @@ static bool usbv3_confirm_settings(indigo_device *device, bool written) {
 	return written && read;
 }
 
+// However the move ends, the value is the position reached and the target keeps the request.
 static void focuser_motion_finalizer(indigo_device *device) {
 	int position;
 	if (!usbv3_read_position(device, &position)) {
@@ -271,17 +272,14 @@ static void focuser_motion_finalizer(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Position readback failed, stopping the focuser");
 		usbv3_quit(device);
 		PRIVATE_DATA->moving = false;
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_POSITION_ITEM->number.value = position;
 		if (!PRIVATE_DATA->moving) {
 			FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->abort ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-			FOCUSER_POSITION_ITEM->number.target = position;
 		} else if (--PRIVATE_DATA->motion_polls <= 0) {
 			usbv3_quit(device);
 			PRIVATE_DATA->moving = false;
-			FOCUSER_POSITION_ITEM->number.target = position;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -309,7 +307,6 @@ static void usbv3_start_motion(indigo_device *device, int steps) {
 			PRIVATE_DATA->motion_polls = 600;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -341,11 +338,13 @@ static void usbv3_poll_position(indigo_device *device) {
 		return;
 	}
 	bool changed = position != (int)FOCUSER_POSITION_ITEM->number.value;
-	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+	FOCUSER_POSITION_ITEM->number.value = position;
 	if (changed && FOCUSER_POSITION_PROPERTY->state == INDIGO_ALERT_STATE && !PRIVATE_DATA->poll_failed && !PRIVATE_DATA->external_motion) {
-		// a failed or aborted move stays ALERT, the poll only shows where it stopped
+		// a failed or aborted move stays ALERT and keeps its target, the poll only shows where it stopped
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	} else if (changed) {
+		// only motion the driver did not command moves the target with the measured position
+		FOCUSER_POSITION_ITEM->number.target = position;
 		if (!PRIVATE_DATA->external_motion) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The focuser moves on its own");
 		}
@@ -619,8 +618,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			// a queued move keeps its never-sent target, motion the driver did not command the measured one
 			PRIVATE_DATA->external_motion = false;
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		}

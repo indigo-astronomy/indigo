@@ -231,7 +231,12 @@ static void usbv3_aborts_a_move(void) {
 	stopped = position();
 	printf("    aborted at %g after starting from %g\n", stopped, start);
 	ASSERT_TRUE(stopped > start && stopped < start + 10 * MOVE_STEPS);
-	// A fresh move works right away and the unit agrees about where it is.
+	// The requested target is kept, also by the idle polls (every 2 s) that follow.
+	double target = -1;
+	indigo_usleep(4500000);
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &target));
+	ASSERT_TRUE(target == start + 10 * MOVE_STEPS);
+	// A fresh move works and the unit agrees about where it is.
 	ASSERT_TRUE(move_to(start));
 	ASSERT_TRUE(reconnect());
 	ASSERT_TRUE(position() == start);
