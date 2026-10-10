@@ -650,6 +650,48 @@ cleanup:
 	driver_stop();
 }
 
+static void manual_after_alert(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 20000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count(CMD_SPOS, 1));
+	SERIAL_CHECK_TRUE(position_above(0));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 20000);
+	// Rotary-switch motion after the aborted move is still uncommanded motion: BUSY, then OK with the target following it.
+	unsigned busy = atomic_load(&position_busy);
+	SERIAL_CHECK_TRUE(fault("manual", "3000"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, 1) && wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(atomic_load(&position_busy) > busy);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 3000);
+	SERIAL_CHECK_EQ_INT(1, command_count(CMD_SPOS));
+cleanup:
+	driver_stop();
+}
+
+static void abort_manual(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	unsigned busy = atomic_load(&position_busy);
+	SERIAL_CHECK_TRUE(fault("manual", "20000"));
+	for (int i = 0; i < 100 && atomic_load(&position_busy) == busy; i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&position_busy) > busy);
+	// Aborted rotary-switch motion has no request to keep: the target is the stopped position, also over the idle polls.
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(1, command_count(CMD_STOP));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	double stopped = position->number.value;
+	SERIAL_CHECK_TRUE(position->number.target == stopped && stopped > 0 && stopped < 20000);
+	indigo_usleep(2200000);
+	position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position->number.value == stopped && position->number.target == stopped);
+	SERIAL_CHECK_EQ_INT(0, command_count(CMD_SPOS));
+cleanup:
+	driver_stop();
+}
+
 static void moving_at_connect(void) {
 	unsigned busy = atomic_load(&position_busy);
 	SERIAL_CHECK_TRUE(driver_start());
@@ -1034,6 +1076,7 @@ int main(void) {
 		{ "abort_motion", abort_motion, "normal", NULL, NULL }, { "overlap", overlap, "normal", NULL, NULL },
 		{ "abort_queued", abort_queued, "normal", NULL, NULL }, { "request_during_poll", request_during_poll, "normal", NULL, NULL },
 		{ "manual_motion", manual_motion, "normal", NULL, NULL }, { "moving_at_connect", moving_at_connect, "moving", NULL, NULL },
+		{ "manual_after_alert", manual_after_alert, "normal", NULL, NULL }, { "abort_manual", abort_manual, "normal", NULL, NULL },
 		{ "speed_during_motion", speed_during_motion, "normal", NULL, NULL }, { "idle_transport_loss", start_transport_loss, "idle_loss", NULL, NULL },
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", NULL, NULL },
 		{ "init_version_silent", rejected_connection, "normal", "v", "silent" }, { "init_version_checksum", rejected_connection, "normal", "v", "badsum" },
