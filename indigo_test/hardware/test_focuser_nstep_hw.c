@@ -173,6 +173,14 @@ static void nstep_aborts_a_move(void) {
 	ASSERT_EQ_INT((int)stopped, (int)value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	indigo_usleep(1500000);
 	ASSERT_EQ_INT((int)stopped, (int)focuser_hw_position(focuser));
+	// the requested target stays, also after two idle readbacks (5 s apart)
+	double target = NAN;
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &target));
+	ASSERT_EQ_INT((int)base + 999, (int)target);
+	indigo_usleep(10500000);
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &target));
+	ASSERT_EQ_INT((int)base + 999, (int)target);
+	ASSERT_EQ_INT((int)stopped, (int)focuser_hw_position(focuser));
 	ASSERT_TRUE(return_to(base));
 }
 

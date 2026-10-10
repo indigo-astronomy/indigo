@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_nstep"
 #define DRIVER_LABEL         "Rigel Systems nSTEP Focuser"
 #define FOCUSER_DEVICE_NAME  "nSTEP"
@@ -269,9 +269,12 @@ static bool nstep_stop_confirmed(indigo_device *device) {
 	return stopped;
 }
 
+// a move ends at the measured position; only motion the driver did not command moves the target there
 static void nstep_end_motion(indigo_device *device, indigo_property_state state) {
+	if (PRIVATE_DATA->external) {
+		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+	}
 	PRIVATE_DATA->active = PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
-	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 	nstep_motion_state(device, state);
 }
 
@@ -359,14 +362,21 @@ static void focuser_timer_callback(indigo_device *device) {
 		int position = 0;
 		if (nstep_position(device, &position) && FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			if (position != PRIVATE_DATA->last_position) {
-				// motion the driver did not command (hand control, automatic compensation) is published BUSY at the measured position
+				// motion the driver did not command (hand control, automatic compensation) is published BUSY at the measured
+				// position; after a stop that was not confirmed it is the driver's own move, which keeps the requested target
 				PRIVATE_DATA->external = true;
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position = position;
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->last_position = position;
+				if (!PRIVATE_DATA->uncertain) {
+					FOCUSER_POSITION_ITEM->number.target = position;
+				}
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			} else if (PRIVATE_DATA->external) {
 				PRIVATE_DATA->external = false;
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				FOCUSER_POSITION_ITEM->number.value = position;
+				if (!PRIVATE_DATA->uncertain) {
+					FOCUSER_POSITION_ITEM->number.target = position;
+				}
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
@@ -486,16 +496,19 @@ static void focuser_steps_handler(indigo_device *device) {
 		nstep_motion_state(device, INDIGO_ALERT_STATE);
 	} else if (steps == 0) {
 		nstep_motion_state(device, INDIGO_OK_STATE);
-	} else if (nstep_command(device, 0, ":F%d%d%03d#", FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : 0, mode, steps)) {
-		PRIVATE_DATA->active = true;
-		PRIVATE_DATA->uncertain = PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
-		PRIVATE_DATA->stalled = PRIVATE_DATA->unchanged = 0;
-		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -steps : steps);
-		nstep_motion_state(device, INDIGO_BUSY_STATE);
-		indigo_execute_handler_in(device, 0.5, motion_finalizer);
 	} else {
-		PRIVATE_DATA->uncertain = true;
-		nstep_motion_state(device, INDIGO_ALERT_STATE);
+		// a refused move keeps the target it computed
+		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -steps : steps);
+		if (nstep_command(device, 0, ":F%d%d%03d#", FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : 0, mode, steps)) {
+			PRIVATE_DATA->active = true;
+			PRIVATE_DATA->uncertain = PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
+			PRIVATE_DATA->stalled = PRIVATE_DATA->unchanged = 0;
+			nstep_motion_state(device, INDIGO_BUSY_STATE);
+			indigo_execute_handler_in(device, 0.5, motion_finalizer);
+		} else {
+			PRIVATE_DATA->uncertain = true;
+			nstep_motion_state(device, INDIGO_ALERT_STATE);
+		}
 	}
 	//- focuser.FOCUSER_STEPS.on_change
 }
@@ -509,7 +522,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
 		if (IS_CONNECTED && nstep_stop_confirmed(device)) {
-			// an aborted move ends ALERT at the stopped position
+			// an aborted move ends ALERT at the stopped position, the target stays the request
 			PRIVATE_DATA->uncertain = false;
 			nstep_end_motion(device, INDIGO_ALERT_STATE);
 		} else {

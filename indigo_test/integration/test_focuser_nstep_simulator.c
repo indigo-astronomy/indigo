@@ -295,6 +295,19 @@ static bool wait_for_command_count(const char *command, int minimum) {
 	return false;
 }
 
+// two idle position readbacks, 5 s apart
+static bool wait_for_two_idle_readbacks(void) {
+	int minimum = command_count(":RP") + 2;
+	for (int i = 0; i < 520; i++) {
+		if (command_count(":RP") >= minimum) {
+			indigo_usleep(200000);
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	return false;
+}
+
 static bool driver_up(void) {
 	simulator_test_client.update_property = observe_update;
 	memset(revisions, 0, sizeof(revisions));
@@ -567,16 +580,16 @@ static void busy_guard_and_abort(void) {
 	SERIAL_CHECK_TRUE(state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(1, command_count(":F10000#"));
-	// the aborted move ends ALERT on both properties at the stopped position, never at the target
+	// the aborted move ends ALERT on both properties at the stopped position, never at the target, and keeps the requested target
 	SERIAL_CHECK_TRUE(state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
 	double stopped = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	SERIAL_CHECK_TRUE(stopped > 50 && stopped < 450 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == stopped);
-	// the next idle readback agrees and does not turn the aborted move OK
-	int readbacks = command_count(":RP");
-	SERIAL_CHECK_TRUE(wait_for_command_count(":RP", readbacks + 1));
-	indigo_usleep(200000);
+	SERIAL_CHECK_TRUE(stopped > 50 && stopped < 450 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 450);
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == 400);
+	// two idle readbacks agree, do not turn the aborted move OK and keep the target
+	SERIAL_CHECK_TRUE(wait_for_two_idle_readbacks());
 	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == stopped && state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 450);
 	// an abort while idle ends OK and sends nothing
 	int commands = other_commands();
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
@@ -594,11 +607,16 @@ cleanup:
 static void status_failure_alerts_and_recovers(void) {
 	SERIAL_CHECK_TRUE(start_fixture(NULL));
 	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fault("S", "sticky_malformed"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	// a persistent status failure sends the stop and ends both properties ALERT
+	// a persistent status failure sends the stop and ends both properties ALERT with the requested target
 	SERIAL_CHECK_TRUE(command_count(":F10000#") >= 1 && state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
+	// the unconfirmed stop leaves the move the driver's own: idle readbacks of where it stopped keep the target
+	SERIAL_CHECK_TRUE(wait_for_two_idle_readbacks());
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
 	unlink(fault_path);
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
@@ -745,7 +763,7 @@ static void stop_ignored_then_retried(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 	double stopped = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	SERIAL_CHECK_TRUE(stopped > 50 && stopped < 450 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == stopped);
+	SERIAL_CHECK_TRUE(stopped > 50 && stopped < 450 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 450);
 	SERIAL_CHECK_EQ_INT(2, command_count(":F10000#"));
 cleanup:
 	unlink(fault_path);
@@ -769,6 +787,8 @@ static void queued_abort(void) {
 	SERIAL_CHECK_EQ_INT(0, command_prefix_count(":F1") - command_count(":F10000#") + command_prefix_count(":F0"));
 	SERIAL_CHECK_EQ_INT(1, command_count(":F10000#"));
 	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50 && state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// the never-sent move keeps its steps request; the position target computed only when a move is sent stays
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == 300 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50);
 cleanup:
 	driver_stop();
 	stop_fixture();
@@ -778,12 +798,16 @@ cleanup:
 static void stalled_move(void) {
 	SERIAL_CHECK_TRUE(start_fixture(NULL));
 	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fault(":F", "stall"));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, revision(FOCUSER_STEPS_PROPERTY_NAME), INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_EQ_INT(1, command_count(":F10000#"));
-	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50);
+	// the stalled move keeps the requested target, also after idle readbacks
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
+	SERIAL_CHECK_TRUE(wait_for_two_idle_readbacks());
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 50 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, revision(FOCUSER_STEPS_PROPERTY_NAME), INDIGO_OK_STATE));
 cleanup:
