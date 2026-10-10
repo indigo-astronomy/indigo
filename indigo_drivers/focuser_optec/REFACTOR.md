@@ -233,9 +233,15 @@ during a move "is not turned OK by a later idle poll", and a fresh move works.
 
 | Defect | Fix | Regression test (fails against 3.0.0.10) |
 |---|---|---|
-| After a start failure, a stall or a failed readback during a move the driver waited for two equal position polls and then published both motion properties OK, so the failure disappeared; until then the requested target stayed published. | The failure sets the target to the position read last; the two equal polls only re-enable moves and set value and target to the settled position, while both properties stay ALERT through later idle polls. The next move, an uncommanded motion or a zero-step request clears it. | `motion_start_failure`, `motion_start_rejected`, `motion_poll_failure`, `motion_stall` |
+| After a start failure, a stall or a failed readback during a move the driver waited for two equal position polls and then published both motion properties OK, so the failure disappeared; until then the requested target stayed published. | The failure publishes the position read last as value, the target keeps the request (since 3.0.0.13); the two equal polls only re-enable moves and set the value to the settled position, while both properties stay ALERT through later idle polls. The next move, an uncommanded motion or a zero-step request clears it. | `motion_start_failure`, `motion_start_rejected`, `motion_poll_failure`, `motion_stall` |
 
 The pre-fix result comes from a separate binary built against a copy of the 3.0.0.10 sources.
+
+## Target kept after a failed move (3.0.0.13, 2026-10-10)
+
+| Defect | Fix | Regression test |
+|---|---|---|
+| A start failure, stall or failed readback overwrote the requested `FOCUSER_POSITION` target with the reached position, and every idle poll rewrote it with the measured one. | Position reads set the value only; the target changes at connect, at a move start and for uncommanded motion. | `motion_start_failure`, `motion_start_rejected`, `motion_poll_failure`, `motion_stall` |
 
 ## Final test summary
 

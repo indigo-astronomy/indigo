@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_focuser_optec"
 #define DRIVER_LABEL         "Optec TCF-S Focuser"
 #define FOCUSER_DEVICE_NAME  "Optec TCF-S"
@@ -147,11 +147,9 @@ static bool optec_position(indigo_device *device, int *position) {
 	if (!optec_command(device, 6, "FPOSRO") || strncmp(PRIVATE_DATA->response, "P=", 2) || !optec_digits(PRIVATE_DATA->response + 2, 4, OPTEC_MIN_POSITION, OPTEC_MAX_POSITION, &value)) {
 		return false;
 	}
+	// Only the value: the target keeps the last request, uncommanded motion sets it in the poll.
 	PRIVATE_DATA->position = value;
 	FOCUSER_POSITION_ITEM->number.value = value;
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
-		FOCUSER_POSITION_ITEM->number.target = value;
-	}
 	if (position) {
 		*position = value;
 	}
@@ -228,7 +226,6 @@ static void motion_failed(indigo_device *device) {
 	PRIVATE_DATA->active = false;
 	PRIVATE_DATA->uncertain = true;
 	PRIVATE_DATA->recovery_samples = 0;
-	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 	optec_motion_state(device, INDIGO_ALERT_STATE);
 }
 
@@ -266,7 +263,6 @@ static void motion_finalizer(indigo_device *device) {
 	}
 	if (position == PRIVATE_DATA->expected_position) {
 		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
-		FOCUSER_POSITION_ITEM->number.target = position;
 		optec_motion_state(device, INDIGO_OK_STATE);
 		return;
 	}
@@ -278,7 +274,6 @@ static void motion_finalizer(indigo_device *device) {
 		PRIVATE_DATA->uncertain = true;
 		PRIVATE_DATA->recovery_position = position;
 		PRIVATE_DATA->recovery_samples = 1;
-		FOCUSER_POSITION_ITEM->number.target = position;
 		optec_motion_state(device, INDIGO_ALERT_STATE);
 		return;
 	}
@@ -300,12 +295,11 @@ static void focuser_timer_callback(indigo_device *device) {
 		if (optec_position(device, &position)) {
 			if (PRIVATE_DATA->uncertain) {
 				if (PRIVATE_DATA->recovery_samples > 0 && position == PRIVATE_DATA->recovery_position) {
-					// The focuser settled, so a fresh move is accepted again, but the failed move stays ALERT at the
-					// position the focuser reached.
+					// The focuser settled, so a fresh move is accepted again, but the failed move stays ALERT with
+					// the reached position as value and the request as target.
 					PRIVATE_DATA->uncertain = false;
 					PRIVATE_DATA->failed = true;
 					PRIVATE_DATA->recovery_samples = 0;
-					FOCUSER_POSITION_ITEM->number.target = position;
 					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
 					PRIVATE_DATA->recovery_position = position;
@@ -319,7 +313,6 @@ static void focuser_timer_callback(indigo_device *device) {
 				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			} else {
 				// A failed move is not turned OK by an idle poll.
-				FOCUSER_POSITION_ITEM->number.target = position;
 				FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->failed ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 				if (PRIVATE_DATA->external) {
 					PRIVATE_DATA->external = false;

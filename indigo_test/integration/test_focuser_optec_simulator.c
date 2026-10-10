@@ -631,6 +631,8 @@ static void motion_failure(void) {
 	if (!strcmp(current_profile, "start_rejected")) {
 		SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 5000);
 	}
+	// A failed move keeps the requested target.
+	SERIAL_CHECK_TRUE(item_target(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 5500);
 	if (!strcmp(current_profile, "transport_close")) {
 		int handshakes = commands("FMMODE");
 		before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
@@ -639,9 +641,10 @@ static void motion_failure(void) {
 		SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 10, INDIGO_ALERT_STATE));
 		SERIAL_CHECK_TRUE(commands("FMMODE") == handshakes);
+		SERIAL_CHECK_TRUE(item_target(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 5500);
 	} else {
-		// The focuser settles where it really is, with value equal to target, and the failure stays ALERT through
-		// later idle polls; a fresh move is then accepted.
+		// The value settles where the focuser really is, the target keeps the request and the failure stays ALERT
+		// through later idle polls; a fresh move is then accepted.
 		double settled = !strcmp(current_profile, "start_rejected") || !strcmp(current_profile, "stall") ? 5000 : 5500;
 		SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, settled, 1));
 		int polls = commands("FPOSRO");
@@ -649,7 +652,7 @@ static void motion_failure(void) {
 			indigo_usleep(25000);
 		}
 		SERIAL_CHECK_TRUE(commands("FPOSRO") >= polls + 3);
-		SERIAL_CHECK_TRUE(item_target(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == settled);
+		SERIAL_CHECK_TRUE(item_target(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 5500);
 		SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE && find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 		SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
 		SERIAL_CHECK_TRUE(at_position(settled + 10));
