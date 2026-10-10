@@ -639,6 +639,36 @@ cleanup:
 	stop_fixture();
 }
 
+// Motion read after an unconfirmed stop is the driver's own move: aborting it with a confirmed stop ends ALERT
+// at the stopped position and keeps the requested target instead of taking the motion for hand control.
+static void abort_after_unconfirmed_stop(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("S", "sticky_malformed"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
+	// the motor runs on after the unconfirmed stop; the idle readback follows it as the value of the failed move, which
+	// stays ALERT with its target
+	SERIAL_CHECK_TRUE(fault(":RP", "move800"));
+	for (int i = 0; i < 150 && value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) <= 150; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) > 150);
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_of(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_ALERT_STATE && state_of(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	double stopped = value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(stopped > 150 && stopped < 950 && target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 150);
+	SERIAL_CHECK_TRUE(target_of(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == 100);
+cleanup:
+	unlink(fault_path);
+	driver_stop();
+	stop_fixture();
+}
+
 static void additional_instances(void) {
 	static const simulator_driver_case second = { "Rigel Systems nSTEP Focuser", "indigo_focuser_nstep", "nSTEP #2", indigo_focuser_nstep, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 	SERIAL_CHECK_TRUE(start_fixture(NULL));
@@ -1007,6 +1037,7 @@ int main(void) {
 		{ "relative_motion", relative_motion },
 		{ "busy_guard_and_abort", busy_guard_and_abort },
 		{ "status_failure_alerts_and_recovers", status_failure_alerts_and_recovers },
+		{ "abort_after_unconfirmed_stop", abort_after_unconfirmed_stop },
 		{ "additional_instances", additional_instances },
 		{ "capabilities_alternate", capabilities_alternate },
 		{ "settings_readback", settings_readback },

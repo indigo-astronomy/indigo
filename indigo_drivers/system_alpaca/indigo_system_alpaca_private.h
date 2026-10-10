@@ -285,7 +285,7 @@
 extern "C" {
 #endif
 
-#define DRIVER_VERSION										0x03000004
+#define DRIVER_VERSION										0x03000005
 #define DRIVER_NAME												"indigo_system_alpaca"
 #define DRIVER_LABEL											"ASCOM Alpaca Client"
 

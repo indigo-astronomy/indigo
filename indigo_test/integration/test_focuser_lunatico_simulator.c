@@ -687,6 +687,7 @@ static void stop_failure_is_reported(void) {
 	SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(lunatico_set_switch(&main_focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 100000));
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) > 0 && cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) < 100000);
 cleanup:
 	stop();
 }
@@ -700,6 +701,7 @@ static void read_failure_is_reported(void) {
 	// A persistent failure stops the motor and ends both motion properties ALERT; the target keeps the request.
 	SERIAL_CHECK_TRUE(lunatico_wait_for_command("!step stop 0#"));
 	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 2000));
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) >= HOME_MAIN && cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) < 2000);
 cleanup:
 	stop();
 }
@@ -782,6 +784,7 @@ static void settings_during_motion_are_refused(void) {
 	SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(lunatico_set_switch(&main_focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 100000));
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) > 0 && cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) < 100000);
 	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 50, INDIGO_OK_STATE));
 cleanup:
 	stop();

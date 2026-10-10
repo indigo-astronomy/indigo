@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_mjkzz"
 #define DRIVER_LABEL         "MJKZZ Rail Focuser"
 #define FOCUSER_DEVICE_NAME  "MJKZZ Rail"
@@ -262,8 +262,8 @@ static void focuser_timer_callback(indigo_device *device) {
 					PRIVATE_DATA->poll_failed = false;
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				}
-				if (changed && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
-					// Motion the driver did not command (rotary switch, running at connect): BUSY until it settles.
+				if (changed && !PRIVATE_DATA->uncertain) {
+					// Motion the driver did not command (rotary switch, running at connect), also after a move ended ALERT: BUSY until it settles.
 					// Only such motion moves the target; an idle poll leaves the last request alone.
 					PRIVATE_DATA->external = true;
 					FOCUSER_POSITION_ITEM->number.target = position;
@@ -382,13 +382,18 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	bool pending = PRIVATE_DATA->active || PRIVATE_DATA->uncertain || PRIVATE_DATA->external || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value && pending) {
+		bool external = PRIVATE_DATA->external;
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
 		PRIVATE_DATA->active = PRIVATE_DATA->external = false;
 		if (IS_CONNECTED && mjkzz_stop(device)) {
 			PRIVATE_DATA->uncertain = false;
-			// An aborted move ends ALERT with the stopped position as the value and the requested target.
+			// An aborted move ends ALERT with the stopped position as the value and the requested target;
+			// aborted uncommanded motion has no request, its target is the stopped position.
+			if (external) {
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
+			}
 			mjkzz_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;

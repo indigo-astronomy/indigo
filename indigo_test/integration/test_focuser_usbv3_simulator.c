@@ -949,6 +949,53 @@ cleanup:
 	driver_stop();
 }
 
+// A hand-controller move after an aborted move is followed BUSY then OK with the target
+// at the measured position; only the first poll after the abort keeps the requested target.
+static void external_motion_after_abort(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 60000));
+	unsigned int alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(target_is(stopped, 60000));
+	SERIAL_CHECK_TRUE(after_poll());
+	SERIAL_CHECK_TRUE(fault("FPOSRO", "external=5000"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(5000));
+	SERIAL_CHECK_TRUE(target_is(5000, 5000));
+	SERIAL_CHECK_EQ_INT(1, commands("O") + commands("I"));
+cleanup:
+	driver_stop();
+}
+
+// An abort of a hand-controller move stops it and ends ALERT with the target at the
+// stopped position, also after the following polls.
+static void external_motion_aborted(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(fault("FPOSRO", "external=20000"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	unsigned int alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_seen(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	int polls = commands("FPOSRO");
+	SERIAL_CHECK_TRUE(wait_for_commands("FPOSRO", polls + 2));
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	printf("Hand-controller move aborted at %g of 20000\n", stopped);
+	SERIAL_CHECK_TRUE(stopped > 1000 && stopped < 20000);
+	SERIAL_CHECK_TRUE(target_is(stopped, stopped));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(1, commands("FQUITx"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, stopped + 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(stopped + 200));
+cleanup:
+	driver_stop();
+}
+
 // A failed idle position poll is ALERT with the last valid position; the next good
 // poll restores OK and a move works.
 static void idle_poll_failure_recovery(void) {
@@ -1146,6 +1193,8 @@ int main(void) {
 		{ "additional_instance", additional_instance, "normal" },
 		{ "abort_failure_reported", abort_failure_reported, "normal" },
 		{ "external_motion_during_session", external_motion_during_session, "normal" },
+		{ "external_motion_after_abort", external_motion_after_abort, "normal" },
+		{ "external_motion_aborted", external_motion_aborted, "normal" },
 		{ "idle_poll_failure_recovery", idle_poll_failure_recovery, "normal" },
 		{ "request_survives_poll", request_survives_poll, "normal" },
 		{ "settings_readback_mismatch", settings_readback_mismatch, "normal" },

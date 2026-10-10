@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_focuser_nstep"
 #define DRIVER_LABEL         "Rigel Systems nSTEP Focuser"
 #define FOCUSER_DEVICE_NAME  "nSTEP"
@@ -524,7 +524,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		indigo_cancel_pending_handler(device, motion_finalizer);
 		if (IS_CONNECTED && nstep_stop_confirmed(device)) {
-			// an aborted move ends ALERT at the stopped position, the target stays the request
+			// an aborted move ends ALERT at the stopped position, the target stays the request;
+			// motion seen after an unconfirmed stop is the driver's own move
+			PRIVATE_DATA->external = PRIVATE_DATA->external && !PRIVATE_DATA->uncertain;
 			PRIVATE_DATA->uncertain = false;
 			nstep_end_motion(device, INDIGO_ALERT_STATE);
 		} else {

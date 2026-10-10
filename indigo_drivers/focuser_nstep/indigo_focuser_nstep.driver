@@ -21,7 +21,7 @@ driver nstep {
 	label = "Rigel Systems nSTEP Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	serial;
 	include {
 		#include <ctype.h>
@@ -439,7 +439,9 @@ driver nstep {
 					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					indigo_cancel_pending_handler(device, motion_finalizer);
 					if (IS_CONNECTED && nstep_stop_confirmed(device)) {
-						// an aborted move ends ALERT at the stopped position, the target stays the request
+						// an aborted move ends ALERT at the stopped position, the target stays the request;
+						// motion seen after an unconfirmed stop is the driver's own move
+						PRIVATE_DATA->external = PRIVATE_DATA->external && !PRIVATE_DATA->uncertain;
 						PRIVATE_DATA->uncertain = false;
 						nstep_end_motion(device, INDIGO_ALERT_STATE);
 					} else {

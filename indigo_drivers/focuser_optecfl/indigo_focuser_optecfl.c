@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_focuser_optecfl"
 #define DRIVER_LABEL         "Optec FocusLynx Focuser"
 #define FOCUSER_1_DEVICE_NAME "Optec FocusLynx #1"
@@ -411,7 +411,7 @@ static void optecfl_close(indigo_device *device) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Hub disconnected");
 }
 
-// Reads the configuration of one logical focuser. A failure here rolls the
+// Reads the configuration and position of one logical focuser. A failure here rolls the
 // whole connection attempt back through the generated handler.
 static bool optecfl_connect(indigo_device *device) {
 	PRIVATE_DATA->move_pending[FOCUSER_SLOT] = PRIVATE_DATA->external_motion[FOCUSER_SLOT] = PRIVATE_DATA->poll_alert[FOCUSER_SLOT] = false;
@@ -420,6 +420,12 @@ static bool optecfl_connect(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open focuser #%d", FOCUSER_ID);
 		return false;
 	}
+	// The connection starts with value = target at the reported position; motion still running is followed by the poll.
+	if (!optecfl_read_status(device)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read status of focuser #%d", FOCUSER_ID);
+		return false;
+	}
+	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->status_position;
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	return true;

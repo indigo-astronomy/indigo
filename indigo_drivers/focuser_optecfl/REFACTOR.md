@@ -234,6 +234,7 @@ shared tree was not reverted.
 | # | Defect | Fix | Regression test |
 |---|---|---|---|
 | DRV-219 | An aborted, stalled, refused or short move, or a refused or failed sync, overwrote the requested `FOCUSER_POSITION` target with the real position, and every idle poll rewrote it with `Curr Pos`. | `optecfl_move_ended`, the refused GOTO/steps/sync paths and the idle poll set the value only; only a successful sync sets value = target, and the target follows `Curr Pos` only for uncommanded motion. | `abort_during_motion`, `abort_overtakes_start`, `abort_failure_reported`, `move_after_abort`, `stalled_move`, `move_poll_failures`, `malformed_reply`, `sync_rejected_for_optec_type`, `sync_accepted_for_other_type` |
+| DRV-220 | The connection never set the `FOCUSER_POSITION` target: `optecfl_connect` read only `GETCONFIG`, and since 3.0.0.8 the idle poll no longer writes the target, so after connecting to a focuser at `Curr Pos` 5000 the value was 5000 and the target 0, or the request of the previous session after a reconnect. | `optecfl_connect` reads `GETSTATUS` after `GETCONFIG` and sets value = target to `Curr Pos`; a failed read fails the connection like a failed `GETCONFIG`; motion still running at connect is followed by the poll (3.0.0.9). | `connect_target_from_position` |
 
 ## Final test summary
 

@@ -455,6 +455,53 @@ cleanup:
 	sa_end();
 }
 
+// Another client of the device starts a move after a move of the driver arrived and before the next poll: the move of the driver ends
+// OK at its target, the motion that follows is motion of the device itself and its target follows the position up to where it stops.
+static void focuser_motion_after_move(void) {
+	SA_CHECK(focuser_begin(focuser_default));
+	// the first IsMoving of the move is held in the device (it says true) while the device arrives, the next one (it says false) while
+	// the other client starts its move: the driver sees its move end at the target, and only the next poll sees the new motion
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_fault(0, "GET", FOCUSER_API "ismoving", "stall-before", "Delay=500") && focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 52000));
+	SA_CHECK(SA_WAIT(!strcmp(sa_field(sa_last_request(0, "GET", FOCUSER_API "ismoving"), "Fault"), "stall-before"), SA_TIMEOUT));
+	int polls = focuser_count("GET", "ismoving");
+	SA_CHECK(sa_advance(0, 2) && sa_fault(0, "GET", FOCUSER_API "ismoving", "stall-before", "Delay=500"));
+	SA_CHECK(SA_WAIT(focuser_count("GET", "ismoving") == polls + 1 && !strcmp(sa_field(sa_last_request(0, "GET", FOCUSER_API "ismoving"), "Fault"), "stall-before"), SA_TIMEOUT));
+	SA_CHECK(sa_put(0, FOCUSER_API "move", "Position=55000&ClientID=77&ClientTransactionID=1"));
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 52000);
+	SA_CHECK(SA_WAIT(sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE, SA_TIMEOUT) && sa_state(sa_device, FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_OK_STATE);
+	revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(sa_advance(0, 3) && SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE, revision), SA_TIMEOUT));
+	SA_CHECK(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 55000 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 55000);
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
+// A focuser that reports IsMoving false after Halt while its Position still changes: the stopped move keeps its target while the Position
+// changes from poll to poll, over more than one poll. Once a poll has seen the Position unchanged, a change is motion of the device again
+// and the target follows it.
+static void focuser_position_settles_after_halt(void) {
+	SA_CHECK(sa_begin(focuser_default) && sa_set_number("X_ALPACA_POLLING", "ACTIVE", 1) == INDIGO_OK_STATE && sa_attach("Focuser Simulator") && sa_connect(sa_device));
+	SA_CHECK(focuser_start_move(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 70000));
+	SA_CHECK(sa_advance(0, 1.5) && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51500, SA_TIMEOUT));
+	// the abort waits behind a poll tick held in the device, so the first poll after it comes a whole poll interval (1 s) later
+	SA_CHECK(focuser_hold_poll("devicestate", 300));
+	unsigned revision = sa_revision(sa_device, FOCUSER_POSITION_PROPERTY_NAME);
+	SA_CHECK(focuser_set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME) == INDIGO_OK_STATE);
+	SA_CHECK(SA_WAIT(sa_state_after(sa_device, FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE, revision), SA_TIMEOUT) && sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51500);
+	// the Position changes with IsMoving false, seen by two polls in a row: the value follows it, the target keeps the request
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=51510") && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51510, SA_TIMEOUT));
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=51520") && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51520, SA_TIMEOUT));
+	SA_CHECK(sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 70000 && sa_state(sa_device, FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	// the Position has settled: a later change is motion of the device
+	SA_CHECK(focuser_wait_polls("devicestate", 2) && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 70000);
+	SA_CHECK(sa_device_state(0, "focuser", 0, "Position=51600") && SA_WAIT(sa_number(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51600 && sa_number_target(sa_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 51600, SA_TIMEOUT));
+	SA_CHECK(sa_disconnect(sa_device));
+cleanup:
+	sa_end();
+}
+
 // ---------------------------------------------------------------------------- temperature compensation
 
 static void focuser_temperature_compensation(void) {
@@ -886,6 +933,8 @@ cleanup:
 	{ "focuser_abort", focuser_abort }, \
 	{ "focuser_halt_settles", focuser_halt_settles }, \
 	{ "focuser_position_settles_after_ismoving", focuser_position_settles_after_ismoving }, \
+	{ "focuser_motion_after_move", focuser_motion_after_move }, \
+	{ "focuser_position_settles_after_halt", focuser_position_settles_after_halt }, \
 	{ "focuser_temperature_compensation", focuser_temperature_compensation }, \
 	{ "focuser_large_relative_move", focuser_large_relative_move }, \
 	{ "focuser_enumeration_during_mode_change", focuser_enumeration_during_mode_change }, \

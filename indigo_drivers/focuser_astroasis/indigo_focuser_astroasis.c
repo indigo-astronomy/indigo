@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_focuser_astroasis"
 #define DRIVER_LABEL         "Astroasis Oasis Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -730,9 +730,11 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	} else {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
+	bool external = PRIVATE_DATA->external_motion;
 	PRIVATE_DATA->moving = false;
 	PRIVATE_DATA->external_motion = false;
-	PRIVATE_DATA->settling = true;
+	/* the target of motion the driver did not command follows the position, also at the next idle poll */
+	PRIVATE_DATA->settling = !external;
 	/* AOFocuserGetStatus() sometimes fails after a stop with comm error, so retry */
 	for (int retry = 0; retry < 3; retry++) {
 		res = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
@@ -745,6 +747,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get Oasis Focuser status, ret = %d", res);
 	} else {
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->status.position;
+		if (external) {
+			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+		}
 	}
 	/* an aborted move ends at the stopped position and keeps the requested target */
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1435,7 +1440,7 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 #include "indigo_focuser_astroasis.h"
 
 indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
-	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x03000011, false, INDIGO_DRIVER_SHUTDOWN);
+	SET_DRIVER_INFO(info, "Astroasis Oasis Focuser", __FUNCTION__, 0x03000012, false, INDIGO_DRIVER_SHUTDOWN);
 	return action == INDIGO_DRIVER_INFO ? INDIGO_OK : INDIGO_UNSUPPORTED_ARCH;
 }
 #endif

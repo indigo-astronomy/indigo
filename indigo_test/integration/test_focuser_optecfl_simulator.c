@@ -635,6 +635,32 @@ cleanup:
 	driver_down();
 }
 
+// Regression: the connection set neither value nor target, so the target stayed 0 or kept the request of the previous session.
+static void connect_target_from_position(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(fault("<F1GETCONFIG>", "position=5000"));
+	SERIAL_CHECK_TRUE(connect_first());
+	SERIAL_CHECK_TRUE(position_value() == 5000 && position_target() == 5000);
+	int polls = commands("<F1GETSTATUS>");
+	SERIAL_CHECK_TRUE(wait_for_command("<F1GETSTATUS>", polls + 2));
+	SERIAL_CHECK_TRUE(position_value() == 5000 && position_target() == 5000);
+	// A reconnect after an aborted move starts from the stopped position, not from the aborted request.
+	SERIAL_CHECK_TRUE(goto_position(40000, INDIGO_BUSY_STATE));
+	for (int retry = 0; retry < 100 && position_value() <= 5000; retry++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 40000));
+	double stopped = position_value();
+	SERIAL_CHECK_TRUE(stopped > 5000 && stopped < 40000);
+	SERIAL_CHECK_TRUE(disconnect_device(&optecfl_focuser_1));
+	SERIAL_CHECK_TRUE(connect_first());
+	SERIAL_CHECK_TRUE(position_value() == stopped && position_target() == stopped);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property_state(FOCUSER_POSITION_PROPERTY_NAME));
+cleanup:
+	driver_down();
+}
+
 // ----------------------------------------------------------------- sync
 
 // Regression: all Optec focusers must home, so SCCP has to be refused.
@@ -1141,6 +1167,7 @@ int main(void) {
 		{ "steps_clamped", steps_clamped, "normal" },
 		{ "overlap_rejected", overlap_rejected, "normal" },
 		{ "external_motion_observed", external_motion_observed, "normal" },
+		{ "connect_target_from_position", connect_target_from_position, "normal" },
 		{ "sync_rejected_for_optec_type", sync_rejected_for_optec_type, "normal" },
 		{ "sync_accepted_for_other_type", sync_accepted_for_other_type, "normal" },
 		{ "abort_during_motion", abort_during_motion, "normal" },

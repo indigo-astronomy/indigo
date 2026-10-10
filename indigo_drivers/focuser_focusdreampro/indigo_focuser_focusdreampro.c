@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_focuser_focusdreampro"
 #define DRIVER_LABEL         "AGadget FocusDreamPro Focuser"
 #define FOCUSER_DEVICE_NAME  "FocusDreamPro"
@@ -329,7 +329,14 @@ static void focuser_timer_callback(indigo_device *device) {
 					// uncommanded motion ends at the measured position; a cancelled queued move keeps its target
 					FOCUSER_POSITION_ITEM->number.target = position;
 				}
-				focusdreampro_end_motion(device, PRIVATE_DATA->aborted ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
+				if (PRIVATE_DATA->aborted) {
+					focusdreampro_end_motion(device, INDIGO_ALERT_STATE, NULL);
+				} else if (position != FOCUSER_POSITION_ITEM->number.target) {
+					// a move that stops short of its target is no arrival
+					focusdreampro_end_motion(device, INDIGO_ALERT_STATE, "The focuser stopped short of the target");
+				} else {
+					focusdreampro_end_motion(device, INDIGO_OK_STATE, NULL);
+				}
 			} else if (PRIVATE_DATA->poll_alert) {
 				// a good poll clears only its own ALERT, a failed move stays ALERT until the next request
 				PRIVATE_DATA->poll_alert = false;
