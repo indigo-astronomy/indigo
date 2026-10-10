@@ -217,3 +217,16 @@ by `test_focuser_lunatico_simulator`; this driver's suite was rerun unchanged.
 
 - `python3 tools/run_driver_test.py rotator_lunatico`: 54/54 passed (3.0.0.15, macOS arm64).
 - Hardware tests: 0 executed, 0 passed.
+
+## Shared focuser target fix (3.0.0.16, 2026-10-10)
+
+`../focuser_lunatico/shared/lunatico_shared.c` gained LU-20 of `../focuser_lunatico/REFACTOR.md`:
+an aborted, failed or stopped-short focuser move publishes the reached position as the value only
+and keeps the request as the target. This driver compiles the same file for its Exp and Third
+focusers, so its version is raised from 15 to 16. The rotator code is unchanged. The focuser
+behaviour is covered by `test_focuser_lunatico_simulator`; this driver's suite was rerun unchanged.
+
+- `python3 tools/run_driver_test.py rotator_lunatico --no-record`: 54/54 passed (3.0.0.16, macOS
+  arm64, development run). Two earlier runs under heavy machine load each failed `exp_focuser`
+  once (the `!step goto 1 1200 0#` of its first move did not arrive within 10 s); the case passed
+  alone 11 times and in full direct runs of both binaries.

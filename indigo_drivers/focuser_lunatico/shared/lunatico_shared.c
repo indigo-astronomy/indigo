@@ -419,13 +419,12 @@ static void lunatico_focuser_motion_state(indigo_device *device, indigo_property
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
-// Ends a move. One that failed or was interrupted ends at the position the focuser has, never at the requested one.
+// Ends a move. However it ends, the value is the position the focuser has and
+// the target keeps the last request; only motion this driver did not request
+// moves the target, and the finalizer does that before it ends here.
 static void lunatico_focuser_end(indigo_device *device, indigo_property_state state) {
 	PORT_STATE.focuser_external = false;
 	FOCUSER_POSITION_ITEM->number.value = PORT_STATE.focuser_position;
-	if (state != INDIGO_OK_STATE) {
-		FOCUSER_POSITION_ITEM->number.target = PORT_STATE.focuser_target = PORT_STATE.focuser_position;
-	}
 	lunatico_focuser_motion_state(device, state);
 }
 
@@ -555,7 +554,8 @@ static bool lunatico_focuser_position(indigo_device *device) {
 	if (state == INDIGO_OK_STATE) {
 		PORT_STATE.focuser_target = PORT_STATE.focuser_position;
 	}
-	// A refused sync keeps the position the controller really has.
+	// A refused sync publishes the position the controller really has as the
+	// value; the target keeps the request.
 	lunatico_focuser_end(device, state);
 	return false;
 }
@@ -594,7 +594,8 @@ static void lunatico_focuser_abort(indigo_device *device) {
 			} else {
 				PORT_STATE.focuser_position = position;
 			}
-			// The aborted move ends ALERT at the position the focuser stopped at.
+			// The aborted move ends ALERT at the position the focuser stopped at,
+			// with the target still the requested one.
 			lunatico_focuser_end(device, INDIGO_ALERT_STATE);
 		}
 	}

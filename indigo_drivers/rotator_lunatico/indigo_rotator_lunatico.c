@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_rotator_lunatico"
 #define DRIVER_LABEL         "Lunatico Astronomia Rotator"
 #define ROTATOR_MAIN_DEVICE_NAME "Rotator Lunatico (Main)"

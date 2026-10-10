@@ -150,8 +150,9 @@ static double position_target(void) {
 	return item == NULL ? -1 : item->number.target;
 }
 
-// Both motion properties ended in state at the position the focuser has: value equals target.
-static bool motion_ended(indigo_property_state state) {
+// Both motion properties ended in state with the given target: the requested one however the move ended. An
+// arrival (OK) also has the value equal to it.
+static bool motion_ended(indigo_property_state state, double target) {
 	for (int i = 0; i < 200; i++) {
 		if (cached_state(FOCUSER_POSITION_PROPERTY_NAME) == state && cached_state(FOCUSER_STEPS_PROPERTY_NAME) == state) {
 			break;
@@ -159,7 +160,7 @@ static bool motion_ended(indigo_property_state state) {
 		indigo_usleep(50000);
 	}
 	double value = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
-	if (cached_state(FOCUSER_POSITION_PROPERTY_NAME) != state || cached_state(FOCUSER_STEPS_PROPERTY_NAME) != state || value != position_target()) {
+	if (cached_state(FOCUSER_POSITION_PROPERTY_NAME) != state || cached_state(FOCUSER_STEPS_PROPERTY_NAME) != state || position_target() != target || (state == INDIGO_OK_STATE && value != target)) {
 		fprintf(stderr, "Motion ended with position %d, steps %d, value %g, target %g\n", cached_state(FOCUSER_POSITION_PROPERTY_NAME), cached_state(FOCUSER_STEPS_PROPERTY_NAME), value, position_target());
 		return false;
 	}
@@ -372,11 +373,14 @@ static void abort_stops_motion_and_allows_a_fresh_move(void) {
 	lunatico_forget_commands();
 	SERIAL_CHECK_TRUE(lunatico_set_switch(&main_focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(lunatico_sent("!step stop 0#"));
-	// The aborted move ends ALERT on both motion properties at the stopped position.
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	// The aborted move ends ALERT on both motion properties at the stopped position; the target keeps the request.
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 100000));
 	SERIAL_CHECK_TRUE(!find_cached_item(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME)->sw.value);
 	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	SERIAL_CHECK_TRUE(stopped > 0 && stopped < 100000);
+	// Nothing published after the abort rewrites the target, also two motion poll periods later.
+	indigo_usleep(1200000);
+	SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_ALERT_STATE && position_target() == 100000 && cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == stopped);
 	// Later readbacks report the same position.
 	lunatico_forget_commands();
 	SERIAL_CHECK_TRUE(sync_to(&main_focuser, (int)stopped));
@@ -443,7 +447,7 @@ static void limits_are_written_and_enforced(void) {
 	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1500, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(lunatico_wait_for_command("!step goto 0 2000 0#"));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, .1));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE, 2000));
 	// Limits that exclude the current position are refused without a command.
 	lunatico_forget_commands();
 	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 1500, INDIGO_ALERT_STATE));
@@ -636,8 +640,8 @@ static void goto_failure_is_reported(void) {
 	indigo_usleep(1500000);
 	indigo_property *position = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(position != NULL && position->state == INDIGO_ALERT_STATE);
-	// Both motion properties end ALERT at the position the focuser kept.
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	// Both motion properties end ALERT at the position the focuser kept; the target keeps the request.
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 2000));
 	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == HOME_MAIN);
 cleanup:
 	stop();
@@ -662,8 +666,8 @@ static void sync_failure_is_reported(void) {
 	SERIAL_CHECK_TRUE(lunatico_set_switch(&main_focuser, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 4200, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(lunatico_sent("!step setpos 0 4200#"));
-	// The refused sync keeps the position the controller has.
-	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == HOME_MAIN && position_target() == HOME_MAIN);
+	// The refused sync keeps the position the controller has as the value; the target keeps the request.
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == HOME_MAIN && position_target() == 4200);
 cleanup:
 	stop();
 }
@@ -682,7 +686,7 @@ static void stop_failure_is_reported(void) {
 	indigo_usleep(1200000);
 	SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(lunatico_set_switch(&main_focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 100000));
 cleanup:
 	stop();
 }
@@ -693,9 +697,9 @@ static void read_failure_is_reported(void) {
 	SERIAL_CHECK_TRUE(select_goto_mode(&main_focuser));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, main_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000));
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	// A persistent failure stops the motor and ends both motion properties ALERT.
+	// A persistent failure stops the motor and ends both motion properties ALERT; the target keeps the request.
 	SERIAL_CHECK_TRUE(lunatico_wait_for_command("!step stop 0#"));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 2000));
 cleanup:
 	stop();
 }
@@ -707,7 +711,7 @@ static void single_read_failure_is_retried(void) {
 	SERIAL_CHECK_TRUE(select_goto_mode(&main_focuser));
 	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1900, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1900, .1));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE, 1900));
 	SERIAL_CHECK_TRUE(lunatico_not_sent("!step stop 0#"));
 cleanup:
 	stop();
@@ -723,7 +727,8 @@ static void stalled_move_is_stopped(void) {
 		indigo_usleep(50000);
 	}
 	SERIAL_CHECK_TRUE(lunatico_sent("!step stop 0#"));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	// The stalled move ends at the position the focuser has; the target keeps the request.
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 2500));
 	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == HOME_MAIN);
 cleanup:
 	stop();
@@ -737,8 +742,8 @@ static void motion_running_at_connect(void) {
 	SERIAL_CHECK_TRUE(start_main());
 	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2500, .1));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(position_target() == 2500);
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE, 2500));
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 2500);
 	SERIAL_CHECK_TRUE(lunatico_not_sent("!step goto 0 2500 0#"));
 cleanup:
 	stop();
@@ -776,7 +781,7 @@ static void settings_during_motion_are_refused(void) {
 	SERIAL_CHECK_TRUE(lunatico_not_sent("!step wiremode 0 1#") && lunatico_not_sent("!step setswlimits 0 0 90000#"));
 	SERIAL_CHECK_TRUE(cached_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(lunatico_set_switch(&main_focuser, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 100000));
 	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 50, INDIGO_OK_STATE));
 cleanup:
 	stop();

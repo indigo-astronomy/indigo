@@ -889,11 +889,11 @@ Third focusers get the same fixes (its version is raised separately). No hardwar
 
 | # | Defect | Fix | Regression test (fails against 3.0.0.15) |
 |---|---|---|---|
-| LU-10 | An aborted move ended OK, and an abort while idle sent `!step stop`. | The abort stops only a running or queued move, reads the stopped position and ends both motion properties ALERT with value and target equal to it; idle ends OK without a command. | `abort_motion`, `abort_while_idle` |
+| LU-10 | An aborted move ended OK, and an abort while idle sent `!step stop`. | The abort stops only a running or queued move, reads the stopped position and ends both motion properties ALERT with the value equal to it and the target kept at the request (LU-20); idle ends OK without a command. | `abort_motion`, `abort_while_idle` |
 | LU-11 | A refused stop still ended the move OK and cancelled its poll while the motor ran on. | `FOCUSER_ABORT_MOTION` ends ALERT, the move stays BUSY under the poll and a retry stops it. | `stop_failure` |
 | LU-12 | Disconnecting during a move left the motor running. | Releasing a focuser port stops a running move first. | `disconnect_during_motion` |
-| LU-13 | A single lost readback during a move ended it ALERT while the motor kept running; a persistent failure did not stop the motor; a motor reporting motion without advancing stayed BUSY; a move that stopped short of its target ended OK. | One or two lost readbacks are retried, the third stops the motor; ten polls without progress stop the motor; a move stopped elsewhere than its target ends ALERT. All failures end both properties ALERT with value equal to target. | `read_failure`, `single_read_failure`, `stalled_move` |
-| LU-14 | A refused GOTO or SYNC left the requested target published. | Value and target are the position the controller has. | `goto_failure`, `sync_failure` |
+| LU-13 | A single lost readback during a move ended it ALERT while the motor kept running; a persistent failure did not stop the motor; a motor reporting motion without advancing stayed BUSY; a move that stopped short of its target ended OK. | One or two lost readbacks are retried, the third stops the motor; ten polls without progress stop the motor; a move stopped elsewhere than its target ends ALERT. All failures end both properties ALERT with the value equal to the position the focuser has and the target kept at the request (LU-20). | `read_failure`, `single_read_failure`, `stalled_move` |
+| LU-14 | A refused GOTO or SYNC published the requested position as the value. | The value is the position the controller has; the target keeps the request (LU-20). | `goto_failure`, `sync_failure` |
 | LU-15 | A SYNC to the position already published was answered OK without a command (the no-op shortcut of GOTO also applied to SYNC). | Only GOTO skips a move to the current position; a SYNC always reaches the controller. | `sync_to_the_published_position` |
 | LU-16 | Motion already running at connect was followed, but its target stayed at the position read at connect. | The target follows the measured position until the motion stops. | `motion_running_at_connect` |
 | LU-17 | `FOCUSER_LIMITS` did not change the range of `FOCUSER_POSITION` and `FOCUSER_STEPS`, limits excluding the current position were sent, and a refused change kept the requested values. | Limits set the ranges (the properties are defined again), a relative move past a limit is sent as a move to it; limits that are inverted, exclude the position or arrive during a move end ALERT without a command and keep the limits the controller holds; a write the controller refuses restores them too. | `limits`, `inverted_limits`, `settings_during_motion` |
@@ -938,6 +938,20 @@ The pre-fix results come from a separate binary built against a copy of the 3.0.
 `python3 tools/run_driver_test.py focuser_lunatico`: 56/56 passed (3.0.0.16, macOS arm64).
 `test_rotator_lunatico_simulator` still passes against the shared code (27/27, development run;
 the recorded run belongs to the rotator_lunatico commit).
+
+## Kept target (3.0.0.17, 2026-10-10)
+
+The focuser rule of `indigo_test/DRIVER_TESTING_RULES.md` ("Stop and failure") now keeps the
+request as the target however a move ends. The change is in `shared/lunatico_shared.c`, so
+`indigo_rotator_lunatico` (its Exp and Third focusers) gets it too, version 16 there; its rotator
+code is unchanged.
+
+| # | Defect | Fix | Regression test |
+|---|---|---|---|
+| LU-20 | An aborted, stalled, stopped-short or read-failed move, and a refused GOTO or SYNC, rewrote `FOCUSER_POSITION` target to the position the focuser had, so the request was lost. | `lunatico_focuser_end()` publishes the position as the value only; the target changes at connect, with a new move, a successful SYNC and motion this driver did not request (followed by the finalizer). | `abort_motion` (also two motion poll periods after the abort), `goto_failure`, `sync_failure`, `stop_failure`, `read_failure`, `stalled_move`, `settings_during_motion` |
+
+`python3 tools/run_driver_test.py focuser_lunatico --no-record`: 56/56 passed (3.0.0.17, macOS arm64,
+development run). No hardware test was run.
 
 ## Final test summary (2026-10-05)
 
