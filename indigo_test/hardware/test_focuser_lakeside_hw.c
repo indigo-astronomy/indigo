@@ -132,6 +132,10 @@ static void lakeside_aborts_a_move(void) {
 	ASSERT_TRUE(stopped > initial_position && stopped < initial_position + 3000);
 	indigo_usleep(1500000);
 	ASSERT_EQ_INT((int)stopped, (int)focuser_hw_position(focuser));
+	// The target keeps the request through the idle polls after the abort.
+	double target = NAN;
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &target));
+	ASSERT_EQ_INT((int)initial_position + 3000, (int)target);
 	ASSERT_TRUE(return_to(initial_position));
 }
 

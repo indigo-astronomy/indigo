@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_lakeside"
 #define DRIVER_LABEL         "LakesideAstro Focuser"
 #define FOCUSER_DEVICE_NAME  "LakesideAstro Focuser"
@@ -164,11 +164,9 @@ static bool lakeside_position(indigo_device *device) {
 	if (!lakeside_value(device, 'P', 0, 65535, &position, "?P#")) {
 		return false;
 	}
+	// Only the value: the target keeps the last request, uncommanded motion sets it in the poll.
 	PRIVATE_DATA->position = position;
 	FOCUSER_POSITION_ITEM->number.value = position;
-	if (!PRIVATE_DATA->active && !PRIVATE_DATA->uncertain) {
-		FOCUSER_POSITION_ITEM->number.target = position;
-	}
 	return true;
 }
 
@@ -270,9 +268,8 @@ static void motion_finalizer(indigo_device *device) {
 static void abort_finalizer(indigo_device *device) {
 	if (IS_CONNECTED && lakeside_position(device) && PRIVATE_DATA->position == PRIVATE_DATA->abort_position) {
 		PRIVATE_DATA->uncertain = false;
-		FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		// An aborted move ends ALERT at the stopped position.
+		// An aborted move ends ALERT with the stopped position as value; the target keeps the request.
 		lakeside_motion_state(device, PRIVATE_DATA->abort_moving ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 	} else {
 		PRIVATE_DATA->uncertain = true;
@@ -305,6 +302,7 @@ static void focuser_timer_callback(indigo_device *device) {
 			if (PRIVATE_DATA->position != previous && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
 				// Motion the driver did not command (handset, compensation, running at connect): BUSY until it settles.
 				PRIVATE_DATA->external = true;
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			} else if (PRIVATE_DATA->position == previous && PRIVATE_DATA->external) {
 				PRIVATE_DATA->external = false;

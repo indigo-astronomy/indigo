@@ -94,7 +94,7 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 
 | Defect | Impact | Fix | Regression test |
 | --- | --- | --- | --- |
-| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | `abort_finalizer` ends both ALERT at the confirmed stopped position (value = target) when a move, uncommanded motion or queued move was aborted. | `abort_motion`, `abort_queued` |
+| Aborted move ended OK | `FOCUSER_POSITION`/`FOCUSER_STEPS` reported a completed move after an abort. | `abort_finalizer` ends both ALERT with value = the confirmed stopped position, the target keeping the request, when a move, uncommanded motion or queued move was aborted. | `abort_motion`, `abort_queued` |
 | Abort while idle sent `CH` | A stop command was sent with nothing moving. | Abort with no active, uncommanded, uncertain or BUSY move ends OK without a command. | `abort_motion` (CH count stays 1) |
 | Idle poll turned a failed move OK | Any good idle poll set `FOCUSER_POSITION` OK, so a stalled, malformed or aborted move ended OK one second later while `FOCUSER_STEPS` stayed ALERT. | A good poll restores OK only after a failed poll. | `stalled_motion`, `motion_reply_failure`, `completion_failure`, `abort_motion` |
 | Relative move past an end sent the full step count | `CO100` at 65530 relied on the controller to clip; the manual documents 16-bit positions and calibrated endpoints, not overshoot handling. | The command carries the clipped distance (`CO5`, `CI5`). | `relative_motion` |
@@ -114,7 +114,7 @@ Each was reproduced by the new or extended test against a pre-fix copy of the ge
 - Position/temperature poll failure keeps the last value, next good poll restores OK, a move works: `poll_*`.
 - Uncommanded motion BUSY then OK, no command, refused relative move meanwhile, relative move from the settled position: `external_state`, `moving_at_connect`.
 - Inward/outward, zero step, both ends sent as moves to the end: `relative_motion`. Overlap/refusal: `overlap`, `rejected_change`.
-- Abort mid-move: ALERT on both properties, value = target = stopped, `CH` once, three equal readbacks, idle abort and OFF request without `CH`, reconnect OK, fresh move: `abort_motion`. Abort overtaking a queued move: `abort_queued`. Ignored stop ends ABORT ALERT, move not completed, retry works: `stop_ignored`.
+- Abort mid-move: ALERT on both properties, value = stopped, target = the request (also after idle polls), `CH` once, three equal readbacks, idle abort and OFF request without `CH`, reconnect OK, fresh move: `abort_motion`. Abort overtaking a queued move: `abort_queued`. Ignored stop ends ABORT ALERT, move not completed, retry works: `stop_ignored`.
 - Stall, malformed progress/completion: ALERT, `CH`, not turned OK by idle polls: `stalled_motion`, `motion_reply_failure`, `completion_failure`.
 - Disconnect during motion sends `CH` once, nothing follows, reconnect OK at the stopped position, fresh move: `disconnect_motion`.
 - Transport loss at stop, at move start and idle: later requests ALERT, nothing BUSY: `stop_failure`, `start_transport_loss`, `idle_transport_loss`.
@@ -148,6 +148,10 @@ numbers with `atol` and skipped anything unexpected during a move.
 - LS-03: any line other than `Pnnnnn#` or `DONE#` during a move stopped the focuser and ended the move ALERT. INDI
   decodes further reports during a move (the Kelvin temperature `Knnnnn#`) and the 2.0 driver skipped them; such
   lines are skipped now, and the existing 4 s bound still ends a move that never reports `DONE`.
+- LS-04 (3.0.0.12): an aborted, stalled or short move overwrote the requested `FOCUSER_POSITION` target with the
+  reached position (`abort_finalizer`, and every position read while no move ran, also the 1 s idle poll). The
+  reads set the value only; the target follows the position only for uncommanded motion. Tests: `abort_motion`,
+  `abort_queued`, `stalled_motion`, `completion_failure`.
 
 Tests: `padded_replies` (simulator profile `padded`: padded numbers, `TN/A#`, `K` reports during the move) and
 `init_temperature_malformed` (connects with the temperature ALERT) fail on 3.0.0.10 and pass on 3.0.0.11;

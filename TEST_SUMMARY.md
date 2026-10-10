@@ -246,8 +246,8 @@
 | focuser_ioptron | 2026-09-27 00:32 | 3.0.0.10 | linux x64 | simulator | 42 / 42 | ✅ OK |
 |  | 2026-10-05 15:08 | 3.0.0.11 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 | focuser_lacerta | 2026-10-10 02:23 | 3.0.0.10 | mac arm64 | simulator | 50 / 50 | ✅ OK |
-| focuser_lakeside | 2026-10-09 20:33 | 3.0.0.11 | mac arm64 | simulator | 42 / 42 | ✅ OK |
-|  | 2026-10-09 20:37 | 3.0.0.11 | linux arm64 | LakesideAstro Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
+| focuser_lakeside | 2026-10-09 20:37 | 3.0.0.11 | linux arm64 | LakesideAstro Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
+|  | 2026-10-10 03:23 | 3.0.0.12 | mac arm64 | simulator | 42 / 42 | ✅ OK |
 | focuser_lunatico | 2026-10-05 16:12 | 3.0.0.16 | mac arm64 | simulator | 56 / 56 | ✅ OK |
 | focuser_mjkzz | 2026-10-08 20:19 | 3.0.0.9 | linux arm64 | MJKZZ Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 |  | 2026-10-10 02:30 | 3.0.0.10 | mac arm64 | simulator | 46 / 46 | ✅ OK |
