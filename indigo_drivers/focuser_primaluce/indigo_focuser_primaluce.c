@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -2090,16 +2090,21 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_POSITION_PROPERTY, "Another motion operation is pending");
 		//+ focuser.FOCUSER_POSITION.on_change_request
-		// The accepted move is pending until its handler runs.
+		// The accepted move is pending until its handler runs. Both motion properties are busy from now on, so a
+		// request refused meanwhile is answered with a BUSY message and does not end FOCUSER_STEPS ALERT.
 		PRIVATE_DATA->pending = true;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		//- focuser.FOCUSER_POSITION.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE, FOCUSER_STEPS_PROPERTY, "Another motion operation is pending");
 		//+ focuser.FOCUSER_STEPS.on_change_request
-		// The accepted move is pending until its handler runs.
+		// The accepted move is pending until its handler runs; FOCUSER_POSITION is busy with it from now on.
 		PRIVATE_DATA->pending = true;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		//- focuser.FOCUSER_STEPS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;

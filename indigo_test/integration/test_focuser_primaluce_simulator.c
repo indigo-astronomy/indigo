@@ -1230,6 +1230,36 @@ cleanup:
 	driver_stop();
 }
 
+// Both motion properties are busy from the moment a move is accepted, so a request refused while the move is still
+// queued behind a poll in flight is answered with a BUSY message only and neither property publishes ALERT.
+static void refusal_while_move_queued(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(18075));
+	unsigned int position_alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	unsigned int steps_alerts = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(fault("\"ABS_POS\"", "slow"));
+	int polls = requests("\"ABS_POS\"");
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ABS_POS\"", polls + 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, PRIMALUCE_FOCUSER_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300));
+	SERIAL_CHECK_TRUE(property_state(FOCUSER_STEPS_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, PRIMALUCE_FOCUSER_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE, 18300));
+	SERIAL_CHECK_EQ_INT(steps_alerts, property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// and the other way round: an absolute request refused while a relative move is queued
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("\"ABS_POS\"", "slow"));
+	polls = requests("\"ABS_POS\"");
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ABS_POS\"", polls + 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, PRIMALUCE_FOCUSER_NAME, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, PRIMALUCE_FOCUSER_NAME, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18100));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_OK_STATE, 18400));
+	SERIAL_CHECK_EQ_INT(position_alerts, property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(0, requests("\"STEP\":18100"));
+cleanup:
+	driver_stop();
+}
+
 // Backlash and calibration requested during a move are refused without a command.
 static void settings_during_motion(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -1486,6 +1516,7 @@ int main(void) {
 		{ "abort_overtakes_queued_move", abort_overtakes_queued_move, "normal" },
 		{ "request_versus_poll", request_versus_poll, "normal" },
 		{ "refusal_keeps_queued_move", refusal_keeps_queued_move, "normal" },
+		{ "refusal_while_move_queued", refusal_while_move_queued, "normal" },
 		{ "settings_during_motion", settings_during_motion, "normal" },
 		{ "transport_loss_during_motion", transport_loss_during_motion, "normal" },
 		{ "controller_restart_refused_with_sibling", controller_restart_refused_with_sibling, "normal" },
