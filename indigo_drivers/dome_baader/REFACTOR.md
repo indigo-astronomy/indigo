@@ -560,3 +560,13 @@ flap (the flap refused while the shutter is closed), park and a slew refused whi
 INIT/SHUTDOWN, restoring the state it found. Recorded run against `dome_baader_simulator.ino` on an ESP32-S3: 9/9.
 No physical Baader dome is available.
 
+## Cancelled queued slew keeps its target (2026-10-11, 3.0.0.17)
+
+An urgent `DOME_ABORT_MOTION` that cancelled a `DOME_HORIZONTAL_COORDINATES` or `DOME_STEPS` request still waiting in
+the queue settled the property with value = target = the current azimuth, so the request the client had made was lost
+(an abort of a running rotation already kept it, as do the other device classes). The abort now publishes the current
+azimuth as the value only; the target keeps the request that was never sent. `urgent_abort_cancels_queued_goto`
+asserts target 180 after the abort and two polls; with the previous line restored the case fails ("expected 180,
+got 90").
+
+Simulated tests: 53 run, 53 passed. Hardware tests: 0 run, 0 passed.

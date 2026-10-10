@@ -22,7 +22,7 @@ driver baader {
 	label = "Baader Classic Dome";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 16;
+	version = 17;
 	serial;
 	include {
 		#include <math.h>
@@ -637,7 +637,8 @@ driver baader {
 				indigo_cancel_pending_handler(device, dome_shutter_handler);
 				indigo_cancel_pending_handler(device, dome_flap_handler);
 				if (!PRIVATE_DATA->rotation_active && (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
-					DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->current_position;
+					// the cancelled request was never sent: the dome stays where it is and the target keeps the request
+					DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_OK_STATE, NULL);
 					INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_OK_STATE, NULL);
 				}
