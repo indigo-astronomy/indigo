@@ -40,8 +40,11 @@
    move of an absolute focuser at a Position other than the target, the move is watched on while Position settles, until it is the
    target, IsMoving is true again (the move goes on) or FOCUSER_MOVE_SETTLE_TIME seconds have passed; the move then ends as before,
    OK with the Position that was read last (HW-5). Motion the driver did not start (a hand controller, temperature compensation, another client) shows as FOCUSER_POSITION
-   in the BUSY state. While IsMoving or Position can not be read (the device answers with an error) FOCUSER_POSITION is in ALERT
-   with the last position; it is OK again with the first position that is read.
+   in the BUSY state and then OK, with the target following the measured Position; so does a Position that changed while the focuser
+   was idle. However a move of the driver ends (arrival, Halt, failure, timeout, a request that did not start), only the value is the
+   Position read last and the target keeps the request; until the device is seen idle once more, its motion is the end of that move
+   and not motion of the device, so the target is not moved by it either. While IsMoving or Position can not be read (the device
+   answers with an error) FOCUSER_POSITION is in ALERT with the last position; it is OK again with the first position that is read.
  - Halt: FOCUSER_ABORT_MOTION. A focuser without Halt answers NotImplemented to the first request; the property is removed then.
    A move stopped by Halt ends in ALERT at once. A focuser may report IsMoving for a while after Halt (OmniSim does for its settle
    time); while it does so at the position where it stopped, for at most FOCUSER_HALT_SETTLE_TIME seconds, that is the stopped move
@@ -111,6 +114,7 @@ typedef struct {
 	bool automatic;							///< TempComp as last reported by the device; FOCUSER_MODE and the defined properties follow it
 	bool moving;								///< IsMoving at the time of the connection
 	bool external;							///< FOCUSER_POSITION is BUSY because the device moves without a request of this driver
+	bool own;										///< a move this driver started may still run: motion and a change of Position are its end until the device is seen idle
 	bool halted;								///< Halt stopped a move and the device may still settle at halt_position (OMNI-1)
 	int halt_position;					///< Position read right after Halt
 	double halt_time;						///< time of the Halt
@@ -146,8 +150,8 @@ static const char *focuser_motion_refusal(indigo_device *device) {
 	return FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE ? "Another motion operation is pending" : NULL;
 }
 
-// End of a move, or of a request that did not start one: the motion properties get the state of the result. A relative focuser has
-// FOCUSER_STEPS only; its hidden FOCUSER_POSITION never leaves the OK state.
+// End of a move, or of a request that did not start one: the motion properties get the state of the result and the target keeps the
+// request, also when the move failed. A relative focuser has FOCUSER_STEPS only; its hidden FOCUSER_POSITION never leaves the OK state.
 static void focuser_finish(indigo_device *device, alpaca_result result, const char *action, const char *reason) {
 	focuser_data *data = FOCUSER_DATA;
 	indigo_property_state state = system_alpaca_property_state(result);
@@ -156,9 +160,6 @@ static void focuser_finish(indigo_device *device, alpaca_result result, const ch
 	FOCUSER_STEPS_PROPERTY->state = state;
 	if (data->absolute) {
 		FOCUSER_POSITION_PROPERTY->state = state;
-		if (result != ALPACA_OK) {
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
-		}
 	}
 	system_alpaca_unlock(device);
 	// FOCUSER_POSITION is published last: a client that waits for it finds FOCUSER_STEPS settled
@@ -223,6 +224,7 @@ static void focuser_start(indigo_device *device, int position) {
 	}
 	if (result == ALPACA_OK) {
 		data->external = data->halted = data->settling = false;
+		data->own = true;
 		data->target = position;
 		system_alpaca_lock(device);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -239,8 +241,8 @@ static void focuser_start(indigo_device *device, int position) {
 }
 
 // Make the defined properties follow the compensation mode: the motion properties exist in the manual mode only and
-// FOCUSER_POSITION is read-only in the automatic one. A request that did not start yet is cancelled by the automatic mode.
-// The switch of FOCUSER_MODE is set by the caller.
+// FOCUSER_POSITION is read-only in the automatic one. A request that did not start yet is cancelled by the automatic mode; the
+// target keeps it. The switch of FOCUSER_MODE is set by the caller.
 static void focuser_apply_mode(indigo_device *device, bool automatic) {
 	focuser_data *data = FOCUSER_DATA;
 	// a bus thread enumerates the properties by it
@@ -255,7 +257,6 @@ static void focuser_apply_mode(indigo_device *device, bool automatic) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		if (!data->external) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		}
 		system_alpaca_unlock(device);
 		indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
@@ -273,14 +274,13 @@ static void focuser_apply_mode(indigo_device *device, bool automatic) {
 }
 
 // A request for a move that was accepted just before the device went to the automatic mode is given up: no move is sent while
-// the device compensates.
+// the device compensates. The target keeps the request.
 static void focuser_give_up(indigo_device *device) {
 	focuser_data *data = FOCUSER_DATA;
 	system_alpaca_lock(device);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	if (!data->external) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 	}
 	system_alpaca_unlock(device);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -290,7 +290,7 @@ static void focuser_give_up(indigo_device *device) {
 
 static bool focuser_on_probe(indigo_device *device) {
 	focuser_data *data = FOCUSER_DATA;
-	data->absolute = data->has_temperature = data->temperature_valid = data->has_temp_comp = data->has_step_size = data->automatic = data->moving = data->external = data->unreadable = data->halted = data->settling = false;
+	data->absolute = data->has_temperature = data->temperature_valid = data->has_temp_comp = data->has_step_size = data->automatic = data->moving = data->external = data->own = data->unreadable = data->halted = data->settling = false;
 	data->max_step = data->max_increment = data->position = 0;
 	data->temperature = data->step_size = 0;
 	if (system_alpaca_probe_bool(device, "absolute", &data->absolute) != ALPACA_OK) {
@@ -395,7 +395,7 @@ static bool focuser_on_connect(indigo_device *device) {
 static void focuser_on_disconnect(indigo_device *device) {
 	focuser_data *data = FOCUSER_DATA;
 	system_alpaca_operation_end(device, &data->move);
-	data->external = data->unreadable = data->halted = data->settling = false;
+	data->external = data->own = data->unreadable = data->halted = data->settling = false;
 	// The properties are still defined, so a request may be accepted while they are reset; its handler finds the session closed.
 	// A change of the mode that was requested and not carried out must not decide what the base class deletes.
 	system_alpaca_lock(device);
@@ -469,10 +469,15 @@ static void focuser_on_poll(indigo_device *device) {
 				data->external = false;
 			}
 			data->unreadable = false;
-			FOCUSER_POSITION_ITEM->number.value = position;
-			if (!moving) {
+			// motion of the device itself, or a Position that changed while the focuser was idle, moves the target with the position;
+			// the end of a move of the driver (motion that goes on after it ended, a Position that settles) moves the value only
+			if (!data->own && (moving ? data->external : position != FOCUSER_POSITION_ITEM->number.value)) {
 				FOCUSER_POSITION_ITEM->number.target = position;
 			}
+			if (!moving) {
+				data->own = false;
+			}
+			FOCUSER_POSITION_ITEM->number.value = position;
 			publish_position = true;
 		} else if (data->absolute && !alpaca_is_transport_error(position_result) && FOCUSER_POSITION_PROPERTY->state == INDIGO_OK_STATE) {
 			// the device answers and does not tell where it is: the position that is shown is not the one of the device any more
@@ -575,12 +580,16 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, focuser_steps_handler);
 	system_alpaca_lock(device);
 	if (!data->move.active && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) && (result == ALPACA_OK || !data->external)) {
-		data->external = false;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		if (data->absolute) {
-			FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			// the stopped move of the driver, or a request that never started, keeps its target; the target of a motion of the device
+			// itself follows the position, up to where it stopped
+			if (data->external && !data->own) {
+				FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
+			}
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		data->external = false;
 		settle = true;
 	}
 	system_alpaca_unlock(device);
