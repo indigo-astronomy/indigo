@@ -54,7 +54,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_askar"
 #define DRIVER_LABEL         "Askar-WAF Focuser"
 #define FOCUSER_DEVICE_NAME  "Askar-WAF"
@@ -274,11 +274,13 @@ static void motion_finalizer(indigo_device *device) {
 	PRIVATE_DATA->idle = moving || position != PRIVATE_DATA->last_position ? 0 : PRIVATE_DATA->idle + 1;
 	bool at_target = !PRIVATE_DATA->external && position == PRIVATE_DATA->target_position;
 	if (at_target || PRIVATE_DATA->idle >= ASKAR_IDLE_POLLS) {
-		/* motion the driver did not command ends where the focuser stops */
+		/* motion the driver did not command ends where the focuser stops, a commanded move keeps the requested target */
 		bool reached = PRIVATE_DATA->external || at_target;
+		if (PRIVATE_DATA->external) {
+			FOCUSER_POSITION_ITEM->number.target = position;
+		}
 		PRIVATE_DATA->moving = PRIVATE_DATA->external = false;
 		PRIVATE_DATA->target_position = position;
-		FOCUSER_POSITION_ITEM->number.target = position;
 		askar_motion_state_message(device, reached ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, reached ? NULL : "Focuser stopped short of the target");
 		return;
 	}
@@ -306,7 +308,6 @@ static void askar_ranges(indigo_device *device, int maximum) {
 static void askar_start_motion(indigo_device *device, int target) {
 	PRIVATE_DATA->pending = false;
 	if (!IS_CONNECTED || PRIVATE_DATA->uncertain) {
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value;
 		askar_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser state is unknown, abort the motion first");
 		return;
 	}
@@ -324,7 +325,7 @@ static void askar_start_motion(indigo_device *device, int target) {
 			PRIVATE_DATA->uncertain = !askar_stop(device);
 		}
 		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		askar_motion_state_message(device, INDIGO_ALERT_STATE, refused ? "Focuser refused the move (FE)" : "Move command was not acknowledged");
 		return;
 	}
@@ -460,9 +461,13 @@ static void focuser_timer_callback(indigo_device *device) {
 					askar_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser position could not be read");
 				}
 			} else {
+				/* a move that ended ALERT may still settle, so only a change seen while OK (or after a failed read) is motion the driver did not command */
+				if (moving || (position != PRIVATE_DATA->current_position && (FOCUSER_POSITION_PROPERTY->state == INDIGO_OK_STATE || PRIVATE_DATA->poll_failed))) {
+					FOCUSER_POSITION_ITEM->number.target = position;
+				}
 				PRIVATE_DATA->current_position = position;
 				PRIVATE_DATA->target_position = position;
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+				FOCUSER_POSITION_ITEM->number.value = position;
 				if (moving) {
 					/* motion the driver did not command, e.g. from the Wi-Fi application */
 					PRIVATE_DATA->moving = PRIVATE_DATA->external = true;
@@ -610,7 +615,7 @@ static void focuser_limits_handler(indigo_device *device) {
 		}
 		if (askar_get_position(device, &position)) {
 			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_POSITION_ITEM->number.value = position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
 	}
@@ -635,13 +640,13 @@ static void focuser_position_handler(indigo_device *device) {
 			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
 			askar_motion_state(device, INDIGO_OK_STATE);
 		} else {
-			/* the real position is kept, the next sync is accepted */
+			/* the real position is kept as the value, the target keeps the requested sync value and the next sync is accepted */
 			const char *message = askar_refused(device) ? "Focuser refused the sync (FE)" : "Sync was not acknowledged";
 			int position = 0;
 			if (IS_CONNECTED && askar_get_position(device, &position)) {
 				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
 			}
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			askar_motion_state_message(device, INDIGO_ALERT_STATE, message);
 		}
 	}
@@ -675,9 +680,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				PRIVATE_DATA->current_position = position;
 			}
 			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-			/* an aborted move ends at the stopped position, never at the requested target */
+			/* an aborted move ends at the stopped position and keeps the requested target */
 			if (in_motion) {
 				askar_motion_state_message(device, INDIGO_ALERT_STATE, "Focuser motion aborted");
 			}
@@ -731,7 +736,7 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 		int position = 0;
 		if (askar_get_position(device, &position)) {
 			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_POSITION_ITEM->number.value = position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
 	} else {
@@ -767,7 +772,7 @@ static void focuser_x_focuser_motor_mode_handler(indigo_device *device) {
 		int position = 0;
 		if (askar_get_position(device, &position)) {
 			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+			FOCUSER_POSITION_ITEM->number.value = position;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
 	} else {
