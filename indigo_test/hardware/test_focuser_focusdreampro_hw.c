@@ -289,7 +289,8 @@ static void focusdreampro_rejects_an_overlapping_move(void) {
 }
 
 // Abort has to stop the motor where it is, end both motion properties ALERT (an aborted move is not
-// an arrival), publish the real stop point as value and target and leave the driver able to take a fresh move.
+// an arrival), publish the real stop point as the value with the requested target kept and leave the driver able
+// to take a fresh move.
 static void focusdreampro_aborts_a_move(void) {
 	double target = initial_position + travel;
 	ASSERT_TRUE(set_speed(SLOWEST_SPEED));
@@ -305,10 +306,15 @@ static void focusdreampro_aborts_a_move(void) {
 	double stopped = position();
 	printf("    aborted at %g, between %g and %g\n", stopped, initial_position, target);
 	ASSERT_TRUE(stopped > initial_position && stopped < target);
-	// The motor really is stopped: the position must not drift over two polling periods.
+	double requested = -1;
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &requested));
+	ASSERT_NEAR(target, requested, 0);
+	// The motor really is stopped: the position must not drift over two polling periods, nor the target change.
 	indigo_usleep(2500000);
 	ASSERT_NEAR(stopped, position(), 0);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, hw_property_state(focuser, FOCUSER_POSITION_PROPERTY_NAME));
+	ASSERT_TRUE(hw_number_item_target(focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, &requested));
+	ASSERT_NEAR(target, requested, 0);
 	// A fresh move after the abort has to be accepted.
 	ASSERT_TRUE(set_speed(FASTEST_SPEED));
 	ASSERT_TRUE(move_to(initial_position));
