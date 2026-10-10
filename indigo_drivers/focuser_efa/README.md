@@ -37,6 +37,6 @@ INDIGO Astronomy open-source license.
 
 ## Testing
 
-2026-10-09 19:50 3.0.0.23 mac arm64 simulator 64/64 OK
 2026-10-09 20:01 3.0.0.23 linux arm64 PlaneWave EFA Arduino simulator (ESP32-S3) 11/11 OK
 2026-10-09 20:03 3.0.0.23 linux arm64 Celestron Focus Motor Arduino simulator (ESP32-S3) 11/11 OK
+2026-10-10 03:44 3.0.0.24 mac arm64 simulator 64/64 OK

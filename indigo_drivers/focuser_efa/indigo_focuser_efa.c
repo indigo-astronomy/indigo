@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_focuser_efa"
 #define DRIVER_LABEL         "Celestron / PlaneWave EFA Focuser"
 #define FOCUSER_DEVICE_NAME  "EFA Focuser"
@@ -405,17 +405,15 @@ static void focuser_timer_callback(indigo_device *device) {
 				PRIVATE_DATA->external = false;
 				efa_motion_state(device, INDIGO_ALERT_STATE);
 			} else {
-				if (!PRIVATE_DATA->uncertain) {
-					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
-				}
 				if (PRIVATE_DATA->poll_failed) {
 					// A good poll restores only the state a failed poll took away; a failed or aborted move stays ALERT.
 					PRIVATE_DATA->poll_failed = false;
 					efa_motion_state(device, INDIGO_OK_STATE);
 				}
 				if (PRIVATE_DATA->position != previous && !PRIVATE_DATA->uncertain && FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE) {
-					// Motion the driver did not command (hand control, running at connect): BUSY until it settles.
+					// Motion the driver did not command (hand control, running at connect): BUSY until it settles, the target follows it.
 					PRIVATE_DATA->external = true;
+					FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				} else if (PRIVATE_DATA->position == previous && PRIVATE_DATA->external) {
 					PRIVATE_DATA->external = false;
@@ -604,8 +602,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 				indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, "Calibration aborted");
 			}
 			PRIVATE_DATA->active = PRIVATE_DATA->calibrating = PRIVATE_DATA->uncertain = PRIVATE_DATA->external = false;
-			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position;
-			// An aborted move or calibration ends ALERT at the stopped position.
+			// An aborted move or calibration ends ALERT at the stopped position, the target keeps the request.
 			efa_motion_state(device, INDIGO_ALERT_STATE);
 		} else {
 			PRIVATE_DATA->uncertain = true;
