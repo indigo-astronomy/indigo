@@ -2,6 +2,486 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-8] - 11 Oct Sun 2026
+## Overall:
+- packaging:
+	- Debian packages are built on bookworm, the minimum requirement changed from bullseye to bookworm
+
+- indigo_libs:
+	- timers and handler queues reimplemented on the monotonic clock, a wall clock change no longer makes a timer fire early or late, queue priorities, drain, names and run time limits added
+	- a refused change request is answered instead of silently dropped, with the restored values in ALERT state or with a BUSY message while the property belongs to a running operation
+	- switch item targets added, a status poll can no longer replace a requested switch value before it is sent to the device
+	- an operation started by a client (e.g. manual mount motion) is aborted when that client disconnects
+	- CONFIG stays BUSY until every saved property is applied, a property the driver refuses is skipped and named in the ALERT message instead of discarding the rest of the configuration
+	- an agent's device selection stays BUSY until the selected device is connected, restored and enumerated, so agent settings are applied to a fully initialized device
+	- file based global device lock (/tmp/indigo_lock_*) removed
+	- exposure countdown runs as a background task instead of a polling thread per camera
+	- mount alignment changes are refused while the mount is slewing - #129
+	- fix reversed side of pier of mount alignment points and synced positions, MOUNT_SIDE_OF_PIER follows the ASCOM/INDI convention
+	- fix the polar alignment target about 1' off, indigo_correct_polar_error() was not the exact inverse of indigo_apply_polar_error()
+	- fix epoch conversion between the plate solver hints, the solution and MOUNT_EPOCH in goto, sync, recentering and polar alignment, and an abort before the solving started being lost
+	- fix the XML client dropping unchanged items of updates received from a remote server, and device and item names with special characters not escaped in XML, JSON and saved configurations
+	- fix NaN accepted in number change requests
+	- fix threshold of 16-bit frames corrupted by an overflow in indigo_binarize() - #776
+	- fix out-of-bounds read while stretching Bayer frames of odd width or height - #775
+	- fix stack overflow in the HTTP blob handler, buffer overflows while formatting long messages, a double free of long text values and a crash when a driver is loaded by a long path
+	- uni_io: TCP keepalive added, a peer lost without FIN/RST is detected in about 20 s; connect timeout and UDP discovery (multi-responder, loopback, active) added
+	- libusb updated to 1.0.30, fixes a crash on macOS when a device is opened while it is re-enumerated
+	- Tycho-2 stars down to magnitude 9.3 added to the star catalog
+
+- indigo_server:
+	- drivers are loaded and unloaded on a server queue, fix server deadlock when a driver was unloaded while busy; DRIVERS, LOAD and UNLOAD stay BUSY until applied
+	- fix the Astrometry Agent failing every second solve and its abort not stopping solve-field
+	- indigo_agent_astap and indigo_agent_snoop removed
+	- web GUI: guider page shows MKGP settings and offers automatic calibration step
+	- web GUI: fix drift graph labelling pixel drift as arcseconds
+
+- indigo_tools:
+	- indigo_generator: vendor SDK hot-plug drivers, C++ output and new DSL attributes (multi_device_support, max_devices, supported_architecture, reject_change, accept_while_busy, ...) added
+	- indigo_generator: abort requests of generated drivers overtake queued requests, guide pulses run at time critical priority
+	- indigo_generator: fix properties of generated drivers left BUSY after a disconnect, every later change of such a property was ignored
+	- indigo_generator: fix a lost connection of a generated multi-device driver not disconnecting all of its devices
+	- driver_editor: web based editor of the .driver generator sources added
+
+- behaviour common to many drivers:
+	- an aborted, stalled or failed move keeps the requested target, only the value shows the reached position, and no idle poll rewrites the target; this applies also to a failed SYNC and to an abort that cancels a queued request: all focusers, rotator_asi, rotator_lunatico, rotator_simulator, the Alpaca rotator and focuser, dome_baader, dome_beaver, dome_nexdome, mount_nexstar, mount_simulator
+	- an aborted or failed move ends ALERT, never OK, and a later idle poll no longer turns it OK: focusers, rotators (rotator_asi, rotator_lunatico, the ARCO rotator of focuser_primaluce) and mounts (an aborted, stalled or short GOTO, park or home)
+	- driver specific properties renamed with the X_ prefix, item names are unchanged, saved values of the old names are not loaded:
+		- ccd_asi: PIXEL_FORMAT, ASI_ADVANCED, ASI_PRESETS, ASI_CUSTOM_SUFFIX -> X_PIXEL_FORMAT, X_ADVANCED, X_PRESETS, X_CUSTOM_SUFFIX
+		- ccd_atik: ATIK_PRESETS, ATIK_WINDOW_HEATER -> X_PRESETS, X_WINDOW_HEATER
+		- ccd_playerone: PIXEL_FORMAT, POA_ADVANCED, POA_PRESETS, POA_CUSTOM_SUFFIX, POA_SENSOR_MODE -> X_PIXEL_FORMAT, X_ADVANCED, X_PRESETS, X_CUSTOM_SUFFIX, X_SENSOR_MODE
+		- ccd_qhy, ccd_qhy2: PIXEL_FORMAT, QHY_ADVANCED, READ_MODE -> X_PIXEL_FORMAT, X_ADVANCED, X_READ_MODE
+		- ccd_qsi: QSI_READOUT_SPEED, QSI_ANTI_BLOOM, QSI_PRE_EXPOSURE_FLUSH, QSI_FAN_MODE -> X_QSI_*
+		- ccd_svb: PIXEL_FORMAT, SVB_ADVANCED -> X_PIXEL_FORMAT, X_ADVANCED
+		- dome_dragonfly: X_DOME_SETTINGS, X_DOME_BUTTON_FUNCTION
+		- dome_nexdome: X_REVERSED, X_RESET_SHUTTER_COMM, X_FIND_HOME, X_CALIBRATE, X_POWER
+		- dome_nexdome3: X_FIND_HOME, X_HOME_POSITION, X_MOVE_THRESHOLD, X_BATTERY_POWER, X_ACCELERATION_TIME, X_VELOCITY, X_RANGE, X_SETTINGS, X_RAIN_SENSOR, X_XB_STATE
+		- focuser_asi: EAF_BEEP_ON_MOVE, EAF_CUSTOM_SUFFIX, EAF_BATTERY_INFO -> X_BEEP_ON_MOVE, X_CUSTOM_SUFFIX, X_BATTERY_INFO
+		- focuser_astroasis: BEEP_ON_POWER_UP_PROPERTY, BEEP_ON_MOVE_PROPERTY, BACKLASH_DIRECTION_PROPERTY, CUSTOM_SUFFIX, BLUETOOTH_PROPERTY, BLUETOOTH_NAME_PROPERTY, FACTORY_RESET_PROPERTY, BOARD_TEMPERATURE_PROPERTY -> X_ prefixed
+		- focuser_dsd: DSD_MODEL_HINT, DSD_STEP_MODE, DSD_COILS_MODE, DSD_CURRENT_CONTROL, DSD_TIMINGS -> X_DSD_*
+		- focuser_ioptron: ZERO_SYNC -> X_FOCUSER_ZERO_SYNC
+		- focuser_lunatico, rotator_lunatico: LA_STEP_MODE, LA_POWER_CONTROL, LA_MOTOR_WIRING, LA_MOTOR_TYPE, LA_TEMPERATURE_SENSOR -> X_FOCUSER_* and X_ROTATOR_*
+		- mount_ioptron: X_PROTOCOL_VERSION, X_MOUNT_MERIDIAN_HANDLING, X_MOUNT_MERIDIAN_LIMIT
+		- mount_nexstar: X_TRACKING_MODE, X_COMMAND_GUIDE_RATE
+		- mount_starbook: X_STARBOOK_TIMEZONE, X_STARBOOK_RESET
+		- mount_synscan: X_POLARSCOPE, X_MOUNT_USE_ENCODERS, X_MOUNT_AUTOHOME, X_MOUNT_AUTOHOME_SETTINGS, X_MOUNT_OPERATING_MODE
+		- mount_temma: X_TEMMA_CORRECTION_SPEED, X_TEMMA_HIGH_SPEED, X_TEMMA_ZENITH
+		- wheel_mi: MI_SFW_COMMANDS -> X_MI_SFW_COMMANDS
+		- wheel_playerone: POA_CUSTOM_SUFFIX, POA_RESET -> X_CUSTOM_SUFFIX, X_RESET
+	- focusers: move requests and motion settings (limits, reverse, compensation, backlash, speed) are refused during a move with a BUSY message, an abort while idle sends no stop, a refused stop keeps the move BUSY so it can be retried, a stall or a persistent read failure stops the motor, a disconnect during a move stops the focuser, and motion made with a hand controller or a vendor app is followed
+	- focusers: FOCUSER_LIMITS that are inverted or exclude the position are refused, the position ranges follow the device travel, a missing temperature probe shows FOCUSER_TEMPERATURE IDLE instead of a sentinel value, settings and SYNC are confirmed by readback and a connection is refused when the device does not identify itself
+	- mounts: a motion still running at disconnect is stopped, a failed position reply keeps the last coordinates with ALERT, a refused slew shows the reason given by the controller and a request is no longer overwritten by a status poll processed at the same time
+	- mounts: a guide pulse requested while another pulse on the same axis runs replaces it instead of being dropped: mount_ioptron, mount_lx200, mount_nexstar, mount_nexstaraux
+	- domes: a failed park, shutter or flap request ends ALERT instead of staying BUSY or keeping the requested switch, relative moves are no longer sent short, malformed replies are no longer taken as values or acknowledgements, and DOME_ABORT_MOTION also cancels requests waiting in the queue
+	- domes: sync added to dome_beaver, dome_nexdome and dome_nexdome3; INFO driver version no longer shown as 32.x in dome_baader, dome_nexdome and dome_nexdome3
+	- aux: a switch request is no longer reverted by a status poll running at the same time, a request the device does not confirm ends ALERT: aux_cloudwatcher, aux_mgbox, aux_ppb, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec
+	- cameras: a streaming request during an exposure, or an exposure request while streaming, is refused with ALERT instead of being ignored: ccd_asi, ccd_playerone, ccd_simulator, ccd_svb and the ToupTek family
+	- fix buffer overflows on long or unterminated device replies in aux, gps, wheel, mount and dome drivers
+
+
+## New drivers:
+- indigo_system_alpaca:
+	- ASCOM Alpaca client driver added (under development, not installed by default), servers are discovered on the network or listed in X_ALPACA_SERVERS and their cameras, mounts, focusers, rotators, domes, filter wheels, cover calibrators, switches, observing conditions and safety monitors appear as INDIGO devices
+
+- indigo_polaralign_mlastro:
+	- MLAstro RPA polar alignment platform driver added
+
+
+## Driver API 3:
+- Drivers migrated to INDIGO driver API 3:
+	- Aux: aux_asiair, aux_dragonfly, aux_joystick, aux_rpio
+	- CCD: ccd_iidc, ccd_mi, ccd_ptp, ccd_qsi, ccd_uvc
+	- Domes: dome_baader, dome_dragonfly, dome_nexdome, dome_nexdome3, dome_talon6ror
+	- Focusers: focuser_efa, focuser_lacerta, focuser_lakeside, focuser_lunatico, focuser_mjkzz, focuser_moonlite, focuser_nfocus, focuser_nstep, focuser_optec, focuser_optecfl, focuser_prodigy, focuser_robofocus, focuser_steeldrive2, focuser_wemacro
+	- GPS: gps_gpsd
+	- Guiders: guider_asi
+	- Mounts: mount_nexstar, mount_pmc8, mount_starbook, mount_synscan, mount_temma
+	- Rotators: rotator_lunatico, rotator_optec
+	- Wheels: wheel_mi
+
+## Driver generator:
+- Drivers migrated to code generator:
+	- Aux: aux_asiair, aux_cloudwatcher, aux_dragonfly, aux_mgbox, aux_rpio
+	- CCD: ccd_asi, ccd_atik, ccd_atik2, ccd_dsi, ccd_fli, ccd_iidc, ccd_mi, ccd_playerone, ccd_qhy, ccd_qhy2, ccd_qsi, ccd_simulator, ccd_ssag, ccd_svb, ccd_sx, ccd_uvc
+	- Domes: dome_baader, dome_beaver, dome_dragonfly, dome_nexdome, dome_nexdome3, dome_talon6ror
+	- Focusers: focuser_asi, focuser_askar, focuser_astroasis, focuser_dsd, focuser_efa, focuser_fli, focuser_focusdreampro, focuser_ioptron, focuser_lacerta, focuser_lakeside, focuser_lunatico, focuser_mjkzz, focuser_moonlite, focuser_mypro2, focuser_nfocus, focuser_nstep, focuser_optec, focuser_optecfl, focuser_prodigy, focuser_qhy, focuser_robofocus, focuser_steeldrive2, focuser_wemacro
+	- GPS: gps_gpsd
+	- Guiders: guider_asi
+	- Mounts: mount_ioptron, mount_lx200, mount_nexstar, mount_pmc8, mount_rainbow, mount_simulator, mount_starbook, mount_synscan, mount_temma
+	- Polar align: polaralign_simulator
+	- Rotators: rotator_asi, rotator_lunatico, rotator_optec, rotator_wa
+	- Wheels: wheel_asi, wheel_astroasis, wheel_fli, wheel_mi, wheel_playerone
+
+## Windows support:
+- Drivers migrated to Windows:
+	- Agents: agent_astrometry
+	- Aux: aux_dragonfly
+	- CCD: ccd_baccam, ccd_svb
+	- Domes: dome_baader, dome_dragonfly, dome_nexdome, dome_nexdome3, dome_talon6ror
+	- Focusers: focuser_askar, focuser_efa, focuser_lacerta, focuser_lakeside, focuser_lunatico, focuser_mjkzz, focuser_moonlite, focuser_nfocus, focuser_nstep, focuser_optec, focuser_optecfl, focuser_prodigy, focuser_robofocus, focuser_steeldrive2, focuser_wemacro
+	- Mounts: mount_mxhd, mount_pmc8, mount_starbook, mount_synscan, mount_temma
+	- Polar align: polaralign_simulator
+	- Rotators: rotator_lunatico, rotator_optec
+
+## Async queue support:
+- Drivers migrated to async queues:
+	- Aux: aux_asiair, aux_dragonfly, aux_joystick, aux_mgbox, aux_rpio
+	- CCD: ccd_altair, ccd_asi, ccd_atik, ccd_atik2, ccd_baccam, ccd_bresser, ccd_dsi, ccd_fli, ccd_iidc, ccd_mallin, ccd_mi, ccd_ogma, ccd_omegonpro, ccd_playerone, ccd_ptp, ccd_qhy, ccd_qhy2, ccd_qsi, ccd_rising, ccd_simulator, ccd_ssag, ccd_ssg, ccd_svb, ccd_svb2, ccd_sx, ccd_touptek, ccd_uvc
+	- Domes: dome_baader, dome_beaver, dome_dragonfly, dome_nexdome, dome_nexdome3, dome_talon6ror
+	- Focusers: focuser_asi, focuser_askar, focuser_astroasis, focuser_dsd, focuser_efa, focuser_fli, focuser_focusdreampro, focuser_ioptron, focuser_lacerta, focuser_lakeside, focuser_lunatico, focuser_mjkzz, focuser_moonlite, focuser_nfocus, focuser_nstep, focuser_optec, focuser_optecfl, focuser_prodigy, focuser_robofocus, focuser_steeldrive2, focuser_wemacro
+	- GPS: gps_gpsd
+	- Guiders: guider_asi
+	- Mounts: mount_ioptron, mount_mxhd, mount_nexstar, mount_pmc8, mount_rainbow, mount_simulator, mount_starbook, mount_synscan, mount_temma
+	- Polar align: polaralign_simulator
+	- Rotators: rotator_asi, rotator_lunatico, rotator_optec, rotator_wa
+	- Wheels: wheel_asi, wheel_astroasis, wheel_fli, wheel_mi, wheel_playerone
+
+## Driver changes:
+- indigo_agent_alpaca:
+	- ASCOM Alpaca conformance fixes, malformed requests are rejected with HTTP 400
+	- the guider of a mount is paired into its Telescope (CanPulseGuide, PulseGuide, IsPulseGuiding), standalone guiders and AO units are no longer exposed as telescopes
+	- fix pulse guiding sending N/S pulses to RA and E/W to DEC, and guide rates reported in % of sidereal instead of deg/s
+	- fix mounts using the equinox of date reporting J2000 coordinates, DestinationSideOfPier added
+	- fix ImageArray flipped vertically and with wrong RGB order, and sensor size, pixel size and MaxADU reported as 0
+	- focuser reports IFocuserV3, rotator reports IRotatorV3 with Sync and MoveMechanical
+	- fix switch names of outlets and a crash when a device is unplugged or a remote server disappears during a request
+
+- indigo_agent_astrometry:
+	- fix field angle reported for the solver reference pixel instead of the image centre, up to 2.6° off with wide fields near the pole
+	- fix solver failures not detected and crashes on truncated or malformed images
+	- an image uploaded while a solve is running is rejected
+
+- indigo_agent_config:
+	- fix LOAD reporting OK although nothing was restored (missing file, rejected driver or profile, absent agent, timeout), the driver selection is confirmed against the server
+	- fix SAVE reporting OK when writing failed, the previous configuration is kept, and names with path separators are refused
+	- fix configurations saved on a non-default server port not loadable and configurations with many agents losing their last records
+
+- indigo_agent_guider:
+	- Multi Kernel GP RA correction mode added (AGENT_GUIDER_CORRECTION_MODE_RA.MKGP), Predictive PEC with a second periodic stage, with its own learned model; switching between PPEC and MKGP keeps what either has learned
+	- PI, PPEC and MKGP use the measured guiding cycle duration instead of exposure + delay
+	- automatic calibration step (AGENT_GUIDER_SETTINGS.STEP0 = 0, new default) estimated from the pixel scale, calibration no longer loops halving and doubling the step and fails with a clear message when the guider does not move the mount
+	- fix failed or timed out guide pulses being ignored, calibration fails and guiding stops or continues according to CONTINUE_ON_GUIDING_ERROR
+	- fix frames with zero drift left out of RMSE statistics and PPEC learning, and RA-only dithering changing the dither magnitude
+	- fix crash on shutdown or when ADDITIONAL_INSTANCES is reduced while an instance is running
+
+- indigo_agent_imager:
+	- fix a barrier group waiting forever when a member was aborted or failed, and the leader dithering while members still exposed
+	- fix batches reported successful after failed exposures or a failed stream, and preview, batch or streaming staying BUSY when the camera disconnected
+	- fix the external shutter not aborted on abort and an aborted single frame repeated up to three times
+	- fix the default U-Curve focus estimator not used on a fresh configuration
+
+- indigo_agent_mount:
+	- fix a slew of a parked mount or dome continuing before the unpark finished, and a slew reported successful when the mount did not reach the target
+	- fix an unset site (0° N, 0° E) written to the mount and the dome over their valid site
+	- fix FITS headers with negative coordinates losing the sign between 0 and -1 degree
+	- LX200 server: fix incomplete commands executed, the ACK byte not answered, Sd +00 decoded as negative and Sr with decimal minutes; invalid coordinates are refused
+
+- indigo_agent_scripting:
+	- fix crashes with invalid blob objects and a heap overflow when the 127th script is added, and failed on-load and on-unload scripts reported OK
+	- fix on-load scripts started before the configuration was restored
+	- indigo_set_timer_at() and indigo_set_timer_at_utc() removed, use indigo_set_timer() with indigo_utc_diff() or indigo_local_time_diff()
+	- Sequencer.js: fix quotes or control characters in text arguments breaking steps and a missing agent or device leaving the sequence BUSY, calibrate_guiding() initial step argument added
+
+- indigo_ao_sx:
+	- fix guider RA pulses, the AO items were used and the 10 ms unit conversion was missing
+	- fix replies of the unit not checked, failed commands end ALERT and a silent unit fails the connection
+
+- indigo_aux_asiair, indigo_aux_rpio:
+	- fix outputs not switching on a Raspberry Pi 5
+	- X_AUX_PWM added, PWM is opt-in and disabled by default, a rejected PWM frequency or duty cycle ends ALERT
+	- aux_asiair: second PWM channel items renamed from OUTLET_2 to OUTLET_4, after the output they drive
+
+- indigo_aux_arteskyflat, indigo_aux_geoptikflat:
+	- fix any reply starting with "*" accepted for any command, a failed light change shows the last accepted value
+
+- indigo_aux_astromechanics:
+	- fix sky brightness ending ALERT under a dark sky, the driver waits up to 130 s for a measurement
+
+- indigo_aux_cloudwatcher:
+	- fix humidity of sensors without precise encoding, factory constants decoded 256 too low, and the pressure limited to 100 hPa
+	- fix cloudwatcher://host URLs opened as a serial port
+
+- indigo_aux_dsusb, indigo_aux_rts:
+	- exposures timed by a monotonic deadline, they no longer last longer than requested under load
+	- aux_rts: fix connecting firing the shutter and holding it open until the first exposure ended
+
+- indigo_aux_flatmaster:
+	- fix 0 % not being the lowest brightness on firmware 2.1 and later
+
+- indigo_aux_flipflat:
+	- fix the cover state of a Flip-Mask or Remote Dust Cover not read at connect, cover moves may take up to 30 s
+
+- indigo_aux_joystick:
+	- fix crashes after disconnect, reconnect or unplug, and memory corruption with many devices, buttons or axes on Linux
+
+- indigo_aux_mgbox:
+	- fix crash on truncated or malformed GPS and weather sentences, a lost connection is reported by ALERT
+
+- indigo_aux_ppb, indigo_aux_upb, indigo_aux_upb3:
+	- fix "PeagasusAstro" in INFO_DEVICE_MODEL
+	- outlets, heaters, USB ports and dew control follow the state the box reports, they were read at connect only
+	- aux_ppb: fix saving outlet states as power-on default, the box powered up with all outputs off
+	- aux_upb: fix a crash when connecting a UPB v1
+
+- indigo_aux_skyalert:
+	- fix readings read only once at connect, and pressure reported in Pa instead of hPa
+
+- indigo_aux_sqm:
+	- fix crash on a truncated record, and replies mixed up with interval reports
+
+- indigo_aux_wbplusv3, indigo_aux_wbprov3:
+	- fix outlet voltage and heater power rounded down by one step
+
+- indigo_aux_wcv4ec:
+	- fix a cover move ending OK at the side it was leaving, open and close detection waiting forever, and changing one angle of X_COVER_SET_OPEN_CLOSE resetting the other
+
+- indigo_ccd_asi:
+	- fix 0 °C published as sensor temperature right after connecting, and a reversing guide pulse leaving the previous relay on
+
+- indigo_ccd_atik, indigo_ccd_qhy, indigo_ccd_qhy2:
+	- fix server crash when the driver is unloaded and loaded again
+
+- indigo_ccd_atik2:
+	- fix implausible sensor temperatures published (e.g. 20760 °C)
+
+- indigo_ccd_fli:
+	- fix the cooler set point shared by all connected cameras and the readout loop busy-spinning during the exposure
+
+- indigo_ccd_iidc:
+	- fix legacy (non-Format7) modes delivering no frames after a framerate change
+
+- indigo_ccd_pentax:
+	- fix a DSLR_ISO request overwritten by the state poll
+
+- indigo_ccd_ptp:
+	- DSLR_CAPTURE_DESTINATION added for Canon cameras
+	- fix memory corruption in the macOS ICA transport
+
+- indigo_ccd_qhy:
+	- Apple Silicon support added
+	- fix QHY5 firmware not loaded on macOS
+
+- indigo_ccd_qhy2:
+	- QHY SDK updated to 26.07.21 and firmware updated (Origin678C, QHY26800A, QHY585, QHY5III662, QHY661, QHY676, QHY992 added), macOS 14 or later is required
+	- hot-plug support added
+	- fix exposure taking twice its duration on cameras timing the exposure during readout (e.g. QHY5), and streaming offered on cameras without live video
+
+- indigo_ccd_qsi:
+	- fix a failed connection leaving the camera unusable until the driver was reloaded, abort and disconnect are no longer blocked while waiting for the image
+
+- indigo_ccd_simulator:
+	- the guider camera follows a connected Mount Simulator and guides it, without one pulses shift the image
+	- SIMULATION_SETUP.J2000 renamed to EPOCH and GUIDER_MODE.FLIP to FLIPPED_STARS
+	- fix guide offsets on the west side of the pier and the polar error applied against the J2000 pole
+
+- indigo_ccd_sx:
+	- X_CCD_FLOOD_LED added for cameras with a flood LED
+
+- indigo_ccd_touptek, indigo_ccd_altair, indigo_ccd_baccam, indigo_ccd_bresser, indigo_ccd_mallin, indigo_ccd_ogma, indigo_ccd_omegonpro, indigo_ccd_rising, indigo_ccd_svb2:
+	- SDKs updated to 60.32499.20260902
+	- fix X_CCD_BIN_MODE not defined on connect, hidden controls written to the saved configuration, and the filter wheel slot not read at connect
+	- a lost frame is detected from the measured download time instead of a fixed exposure + 25 s, which stalled guiding
+
+- indigo_ccd_uvc:
+	- fix bulk transfer cameras (e.g. SVBONY SV205) delivering frames only for the first acquisition
+
+- indigo_dome_baader:
+	- fix an operation stopped by the emergency close (rain, wind, timeout, power cut) staying BUSY or ending OK
+
+- indigo_dome_beaver:
+	- fix X_CONDITIONS_SAFETY not reported when unsafe at connection, and a second request overwriting a running one
+
+- indigo_dome_dragonfly:
+	- the relay device connects through the DEVICE_PORT of the dome device
+	- fix the roof timeout expiring late and a stale UDP datagram taken as a reply
+
+- indigo_dome_nexdome3:
+	- fix a GOTO completing OK while the dome still rotated or after the controller refused it, and a rotation started outside the driver announced as a park
+
+- indigo_dome_simulator:
+	- fix DOME_SHUTTER reported OK at once while the shutter still moved
+
+- indigo_dome_skyroof:
+	- X_MOUNT_PARK_STATUS restored, the heater switch is X_HEATER_CONTROL again
+	- fix a roof move staying BUSY forever when the status is not answered
+
+- indigo_dome_talon6ror:
+	- fix open, close or abort rejected by the controller reported as success, and configuration writes sent without checksum
+
+- indigo_focuser_askar:
+	- fix moves reported finished while the motor was still turning
+	- backlash, reverse and motor mode are offered only when the firmware can read them
+
+- indigo_focuser_dmfc:
+	- fix connection, the port was opened at 9600 instead of 19200 baud
+	- fix X_FOCUSER_LED switched off when enabled
+
+- indigo_focuser_dsd:
+	- fix connect blocking for 100 s per command on a silent port, and an inward move past zero driving the focuser to the maximum position
+
+- indigo_focuser_fc3:
+	- fix firmware 2.3.0 replies without prefixes not read, and relative moves clamped at the wrong limit
+
+- indigo_focuser_fli:
+	- fix connect hanging when the focuser never reports the end of homing
+	- the device name no longer has the " #<slot>" suffix
+
+- indigo_focuser_focusdreampro:
+	- fix the controller never detected, requests were sent without the newline terminator
+	- the port is selected by the CP2102 USB ID instead of a fixed default port
+
+- indigo_focuser_ioptron:
+	- fix relative moves counted from the last target instead of the measured position
+	- model (iEAF or iAFS) and firmware revision added to INFO
+
+- indigo_focuser_lacerta:
+	- connect requires the FMC or MFOC identity, a silent port no longer blocks every command for up to 50 s
+	- FOCUSER_LIMITS maximum follows the firmware
+
+- indigo_focuser_lakeside:
+	- fix an idle abort stopping the next move, and the FOCUSER_COMPENSATION range
+
+- indigo_focuser_lunatico, indigo_rotator_lunatico:
+	- LUNATICO_MODEL and port configuration properties removed, the driver offers a fixed set of devices (the Main port plus a focuser, a rotator and a powerbox for each of the Exp and Third ports)
+	- fix rotator SYNC ignored when the angle was not 0 at connect, and the rotator angle jumping after a ROTATOR_LIMITS change
+
+- indigo_focuser_mjkzz:
+	- hold power set at connect to 12 instead of the out-of-range 16
+
+- indigo_focuser_moonlite:
+	- connect no longer resets the controller to full step and the fastest speed
+	- fix the FOCUSER_COMPENSATION range
+
+- indigo_focuser_mypro2:
+	- fix a large inward move sending the focuser to the far end of travel, and a FOCUSER_LIMITS change staying BUSY
+
+- indigo_focuser_nfocus:
+	- fix FOCUSER_SPEED lost at the next connection
+
+- indigo_focuser_nstep:
+	- fix a negative FOCUSER_COMPENSATION sent malformed, after which the next connection was refused
+
+- indigo_focuser_optec:
+	- fix FOCUSER_COMPENSATION writes sent as a malformed command
+
+- indigo_focuser_optecfl:
+	- only the first focuser of the hub has DEVICE_PORT, FOCUSER_LIMITS shows the travel of the focuser and is read-only
+
+- indigo_focuser_primaluce:
+	- connection over Wi-Fi (http://host[:port]) added and Wi-Fi station mode fixed
+	- X_PRESETS, X_PRESET_NAMES and X_PRESET_GOTO added for the nine stored positions, MIDDLE added to X_LEDS
+	- position ranges follow the calibrated travel
+	- ARCO rotator: fix GOTO, motion completion and calibration, SYNC added
+	- fix requests answered with ERROR reported as done, a move refused for a missing 12 V supply says so
+
+- indigo_focuser_prodigy:
+	- fix AUX_POWER_OUTLET outlet 2 always reported off, and the port opened twice when the focuser and the powerbox connect
+
+- indigo_focuser_robofocus:
+	- SYNC added, FOCUSER_LIMITS maximum is read from and written to the controller
+
+- indigo_focuser_steeldrive2:
+	- FOCUSER_POSITION is read-only and moves are refused while the controller runs temperature compensation
+
+- indigo_focuser_usbv3:
+	- fix replies read one command late after a speed or limit change, the move after an abort ending at once, and failed settings reported OK
+	- abort and disconnect no longer wait for the end of a move
+
+- indigo_focuser_wemacro:
+	- fix a batch with more than one shutter release per step ending early, and COUNT 0 starting an endless batch
+
+- indigo_gps_gpsd:
+	- fix a lost gpsd connection going unnoticed, a crash on disconnect and a CPU spin on split messages
+
+- indigo_gps_nmea:
+	- fix the device disconnecting on unknown or bad checksum sentences, and overflows on overlong sentences
+
+- indigo_guider_cgusbst4, indigo_guider_gpusb:
+	- fix overlapping guide pulses, a new pulse replaces the running one
+
+- indigo_mount_asi:
+	- fix park, a parked mount was reported unparked and could not be released; MOUNT_PARK_SET added
+
+- indigo_mount_ioptron:
+	- fix HC8406/HC8407 selection, autodetection and commands
+	- model detection updated for current products, alt-azimuth mounts supported
+	- :ZS/:ZQ/:ZE/:ZC guide pulses used on firmware 210101 and later
+	- fix sync below ±27.8° declination, west longitudes, King and custom tracking rates and the UTC time on protocol 2.0, 2.5 and 3.0
+
+- indigo_mount_lx200:
+	- ESP32Go and Meade LX200 Classic profiles added
+	- fix the mount site overwritten with 0, 0 at connect and GOTO completion on the generic profile
+	- Gemini: X_GEMINI_STARTUP and X_GEMINI_PARK_POSITION added, fix refused sync, park, clock transfer and Double Precision mode
+	- Astro-Physics: X_AP_SYNC_MODE, X_AP_PARK_POSITION, GTOCP4 autodetection and :GOS# polling added
+	- ZWO AM: park, MOUNT_PARK_SET, X_ZWO_MERIDIAN, X_ZWO_MERIDIAN_LIMIT and X_ZWO_MAX_SLEW_SPEED added
+	- fix park, tracking and guiding issues of NYX-101, OnStep, aGotino, OpenAstroTracker, TeenAstro, StarGO and Meade Autostar
+
+- indigo_mount_nexstar:
+	- MOUNT_PARK_SET added
+	- fix park to a negative declination, hand controller firmware 35 misidentified and MOUNT_GUIDE_RATE missing on Celestron hand controllers
+
+- indigo_mount_nexstaraux:
+	- fix crash when the connection is lost, the mount going silent after one bad reply and unpark slewing to the park position
+	- fix RA guide pulses, coordinates in the southern hemisphere and tracking stopped by the end of a pulse or a manual motion
+	- GOTO approach, model in MOUNT_INFO, controller warnings and MOUNT_SIDE_OF_PIER for German mounts added
+
+- indigo_mount_pmc8:
+	- fix manual motion and DEC guide directions, MOUNT_SLEW_RATE.GUIDE moving at 25x sidereal and wrong coordinates after a reconnect
+	- MOUNT_TYPE.AUTO added and selected by default
+
+- indigo_mount_rainbow:
+	- guider device, MOUNT_SIDE_OF_PIER, X_RAINBOW_POWER, X_RAINBOW_TEMPERATURE and X_RAINBOW_STATUS added
+	- park slews to MOUNT_PARK_POSITION, the home search moved to MOUNT_HOME
+	- fix north and south swapped and MOUNT_GUIDE_RATE set with a wrong command
+	- network default port changed from 4030 to 7100
+
+- indigo_mount_simulator:
+	- fix MOUNT_SIDE_OF_PIER east and west swapped and the MOUNT_MOTION_RA direction
+	- guide pulses move the mount at GUIDER_RATE, the pointing is shared with the CCD simulator
+
+- indigo_mount_starbook:
+	- fix the site reset to 0/0 at connect, west longitudes sent as east and a GOTO reported OK before the slew ended
+	- MOUNT_PARK_POSITION and MOUNT_PARK_SET removed
+
+- indigo_mount_synscan:
+	- "Mount SynScan (aux)" device added for the snap (camera release) port
+	- MOUNT_STATE and model names of current mounts added, X_MOUNT_OPERATING_MODE is read-only
+	- fix MOUNT_SIDE_OF_PIER and north/south of motion and guiding ignoring the side of pier
+	- fix RA and DEC guide pulses running one after the other, and failed commands reported OK
+
+- indigo_mount_temma:
+	- fix right ascension read and sent in a wrong unit, positions were off by up to 39 s
+	- fix MOUNT_SIDE_OF_PIER reporting the opposite side and park putting the mount in standby before reaching the park position
+	- MOUNT_TRACK_RATE.LUNAR and MOUNT_GUIDE_RATE removed
+
+- indigo_polaralign_simulator:
+	- fix POLARALIGN_OFFSET requests ignored, the simulated platform did not move
+
+- indigo_rotator_asi:
+	- fix ROTATOR_LIMITS maximum changes never reaching the rotator
+
+- indigo_rotator_optec:
+	- fix negative targets sent as malformed commands, an X_ROTATE step marks the position unknown until X_HOME
+
+- indigo_rotator_wa:
+	- fix a move waiting forever when the rotator does not report its end
+
+- indigo_wheel_asi, indigo_wheel_fli, indigo_wheel_atik, indigo_wheel_sx:
+	- fix failed reads or moves reported as success or polling forever
+
+- indigo_wheel_indigo:
+	- connect waits until the wheel reaches filter 1, a slot move no longer blocks other requests
+
+- indigo_wheel_optec:
+	- slot count read from the wheel ID instead of always 8, fix reconnect on the same port
+
+- indigo_wheel_qhy:
+	- fix CFW3 using the previous session's slot after connect, slots above 10 are sent as A to F
+
+- indigo_wheel_xagyl:
+	- fix model, firmware and serial number never published in INFO
+
+
 # [3.0-7] - 03 Sep Thu 2026
 ## Overall:
 - indigo_timers: several race conditions fixed

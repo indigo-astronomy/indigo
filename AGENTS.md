@@ -135,6 +135,42 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 - Avoid destructive commands such as `git clean`, `git reset`, and broad file removal unless explicitly requested.
 - For automatically refactored code, preserve the existing license header and update its copyright year or year range to include the current year.
 
+## Change Log
+
+Follow these rules when preparing a release entry in `CHANGELOG.md`.
+
+### Scope
+
+- Cover every commit since the previous release, from the commit that added the newest `# [x.y-N]` block (for example `indigo 3.0-7`) up to the release commit. Include all authors; skip merge commits.
+- Not every commit is mentioned. A feature or a fix that was split over several commits is mentioned once.
+- Describe the net change between the previous release and the new one, not the history that led to it:
+  - Several commits towards one result (attempts, follow-ups, review fixes, renumbering, merge resolutions) become one line describing the final result, e.g. "fix X", never "attempt to fix X".
+  - A change reverted, or undone by a later independent commit, before the release is not mentioned.
+  - A defect introduced and fixed after the previous release is not mentioned; only the change that reaches users is.
+  - When in doubt, check `git diff <previous release>..HEAD` and the current source to confirm that the described behaviour is in the release.
+- Leave out:
+  - tests and test infrastructure: `indigo_test/`, host-side simulators, fake SDKs and firmware images written for tests, hardware test suites, test tools and scripts;
+  - test runs and their records: README `## Testing` lines, `TEST_SUMMARY.md`, recorded-run commits;
+  - development notes: `REFACTOR.md`, `REVIEW.md`, `MIGRATION_STATUS.md`, `AGENTS.md`, `CLAUDE.md`, `DRIVER_TESTING_RULES.md` and similar;
+  - driver version bumps, regenerated output without a change of behaviour, formatting, comments, renames without a visible effect, and build or CI housekeeping that does not change what users install.
+- Simulator drivers that ship with INDIGO (`ccd_simulator`, `mount_simulator`, `dome_simulator`, ...) are user-visible and are covered like any other driver.
+
+### Format
+
+- Follow the existing file exactly. A release block starts with `# [<INDIGO_VERSION>-<INDIGO_BUILD>] - DD Mon Ddd YYYY` (for example `# [3.0-7] - 03 Sep Thu 2026`), using the values from `Makefile.inc` and the release date, and contains `## Overall:`, `## New drivers:` and `## Driver changes:`. Migrations of many drivers (code generator, Windows, async queues) get their own sections, listed per device class as in 3.0-1.
+- New drivers go into their own `## New drivers:` section, placed right after `## Overall:`, one `- indigo_<driver>:` block per driver with a line saying which devices it supports (for example "ASCOM Alpaca client driver added"). A new driver is listed only there, never again under `## Driver changes:`. A driver is new when its directory did not exist at the previous release; compare the driver directories (`indigo_drivers`, `indigo_linux_drivers`, `indigo_mac_drivers`, `indigo_optional_drivers`) of the previous release with the new one. A driver that only gained a `.driver` file, moved to the code generator or was renamed is not new.
+- Every component is one top-level `- <component>:` bullet with its lines below as tab-indented `- ` items, one blank line between components and two blank lines before the next older release block. Drivers that received the same change, or share the same source (for example the ToupTek family), share one bullet naming all of them (`- indigo_aux_ppb, indigo_aux_upb:`), so the change is mentioned once. Name drivers `indigo_<driver directory>` (for example `indigo_mount_lx200`) and framework parts as in earlier entries (`indigo_libs`, `indigo_server`, `indigo_tools`, ...).
+- Order: in `## Overall:` the framework, server and tools first, then changes applied to many drivers; in `## Driver changes:` agents first, then the other drivers alphabetically.
+- Insert the new block above the previous release. Never edit older blocks.
+
+### Lines
+
+- One line per change a user or integrator can notice, summarised; never one line per commit.
+- A bug fix starts with "fix" and names the visible symptom and, when useful, its cause ("fix guide rate limits, the V2.5/V3 protocol accepts two digits per axis only"). Additions end with "added", removals with "removed".
+- Start in lower case, no trailing period, property and item names verbatim, and append issue or pull request numbers referenced by the commits as ` - #NNN`.
+- A change made the same way in many drivers is one line in `## Overall:` naming the drivers, not a line repeated under each of them; only driver-specific details stay under the driver.
+- Every line must be traceable to commits in the range; keep the commit references in the working notes, not in the changelog.
+
 ## AI Usage Conduct
 
 - Keep AI work scoped to the files, folders, and behavior explicitly requested.
