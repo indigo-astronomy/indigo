@@ -7,12 +7,14 @@
 # the '## Testing' section of the driver's README.md and copies the recorded
 # runs into TEST_SUMMARY.md in the project root.
 #
-# A test run record has the form
-# '<timestamp> <version> <os> <architecture> <type> <result>' as described in
+# A test run record is a markdown list item of the form
+# '- <timestamp> <version> <os> <architecture> <type> <result>' as described in
 # indigo_test/AGENTS.md, e.g.
 #
-#   2026-09-20 14:32 3.0.0.8 mac arm64 simulator 12/12 OK
-#   2026-09-20 15:04 3.0.0.7 linux x64 Optec FocusLynx 12/11 Failed
+#   - 2026-09-20 14:32 3.0.0.8 mac arm64 simulator 12/12 OK
+#   - 2026-09-20 15:04 3.0.0.7 linux x64 Optec FocusLynx 12/11 Failed
+#
+# A record without the list marker is accepted as well.
 #
 # Every recorded run becomes one row of a single markdown table with the
 # columns driver, timestamp, version, platform, type, tests and result, where
@@ -51,6 +53,7 @@ RECORD = re.compile(
 	r"\s+(?P<total>\d+)/(?P<passed>\d+)"
 	r"\s+(?P<result>\S+)$"
 )
+LIST_ITEM = re.compile(r"^[-*+]\s+")
 COLUMNS = ["Driver", "Timestamp", "Version", "Platform", "Type", "Tests", "Result"]
 PASSED = "✅ OK"
 FAILED = "❌ Failed"
@@ -72,6 +75,16 @@ def read_testing_section(readme):
 	return lines
 
 
+def parse_record(line):
+	"""Return the record of a '## Testing' line as a match object, None if it is not one."""
+	return RECORD.match(LIST_ITEM.sub("", line.strip(), count=1))
+
+
+def format_record(record):
+	"""Return the '## Testing' line of a record, a markdown list item so that every run renders on its own line."""
+	return "- " + record
+
+
 def read_records(readme):
 	"""Return the test run records of the given README.md as match objects."""
 	records = []
@@ -79,7 +92,7 @@ def read_records(readme):
 		line = line.strip()
 		if not line:
 			continue
-		match = RECORD.match(line)
+		match = parse_record(line)
 		if match is None:
 			print("%s: ignoring malformed record '%s'" % (readme, line), file=sys.stderr)
 			continue

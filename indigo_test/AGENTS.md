@@ -594,8 +594,9 @@ following the rules below, only a run the script cannot perform.
 After every driver test run, record the outcome in that driver's `README.md`:
 
 - Add a `## Testing` section if the file does not have one yet.
-- Write one line per run to that section, in the form
-  `<timestamp> <version> <os> <architecture> <type> <result>`:
+- Write one markdown list item per run to that section, in the form
+  `- <timestamp> <version> <os> <architecture> <type> <result>`, so that every
+  run renders on its own line:
   - `<timestamp>` is the date and time of the run in `YYYY-MM-DD HH:MM` format.
   - `<version>` is the version of the tested driver, written the way INDIGO
     reports it, e.g. `3.0.0.17` for `DRIVER_VERSION` `0x03000011`, which a
@@ -622,8 +623,8 @@ the first one because it has the same operating system, architecture and type:
 ```markdown
 ## Testing
 
-2026-09-20 15:04 3.0.0.7 mac arm64 Optec FocusLynx 12/11 Failed
-2026-09-21 09:15 3.0.0.8 mac arm64 simulator 12/12 OK
+- 2026-09-20 15:04 3.0.0.7 mac arm64 Optec FocusLynx 12/11 Failed
+- 2026-09-21 09:15 3.0.0.8 mac arm64 simulator 12/12 OK
 ```
 
 After updating the `README.md`, run `tools/make_test_summary.py` from the

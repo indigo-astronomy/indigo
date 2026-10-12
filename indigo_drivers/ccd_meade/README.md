@@ -32,4 +32,4 @@ There is a known issue with SDK and reopening the camera - exposure is not possi
 
 ## Testing
 
-2026-09-27 21:37 3.0.0.55 mac arm64 fake SDK 36/36 OK
+- 2026-09-27 21:37 3.0.0.55 mac arm64 fake SDK 36/36 OK

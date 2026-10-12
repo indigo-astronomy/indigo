@@ -91,7 +91,7 @@ FILTER_VARIABLES = re.compile(r"^(INDIGO_TEST_CASE_FILTER|[A-Z0-9_]*_TEST_FILTER
 
 EXAMPLES = """
 The driver is built first, then its tests run, and the result is written as one
-line into the '## Testing' section of the driver's README.md, replacing the
+list item into the '## Testing' section of the driver's README.md, replacing the
 previous run of the same operating system, architecture and type, after which
 TEST_SUMMARY.md is regenerated. Nothing is committed. Build the INDIGO library
 with 'make all' in the project root before the first run.
@@ -324,21 +324,21 @@ def update_readme(readme, record):
 	if start is None:
 		while lines and not lines[-1].strip():
 			lines.pop()
-		lines += ["", "## Testing", "", record]
+		lines += ["", "## Testing", "", make_test_summary.format_record(record)]
 	else:
 		end = next((i for i in range(start + 1, len(lines)) if make_test_summary.NEXT_HEADING.match(lines[i])), len(lines))
 		records = []
 		for line in lines[start + 1:end]:
-			match = make_test_summary.RECORD.match(line.strip())
+			match = make_test_summary.parse_record(line)
 			if match is None:
 				if line.strip():
 					print("%s: dropping malformed record '%s'" % (readme, line), file=sys.stderr)
 				continue
 			if (match.group("os"), match.group("architecture"), match.group("type")) != key:
-				records.append(line.strip())
+				records.append(match.group(0))
 		records.append(record)
 		records.sort(key=lambda line: make_test_summary.RECORD.match(line).group("timestamp"))
-		section = ["## Testing", ""] + records
+		section = ["## Testing", ""] + [make_test_summary.format_record(line) for line in records]
 		if end < len(lines):
 			section.append("")
 		lines[start:end] = section

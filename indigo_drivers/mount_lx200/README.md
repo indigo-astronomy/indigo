@@ -52,21 +52,21 @@ Driver is developed and tested with:
 
 ## Testing
 
-2026-09-23 00:11 3.0.0.58 mac arm64 OnStepX 33/33 OK
-2026-09-23 10:06 3.0.0.59 mac arm64 aGotino 35/35 OK
-2026-09-23 11:17 3.0.0.60 mac arm64 OpenAstroTracker 35/35 OK
-2026-09-23 14:18 3.0.0.63 mac arm64 ESP32Go 35/35 OK
-2026-09-23 19:34 3.0.0.64 mac arm64 MountSim 2.3 (StarGO) 14/14 OK
-2026-09-23 20:26 3.0.0.65 mac arm64 MountSim 2.3 (LX200Classic) 15/15 OK
-2026-09-24 23:20 3.0.0.65 mac arm64 Pegasus NYX-101 35/35 OK
-2026-09-24 23:26 3.0.0.65 mac arm64 Pegasus NYX-101 (WiFi) 35/35 OK
-2026-09-27 02:25 3.0.0.69 linux x64 simulator 103/103 OK
-2026-10-01 22:47 3.0.0.69 linux x64 On-Step 35/35 OK
-2026-10-05 21:09 3.0.0.77 mac arm64 simulator 145/145 OK
-2026-10-06 23:50 3.0.0.77 linux arm64 NYX-101 35/35 OK
-2026-10-06 23:58 3.0.0.77 linux arm64 esp32go 35/35 OK
-2026-10-07 00:04 3.0.0.77 linux arm64 OpenAstroTracker 35/29 Failed
-2026-10-07 00:52 3.0.0.79 linux arm64 On-Step 35/35 OK
-2026-10-07 01:51 3.0.0.80 linux arm64 TeenAstro 35/35 OK
-2026-10-07 02:01 3.0.0.80 linux arm64 simulator 150/150 OK
-2026-10-07 02:19 3.0.0.80 linux arm64 aGotino 35/35 OK
+- 2026-09-23 00:11 3.0.0.58 mac arm64 OnStepX 33/33 OK
+- 2026-09-23 10:06 3.0.0.59 mac arm64 aGotino 35/35 OK
+- 2026-09-23 11:17 3.0.0.60 mac arm64 OpenAstroTracker 35/35 OK
+- 2026-09-23 14:18 3.0.0.63 mac arm64 ESP32Go 35/35 OK
+- 2026-09-23 19:34 3.0.0.64 mac arm64 MountSim 2.3 (StarGO) 14/14 OK
+- 2026-09-23 20:26 3.0.0.65 mac arm64 MountSim 2.3 (LX200Classic) 15/15 OK
+- 2026-09-24 23:20 3.0.0.65 mac arm64 Pegasus NYX-101 35/35 OK
+- 2026-09-24 23:26 3.0.0.65 mac arm64 Pegasus NYX-101 (WiFi) 35/35 OK
+- 2026-09-27 02:25 3.0.0.69 linux x64 simulator 103/103 OK
+- 2026-10-01 22:47 3.0.0.69 linux x64 On-Step 35/35 OK
+- 2026-10-05 21:09 3.0.0.77 mac arm64 simulator 145/145 OK
+- 2026-10-06 23:50 3.0.0.77 linux arm64 NYX-101 35/35 OK
+- 2026-10-06 23:58 3.0.0.77 linux arm64 esp32go 35/35 OK
+- 2026-10-07 00:04 3.0.0.77 linux arm64 OpenAstroTracker 35/29 Failed
+- 2026-10-07 00:52 3.0.0.79 linux arm64 On-Step 35/35 OK
+- 2026-10-07 01:51 3.0.0.80 linux arm64 TeenAstro 35/35 OK
+- 2026-10-07 02:01 3.0.0.80 linux arm64 simulator 150/150 OK
+- 2026-10-07 02:19 3.0.0.80 linux arm64 aGotino 35/35 OK

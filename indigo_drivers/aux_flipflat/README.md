@@ -31,5 +31,5 @@ Tested with physical Flip-Flat device
 
 ## Testing
 
-2026-10-09 14:14 3.0.0.11 mac arm64 simulator 13/13 OK
-2026-10-09 14:16 3.0.0.11 linux arm64 Alnitak Flip-Flat Arduino simulator (ESP32-S3) 7/7 OK
+- 2026-10-09 14:14 3.0.0.11 mac arm64 simulator 13/13 OK
+- 2026-10-09 14:16 3.0.0.11 linux arm64 Alnitak Flip-Flat Arduino simulator (ESP32-S3) 7/7 OK

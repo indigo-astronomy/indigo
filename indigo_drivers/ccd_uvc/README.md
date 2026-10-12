@@ -34,7 +34,7 @@ from its unplug handler.
 
 ## Testing
 
-2026-09-21 20:24 3.0.0.27 linux arm64 SVBONY SV205 11/11 OK
-2026-09-21 20:26 3.0.0.27 linux arm64 Creative Live! Cam Sync HD VF0770 11/11 OK
-2026-09-27 22:02 3.0.0.30 mac arm64 fake SDK 21/21 OK
-2026-10-07 07:16 3.0.0.30 linux arm64 SVBONY SV205 USB Camera 11/11 OK
+- 2026-09-21 20:24 3.0.0.27 linux arm64 SVBONY SV205 11/11 OK
+- 2026-09-21 20:26 3.0.0.27 linux arm64 Creative Live! Cam Sync HD VF0770 11/11 OK
+- 2026-09-27 22:02 3.0.0.30 mac arm64 fake SDK 21/21 OK
+- 2026-10-07 07:16 3.0.0.30 linux arm64 SVBONY SV205 USB Camera 11/11 OK

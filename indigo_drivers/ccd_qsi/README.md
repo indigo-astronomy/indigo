@@ -32,4 +32,4 @@ This is a limitation of the underlaying QSI SDK, which can use one camera and on
 
 ## Testing
 
-2026-09-27 08:05 3.0.0.23 linux x64 fake SDK 61/61 OK
+- 2026-09-27 08:05 3.0.0.23 linux x64 fake SDK 61/61 OK
