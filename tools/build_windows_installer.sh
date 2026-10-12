@@ -95,9 +95,9 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
 
     echo "==> Building indigo_windows.sln with $MSBUILD"
     "$MSBUILD" "$REPO_ROOT/indigo_windows.sln" \
-        "/p:Configuration=$INDIGO_BUILD_CONFIGURATION" \
-        "/p:Platform=$INDIGO_BUILD_PLATFORM" \
-        "/m"
+        "-p:Configuration=$INDIGO_BUILD_CONFIGURATION" \
+        "-p:Platform=$INDIGO_BUILD_PLATFORM" \
+        "-m"
 else
     echo "==> SKIP_BUILD=1, not (re)building the solution"
 fi
