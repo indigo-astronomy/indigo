@@ -425,7 +425,7 @@ make_odither_array (j_decompress_ptr cinfo, int ncolors)
 
 /*
  * Create the ordered-dither tables.
- * Components having the same number of representative colors may 
+ * Components having the same number of representative colors may
  * share a dither table.
  */
 
@@ -528,6 +528,10 @@ quantize_ord_dither (j_decompress_ptr cinfo, JSAMPARRAY input_buf,
   int row;
   JDIMENSION col;
   JDIMENSION width = cinfo->output_width;
+
+  if (output_buf == NULL && num_rows) {
+    ERREXIT(cinfo, JERR_BAD_PARAM);
+  }
 
   for (row = 0; row < num_rows; row++) {
     /* Initialize output values to 0 so can process components separately */
