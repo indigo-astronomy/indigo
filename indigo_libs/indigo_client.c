@@ -80,6 +80,49 @@ indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
 #define INDIGO_DL_HANDLE	HMODULE
 #endif
 
+#if defined(INDIGO_WINDOWS)
+static pthread_once_t drivers_folder_once = PTHREAD_ONCE_INIT;
+
+// An installed INDIGO keeps the exe files and indigo.dll in <install>\bin and
+// the driver DLLs with their SDK DLLs in <install>\drivers, so that folder is
+// added to the DLL search path. It is searched for the drivers, for the SDK DLLs
+// they import and for the DLLs the SDKs load at run time. When indigo.dll is not
+// in a "bin" folder with a sibling "drivers" folder, as in the build folder,
+// everything is loaded from the exe folder as before.
+static void set_drivers_folder(void) {
+	HMODULE module;
+	char path[MAX_PATH];
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)set_drivers_folder, &module)) {
+		return;
+	}
+	DWORD length = GetModuleFileNameA(module, path, sizeof(path));
+	if (length == 0 || length >= sizeof(path)) {
+		return;
+	}
+	// strip "\indigo.dll" and "\bin"
+	for (int i = 0; i < 2; i++) {
+		char *last = strrchr(path, '\\');
+		if (last == NULL || (i == 1 && _stricmp(last + 1, "bin"))) {
+			return;
+		}
+		*last = '\0';
+	}
+	if (strlen(path) + strlen("\\drivers") >= sizeof(path)) {
+		return;
+	}
+	strcat(path, "\\drivers");
+	DWORD attributes = GetFileAttributesA(path);
+	if (attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+		return;
+	}
+	if (SetDllDirectoryA(path)) {
+		INDIGO_DEBUG(indigo_debug("Drivers are loaded from %s", path));
+	} else {
+		indigo_error("Can't add %s to the DLL search path (%s)", path, indigo_last_windows_error());
+	}
+}
+#endif
+
 static INDIGO_DL_HANDLE load_library(const char* so_name) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	INDIGO_DL_HANDLE dl_handle = dlopen(so_name, RTLD_LAZY);
@@ -89,6 +132,7 @@ static INDIGO_DL_HANDLE load_library(const char* so_name) {
 	}
 	return dl_handle;
 #elif defined(INDIGO_WINDOWS)
+	pthread_once(&drivers_folder_once, set_drivers_folder);
 	INDIGO_DL_HANDLE dl_handle = LoadLibraryA(so_name);
 	if (dl_handle == NULL) {
 		indigo_error("Driver %s can't be loaded (%s)", so_name, indigo_last_windows_error());

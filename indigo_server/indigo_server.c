@@ -1952,6 +1952,16 @@ static void server_main() {
 		add_drivers("/usr/share/indigo");
 		add_drivers("/usr/local/share/indigo");
 #elif defined(INDIGO_WINDOWS)
+		// an installed INDIGO keeps the driver list in <install>\share next to <install>\bin
+		char path[PATH_MAX];
+		DWORD length = GetModuleFileNameA(NULL, path, sizeof(path));
+		if (length > 0 && length < sizeof(path)) {
+			char *exe = strrchr(path, '\\');
+			if (exe != NULL && (exe - path) + strlen("\\..\\share") < sizeof(path)) {
+				strcpy(exe, "\\..\\share");
+				add_drivers(path);
+			}
+		}
 		add_drivers(".");
 #endif
 	}

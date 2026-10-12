@@ -109,10 +109,11 @@ if [ ! -d "$BUILD_DIR" ]; then
 fi
 
 # Generate the "indigo_drivers" metadata file (name/description of every
-# indigo_*.dll driver/agent next to indigo_server.exe). indigo_server looks
-# for this file next to its own executable on Windows (the equivalent of
-# /usr/share/indigo/indigo_drivers on Linux), and uses it to populate the
-# list of available drivers without having to load every DLL up front.
+# indigo_*.dll driver/agent next to indigo_server.exe). The installer puts
+# it into the "share" folder, where the installed indigo_server looks for it
+# (the equivalent of /usr/share/indigo/indigo_drivers on Linux), and uses it
+# to populate the list of available drivers without having to load every DLL
+# up front.
 if [ -x "$BUILD_DIR/make_indigo_drivers.exe" ]; then
     echo "==> Generating indigo_drivers metadata file"
     (cd "$BUILD_DIR" && ./make_indigo_drivers.exe)
