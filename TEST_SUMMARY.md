@@ -222,7 +222,7 @@
 |  | 2026-10-09 19:09 | 3.0.0.7 | linux arm64 | Talon6 ROR Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
 | focuser_asi | 2026-10-10 10:50 | 3.0.0.40 | mac arm64 | fake SDK | 23 / 23 | ✅ OK |
 | focuser_askar | 2026-09-24 17:14 | 3.0.0.7 | linux x64 | simulator | 10 / 10 | ✅ OK |
-|  | 2026-10-13 15:46 | 3.0.0.12 | mac arm64 | simulator | 26 / 26 | ✅ OK |
+|  | 2026-10-13 23:50 | 3.0.0.12 | mac arm64 | simulator | 28 / 28 | ✅ OK |
 | focuser_astroasis | 2026-10-10 14:00 | 3.0.0.18 | mac arm64 | fake SDK | 41 / 41 | ✅ OK |
 | focuser_astromechanics | 2026-10-09 19:38 | 3.0.0.8 | linux arm64 | ASTROMECHANICS Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 |  | 2026-10-10 02:08 | 3.0.0.9 | mac arm64 | simulator | 22 / 22 | ✅ OK |

@@ -133,7 +133,6 @@ static void add_serial_port(serial_port_list *list, const char *name, const char
 		serial_port *port = list->ports + list->port_count++;
 		INDIGO_COPY_NAME(port->name, name);
 		INDIGO_COPY_VALUE(port->label, label);
-		INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s", __FUNCTION__, list->port_count, label));
 	}
 }
 
@@ -280,7 +279,6 @@ static serial_port_list *scan_serial_ports(void) {
 	for (int i = 0; i < list->usb_count; i++) {
 		char label[INDIGO_VALUE_SIZE];
 		indigo_usbserial_label(list->usb + i, label);
-		INDIGO_DEBUG(indigo_debug("%s(): USB-Serial port %s %04X:%04X", __FUNCTION__, list->usb[i].path, list->usb[i].vendor_id, list->usb[i].product_id));
 		add_serial_port(list, list->usb[i].path, label);
 	}
 	add_native_serial_ports(list);
@@ -946,10 +944,11 @@ static void fill_device_ports(indigo_device *device, serial_port_list *list) {
 		return;
 	}
 	/* if there are no USB-Serial ports but there are regular serial ports and we want auto selected port, select the first one.
-	   Otherwise autoselect the matching port from the available USB-Serial ports.
+	   Otherwise autoselect the matching port from the available USB-Serial ports. Only the serial ports are candidates,
+	   the additional ports of the driver, e.g. askar:// URLs, are not serial ports and can not get the auto:// prefix.
 	*/
-	if (device->match_patterns_count == 0 && DEVICE_PORTS_PROPERTY->count > 1 && list->usb_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
-		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, DEVICE_PORTS_PROPERTY->items[1].name);
+	if (device->match_patterns_count == 0 && list->port_count > 0 && list->usb_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
+		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, list->ports[0].name);
 		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
 	} else {
 		indigo_select_matching_usbserial_device(device, list->usb, list->usb_count);

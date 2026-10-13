@@ -314,6 +314,7 @@ endif
 # INTEGRATION_TESTS and this list.
 OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_askar_wifi_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator \
 	$(INTEGRATION_BUILD)/test_system_alpaca_http \
 	$(INTEGRATION_BUILD)/test_system_alpaca_simulator \
@@ -620,6 +621,9 @@ $(INTEGRATION_BUILD)/polaralign_mlastro_simulator: ../indigo_drivers/polaralign_
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/test_focuser_askar_simulator: integration/test_focuser_askar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_askar_simulator $(BUILD_DRIVERS)/indigo_focuser_askar.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_askar_wifi_simulator: integration/test_focuser_askar_wifi_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_askar_simulator $(BUILD_DRIVERS)/indigo_focuser_askar.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_dome_baader_simulator: integration/test_dome_baader_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/dome_baader/original_reference_trace.txt fixtures/dome_baader/generated_reference_trace.txt $(INTEGRATION_BUILD)/dome_baader_simulator $(BUILD_DRIVERS)/indigo_dome_baader.a | $(INTEGRATION_BUILD)

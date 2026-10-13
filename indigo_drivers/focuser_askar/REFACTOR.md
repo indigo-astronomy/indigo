@@ -110,7 +110,7 @@ The simulator gained start-state options (`--position`, `--max-step`, `--backlas
 Not applicable, with the reason:
 
 - Temperature, compensation, automatic mode and speed: not in the CDC protocol.
-- Wi-Fi (`askar://`, UDP discovery, TCP): the hardware-free suite does not open network sockets; the TCP path shares the command layer with the serial path.
+- Wi-Fi (`askar://`, UDP discovery, TCP): the hardware-free suite does not open network sockets; the TCP path shares the command layer with the serial path. The opt-in `test_focuser_askar_wifi_simulator` (in `OPT_IN_DRIVER_TESTS`, part of the recorded run) covers the port selection against a stand-in Wi-Fi focuser: a UDP responder answers the discovery with `127.0.0.1` and a TCP relay forwards to the serial simulator. `auto_port_ignores_wifi` checks that `auto://` never selects a discovered `askar://` item (it once became `auto://askar://...`, which can not connect), `askar_port_selects_wifi` that `askar://` without a host selects the discovered focuser at connect and works over TCP. A real Askar-WAF answering the discovery first makes the connection case skip instead of connecting to it.
 - Hardware: no Askar-WAF available, no physical run.
 
 The case runner now records the plan in the parent before it forks the cases, as `indigo_test/AGENTS.md` requires.
