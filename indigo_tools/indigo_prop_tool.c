@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2025 Rumen G. Bogdanovski
+// Copyright (c) 2017-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -623,11 +623,14 @@ static indigo_result client_attach(indigo_client *client) {
 }
 
 
+static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+
 static indigo_result client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
 	int r;
 	static bool called = false;
+	static bool change_sent = false;
 
 	if (!called && print_verbose && !(get_requested || get_state_requested)) {
 		printf("Protocol version = %x.%x\n\n", property->version >> 8, property->version & 0xff);
@@ -640,6 +643,12 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 	if (set_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
+			/* A driver may delete and define the property again while it handles the change, e.g. on a refresh
+			   of DEVICE_PORTS, so the change is sent on the first definition only and a later one is an update. */
+			if (change_sent) {
+				return client_update_property(client, device, property, message);
+			}
+			change_sent = true;
 			static char *items[MAX_ITEMS] = {NULL};
 			static char *txt_values[MAX_ITEMS] = {NULL};
 			static bool bool_values[MAX_ITEMS] = {false};
