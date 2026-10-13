@@ -224,6 +224,8 @@ In this case the device can not be identified as the information is too generic.
 
 For devices that can be identified, a new auto-selection algorithm has been introduced. This algorithm allows drivers to automatically select the appropriate port when it is prefixed with *auto://*. For example (see the list above), in the *indigo_gps_nmea* driver, if the selected port is *auto:///dev/ttyACM1* (which is an Arduino and not a GPS), issuing a *Rescan* will change the selected device to *auto:///dev/ttyACM0* (which is a GPS device). However, if the selected port is */dev/ttyACM1* (without the *auto://* prefix), it will not change upon *Rescan*, preserving the old behavior.
 
+The *Serial Ports* list is updated automatically within a few seconds when a USB to serial device is plugged in or removed, and a disconnected driver with an *auto://* port selects its device again at that moment, so a *Rescan* is only needed for ports without a USB connection, such as Bluetooth serial ports on MacOS or a link created in /dev by hand. On Linux, Bluetooth (rfcomm) and virtual (pseudo-terminal) serial ports are not listed; type their path into the port field. The port of a connected driver is never changed.
+
 Not all identifiable devices are auto-selected because we do not have a comprehensive list of these devices. To help us complete this list and make your devices auto-selectable, we have created a helper program called *indigo_list_usbserial*. Please run this program and send us the output. This will enable us to determine if and how we can match your devices, and update corresponding drivers.
 
 Here is an example output:

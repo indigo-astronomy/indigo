@@ -667,6 +667,42 @@ Many hardware vendors provide their own Software Development Kit (SDK) for their
 
 Examples for all types of communication are available in the [INDIGO driver base](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/).
 
+#### Serial port list and hot-plug
+
+A serial device shows `DEVICE_PORT` and `DEVICE_PORTS` and fills the list once, in its attach function:
+
+```C
+DEVICE_PORT_PROPERTY->hidden = false;
+DEVICE_PORTS_PROPERTY->hidden = false;
+indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+```
+
+Everything else is done by the framework, the driver must not enumerate the ports again:
+- The ports are enumerated once per process and the list is shared by all devices. Attaching many serial drivers costs one scan, not one per device.
+- *indigo_enumerate_serial_ports()* also registers the device for updates and *indigo_device_detach()* unregisters it.
+- On every USB hot-plug event the framework rescans the ports after a short delay (1 s, and once more after 2 s if nothing changed yet). Only when the list really changed, `DEVICE_PORTS` of every registered device is rebuilt from the new list. A USB event of a device that is not a serial port, e.g. a camera, costs one or two scans and no property traffic. The event comes from the shared USB hot-plug polling, so ports appear and disappear within about 3 to 6 seconds on Linux, macOS and Windows.
+- A *Refresh* request on `DEVICE_PORTS` rescans the ports too and, if they changed, updates the other devices as well. Use it for ports without a USB event, e.g. Bluetooth serial ports on macOS or a link created in */dev* by hand.
+- A disconnected device with an `auto://` port re-runs the auto-selection when the list changes, so it picks up its device as soon as it is plugged in. The port of a connected or connecting device is never changed.
+- On Linux the ports are taken from udev's `tty` devices: a USB-serial port (`ttyUSB*`, `ttyACM*`) is listed by its USB device, a UART of the kernel serial core (`ttyS*`, `ttyAMA*`, ...) when its `type` attribute is not 0 (`PORT_UNKNOWN`). Symbolic links directly in */dev* to a listed port are listed as links, both the ones udev created, e.g. */dev/serial0* or one from a user rule, and the ones made by hand; links into */proc* like */dev/stdin* and links in subdirectories like */dev/serial/by-id* are not. No device node is opened during the scan, so the scan does not toggle DTR or reset Arduino-based devices.
+- Not listed on Linux: Bluetooth `rfcomm*` ports, pseudo-terminals (e.g. a socat virtual port) and USB gadget ports (`ttyGS*`), as before, and multiport cards whose driver does not use the serial core, which the earlier scan could find by opening them. Their path can be typed into `DEVICE_PORT`.
+- The list holds up to 19 ports.
+
+A driver that finds devices of its own, e.g. over the network, must not add items to `DEVICE_PORTS` directly, as the next rebuild drops them and the rebuild may run concurrently on the hot-plug thread. It passes them to *indigo_set_additional_ports()* instead:
+
+```C
+const char *names[] = { "askar://192.168.1.20:8080" };
+const char *labels[] = { "Askar-WAF (192.168.1.20:8080)" };
+indigo_set_additional_ports(device, 1, names, labels);
+```
+
+- The items belong to the driver, not to the device: they are appended to `DEVICE_PORTS` of every device of the same driver (same `INFO.DEVICE_DRIVER`), so additional instances share them and the driver runs its discovery once. Other drivers never see them.
+- Every call replaces the previous items of the driver and redefines `DEVICE_PORTS` of all its devices, even with no items, so it also completes a BUSY refresh. A count of 0 removes the items.
+- The items are kept when the serial ports change and released with the last device of the driver.
+- Run the discovery itself without holding any lock, e.g. in a handler, and call *indigo_set_additional_ports()* with the result. See *scan_ports_finalizer()* in *indigo_focuser_askar.driver*.
+- A refresh that takes longer than the serial rescan, like such a discovery, keeps `DEVICE_PORTS` BUSY until it is done: set the property BUSY before passing the request to the base class, which then rescans the serial ports but leaves the state alone, queue the discovery, and set it OK in the handler before calling *indigo_set_additional_ports()*. Reject `DEVICE_PORTS` changes while it is BUSY (`reject_change` in a generated driver), so repeated refresh requests do not queue repeated discoveries. Decide whether the request is a refresh from the request itself in the change branch, not from the property in the handler, as the base class resets the REFRESH item meanwhile.
+
+The list, the additional items and the registered devices are guarded by the bus lock, so the updates are serialized with the change requests dispatched by the bus. *indigo_enumerate_usbserial_devices()* is still available for drivers that need the raw USB-serial information, but it always scans and does not update `DEVICE_PORTS`.
+
 ### Conflicting Drivers
 
 In some situations some drivers may interfere with each other like different implementations of the driver for the same hardware. Loading both drivers may result in erratic behavior and both drivers should not be loaded. For that reason INDIGO version 2.0-114 introduces a function that can be used to check if certain drivers are already initialized:

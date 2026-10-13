@@ -28,7 +28,7 @@ properties are first of all defined memory structures which are, if needed, mapp
 | PROFILE | switch | no | yes | PROFILE_0,... | yes | Select the profile number for subsequent CONFIG operation |
 | DEVICE_PORT | text | no | no | PORT | no | Either device path like "/dev/tty0" or URL like "lx200://host:port". |
 | DEVICE_BAUDRATE | text | no | no | BAUDRATE | no | Serial port configuration in a string like this: 9600-8N1 |
-| DEVICE_PORTS | switch | no | no | valid serial port name |  | When selected, it is copied to DEVICE_PORT property. |
+| DEVICE_PORTS | switch | no | no | valid serial port name |  | When selected, it is copied to DEVICE_PORT property. REFRESH rescans the ports. The list is shared by all devices and is rebuilt automatically when a USB-serial port is plugged in or removed. |
 | GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Defined in mount, GPS, and dome driver base classes. |
 |  |  |  |  | LONGITUDE | yes | Longitude (0° to 360° +E) |
 |  |  |  |  | ELEVATION | yes | Elevation (m) |
@@ -1092,6 +1092,8 @@ Custom properties: `X_FOCUSER_MOTOR_MODE`.
 Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
 `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_BACKLASH` and `FOCUSER_REVERSE_MOTION` are visible and backed by the Askar CDC protocol. `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `FOCUSER_COMPENSATION` and `FOCUSER_MODE` are hidden because the protocol does not expose them. `FOCUSER_POSITION` and `FOCUSER_STEPS` report `BUSY` during motion and complete when polling confirms the motor has stopped. `FOCUSER_ABORT_MOTION` sends the stop command, refreshes the current position and resets its momentary switch.
+
+`DEVICE_PORTS` lists the Wi-Fi focusers found by UDP discovery as `askar://host:port` items after the serial ports. The discovery runs once per driver, at attach of the first device and on `REFRESH` of any device, and its items are shared by all Askar-WAF devices. `DEVICE_PORTS` stays BUSY until the discovery ends and a change requested meanwhile is refused.
 
 Source: `indigo_drivers/focuser_askar/indigo_focuser_askar.driver` (generates `indigo_focuser_askar.c`).
 

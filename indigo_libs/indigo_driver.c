@@ -48,9 +48,7 @@
 #elif defined(INDIGO_LINUX)
 #include <dlfcn.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <linux/serial.h>
+#include <libudev.h>
 #endif
 
 #if defined(INDIGO_MACOS)
@@ -87,31 +85,227 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 	return INDIGO_OK;
 }
 
-#if defined(INDIGO_LINUX)
-static int port_type(char *path) {
-	int fd, res;
-	struct serial_struct serinfo = { 0 };
-	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) {
-		return -1;
-	}
-	int sp_type = 0;
-	res = ioctl(fd, TIOCGSERIAL, &serinfo);
-	if (res != 0) {
-		sp_type = -1;
-		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d error = '%s'", __FUNCTION__, path, serinfo.type, res, strerror(errno)));
-	} else {
-		sp_type = serinfo.type;
-		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d", __FUNCTION__, path, serinfo.type, res));
-	}
-	close(fd);
-	return sp_type;
-}
-#endif
-
 #define MAX_DEVICE_PORTS	20
 
 extern int indigo_server_tcp_port;
 extern bool indigo_is_ephemeral_port;
+
+// library internal, defined in indigo_bus.c
+extern void indigo_lock_bus(void);
+extern void indigo_unlock_bus(void);
+
+// -------------------------------------------------------------------------------- shared serial port list
+
+// The serial ports are enumerated once per process and the list is shared by all devices showing DEVICE_PORTS.
+// A USB hot-plug event or a refresh request rescans it and, if it changed, DEVICE_PORTS of every such device is
+// rebuilt from the new list. The list and the devices are guarded by the bus lock, the scan runs without it.
+
+#define SERIAL_PORTS_SETTLE_TIME	1.0
+#define SERIAL_PORTS_RETRY_TIME		2.0
+
+typedef struct {
+	char name[INDIGO_NAME_SIZE];
+	char label[INDIGO_VALUE_SIZE];
+} serial_port;
+
+typedef struct {
+	indigo_serial_info usb[MAX_DEVICE_PORTS];
+	int usb_count;
+	serial_port ports[MAX_DEVICE_PORTS - 1];
+	int port_count;
+} serial_port_list;
+
+typedef struct {
+	char driver[INDIGO_NAME_SIZE];
+	serial_port *ports;
+	int count;
+} additional_ports;
+
+static serial_port_list *serial_ports = NULL;
+static indigo_device **serial_port_devices = NULL;
+static int serial_port_devices_count = 0;
+static int serial_port_devices_size = 0;
+static additional_ports *driver_ports = NULL;
+static int driver_ports_count = 0;
+
+static void add_serial_port(serial_port_list *list, const char *name, const char *label) {
+	if (list->port_count < MAX_DEVICE_PORTS - 1) {
+		serial_port *port = list->ports + list->port_count++;
+		INDIGO_COPY_NAME(port->name, name);
+		INDIGO_COPY_VALUE(port->label, label);
+		INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s", __FUNCTION__, list->port_count, label));
+	}
+}
+
+#if defined(INDIGO_LINUX)
+static void add_serial_link(serial_port_list *list, const char *path, const char *node) {
+	for (int i = 0; i < list->port_count; i++) {
+		if (!strcmp(list->ports[i].name, path)) {
+			return;
+		}
+	}
+	char label[INDIGO_VALUE_SIZE];
+	snprintf(label, sizeof(label), "%s (link to %s)", path, node);
+	add_serial_port(list, path, label);
+}
+
+// Native serial ports are taken from udev and links to serial ports in /dev from udev and from /dev itself, so no
+// device node is opened.
+static void add_native_serial_ports(serial_port_list *list) {
+	char nodes[MAX_DEVICE_PORTS][INDIGO_NAME_SIZE];
+	int node_count = 0;
+	for (int i = 0; i < list->usb_count && node_count < MAX_DEVICE_PORTS; i++) {
+		INDIGO_COPY_NAME(nodes[node_count++], list->usb[i].path);
+	}
+	struct udev *udev = udev_new();
+	if (udev != NULL) {
+		struct udev_enumerate *enumerate = udev_enumerate_new(udev);
+		udev_enumerate_add_match_subsystem(enumerate, "tty");
+		udev_enumerate_scan_devices(enumerate);
+		struct udev_list_entry *entry;
+		udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
+			struct udev_device *dev = udev_device_new_from_syspath(udev, udev_list_entry_get_name(entry));
+			if (dev == NULL) {
+				continue;
+			}
+			const char *node = udev_device_get_devnode(dev);
+			if (node != NULL) {
+				bool listed = false;
+				for (int i = 0; i < list->usb_count; i++) {
+					if (!strcmp(list->usb[i].path, node)) {
+						listed = true;
+						break;
+					}
+				}
+				if (!listed) {
+					// a UART of the serial core has a "type" attribute, which is 0 (PORT_UNKNOWN) for a port without hardware
+					const char *type = udev_device_get_sysattr_value(dev, "type");
+					if (type != NULL && atoi(type) > 0) {
+						add_serial_port(list, node, node);
+						if (node_count < MAX_DEVICE_PORTS) {
+							INDIGO_COPY_NAME(nodes[node_count++], node);
+						}
+						listed = true;
+					}
+				}
+				if (listed) {
+					// only links directly in /dev, e.g. /dev/serial0 or one from a user rule, not /dev/serial/by-id
+					struct udev_list_entry *link;
+					udev_list_entry_foreach(link, udev_device_get_devlinks_list_entry(dev)) {
+						const char *path = udev_list_entry_get_name(link);
+						if (!strncmp(path, "/dev/", 5) && strchr(path + 5, '/') == NULL) {
+							add_serial_link(list, path, node);
+						}
+					}
+				}
+			}
+			udev_device_unref(dev);
+		}
+		udev_enumerate_unref(enumerate);
+		udev_unref(udev);
+	}
+	// udev knows only the links it created, links made by hand or by a script, or all links in a container without
+	// the udev database, are found in /dev; only symbolic links are resolved, except those into /proc like /dev/stdin,
+	// which lead to the file descriptors of this process
+	char **names;
+	int count = indigo_uni_scandir("/dev", &names, NULL);
+	if (count < 0) {
+		return;
+	}
+	for (int i = 0; i < count; i++) {
+		char path[PATH_MAX];
+		char link[PATH_MAX];
+		char target[PATH_MAX];
+		struct stat info;
+		snprintf(path, sizeof(path), "/dev/%s", names[i]);
+		ssize_t length = lstat(path, &info) == 0 && S_ISLNK(info.st_mode) ? readlink(path, link, sizeof(link) - 1) : -1;
+		if (length > 0) {
+			link[length] = '\0';
+		}
+		if (length > 0 && strncmp(link, "/proc/", 6) && realpath(path, target) != NULL) {
+			for (int j = 0; j < node_count; j++) {
+				if (!strcmp(nodes[j], target)) {
+					add_serial_link(list, path, nodes[j]);
+					break;
+				}
+			}
+		}
+		indigo_safe_free(names[i]);
+	}
+	indigo_safe_free(names);
+}
+#elif defined(INDIGO_MACOS)
+static bool cu_filter(const char *name) {
+	return strncmp(name, "cu.", 3) == 0 && strstr(name, "debug") == NULL && strstr(name, "Bluetooth-Incoming-Port") == NULL;
+}
+
+static void add_native_serial_ports(serial_port_list *list) {
+	char **names;
+	int count = indigo_uni_scandir("/dev", &names, cu_filter);
+	if (count < 0) {
+		return;
+	}
+	for (int i = 0; i < count; i++) {
+		char path[PATH_MAX];
+		snprintf(path, sizeof(path), "/dev/%s", names[i]);
+		bool listed = false;
+		for (int j = 0; j < list->usb_count; j++) {
+			if (!strcmp(list->usb[j].path, path)) {
+				listed = true;
+				break;
+			}
+		}
+		if (!listed) {
+			char label[INDIGO_VALUE_SIZE];
+			snprintf(label, sizeof(label), "%s (Unknown)", path);
+			add_serial_port(list, path, label);
+		}
+		indigo_safe_free(names[i]);
+	}
+	indigo_safe_free(names);
+}
+#else
+static void add_native_serial_ports(serial_port_list *list) {
+	// Windows lists all COM ports with the USB ones
+}
+#endif
+
+static serial_port_list *scan_serial_ports(void) {
+	serial_port_list *list = indigo_safe_malloc(sizeof(serial_port_list));
+	memset(list, 0, sizeof(serial_port_list));
+	list->usb_count = indigo_enumerate_usbserial_devices(list->usb, MAX_DEVICE_PORTS);
+	if (list->usb_count < 0) {
+		list->usb_count = 0;
+	}
+	for (int i = 0; i < list->usb_count; i++) {
+		char label[INDIGO_VALUE_SIZE];
+		indigo_usbserial_label(list->usb + i, label);
+		INDIGO_DEBUG(indigo_debug("%s(): USB-Serial port %s %04X:%04X", __FUNCTION__, list->usb[i].path, list->usb[i].vendor_id, list->usb[i].product_id));
+		add_serial_port(list, list->usb[i].path, label);
+	}
+	add_native_serial_ports(list);
+	return list;
+}
+
+static bool same_serial_ports(serial_port_list *a, serial_port_list *b) {
+	if (a == NULL || b == NULL || a->port_count != b->port_count) {
+		return false;
+	}
+	for (int i = 0; i < a->port_count; i++) {
+		if (strcmp(a->ports[i].name, b->ports[i].name) || strcmp(a->ports[i].label, b->ports[i].label)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// the bus lock must be held, the list is scanned if there is none yet
+static serial_port_list *current_serial_ports(void) {
+	if (serial_ports == NULL) {
+		serial_ports = scan_serial_ports();
+	}
+	return serial_ports;
+}
 
 static bool indigo_select_matching_usbserial_device(indigo_device *device, indigo_serial_info *serial_info, int num_serial_info) {
 	indigo_device_match_pattern *patterns = (indigo_device_match_pattern*)device->match_patterns;
@@ -183,25 +377,21 @@ static int indigo_find_matching_pattern_index(indigo_device *device, const char 
 		real_path = path + strlen(USBSERIAL_AUTO_PREFIX);
 	}
 
-	char target[PATH_MAX] = {0};
+	char target[PATH_MAX] = { 0 };
 	bool has_realpath = indigo_uni_realpath(real_path, target);
-
-	indigo_serial_info serial_info[MAX_DEVICE_PORTS] = {0};
-	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
-
-	for (int i = 0; i < serial_count; i++) {
-		if (!strcmp(serial_info[i].path, real_path) || (has_realpath && !strcmp(serial_info[i].path, target))) {
-			indigo_usbserial_match_index(serial_info + i, 1, patterns, patterns_count, &matched_pattern_index);
+	indigo_lock_bus();
+	serial_port_list *list = current_serial_ports();
+	for (int i = 0; i < list->usb_count; i++) {
+		if (!strcmp(list->usb[i].path, real_path) || (has_realpath && !strcmp(list->usb[i].path, target))) {
+			indigo_usbserial_match_index(list->usb + i, 1, patterns, patterns_count, &matched_pattern_index);
+			indigo_unlock_bus();
 			INDIGO_DEBUG(indigo_debug("%s(): path = %s matches pattern index %d for '%s'", __FUNCTION__, path, matched_pattern_index, device->name));
 			return matched_pattern_index;
 		}
 	}
+	indigo_unlock_bus();
 	INDIGO_DEBUG(indigo_debug("%s(): path = %s not found in enumerated USB-Serial devices for '%s'", __FUNCTION__, path, device->name));
 	return -1;
-}
-
-static bool cu_filter(const char *name) {
-	return strncmp(name, "cu.", 3) == 0 && strstr(name, "debug") == NULL && strstr(name, "Bluetooth-Incoming-Port") == NULL;
 }
 
 static bool make_config_file_name(char *device_name, int profile, const char *suffix, char *path, int size) {
@@ -723,97 +913,242 @@ indigo_result indigo_remove_properties(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static const char *device_driver_name(indigo_device *device) {
+	return INFO_DEVICE_DRIVER_ITEM->text.value;
+}
+
+// the bus lock must be held
+static additional_ports *find_additional_ports(const char *driver) {
+	for (int i = 0; i < driver_ports_count; i++) {
+		if (!strcmp(driver_ports[i].driver, driver)) {
+			return driver_ports + i;
+		}
+	}
+	return NULL;
+}
+
+// the bus lock must be held and DEVICE_PORTS must not be defined, as it may be reallocated; the selected port of
+// a connected device is never changed
+static void fill_device_ports(indigo_device *device, serial_port_list *list) {
+	additional_ports *additional = find_additional_ports(device_driver_name(device));
+	int count = 1 + list->port_count + (additional ? additional->count : 0);
+	if (count > DEVICE_PORTS_PROPERTY->allocated_count) {
+		DEVICE_PORTS_PROPERTY = indigo_resize_property(DEVICE_PORTS_PROPERTY, count);
+	}
+	DEVICE_PORTS_PROPERTY->count = 1;
+	for (int i = 0; i < list->port_count; i++) {
+		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + DEVICE_PORTS_PROPERTY->count++, list->ports[i].name, list->ports[i].label, false);
+	}
+	for (int i = 0; additional && i < additional->count; i++) {
+		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + DEVICE_PORTS_PROPERTY->count++, additional->ports[i].name, additional->ports[i].label, false);
+	}
+	if (!IS_DISCONNECTED) {
+		return;
+	}
+	/* if there are no USB-Serial ports but there are regular serial ports and we want auto selected port, select the first one.
+	   Otherwise autoselect the matching port from the available USB-Serial ports.
+	*/
+	if (device->match_patterns_count == 0 && DEVICE_PORTS_PROPERTY->count > 1 && list->usb_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
+		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, DEVICE_PORTS_PROPERTY->items[1].name);
+		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
+	} else {
+		indigo_select_matching_usbserial_device(device, list->usb, list->usb_count);
+	}
+}
+
+// the bus lock must be held
+static void refresh_device_ports(indigo_device *device) {
+	char port[INDIGO_VALUE_SIZE];
+	INDIGO_COPY_VALUE(port, DEVICE_PORT_ITEM->text.value);
+	indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
+	fill_device_ports(device, serial_ports);
+	indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
+	if (strcmp(port, DEVICE_PORT_ITEM->text.value)) {
+		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
+		if (*DEVICE_PORT_ITEM->text.value == '/' && !indigo_uni_is_readable(DEVICE_PORT_ITEM->text.value)) {
+			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+	}
+}
+
+// Rescans the serial ports and, if they changed, rebuilds DEVICE_PORTS of all registered devices except the given one.
+// The scan runs without the bus lock unless the caller holds it. Returns true if the list changed.
+static bool update_serial_ports(indigo_device *except) {
+	serial_port_list *list = scan_serial_ports();
+	indigo_lock_bus();
+	bool changed = !same_serial_ports(serial_ports, list);
+	if (changed) {
+		indigo_safe_free(serial_ports);
+		serial_ports = list;
+		list = NULL;
+		INDIGO_DEBUG(indigo_debug("%s(): Serial ports changed, updating %d devices", __FUNCTION__, serial_port_devices_count));
+		for (int i = 0; i < serial_port_devices_count; i++) {
+			if (serial_port_devices[i] != except) {
+				refresh_device_ports(serial_port_devices[i]);
+			}
+		}
+	}
+	indigo_unlock_bus();
+	indigo_safe_free(list);
+	return changed;
+}
+
+#if defined(INDIGO_USB_HOTPLUG_POLLING)
+static pthread_mutex_t serial_ports_event_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int serial_ports_events = 0;
+static bool serial_ports_worker_running = false;
+
+// A USB-Serial port appears a moment after its USB device, so the ports are rescanned after a short delay, and once
+// more later if nothing changed yet. Events arriving meanwhile are handled by the same worker.
+static void *serial_ports_worker(void *data) {
+	indigo_rename_thread("Serial ports");
+	pthread_mutex_lock(&serial_ports_event_mutex);
+	int handled = serial_ports_events;
+	pthread_mutex_unlock(&serial_ports_event_mutex);
+	while (true) {
+		indigo_lock_bus();
+		bool used = serial_port_devices_count > 0;
+		if (!used) {
+			// nobody shows the ports, the next device to do so scans them again
+			indigo_safe_free(serial_ports);
+			serial_ports = NULL;
+		}
+		indigo_unlock_bus();
+		if (used) {
+			indigo_usleep(INDIGO_DELAY(SERIAL_PORTS_SETTLE_TIME));
+			if (!update_serial_ports(NULL)) {
+				indigo_usleep(INDIGO_DELAY(SERIAL_PORTS_RETRY_TIME));
+				update_serial_ports(NULL);
+			}
+		}
+		pthread_mutex_lock(&serial_ports_event_mutex);
+		if (handled == serial_ports_events) {
+			serial_ports_worker_running = false;
+			pthread_mutex_unlock(&serial_ports_event_mutex);
+			break;
+		}
+		handled = serial_ports_events;
+		pthread_mutex_unlock(&serial_ports_event_mutex);
+	}
+	return NULL;
+}
+
+// called by the USB hot-plug thread for every USB device, it must not block
+static int LIBUSB_CALL serial_ports_hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+	pthread_mutex_lock(&serial_ports_event_mutex);
+	serial_ports_events++;
+	bool start = !serial_ports_worker_running;
+	serial_ports_worker_running = true;
+	pthread_mutex_unlock(&serial_ports_event_mutex);
+	if (start && !indigo_async(serial_ports_worker, NULL)) {
+		pthread_mutex_lock(&serial_ports_event_mutex);
+		serial_ports_worker_running = false;
+		pthread_mutex_unlock(&serial_ports_event_mutex);
+	}
+	return 0;
+}
+
+static void register_serial_ports_hotplug(void) {
+	indigo_start_usb_event_handler();
+	libusb_hotplug_callback_handle handle;
+	int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, 0, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, serial_ports_hotplug_callback, NULL, &handle);
+	if (rc < 0) {
+		indigo_error("Can't register serial port hot-plug callback (%s)", libusb_error_name(rc));
+	}
+}
+#endif
+
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
 	assert(device != NULL);
-	char label[INDIGO_VALUE_SIZE];
-
 	int interface = atoi(INFO_DEVICE_INTERFACE_ITEM->text.value);
 	if (interface & INDIGO_INTERFACE_AGENT) {
 		INDIGO_DEBUG(indigo_debug("%s(): Skipping port enumeration for '%s'", __FUNCTION__, device->name));
 		return;
 	}
-	DEVICE_PORTS_PROPERTY->count = 1;
-	indigo_serial_info serial_info[MAX_DEVICE_PORTS] = {0};
-	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
-	for (int i = 0; i < serial_count; i++) {
-		DEVICE_PORTS_PROPERTY->count++;
-		indigo_usbserial_label(serial_info + i, label);
-		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i + 1, serial_info[i].path, label, false);
-		INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s %04X:%04X %s", __FUNCTION__, i, serial_info[i].path, serial_info[i].vendor_id, serial_info[i].product_id, label));
-	}
-#if defined(INDIGO_LINUX)
-	char target[PATH_MAX];
-	char path[PATH_MAX];
-	char **list;
-	int count = indigo_uni_scandir("/dev", &list, NULL);
-	if (count >= 0) {
-		for (int i = 0; i < count && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS; i++) {
-			snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", list[i]);
-			if (realpath(path, target)) {
-				bool found = false;
-				bool is_serial_link = false;
-				for (int i = 0; i < serial_count; i++) {
-					if (strcmp(serial_info[i].path, path) == 0) {
-						found = true;
-						break;
-					} else if (strcmp(serial_info[i].path, target) == 0) {
-						is_serial_link = true;
-						break;
-					}
-				}
-				if (!found) {
-					if (is_serial_link) {
-						int index = DEVICE_PORTS_PROPERTY->count++;
-						snprintf(label, INDIGO_VALUE_SIZE, "%s (link to %s)", path, target);
-						indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, label, false);
-						INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s link = %s", __FUNCTION__, index, path, target));
-					} else {
-						int ser_type = port_type(path);
-						if (ser_type > PORT_UNKNOWN) {
-							int index = DEVICE_PORTS_PROPERTY->count++;
-							indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, path, false);
-							INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s type = %d", __FUNCTION__, index, path, ser_type));
-						}
-					}
-				}
-			}
-			indigo_safe_free(list[i]);
-		}
-		indigo_safe_free(list);
-	}
-#elif defined(INDIGO_MACOS)
-	char path[PATH_MAX];
-	char **list;
-	int count = indigo_uni_scandir("/dev", &list, cu_filter);
-	if (count >= 0) {
-		for (int i = 0; i < count && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS; i++) {
-			snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", list[i]);
-			bool found = false;
-			for (int i = 0; i < serial_count; i++) {
-				if (strcmp(serial_info[i].path, path) == 0) {
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				int index = DEVICE_PORTS_PROPERTY->count++;
-				snprintf(label, INDIGO_VALUE_SIZE, "%s (Unknown)", path);
-				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, label, false);
-				INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s", __FUNCTION__, index, path));
-			}
-		}
-		indigo_safe_free(list);
-	}
+#if defined(INDIGO_USB_HOTPLUG_POLLING)
+	static pthread_once_t hotplug_once = PTHREAD_ONCE_INIT;
+	pthread_once(&hotplug_once, register_serial_ports_hotplug);
 #endif
-	/* if there are no USB-Serial ports but there are regular serial ports and we want auto selected port, select the first one.
-	   Otherwise autoselect the matching port from the available USB-Serial ports.
-	*/
-	if (device->match_patterns_count == 0 && DEVICE_PORTS_PROPERTY->count > 1 && serial_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
-		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, DEVICE_PORTS_PROPERTY->items[1].name);
-		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
-	} else {
-		indigo_select_matching_usbserial_device(device, serial_info, serial_count);
+	indigo_lock_bus();
+	bool registered = false;
+	for (int i = 0; i < serial_port_devices_count; i++) {
+		if (serial_port_devices[i] == device) {
+			registered = true;
+			break;
+		}
 	}
+	if (!registered) {
+		if (serial_port_devices_count == serial_port_devices_size) {
+			serial_port_devices_size += 16;
+			serial_port_devices = indigo_safe_realloc(serial_port_devices, serial_port_devices_size * sizeof(indigo_device *));
+		}
+		serial_port_devices[serial_port_devices_count++] = device;
+	}
+	fill_device_ports(device, current_serial_ports());
+	indigo_unlock_bus();
+}
+
+void indigo_set_additional_ports(indigo_device *device, int count, const char **names, const char **labels) {
+	assert(device != NULL);
+	assert(count == 0 || (names != NULL && labels != NULL));
+	const char *driver = device_driver_name(device);
+	indigo_lock_bus();
+	additional_ports *additional = find_additional_ports(driver);
+	if (additional == NULL && count > 0) {
+		driver_ports = indigo_safe_realloc(driver_ports, (driver_ports_count + 1) * sizeof(additional_ports));
+		additional = driver_ports + driver_ports_count++;
+		memset(additional, 0, sizeof(additional_ports));
+		INDIGO_COPY_NAME(additional->driver, driver);
+	}
+	if (additional != NULL) {
+		indigo_safe_free(additional->ports);
+		additional->ports = NULL;
+		additional->count = 0;
+		if (count > 0) {
+			additional->ports = indigo_safe_malloc(count * sizeof(serial_port));
+			for (int i = 0; i < count; i++) {
+				INDIGO_COPY_NAME(additional->ports[i].name, names[i]);
+				INDIGO_COPY_VALUE(additional->ports[i].label, labels[i]);
+			}
+			additional->count = count;
+		} else {
+			*additional = driver_ports[--driver_ports_count];
+		}
+	}
+	INDIGO_DEBUG(indigo_debug("%s(): %d additional ports of %s", __FUNCTION__, count, driver));
+	for (int i = 0; i < serial_port_devices_count; i++) {
+		indigo_device *registered = serial_port_devices[i];
+		if (!strcmp(device_driver_name(registered), driver)) {
+			refresh_device_ports(registered);
+		}
+	}
+	indigo_unlock_bus();
+}
+
+// called by indigo_device_detach() before the device context is released, the additional ports of the driver are
+// released with its last device
+static void unregister_serial_ports_device(indigo_device *device) {
+	indigo_lock_bus();
+	for (int i = 0; i < serial_port_devices_count; i++) {
+		if (serial_port_devices[i] == device) {
+			serial_port_devices[i] = serial_port_devices[--serial_port_devices_count];
+			break;
+		}
+	}
+	const char *driver = device_driver_name(device);
+	additional_ports *additional = find_additional_ports(driver);
+	bool used = false;
+	for (int i = 0; additional && !used && i < serial_port_devices_count; i++) {
+		used = !strcmp(device_driver_name(serial_port_devices[i]), driver);
+	}
+	if (additional != NULL && !used) {
+		indigo_safe_free(additional->ports);
+		*additional = driver_ports[--driver_ports_count];
+	}
+	indigo_unlock_bus();
 }
 
 int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive) {
@@ -1127,6 +1462,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(DEVICE_PORTS_PROPERTY, property, false);
 		if (DEVICE_PORTS_PROPERTY->items->sw.value) {
 			indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
+			// a rescan that finds a change updates the other devices as well
+			update_serial_ports(device);
 			indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 			DEVICE_PORTS_PROPERTY->items->sw.value = false;
 			indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
@@ -1145,7 +1482,10 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		}
 		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
-		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
+		// a driver that set DEVICE_PORTS BUSY before passing the change on ends it itself, e.g. after its own discovery
+		if (DEVICE_PORTS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(AUTHENTICATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUTHENTICATION
@@ -1257,6 +1597,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	unregister_serial_ports_device(device);
 	if (device->base_device == NULL) {
 		for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
 			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];

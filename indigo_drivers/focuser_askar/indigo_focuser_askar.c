@@ -54,7 +54,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_focuser_askar"
 #define DRIVER_LABEL         "Askar-WAF Focuser"
 #define FOCUSER_DEVICE_NAME  "Askar-WAF"
@@ -416,28 +416,21 @@ static int askar_discover_all(askar_wifi_device *list, int max) {
 	return context.found;
 }
 
-static void askar_scan_ports(indigo_device *device) {
+// The Wi-Fi focusers are shared by all Askar-WAF devices: the framework appends them to DEVICE_PORTS of every
+// device after the serial ports and keeps them when the serial ports change.
+static void scan_ports_finalizer(indigo_device *device) {
 	askar_wifi_device found[ASKAR_DISCOVERY_MAX_DEVICES];
 	int count = askar_discover_all(found, ASKAR_DISCOVERY_MAX_DEVICES);
-	int base = DEVICE_PORTS_PROPERTY->count;
-	if (count == 0) {
-		return;
-	}
-	DEVICE_PORTS_PROPERTY = indigo_resize_property(DEVICE_PORTS_PROPERTY, base + count);
+	char labels[ASKAR_DISCOVERY_MAX_DEVICES][INDIGO_NAME_SIZE];
+	const char *names[ASKAR_DISCOVERY_MAX_DEVICES];
+	const char *label_pointers[ASKAR_DISCOVERY_MAX_DEVICES];
 	for (int i = 0; i < count; i++) {
-		char label[INDIGO_NAME_SIZE];
-		snprintf(label, sizeof(label), "Askar-WAF (%s)", found[i].label);
-		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + base + i, found[i].url, label, false);
+		snprintf(labels[i], sizeof(labels[i]), "Askar-WAF (%s)", found[i].label);
+		names[i] = found[i].url;
+		label_pointers[i] = labels[i];
 	}
-}
-
-static void scan_ports_finalizer(indigo_device *device) {
-	indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
-	indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-	askar_scan_ports(device);
-	DEVICE_PORTS_PROPERTY->items[0].sw.value = false;
 	DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
+	indigo_set_additional_ports(device, count, names, label_pointers);
 }
 
 //- code
@@ -749,13 +742,11 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 }
 
 static void focuser_device_ports_handler(indigo_device *device) {
+	DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.DEVICE_PORTS.on_change
-	if (DEVICE_PORTS_PROPERTY->items[0].sw.value) {
-		DEVICE_PORTS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
-		indigo_execute_handler(device, scan_ports_finalizer);
-	}
+	// not reached, on_change_request hands every request to the base class
 	//- focuser.DEVICE_PORTS.on_change
+	indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
 }
 
 static void focuser_x_focuser_motor_mode_handler(indigo_device *device) {
@@ -799,7 +790,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 6;
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
-		indigo_execute_handler(device, scan_ports_finalizer);
+		// one discovery per driver, additional instances get the focusers found by the main device
+		if (device->base_device == NULL) {
+			DEVICE_PORTS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_execute_handler(device, scan_ports_finalizer);
+		}
 		//- focuser.on_attach
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
@@ -892,7 +887,27 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(DEVICE_PORTS_PROPERTY->state == INDIGO_BUSY_STATE, DEVICE_PORTS_PROPERTY, "Wi-Fi focuser discovery is in progress");
+		//+ focuser.DEVICE_PORTS.on_change_request
+		// The base class rescans the serial ports and selects a port. A refresh is left BUSY by it, the
+		// queued scan rediscovers the Wi-Fi focusers and ends it.
+		bool refresh = false;
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, DEVICE_PORTS_REFRESH_ITEM_NAME) && property->items[i].sw.value) {
+				refresh = true;
+			}
+		}
+		if (refresh) {
+			DEVICE_PORTS_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		indigo_result result = indigo_focuser_change_property(device, client, property);
+		if (refresh) {
+			indigo_execute_handler(device, scan_ports_finalizer);
+		}
+		return result;
+		//- focuser.DEVICE_PORTS.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DEVICE_PORTS_PROPERTY, focuser_device_ports_handler);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_MOTOR_MODE_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(FOCUSER_IN_MOTION, X_FOCUSER_MOTOR_MODE_PROPERTY, "Motor mode can't be changed while the focuser is moving");
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_MOTOR_MODE_PROPERTY, focuser_x_focuser_motor_mode_handler);

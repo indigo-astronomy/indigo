@@ -21,6 +21,7 @@
 #ifndef serial_simulator_test_common_h
 #define serial_simulator_test_common_h
 
+#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -53,6 +54,25 @@
 // A fixture path is the simulator's ready file plus a short suffix. Report a path that does not fit
 // rather than shortening it silently: the shortened name is a file nobody writes or reads, and the
 // suite then fails on a confusing timeout instead of on the real cause.
+// Background threads of the library hold a descriptor for a moment, e.g. the serial port rescan after a USB hot-plug
+// event, so the smallest of several counts is taken. A descriptor a driver leaks stays open and is still counted.
+static int stable_descriptor_count(void) {
+	int smallest = INT_MAX;
+	for (int sample = 0; sample < 10; sample++) {
+		int count = 0;
+		for (int fd = 0; fd < 1024; fd++) {
+			if (fcntl(fd, F_GETFD) >= 0) {
+				count++;
+			}
+		}
+		if (count < smallest) {
+			smallest = count;
+		}
+		indigo_usleep(20000);
+	}
+	return smallest;
+}
+
 static bool simulator_fixture_path(char *path, size_t size, const char *format, const char *base, const char *suffix) {
 	int written = suffix == NULL ? snprintf(path, size, format, base) : snprintf(path, size, format, base, suffix);
 	if (written < 0 || (size_t)written >= size) {

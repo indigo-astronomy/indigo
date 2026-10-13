@@ -248,13 +248,7 @@ static bool direct_write(indigo_uni_handle *handle, const char *request) {
 }
 
 static int open_descriptors(void) {
-	int count = 0;
-	for (int fd = 0; fd < 1024; fd++) {
-		if (fcntl(fd, F_GETFD) >= 0) {
-			count++;
-		}
-	}
-	return count;
+	return stable_descriptor_count();
 }
 
 static void simulator_protocol(void) {

@@ -398,6 +398,11 @@ INDIGO_EXTERN long indigo_get_timezone(void);
  */
 INDIGO_EXTERN void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
 
+/** Set the additional DEVICE_PORTS items of the driver of the device, e.g. network devices found by a driver specific discovery.
+ They are shared by all devices of the driver, appended after the serial ports, kept when the serial ports change and replace the previous ones. Count 0 removes them.
+ */
+INDIGO_EXTERN void indigo_set_additional_ports(indigo_device *device, int count, const char **names, const char **labels);
+
 /** Check for double connect/disconnect request.
  */
 INDIGO_EXTERN bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request);

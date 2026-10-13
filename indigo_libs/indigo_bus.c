@@ -103,6 +103,16 @@ typedef struct {
 static detach_abort_entry detach_aborts[MAX_DETACH_ABORTS];
 static int detach_abort_count = 0;
 
+// Library internal, not part of the API: indigo_driver.c guards the shared serial port list with the bus lock, so
+// that updating DEVICE_PORTS from the hot-plug thread is serialized with the change requests dispatched by the bus.
+void indigo_lock_bus(void) {
+	pthread_mutex_lock(&bus_mutex);
+}
+
+void indigo_unlock_bus(void) {
+	pthread_mutex_unlock(&bus_mutex);
+}
+
 // called with bus_mutex locked
 static void remove_detach_abort(detach_abort_entry *entry, bool release) {
 	if (release) {

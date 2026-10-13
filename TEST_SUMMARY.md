@@ -222,7 +222,7 @@
 |  | 2026-10-09 19:09 | 3.0.0.7 | linux arm64 | Talon6 ROR Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
 | focuser_asi | 2026-10-10 10:50 | 3.0.0.40 | mac arm64 | fake SDK | 23 / 23 | ✅ OK |
 | focuser_askar | 2026-09-24 17:14 | 3.0.0.7 | linux x64 | simulator | 10 / 10 | ✅ OK |
-|  | 2026-10-10 10:00 | 3.0.0.11 | mac arm64 | simulator | 26 / 26 | ✅ OK |
+|  | 2026-10-13 15:46 | 3.0.0.12 | mac arm64 | simulator | 26 / 26 | ✅ OK |
 | focuser_astroasis | 2026-10-10 14:00 | 3.0.0.18 | mac arm64 | fake SDK | 41 / 41 | ✅ OK |
 | focuser_astromechanics | 2026-10-09 19:38 | 3.0.0.8 | linux arm64 | ASTROMECHANICS Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 |  | 2026-10-10 02:08 | 3.0.0.9 | mac arm64 | simulator | 22 / 22 | ✅ OK |
@@ -254,10 +254,10 @@
 | focuser_moonlite | 2026-10-09 20:46 | 3.0.0.15 | linux arm64 | MoonLite Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 |  | 2026-10-10 02:31 | 3.0.0.16 | mac arm64 | simulator | 45 / 45 | ✅ OK |
 | focuser_mypro2 | 2026-10-10 02:33 | 3.0.0.15 | mac arm64 | simulator | 35 / 35 | ✅ OK |
-| focuser_nfocus | 2026-10-09 20:59 | 3.0.0.11 | mac arm64 | simulator | 16 / 16 | ✅ OK |
-|  | 2026-10-09 20:59 | 3.0.0.11 | linux arm64 | nFOCUS Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
+| focuser_nfocus | 2026-10-09 20:59 | 3.0.0.11 | linux arm64 | nFOCUS Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
+|  | 2026-10-13 15:48 | 3.0.0.11 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | focuser_nstep | 2026-10-09 21:14 | 3.0.0.11 | linux arm64 | nSTEP Arduino simulator (ESP32-S3) | 10 / 10 | ✅ OK |
-|  | 2026-10-10 22:02 | 3.0.0.14 | mac arm64 | simulator | 27 / 27 | ✅ OK |
+|  | 2026-10-13 15:49 | 3.0.0.14 | mac arm64 | simulator | 27 / 27 | ✅ OK |
 | focuser_optec | 2026-10-09 21:33 | 3.0.0.12 | linux arm64 | Optec TCF-S3 Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 |  | 2026-10-10 02:38 | 3.0.0.13 | mac arm64 | simulator | 42 / 42 | ✅ OK |
 | focuser_optecfl | 2026-10-10 13:51 | 3.0.0.9 | mac arm64 | simulator | 51 / 51 | ✅ OK |

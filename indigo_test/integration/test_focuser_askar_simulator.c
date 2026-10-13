@@ -552,13 +552,7 @@ cleanup:
 }
 
 static int open_descriptor_count(void) {
-	int count = 0;
-	for (int fd = 0; fd < 1024; fd++) {
-		if (fcntl(fd, F_GETFD) >= 0) {
-			count++;
-		}
-	}
-	return count;
+	return stable_descriptor_count();
 }
 
 // A partial or overlong position reply refuses the connection with nothing defined and the port
@@ -752,22 +746,12 @@ static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(fault('p', "malformed"));
 	simulator_test_client.update_property = observe_update;
 	SERIAL_CHECK_TRUE(bring_up_after_port_scan());
-	int descriptors = 0;
-	for (int fd = 0; fd < 1024; fd++) {
-		if (fcntl(fd, F_GETFD) >= 0) {
-			descriptors++;
-		}
-	}
+	int descriptors = open_descriptor_count();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, askar_focuser.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(!context.connected);
-	int after = 0;
-	for (int fd = 0; fd < 1024; fd++) {
-		if (fcntl(fd, F_GETFD) >= 0) {
-			after++;
-		}
-	}
+	int after = open_descriptor_count();
 	SERIAL_CHECK_EQ_INT(descriptors, after);
 	SERIAL_CHECK_TRUE(connect_serial_device(&askar_focuser, fixture.port));
 cleanup:
