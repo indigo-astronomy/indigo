@@ -18,8 +18,11 @@ requires.
   URL. `nmea_open()` and `nmea_close()` are the generator-wired connection helpers.
 - There is no command channel. The receiver streams, and the driver only reads: `on_timer` reads
   one line with `indigo_uni_read_line()` (a 5 s section read), parses it and reschedules itself.
-  A read that returns nothing is treated as the receiver being gone, and the timer disconnects the
-  device by requesting `CONNECTION.DISCONNECTED` and queueing the connection handler.
+  No sentence within the 5 s is a quiet receiver and the device stays connected. A failed read, or
+  the end of the stream long before the timeout (a hung-up serial port, a closed socket), means the
+  receiver is gone: the timer disconnects the device by requesting `CONNECTION.DISCONNECTED` and
+  queueing the connection handler. The port is not opened again, as its name may belong to another
+  device by then (`DRV-221`, 3.0.0.22).
 - `nmea_parse()` validates the sentence before any field is used: the `$G?` prefix, the optional
   `*hh` checksum, a token count that depends on the sentence, and per-sentence field ranges through
   `nmea_number()` and `nmea_coordinate()`. An invalid sentence is dropped, which is what keeps a
@@ -56,9 +59,9 @@ Platform independent. Built into `build/drivers/indigo_gps_nmea.a` on macOS and 
 - `gps_nmea_simulator/gps_nmea_simulator.c`, a pseudo-terminal simulator that streams one fixed
   3D-fix cycle.
 - `indigo_test/integration/test_gps_nmea_simulator.c`, the serial compliance case.
-- `indigo_test/integration/test_gps_nmea_transport.c`, three cases over a fake transport covering
-  framing, checksum, token bounds, coordinate and time mapping, read loss, open failure,
-  constellation selection, fix transitions, DOP and UTC rollover.
+- `indigo_test/integration/test_gps_nmea_transport.c`, four cases over a fake transport covering
+  framing, checksum, token bounds, coordinate and time mapping, read loss, a quiet receiver, the
+  end of the stream, open failure, constellation selection, fix transitions, DOP and UTC rollover.
 
 ## Baseline (2026-09-22, macOS 15 arm64, universal x86_64+arm64 build)
 
@@ -155,6 +158,18 @@ reconnect, and driver SHUTDOWN/INIT.
   earlier still, at `wait_for_property_state(GEOGRAPHIC_COORDINATES, INDIGO_ALERT_STATE)`, because
   the alert half of the oscillation is too short for a poll to catch.
 
+### DRV-221: a quiet receiver disconnected the device
+
+Fixed in 3.0.0.22 (2026-10-14). `on_timer` disconnected on any read that did not return a line,
+including a 5 s pause of the receiver (cold start, slow output rate, a USB-serial latency hiccup).
+Nothing within the timeout now keeps the device connected and the next read waits again. A failed
+read still disconnects, and so does a read that ends long before the timeout: that is the end of the
+stream, not silence, as Linux returns end of file at once on the hung-up port of an unplugged
+receiver and every platform does on a closed socket; without it the timer would spin on a dead port.
+A lost port is not opened again, because with `auto://` or a reused name such as `/dev/ttyUSB0` or
+`COM5` it may belong to another device by then. Regression test: `Quiet receiver stays connected,
+end of stream disconnects`, which fails against 3.0.0.21.
+
 ### Wrong expectations of the new hardware test, not driver defects
 
 The first hardware run also failed three of its own assertions. They are recorded here because each
@@ -246,7 +261,8 @@ against hardware automatically whenever a run does have a fix.
 | --- | --- | --- |
 | `nmea_gps_passes_serial_compliance_checks` | simulator, 3D fix | GPS class property contract, parsed position and elevation, advanced status, system selection |
 | `nmea_gps_reports_a_receiver_without_a_fix` | simulator, `--no-fix` | `DRV-137`, `DRV-138`, no-fix status and DOP, advanced status visibility, reset and recovery |
-| `Malformed framing, checksum, token bounds, coordinate/time mapping and read-loss recovery` | fake transport | Framing, checksum, token limits, hemisphere mapping, read loss |
+| `Malformed framing, checksum, token bounds, coordinate/time mapping and read-loss recovery` | fake transport | Framing, checksum, token limits, hemisphere mapping, a failed read disconnecting and the reconnect |
+| `Quiet receiver stays connected, end of stream disconnects` | fake transport | `DRV-221`: 5 s without a sentence keeps the connection, an early end of the stream disconnects without opening the port again |
 | `Open failure and reconnect` | fake transport | Failed open, open/close balance, reconnect |
 | `Constellation selection, fix transitions, DOP, satellites and UTC rollover` | fake transport | Every talker id, fix 1/2/3 lights, DOP, satellites in view, date rollover |
 | `test_gps_nmea_hw.c`, nine scenarios | u-blox 7 | The hardware acceptance table above |

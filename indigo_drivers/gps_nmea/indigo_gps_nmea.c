@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_gps_nmea"
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
@@ -41,6 +41,7 @@
 //+ define
 
 #define MAX_NB_OF_SYSTEMS    26
+#define NMEA_READ_TIMEOUT    5
 
 //- define
 
@@ -226,6 +227,11 @@ static void nmea_reset(indigo_device *device) {
 
 static void gps_connection_handler(indigo_device *device);
 
+static void nmea_disconnect(indigo_device *device) {
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	indigo_execute_handler(device, gps_connection_handler);
+}
+
 //- code
 
 #pragma mark - High level code (gps)
@@ -236,7 +242,8 @@ static void gps_timer_callback(indigo_device *device) {
 	}
 	//+ gps.on_timer
 	char buffer[128] = { 0 };
-	long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
+	double start = indigo_monotonic_time();
+	long length = indigo_uni_read_section(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1, "\n", "\r\n", INDIGO_DELAY(NMEA_READ_TIMEOUT));
 	char **tokens = length > 0 ? nmea_parse(buffer) : NULL;
 
 	if (length > 0 && tokens) {
@@ -396,11 +403,15 @@ static void gps_timer_callback(indigo_device *device) {
 		}
 	}
 	indigo_safe_free(tokens);
-	if (length > 0) {
+	if (length > 0 || (length == 0 && indigo_monotonic_time() - start >= NMEA_READ_TIMEOUT / 2.0)) {
+		// nothing within the timeout is a quiet receiver, e.g. during a cold start or with a slow output rate
 		indigo_execute_handler(device, gps_timer_callback);
 	} else {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		indigo_execute_handler(device, gps_connection_handler);
+		// A failed read, or the end of the stream long before the timeout: Linux returns end of file at once on
+		// the hung-up port of an unplugged receiver, and every platform on a closed socket. The port is not
+		// opened again, its name may belong to another device by now.
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost %s", DEVICE_PORT_ITEM->text.value);
+		nmea_disconnect(device);
 	}
 	//- gps.on_timer
 }
