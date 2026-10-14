@@ -1860,3 +1860,18 @@ The driver-specific properties now carry the `X_` prefix, approved by the owner 
 Hardware run on Linux arm64 against `AstroEQ_8.25_esp32_s3.bin` on the bench ESP32-S3, native USB `/dev/ttyACM1`, freshly flashed with erased NVS. Hardware testing IS performed for this record. Recorded: 19/19.
 
 Not resolved: the first run after the flash failed 4 of 19. `synscan_parks_and_unparks` ended its park ALERT, after which the next three cases found every property request unanswered and `MOUNT_EQUATORIAL_COORDINATES` in ALERT (failed reads) until `synscan_reconnects` opened a new session, which then passed like every later case. That run had no debug log, and neither the park case alone nor a full run with `SYNSCAN_HW_DEBUG=1` reproduced it, so it is not known whether the controller's USB link stalled or the driver. No change.
+
+## Lost connection only on a lost port (version 19, 2026-10-15)
+
+- Observable impact: over serial and TCP every reply that was neither `=...` nor `!...`, i.e. a reply that did
+  not arrive within the timeout or a garbled line, closed the port and disconnected the mount and its slave
+  devices. A single missed reply ended the session.
+- Fix: `synscan_command()` calls the loss handler only through `synscan_validate_handle()`, which now uses
+  `indigo_uni_is_connection_lost()`: a serial device that is gone, an error left on the port, a TCP connection
+  reset or closed by the mount. A missing or garbled reply fails just its command. UDP is unchanged, it never
+  ends the session and keeps its retries.
+- Simulator: the fault reply `silent` sends nothing, as a reply lost on the line.
+- Regression tests: `synscan_mount_survives_garbled_and_missing_replies` (two garbled and two missing replies
+  to the RA position poll keep the session, the coordinates return to OK; it fails against version 18, which
+  disconnected at the first garbled reply and never consumed the second) and
+  `synscan_mount_disconnects_after_serial_loss`, which now also reconnects to the port of a replugged mount.

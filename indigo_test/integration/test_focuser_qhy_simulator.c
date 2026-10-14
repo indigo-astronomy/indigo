@@ -549,20 +549,26 @@ cleanup:
 	driver_stop();
 }
 
+// The port disappears while idle or during a move: the device disconnects with ALERT, and connects again to the port
+// of a replugged focuser, here the second simulator, without a restart of the driver, with nothing left BUSY. Garbled
+// replies only fail their command, see idle_poll_failure.
 static void transport_loss(void) {
 	SERIAL_CHECK_TRUE(driver_start());
-	unsigned before = atomic_load(&revisions[1]);
 	if (!strcmp(current_profile, "idle")) {
 		SERIAL_CHECK_TRUE(inject("TRANSPORT", "close"));
-		SERIAL_CHECK_TRUE(new_state(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
-		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_ALERT_STATE));
 	} else {
 		SERIAL_CHECK_TRUE(inject("MOVE", "close"));
-		SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 60000));
 	}
-	// After transport loss every later request ends ALERT and nothing stays BUSY.
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 5, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	// the shared wait expects a disconnection to end OK, a lost connection ends ALERT
+	bool lost = false;
+	for (int i = 0; i < 100 && !lost; i++) {
+		lost = !context.connected && context.disconnected && context.last_connection_state == INDIGO_ALERT_STATE;
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(lost);
+	SERIAL_CHECK_TRUE(connect_serial_device(&qhy_focuser, second_fixture.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) != NULL);
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 cleanup:
 	driver_stop();
@@ -1096,8 +1102,8 @@ int main(void) {
 		{ "abort_queued", abort_queued, "normal", false, false },
 		{ "stop_refused", stop_refused, "normal", false, false },
 		{ "disconnect_motion", disconnect_motion, "normal", false, false },
-		{ "transport_loss_idle", transport_loss, "idle", false, false },
-		{ "transport_loss_move", transport_loss, "move", false, false },
+		{ "transport_loss_idle", transport_loss, "idle", false, true },
+		{ "transport_loss_move", transport_loss, "move", false, true },
 		{ "settings_during_motion", settings_during_motion, "normal", false, false },
 		{ "idle_poll_failure", idle_poll_failure, "normal", false, false },
 		{ "external_motion", external_motion, "normal", false, false },

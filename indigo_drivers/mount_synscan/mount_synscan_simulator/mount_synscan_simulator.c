@@ -375,7 +375,8 @@ static uint8_t parse_8(const char *buffer) {
 
 // Fault injection for tests, "<ready-file>.fault": "<command prefix> <reply> <count>". The next <count> commands
 // starting with the prefix are answered with <reply>, e.g. "!0", and not executed, as a controller that refuses a
-// command does. The file is rewritten with the remaining count and removed when it is used up.
+// command does; the reply "silent" sends nothing, as a reply lost on the line. The file is rewritten with the
+// remaining count and removed when it is used up.
 static char fault_path[PATH_MAX];
 static char fault_reply[16];
 
@@ -730,7 +731,9 @@ static void dispatch_command(int fd, char *command) {
 	snprintf(reply, sizeof(reply), "%s", process_command(command));
 	pthread_mutex_unlock(&state_mutex);
 
-	sim_write_reply(fd, reply);
+	if (strcmp(reply, "silent")) {
+		sim_write_reply(fd, reply);
+	}
 }
 
 static void dispatch_udp_command(int fd, char *command, struct sockaddr_in *client_address, socklen_t client_address_length) {
@@ -740,7 +743,9 @@ static void dispatch_udp_command(int fd, char *command, struct sockaddr_in *clie
 	snprintf(reply, sizeof(reply), "%s", process_command(command));
 	pthread_mutex_unlock(&state_mutex);
 
-	sim_write_udp_reply(fd, reply, client_address, client_address_length);
+	if (strcmp(reply, "silent")) {
+		sim_write_udp_reply(fd, reply, client_address, client_address_length);
+	}
 }
 
 static bool open_udp_socket(char *port, size_t port_size) {

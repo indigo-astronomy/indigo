@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_dome_beaver"
 #define DRIVER_LABEL         "Nexdome Beaver Dome"
 #define DOME_DEVICE_NAME     "Nexdome Beaver Dome"
@@ -151,7 +151,7 @@ typedef enum {
 
 static void dome_connection_handler(indigo_device *device);
 
-static void beaver_network_disconnection(indigo_device *device) {
+static void beaver_connection_lost(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		dome_connection_handler(device);
@@ -162,21 +162,39 @@ static void beaver_network_disconnection(indigo_device *device) {
 	}
 }
 
+// Checks the port before every command and after a failed one: a lost connection (indigo_uni_is_connection_lost():
+// a serial device that is gone, an error left on the port, a connection reset or closed by the controller)
+// disconnects a connected device once; during connect the failing command is enough. A missing or garbled
+// reply is not a loss, it only fails its command.
+static bool beaver_port_valid(indigo_device *device) {
+	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->disconnection_queued) {
+		return false;
+	}
+	if (!indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
+		return true;
+	}
+	if (IS_CONNECTED) {
+		PRIVATE_DATA->disconnection_queued = true;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
+		indigo_execute_handler(device, beaver_connection_lost);
+	}
+	return false;
+}
+
 // sends a request and validates the reply "!<request without #>:<result>#"; returns the result or NULL
 static char *beaver_vcommand(indigo_device *device, const char *format, va_list args) {
 	char *request = PRIVATE_DATA->request, *response = PRIVATE_DATA->response;
 	vsnprintf(request, sizeof(PRIVATE_DATA->request), format, args);
+	if (!beaver_port_valid(device)) {
+		return NULL;
+	}
 	long length = -1;
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && indigo_uni_write(PRIVATE_DATA->handle, request, (long)strlen(request)) > 0) {
 		length = indigo_uni_read_section2(PRIVATE_DATA->handle, response, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(BEAVER_FIRST_BYTE_TIMEOUT), INDIGO_DELAY(BEAVER_NEXT_BYTE_TIMEOUT));
 	}
 	if (length <= 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No response to %s", request);
-		if (PRIVATE_DATA->handle != NULL && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE && !PRIVATE_DATA->disconnection_queued) {
-			PRIVATE_DATA->disconnection_queued = true;
-			indigo_execute_handler(device, beaver_network_disconnection);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
-		}
+		beaver_port_valid(device);
 		return NULL;
 	}
 	indigo_usleep(5000);

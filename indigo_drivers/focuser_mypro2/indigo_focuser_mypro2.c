@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_mypro2"
 #define DRIVER_LABEL         "myFocuserPro2 Focuser"
 #define FOCUSER_DEVICE_NAME  "myFocuserPro2"
@@ -132,9 +132,8 @@ static void focuser_steps_handler(indigo_device *device);
 static void motion_finalizer(indigo_device *device);
 static void sync_finalizer(indigo_device *device);
 
-// A controller reached over the network cannot report a broken link, so
-// a failed transaction on a TCP handle disconnects the device.
-static void mypro2_network_disconnection(indigo_device *device) {
+// Runs the regular disconnection and then publishes ALERT for the lost connection.
+static void mypro2_connection_lost(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connection_handler(device);
@@ -148,7 +147,29 @@ static void mypro2_network_disconnection(indigo_device *device) {
 // Requests are ":<code><arguments>#", replies are "<letter><value>#".
 // Setting commands are not acknowledged at all, so expect_response is
 // false for them.
+// Checks the port before every command and after a failed one: a lost connection (indigo_uni_is_connection_lost():
+// a serial device that is gone, an error left on the port, a connection reset or closed by the controller)
+// disconnects a connected device once; during connect the failing command is enough. A missing or garbled
+// reply is not a loss, it only fails its command.
+static bool mypro2_port_valid(indigo_device *device) {
+	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->disconnection_queued) {
+		return false;
+	}
+	if (!indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
+		return true;
+	}
+	if (IS_CONNECTED) {
+		PRIVATE_DATA->disconnection_queued = true;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
+		indigo_execute_handler(device, mypro2_connection_lost);
+	}
+	return false;
+}
+
 static bool mypro2_vcommand(indigo_device *device, bool expect_response, const char *format, va_list args) {
+	if (!mypro2_port_valid(device)) {
+		return false;
+	}
 	bool failed = indigo_uni_discard(PRIVATE_DATA->handle) < 0 || indigo_uni_vprintf(PRIVATE_DATA->handle, format, args) <= 0;
 	if (!failed && expect_response) {
 		long length = indigo_uni_read_section(PRIVATE_DATA->handle, RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "#", "", INDIGO_DELAY(MFP_TIMEOUT));
@@ -159,10 +180,8 @@ static bool mypro2_vcommand(indigo_device *device, bool expect_response, const c
 			indigo_usleep(50000);
 		}
 	}
-	if (failed && PRIVATE_DATA->handle != NULL && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE && !PRIVATE_DATA->disconnection_queued) {
-		PRIVATE_DATA->disconnection_queued = true;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
-		indigo_execute_handler(device, mypro2_network_disconnection);
+	if (failed) {
+		mypro2_port_valid(device);
 	}
 	return !failed;
 }

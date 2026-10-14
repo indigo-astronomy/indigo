@@ -1774,6 +1774,25 @@ static bool switch_to_device(const simulator_driver_case *device_case) {
 	return wait_present(CONNECTION_PROPERTY_NAME, true, 5);
 }
 
+// A serial port that disappears, here the simulator exiting with its end of the pseudo-terminal, disconnects the dome
+// with ALERT; it connects again to the port of a replugged controller, here a second simulator, without a restart of
+// the driver. Garbled and missing replies on a serial port fail only their command, see poll_read_failures.
+static void serial_port_loss_and_reconnect(void) {
+	CHECK(start_simulator_with(&second_simulator, "--azimuth 45"));
+	CHECK(start_connected());
+	unsigned connection = revision_of(CONNECTION_PROPERTY_NAME);
+	CHECK(inject("ANY", "close", 1));
+	CHECK(wait_fresh_state(CONNECTION_PROPERTY_NAME, connection, INDIGO_ALERT_STATE, 10));
+	CHECK(switch_of(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME));
+	CHECK(wait_message("ALERT", "Device disconnected unexpectedly"));
+	CHECK(connect_to(second_simulator.port, INDIGO_OK_STATE, true));
+	CHECK_NEAR(45, azimuth_value(), 1e-4);
+	CHECK(disconnect());
+cleanup:
+	driver_down();
+	stop_external_serial_simulator(&second_simulator);
+}
+
 static void additional_instance(void) {
 	CHECK(start_simulator_with(&second_simulator, "--azimuth 45 --shutter open"));
 	CHECK(driver_up());
@@ -2251,6 +2270,12 @@ static void network_failures_and_transport_loss(void) {
 	CHECK_EQ(descriptors, open_descriptors());
 	CHECK(!present(FAILURE_PROPERTY));
 	CHECK(connect_to(url, INDIGO_OK_STATE, true));
+	// a garbled or missing reply over TCP fails only its command, the connection stays
+	CHECK(inject_argument("dome getaz", "reply", 2, "abc"));
+	CHECK(wait_polls(2, 6));
+	CHECK(inject("dome status", "silent", 1));
+	CHECK(wait_polls(2, 12));
+	CHECK(switch_of(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME));
 	unsigned connection = revision_of(CONNECTION_PROPERTY_NAME);
 	// the controller drops the connection while the driver keeps polling
 	CHECK(control("drop", "1"));
@@ -2555,6 +2580,7 @@ static const beaver_case cases[] = {
 	{ "busy_guard_holds_while_command_runs", busy_guard_holds_while_command_runs, "--azimuth 90", false, false },
 	{ "disconnect_during_motion", disconnect_during_motion, "--azimuth 90", false, false },
 	{ "lifecycle_and_shutdown", lifecycle_and_shutdown, "--azimuth 90", false, false },
+	{ "serial_port_loss_and_reconnect", serial_port_loss_and_reconnect, "--azimuth 90", false, false },
 	{ "additional_instance", additional_instance, NULL, false, false },
 	{ "urgent_abort_cancels_queued_goto", urgent_abort_cancels_queued_goto, "--azimuth 90 --shutter-time 4", false, false },
 	{ "queued_request_survives_status_poll", queued_request_survives_status_poll, "--shutter open", false, false },

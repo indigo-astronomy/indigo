@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 18;
+	version = 19;
 	serial {
 		configurable_speed = true;
 	}
@@ -303,14 +303,16 @@ driver synscan {
 			PRIVATE_DATA->last_error = -1;
 			char buffer[32];
 			snprintf(buffer, sizeof(buffer), "%s\r", command);
+			// A failed discard, write or reply only ends the session when the connection is lost, see
+			// synscan_validate_handle(); a missing or garbled reply fails just this command.
 			for (int attempt = 0; attempt < attempts; attempt++) {
 				if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 && !udp) {
-					synscan_handle_connection_loss(device);
+					synscan_validate_handle(device);
 					return false;
 				}
 				if (indigo_uni_write(PRIVATE_DATA->handle, buffer, (long)strlen(buffer)) <= 0) {
-					synscan_handle_connection_loss(device);
 					if (!udp) {
+						synscan_validate_handle(device);
 						return false;
 					}
 					continue;
@@ -322,7 +324,9 @@ driver synscan {
 				if (result == SYNSCAN_RESPONSE_COMMAND_ERROR) {
 					return false;
 				}
-				synscan_handle_connection_loss(device);
+				if (!udp) {
+					synscan_validate_handle(device);
+				}
 			}
 			return false;
 		}
@@ -1504,7 +1508,8 @@ driver synscan {
 			if (PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE) {
 				return true;
 			}
-			if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+			// a device that is gone, an error left on the port, a connection reset or closed by the mount
+			if (indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
 				synscan_handle_connection_loss(device);
 				return false;
 			}

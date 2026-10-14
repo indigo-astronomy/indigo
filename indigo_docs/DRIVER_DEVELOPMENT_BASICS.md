@@ -703,6 +703,39 @@ indigo_set_additional_ports(device, 1, names, labels);
 
 The list, the additional items and the registered devices are guarded by the bus lock, so the updates are serialized with the change requests dispatched by the bus. *indigo_enumerate_usbserial_devices()* is still available for drivers that need the raw USB-serial information, but it always scans and does not update `DEVICE_PORTS`.
 
+#### Lost connections
+
+A serial adapter can be unplugged and a network controller can drop its connection. A driver that disconnects in that case uses *indigo_uni_is_connection_lost()*. It reports a lost connection, and only that:
+- an error left on the handle by a read or write, which fails every later one;
+- a serial device that is gone or a TCP connection that was reset (*indigo_uni_is_valid()*);
+- a TCP connection the peer closed (readable, and a peek finds the end of the stream).
+
+A missing or garbled reply is never a lost connection. It fails its command, the property shows ALERT and the next command starts clean after *indigo_uni_discard()*. During the connect handshake a bad reply still refuses the connection, through the failed open or `on_connect`.
+
+The pattern, see *askar_port_valid()* in *indigo_focuser_askar.driver*:
+
+```C
+static bool device_port_valid(indigo_device *device) {
+	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->lost) {
+		return false;
+	}
+	if (!indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
+		return true;
+	}
+	if (IS_CONNECTED) {
+		PRIVATE_DATA->lost = true;
+		indigo_execute_handler(device, device_connection_lost);
+	}
+	return false;
+}
+```
+
+- Call it before every command and again after a failed discard, write or read.
+- Queue the disconnection once; the flag keeps the commands that fail meanwhile from queueing it again.
+- `device_connection_lost()` runs the regular disconnection first and then publishes `CONNECTION` ALERT with a message. The regular disconnection ends OK, so setting ALERT before it would be overwritten.
+- Clear the flag when the port is opened again, before the first handshake command. Clearing it in `on_connect` is too late: the commands of the open itself would fail and the device could not reconnect without a restart.
+- Devices that share a port (a mount and its guider) close it and disconnect together with *indigo_disconnect_slave_devices()*, see *mount_lx200*.
+
 ### Conflicting Drivers
 
 In some situations some drivers may interfere with each other like different implementations of the driver for the same hardware. Loading both drivers may result in erratic behavior and both drivers should not be loaded. For that reason INDIGO version 2.0-114 introduces a function that can be used to check if certain drivers are already initialized:

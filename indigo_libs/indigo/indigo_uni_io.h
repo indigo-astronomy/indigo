@@ -330,6 +330,12 @@ INDIGO_EXTERN bool indigo_uni_lock_file(indigo_uni_handle *handle);
  */
 INDIGO_EXTERN bool indigo_uni_is_valid(indigo_uni_handle *handle);
 
+/** Check if the connection of a serial or network handle is lost: an error left on the handle by a read or write,
+ which fails every later one, a device that is gone or a connection reset (see indigo_uni_is_valid()), or a TCP
+ connection closed by the peer. A missing or garbled reply is not a loss. Returns false for a NULL or file handle.
+ */
+INDIGO_EXTERN bool indigo_uni_is_connection_lost(indigo_uni_handle *handle);
+
 /** Kill socket connetion without closing handle.
  */
 INDIGO_EXTERN void indigo_uni_kill_socket(indigo_uni_handle *handle);

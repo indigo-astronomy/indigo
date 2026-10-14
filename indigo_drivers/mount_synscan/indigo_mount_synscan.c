@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -367,14 +367,16 @@ static bool synscan_command(indigo_device *device, const char *command, char *re
 	PRIVATE_DATA->last_error = -1;
 	char buffer[32];
 	snprintf(buffer, sizeof(buffer), "%s\r", command);
+	// A failed discard, write or reply only ends the session when the connection is lost, see
+	// synscan_validate_handle(); a missing or garbled reply fails just this command.
 	for (int attempt = 0; attempt < attempts; attempt++) {
 		if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 && !udp) {
-			synscan_handle_connection_loss(device);
+			synscan_validate_handle(device);
 			return false;
 		}
 		if (indigo_uni_write(PRIVATE_DATA->handle, buffer, (long)strlen(buffer)) <= 0) {
-			synscan_handle_connection_loss(device);
 			if (!udp) {
+				synscan_validate_handle(device);
 				return false;
 			}
 			continue;
@@ -386,7 +388,9 @@ static bool synscan_command(indigo_device *device, const char *command, char *re
 		if (result == SYNSCAN_RESPONSE_COMMAND_ERROR) {
 			return false;
 		}
-		synscan_handle_connection_loss(device);
+		if (!udp) {
+			synscan_validate_handle(device);
+		}
 	}
 	return false;
 }
@@ -1568,7 +1572,8 @@ static bool synscan_validate_handle(indigo_device *device) {
 	if (PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE) {
 		return true;
 	}
-	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+	// a device that is gone, an error left on the port, a connection reset or closed by the mount
+	if (indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
 		synscan_handle_connection_loss(device);
 		return false;
 	}

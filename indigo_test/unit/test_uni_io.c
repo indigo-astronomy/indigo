@@ -406,6 +406,50 @@ static void connect_with_timeout_is_bounded(void) {
 #endif
 }
 
+// ---- indigo_uni_is_connection_lost() ----
+
+// A serial port whose device went away: the write fails and the error stays on the handle. A garbled reply is not
+// a loss, so data that arrives does not change the answer.
+static void connection_lost_after_serial_failure(void) {
+	int master = -1;
+	indigo_uni_handle *handle = open_pseudo_terminal(&master);
+	ASSERT_TRUE(handle != NULL);
+	ASSERT_FALSE(indigo_uni_is_connection_lost(handle));
+	ASSERT_EQ_INT(2, (int)write(master, "?!", 2));
+	indigo_usleep(50000);
+	ASSERT_FALSE(indigo_uni_is_connection_lost(handle));
+	close(master);
+	indigo_uni_write(handle, "x", 1);
+	char c;
+	indigo_uni_read(handle, &c, 1);
+	ASSERT_TRUE(handle->last_error != 0);
+	ASSERT_TRUE(indigo_uni_is_connection_lost(handle));
+	indigo_uni_close(&handle);
+	ASSERT_FALSE(indigo_uni_is_connection_lost(handle));
+}
+
+// A TCP connection is lost once the peer closes it, not while it is open or has unread data.
+static void connection_lost_after_peer_close(void) {
+	int port = 0;
+	int listener = open_tcp_listener(&port);
+	ASSERT_TRUE(listener >= 0);
+	indigo_uni_handle *handle = indigo_uni_open_client_socket_with_timeout("127.0.0.1", port, SOCK_STREAM, INDIGO_DELAY(1), INDIGO_LOG_ERROR);
+	ASSERT_TRUE(handle != NULL);
+	int peer = accept(listener, NULL, NULL);
+	ASSERT_TRUE(peer >= 0);
+	ASSERT_FALSE(indigo_uni_is_connection_lost(handle));
+	ASSERT_EQ_INT(3, (int)send(peer, "abc", 3, 0));
+	indigo_usleep(50000);
+	ASSERT_FALSE(indigo_uni_is_connection_lost(handle));
+	char buffer[8];
+	ASSERT_EQ_INT(3, (int)indigo_uni_read(handle, buffer, 3));
+	close(peer);
+	indigo_usleep(50000);
+	ASSERT_TRUE(indigo_uni_is_connection_lost(handle));
+	indigo_uni_close(&handle);
+	close(listener);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "read_section_accepts_null_ignore_list", read_section_accepts_null_ignore_list },
@@ -421,7 +465,9 @@ int main(void) {
 		{ "discover_rejects_invalid_arguments", discover_rejects_invalid_arguments },
 		{ "connect_with_timeout_succeeds", connect_with_timeout_succeeds },
 		{ "connect_with_timeout_reports_refused_connection", connect_with_timeout_reports_refused_connection },
-		{ "connect_with_timeout_is_bounded", connect_with_timeout_is_bounded }
+		{ "connect_with_timeout_is_bounded", connect_with_timeout_is_bounded },
+		{ "connection_lost_after_serial_failure", connection_lost_after_serial_failure },
+		{ "connection_lost_after_peer_close", connection_lost_after_peer_close }
 	};
 	return indigo_run_tests("indigo_uni_io unit tests", tests, sizeof(tests) / sizeof(tests[0]));
 }

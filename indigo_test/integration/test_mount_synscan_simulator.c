@@ -1056,8 +1056,11 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The port disappearing disconnects the mount, and it connects again to the port of a replugged mount, here a second
+// simulator, without a restart of the driver.
 static void synscan_mount_disconnects_after_serial_loss(void) {
 	external_serial_simulator simulator = { 0 };
+	external_serial_simulator replugged = { 0 };
 	bool driver_started = false;
 
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
@@ -1068,7 +1071,44 @@ static void synscan_mount_disconnects_after_serial_loss(void) {
 	stop_external_serial_simulator(&simulator);
 	SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
 
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&replugged, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, replugged.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+
 cleanup:
+	if (driver_started) {
+		if (context.connected) {
+			stop_serial_driver(&synscan_mount);
+		} else {
+			tear_down_serial_driver(&synscan_mount);
+		}
+	}
+	stop_external_serial_simulator(&simulator);
+	stop_external_serial_simulator(&replugged);
+}
+
+// Garbled and missing replies fail only their command: the session survives them and the next good poll restores
+// the coordinates. Before, every reply that was neither "=..." nor "!..." closed the port and disconnected the mount.
+static void synscan_mount_survives_garbled_and_missing_replies(void) {
+	static const char *replies[] = { "xyz", "silent" };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	for (int i = 0; i < ARRAY_SIZE(replies); i++) {
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j1", replies[i], 2));
+		for (int j = 0; j < 100 && synscan_fault_pending(&simulator); j++) {
+			indigo_usleep(100000);
+		}
+		SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+		SERIAL_CHECK_TRUE(context.connected && !context.disconnected);
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	}
+
+cleanup:
+	remove_synscan_fault(&simulator);
 	if (driver_started) {
 		if (context.connected) {
 			stop_serial_driver(&synscan_mount);
@@ -2701,6 +2741,7 @@ int main(void) {
 		{ "synscan_guider_restores_tracking_after_refused_pulse_start", synscan_guider_restores_tracking_after_refused_pulse_start },
 		{ "synscan_aux_passes_shutter_compliance_checks", synscan_aux_passes_shutter_compliance_checks },
 		{ "synscan_mount_disconnects_after_serial_loss", synscan_mount_disconnects_after_serial_loss },
+		{ "synscan_mount_survives_garbled_and_missing_replies", synscan_mount_survives_garbled_and_missing_replies },
 		{ "synscan_mount_reports_failed_serial_connection", synscan_mount_reports_failed_serial_connection },
 		{ "synscan_mount_connects_with_explicit_udp_url", synscan_mount_connects_with_explicit_udp_url },
 		{ "synscan_mount_survives_lost_udp_replies", synscan_mount_survives_lost_udp_replies },

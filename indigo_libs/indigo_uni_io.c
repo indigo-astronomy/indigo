@@ -2175,6 +2175,41 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 	return false;
 }
 
+bool indigo_uni_is_connection_lost(indigo_uni_handle *handle) {
+	if (handle == NULL || handle->type == INDIGO_FILE_HANDLE) {
+		return false;
+	}
+	if (handle->last_error != 0 || !indigo_uni_is_valid(handle)) {
+		return true;
+	}
+	if (handle->type == INDIGO_TCP_HANDLE) {
+		// a connection the peer closed is readable at once and a peek finds the end of the stream
+		char c;
+		long count = -1;
+		fd_set readout;
+		FD_ZERO(&readout);
+		struct timeval tv = { 0, 0 };
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		FD_SET(handle->fd, &readout);
+		if (select(handle->fd + 1, &readout, NULL, NULL, &tv) > 0) {
+			do {
+				count = recv(handle->fd, &c, 1, MSG_PEEK);
+			} while (count < 0 && errno == EINTR);
+		}
+#elif defined(INDIGO_WINDOWS)
+		FD_SET(handle->sock, &readout);
+		if (select(0, &readout, NULL, NULL, &tv) > 0) {
+			count = recv(handle->sock, &c, 1, MSG_PEEK);
+		}
+#endif
+		if (count == 0) {
+			indigo_error("%d <- // Connection closed", handle->index);
+			return true;
+		}
+	}
+	return false;
+}
+
 void indigo_uni_kill_socket(indigo_uni_handle *handle) {
 	if (handle == NULL) {
 		// indigo_error("%s used with NULL handle", __FUNCTION__);

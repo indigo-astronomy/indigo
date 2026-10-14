@@ -90,36 +90,31 @@ driver askar {
 			}
 		}
 
-		// Checks the port the way the mount drivers do before every command: the serial device is gone (it no longer
-		// answers the modem line or comm state query) or the TCP connection was reset, or a read or write left an
-		// error on the handle, which fails every later one. With closed set, a TCP connection the focuser closed counts
-		// as well: the socket is readable and the peek finds the end of the stream, which is only looked for after a
-		// failed discard, write or read. A lost port disconnects a connected device once; during connect and disconnect
-		// the failing command is enough. A missing or garbled reply is not a loss, it only fails its command.
-		static bool askar_port_valid(indigo_device *device, bool closed) {
-			indigo_uni_handle *handle = PRIVATE_DATA->handle;
-			if (handle == NULL || PRIVATE_DATA->lost) {
+		// Checks the port before every command, like the mount drivers, and after a failed one: a lost connection
+		// (indigo_uni_is_connection_lost(): a device that is gone, an error left on the port, a connection reset or
+		// closed by the focuser) disconnects a connected device once; during connect and disconnect the failing
+		// command is enough. A missing or garbled reply is not a loss, it only fails its command.
+		static bool askar_port_valid(indigo_device *device) {
+			if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->lost) {
 				return false;
 			}
-			bool lost = handle->last_error != 0 || !indigo_uni_is_valid(handle);
-			if (!lost && closed && handle->type == INDIGO_TCP_HANDLE) {
-				char c;
-				lost = indigo_uni_wait_for_data(handle, 0) > 0 && indigo_uni_peek_available(handle, &c, 1) == 0;
+			if (!indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
+				return true;
 			}
-			if (lost && IS_CONNECTED) {
+			if (IS_CONNECTED) {
 				PRIVATE_DATA->lost = true;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost %s", DEVICE_PORT_ITEM->text.value);
 				indigo_execute_handler(device, askar_connection_lost);
 			}
-			return !lost;
+			return false;
 		}
 
 		static bool askar_command(indigo_device *device, const char *command, const char *expected, ...) {
-			if (!askar_port_valid(device, false)) {
+			if (!askar_port_valid(device)) {
 				return false;
 			}
 			if (indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
-				askar_port_valid(device, true);
+				askar_port_valid(device);
 				return false;
 			}
 			va_list args;
@@ -127,7 +122,7 @@ driver askar {
 			long written = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 			va_end(args);
 			if (written <= 0) {
-				askar_port_valid(device, true);
+				askar_port_valid(device);
 				return false;
 			}
 			if (!expected) {
@@ -141,7 +136,7 @@ driver askar {
 				}
 				long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "#", "\r\n", INDIGO_DELAY(remaining), INDIGO_DELAY(0.1));
 				if (count <= 0) {
-					askar_port_valid(device, true);
+					askar_port_valid(device);
 					return false;
 				}
 				if (PRIVATE_DATA->response[count - 1] != '#' || (long)strlen(PRIVATE_DATA->response) != count) {

@@ -70,7 +70,7 @@ typedef struct {
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_focuser_qhy"
 #define DRIVER_LABEL         "QHY Q-Focuser"
 #define FOCUSER_DEVICE_NAME  "Q-Focuser"
@@ -276,7 +276,8 @@ static bool qhy_parse_response(const char *response, qhy_response *parsed) {
 	return parsed->idx == -1 || parsed->idx == 2 || parsed->idx == 3 || parsed->idx == 6 || parsed->idx == 7 || parsed->idx == 11 || parsed->idx == 13 || parsed->idx == 16;
 }
 
-static void qhy_network_disconnection(indigo_device *device) {
+// Runs the regular disconnection and then publishes ALERT for the lost connection.
+static void qhy_connection_lost(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connection_handler(device);
@@ -285,8 +286,31 @@ static void qhy_network_disconnection(indigo_device *device) {
 	}
 }
 
+// Checks the port before every command and after a failed one: a lost connection (indigo_uni_is_connection_lost():
+// a serial device that is gone, an error left on the port, a connection reset or closed by the focuser)
+// disconnects a connected device once; during connect the failing command is enough. A missing or garbled
+// reply is not a loss, it only fails its command.
+static bool qhy_port_valid(indigo_device *device) {
+	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->disconnect_pending) {
+		return false;
+	}
+	if (!indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
+		return true;
+	}
+	if (IS_CONNECTED) {
+		PRIVATE_DATA->disconnect_pending = true;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
+		indigo_execute_handler(device, qhy_connection_lost);
+	}
+	return false;
+}
+
 static bool qhy_command(indigo_device *device, qhy_response *parsed, const char *format, ...) {
-	if (!PRIVATE_DATA->handle || indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
+	if (!qhy_port_valid(device)) {
+		return false;
+	}
+	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
+		qhy_port_valid(device);
 		return false;
 	}
 	va_list args, copy;
@@ -298,9 +322,8 @@ static bool qhy_command(indigo_device *device, qhy_response *parsed, const char 
 	va_end(args);
 	long count = written == length ? indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\x7D", "", INDIGO_DELAY(3), INDIGO_DELAY(0.1)) : -1;
 	bool result = count > 0 && PRIVATE_DATA->response[count - 1] == 0x7D && (long)strlen(PRIVATE_DATA->response) == count && qhy_parse_response(PRIVATE_DATA->response, parsed);
-	if (!result && PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE && IS_CONNECTED && !PRIVATE_DATA->disconnect_pending) {
-		PRIVATE_DATA->disconnect_pending = true;
-		indigo_execute_handler(device, qhy_network_disconnection);
+	if (!result) {
+		qhy_port_valid(device);
 	}
 	return result;
 }

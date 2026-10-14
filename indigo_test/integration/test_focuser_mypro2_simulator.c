@@ -1008,20 +1008,33 @@ cleanup:
 	driver_stop();
 }
 
-// The port disappears under an idle driver: every later request ends ALERT and
-// the disconnect still completes.
+// The port disappears under an idle driver: the device disconnects with ALERT,
+// and connects again to the port of a replugged controller, here a second
+// simulator, without a restart of the driver. Garbled and missing replies only
+// fail their command, see poll_failure_recovery.
 static void transport_loss(void) {
+	external_serial_simulator replugged = { 0 };
 	SERIAL_CHECK_TRUE(driver_start());
-	SERIAL_CHECK_TRUE(goto_mode());
 	SERIAL_CHECK_TRUE(fault("00", "close"));
-	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_change(X_SETTLE_TIME_PROPERTY_NAME, X_SETTLE_TIME_ITEM_NAME, 120, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
-	disconnect_serial_device(&mypro2);
-	SERIAL_CHECK_TRUE(!context.connected);
+	// the shared wait expects a disconnection to end OK, a lost connection ends ALERT
+	bool lost = false;
+	for (int i = 0; i < 100 && !lost; i++) {
+		lost = !context.connected && context.disconnected && context.last_connection_state == INDIGO_ALERT_STATE;
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(lost);
+	unsetenv("INDIGO_MYPRO2_EVENTS");
+	unsetenv("INDIGO_MYPRO2_FAULT");
+	const char *args[] = { "--profile", "custom", NULL };
+	bool started = start_external_serial_simulator_with_args(&replugged, FOCUSER_MYPRO2_SIMULATOR_EXECUTABLE, args);
+	setenv("INDIGO_MYPRO2_EVENTS", event_path, 1);
+	setenv("INDIGO_MYPRO2_FAULT", fault_path, 1);
+	SERIAL_CHECK_TRUE(started);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mypro2, replugged.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) != NULL);
 cleanup:
 	driver_stop();
+	stop_external_serial_simulator(&replugged);
 }
 
 // ----------------------------------------------------------------- settings
