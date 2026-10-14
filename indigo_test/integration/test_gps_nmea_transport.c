@@ -27,7 +27,9 @@ static const simulator_driver_case driver = { "NMEA GPS", "indigo_gps_nmea", "NM
 static indigo_uni_handle handle;
 static pthread_mutex_t input_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char input[128];
-static atomic_int opens, closes, reads, invalid_io, fail_open, fail_read;
+// fail_read, eof_read and silent_read count the next reads that fail, end the stream at once (a hung-up serial port or
+// a closed socket) or wait out the timeout without a sentence (a quiet receiver)
+static atomic_int opens, closes, reads, invalid_io, fail_open, fail_read, eof_read, silent_read;
 
 indigo_uni_handle *nmea_test_open(const char *port, const char *config, int level) {
 	if (atomic_exchange(&fail_open, 0)) {
@@ -49,8 +51,18 @@ long nmea_test_read(indigo_uni_handle *port, char *buffer, long length, const ch
 		atomic_fetch_add(&invalid_io, 1);
 		return -1;
 	}
-	if (atomic_exchange(&fail_read, 0)) {
+	if (atomic_load(&fail_read) > 0) {
+		atomic_fetch_sub(&fail_read, 1);
 		return -1;
+	}
+	if (atomic_load(&eof_read) > 0) {
+		atomic_fetch_sub(&eof_read, 1);
+		return 0;
+	}
+	if (atomic_load(&silent_read) > 0) {
+		atomic_fetch_sub(&silent_read, 1);
+		indigo_usleep(timeout);
+		return 0;
 	}
 	indigo_usleep(1000);
 	pthread_mutex_lock(&input_mutex);
@@ -94,6 +106,25 @@ static void malformed_input_and_recovery(void) {
 	SERIAL_CHECK_TRUE(connect_serial_device(&driver, "fake"));
 	SERIAL_CHECK_TRUE(sentence("$GPGGA,123520,4807.038,N,01131.000,E,1,8,0.9,545.4,M,46.9,M,,"));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, 545, 0));
+cleanup:
+	stop_serial_driver(&driver);
+	ASSERT_EQ_INT(opens, closes);
+	ASSERT_EQ_INT(0, invalid_io);
+}
+
+// A quiet receiver stays connected; the end of the stream long before the timeout, as on the hung-up port of an
+// unplugged receiver, disconnects without opening the port again.
+static void lost_and_quiet_receiver(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&driver, "fake"));
+	int opened = opens;
+	atomic_store(&silent_read, 1);
+	indigo_usleep(6000000);
+	SERIAL_CHECK_TRUE(context.connected);
+	SERIAL_CHECK_TRUE(sentence("$GPGGA,123520,4807.038,N,01131.000,E,1,8,0.9,545.4,M,46.9,M,,"));
+	atomic_store(&eof_read, 1);
+	SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
+	SERIAL_CHECK_EQ_INT(opened, opens);
+	SERIAL_CHECK_EQ_INT(opens, closes);
 cleanup:
 	stop_serial_driver(&driver);
 	ASSERT_EQ_INT(opens, closes);
@@ -148,7 +179,7 @@ cleanup:
 
 int main(void) {
 	setvbuf(stdout, NULL, _IONBF, 0);
-	alarm(35);
-	const indigo_test_case tests[] = { { "Malformed framing, checksum, token bounds, coordinate/time mapping and read-loss recovery", malformed_input_and_recovery }, { "Open failure and reconnect", open_rollback }, { "Constellation selection, fix transitions, DOP, satellites and UTC rollover", constellation_and_fix_states } };
+	alarm(60);
+	const indigo_test_case tests[] = { { "Malformed framing, checksum, token bounds, coordinate/time mapping and read-loss recovery", malformed_input_and_recovery }, { "Quiet receiver stays connected, end of stream disconnects", lost_and_quiet_receiver }, { "Open failure and reconnect", open_rollback }, { "Constellation selection, fix transitions, DOP, satellites and UTC rollover", constellation_and_fix_states } };
 	return indigo_run_tests("NMEA fake transport", tests, ARRAY_SIZE(tests));
 }

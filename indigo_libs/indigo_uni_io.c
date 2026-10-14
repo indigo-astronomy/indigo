@@ -148,16 +148,33 @@ char *dump_data(const char *data, long length) {
 	return buffer;
 }
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+static double monotonic_time(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1e9;
+}
+#endif
+
 int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		return 1;
 	} else {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(handle->fd, &readout);
-		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
-		switch (select(handle->fd + 1, &readout, NULL, NULL, &tv)) {
+		// A signal interrupts select() with EINTR, which is not an error of the port: the wait goes on for the
+		// remaining time. Stored as an error, it would fail every later read and write of the port.
+		double deadline = monotonic_time() + timeout / 1e6;
+		int result;
+		do {
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(handle->fd, &readout);
+			double remaining = deadline - monotonic_time();
+			long wait = remaining > 0 ? (long)(remaining * 1e6) : 0;
+			struct timeval tv = { .tv_sec = wait / 1000000L, .tv_usec = wait % 1000000L };
+			result = select(handle->fd + 1, &readout, NULL, NULL, &tv);
+		} while (result < 0 && errno == EINTR);
+		switch (result) {
 			case -1:
 				handle->last_error = errno;
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
@@ -179,10 +196,16 @@ int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 		DWORD errors;
 		timeout = (timeout + 999) / 1000;
 		while (GetTickCount64() - start < timeout) {
-			ClearCommError(handle->com, &errors, &stat);
-			if (errors != 0) {
-				indigo_error("%d -> // Failed to wait for data", handle->index);
+			// ClearCommError() fails only when the device is gone, its errors and stat are not set then
+			if (!ClearCommError(handle->com, &errors, &stat)) {
+				handle->last_error = GetLastError();
+				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
 				return -1;
+			}
+			// a framing, parity, overrun or break error is cleared by ClearCommError(), the data that follows is
+			// read as usual, so it is reported but does not fail the wait
+			if (errors != 0) {
+				indigo_error("%d -> // line error 0x%lx", handle->index, (unsigned long)errors);
 			}
 			if (stat.cbInQue > 0) {
 				return 1;
@@ -233,7 +256,10 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 		}
 	} else {
 #endif
-		bytes_read = read(handle->fd, buffer, length);
+		// a read interrupted by a signal before any data arrived is repeated, see indigo_uni_wait_for_data()
+		do {
+			bytes_read = read(handle->fd, buffer, length);
+		} while (bytes_read < 0 && errno == EINTR);
 		if (bytes_read < 0) {
 			handle->last_error = errno;
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
@@ -265,9 +291,10 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 #if !defined(INDIGO_CLIENT)
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		bytes_read = 0;
-		bool read_result = ReadFile(handle->com, buffer, length, &bytes_read, NULL);
-		handle->last_error = GetLastError();
-		if (!read_result) {
+		// GetLastError() is read only after a failed call, a successful one may leave the error of an earlier call
+		// behind, and that error stored would fail every later read and write of the port
+		if (!ReadFile(handle->com, buffer, length, &bytes_read, NULL)) {
+			handle->last_error = GetLastError();
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
@@ -308,7 +335,10 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 		}
 	} else {
 #endif
-		bytes_written = write(handle->fd, buffer, length);
+		// a write interrupted by a signal before any data went out is repeated, see indigo_uni_wait_for_data()
+		do {
+			bytes_written = write(handle->fd, buffer, length);
+		} while (bytes_written < 0 && errno == EINTR);
 		if (bytes_written < 0) {
 			handle->last_error = errno;
 			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
@@ -340,9 +370,9 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 #if !defined(INDIGO_CLIENT)
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		bytes_written = 0;
-		bool write_result = WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, NULL);
-		handle->last_error = GetLastError();
-		if (!write_result && handle->last_error) {
+		// GetLastError() only after a failed call, see read_data()
+		if (!WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, NULL)) {
+			handle->last_error = GetLastError();
 			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
@@ -1720,7 +1750,9 @@ long indigo_uni_peek_available(indigo_uni_handle *handle, void *buffer, long len
 	long bytes_read = -1;
 	if (handle->type == INDIGO_TCP_HANDLE) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		bytes_read = recv(handle->fd, buffer, length, MSG_PEEK);
+		do {
+			bytes_read = recv(handle->fd, buffer, length, MSG_PEEK);
+		} while (bytes_read < 0 && errno == EINTR);
 		if (bytes_read < 0) {
 			handle->last_error = errno;
 			indigo_error("%d -> // Failed to peek (%s)", handle->index, indigo_uni_strerror(handle));

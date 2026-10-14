@@ -26,6 +26,8 @@
 #include <time.h>
 #include <limits.h>
 #include <pthread.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -94,6 +96,91 @@ static void read_section_still_ignores_and_terminates(void) {
 	ASSERT_STREQ("ab", buffer);
 	indigo_uni_close(&handle);
 	unlink(path);
+}
+
+// ---- interrupted system calls ----
+
+// A signal delivered to a thread waiting in select() makes it return EINTR. That is not an error of the port: the
+// wait went on to fail with -1 and stored EINTR as the error of the handle, so every later read and write of a
+// working port failed until it was closed.
+
+static void interrupt_handler(int signal) {
+}
+
+typedef struct {
+	pthread_t target;
+	int master;
+	bool send_data;
+} interrupter;
+
+static void *interrupt_thread(void *data) {
+	interrupter *context = data;
+	indigo_usleep(100000);
+	pthread_kill(context->target, SIGUSR1);
+	if (context->send_data) {
+		indigo_usleep(200000);
+		if (write(context->master, "x\n", 2) != 2) {
+			return NULL;
+		}
+	}
+	return NULL;
+}
+
+// A pseudo-terminal stands in for the serial port, so the wait really goes through select().
+static indigo_uni_handle *open_pseudo_terminal(int *master) {
+	*master = posix_openpt(O_RDWR | O_NOCTTY);
+	if (*master < 0 || grantpt(*master) != 0 || unlockpt(*master) != 0) {
+		return NULL;
+	}
+	return indigo_uni_open_serial(ptsname(*master), INDIGO_LOG_ERROR);
+}
+
+// Installed without SA_RESTART, so the signal interrupts select() instead of restarting it.
+static void interrupt_wait(bool send_data, long timeout, int *result, double *elapsed, int *last_error, char *line, int line_size) {
+	struct sigaction action, previous;
+	memset(&action, 0, sizeof(action));
+	action.sa_handler = interrupt_handler;
+	sigemptyset(&action.sa_mask);
+	sigaction(SIGUSR1, &action, &previous);
+	int master = -1;
+	indigo_uni_handle *handle = open_pseudo_terminal(&master);
+	ASSERT_TRUE(handle != NULL);
+	interrupter context = { pthread_self(), master, send_data };
+	pthread_t thread;
+	ASSERT_EQ_INT(0, pthread_create(&thread, NULL, interrupt_thread, &context));
+	struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	*result = indigo_uni_wait_for_data(handle, timeout);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	*elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+	*last_error = handle->last_error;
+	if (*result > 0) {
+		indigo_uni_read_section(handle, line, line_size, "\n", "\r\n", INDIGO_DELAY(1));
+	}
+	pthread_join(thread, NULL);
+	indigo_uni_close(&handle);
+	close(master);
+	sigaction(SIGUSR1, &previous, NULL);
+}
+
+static void wait_for_data_continues_after_signal(void) {
+	int result, last_error;
+	double elapsed;
+	char line[16] = { 0 };
+	interrupt_wait(true, INDIGO_DELAY(2), &result, &elapsed, &last_error, line, sizeof(line));
+	ASSERT_EQ_INT(1, result);
+	ASSERT_EQ_INT(0, last_error);
+	ASSERT_STREQ("x", line);
+}
+
+static void wait_for_data_keeps_timeout_after_signal(void) {
+	int result, last_error;
+	double elapsed;
+	char line[16] = { 0 };
+	interrupt_wait(false, INDIGO_DELAY(0.5), &result, &elapsed, &last_error, line, sizeof(line));
+	ASSERT_EQ_INT(0, result);
+	ASSERT_EQ_INT(0, last_error);
+	ASSERT_TRUE(elapsed >= 0.45);
 }
 
 // ---- indigo_uni_discover() ----
@@ -324,6 +411,8 @@ int main(void) {
 		{ "read_section_accepts_null_ignore_list", read_section_accepts_null_ignore_list },
 		{ "read_section_accepts_null_terminator_list", read_section_accepts_null_terminator_list },
 		{ "read_section_still_ignores_and_terminates", read_section_still_ignores_and_terminates },
+		{ "wait_for_data_continues_after_signal", wait_for_data_continues_after_signal },
+		{ "wait_for_data_keeps_timeout_after_signal", wait_for_data_keeps_timeout_after_signal },
 		{ "discover_collects_all_replies", discover_collects_all_replies },
 		{ "discover_repeats_request_for_each_poll", discover_repeats_request_for_each_poll },
 		{ "discover_stops_when_callback_returns_false", discover_stops_when_callback_returns_false },
