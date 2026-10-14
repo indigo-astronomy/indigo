@@ -321,12 +321,16 @@ cleanup:
 }
 
 static char last_position_message[INDIGO_VALUE_SIZE];
+static char last_connection_message[INDIGO_VALUE_SIZE];
 
 static indigo_result capture_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	// the shared harness counts BUSY refusal messages
 	simulator_client_send_message(client, device, property, message);
 	if (property != NULL && message != NULL && context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		snprintf(last_position_message, sizeof(last_position_message), "%s", message);
+	}
+	if (property != NULL && message != NULL && context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name) && !strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+		snprintf(last_connection_message, sizeof(last_connection_message), "%s", message);
 	}
 	return INDIGO_OK;
 }
@@ -605,6 +609,36 @@ cleanup:
 }
 
 // SHUTDOWN is refused while the focuser is connected, and the connection keeps working.
+// Garbled polls fail only their command and keep the session; a port that disappears, here the simulator closing its
+// end of the pseudo-terminal, disconnects the device with ALERT and says why. The device then connects to the port of
+// a replugged focuser, here a second simulator, without a restart of the driver.
+static void port_loss_disconnects(void) {
+	external_serial_simulator replugged = { 0 };
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault('p', "sticky_malformed"));
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(context.connected);
+	unlink(fault_path);
+	last_connection_message[0] = 0;
+	SERIAL_CHECK_TRUE(fault('p', "close"));
+	// the shared wait expects a disconnection to end OK, a lost connection ends ALERT
+	bool lost = false;
+	for (int i = 0; i < 50 && !lost; i++) {
+		lost = !context.connected && context.disconnected && context.last_connection_state == INDIGO_ALERT_STATE;
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(lost);
+	SERIAL_CHECK_TRUE(strstr(last_connection_message, "lost") != NULL);
+	unlink(fault_path);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&replugged, FOCUSER_ASKAR_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(connect_serial_device(&askar_focuser, replugged.port));
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME) != NULL);
+cleanup:
+	unlink(fault_path);
+	driver_stop();
+	stop_external_serial_simulator(&replugged);
+}
+
 static void shutdown_refused_while_connected(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY, indigo_focuser_askar(INDIGO_DRIVER_SHUTDOWN, NULL));
@@ -907,6 +941,7 @@ int main(void) {
 		{ "motion_running_at_connect", motion_running_at_connect, moving_args },
 		{ "position_reply_framing", position_reply_framing },
 		{ "disconnect_during_motion", disconnect_during_motion },
+		{ "port_loss_disconnects", port_loss_disconnects },
 		{ "shutdown_refused_while_connected", shutdown_refused_while_connected },
 		{ "additional_instance", additional_instance },
 		{ "stalled_move_ends_alert", stalled_move_ends_alert },

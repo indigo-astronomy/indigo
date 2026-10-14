@@ -54,7 +54,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_focuser_askar"
 #define DRIVER_LABEL         "Askar-WAF Focuser"
 #define FOCUSER_DEVICE_NAME  "Askar-WAF"
@@ -98,6 +98,7 @@ typedef struct {
 	int current_position, target_position, max_position, last_position, stalled, idle;
 	bool moving, uncertain, pending, external, poll_failed;
 	bool reversed, balanced;
+	bool lost;
 	//- data
 } askar_private_data;
 
@@ -120,12 +121,46 @@ static double askar_now(void) {
 	return (double)time.tv_sec + time.tv_usec / 1000000.0;
 }
 
+// Runs the regular disconnection, which closes the port and ends OK, and then publishes ALERT for the loss.
+static void askar_connection_lost(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connection_handler(device);
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, "Connection to %s lost", DEVICE_PORT_ITEM->text.value);
+	}
+}
+
+// Checks the port the way the mount drivers do before every command: the serial device is gone (it no longer
+// answers the modem line or comm state query) or the TCP connection was reset, or a read or write left an
+// error on the handle, which fails every later one. With closed set, a TCP connection the focuser closed counts
+// as well: the socket is readable and the peek finds the end of the stream, which is only looked for after a
+// failed discard, write or read. A lost port disconnects a connected device once; during connect and disconnect
+// the failing command is enough. A missing or garbled reply is not a loss, it only fails its command.
+static bool askar_port_valid(indigo_device *device, bool closed) {
+	indigo_uni_handle *handle = PRIVATE_DATA->handle;
+	if (handle == NULL || PRIVATE_DATA->lost) {
+		return false;
+	}
+	bool lost = handle->last_error != 0 || !indigo_uni_is_valid(handle);
+	if (!lost && closed && handle->type == INDIGO_TCP_HANDLE) {
+		char c;
+		lost = indigo_uni_wait_for_data(handle, 0) > 0 && indigo_uni_peek_available(handle, &c, 1) == 0;
+	}
+	if (lost && IS_CONNECTED) {
+		PRIVATE_DATA->lost = true;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost %s", DEVICE_PORT_ITEM->text.value);
+		indigo_execute_handler(device, askar_connection_lost);
+	}
+	return !lost;
+}
+
 static bool askar_command(indigo_device *device, const char *command, const char *expected, ...) {
-	bool tcp = PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE;
-	if (!PRIVATE_DATA->handle) {
+	if (!askar_port_valid(device, false)) {
 		return false;
 	}
 	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
+		askar_port_valid(device, true);
 		return false;
 	}
 	va_list args;
@@ -133,6 +168,7 @@ static bool askar_command(indigo_device *device, const char *command, const char
 	long written = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 	va_end(args);
 	if (written <= 0) {
+		askar_port_valid(device, true);
 		return false;
 	}
 	if (!expected) {
@@ -145,7 +181,11 @@ static bool askar_command(indigo_device *device, const char *command, const char
 			return false;
 		}
 		long count = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "#", "\r\n", INDIGO_DELAY(remaining), INDIGO_DELAY(0.1));
-		if (count <= 0 || PRIVATE_DATA->response[count - 1] != '#' || (long)strlen(PRIVATE_DATA->response) != count) {
+		if (count <= 0) {
+			askar_port_valid(device, true);
+			return false;
+		}
+		if (PRIVATE_DATA->response[count - 1] != '#' || (long)strlen(PRIVATE_DATA->response) != count) {
 			return false;
 		}
 		/* FE# is the device refusing the command, the reply stays in the buffer for the caller */
@@ -155,13 +195,6 @@ static bool askar_command(indigo_device *device, const char *command, const char
 		if (!strncmp(PRIVATE_DATA->response, expected, strlen(expected))) {
 			return true;
 		}
-	}
-	if (tcp && PRIVATE_DATA->handle) {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		indigo_execute_handler(device, focuser_connection_handler);
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_send_message(device, ALERT_PROPERTY, "Device disconnected unexpectedly", device->name);
 	}
 	return false;
 }
@@ -363,6 +396,8 @@ static bool askar_open(indigo_device *device) {
 	if (!PRIVATE_DATA->handle) {
 		return false;
 	}
+	// a freshly opened port starts without the loss of the previous one, before the handshake commands use it
+	PRIVATE_DATA->lost = false;
 	if (!askar_get_position(device, &PRIVATE_DATA->current_position)) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		return false;
