@@ -171,6 +171,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_lakeside_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_moonlite_simulator \
+	$(INTEGRATION_BUILD)/test_serial_port_loss \
 	$(INTEGRATION_BUILD)/test_focuser_mypro2_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_nfocus_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_nstep_simulator \
@@ -1044,6 +1045,20 @@ $(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator_asan: integration/test_focuser
 
 $(INTEGRATION_BUILD)/test_focuser_moonlite_simulator: integration/test_focuser_moonlite_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator $(BUILD_DRIVERS)/indigo_focuser_moonlite.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_MOONLITE_SIMULATOR_TEST_LDFLAGS)
+
+# The framework's own copy of indigo_driver.c with the USB-serial scan replaced by the test's fake port list, so the
+# test decides when a port disappears; the MoonLite driver and the focuser base class are linked against that copy.
+$(INTEGRATION_BUILD)/serial_port_loss_framework.o: ../indigo_libs/indigo_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_enumerate_usbserial_devices=fake_usbserial_devices -c $< -o $@
+
+$(INTEGRATION_BUILD)/serial_port_loss_base.o: ../indigo_libs/indigo_focuser_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/serial_port_loss_driver.o: ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_serial_port_loss: integration/test_serial_port_loss.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o $(INTEGRATION_BUILD)/serial_port_loss_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o $(INTEGRATION_BUILD)/serial_port_loss_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/test_focuser_moonlite_simulator_asan: integration/test_focuser_moonlite_simulator.c ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c $(TEST_LDFLAGS)

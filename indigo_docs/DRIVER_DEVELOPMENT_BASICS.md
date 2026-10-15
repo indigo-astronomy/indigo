@@ -705,6 +705,15 @@ The list, the additional items and the registered devices are guarded by the bus
 
 #### Lost connections
 
+The framework disconnects a device whose USB-serial port disappears, without any code in the driver:
+- When a device connects, the base class records the port it connected on: `DEVICE_PORT` with `auto://` removed and a link resolved (on Windows the COM name without `\\.\` and `:`). A network URL is not recorded.
+- When the serial port list changes (a USB hot-plug event or a *Refresh*) and a recorded port was in the previous list and is missing from the new one, the device and every connected device that shares the port through it as its master device get a regular disconnection request.
+- The base class publishes the end of that disconnection ALERT with "Connection to <port> lost" instead of OK.
+- Only a port the list knew is acted on, so native ports without a USB event, Bluetooth and network connections, and ports the scan does not list are not covered; that is what the driver check below is for.
+- A driver must disconnect its devices before it detaches them. A device detached while still connected over a serial port is a driver bug: the framework logs "Driver <name> misbehaves: device '<device>' was detached while still connected, its serial port <port> is probably left open" and then fails an assertion, so the driver crashes in development and has to be fixed. A build with `NDEBUG`, e.g. the Windows release build, only logs it. The port is not closed: the open handle belongs to the driver, so closing it behind the driver's back could free it twice.
+
+This takes 1 to 6 seconds after the unplug and works for every driver that uses `DEVICE_PORT`. A driver that checks the port itself notices the loss at its next command, also for a network connection, and whichever comes first disconnects; the second request is ignored.
+
 A serial adapter can be unplugged and a network controller can drop its connection. A driver that disconnects in that case uses *indigo_uni_is_connection_lost()*. It reports a lost connection, and only that:
 - an error left on the handle by a read or write, which fails every later one;
 - a serial device that is gone or a TCP connection that was reset (*indigo_uni_is_valid()*);

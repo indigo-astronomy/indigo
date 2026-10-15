@@ -37,6 +37,7 @@
 #include <math.h>
 #include <assert.h>
 #include <limits.h>
+#include <ctype.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -973,6 +974,157 @@ static void refresh_device_ports(indigo_device *device) {
 	}
 }
 
+// -------------------------------------------------------------------------------- lost serial ports
+
+// The port of every device connected over a serial port, resolved when it connected, and the devices disconnected
+// because their port disappeared, which end ALERT instead of OK. Both are guarded by the bus lock.
+
+typedef struct {
+	indigo_device *device;
+	char port[PATH_MAX];
+} device_port;
+
+typedef struct {
+	device_port *entries;
+	int count;
+	int size;
+} device_port_list;
+
+static device_port_list connected_ports = { 0 };
+static device_port_list lost_ports = { 0 };
+
+// The serial port name a device uses, comparable with the names of the serial port list: auto:// removed, a link
+// resolved, on Windows "\\.\" and a trailing ':' removed; empty for a network URL or no port.
+static void serial_port_name(const char *name, char *result) {
+	result[0] = '\0';
+	if (!strncmp(name, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		name += strlen(USBSERIAL_AUTO_PREFIX);
+	}
+	if (*name == '\0' || strstr(name, "://") != NULL) {
+		return;
+	}
+#if defined(INDIGO_WINDOWS)
+	if (!strncmp(name, "\\\\.\\", 4)) {
+		name += 4;
+	}
+	snprintf(result, PATH_MAX, "%s", name);
+	size_t length = strlen(result);
+	if (length > 0 && result[length - 1] == ':') {
+		result[length - 1] = '\0';
+	}
+	for (char *c = result; *c; c++) {
+		*c = (char)toupper((unsigned char)*c);
+	}
+#else
+	if (realpath(name, result) == NULL) {
+		snprintf(result, PATH_MAX, "%s", name);
+	}
+#endif
+}
+
+static device_port *find_device_port(device_port_list *list, indigo_device *device) {
+	for (int i = 0; i < list->count; i++) {
+		if (list->entries[i].device == device) {
+			return list->entries + i;
+		}
+	}
+	return NULL;
+}
+
+static void set_device_port(device_port_list *list, indigo_device *device, const char *port) {
+	device_port *entry = find_device_port(list, device);
+	if (entry == NULL) {
+		if (list->count == list->size) {
+			list->size += 16;
+			list->entries = indigo_safe_realloc(list->entries, list->size * sizeof(device_port));
+		}
+		entry = list->entries + list->count++;
+		entry->device = device;
+	}
+	snprintf(entry->port, sizeof(entry->port), "%s", port);
+}
+
+static void remove_device_port(device_port_list *list, indigo_device *device) {
+	device_port *entry = find_device_port(list, device);
+	if (entry != NULL) {
+		*entry = list->entries[--list->count];
+	}
+}
+
+static bool device_is_connected(indigo_device *device) {
+	return IS_CONNECTED;
+}
+
+static bool serial_port_listed(serial_port_list *list, const char *port) {
+	for (int i = 0; list != NULL && i < list->port_count; i++) {
+		char name[PATH_MAX];
+		serial_port_name(list->ports[i].name, name);
+		if (!strcmp(name, port)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// The bus lock must be held. Disconnects every connected device whose port was in the previous serial port list and
+// is missing from the new one, and the connected devices that share the port through it as their master device. They
+// end ALERT, see serial_port_connection_changed(). A port that was not listed, e.g. a network URL, is never affected.
+static void disconnect_lost_ports(serial_port_list *previous, serial_port_list *current) {
+	indigo_device *lost[64];
+	int lost_count = 0;
+	for (int i = 0; previous != NULL && i < connected_ports.count && lost_count < 64; i++) {
+		device_port *entry = connected_ports.entries + i;
+		if (!serial_port_listed(previous, entry->port) || serial_port_listed(current, entry->port)) {
+			continue;
+		}
+		INDIGO_ERROR(indigo_error("%s: serial port %s disappeared", entry->device->name, entry->port));
+		indigo_device *slaves[MAX_SLAVE_DEVICES];
+		int slave_count = indigo_query_slave_devices(entry->device, slaves, MAX_SLAVE_DEVICES - 1);
+		set_device_port(&lost_ports, entry->device, entry->port);
+		lost[lost_count++] = entry->device;
+		for (int j = 0; j < slave_count && lost_count < 64; j++) {
+			if (device_is_connected(slaves[j])) {
+				set_device_port(&lost_ports, slaves[j], entry->port);
+				lost[lost_count++] = slaves[j];
+			}
+		}
+	}
+	// requested once the lists are no longer iterated, a driver may handle the request synchronously
+	for (int i = 0; i < lost_count; i++) {
+		indigo_device_disconnect(NULL, lost[i]->name);
+	}
+}
+
+// Called by the base class with every published CONNECTION: records the port of a device that connected over a serial
+// port, and for a device disconnected because its port disappeared returns true with the port, so the regular end of
+// the disconnection is published ALERT.
+static bool serial_port_connection_changed(indigo_device *device, char *lost_port) {
+	bool lost = false;
+	indigo_lock_bus();
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
+			remove_device_port(&lost_ports, device);
+			char port[PATH_MAX];
+			serial_port_name(DEVICE_PORT_PROPERTY->hidden ? "" : DEVICE_PORT_ITEM->text.value, port);
+			if (*port) {
+				set_device_port(&connected_ports, device, port);
+			} else {
+				remove_device_port(&connected_ports, device);
+			}
+		}
+	} else {
+		remove_device_port(&connected_ports, device);
+		device_port *entry = find_device_port(&lost_ports, device);
+		if (entry != NULL && CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
+			snprintf(lost_port, PATH_MAX, "%s", entry->port);
+			remove_device_port(&lost_ports, device);
+			lost = true;
+		}
+	}
+	indigo_unlock_bus();
+	return lost;
+}
+
 // Rescans the serial ports and, if they changed, rebuilds DEVICE_PORTS of all registered devices except the given one.
 // The scan runs without the bus lock unless the caller holds it. Returns true if the list changed.
 static bool update_serial_ports(indigo_device *except) {
@@ -980,6 +1132,7 @@ static bool update_serial_ports(indigo_device *except) {
 	indigo_lock_bus();
 	bool changed = !same_serial_ports(serial_ports, list);
 	if (changed) {
+		disconnect_lost_ports(serial_ports, list);
 		indigo_safe_free(serial_ports);
 		serial_ports = list;
 		list = NULL;
@@ -1131,6 +1284,17 @@ void indigo_set_additional_ports(indigo_device *device, int count, const char **
 // released with its last device
 static void unregister_serial_ports_device(indigo_device *device) {
 	indigo_lock_bus();
+	// A driver disconnects its devices before it detaches them; a device still recorded as connected over a serial
+	// port was not, and the port its driver opened is most likely left open. That is a driver bug the developer has
+	// to fix, so it is logged and then asserted. The port is not closed here: the handle belongs to the driver, which
+	// may still close it later. A build with NDEBUG, e.g. the Windows release build, only logs it.
+	device_port *connected = find_device_port(&connected_ports, device);
+	if (connected != NULL) {
+		indigo_error("Driver %s misbehaves: device '%s' was detached while still connected, its serial port %s is probably left open", device_driver_name(device), device->name, connected->port);
+	}
+	assert(connected == NULL && "a driver must disconnect a device before it detaches it");
+	remove_device_port(&connected_ports, device);
+	remove_device_port(&lost_ports, device);
 	for (int i = 0; i < serial_port_devices_count; i++) {
 		if (serial_port_devices[i] == device) {
 			serial_port_devices[i] = serial_port_devices[--serial_port_devices_count];
@@ -1337,7 +1501,13 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		} else {
 			device->access_token = token;
 		}
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		char lost_port[PATH_MAX];
+		if (serial_port_connection_changed(device, lost_port)) {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, "Connection to %s lost", lost_port);
+		} else {
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		}
 	} else if (indigo_property_match_changeable(SIMULATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
