@@ -39,6 +39,10 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#if defined(INDIGO_LINUX)
+#include <unistd.h>
+#include <sys/syscall.h>
+#endif
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <libgen.h>
 #include <dirent.h>
@@ -2638,6 +2642,15 @@ bool indigo_resolve_host(char *buffer, int *family) {
 }
 
 void indigo_rename_thread(char *format, ...) {
+#if defined(INDIGO_LINUX)
+	if (syscall(SYS_gettid) == getpid()) {
+		return;
+	}
+#elif defined(INDIGO_MACOS)
+	if (pthread_main_np()) {
+		return;
+	}
+#endif
 	char name[256];
 	va_list args;
 	va_start(args, format);
