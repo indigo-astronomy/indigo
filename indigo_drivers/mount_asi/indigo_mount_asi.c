@@ -25,7 +25,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x03000020
+#define DRIVER_VERSION 0x03000021
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -170,14 +170,52 @@ static bool asi_open(indigo_device *device) {
 }
 
 static void asi_close(indigo_device *device);
+static void mount_connect_callback(indigo_device *device);
+static void guider_connect_callback(indigo_device *device);
 
-static bool asi_command(indigo_device *device, const char *command, char *response, int max, float timeout) {
+// Runs the regular disconnection of a device that shared the lost port and then publishes ALERT for the loss.
+static void asi_connection_lost(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	if (atoi(INFO_DEVICE_INTERFACE_ITEM->text.value) & INDIGO_INTERFACE_MOUNT) {
+		mount_connect_callback(device);
+	} else {
+		guider_connect_callback(device);
+	}
+	CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, "Connection to %s lost", MASTER_DEVICE_CONTEXT->device_port_property->items[0].text.value);
+}
+
+// The connection is lost (indigo_uni_is_connection_lost(): a serial device that is gone, an error left on the port, a
+// connection reset or closed by the mount): every connected device sharing the closed port, the mount and the guider,
+// disconnects with ALERT. A missing or garbled reply is not a loss.
+static void asi_port_lost(indigo_device *device) {
+	indigo_device *master = device->master_device;
+	indigo_device *slaves[8];
+	int count = indigo_query_slave_devices(master, slaves, 7);
+	indigo_execute_handler(master, asi_connection_lost);
+	for (int i = 0; i < count; i++) {
+		indigo_execute_handler(slaves[i], asi_connection_lost);
+	}
+}
+
+// checked before every command and after a failed one
+static bool asi_port_valid(indigo_device *device) {
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
-	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+	if (indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
 		asi_close(device->master_device);
-		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		asi_port_lost(device);
+		return false;
+	}
+	return true;
+}
+
+static bool asi_command(indigo_device *device, const char *command, char *response, int max, float timeout) {
+	if (!asi_port_valid(device)) {
 		return false;
 	}
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -191,6 +229,8 @@ static bool asi_command(indigo_device *device, const char *command, char *respon
 			}
 		}
 	}
+	// a failed write or read may have lost the port, a missing reply has not
+	asi_port_valid(device);
 	return false;
 }
 

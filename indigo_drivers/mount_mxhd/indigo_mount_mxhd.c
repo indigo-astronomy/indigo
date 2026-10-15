@@ -20,7 +20,7 @@
 // version history
 // 3.0 by Makoto Kasahara
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_mount_mxhd"
 
 #include "indigo_mount_mxhd.h"
@@ -340,14 +340,19 @@ static double normalize_hours(double value) {
 	return value;
 }
 
+static bool mxhd_port_valid(indigo_device *device);
+
 static bool mxhd_read_exact(indigo_device *device, uint8_t *buffer, long size, int timeout) {
 	long offset = 0;
 	while (offset < size) {
-		if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(timeout)) <= 0) {
+		// a failed wait or read may have lost the port, a missing reply has not
+		if (PRIVATE_DATA->handle == NULL || indigo_uni_wait_for_data(PRIVATE_DATA->handle, INDIGO_DELAY(timeout)) <= 0) {
+			mxhd_port_valid(device);
 			return false;
 		}
 		long count = indigo_uni_read(PRIVATE_DATA->handle, buffer + offset, size - offset);
 		if (count <= 0) {
+			mxhd_port_valid(device);
 			return false;
 		}
 		offset += count;
@@ -374,17 +379,60 @@ static bool mxhd_read_hash_terminated(indigo_device *device, char *response, lon
 	return true;
 }
 
-static bool mxhd_send(indigo_device *device, const char *command) {
+static void mount_connect_callback(indigo_device *device);
+static void guider_connect_callback(indigo_device *device);
+
+// Runs the regular disconnection of a device that shared the lost port and then publishes ALERT for the loss.
+static void mxhd_connection_lost(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	if (atoi(INFO_DEVICE_INTERFACE_ITEM->text.value) & INDIGO_INTERFACE_MOUNT) {
+		mount_connect_callback(device);
+	} else {
+		guider_connect_callback(device);
+	}
+	CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, "Connection to %s lost", MASTER_DEVICE_CONTEXT->device_port_property->items[0].text.value);
+}
+
+// The connection is lost (indigo_uni_is_connection_lost(): a serial device that is gone, an error left on the port, a
+// connection reset or closed by the mount): every connected device sharing the closed port, the mount and the guider,
+// disconnects with ALERT. A missing or garbled reply is not a loss.
+static void mxhd_port_lost(indigo_device *device) {
+	indigo_device *master = device->master_device;
+	indigo_device *slaves[8];
+	int count = indigo_query_slave_devices(master, slaves, 7);
+	indigo_execute_handler(master, mxhd_connection_lost);
+	for (int i = 0; i < count; i++) {
+		indigo_execute_handler(slaves[i], mxhd_connection_lost);
+	}
+}
+
+// checked before every command and after a failed write or read
+static bool mxhd_port_valid(indigo_device *device) {
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
-	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+	if (indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
-		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		mxhd_port_lost(device);
+		return false;
+	}
+	return true;
+}
+
+static bool mxhd_send(indigo_device *device, const char *command) {
+	if (!mxhd_port_valid(device)) {
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s <- %s", device->name, command);
-	return indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0;
+	if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+		return true;
+	}
+	mxhd_port_valid(device);
+	return false;
 }
 
 static bool mxhd_query_ack(indigo_device *device, const char *command, char *ack, int timeout) {

@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000040
+#define DRIVER_VERSION       0x03000041
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -285,6 +285,9 @@ static bool ioptron_no_reply_command(indigo_device *device, char *command, ...) 
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
+	} else {
+		// a failed write may have lost the port
+		ioptron_validate_handle(device);
 	}
 	return result >= 0;
 }
@@ -312,6 +315,9 @@ static bool ioptron_simple_reply_command(indigo_device *device, char *command, .
 	}
 	if (result > 0) {
 		indigo_usleep(50000);
+	} else {
+		// a failed write or read may have lost the port, a missing reply has not
+		ioptron_validate_handle(device);
 	}
 	return result > 0;
 }
@@ -336,6 +342,9 @@ static bool ioptron_command(indigo_device *device, char *command, ...) {
 	}
 	if (result > 0) {
 		indigo_usleep(50000);
+	} else {
+		// a failed write or read may have lost the port, a missing reply has not
+		ioptron_validate_handle(device);
 	}
 	return result > 0;
 }
@@ -376,13 +385,40 @@ static void ioptron_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
+static void mount_connection_handler(indigo_device *device);
+static void guider_connection_handler(indigo_device *device);
+
+// Runs the regular disconnection of a device that shared the lost port and then publishes ALERT for the loss.
+static void ioptron_connection_lost(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	if (atoi(INFO_DEVICE_INTERFACE_ITEM->text.value) & INDIGO_INTERFACE_MOUNT) {
+		mount_connection_handler(device);
+	} else {
+		guider_connection_handler(device);
+	}
+	CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, "Connection to %s lost", MASTER_DEVICE_CONTEXT->device_port_property->items[0].text.value);
+}
+
+// The connection is lost (indigo_uni_is_connection_lost(): a serial device that is gone, an error left on the
+// port, a connection reset or closed by the mount): the port is closed and every connected device sharing it,
+// the mount and the guider, disconnects with ALERT. A missing or garbled reply is not a loss.
 static bool ioptron_validate_handle(indigo_device *device) {
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
-	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+	if (indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
 		ioptron_close(device);
-		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		indigo_device *master = device->master_device;
+		indigo_device *slaves[8];
+		int count = indigo_query_slave_devices(master, slaves, 7);
+		indigo_execute_handler(master, ioptron_connection_lost);
+		for (int i = 0; i < count; i++) {
+			indigo_execute_handler(slaves[i], ioptron_connection_lost);
+		}
 		return false;
 	}
 	return true;

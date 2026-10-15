@@ -2734,3 +2734,19 @@ MIGRATION_STATUS.md hardware-free count 150 -> 153.
 ### Final test summary for this change
 
 Simulated tests: **150 run, 150 passed** (recorded run 2026-10-07 02:01, Linux arm64, driver 3.0.0.80). Hardware tests: **35 run, 35 passed** (TeenAstro 1.5.2, recorded run 2026-10-07 01:51, Linux arm64).
+
+## Lost connection with ALERT (2026-10-15, 3.0.0.81)
+
+- Observable impact: a lost connection disconnected every device sharing the port, but each one ended `CONNECTION` OK
+  as after a requested disconnection, without saying why. A TCP connection the mount closed was not noticed at all
+  (`indigo_uni_is_valid()` only sees a reset), and on macOS a pseudo-terminal or an adapter whose writes failed kept the
+  devices connected with every command failing, as the port check ran only before a command and `TIOCMGET` keeps
+  answering `ENOTTY` there.
+- Fix: meade_validate_handle() checks the port with `indigo_uni_is_connection_lost()` (an error left on the port, a device that is gone, a
+  connection reset or closed by the mount) before every command and, in the command helpers and the classic guide command, again after a failed one. A lost
+  port is closed and every connected device sharing it (mount, guider, focuser and aux) gets a handler on the shared queue that runs its regular
+  disconnection and then publishes `CONNECTION` ALERT with "Connection to <port> lost". A missing or garbled reply is
+  not a loss and only fails its command.
+- Regression tests: `lx200_transport_loss_and_fresh_session` and `lx200_guider_transport_failure_and_recovery` now require the disconnection with ALERT on every platform instead of accepting a device that
+  stays connected, and connect again to a fresh simulator; they fail against the previous version.
+

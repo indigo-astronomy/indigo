@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000050
+#define DRIVER_VERSION       0x03000051
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -529,6 +529,9 @@ static bool meade_no_reply_command(indigo_device *device, char *command, ...) {
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
+	} else {
+		// a failed write or read may have lost the port
+		meade_validate_handle(device);
 	}
 	return result >= 0;
 }
@@ -559,6 +562,9 @@ static bool meade_simple_reply_command(indigo_device *device, char *command, ...
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
+	} else {
+		// a failed write or read may have lost the port
+		meade_validate_handle(device);
 	}
 	return result >= 0;
 }
@@ -579,6 +585,9 @@ static bool meade_command(indigo_device *device, char *command, ...) {
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
+	} else {
+		// a failed write or read may have lost the port
+		meade_validate_handle(device);
 	}
 	return result >= 0;
 }
@@ -601,6 +610,9 @@ static long meade_counted_command(indigo_device *device, char *command) {
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
+	} else {
+		// a failed write or read may have lost the port
+		meade_validate_handle(device);
 	}
 	return result;
 }
@@ -767,13 +779,47 @@ static void lx200_close(indigo_device *device) {
 	}
 }
 
+static void mount_connection_handler(indigo_device *device);
+static void guider_connection_handler(indigo_device *device);
+static void focuser_connection_handler(indigo_device *device);
+static void aux_connection_handler(indigo_device *device);
+
+// Runs the regular disconnection of a device that shared the lost port and then publishes ALERT for the loss.
+static void lx200_connection_lost(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	int device_interface = atoi(INFO_DEVICE_INTERFACE_ITEM->text.value);
+	if (device_interface & INDIGO_INTERFACE_MOUNT) {
+		mount_connection_handler(device);
+	} else if (device_interface & INDIGO_INTERFACE_GUIDER) {
+		guider_connection_handler(device);
+	} else if (device_interface & INDIGO_INTERFACE_FOCUSER) {
+		focuser_connection_handler(device);
+	} else {
+		aux_connection_handler(device);
+	}
+	CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, CONNECTION_PROPERTY, "Connection to %s lost", MASTER_DEVICE_CONTEXT->device_port_property->items[0].text.value);
+}
+
+// The connection is lost (indigo_uni_is_connection_lost(): a serial device that is gone, an error left on the port,
+// a connection reset or closed by the mount): the port is closed and every connected device sharing it, the mount,
+// guider, focuser and aux, disconnects with ALERT. A missing or garbled reply is not a loss.
 static bool meade_validate_handle(indigo_device *device) {
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
-	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+	if (indigo_uni_is_connection_lost(PRIVATE_DATA->handle)) {
 		lx200_close(device);
-		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		indigo_device *master = device->master_device;
+		indigo_device *slaves[8];
+		int count = indigo_query_slave_devices(master, slaves, 7);
+		indigo_execute_handler(master, lx200_connection_lost);
+		for (int i = 0; i < count; i++) {
+			indigo_execute_handler(slaves[i], lx200_connection_lost);
+		}
 		return false;
 	}
 	return true;
@@ -1822,7 +1868,15 @@ static void guider_guide_ra_handler(indigo_device *device);
 static bool meade_classic_guide_command(indigo_device *device, char command, char direction) {
 	// Classic manual guide commands have no reply or specified post-write delay.
 	// The ordinary helper's 50 ms pause would lengthen every host-timed pulse.
-	return meade_validate_handle(device) && indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && indigo_uni_printf(PRIVATE_DATA->handle, ":%c%c#", command, direction) >= 0;
+	if (!meade_validate_handle(device)) {
+		return false;
+	}
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && indigo_uni_printf(PRIVATE_DATA->handle, ":%c%c#", command, direction) >= 0) {
+		return true;
+	}
+	// a failed write may have lost the port
+	meade_validate_handle(device);
+	return false;
 }
 
 static bool meade_classic_guide_stop(indigo_device *device, char *direction) {

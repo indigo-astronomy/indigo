@@ -91,3 +91,19 @@ MIGRATION_STATUS.md hardware-free count 26 -> 30.
 
 - Simulated tests: 30 executed, 30 passed (recorded run 2026-10-05 21:05, macOS arm64, driver 3.0.0.31).
 - Hardware tests: 0 executed, 0 passed.
+
+## Lost connection with ALERT (2026-10-15, 3.0.0.33)
+
+- Observable impact: a lost connection disconnected every device sharing the port, but each one ended `CONNECTION` OK
+  as after a requested disconnection, without saying why. A TCP connection the mount closed was not noticed at all
+  (`indigo_uni_is_valid()` only sees a reset), and on macOS a pseudo-terminal or an adapter whose writes failed kept the
+  devices connected with every command failing, as the port check ran only before a command and `TIOCMGET` keeps
+  answering `ENOTTY` there.
+- Fix: asi_port_valid() checks the port with `indigo_uni_is_connection_lost()` (an error left on the port, a device that is gone, a
+  connection reset or closed by the mount) before every command and, in `asi_command()`, again after a failed one. A lost
+  port is closed and every connected device sharing it (mount and guider) gets a handler on the shared queue that runs its regular
+  disconnection and then publishes `CONNECTION` ALERT with "Connection to <port> lost". A missing or garbled reply is
+  not a loss and only fails its command.
+- Regression tests: `transport_loss_is_reported` now require the disconnection with ALERT on every platform instead of accepting a device that
+  stays connected, and connect again to a fresh simulator; they fail against the previous version.
+

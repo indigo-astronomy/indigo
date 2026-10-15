@@ -1032,3 +1032,19 @@ backward-compatible alias): `PROTOCOL_VERSION` -> `X_PROTOCOL_VERSION`, `MOUNT_M
 protocol selection stored under the old name is not loaded; select the dialect again and save the
 configuration. The integration (`ioptron_driver_metadata_and_base_properties` and the per-dialect profiles)
 and MountSim (`ioptron_park_home_options`) tests assert that the unprefixed names are never defined.
+
+## Lost connection with ALERT (2026-10-15, 3.0.0.65)
+
+- Observable impact: a lost connection disconnected every device sharing the port, but each one ended `CONNECTION` OK
+  as after a requested disconnection, without saying why. A TCP connection the mount closed was not noticed at all
+  (`indigo_uni_is_valid()` only sees a reset), and on macOS a pseudo-terminal or an adapter whose writes failed kept the
+  devices connected with every command failing, as the port check ran only before a command and `TIOCMGET` keeps
+  answering `ENOTTY` there.
+- Fix: ioptron_validate_handle() checks the port with `indigo_uni_is_connection_lost()` (an error left on the port, a device that is gone, a
+  connection reset or closed by the mount) before every command and, in the three command helpers, again after a failed one. A lost
+  port is closed and every connected device sharing it (mount and guider) gets a handler on the shared queue that runs its regular
+  disconnection and then publishes `CONNECTION` ALERT with "Connection to <port> lost". A missing or garbled reply is
+  not a loss and only fails its command.
+- Regression tests: `ioptron_transport_loss_and_fresh_session` and `ioptron_guider_transport_failure_and_recovery` now require the disconnection with ALERT on every platform instead of accepting a device that
+  stays connected, and connect again to a fresh simulator; they fail against the previous version.
+

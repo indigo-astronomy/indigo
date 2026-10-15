@@ -62,7 +62,6 @@ Driver is developed and tested with:
 - 2026-09-24 23:26 3.0.0.65 mac arm64 Pegasus NYX-101 (WiFi) 35/35 OK
 - 2026-09-27 02:25 3.0.0.69 linux x64 simulator 103/103 OK
 - 2026-10-01 22:47 3.0.0.69 linux x64 On-Step 35/35 OK
-- 2026-10-05 21:09 3.0.0.77 mac arm64 simulator 145/145 OK
 - 2026-10-06 23:50 3.0.0.77 linux arm64 NYX-101 35/35 OK
 - 2026-10-06 23:58 3.0.0.77 linux arm64 esp32go 35/35 OK
 - 2026-10-07 00:04 3.0.0.77 linux arm64 OpenAstroTracker 35/29 Failed
@@ -70,3 +69,4 @@ Driver is developed and tested with:
 - 2026-10-07 01:51 3.0.0.80 linux arm64 TeenAstro 35/35 OK
 - 2026-10-07 02:01 3.0.0.80 linux arm64 simulator 150/150 OK
 - 2026-10-07 02:19 3.0.0.80 linux arm64 aGotino 35/35 OK
+- 2026-10-15 02:39 3.0.0.81 mac arm64 simulator 150/150 OK

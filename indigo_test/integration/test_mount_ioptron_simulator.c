@@ -2451,33 +2451,31 @@ cleanup:
 	io_close(&fixture);
 }
 
+// A lost connection disconnects the device: the regular disconnection ends OK and ALERT for the loss follows.
+static bool wait_for_connection_lost(void) {
+	for (int i = 0; i < 100; i++) {
+		if (!context.connected && context.disconnected && context.last_connection_state == INDIGO_ALERT_STATE) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
 static void ioptron_guider_transport_failure_and_recovery(void) {
 	io_fixture fixture = { 0 };
 	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "0300", TRACKING_ARGS));
 	stop_external_serial_simulator(&fixture.simulator);
-	// The pulse fails with ALERT on every platform, seen by the client callback because the property
-	// may be deleted right after it. A Linux pseudo-terminal then reports the hangup of its closed
-	// master (EIO), as a removed USB serial adapter does, and the driver drops the lost port and
-	// disconnects the guider. A macOS one keeps answering ENOTTY, the guider stays connected and
-	// every further pulse fails with ALERT without leaving a pulse behind.
+	// The pulse fails with ALERT, seen by the client callback because the property is deleted right after it. The
+	// lost port is noticed on every platform: a Linux pseudo-terminal reports the hangup of its closed master (EIO)
+	// as a removed USB serial adapter does, and on macOS the failed write leaves its error on the port. The driver
+	// closes the port and disconnects the guider with ALERT, and the guider connects again to a fresh simulator.
 	uint_fast64_t alerted = atomic_load(guide_alerted + 0);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_guide_alerted(0, alerted));
-	indigo_usleep(300000);
-	if (find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME) == NULL) {
-		SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
-		SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_DEC_PROPERTY_NAME) == NULL);
-	} else {
-		SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_ALERT_STATE));
-		unsigned int ra_revision = property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME);
-		unsigned int dec_revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
-		indigo_usleep(300000);
-		SERIAL_CHECK_EQ_INT(ra_revision, property_revision(GUIDER_GUIDE_RA_PROPERTY_NAME));
-		SERIAL_CHECK_EQ_INT(dec_revision, property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME));
-		SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME) == 0);
-		SERIAL_CHECK_TRUE(cached_number_value(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME) == 0);
-	}
-	disconnect_serial_device(&ioptron_guider);
+	SERIAL_CHECK_TRUE(wait_for_connection_lost());
+	SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_RA_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(GUIDER_GUIDE_DEC_PROPERTY_NAME) == NULL);
 	fixture.guider = false;
 	SERIAL_CHECK_TRUE(io_replace_simulator(&fixture, "0300", TRACKING_ARGS));
 	fixture.guider = connect_serial_device(&ioptron_guider, NULL);
@@ -2742,21 +2740,16 @@ static void ioptron_transport_loss_and_fresh_session(void) {
 	SERIAL_CHECK_TRUE(io_goto(22, -60, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "MS1", 0));
 	stop_external_serial_simulator(&fixture.simulator);
-	// The abort fails with ALERT on every platform, seen by the client callback because the property
-	// may be deleted right after it. A Linux pseudo-terminal reports the hangup of its closed master
-	// (EIO), as a removed USB serial adapter does, and the driver then disconnects every device of the
-	// lost port, the mount included. A macOS one keeps answering ENOTTY and the mount stays connected.
+	// The abort fails with ALERT, seen by the client callback because the property is deleted right after it. The
+	// lost port is noticed on every platform (see ioptron_guider_transport_failure_and_recovery), the driver closes
+	// it and disconnects every device of the lost port with ALERT, and the mount connects again to a fresh simulator.
 	uint_fast64_t alerted = atomic_load(&abort_alerted);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, ioptron_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
 	for (int i = 0; i < 100 && atomic_load(&abort_alerted) == alerted; i++) {
 		indigo_usleep(100000);
 	}
 	SERIAL_CHECK_TRUE(atomic_load(&abort_alerted) != alerted);
-	indigo_usleep(300000);
-	if (find_cached_property(MOUNT_ABORT_MOTION_PROPERTY_NAME) == NULL) {
-		SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
-	}
-	disconnect_serial_device(&ioptron_mount);
+	SERIAL_CHECK_TRUE(wait_for_connection_lost());
 	fixture.mount = false;
 	SERIAL_CHECK_TRUE(io_replace_simulator(&fixture, "0300", TRACKING_ARGS));
 	fixture.mount = connect_serial_device(&ioptron_mount, NULL);

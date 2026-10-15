@@ -294,7 +294,7 @@
 | guider_gpusb | 2026-09-21 23:31 | 3.0.0.10 | mac arm64 | GPUSB | 10 / 10 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.11 | mac arm64 | fake SDK | 20 / 20 | ✅ OK |
 |  | 2026-09-30 19:17 | 3.0.0.11 | linux arm64 | GPUSB Guider | 10 / 10 | ✅ OK |
-| mount_asi | 2026-10-05 21:05 | 3.0.0.31 | mac arm64 | simulator | 30 / 30 | ✅ OK |
+| mount_asi | 2026-10-15 03:06 | 3.0.0.33 | mac arm64 | simulator | 31 / 31 | ✅ OK |
 | mount_ioptron | 2026-09-23 14:52 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM25) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 14:54 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM40) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 14:56 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron GEM45) | 8 / 8 | ✅ OK |
@@ -305,7 +305,7 @@
 |  | 2026-09-23 15:04 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM70) | 8 / 8 | ✅ OK |
 |  | 2026-09-23 18:32 | 3.0.0.53 | mac arm64 | MountSim 2.3 (iOptron CEM120) | 8 / 8 | ✅ OK |
 |  | 2026-09-27 02:42 | 3.0.0.61 | linux x64 | simulator | 106 / 106 | ✅ OK |
-|  | 2026-10-04 19:47 | 3.0.0.64 | mac arm64 | simulator | 136 / 136 | ✅ OK |
+|  | 2026-10-15 02:55 | 3.0.0.65 | mac arm64 | simulator | 136 / 136 | ✅ OK |
 | mount_lx200 | 2026-09-23 00:11 | 3.0.0.58 | mac arm64 | OnStepX | 33 / 33 | ✅ OK |
 |  | 2026-09-23 10:06 | 3.0.0.59 | mac arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-09-23 11:17 | 3.0.0.60 | mac arm64 | OpenAstroTracker | 35 / 35 | ✅ OK |
@@ -316,7 +316,6 @@
 |  | 2026-09-24 23:26 | 3.0.0.65 | mac arm64 | Pegasus NYX-101 (WiFi) | 35 / 35 | ✅ OK |
 |  | 2026-09-27 02:25 | 3.0.0.69 | linux x64 | simulator | 103 / 103 | ✅ OK |
 |  | 2026-10-01 22:47 | 3.0.0.69 | linux x64 | On-Step | 35 / 35 | ✅ OK |
-|  | 2026-10-05 21:09 | 3.0.0.77 | mac arm64 | simulator | 145 / 145 | ✅ OK |
 |  | 2026-10-06 23:50 | 3.0.0.77 | linux arm64 | NYX-101 | 35 / 35 | ✅ OK |
 |  | 2026-10-06 23:58 | 3.0.0.77 | linux arm64 | esp32go | 35 / 35 | ✅ OK |
 |  | 2026-10-07 00:04 | 3.0.0.77 | linux arm64 | OpenAstroTracker | 35 / 29 | ❌ Failed |
@@ -324,6 +323,7 @@
 |  | 2026-10-07 01:51 | 3.0.0.80 | linux arm64 | TeenAstro | 35 / 35 | ✅ OK |
 |  | 2026-10-07 02:01 | 3.0.0.80 | linux arm64 | simulator | 150 / 150 | ✅ OK |
 |  | 2026-10-07 02:19 | 3.0.0.80 | linux arm64 | aGotino | 35 / 35 | ✅ OK |
+|  | 2026-10-15 02:39 | 3.0.0.81 | mac arm64 | simulator | 150 / 150 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |

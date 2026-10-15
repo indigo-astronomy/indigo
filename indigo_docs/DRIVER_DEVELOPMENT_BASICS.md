@@ -734,7 +734,7 @@ static bool device_port_valid(indigo_device *device) {
 - Queue the disconnection once; the flag keeps the commands that fail meanwhile from queueing it again.
 - `device_connection_lost()` runs the regular disconnection first and then publishes `CONNECTION` ALERT with a message. The regular disconnection ends OK, so setting ALERT before it would be overwritten.
 - Clear the flag when the port is opened again, before the first handshake command. Clearing it in `on_connect` is too late: the commands of the open itself would fail and the device could not reconnect without a restart.
-- Devices that share a port (a mount and its guider) close it and disconnect together with *indigo_disconnect_slave_devices()*, see *mount_lx200*.
+- Devices that share a port (a mount and its guider, focuser and aux) close the port and queue the lost handler for the master and every slave from *indigo_query_slave_devices()*; each one runs the regular disconnection of its own device and then publishes ALERT, see *meade_validate_handle()* in *indigo_mount_lx200.driver*. *indigo_disconnect_slave_devices()* only requests the regular disconnection, which ends OK. The handlers run on the shared queue of the master, so a handler queued behind the disconnection would be cancelled by it (*indigo_cancel_pending_handlers()*); the lost handler calls the connection handler itself instead.
 
 ### Conflicting Drivers
 

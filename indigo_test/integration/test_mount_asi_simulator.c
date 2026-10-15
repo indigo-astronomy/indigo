@@ -1526,6 +1526,7 @@ cleanup:
 // every device), never a stale BUSY.
 static void transport_loss_is_reported(void) {
 	external_serial_simulator simulator = { 0 };
+	external_serial_simulator replugged = { 0 };
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_asi_simulator(&simulator, "asi"));
 	SERIAL_CHECK_TRUE(start_serial_driver(&asi_mount, simulator.port));
@@ -1544,13 +1545,23 @@ static void transport_loss_is_reported(void) {
 		}
 	}
 	SERIAL_CHECK_TRUE(resolved);
-	if (context.connected) {
-		indigo_property *tracking = find_cached_property(MOUNT_TRACKING_PROPERTY_NAME);
-		SERIAL_CHECK_TRUE(tracking != NULL && tracking->state != INDIGO_BUSY_STATE);
+	// the lost port disconnects the mount: the regular disconnection ends OK and ALERT for the loss follows
+	bool lost = false;
+	for (int i = 0; i < 100 && !lost; i++) {
+		lost = !context.connected && context.disconnected && context.last_connection_state == INDIGO_ALERT_STATE;
+		if (!lost) {
+			indigo_usleep(100000);
+		}
 	}
+	SERIAL_CHECK_TRUE(lost);
+	// the mount connects again to the port of a replugged mount without a restart of the driver
+	SERIAL_CHECK_TRUE(start_asi_simulator(&replugged, "asi"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&asi_mount, replugged.port));
+	SERIAL_CHECK_TRUE(wait_for_fresh_poll(&replugged));
 cleanup:
 	if (online) { stop_serial_driver(&asi_mount); }
 	stop_external_serial_simulator(&simulator);
+	stop_external_serial_simulator(&replugged);
 }
 
 int main(void) {
