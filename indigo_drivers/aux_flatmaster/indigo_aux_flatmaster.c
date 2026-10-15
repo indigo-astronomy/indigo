@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_aux_flatmaster"
 #define DRIVER_LABEL         "PegasusAstro FlatMaster"
 #define AUX_DEVICE_NAME      "PegasusAstro FlatMaster"
@@ -301,10 +301,14 @@ indigo_result indigo_aux_flatmaster(indigo_driver_action action, indigo_driver_i
 	switch (action) {
 		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			static indigo_device_match_pattern patterns[1] = { 0 };
-			patterns[0].vendor_id = 0x0403;
-			patterns[0].product_id = 0x6015;
-			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
+			static indigo_device_match_pattern patterns[3] = { 0 };
+			patterns[0].vendor_id = 0x303a;
+			patterns[0].product_id = 0x9008;
+			patterns[1].vendor_id = 0x303a;
+			patterns[1].product_id = 0x9009;
+			patterns[2].vendor_id = 0x0403;
+			patterns[2].product_id = 0x6015;
+			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 3);
 			private_data = (flatmaster_private_data *)indigo_safe_malloc(sizeof(flatmaster_private_data));
 			aux = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
