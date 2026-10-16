@@ -1210,6 +1210,32 @@ static void index_install_remove(void) {
 	ASSERT_TRUE(access(path, F_OK) != 0);
 }
 
+static void index_install_while_downloading(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "curl_slow", 1);
+	unsigned before = revision(INDEX_42);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4219", true));
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_BUSY_STATE));
+	/* the second request arrives while 4219 is still downloading and must not be dropped */
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4218", true));
+	before = revision(INDEX_42);
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_OK_STATE));
+	const char *names[] = { "4219", "4218" };
+	indigo_property *use = snapshot(AGENT, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME);
+	for (unsigned i = 0; i < ARRAY_SIZE(names); i++) {
+		char path[512];
+		snprintf(path, sizeof(path), "%s/index-%s.fits", astrometry_folder, names[i]);
+		ASSERT_EQ_INT(0, access(path, R_OK));
+		ASSERT_TRUE(item(use, names[i]) != NULL);
+	}
+	indigo_release_property(use);
+	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
+	for (unsigned i = 0; i < ARRAY_SIZE(names); i++) {
+		before = revision(INDEX_42);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, names[i], false));
+		ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_OK_STATE));
+	}
+}
+
 static void index_download_failures(void) {
 	const char *modes[] = { "curl_exit", "curl_bad" };
 	for (unsigned i = 0; i < ARRAY_SIZE(modes); i++) {
@@ -1328,6 +1354,7 @@ static const indigo_test_case tests[] = {
 	{ "polar alignment targets JNow mount", polar_alignment_targets_jnow_mount },
 	{ "sync center and goto in mount epoch", sync_center_and_goto_in_mount_epoch },
 	{ "index install and remove", index_install_remove },
+	{ "index install while downloading", index_install_while_downloading },
 	{ "index download failures", index_download_failures },
 	{ "index remove failure and recovery", index_remove_failure_and_recovery },
 	{ "additional instances lifecycle", additional_instances_lifecycle },

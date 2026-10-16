@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0200001B
+#define DRIVER_VERSION 0x0200001C
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -193,6 +193,8 @@ typedef struct {
 	platesolver_private_data platesolver;
 	indigo_property *index_41xx_property;
 	indigo_property *index_42xx_property;
+	int index_41xx_pending;
+	int index_42xx_pending;
 	int frame_width;
 	int frame_height;
 #if defined(INDIGO_WINDOWS)
@@ -1000,20 +1002,35 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 	pthread_mutex_unlock(&mutex);
 }
 
-static void index_41xx_handler(indigo_device *device) {
-	sync_installed_indexes(device, "4100", AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
-	if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state = INDIGO_OK_STATE;
+/* Index changes are accepted while a download is running, each one queues another handler;
+   the property stays busy until the last queued request is processed. */
+static pthread_mutex_t index_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void index_request_queued(int *pending) {
+	pthread_mutex_lock(&index_pending_mutex);
+	(*pending)++;
+	pthread_mutex_unlock(&index_pending_mutex);
+}
+
+static void index_handler(indigo_device *device, char *dir, indigo_property *property, int *pending) {
+	sync_installed_indexes(device, dir, property);
+	pthread_mutex_lock(&index_pending_mutex);
+	bool more = --(*pending) > 0;
+	pthread_mutex_unlock(&index_pending_mutex);
+	if (more) {
+		property->state = INDIGO_BUSY_STATE;
+	} else if (property->state == INDIGO_BUSY_STATE) {
+		property->state = INDIGO_OK_STATE;
 	}
-	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
+	indigo_update_property(device, property, NULL);
+}
+
+static void index_41xx_handler(indigo_device *device) {
+	index_handler(device, "4100", AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, &ASTROMETRY_DEVICE_PRIVATE_DATA->index_41xx_pending);
 }
 
 static void index_42xx_handler(indigo_device *device) {
-	sync_installed_indexes(device, "4200", AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
-	if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
+	index_handler(device, "4200", AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, &ASTROMETRY_DEVICE_PRIVATE_DATA->index_42xx_pending);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -1122,11 +1139,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_41XX
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, index_41xx_handler);
+		index_request_queued(&ASTROMETRY_DEVICE_PRIVATE_DATA->index_41xx_pending);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, index_41xx_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_42XX
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, index_42xx_handler);
+		index_request_queued(&ASTROMETRY_DEVICE_PRIVATE_DATA->index_42xx_pending);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, index_42xx_handler);
 		return INDIGO_OK;
 	}
 	return indigo_platesolver_change_property(device, client, property);
