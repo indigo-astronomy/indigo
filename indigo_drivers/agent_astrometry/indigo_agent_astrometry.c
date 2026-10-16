@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0200001C
+#define DRIVER_VERSION 0x0200001D
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -260,7 +260,7 @@ static bool process_execution_line(indigo_device *device, char *line) {
 	} else if (strstr(line, "Did not solve")) {
 		indigo_send_message(device, ALERT_PROPERTY, "No solution found");
 	} else if (strstr(line, "You must list at least one index")) {
-		indigo_send_message(device, ALERT_PROPERTY, "You must select at least one index");
+		indigo_send_message(device, ALERT_PROPERTY, "No index files are selected, select at least one");
 	} else if (strstr(line, ": not found")) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", line);
 		res = false;
@@ -589,6 +589,16 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 			goto cleanup;
 		}
 #pragma clang diagnostic pop
+		/* solve-field can't succeed without an index, don't start it */
+		bool index_selected = false;
+		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count && !index_selected; k++) {
+			index_selected = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[k].sw.value;
+		}
+		if (!index_selected) {
+			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			message = "No index files are selected, select at least one";
+			goto cleanup;
+		}
 		// convert any input image to FITS file
 		indigo_uni_handle *handle = indigo_uni_create_file(base, -INDIGO_LOG_TRACE);
 		if (handle == NULL) {

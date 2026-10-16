@@ -43,6 +43,7 @@
 #define MOUNT "Mount Agent Astrometry Test"
 #define INDEX_41 "AGENT_ASTROMETRY_INDEX_41XX"
 #define INDEX_42 "AGENT_ASTROMETRY_INDEX_42XX"
+#define TEST_INDEX "4110"
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define REQUIRE(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return false; } } while (0)
 
@@ -480,6 +481,10 @@ static bool setup(void) {
 	REQUIRE(wait_defined(AGENT, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
 	REQUIRE(wait_defined(AGENT, INDEX_41));
 	REQUIRE(wait_defined(AGENT, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME));
+	/* the agent does not start solve-field without a selected index */
+	unsigned before = revision(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME);
+	REQUIRE(indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, TEST_INDEX, true) == INDIGO_OK);
+	REQUIRE(wait_state_after(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, before, INDIGO_OK_STATE));
 	return true;
 }
 
@@ -611,7 +616,7 @@ static void schema_and_metadata(void) {
 	const struct { const char *name; int type; int perm; int count; } expected[] = {
 		{ INDEX_41, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 13 },
 		{ INDEX_42, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 20 },
-		{ AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 0 },
+		{ AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 1 },
 		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 9 },
 		{ AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RO_PERM, 10 },
 		{ AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 5 },
@@ -844,7 +849,7 @@ static void solver_reported_failures(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
 	const char *modes[] = { "no_solution", "no_index", "cpu_limit", "solve_not_found" };
-	const char *expected[] = { "No solution found", "select at least one index", "CPU time limit reached", "Execution of solve-field failed" };
+	const char *expected[] = { "No solution found", "No index files are selected", "CPU time limit reached", "Execution of solve-field failed" };
 	for (unsigned i = 0; i < ARRAY_SIZE(modes); i++) {
 		setenv("ASTROMETRY_FAKE_MODE", modes[i], 1);
 		ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
@@ -861,6 +866,18 @@ static void child_exit_status(void) {
 	setenv("ASTROMETRY_FAKE_MODE", "solve_exit", 1);
 	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
 	ASSERT_TRUE(has_message("Execution of solve-field failed"));
+}
+
+static void solve_without_selected_index(void) {
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	unsigned before = revision(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, TEST_INDEX, false));
+	ASSERT_TRUE(wait_state_after(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(has_message("No index files are selected"));
+	ASSERT_FALSE(file_contains(fake_log, "image2xy"));
+	ASSERT_FALSE(file_contains(fake_log, "solve-field"));
 }
 
 static void empty_upload(void) {
@@ -1353,6 +1370,7 @@ static const indigo_test_case tests[] = {
 	{ "polar alignment targets J2000 mount", polar_alignment_targets_j2000_mount },
 	{ "polar alignment targets JNow mount", polar_alignment_targets_jnow_mount },
 	{ "sync center and goto in mount epoch", sync_center_and_goto_in_mount_epoch },
+	{ "solve without selected index", solve_without_selected_index },
 	{ "index install and remove", index_install_remove },
 	{ "index install while downloading", index_install_while_downloading },
 	{ "index download failures", index_download_failures },
@@ -1381,6 +1399,15 @@ int main(int argc, char **argv) {
 		char cache_base[320];
 		snprintf(cache_base, sizeof(cache_base), "%s/cache", test_root);
 		mkdir(cache_base, 0700);
+		mkdir(astrometry_folder, 0700);
+		char index_path[512];
+		snprintf(index_path, sizeof(index_path), "%s/index-" TEST_INDEX ".fits", astrometry_folder);
+		FILE *index_file = fopen(index_path, "w");
+		if (!index_file) {
+			return 1;
+		}
+		fputs("SIMPLE", index_file);
+		fclose(index_file);
 		create_fake_tools();
 		const char *old_path = getenv("PATH");
 		char path[4096];
