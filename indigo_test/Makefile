@@ -206,6 +206,8 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 # Without this every test that includes the header fails to compile on Linux.
 TEST_CFLAGS = $(CFLAGS) -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include
 TEST_LDFLAGS = $(LDFLAGS) -Wl,-rpath,$(BUILD_LIB) -lindigo -lm -lpthread
+# A test that compiles indigo_driver.c itself links the serial port scan, which uses libudev on Linux only.
+FRAMEWORK_TEST_LDFLAGS = $(TEST_LDFLAGS) -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),,-ludev)
 CCD_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(TEST_LDFLAGS) -lindigocat
 DOME_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_simulator.a $(TEST_LDFLAGS) -lindigocat
 DOME_BAADER_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_baader.a $(TEST_LDFLAGS) -lindigocat
@@ -835,7 +837,7 @@ $(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexsta
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_nexstaraux_simulator: ../indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $<
+	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator: integration/test_mount_nexstaraux_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstaraux_simulator $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTARAUX_SIMULATOR_TEST_LDFLAGS)
@@ -1058,7 +1060,7 @@ $(INTEGRATION_BUILD)/serial_port_loss_driver.o: ../indigo_drivers/focuser_moonli
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_serial_port_loss: integration/test_serial_port_loss.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o $(INTEGRATION_BUILD)/serial_port_loss_driver.o | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o $(INTEGRATION_BUILD)/serial_port_loss_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o $(INTEGRATION_BUILD)/serial_port_loss_driver.o -o $@ $(FRAMEWORK_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_moonlite_simulator_asan: integration/test_focuser_moonlite_simulator.c ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c $(TEST_LDFLAGS)
@@ -1209,7 +1211,7 @@ $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o: ../indigo_libs/indigo_focuser
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk: integration/test_focuser_astroasis_sdk.c integration/simulator_test_common.h test_runner.h fixtures/focuser_astroasis/generated_reference_trace.txt $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_TRACE) $< $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+	$(CC) $(TEST_CFLAGS) $(OAF_SDK_TEST_INCLUDE) $(OAF_SDK_TEST_TRACE) $< $(INTEGRATION_BUILD)/focuser_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/focuser_astroasis_sdk_base.o -o $@ $(FRAMEWORK_TEST_LDFLAGS)
 
 .PHONY: test-focuser-astroasis-sdk
 test-focuser-astroasis-sdk: $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk
@@ -1256,7 +1258,7 @@ $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o: ../indigo_libs/indigo_wheel_dri
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_wheel_playerone_sdk: integration/test_wheel_playerone_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(PW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+	$(CC) $(TEST_CFLAGS) $(PW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_framework.o $(INTEGRATION_BUILD)/wheel_playerone_sdk_base.o -o $@ $(FRAMEWORK_TEST_LDFLAGS)
 
 MIW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_mi/bin_externals/libgxccd/include
 MIW_SDK_TEST_REPLACEMENTS = -Dindigo_queue_create=miw_test_queue_create -Dlibusb_hotplug_register_callback_sim=miw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=miw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=miw_test_usb_start -Dindigo_attach_device=miw_test_attach -Dindigo_detach_device=miw_test_detach -Dlibusb_hotplug_register_callback=miw_test_usb_register -Dlibusb_hotplug_deregister_callback=miw_test_usb_deregister -Dlibusb_ref_device=miw_test_usb_ref -Dlibusb_unref_device=miw_test_usb_unref -Dlibusb_get_device_descriptor=miw_test_usb_descriptor
@@ -1297,7 +1299,7 @@ $(INTEGRATION_BUILD)/wheel_astroasis_sdk_base.o: ../indigo_libs/indigo_wheel_dri
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_wheel_astroasis_sdk: integration/test_wheel_astroasis_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/wheel_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/wheel_astroasis_sdk_base.o | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(OFW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/wheel_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/wheel_astroasis_sdk_base.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+	$(CC) $(TEST_CFLAGS) $(OFW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_astroasis_sdk_driver.o $(INTEGRATION_BUILD)/wheel_astroasis_sdk_framework.o $(INTEGRATION_BUILD)/wheel_astroasis_sdk_base.o -o $@ $(FRAMEWORK_TEST_LDFLAGS)
 
 CAA_SDK_TEST_INCLUDE = -I../indigo_drivers/rotator_asi/bin_externals/libCAA/include
 CAA_SDK_TEST_REPLACEMENTS = -Dindigo_rotator_change_property=caa_test_base_change -Dlibusb_hotplug_register_callback_sim=caa_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=caa_test_usb_deregister_poll -Dindigo_save_property=caa_test_save -Dindigo_start_usb_event_handler=caa_test_usb_start -Dindigo_attach_device=caa_test_attach -Dindigo_detach_device=caa_test_detach -Dlibusb_hotplug_register_callback=caa_test_usb_register -Dlibusb_hotplug_deregister_callback=caa_test_usb_deregister -Dlibusb_ref_device=caa_test_usb_ref -Dlibusb_unref_device=caa_test_usb_unref -Dlibusb_get_device_descriptor=caa_test_usb_descriptor

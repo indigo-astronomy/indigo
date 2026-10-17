@@ -926,6 +926,20 @@ static additional_ports *find_additional_ports(const char *driver) {
 	return NULL;
 }
 
+// the bus lock must be held, the device must be disconnected
+static void select_auto_port(indigo_device *device, serial_port_list *list) {
+	/* if there are no USB-Serial ports but there are regular serial ports and we want auto selected port, select the first one.
+	   Otherwise autoselect the matching port from the available USB-Serial ports. Only the serial ports are candidates,
+	   the additional ports of the driver, e.g. askar:// URLs, are not serial ports and can not get the auto:// prefix.
+	*/
+	if (device->match_patterns_count == 0 && list->port_count > 0 && list->usb_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
+		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, list->ports[0].name);
+		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
+	} else {
+		indigo_select_matching_usbserial_device(device, list->usb, list->usb_count);
+	}
+}
+
 // the bus lock must be held and DEVICE_PORTS must not be defined, as it may be reallocated; the selected port of
 // a connected device is never changed
 static void fill_device_ports(indigo_device *device, serial_port_list *list) {
@@ -944,16 +958,7 @@ static void fill_device_ports(indigo_device *device, serial_port_list *list) {
 	if (!IS_DISCONNECTED) {
 		return;
 	}
-	/* if there are no USB-Serial ports but there are regular serial ports and we want auto selected port, select the first one.
-	   Otherwise autoselect the matching port from the available USB-Serial ports. Only the serial ports are candidates,
-	   the additional ports of the driver, e.g. askar:// URLs, are not serial ports and can not get the auto:// prefix.
-	*/
-	if (device->match_patterns_count == 0 && list->port_count > 0 && list->usb_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
-		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, list->ports[0].name);
-		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
-	} else {
-		indigo_select_matching_usbserial_device(device, list->usb, list->usb_count);
-	}
+	select_auto_port(device, list);
 }
 
 // the bus lock must be held
@@ -1941,6 +1946,36 @@ int indigo_get_dst_state(void) {
 	return dst;
 }
 
+// A port of plain auto:// is resolved when the device connects, so a client that sets it or a port plugged in
+// without a hot-plug event does not leave the driver to open an empty path. Any other port is kept.
+static void resolve_empty_auto_port(indigo_device *device) {
+	if (DEVICE_PORT_PROPERTY == NULL || strcmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX)) {
+		return;
+	}
+	indigo_lock_bus();
+	bool registered = false;
+	for (int i = 0; i < serial_port_devices_count && !registered; i++) {
+		registered = serial_port_devices[i] == device;
+	}
+	indigo_unlock_bus();
+	if (!registered) {
+		return;
+	}
+	// a rescan that finds a change updates the other devices as well
+	update_serial_ports(device);
+	indigo_lock_bus();
+	select_auto_port(device, current_serial_ports());
+	indigo_unlock_bus();
+	if (strcmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX)) {
+		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
+		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+	} else {
+		DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DEVICE_PORT_PROPERTY, "No matching serial port found");
+	}
+}
+
 bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request) {
 	indigo_item *connected_item = NULL;
 	indigo_item *disconnected_item = NULL;
@@ -1992,6 +2027,9 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 		}
 	}
 	/* reqquest is valid */
+	if (connected_item != NULL && connected_item->sw.value) {
+		resolve_empty_auto_port(device);
+	}
 	return false;
 }
 

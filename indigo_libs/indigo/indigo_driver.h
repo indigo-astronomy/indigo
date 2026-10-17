@@ -404,6 +404,9 @@ INDIGO_EXTERN void indigo_enumerate_serial_ports(indigo_device *device, indigo_p
 INDIGO_EXTERN void indigo_set_additional_ports(indigo_device *device, int count, const char **names, const char **labels);
 
 /** Check for double connect/disconnect request.
+
+    A valid connect request also resolves a device port of plain auto:// to the matching serial port,
+    before the driver opens it.
  */
 INDIGO_EXTERN bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request);
 
