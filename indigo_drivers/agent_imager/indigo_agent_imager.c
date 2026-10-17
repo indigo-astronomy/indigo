@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0300003F
+#define DRIVER_VERSION 0x03000040
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -342,7 +342,7 @@ static bool get_disk_usage(const char* path, double* total_mb, double* free_mb, 
 	DWORD error = GetLastError();
 	switch (error) {
 	case ERROR_PATH_NOT_FOUND:
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Path not found (error %d)", path, error);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Path not found (error %d)", path, error);
 		break;
 	case ERROR_INVALID_NAME:
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Invalid name (error %d)", path, error);
