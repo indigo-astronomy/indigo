@@ -272,6 +272,12 @@ static void reset_timer_scheduler_after_fork_child(void) {
 	timer_scheduler.pending = NULL;
 	timer_scheduler.timers = NULL;
 	timer_scheduler.finished_workers = NULL;
+	// The parent's scheduler thread was waiting on the condition when fork() was called. The inherited
+	// condition still counts that waiter, which does not exist in the child, and pthread_cond_signal()
+	// can be spent on it, so the child's scheduler never wakes up. It can't be destroyed with waiters,
+	// so it is initialised again.
+	memset(&timer_scheduler.cond, 0, sizeof(timer_scheduler.cond));
+	init_timer_cond(&timer_scheduler.cond);
 	timer_scheduler.thread_started = false;
 	timer_scheduler.start_failed = false;
 	timer_scheduler.ready = false;
