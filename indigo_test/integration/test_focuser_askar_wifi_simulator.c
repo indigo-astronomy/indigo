@@ -246,6 +246,42 @@ cleanup:
 	tear_down_serial_driver(&askar_focuser);
 }
 
+// A port of plain auto:// is resolved when the device connects, without a refresh: the driver never gets the empty
+// path. Which serial port is chosen depends on the host, so only the publish is checked.
+static void empty_auto_port_resolved_at_connect(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, askar_focuser.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, "auto://"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!strcmp(device_port(), USBSERIAL_AUTO_PREFIX));
+	unsigned port_before = property_revision(DEVICE_PORT_PROPERTY_NAME);
+	unsigned connection_before = property_revision(CONNECTION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, askar_focuser.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	bool published = false;
+	for (int i = 0; i < 100 && !published; i++) {
+		published = property_revision(DEVICE_PORT_PROPERTY_NAME) > port_before;
+		if (!published) {
+			indigo_usleep(100000);
+		}
+	}
+	SERIAL_CHECK_TRUE(published);
+	indigo_property *port = find_cached_property(DEVICE_PORT_PROPERTY_NAME);
+	printf("    port at connect: %s (state %d)\n", device_port(), port ? port->state : -1);
+	SERIAL_CHECK_TRUE(strcmp(device_port(), USBSERIAL_AUTO_PREFIX) || (port != NULL && port->state == INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(device_port(), "askar://") == NULL);
+	bool finished = false;
+	for (int i = 0; i < 100 && !finished; i++) {
+		indigo_property *connection = find_cached_property(CONNECTION_PROPERTY_NAME);
+		finished = connection != NULL && property_revision(CONNECTION_PROPERTY_NAME) > connection_before && connection->state != INDIGO_BUSY_STATE;
+		if (!finished) {
+			indigo_usleep(100000);
+		}
+	}
+	SERIAL_CHECK_TRUE(finished);
+cleanup:
+	disconnect_serial_device(&askar_focuser);
+	tear_down_serial_driver(&askar_focuser);
+}
+
 // askar:// without a host selects the first discovered Wi-Fi focuser at connect and talks to it over TCP.
 static void askar_port_selects_wifi(void) {
 	SERIAL_CHECK_TRUE(driver_up());
@@ -301,6 +337,7 @@ int main(void) {
 	}
 	const indigo_test_case tests[] = {
 		{ "auto_port_ignores_wifi", auto_port_ignores_wifi },
+		{ "empty_auto_port_resolved_at_connect", empty_auto_port_resolved_at_connect },
 		{ "askar_port_selects_wifi", askar_port_selects_wifi },
 		{ "closed_connection_disconnects", closed_connection_disconnects }
 	};

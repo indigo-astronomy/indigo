@@ -43,6 +43,8 @@
 #define MOUNT "Mount Agent Astrometry Test"
 #define INDEX_41 "AGENT_ASTROMETRY_INDEX_41XX"
 #define INDEX_42 "AGENT_ASTROMETRY_INDEX_42XX"
+#define TEST_INDEX "4110"
+#define LEFTOVER_PART "index-4111.fits.part"
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define REQUIRE(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return false; } } while (0)
 
@@ -306,6 +308,7 @@ static void create_fake_tools(void) {
 		"  no_index) echo 'You must list at least one index'; exit 0 ;;\n"
 		"  cpu_limit) echo 'Total CPU time limit reached'; exit 0 ;;\n"
 		"  solve_slow) sleep 30 ;;\n"
+		"  solve_1s) sleep 1 ;;\n"
 		"esac\n"
 		"echo 'message: fake solver running'\n"
 		"echo 'Field center: (RA,Dec) = (180, -30)'\n"
@@ -324,8 +327,10 @@ static void create_fake_tools(void) {
 		"#!/bin/sh\n"
 		"echo curl \"$@\" >> \"$ASTROMETRY_FAKE_LOG\"\n"
 		"out=''\n"
-		"while [ $# -gt 0 ]; do if [ \"$1\" = '-o' ]; then shift; out=$1; fi; shift; done\n"
-		"case \"$ASTROMETRY_FAKE_MODE\" in curl_exit) exit 22 ;; curl_bad) printf 'ERROR' > \"$out\"; exit 0 ;; curl_slow) sleep 1 ;; esac\n"
+		"url=''\n"
+		"while [ $# -gt 0 ]; do if [ \"$1\" = '-o' ]; then shift; out=$1; else url=$1; fi; shift; done\n"
+		"case \"$ASTROMETRY_FAKE_MODE\" in curl_exit) exit 22 ;; curl_bad) printf 'ERROR' > \"$out\"; exit 0 ;; curl_slow) sleep 1 ;; curl_hang) printf 'SIMPLE' > \"$out\"; sleep 30 ;; esac\n"
+		"case \"$ASTROMETRY_FAKE_MODE:$url\" in curl_hang_4207_03:*index-4207-03.fits) printf 'SIMPLE' > \"$out\"; sleep 30 ;; esac\n"
 		"printf 'SIMPLE' > \"$out\"\n"
 		"exit 0\n");
 }
@@ -480,6 +485,10 @@ static bool setup(void) {
 	REQUIRE(wait_defined(AGENT, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
 	REQUIRE(wait_defined(AGENT, INDEX_41));
 	REQUIRE(wait_defined(AGENT, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME));
+	/* the agent does not start solve-field without a selected index */
+	unsigned before = revision(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME);
+	REQUIRE(indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, TEST_INDEX, true) == INDIGO_OK);
+	REQUIRE(wait_state_after(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, before, INDIGO_OK_STATE));
 	return true;
 }
 
@@ -611,7 +620,7 @@ static void schema_and_metadata(void) {
 	const struct { const char *name; int type; int perm; int count; } expected[] = {
 		{ INDEX_41, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 13 },
 		{ INDEX_42, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 20 },
-		{ AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 0 },
+		{ AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 1 },
 		{ AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RW_PERM, 9 },
 		{ AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_NUMBER_VECTOR, INDIGO_RO_PERM, 10 },
 		{ AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, INDIGO_SWITCH_VECTOR, INDIGO_RW_PERM, 5 },
@@ -844,7 +853,7 @@ static void solver_reported_failures(void) {
 	unsigned char data[2880];
 	make_fits(data, sizeof(data));
 	const char *modes[] = { "no_solution", "no_index", "cpu_limit", "solve_not_found" };
-	const char *expected[] = { "No solution found", "select at least one index", "CPU time limit reached", "Execution of solve-field failed" };
+	const char *expected[] = { "No solution found", "No index files are selected", "CPU time limit reached", "Execution of solve-field failed" };
 	for (unsigned i = 0; i < ARRAY_SIZE(modes); i++) {
 		setenv("ASTROMETRY_FAKE_MODE", modes[i], 1);
 		ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
@@ -861,6 +870,18 @@ static void child_exit_status(void) {
 	setenv("ASTROMETRY_FAKE_MODE", "solve_exit", 1);
 	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
 	ASSERT_TRUE(has_message("Execution of solve-field failed"));
+}
+
+static void solve_without_selected_index(void) {
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	unsigned before = revision(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, TEST_INDEX, false));
+	ASSERT_TRUE(wait_state_after(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(has_message("No index files are selected"));
+	ASSERT_FALSE(file_contains(fake_log, "image2xy"));
+	ASSERT_FALSE(file_contains(fake_log, "solve-field"));
 }
 
 static void empty_upload(void) {
@@ -1210,6 +1231,193 @@ static void index_install_remove(void) {
 	ASSERT_TRUE(access(path, F_OK) != 0);
 }
 
+static void index_install_while_downloading(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "curl_slow", 1);
+	unsigned before = revision(INDEX_42);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4219", true));
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_BUSY_STATE));
+	/* the second request arrives while 4219 is still downloading and must not be dropped */
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4218", true));
+	before = revision(INDEX_42);
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_OK_STATE));
+	const char *names[] = { "4219", "4218" };
+	indigo_property *use = snapshot(AGENT, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME);
+	for (unsigned i = 0; i < ARRAY_SIZE(names); i++) {
+		char path[512];
+		snprintf(path, sizeof(path), "%s/index-%s.fits", astrometry_folder, names[i]);
+		ASSERT_EQ_INT(0, access(path, R_OK));
+		ASSERT_TRUE(item(use, names[i]) != NULL);
+	}
+	indigo_release_property(use);
+	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
+	for (unsigned i = 0; i < ARRAY_SIZE(names); i++) {
+		before = revision(INDEX_42);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, names[i], false));
+		ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_OK_STATE));
+	}
+}
+
+static bool wait_file(const char *name) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/%s", astrometry_folder, name);
+	for (int i = 0; i < 15000; i++) {
+		if (access(path, F_OK) == 0) {
+			return true;
+		}
+		indigo_usleep(1000);
+	}
+	fprintf(stderr, "Timeout waiting for %s\n", path);
+	return false;
+}
+
+static bool index_file_exists(const char *name) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/%s", astrometry_folder, name);
+	return access(path, F_OK) == 0;
+}
+
+static bool index_selected(const char *property_name, const char *name) {
+	indigo_property *property = snapshot(AGENT, property_name);
+	indigo_item *index = item(property, name);
+	bool result = index && index->sw.value;
+	indigo_release_property(property);
+	return result;
+}
+
+static int count_lines_containing(const char *path, const char *text) {
+	FILE *file = fopen(path, "r");
+	if (!file) {
+		return 0;
+	}
+	char line[1024];
+	int count = 0;
+	while (fgets(line, sizeof(line), file)) {
+		if (strstr(line, text)) {
+			count++;
+		}
+	}
+	fclose(file);
+	return count;
+}
+
+static void abort_process(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true));
+}
+
+static void index_abort_download(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "curl_hang", 1);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_41, "4119", true));
+	ASSERT_TRUE(wait_file("index-4119.fits.part"));
+	unsigned before = revision(INDEX_41);
+	abort_process();
+	ASSERT_TRUE(wait_state_after(INDEX_41, before, INDIGO_ALERT_STATE));
+	ASSERT_FALSE(index_selected(INDEX_41, "4119"));
+	ASSERT_FALSE(index_file_exists("index-4119.fits"));
+	ASSERT_FALSE(index_file_exists("index-4119.fits.part"));
+}
+
+static void index_abort_stops_queued_downloads(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "curl_hang", 1);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4219", true));
+	ASSERT_TRUE(wait_file("index-4219.fits.part"));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4218", true));
+	unsigned before = revision(INDEX_42);
+	abort_process();
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_ALERT_STATE));
+	/* give the queued request time to run, it must not start another download */
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property_state(INDEX_42));
+	ASSERT_EQ_INT(1, count_lines_containing(fake_log, "curl "));
+	ASSERT_FALSE(index_selected(INDEX_42, "4219"));
+	ASSERT_FALSE(index_selected(INDEX_42, "4218"));
+	ASSERT_FALSE(index_file_exists("index-4219.fits"));
+	ASSERT_FALSE(index_file_exists("index-4219.fits.part"));
+	ASSERT_FALSE(index_file_exists("index-4218.fits"));
+}
+
+static void index_abort_removes_partial_multi_file_index(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "curl_hang_4207_03", 1);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_42, "4207", true));
+	ASSERT_TRUE(wait_file("index-4207-03.fits.part"));
+	ASSERT_TRUE(index_file_exists("index-4207-00.fits"));
+	unsigned before = revision(INDEX_42);
+	abort_process();
+	ASSERT_TRUE(wait_state_after(INDEX_42, before, INDIGO_ALERT_STATE));
+	ASSERT_FALSE(index_selected(INDEX_42, "4207"));
+	for (int i = 0; i < 12; i++) {
+		char name[64];
+		snprintf(name, sizeof(name), "index-4207-%02d.fits", i);
+		ASSERT_FALSE(index_file_exists(name));
+		snprintf(name, sizeof(name), "index-4207-%02d.fits.part", i);
+		ASSERT_FALSE(index_file_exists(name));
+	}
+}
+
+static void index_download_after_idle_abort(void) {
+	abort_process();
+	indigo_usleep(200000);
+	setenv("ASTROMETRY_FAKE_MODE", "success", 1);
+	unsigned before = revision(INDEX_41);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_41, "4119", true));
+	ASSERT_TRUE(wait_state_after(INDEX_41, before, INDIGO_OK_STATE));
+	ASSERT_TRUE(index_selected(INDEX_41, "4119"));
+	ASSERT_TRUE(index_file_exists("index-4119.fits"));
+}
+
+static void leftover_partial_index_removed(void) {
+	ASSERT_FALSE(index_file_exists(LEFTOVER_PART));
+	ASSERT_FALSE(index_selected(INDEX_41, "4111"));
+}
+
+static int log_line_of(const char *text) {
+	FILE *file = fopen(fake_log, "r");
+	if (!file) {
+		return -1;
+	}
+	char line[1024];
+	int index = 0, result = -1;
+	while (fgets(line, sizeof(line), file)) {
+		if (strstr(line, text)) {
+			result = index;
+			break;
+		}
+		index++;
+	}
+	fclose(file);
+	return result;
+}
+
+static void solve_rejected_during_index_download(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "curl_hang", 1);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_41, "4119", true));
+	ASSERT_TRUE(wait_file("index-4119.fits.part"));
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	ASSERT_TRUE(upload(data, sizeof(data), ".fits", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(has_message("Index download in progress"));
+	ASSERT_EQ_INT(-1, log_line_of("image2xy"));
+	ASSERT_EQ_INT(-1, log_line_of("solve-field"));
+	unsigned before = revision(INDEX_41);
+	abort_process();
+	ASSERT_TRUE(wait_state_after(INDEX_41, before, INDIGO_ALERT_STATE));
+}
+
+static void index_change_rejected_during_solve(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "solve_1s", 1);
+	unsigned char data[2880];
+	make_fits(data, sizeof(data));
+	unsigned wcs_before = revision(AGENT_PLATESOLVER_WCS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_blob_property_1(&observer, AGENT, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, data, sizeof(data), ".fits", ""));
+	ASSERT_TRUE(wait_state_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, wcs_before, INDIGO_BUSY_STATE));
+	unsigned before = revision(INDEX_41);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, INDEX_41, "4119", true));
+	ASSERT_TRUE(wait_state_after(INDEX_41, before, INDIGO_ALERT_STATE));
+	ASSERT_FALSE(index_selected(INDEX_41, "4119"));
+	ASSERT_TRUE(wait_state_after(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, wcs_before, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(-1, log_line_of("curl "));
+	ASSERT_FALSE(index_file_exists("index-4119.fits"));
+}
+
 static void index_download_failures(void) {
 	const char *modes[] = { "curl_exit", "curl_bad" };
 	for (unsigned i = 0; i < ARRAY_SIZE(modes); i++) {
@@ -1327,7 +1535,16 @@ static const indigo_test_case tests[] = {
 	{ "polar alignment targets J2000 mount", polar_alignment_targets_j2000_mount },
 	{ "polar alignment targets JNow mount", polar_alignment_targets_jnow_mount },
 	{ "sync center and goto in mount epoch", sync_center_and_goto_in_mount_epoch },
+	{ "solve without selected index", solve_without_selected_index },
 	{ "index install and remove", index_install_remove },
+	{ "index install while downloading", index_install_while_downloading },
+	{ "index abort download", index_abort_download },
+	{ "index abort stops queued downloads", index_abort_stops_queued_downloads },
+	{ "index abort removes partial multi-file index", index_abort_removes_partial_multi_file_index },
+	{ "index download after idle abort", index_download_after_idle_abort },
+	{ "leftover partial index removed", leftover_partial_index_removed },
+	{ "solve rejected during index download", solve_rejected_during_index_download },
+	{ "index change rejected during solve", index_change_rejected_during_solve },
 	{ "index download failures", index_download_failures },
 	{ "index remove failure and recovery", index_remove_failure_and_recovery },
 	{ "additional instances lifecycle", additional_instances_lifecycle },
@@ -1354,6 +1571,23 @@ int main(int argc, char **argv) {
 		char cache_base[320];
 		snprintf(cache_base, sizeof(cache_base), "%s/cache", test_root);
 		mkdir(cache_base, 0700);
+		mkdir(astrometry_folder, 0700);
+		char index_path[512];
+		snprintf(index_path, sizeof(index_path), "%s/index-" TEST_INDEX ".fits", astrometry_folder);
+		FILE *index_file = fopen(index_path, "w");
+		if (!index_file) {
+			return 1;
+		}
+		fputs("SIMPLE", index_file);
+		fclose(index_file);
+		/* a download interrupted by a crash, the agent removes it on start */
+		snprintf(index_path, sizeof(index_path), "%s/" LEFTOVER_PART, astrometry_folder);
+		index_file = fopen(index_path, "w");
+		if (!index_file) {
+			return 1;
+		}
+		fputs("SIMPLE", index_file);
+		fclose(index_file);
 		create_fake_tools();
 		const char *old_path = getenv("PATH");
 		char path[4096];

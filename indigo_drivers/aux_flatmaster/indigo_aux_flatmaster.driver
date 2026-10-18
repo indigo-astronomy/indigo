@@ -26,8 +26,16 @@ driver flatmaster {
 	label = "PegasusAstro FlatMaster";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 12;
+	version = 13;
 	serial {
+		pattern {
+			vid = 0x303a;
+			pid = 0x9008;
+		}
+		pattern {
+			vid = 0x303a;
+			pid = 0x9009;
+		}
 		pattern {
 			vid = 0x0403;
 			pid = 0x6015;

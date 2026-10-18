@@ -2,6 +2,56 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-9] - 18 Oct Sun 2026
+## Overall:
+- packaging:
+	- Windows installer: the exe files are installed in bin, the driver and vendor SDK DLLs in drivers and the driver list in share, DLLs left in bin by older installers are removed
+	- Windows installer: fix the setup program and the installed apps entry showing no INDIGO icon
+
+- indigo_libs:
+	- one serial port list is shared by all devices and rescanned on USB hot-plug, DEVICE_PORTS of every serial device follows plugged and unplugged adapters instead of each driver enumerating the ports itself
+	- a driver can add its own ports (e.g. askar:// Wi-Fi focusers) to DEVICE_PORTS, they are kept when the serial ports change and are never chosen by auto://
+	- a device whose USB-serial port disappears is disconnected with ALERT
+	- an empty auto:// port is resolved to the matching serial port when the device connects, DEVICE_PORT shows ALERT with "No matching serial port found" if there is none
+	- indigo_uni_is_connection_lost() added, it tells a lost connection from a missing or garbled reply
+	- fix serial ports failing on an interrupted select/read/write (EINTR) on Linux and macOS, and on Windows a serial error reported after a successful read or write, or a wait failing on an already cleared line error
+	- fix timers never firing in a child process created by fork()
+	- fix the main thread, and so the process name, being renamed by indigo_rename_thread()
+
+- indigo_tools:
+	- indigo_prop_tool: fix a set request sent twice when the driver defines the property again while handling it, e.g. on a DEVICE_PORTS refresh
+
+- behaviour common to many drivers:
+	- a lost connection disconnects the device with ALERT, a missing or garbled reply no longer does: dome_beaver, focuser_askar, focuser_mypro2, focuser_qhy, mount_synscan; mount_asi, mount_ioptron, mount_lx200 and mount_mxhd also disconnect every other device on the same port
+
+
+## Driver changes:
+- indigo_agent_astrometry:
+	- the solver is not started when no index is selected, "No index files are selected, select at least one" is shown instead
+	- abort stops the running and the queued index downloads, an interrupted download no longer leaves a partial index file behind or shows it as installed
+	- solving is refused while an index is downloaded or removed, and an index change is refused while solving
+	- fix an index selected while another index was downloading being ignored
+
+- indigo_agent_imager:
+	- fix a missing cache folder logged as an error on Windows
+
+- indigo_agent_scripting:
+	- fix SEQUENCE_STEP_STATE enumeration failing with "cannot read property 'label' of undefined" after a sequence ending with repeat()
+
+- indigo_aux_flatmaster:
+	- Pegasus Astro USB IDs 303a:9008 and 303a:9009 added to the auto:// port selection
+
+- indigo_focuser_askar:
+	- disconnect with ALERT when the serial port disappears or the Wi-Fi connection is closed
+	- discovered Wi-Fi focusers stay in DEVICE_PORTS when the serial ports change
+
+- indigo_gps_nmea:
+	- a receiver that stays quiet is kept connected, the device disconnects only on a read error or the end of the stream
+
+- indigo_rotator_falcon:
+	- Pegasus Astro USB ID 303a:9002 added to the auto:// port selection
+
+
 # [3.0-8] - 11 Oct Sun 2026
 ## Overall:
 - packaging:

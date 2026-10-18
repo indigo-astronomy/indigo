@@ -76,9 +76,10 @@ OutputBaseFilename=indigo-windows-{#MyAppVersion}-{#MyAppPackageBuild}-{#BuildPl
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=indigo.ico
 WizardImageFile=logo.bmp
 WizardSmallImageFile=appicon.bmp
-UninstallDisplayIcon={app}\bin\indigo_server.exe
+UninstallDisplayIcon={app}\indigo.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -106,6 +107,7 @@ Type: files; Name: "{app}\bin\*.dll"
 Type: files; Name: "{app}\bin\indigo_drivers"
 
 [Files]
+Source: "indigo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\*.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#BuildDir}\indigo.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#BuildDir}\pthreadVC3.dll"; DestDir: "{app}\bin"; Flags: ignoreversion skipifsourcedoesntexist

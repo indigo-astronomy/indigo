@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0200001B
+#define DRIVER_VERSION 0x0200001F
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -193,6 +193,8 @@ typedef struct {
 	platesolver_private_data platesolver;
 	indigo_property *index_41xx_property;
 	indigo_property *index_42xx_property;
+	int index_41xx_pending;
+	int index_42xx_pending;
 	int frame_width;
 	int frame_height;
 #if defined(INDIGO_WINDOWS)
@@ -202,6 +204,7 @@ typedef struct {
 	pid_t pid;
 #endif
 	bool abort_requested;
+	bool index_download_aborted;
 } astrometry_private_data;
 
 // --------------------------------------------------------------------------------
@@ -258,7 +261,7 @@ static bool process_execution_line(indigo_device *device, char *line) {
 	} else if (strstr(line, "Did not solve")) {
 		indigo_send_message(device, ALERT_PROPERTY, "No solution found");
 	} else if (strstr(line, "You must list at least one index")) {
-		indigo_send_message(device, ALERT_PROPERTY, "You must select at least one index");
+		indigo_send_message(device, ALERT_PROPERTY, "No index files are selected, select at least one");
 	} else if (strstr(line, ": not found")) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", line);
 		res = false;
@@ -473,7 +476,6 @@ static bool execute_command(indigo_device *device, char *command, ...) {
    the transfer is interrupted when astrometry_abort() or kill_children() is called. */
 static bool download_index_file(indigo_device *device, const char *url, const char *path) {
 	bool res = false;
-	ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
 	HINTERNET session = InternetOpenA("INDIGO Astrometry Agent", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	if (session == NULL) {
 		return false;
@@ -537,6 +539,7 @@ static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
 #define astrometry_save_config indigo_platesolver_save_config
 
 static void astrometry_abort(indigo_device *device) {
+	ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted = true;
 	ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 #if defined(INDIGO_WINDOWS)
 	/* The flag is also polled by download_index_file(), which runs no child process. */
@@ -559,6 +562,15 @@ static void astrometry_abort(indigo_device *device) {
 
 static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *task) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		/* solving and index changes are mutually exclusive, the index properties stay busy until
+		   the last queued change is done; rejected before anything is touched, the download owns
+		   the abort flags and the child process */
+		if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state == INDIGO_BUSY_STATE) {
+			pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Index download in progress, solving is not possible");
+			return false;
+		}
 		/* an abort since the image arrived stays requested, an older one is cleared */
 		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = task->abort_generation != INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_generation;
 		indigo_send_message(device, IDLE_PROPERTY, "Solving started");
@@ -587,6 +599,16 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 			goto cleanup;
 		}
 #pragma clang diagnostic pop
+		/* solve-field can't succeed without an index, don't start it */
+		bool index_selected = false;
+		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count && !index_selected; k++) {
+			index_selected = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[k].sw.value;
+		}
+		if (!index_selected) {
+			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+			message = "No index files are selected, select at least one";
+			goto cleanup;
+		}
 		// convert any input image to FITS file
 		indigo_uni_handle *handle = indigo_uni_create_file(base, -INDIGO_LOG_TRACE);
 		if (handle == NULL) {
@@ -896,9 +918,69 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 	return false;
 }
 
+static bool index_item_installed(const char *name) {
+	char path[INDIGO_VALUE_SIZE];
+	for (int j = 0; index_files[j]; j++) {
+		if (!strncmp(index_files[j], name, 4)) {
+			snprintf(path, sizeof(path), "%s/index-%s.fits", base_dir, index_files[j]);
+			if (!indigo_uni_is_readable(path)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+/* an index is installed with all its files or not at all, a partial set only wastes disk space */
+static void remove_index_item_files(const char *name) {
+	char path[INDIGO_VALUE_SIZE];
+	for (int j = 0; index_files[j]; j++) {
+		if (!strncmp(index_files[j], name, 4)) {
+			snprintf(path, sizeof(path), "%s/index-%s.fits", base_dir, index_files[j]);
+			if (indigo_uni_is_readable(path)) {
+				indigo_uni_remove(path);
+			}
+			snprintf(path, sizeof(path), "%s/index-%s.fits.part", base_dir, index_files[j]);
+			if (indigo_uni_is_readable(path)) {
+				indigo_uni_remove(path);
+			}
+		}
+	}
+}
+
+/* removes downloads interrupted by a crash or a server shutdown */
+static void remove_partial_index_files(void) {
+	char path[INDIGO_VALUE_SIZE];
+	for (int j = 0; index_files[j]; j++) {
+		snprintf(path, sizeof(path), "%s/index-%s.fits.part", base_dir, index_files[j]);
+		if (indigo_uni_is_readable(path)) {
+			indigo_uni_remove(path);
+		}
+	}
+}
+
+/* after an abort no queued request may download anything, the selection is reset to what is installed */
+static void unselect_missing_indexes(indigo_device *device, indigo_property *property) {
+	indigo_property *properties[] = { AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY };
+	for (int k = 0; k < 2; k++) {
+		bool changed = false;
+		for (int i = 0; i < properties[k]->count; i++) {
+			indigo_item *item = properties[k]->items + i;
+			if (item->sw.value && !index_item_installed(item->name)) {
+				remove_index_item_files(item->name);
+				item->sw.value = false;
+				changed = true;
+			}
+		}
+		if (changed && properties[k] != property) {
+			indigo_update_property(device, properties[k], NULL);
+		}
+	}
+}
+
 static void sync_installed_indexes(indigo_device *device, char *dir, indigo_property *property) {
 	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-	char path[INDIGO_VALUE_SIZE];
+	char path[INDIGO_VALUE_SIZE], part_path[INDIGO_VALUE_SIZE + 8];
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *item = property->items + i;
@@ -912,25 +994,33 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					if (indigo_uni_is_readable(path)) {
 						continue;
 					}
+					if (ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted) {
+						goto aborted;
+					}
+					/* an abort requested while nothing was running must not stop this download */
+					ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
+					/* downloaded under a temporary name, so that an interrupted transfer
+					   is never taken for an installed index */
+					snprintf(part_path, sizeof(part_path), "%s.part", path);
 					indigo_send_message(device, IDLE_PROPERTY, "Downloading %s...", file_name);
 #if defined(INDIGO_WINDOWS)
 					char url[INDIGO_VALUE_SIZE];
 					snprintf(url, sizeof(url), "http://data.astrometry.net/%s/index-%s.fits", dir, file_name);
-					bool downloaded = download_index_file(device, url, path);
-					const char *download_message = ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested ? "Aborted" : indigo_last_windows_error();
+					bool downloaded = download_index_file(device, url, part_path);
+					const char *download_message = indigo_last_windows_error();
 #else
-					bool downloaded = execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", path, dir, file_name);
+					bool downloaded = execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", part_path, dir, file_name);
 					const char *download_message = strerror(errno);
 #endif
+					if (ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted) {
+						goto aborted;
+					}
 					if (!downloaded) {
-						/* an interrupted transfer leaves a truncated file behind, which would
-						   otherwise be taken for an installed index on the next start */
-						indigo_uni_remove(path);
+						remove_index_item_files(item->name);
 						item->sw.value = false;
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, download_message);
-						pthread_mutex_unlock(&mutex);
-						return;
+						goto done;
 					}
 
 					/* basic index file integritiy check as curl saves HTTP
@@ -938,7 +1028,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					*/
 					bool failed = false;
 					char signature[7]={0};
-					FILE *fp=fopen(path,"rb");
+					FILE *fp=fopen(part_path,"rb");
 					if (fp) {
 						fread(signature, 6, 1, fp);
 						fclose(fp);
@@ -948,13 +1038,12 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					} else {
 						failed = true;
 					}
-					if (failed) {
-						indigo_uni_remove(path);
+					if (failed || rename(part_path, path)) {
+						remove_index_item_files(item->name);
 						item->sw.value = false;
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, "Index download failed: '%s'", path);
-						pthread_mutex_unlock(&mutex);
-						return;
+						goto done;
 					}
 
 					indigo_send_message(device, OK_PROPERTY, "Done", file_name);
@@ -965,8 +1054,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						if (!indigo_uni_remove(path)) {
 							property->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, property, strerror(errno));
-							pthread_mutex_unlock(&mutex);
-							return;
+							goto done;
 						}
 						remove = true;
 					}
@@ -992,6 +1080,12 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 			}
 		}
 	}
+	goto done;
+aborted:
+	unselect_missing_indexes(device, property);
+	property->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, property, "Index download aborted");
+done:
 	indigo_delete_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
 	indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
 	AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = INDIGO_OK_STATE;
@@ -1000,20 +1094,35 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 	pthread_mutex_unlock(&mutex);
 }
 
-static void index_41xx_handler(indigo_device *device) {
-	sync_installed_indexes(device, "4100", AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
-	if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state = INDIGO_OK_STATE;
+/* Index changes are accepted while a download is running, each one queues another handler;
+   the property stays busy until the last queued request is processed. */
+static pthread_mutex_t index_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void index_request_queued(int *pending) {
+	pthread_mutex_lock(&index_pending_mutex);
+	(*pending)++;
+	pthread_mutex_unlock(&index_pending_mutex);
+}
+
+static void index_handler(indigo_device *device, char *dir, indigo_property *property, int *pending) {
+	sync_installed_indexes(device, dir, property);
+	pthread_mutex_lock(&index_pending_mutex);
+	bool more = --(*pending) > 0;
+	pthread_mutex_unlock(&index_pending_mutex);
+	if (more && !ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted) {
+		property->state = INDIGO_BUSY_STATE;
+	} else if (property->state == INDIGO_BUSY_STATE) {
+		property->state = INDIGO_OK_STATE;
 	}
-	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
+	indigo_update_property(device, property, NULL);
+}
+
+static void index_41xx_handler(indigo_device *device) {
+	index_handler(device, "4100", AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, &ASTROMETRY_DEVICE_PRIVATE_DATA->index_41xx_pending);
 }
 
 static void index_42xx_handler(indigo_device *device) {
-	sync_installed_indexes(device, "4200", AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
-	if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
+	index_handler(device, "4200", AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, &ASTROMETRY_DEVICE_PRIVATE_DATA->index_42xx_pending);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -1024,7 +1133,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_platesolver_device_attach(device, DRIVER_NAME, DRIVER_VERSION, 0) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_XXXX
-		char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
+		char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 		bool present;
 		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY_NAME, "Index managememt", "Installed Tycho-2 catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 13);
 		if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY == NULL) {
@@ -1038,17 +1147,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			} else {
 				sprintf(label, "Index 41%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][0]);
 			}
-			present = true;
-			for (int j = 0; index_files[j]; j++) {
-				char *file_name = index_files[j];
-				if (!strncmp(file_name, name, 4)) {
-					snprintf(path, sizeof((path)), "%s/index-%s.fits", base_dir, file_name);
-					if (!indigo_uni_is_readable(path)) {
-						present = false;
-						break;
-					}
-				}
-			}
+			present = index_item_installed(name);
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->items - (i - 19), name, label, present);
 			sprintf((AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->items - (i - 19))->hints, "warn_on_clear:\"Delete Tycho-2 index 41%02d?\";", i);
 			if (present) {
@@ -1069,17 +1168,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			} else {
 				sprintf(label, "Index 42%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][1]);
 			}
-			present = true;
-			for (int j = 0; index_files[j]; j++) {
-				char *file_name = index_files[j];
-				if (!strncmp(file_name, name, 4)) {
-					snprintf(path, sizeof((path)), "%s/index-%s.fits", base_dir, file_name);
-					if (!indigo_uni_is_readable(path)) {
-						present = false;
-						break;
-					}
-				}
-			}
+			present = index_item_installed(name);
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items - (i - 19), name, label, present);
 			sprintf((AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items - (i - 19))->hints, "warn_on_clear:\"Delete 2MASS index 42%02d?\";", i);
 			if (present) {
@@ -1122,11 +1211,17 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_41XX
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, index_41xx_handler);
+		INDIGO_REJECT_CHANGE_IF(AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, "Solving in progress, index change is not possible");
+		ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted = false;
+		index_request_queued(&ASTROMETRY_DEVICE_PRIVATE_DATA->index_41xx_pending);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, index_41xx_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_42XX
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, index_42xx_handler);
+		INDIGO_REJECT_CHANGE_IF(AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, "Solving in progress, index change is not possible");
+		ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted = false;
+		index_request_queued(&ASTROMETRY_DEVICE_PRIVATE_DATA->index_42xx_pending);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, index_42xx_handler);
 		return INDIGO_OK;
 	}
 	return indigo_platesolver_change_property(device, client, property);
@@ -1152,6 +1247,7 @@ static void kill_children() {
 	indigo_device *device = agent_device;
 	if (device && device->private_data) {
 #if defined(INDIGO_WINDOWS)
+		ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted = true;
 		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 		if (ASTROMETRY_DEVICE_PRIVATE_DATA->job_handle) {
 			TerminateJobObject(ASTROMETRY_DEVICE_PRIVATE_DATA->job_handle, 1);
@@ -1159,6 +1255,7 @@ static void kill_children() {
 			TerminateProcess(ASTROMETRY_DEVICE_PRIVATE_DATA->process_handle, 1);
 		}
 #else
+		ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted = true;
 		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 		if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
@@ -1170,6 +1267,7 @@ static void kill_children() {
 				device = additional_devices[i];
 				if (device && device->private_data) {
 #if defined(INDIGO_WINDOWS)
+					ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted = true;
 					ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 					if (ASTROMETRY_DEVICE_PRIVATE_DATA->job_handle) {
 						TerminateJobObject(ASTROMETRY_DEVICE_PRIVATE_DATA->job_handle, 1);
@@ -1177,6 +1275,7 @@ static void kill_children() {
 						TerminateProcess(ASTROMETRY_DEVICE_PRIVATE_DATA->process_handle, 1);
 					}
 #else
+					ASTROMETRY_DEVICE_PRIVATE_DATA->index_download_aborted = true;
 					ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 					if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 						kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
@@ -1237,6 +1336,7 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 				snprintf(base_dir, sizeof((base_dir)), "%s/.indigo/astrometry", indigo_uni_home_folder());
 			}
 			indigo_uni_mkdir(base_dir);
+			remove_partial_index_files();
 			void *private_data = indigo_safe_malloc(sizeof(astrometry_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;

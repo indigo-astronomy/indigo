@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_rotator_falcon"
 #define DRIVER_LABEL         "PegasusAstro Falcon rotator"
 #define ROTATOR_DEVICE_NAME  "Pegasus Falcon rotator"
@@ -376,10 +376,12 @@ indigo_result indigo_rotator_falcon(indigo_driver_action action, indigo_driver_i
 	switch (action) {
 		case INDIGO_DRIVER_INIT: {
 			last_action = action;
-			static indigo_device_match_pattern patterns[1] = { 0 };
-			strcpy(patterns[0].product_string, "FalconRotator");
-			strcpy(patterns[0].vendor_string, "Pegasus Astro");
-			INDIGO_REGISER_MATCH_PATTERNS(rotator_template, patterns, 1);
+			static indigo_device_match_pattern patterns[2] = { 0 };
+			patterns[0].vendor_id = 0x303a;
+			patterns[0].product_id = 0x9002;
+			strcpy(patterns[1].product_string, "FalconRotator");
+			strcpy(patterns[1].vendor_string, "Pegasus Astro");
+			INDIGO_REGISER_MATCH_PATTERNS(rotator_template, patterns, 2);
 			private_data = (falcon_private_data *)indigo_safe_malloc(sizeof(falcon_private_data));
 			rotator = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
 			rotator->private_data = private_data;
