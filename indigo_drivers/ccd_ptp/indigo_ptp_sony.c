@@ -1421,7 +1421,7 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 					SONY_PRIVATE_DATA->downloaded_objects++;
 					const char *ext = strchr(filename, '.');
 					if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
-						if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+						if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 							indigo_process_dslr_preview_image(device, buffer, size);
 						}
 						if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API && !PRIVATE_DATA->image_added) {

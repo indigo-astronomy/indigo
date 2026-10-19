@@ -385,7 +385,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 						if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &image_buffer, NULL)) {
 							const char *ext = strchr(filename, '.');
 							if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
-								if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+								if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 									indigo_process_dslr_preview_image(device, image_buffer, image_size);
 								}
 							} else {

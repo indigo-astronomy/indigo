@@ -1730,7 +1730,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 					if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
 						const char *ext = strchr(filename, '.');
 						if (ext != NULL && PRIVATE_DATA->check_dual_compression != NULL && PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
-							if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+							if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 								indigo_process_dslr_preview_image(device, buffer, size);
 							}
 						} else {
@@ -1857,7 +1857,7 @@ void ptp_capture_start(indigo_device *device, bool bulb, double delay) {
 	PRIVATE_DATA->capture_deadline = PRIVATE_DATA->shutter_deadline + PTP_CAPTURE_TIMEOUT;
 	PRIVATE_DATA->capture_phase = bulb ? 1 : 2;
 	indigo_ccd_exposure_setup(device);
-	if (CCD_PREVIEW_ENABLED_ITEM->sw.value && PRIVATE_DATA->check_dual_compression && PRIVATE_DATA->check_dual_compression(device) && CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if ((CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) && PRIVATE_DATA->check_dual_compression && PRIVATE_DATA->check_dual_compression(device) && CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 	}

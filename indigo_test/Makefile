@@ -2539,8 +2539,11 @@ test-ccd-atik2-hw: $(TEST_BUILD)/hardware/test_ccd_atik_hw
 	$(TEST_BUILD)/hardware/test_ccd_atik_hw --run $(BUILD_DRIVERS)/indigo_ccd_atik2.$(SOEXT) indigo_ccd_atik2
 
 PTP_SDK_TEST_SOURCES = indigo_ccd_ptp indigo_ptp indigo_ptp_canon indigo_ptp_nikon indigo_ptp_sony indigo_ptp_fuji indigo_ptp_olympus
-PTP_SDK_TEST_OBJECTS = $(addprefix $(INTEGRATION_BUILD)/ccd_ptp_sdk_,$(addsuffix .o,$(PTP_SDK_TEST_SOURCES)))
+PTP_SDK_TEST_OBJECTS = $(addprefix $(INTEGRATION_BUILD)/ccd_ptp_sdk_,$(addsuffix .o,$(PTP_SDK_TEST_SOURCES))) $(INTEGRATION_BUILD)/ccd_ptp_sdk_ccd_framework.o
 PTP_SDK_TEST_REPLACEMENTS = -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach
+
+$(INTEGRATION_BUILD)/ccd_ptp_sdk_ccd_framework.o: ../indigo_libs/indigo_ccd_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_ptp_sdk_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -c $< -o $@
@@ -2552,9 +2555,12 @@ $(INTEGRATION_BUILD)/test_ccd_ptp_sdk: integration/test_ccd_ptp_sdk.c integratio
 test-ccd-ptp-sdk: $(INTEGRATION_BUILD)/test_ccd_ptp_sdk
 	$(INTEGRATION_BUILD)/test_ccd_ptp_sdk
 
-PTP_SANITIZE_OBJECTS = $(addprefix $(INTEGRATION_BUILD)/ccd_ptp_sanitize_,$(addsuffix .o,$(PTP_SDK_TEST_SOURCES)))
+PTP_SANITIZE_OBJECTS = $(addprefix $(INTEGRATION_BUILD)/ccd_ptp_sanitize_,$(addsuffix .o,$(PTP_SDK_TEST_SOURCES))) $(INTEGRATION_BUILD)/ccd_ptp_sanitize_ccd_framework.o
 PTP_SANITIZE_CFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) -arch arm64,$(TEST_CFLAGS)) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 PTP_SANITIZE_LDFLAGS = $(if $(filter Darwin,$(OS_DETECTED)),$(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -arch arm64,$(TOUPTEK_SDK_TEST_LDFLAGS)) -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_ptp_sanitize_ccd_framework.o: ../indigo_libs/indigo_ccd_driver.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(PTP_SANITIZE_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_ptp_sanitize_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(PTP_SANITIZE_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -c $< -o $@

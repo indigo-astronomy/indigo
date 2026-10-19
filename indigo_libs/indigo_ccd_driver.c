@@ -1020,6 +1020,52 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	indigo_raw_to_jpeg_with_quality(device, data_in, frame_width, frame_height, bpp, bayerpat, data_out, size_out, histogram_data, histogram_size, B, C, reference_channel, 90);
 }
 
+static void render_histogram(unsigned long **histo, uint8_t *raw) {
+	memset(raw, 0, 128 * 256 * 3);
+	if (histo[0]) {
+		unsigned long histo_max = 1;
+		for (int i = 0; i < 256; i++) {
+			if (histo_max < histo[0][i]) {
+				histo_max = histo[0][i];
+			}
+			if (histo[1]) {
+				if (histo_max < histo[1][i]) {
+					histo_max = histo[1][i];
+				}
+			}
+			if (histo[2]) {
+				if (histo_max < histo[2][i]) {
+					histo_max = histo[2][i];
+				}
+			}
+		}
+		double max = (log(histo_max + 1) + 1) / 127;
+		for (int i = 0; i < 256; i++) {
+			double val = log(histo[0][i] + 1) / max + 1;
+			for (int j = 0; j < val; j++) {
+				int k = ((127 - j) * 256 + i) * 3;
+				if (histo[1] && histo[2]) {
+					raw[k] = 0xF0;
+				} else {
+					raw[k] = raw[k + 1] = raw[k + 2] = 0xF0;
+				}
+			}
+			if (histo[1]) {
+				val = log(histo[1][i] + 1) / max + 1;
+				for (int j = 0; j < val; j++) {
+					raw[((127 - j) * 256 + i) * 3 + 1] = 0xF0;
+				}
+			}
+			if (histo[2]) {
+				val = log(histo[2][i] + 1) / max + 1;
+				for (int j = 0; j < val; j++) {
+					raw[((127 - j) * 256 + i) * 3 + 2] = 0xF0;
+				}
+			}
+		}
+	}
+}
+
 void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel, int quality) {
 	INDIGO_DEBUG(double start = get_time_hd());
 	size_t size_in = frame_width * frame_height;
@@ -1184,49 +1230,7 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 	indigo_safe_free(copy);
 	if (histogram_data != NULL) {
 		uint8_t raw[128 * 256 * 3];
-		memset(raw, 0, sizeof(raw));
-		if (histo[0]) {
-			unsigned long histo_max = 1;
-			for (int i = 0; i < 256; i++) {
-				if (histo_max < histo[0][i]) {
-					histo_max = histo[0][i];
-				}
-				if (histo[1]) {
-					if (histo_max < histo[1][i]) {
-						histo_max = histo[1][i];
-					}
-				}
-				if (histo[2]) {
-					if (histo_max < histo[2][i]) {
-						histo_max = histo[2][i];
-					}
-				}
-			}
-			double max = (log(histo_max + 1) + 1) / 127;
-			for (int i = 0; i < 256; i++) {
-				double val = log(histo[0][i] + 1) / max + 1;
-				for (int j = 0; j < val; j++) {
-					int k = ((127 - j) * 256 + i) * 3;
-					if (histo[1] && histo[2]) {
-						raw[k] = 0xF0;
-					} else {
-						raw[k] = raw[k + 1] = raw[k + 2] = 0xF0;
-					}
-				}
-				if (histo[1]) {
-					val = log(histo[1][i] + 1) / max + 1;
-					for (int j = 0; j < val; j++) {
-						raw[((127 - j) * 256 + i) * 3 + 1] = 0xF0;
-					}
-				}
-				if (histo[2]) {
-					val = log(histo[2][i] + 1) / max + 1;
-					for (int j = 0; j < val; j++) {
-						raw[((127 - j) * 256 + i) * 3 + 2] = 0xF0;
-					}
-				}
-			}
-		}
+		render_histogram(histo, raw);
 		mem = NULL;
 		mem_size = 0;
 		jpeg_create_compress(&cinfo.pub);
@@ -2629,6 +2633,57 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 	indigo_update_property(device, CCD_FPS_PROPERTY, NULL);
 }
 
+static void process_dslr_preview_histogram(indigo_device *device, void *data, unsigned long size) {
+	struct indigo_jpeg_decompress_struct cinfo = { 0 };
+	struct jpeg_error_mgr errors;
+	cinfo.pub.err = jpeg_std_error(&errors);
+	errors.error_exit = jpeg_decompress_error_callback;
+	if (setjmp(cinfo.jpeg_error)) {
+		jpeg_destroy_decompress(&cinfo.pub);
+		CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, "JPEG preview decompression failed");
+		return;
+	}
+	jpeg_create_decompress(&cinfo.pub);
+	jpeg_mem_src(&cinfo.pub, data, size);
+	jpeg_read_header(&cinfo.pub, TRUE);
+	cinfo.pub.out_color_space = JCS_RGB;
+	jpeg_start_decompress(&cinfo.pub);
+	// Decode one row at a time: native DSLR previews can contain tens of megapixels.
+	unsigned long bins[3][256] = { { 0 } };
+	unsigned long *histo[] = { bins[0], bins[1], bins[2] };
+	JSAMPARRAY row = (*cinfo.pub.mem->alloc_sarray)((j_common_ptr)&cinfo.pub, JPOOL_IMAGE, cinfo.pub.output_width * 3, 1);
+	while (cinfo.pub.output_scanline < cinfo.pub.output_height) {
+		jpeg_read_scanlines(&cinfo.pub, row, 1);
+		for (unsigned x = 0; x < cinfo.pub.output_width; x++) {
+			for (unsigned channel = 0; channel < 3; channel++) {
+				bins[channel][row[0][3 * x + channel]]++;
+			}
+		}
+	}
+	jpeg_finish_decompress(&cinfo.pub);
+	jpeg_destroy_decompress(&cinfo.pub);
+	uint8_t raw[128 * 256 * 3];
+	render_histogram(histo, raw);
+	void *histogram = NULL;
+	unsigned long histogram_size = 0;
+	indigo_raw_to_jpeg_with_quality(device, raw, 256, 128, 24, NULL, &histogram, &histogram_size, NULL, NULL, 0, 0, 0, 75);
+	if (histogram && histogram_size) {
+		if (CCD_CONTEXT->preview_histogram_size < histogram_size) {
+			CCD_CONTEXT->preview_histogram = indigo_safe_realloc(CCD_CONTEXT->preview_histogram, CCD_CONTEXT->preview_histogram_size = histogram_size);
+		}
+		memcpy(CCD_CONTEXT->preview_histogram, histogram, histogram_size);
+		CCD_PREVIEW_HISTOGRAM_ITEM->blob.value = CCD_CONTEXT->preview_histogram;
+		CCD_PREVIEW_HISTOGRAM_ITEM->blob.size = histogram_size;
+		INDIGO_COPY_NAME(CCD_PREVIEW_HISTOGRAM_ITEM->blob.format, ".jpeg");
+		CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	free(histogram);
+	indigo_update_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+}
+
 void indigo_process_dslr_preview_image(indigo_device* device, void* data, unsigned long blobsize) {
 	if (CCD_CONTEXT->preview_image) {
 		if (CCD_CONTEXT->preview_image_size < blobsize) {
@@ -2643,6 +2698,9 @@ void indigo_process_dslr_preview_image(indigo_device* device, void* data, unsign
 	strcpy(CCD_PREVIEW_IMAGE_ITEM->blob.format, ".jpeg");
 	CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+	if (CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
+		process_dslr_preview_histogram(device, data, blobsize);
+	}
 }
 
 void indigo_finalize_video_stream(indigo_device *device) {

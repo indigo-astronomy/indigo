@@ -949,9 +949,11 @@ Source: `indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver`, generated `i
 
 ### ccd_ptp
 
-Driver-specific use of existing properties: `CCD_JPEG_SETTINGS`, `CCD_MODE`, `CCD_PREVIEW_IMAGE`, `CCD_STREAMING`, `CCD_UPLOAD_MODE`, `DSLR_AF`, `DSLR_DELETE_IMAGE`, `DSLR_LOCK`, `DSLR_MIRROR_LOCKUP`, `DSLR_SET_HOST_TIME`, `DSLR_ZOOM_PREVIEW`, `FOCUSER_POSITION`, `FOCUSER_SPEED`.
+Driver-specific use of existing properties: `CCD_JPEG_SETTINGS`, `CCD_MODE`, `CCD_PREVIEW`, `CCD_PREVIEW_IMAGE`, `CCD_PREVIEW_HISTOGRAM`, `CCD_STREAMING`, `CCD_UPLOAD_MODE`, `DSLR_AF`, `DSLR_DELETE_IMAGE`, `DSLR_LOCK`, `DSLR_MIRROR_LOCKUP`, `DSLR_SET_HOST_TIME`, `DSLR_ZOOM_PREVIEW`, `FOCUSER_POSITION`, `FOCUSER_SPEED`.
 
-Source: `indigo_drivers/ccd_ptp/indigo_ccd_ptp.c`.
+Both enabled preview modes publish the camera JPEG in RAW+JPEG mode. `ENABLED_WITH_HISTOGRAM` additionally publishes a JPEG histogram; main-image upload and local saving remain independent of preview selection.
+
+Source: `indigo_drivers/ccd_ptp/indigo_ccd_ptp.c`, `indigo_drivers/ccd_ptp/indigo_ptp.c`, `indigo_libs/indigo_ccd_driver.c`.
 
 ### ccd_qhy / ccd_qhy2
 

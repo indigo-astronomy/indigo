@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdatomic.h>
 #include <jpeglib.h>
+#include <indigo/indigo_tiff.h>
 #include <indigo/indigo_usb_utils.h>
 #include <indigo_drivers/ccd_ptp/indigo_ptp.h>
 #include <indigo_drivers/ccd_ptp/indigo_ptp_canon.h>
@@ -61,6 +62,13 @@ static atomic_int connection_state, exposure_state, streaming_state, exposure_up
 static atomic_int gate_operation, gate_entered, gate_open, fail_reply, bad_response;
 static atomic_int command_count[65536];
 static bool bulb_profile, dual_profile, hold_raw, autofocus_profile;
+static bool nikon_dual_profile, nikon_raw_output, nikon_bad_jpeg;
+static uint8_t *dng;
+static size_t dng_size;
+static uint8_t captured_raw[64 * 64 * 2 + sizeof(indigo_raw_header) + 64];
+static size_t captured_raw_size;
+static atomic_int histogram_blobs, saved_images, image_file_state, bad_preview, histogram_alerts;
+static char saved_image_path[INDIGO_VALUE_SIZE];
 static bool fuji_priority_profile, fuji_reject_bulb, fuji_af_error, fuji_reject_cancel;
 static atomic_int fuji_shutter_readback, fuji_bulb_started, shutter_state;
 static int fuji_action_profile;
@@ -127,6 +135,42 @@ static uint32_t *value(fake_camera *c, uint16_t code) {
 		}
 	}
 	return NULL;
+}
+
+static void make_dng(void) {
+	indigo_tiff_memory_handle memory = { 0 };
+	TIFF *tiff = TIFFClientOpen("noise.dng", "w", &memory, indigo_tiff_read, indigo_tiff_write, indigo_tiff_seek, indigo_tiff_close, indigo_tiff_size, NULL, NULL);
+	uint8_t version[] = { 1, 4, 0, 0 }, pattern[] = { 0, 1, 1, 2 };
+	uint16_t repeat[] = { 2, 2 };
+	float matrix[] = { 1, 0, 0, 0, 1, 0, 0, 0, 1 }, neutral[] = { 1, 1, 1 };
+	uint32_t white = 65535;
+	TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, 64);
+	TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, 64);
+	TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, 16);
+	TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 1);
+	TIFFSetField(tiff, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+	TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_CFA);
+	TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+	TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, 64);
+	TIFFSetField(tiff, TIFFTAG_DNGVERSION, version);
+	TIFFSetField(tiff, TIFFTAG_DNGBACKWARDVERSION, version);
+	TIFFSetField(tiff, TIFFTAG_UNIQUECAMERAMODEL, "INDIGO synthetic Bayer fixture");
+	TIFFSetField(tiff, TIFFTAG_CFAREPEATPATTERNDIM, repeat);
+	TIFFSetField(tiff, TIFFTAG_CFAPATTERN, pattern);
+	TIFFSetField(tiff, TIFFTAG_COLORMATRIX1, 9, matrix);
+	TIFFSetField(tiff, TIFFTAG_ASSHOTNEUTRAL, 3, neutral);
+	TIFFSetField(tiff, TIFFTAG_CALIBRATIONILLUMINANT1, 21);
+	TIFFSetField(tiff, TIFFTAG_WHITELEVEL, 1, &white);
+	uint16_t row[64];
+	for (unsigned y = 0; y < 64; y++) {
+		for (unsigned x = 0; x < 64; x++) {
+			row[x] = ccd_test_noise(y * 64 + x, 0);
+		}
+		TIFFWriteScanline(tiff, row, y, 0);
+	}
+	TIFFClose(tiff);
+	dng = memory.data;
+	dng_size = memory.file_length;
 }
 
 static void make_jpeg(void) {
@@ -363,10 +407,14 @@ static void prepare(fake_camera *c) {
 		word32(&p, 0);
 	} else if (code == ptp_operation_nikon_CheckEvent) {
 		bool ready = c->capturing && !c->bulb && !c->event_sent && !atomic_load(&c->hold_image);
-		word16(&p, ready ? 1 : 0);
+		word16(&p, ready ? (nikon_dual_profile ? 2 : 1) : 0);
 		if (ready) {
 			word16(&p, ptp_event_ObjectAdded);
 			word32(&p, 1);
+			if (nikon_dual_profile) {
+				word16(&p, ptp_event_ObjectAdded);
+				word32(&p, 2);
+			}
 			c->event_sent = true;
 		}
 	} else if (code == ptp_operation_sony_GetSDIOGetExtDeviceInfo) {
@@ -396,9 +444,9 @@ static void prepare(fake_camera *c) {
 	} else if (code == ptp_operation_GetObjectInfo) {
 		memset(p, 0, 52);
 		uint8_t *size = p + 8;
-		word32(&size, jpeg_size);
+		word32(&size, nikon_dual_profile && arg == 2 ? dng_size : jpeg_size);
 		p += 52;
-		string(&p, sony_dual_order && ((sony_memory_objects == 2) == (sony_dual_order == 1)) ? "FAKE.ARW" : "FAKE.JPG");
+		string(&p, nikon_dual_profile && arg == 2 ? "FAKE.DNG" : sony_dual_order && ((sony_memory_objects == 2) == (sony_dual_order == 1)) ? "FAKE.ARW" : "FAKE.JPG");
 	} else if (code == ptp_operation_GetObject || code == ptp_operation_canon_GetObject || code == ptp_operation_nikon_GetLiveViewImg || code == ptp_operation_canon_GetViewFinderData || code == ptp_operation_olympus_GetLiveViewImage) {
 		if (code == ptp_operation_canon_GetViewFinderData) {
 			word32(&p, atomic_load(&malformed) ? 3 : jpeg_size + 8);
@@ -408,8 +456,12 @@ static void prepare(fake_camera *c) {
 			memset(p, 0, offset);
 			p += offset;
 		}
-		memcpy(p, jpeg, jpeg_size);
-		p += jpeg_size;
+		size_t payload_size = nikon_dual_profile && arg == 2 ? dng_size : jpeg_size;
+		memcpy(p, nikon_dual_profile && arg == 2 ? dng : jpeg, payload_size);
+		if (nikon_dual_profile && nikon_bad_jpeg && arg == 1) {
+			p[0] = 0;
+		}
+		p += payload_size;
 		atomic_fetch_add(&c->frames, 1);
 		if (arg != 0xffffc002) {
 			if (sony_dual_order && c->vendor == 0x054c) {
@@ -732,6 +784,32 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 	return 0;
 }
 
+static bool valid_preview(indigo_item *item, bool histogram) {
+	struct jpeg_decompress_struct info = { 0 };
+	struct jpeg_error_mgr errors;
+	info.err = jpeg_std_error(&errors);
+	jpeg_create_decompress(&info);
+	jpeg_mem_src(&info, item->blob.value, item->blob.size);
+	bool valid = jpeg_read_header(&info, TRUE) == JPEG_HEADER_OK;
+	valid = valid && !strcmp(item->blob.format, ".jpeg") && info.image_width > 0 && info.image_height > 0;
+	if (histogram) {
+		valid = valid && info.image_width == 256 && info.image_height == 128;
+	}
+	info.out_color_space = JCS_RGB;
+	jpeg_start_decompress(&info);
+	JSAMPARRAY row = (*info.mem->alloc_sarray)((j_common_ptr)&info, JPOOL_IMAGE, info.output_width * 3, 1);
+	unsigned long sum = 0;
+	while (info.output_scanline < info.output_height) {
+		jpeg_read_scanlines(&info, row, 1);
+		for (unsigned i = 0; i < info.output_width * 3; i++) {
+			sum += row[0][i];
+		}
+	}
+	jpeg_finish_decompress(&info);
+	jpeg_destroy_decompress(&info);
+	return valid && sum > 0;
+}
+
 static indigo_result image_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device && device->master_device != device && !strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		atomic_store(&focus_connection_state, property->state);
@@ -771,12 +849,48 @@ static indigo_result image_update(indigo_client *client, indigo_device *device, 
 			atomic_fetch_add(&streaming_updates, 1);
 		}
 	}
+	if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE && atomic_load(&image_file_state) == INDIGO_BUSY_STATE && property->items->text.value[0]) {
+			INDIGO_COPY_VALUE(saved_image_path, property->items->text.value);
+			atomic_fetch_add(&saved_images, 1);
+		}
+		atomic_store(&image_file_state, property->state);
+	}
+	if (!strcmp(property->name, CCD_PREVIEW_HISTOGRAM_PROPERTY_NAME) && property->state == INDIGO_ALERT_STATE) {
+		atomic_fetch_add(&histogram_alerts, 1);
+	}
+	if (!strcmp(property->name, CCD_PREVIEW_HISTOGRAM_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->count && property->items->blob.value) {
+		if (nikon_dual_profile && !valid_preview(property->items, true)) {
+			atomic_fetch_add(&bad_preview, 1);
+		}
+		atomic_fetch_add(&histogram_blobs, 1);
+	}
 	if (!strcmp(property->name, CCD_PREVIEW_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->count && property->items->blob.value) {
+		if (nikon_dual_profile && !nikon_bad_jpeg && (!valid_preview(property->items, false) || (!nikon_raw_output && (property->items->blob.size != jpeg_size || memcmp(property->items->blob.value, jpeg, jpeg_size))))) {
+			atomic_fetch_add(&bad_preview, 1);
+		}
 		atomic_fetch_add(&preview_blobs, 1);
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->count && property->items->blob.value) {
 		atomic_fetch_add(&blobs, 1);
-		if (property->items->blob.size != jpeg_size || memcmp(property->items->blob.value, jpeg, jpeg_size)) {
+		if (nikon_dual_profile && nikon_raw_output) {
+			indigo_raw_header *header = property->items->blob.value;
+			if (property->items->blob.size < 64 * 64 * 2 + sizeof(indigo_raw_header) || property->items->blob.size > sizeof(captured_raw) || header->signature != INDIGO_RAW_MONO16 || header->width != 64 || header->height != 64) {
+				atomic_fetch_add(&bad_blob, 1);
+			} else {
+				captured_raw_size = property->items->blob.size;
+				memcpy(captured_raw, header, captured_raw_size);
+				uint16_t *pixels = (uint16_t *)(header + 1);
+				uint64_t actual = 0, expected = 0;
+				for (unsigned i = 0; i < 64 * 64; i++) {
+					actual += pixels[i];
+					expected += ccd_test_noise(i, 0);
+				}
+				if (actual != expected) {
+					atomic_fetch_add(&bad_blob, 1);
+				}
+			}
+		} else if (property->items->blob.size != (nikon_dual_profile ? dng_size : jpeg_size) || memcmp(property->items->blob.value, nikon_dual_profile ? dng : jpeg, nikon_dual_profile ? dng_size : jpeg_size)) {
 			atomic_fetch_add(&bad_blob, 1);
 		}
 	}
@@ -796,6 +910,12 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 	memset(logical, 0, sizeof(logical));
 	atomic_store(&blobs, 0);
 	atomic_store(&preview_blobs, 0);
+	atomic_store(&histogram_blobs, 0);
+	atomic_store(&bad_preview, 0);
+	atomic_store(&histogram_alerts, 0);
+	atomic_store(&saved_images, 0);
+	atomic_store(&image_file_state, INDIGO_OK_STATE);
+	saved_image_path[0] = 0;
 	atomic_store(&bad_blob, 0);
 	atomic_store(&bus_io, 0);
 	atomic_store(&calls_after_close, 0);
@@ -850,6 +970,10 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 		memcpy(cameras[0].properties, standard, sizeof(standard));
 		cameras[0].values[0] = bulb_profile ? 0xffffffff : 10000;
 		cameras[0].values[1] = 100;
+		if (nikon_dual_profile) {
+			cameras[0].properties[3] = ptp_property_CompressionSetting;
+			cameras[0].values[3] = 7;
+		}
 		if (vendor == 0x07b4 && bulb_profile) {
 			cameras[0].properties[3] = ptp_property_olympus_Shutterspeed;
 			cameras[0].values[3] = 0xffffffff;
@@ -894,6 +1018,7 @@ static void end_profile(void) {
 	fuji_priority_profile = fuji_reject_bulb = fuji_af_error = fuji_reject_cancel = false;
 	fuji_action_profile = 0;
 	dual_profile = false;
+	nikon_dual_profile = nikon_raw_output = nikon_bad_jpeg = false;
 	sony_dual_order = sony_memory_objects = 0;
 	hold_raw = false;
 	autofocus_profile = false;
@@ -1691,6 +1816,79 @@ cleanup:
 	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
 }
 
+static void nikon_dual_preview_comparison(bool histogram, bool convert_raw) {
+	char directory[] = "/tmp/indigo-ptp-preview-XXXXXX";
+	FILE *file = NULL;
+	uint8_t *contents = NULL;
+	nikon_dual_profile = true;
+	nikon_raw_output = convert_raw;
+	PTP_CHECK(mkdtemp(directory) != NULL);
+	PTP_CHECK(begin_profile(0x04b0, 0x042f));
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, convert_raw ? CCD_IMAGE_FORMAT_RAW_ITEM_NAME : CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, true);
+	indigo_change_text_property_1(&simulator_test_client, logical[0]->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_LOCAL_MODE_DIR_ITEM_NAME, directory);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_BOTH_ITEM_NAME, true);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, CCD_PREVIEW_PROPERTY_NAME, histogram ? CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM_NAME : CCD_PREVIEW_ENABLED_ITEM_NAME, true);
+	for (int shot = 1; shot <= 2; shot++) {
+		int updates = atomic_load(&exposure_updates);
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		bool complete = wait_value(&exposure_state, INDIGO_OK_STATE);
+		fprintf(stderr, "Nikon RAW+JPEG %s output=%s shot=%d capture=%d main=%d saved=%d file_state=%d preview=%d histogram=%d downloads=%d\n", histogram ? "ENABLED_WITH_HISTOGRAM" : "ENABLED", convert_raw ? "RAW" : "NATIVE", shot, atomic_load(&exposure_state), atomic_load(&blobs), atomic_load(&saved_images), atomic_load(&image_file_state), atomic_load(&preview_blobs), atomic_load(&histogram_blobs), atomic_load(&cameras[0].frames));
+		PTP_CHECK(complete && atomic_load(&exposure_updates) >= updates + 2);
+		PTP_CHECK(atomic_load(&blobs) == shot && atomic_load(&bad_blob) == 0);
+		PTP_CHECK(atomic_load(&saved_images) == shot && atomic_load(&image_file_state) == INDIGO_OK_STATE);
+		PTP_CHECK(atomic_load(&cameras[0].frames) == 2 * shot);
+		file = fopen(saved_image_path, "rb");
+		PTP_CHECK(file != NULL);
+		size_t expected_size = convert_raw ? captured_raw_size : dng_size;
+		contents = malloc(expected_size);
+		PTP_CHECK(contents != NULL && fread(contents, 1, expected_size, file) == expected_size);
+		PTP_CHECK(fgetc(file) == EOF && memcmp(contents, convert_raw ? captured_raw : dng, expected_size) == 0);
+		fclose(file);
+		file = NULL;
+		free(contents);
+		contents = NULL;
+		unlink(saved_image_path);
+		saved_image_path[0] = 0;
+		PTP_CHECK(atomic_load(&preview_blobs) == shot * (convert_raw ? 2 : 1));
+		PTP_CHECK(atomic_load(&bad_preview) == 0);
+		PTP_CHECK(atomic_load(&histogram_alerts) == (nikon_bad_jpeg ? shot : 0));
+		PTP_CHECK(atomic_load(&histogram_blobs) == (histogram && !nikon_bad_jpeg ? shot * (convert_raw ? 2 : 1) : 0));
+	}
+cleanup:
+	if (file) {
+		fclose(file);
+	}
+	free(contents);
+	if (saved_image_path[0]) {
+		unlink(saved_image_path);
+	}
+	end_profile();
+	rmdir(directory);
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
+}
+
+static void nikon_dual_preview_corrupt_jpeg(void) {
+	nikon_bad_jpeg = true;
+	nikon_dual_preview_comparison(true, false);
+}
+
+static void nikon_dual_preview_enabled(void) {
+	nikon_dual_preview_comparison(false, false);
+}
+
+static void nikon_dual_preview_histogram(void) {
+	nikon_dual_preview_comparison(true, false);
+}
+
+static void nikon_dual_preview_raw_enabled(void) {
+	nikon_dual_preview_comparison(false, true);
+}
+
+static void nikon_dual_preview_raw_histogram(void) {
+	nikon_dual_preview_comparison(true, true);
+}
+
 static void dual_capture(bool missing_raw) {
 	dual_profile = true;
 	hold_raw = missing_raw;
@@ -2327,7 +2525,9 @@ static void olympus_focus_error(void) {
 }
 
 int main(void) {
+	indigo_test_use_private_home();
 	make_jpeg();
+	make_dng();
 	if (getenv("PTP_TEST_DEBUG")) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
@@ -2385,6 +2585,11 @@ int main(void) {
 		{ "sony_dual_preview_disabled", sony_dual_preview_disabled },
 		{ "sony_af_disconnect", sony_af_disconnect },
 		{ "canon_shutter_stop_recovery", canon_shutter_stop_recovery },
+		{ "nikon_dual_preview_corrupt_jpeg", nikon_dual_preview_corrupt_jpeg },
+		{ "nikon_dual_preview_raw_enabled", nikon_dual_preview_raw_enabled },
+		{ "nikon_dual_preview_raw_histogram", nikon_dual_preview_raw_histogram },
+		{ "nikon_dual_preview_enabled", nikon_dual_preview_enabled },
+		{ "nikon_dual_preview_histogram", nikon_dual_preview_histogram },
 		{ "canon_dual_native_preview", canon_dual_native_preview },
 		{ "canon_missing_dual_native", canon_missing_dual_native },
 		{ "canon_controls", canon_controls },
@@ -2468,5 +2673,7 @@ int main(void) {
 	}
 	int result = count ? indigo_run_tests("PTP fake USB", selected, count) : 1;
 	free(jpeg);
+	free(dng);
+	indigo_test_remove_private_home();
 	return result;
 }

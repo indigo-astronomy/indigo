@@ -1232,7 +1232,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 							if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
 								const char *ext = strchr(filename, '.');
 								if (ptp_check_jpeg_ext(ext) && ptp_canon_check_dual_compression(device)) {
-									if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+									if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 										indigo_process_dslr_preview_image(device, buffer, (int)length);
 									}
 								} else {
@@ -1278,7 +1278,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 							if (read_size == length && transfer_complete) {
 								const char *ext = strchr(filename, '.');
 								if (ext && ptp_check_jpeg_ext(ext) && ptp_canon_check_dual_compression(device)) {
-									if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+									if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 										indigo_process_dslr_preview_image(device, image_buffer, (int)length);
 									}
 								} else {
