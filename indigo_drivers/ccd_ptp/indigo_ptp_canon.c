@@ -1681,9 +1681,17 @@ bool ptp_canon_exposure(indigo_device *device) {
 		double delay = 0;
 		if (ptp_operation_supported(device, ptp_operation_canon_RemoteReleaseOn)) {
 			uint16_t mirror = ptp_property_supported(device, ptp_property_canon_MirrorUpSetting) ? ptp_property_canon_MirrorUpSetting : ptp_property_canon_ExMirrorLockup;
-			bool mirror_supported = ptp_property_supported(device, mirror) != NULL;
-			if (mirror_supported && !set_number_property(device, mirror, DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 1 : 0)) {
-				return false;
+			ptp_property *mirror_property = ptp_property_supported(device, mirror);
+			bool mirror_supported = mirror_property != NULL;
+			int64_t mirror_value = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 1 : 0;
+			// Some EOS bodies reject even an Off write when the setting is already Off.
+			if (mirror_supported && (mirror_property->code != mirror || mirror_property->value.number.value != mirror_value)) {
+				if (!set_number_property(device, mirror, mirror_value)) {
+					return false;
+				}
+				// GetEvent may delay the readback; retain successful writes for the next exposure.
+				mirror_property->code = mirror;
+				mirror_property->value.number.value = mirror_value;
 			}
 			if (ptp_property_supported(device, ptp_property_canon_DriveMode) && !set_number_property(device, ptp_property_canon_DriveMode, mirror_supported && DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 0x11 : 0)) {
 				return false;

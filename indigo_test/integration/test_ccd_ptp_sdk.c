@@ -67,6 +67,9 @@ static int fuji_action_profile;
 static atomic_int fail_once_operation;
 static int partial_profile, destination_profile, destination_failure;
 static bool combined_transfer_profile;
+static atomic_int mirror_reject, mirror_writes, mirror_value;
+static atomic_bool mirror_suppress_events;
+static bool mirror_unknown_profile;
 static bool olympus_native_events;
 static int olympus_event_stage;
 static int sony_dual_order, sony_memory_objects;
@@ -284,6 +287,9 @@ static void prepare(fake_camera *c) {
 		}
 	} else if (code == ptp_operation_canon_GetEvent) {
 		for (unsigned i = 0; i < property_count(c); i++) {
+			if (c->properties[i] == ptp_property_canon_MirrorUpSetting && atomic_load(&mirror_suppress_events)) {
+				continue;
+			}
 			if (c->properties[i] == ptp_property_canon_ImageFormat) {
 				word32(&p, 48);
 				word32(&p, ptp_event_canon_PropValueChanged);
@@ -636,6 +642,15 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 				memcpy(&v, packet->payload.data, size - PTP_CONTAINER_HDR_SIZE < 4 ? size - PTP_CONTAINER_HDR_SIZE : 4);
 			}
 			uint32_t *target = value(c, code);
+			if (c->command.code == ptp_operation_canon_SetDevicePropValueEx && code == ptp_property_canon_MirrorUpSetting) {
+				atomic_fetch_add(&mirror_writes, 1);
+				if (atomic_load(&mirror_reject) == 2 || (atomic_load(&mirror_reject) == 1 && target && *target == v)) {
+					c->response = ptp_response_DeviceBusy;
+					*length = size;
+					return LIBUSB_SUCCESS;
+				}
+				atomic_store(&mirror_value, v);
+			}
 			if (target) {
 				*target = v;
 			}
@@ -773,6 +788,10 @@ static indigo_client image_client = { .name = "PTP image observer", .version = I
 static void reset_fake(uint16_t vendor, uint16_t product) {
 	olympus_native_events = false;
 	olympus_event_stage = 0;
+	atomic_store(&mirror_reject, 0);
+	atomic_store(&mirror_writes, 0);
+	atomic_store(&mirror_value, 0);
+	atomic_store(&mirror_suppress_events, mirror_unknown_profile);
 	memset(cameras, 0, sizeof(cameras));
 	memset(logical, 0, sizeof(logical));
 	atomic_store(&blobs, 0);
@@ -870,6 +889,7 @@ static bool begin_profile(uint16_t vendor, uint16_t product) {
 }
 
 static void end_profile(void) {
+	mirror_unknown_profile = false;
 	bulb_profile = false;
 	fuji_priority_profile = fuji_reject_bulb = fuji_af_error = fuji_reject_cancel = false;
 	fuji_action_profile = 0;
@@ -1561,6 +1581,81 @@ static void olympus_stream_error(void) {
 
 static void canon_malformed_stream(void) {
 	exercise(1193, 12824, SC_STREAM_BAD);
+}
+
+static void canon_mirror_redundant_off(void) {
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	// Issue #778: the camera rejects writing the already-disabled setting.
+	atomic_store(&mirror_reject, 1);
+	for (int i = 0; i < 2; i++) {
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == i + 1);
+	}
+	PTP_CHECK(atomic_load(&mirror_writes) == 0);
+	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_RemoteReleaseOn) == 2);
+cleanup:
+	end_profile();
+}
+
+static void canon_mirror_unknown_value(void) {
+	// Advertisement alone must not be treated as a readback of Off.
+	mirror_unknown_profile = true;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	atomic_store(&mirror_reject, 2);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+	PTP_CHECK(atomic_load(&mirror_writes) == 1);
+	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_RemoteReleaseOn) == 0);
+	atomic_store(&mirror_reject, 0);
+	for (int i = 0; i < 2; i++) {
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == i + 1);
+		PTP_CHECK(atomic_load(&mirror_writes) == 2);
+	}
+cleanup:
+	end_profile();
+}
+
+static void canon_mirror_transitions(void) {
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	// Successful writes may not be echoed in the next GetEvent response.
+	atomic_store(&mirror_suppress_events, true);
+	atomic_store(&mirror_reject, 1);
+	for (int i = 0; i < 4; i++) {
+		bool enabled = i < 2;
+		indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, enabled ? DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME : DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME, true);
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == i + 1);
+		PTP_CHECK(atomic_load(&mirror_value) == enabled);
+		PTP_CHECK(atomic_load(&mirror_writes) == (enabled ? 1 : 2));
+	}
+cleanup:
+	end_profile();
+}
+
+static void canon_mirror_write_recovery(void) {
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	atomic_store(&mirror_suppress_events, true);
+	for (int i = 0; i < 2; i++) {
+		bool enabled = i == 0;
+		indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, enabled ? DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME : DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME, true);
+		atomic_store(&mirror_reject, 2);
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_RemoteReleaseOn) == i);
+		PTP_CHECK(atomic_load(&blobs) == i);
+		atomic_store(&mirror_reject, 0);
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&mirror_value) == enabled);
+		PTP_CHECK(atomic_load(&blobs) == i + 1);
+		PTP_CHECK(atomic_load(&mirror_writes) == 2 * (i + 1));
+	}
+cleanup:
+	end_profile();
 }
 
 static void canon_controls(void) {
@@ -2293,6 +2388,10 @@ int main(void) {
 		{ "canon_dual_native_preview", canon_dual_native_preview },
 		{ "canon_missing_dual_native", canon_missing_dual_native },
 		{ "canon_controls", canon_controls },
+		{ "canon_mirror_redundant_off", canon_mirror_redundant_off },
+		{ "canon_mirror_unknown_value", canon_mirror_unknown_value },
+		{ "canon_mirror_transitions", canon_mirror_transitions },
+		{ "canon_mirror_write_recovery", canon_mirror_write_recovery },
 		{ "canon_stream_error", canon_stream_error },
 		{ "nikon_stream_error", nikon_stream_error },
 		{ "fuji_stream_error", fuji_stream_error },
