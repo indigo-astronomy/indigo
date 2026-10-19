@@ -146,7 +146,8 @@ char *ptp_event_canon_code_label(uint16_t code) {
 		case ptp_event_canon_RequestGetEvent: return "RequestGetEvent_Canon";
 		case ptp_event_canon_ObjectAddedEx: return "ObjectAddedEx_Canon";
 		case ptp_event_canon_ObjectAddedEx2: return "ObjectAddedEx2_Canon";
-		case ptp_event_canon_ObjectAddedEx3: return "ObjectAddedEx3_Canon";
+		case ptp_event_canon_RequestObjectTransfer64: return "RequestObjectTransfer64_Canon";
+		case ptp_event_canon_RequestObjectTransfer64LFN: return "RequestObjectTransfer64LFN_Canon";
 		case ptp_event_canon_ObjectRemoved: return "ObjectRemoved_Canon";
 		case ptp_event_canon_RequestGetObjectInfoEx: return "RequestGetObjectInfoEx_Canon";
 		case ptp_event_canon_StorageStatusChanged: return "StorageStatusChanged_Canon";
@@ -1178,45 +1179,50 @@ static void ptp_canon_get_event(indigo_device *device) {
 				}
 				case ptp_event_canon_ObjectAddedEx:
 				case ptp_event_canon_ObjectAddedEx2:
-				case ptp_event_canon_ObjectAddedEx3:
-				case ptp_event_canon_RequestObjectTransfer: {
+				case ptp_event_canon_RequestObjectTransfer:
+				case ptp_event_canon_RequestObjectTransfer64:
+				case ptp_event_canon_RequestObjectTransfer64LFN: {
+					bool transfer = event == ptp_event_canon_RequestObjectTransfer || event == ptp_event_canon_RequestObjectTransfer64 || event == ptp_event_canon_RequestObjectTransfer64LFN;
+					uint32_t filename_offset = event == ptp_event_canon_ObjectAddedEx ? 0x28 : event == ptp_event_canon_ObjectAddedEx2 ? 0x2C : event == ptp_event_canon_RequestObjectTransfer64LFN ? 0 : 0x1C;
+					if (size < (filename_offset ? filename_offset + 1 : 0x25)) {
+						PRIVATE_DATA->last_error = ptp_response_GeneralError;
+						break;
+					}
 					uint32_t handle = 0, length = 0;
-					char filename[PTP_MAX_CHARS];
-					filename[0] = '\0';
+					char filename[PTP_MAX_CHARS] = { 0 };
 					ptp_decode_uint32(source, &handle);
-					if (event == ptp_event_canon_ObjectAddedEx || event == ptp_event_canon_ObjectAddedEx2) {
-						ptp_decode_uint32(source + 0x14, &length);
-					} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
-						ptp_decode_uint32(source + 0x0C, &length);
-					}
-					if (event == ptp_event_canon_ObjectAddedEx) {
-						strncpy(filename, (char *)source + 0x20, PTP_MAX_CHARS);
-						filename[PTP_MAX_CHARS - 1] = '\0';
-					} else if (event == ptp_event_canon_ObjectAddedEx2) {
-						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
-						filename[PTP_MAX_CHARS - 1] = '\0';
-					} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
-						ptp_decode_string(source + 0x1c, filename);
-						if (source[0x1c] == 0 || source[0x1c] == 1) {
-							// empty or "\0" string
-							//   => no filename
-							uint32_t content_type = 0;
-							ptp_decode_uint32(source + 0x04, &content_type);
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Type: 0x%x", content_type);
-							if (content_type == 0x3801) {
-								strncpy(filename, "RAM.JPG", PTP_MAX_CHARS);
-							} else if (content_type == 0xB103) {
-								strncpy(filename, "RAM.CR2", PTP_MAX_CHARS);
-							} else if (content_type == 0xB108) {
-								strncpy(filename, "RAM.CR3", PTP_MAX_CHARS);
-							} else {
-								INDIGO_DRIVER_LOG(DRIVER_NAME, "Unknown content type: 0x%x", content_type);
-							}
-						}
-					}
-					if (event == ptp_event_canon_RequestObjectTransfer && !CANON_PRIVATE_DATA->use_ram) {
+					ptp_decode_uint32(source + (transfer ? 0x0C : 0x14), &length);
+					if (transfer && !CANON_PRIVATE_DATA->use_ram) {
 						// Release the host-transfer reservation before waiting for ObjectAddedEx.
 						ptp_transaction_1_0(device, ptp_operation_canon_TransferComplete, handle);
+						break;
+					}
+					if (filename_offset) {
+						// Offsets include the record header; these names are NUL-terminated bytes, not PTP strings.
+						uint8_t *name = record + filename_offset;
+						uint8_t *end = memchr(name, 0, size - filename_offset);
+						if (end == NULL || (size_t)(end - name) >= sizeof(filename)) {
+							PRIVATE_DATA->last_error = ptp_response_GeneralError;
+							break;
+						}
+						memcpy(filename, name, end - name + 1);
+					}
+					if (transfer && filename[0] == 0) {
+						// The LFN event carries no filename; derive a local name from its 16-bit format.
+						uint16_t content_type = 0;
+						ptp_decode_uint16(source + 0x04, &content_type);
+						if (content_type == 0x3801) {
+							strcpy(filename, "RAM.JPG");
+						} else if (content_type == 0xB101 || content_type == 0xB103) {
+							strcpy(filename, "RAM.CR2");
+						} else if (content_type == 0xB108) {
+							strcpy(filename, "RAM.CR3");
+						} else {
+							INDIGO_DRIVER_LOG(DRIVER_NAME, "Unknown content type: 0x%x", content_type);
+						}
+					}
+					if (transfer && length == 0) {
+						PRIVATE_DATA->last_error = ptp_response_GeneralError;
 						break;
 					}
 					if (!strchr(filename, '.')) {
@@ -1249,8 +1255,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 							if (buffer) {
 								free(buffer);
 							}
-						} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
-							// R1, R5m2 later?
+						} else if (transfer) {
 							void *image_buffer = indigo_safe_malloc(length);
 							void *buffer = NULL;
 							uint32_t size = 0;

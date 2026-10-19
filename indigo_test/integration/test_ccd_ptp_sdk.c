@@ -45,7 +45,7 @@ typedef struct {
 	uint16_t properties[32];
 	uint32_t values[32];
 	ptp_container command;
-	uint8_t input[65536];
+	uint8_t input[0x200000 + 64];
 	uint32_t input_size, input_offset;
 	bool data_header_sent, response_sent, capturing, event_sent, bulb, transfer_requested;
 	double pressed_at;
@@ -75,6 +75,12 @@ static int fuji_action_profile;
 static atomic_int fail_once_operation;
 static int partial_profile, destination_profile, destination_failure;
 static bool combined_transfer_profile;
+static uint16_t canon_transfer_event, canon_transfer_format = 0xB108;
+static const char *canon_transfer_filename = "IMG_778.CR3";
+static int canon_transfer_fault;
+static bool canon_transfer_large;
+static atomic_int canon_transfer_received, canon_transfer_first_request, canon_transfer_protocol_errors;
+static char canon_transfer_blob_format[16];
 static atomic_int mirror_reject, mirror_writes, mirror_value;
 static atomic_bool mirror_suppress_events;
 static bool mirror_unknown_profile;
@@ -118,6 +124,37 @@ static void array16(uint8_t **p, const uint16_t *values, unsigned count) {
 	for (unsigned i = 0; i < count; i++) {
 		word16(p, values[i]);
 	}
+}
+
+// Canon event offsets are relative to the complete record, including its 8-byte header.
+static uint8_t *canon_transfer_record(uint8_t *record, uint16_t code) {
+	bool lfn = code == 0xC1B8;
+	uint32_t size = lfn ? 0x25 : 0x1C + strlen(canon_transfer_filename) + 1;
+	if (canon_transfer_fault == 1) {
+		size = lfn ? 0x24 : 0x17;
+	} else if (canon_transfer_fault == 3 && !lfn) {
+		size = 0x1C + PTP_MAX_CHARS + 1;
+	}
+	memset(record, 0xA5, size);
+	uint8_t *p = record;
+	word32(&p, size);
+	word32(&p, code);
+	word32(&p, 1);
+	word16(&p, canon_transfer_format);
+	p = record + 0x14;
+	word32(&p, canon_transfer_fault == 4 ? 0 : canon_transfer_large ? 0x200000 + 17 : jpeg_size);
+	if (lfn && size > 0x24) {
+		// There is no filename. A trailing zero is not a PTP Unicode string field.
+		record[0x24] = 0;
+	} else if (!lfn && canon_transfer_fault != 1) {
+		if (canon_transfer_fault != 3) {
+			memcpy(record + 0x1C, canon_transfer_filename, strlen(canon_transfer_filename));
+		}
+		if (canon_transfer_fault != 2) {
+			record[size - 1] = 0;
+		}
+	}
+	return record + size;
 }
 
 static unsigned property_count(fake_camera *c) {
@@ -254,6 +291,9 @@ static void prepare(fake_camera *c) {
 	if (c->response != ptp_response_OK) {
 		return;
 	}
+	if (canon_transfer_event && code == ptp_operation_canon_TransferComplete && !combined_transfer_profile && atomic_load(&canon_transfer_received) != (int)(canon_transfer_large ? 0x200000 + 17 : jpeg_size)) {
+		atomic_fetch_add(&canon_transfer_protocol_errors, 1);
+	}
 	if (code == ptp_operation_GetDeviceInfo) {
 		device_info(c, &p);
 	} else if (code == ptp_operation_GetDevicePropDesc) {
@@ -373,15 +413,11 @@ static void prepare(fake_camera *c) {
 			p = record + 8 + 0x14;
 			word32(&p, jpeg_size);
 			strcpy((char *)record + 8 + 0x20, "FAKE.JPG");
-			if (partial_profile) {
-				uint8_t *event = record + 4;
-				word32(&event, ptp_event_canon_ObjectAddedEx3);
-				uint8_t *length = record + 8 + 0x0c;
-				word32(&length, jpeg_size);
-				uint8_t *filename = record + 8 + 0x1c;
-				string(&filename, "FAKE.CR3");
+			if ((partial_profile || canon_transfer_event) && !combined_transfer_profile) {
+				p = canon_transfer_record(record, canon_transfer_event ? canon_transfer_event : 0xC1B8);
+			} else {
+				p = record + 64;
 			}
-			p = record + 64;
 			if (dual_profile && !hold_raw) {
 				memcpy(p, record, 64);
 				uint8_t *handle = p + 8;
@@ -390,12 +426,7 @@ static void prepare(fake_camera *c) {
 				p += 64;
 			}
 			if (combined_transfer_profile && !c->transfer_requested) {
-				uint8_t *event = record + 4;
-				word32(&event, ptp_event_canon_RequestObjectTransfer);
-				uint8_t *length = record + 8 + 0x0c;
-				word32(&length, jpeg_size);
-				uint8_t *filename = record + 8 + 0x1c;
-				string(&filename, "C2");
+				p = canon_transfer_record(record, canon_transfer_event ? canon_transfer_event : 0xC186);
 				c->transfer_requested = true;
 			} else if (combined_transfer_profile && atomic_load(command_count + ptp_operation_canon_TransferComplete) == 0) {
 				p = record;
@@ -475,14 +506,33 @@ static void prepare(fake_camera *c) {
 		}
 	}
 	if (code == ptp_operation_canon_GetPartialObject && partial_profile != 2) {
-		memcpy(p, jpeg, jpeg_size);
-		p += jpeg_size;
+		uint32_t offset = c->command.payload.params[1];
+		uint32_t request = c->command.payload.params[2];
+		uint32_t total = canon_transfer_large ? 0x200000 + 17 : jpeg_size;
+		if (arg != 1 || offset != (uint32_t)atomic_load(&canon_transfer_received) || offset >= total || request != (total - offset > 0x200000 ? 0x200000 : total - offset)) {
+			atomic_fetch_add(&canon_transfer_protocol_errors, 1);
+			c->response = ptp_response_InvalidParameter;
+			return;
+		}
+		if (offset == 0) {
+			atomic_store(&canon_transfer_first_request, request);
+		}
+		if (canon_transfer_large) {
+			for (uint32_t i = 0; i < request; i++) {
+				p[i] = (offset + i) * 31 + 7;
+			}
+		} else {
+			memcpy(p, jpeg + offset, request);
+		}
+		p += request;
+		atomic_fetch_add(&canon_transfer_received, request);
 		if (partial_profile == 3) {
 			*p++ = 0;
 		}
 		atomic_fetch_add(&c->frames, 1);
 	}
 	if ((c->vendor == 0x04a9 && code == ptp_operation_canon_RemoteReleaseOn) || (c->vendor == 0x04b0 && code == ptp_operation_nikon_InitiateCaptureRecInMedia) || (code == ptp_operation_InitiateCapture && (c->vendor != 0x04cb || c->fuji_mode == 0x0500 || c->fuji_mode == 0x0304)) || (c->vendor == 0x07b4 && code == ptp_operation_olympus_Capture && arg == 3)) {
+		atomic_store(&canon_transfer_received, 0);
 		c->capturing = true;
 		c->event_sent = false;
 		c->pressed_at = indigo_monotonic_time();
@@ -873,7 +923,25 @@ static indigo_result image_update(indigo_client *client, indigo_device *device, 
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->count && property->items->blob.value) {
 		atomic_fetch_add(&blobs, 1);
-		if (nikon_dual_profile && nikon_raw_output) {
+		if (canon_transfer_event) {
+			snprintf(canon_transfer_blob_format, sizeof(canon_transfer_blob_format), "%s", property->items->blob.format);
+			if (atomic_load(command_count + ptp_operation_canon_TransferComplete) < atomic_load(&blobs)) {
+				atomic_fetch_add(&canon_transfer_protocol_errors, 1);
+			}
+		}
+		if (canon_transfer_large) {
+			if (property->items->blob.size != 0x200000 + 17) {
+				atomic_fetch_add(&bad_blob, 1);
+			} else {
+				const uint8_t *bytes = property->items->blob.value;
+				for (unsigned i = 0; i < 0x200000 + 17; i++) {
+					if (bytes[i] != (uint8_t)(i * 31 + 7)) {
+						atomic_fetch_add(&bad_blob, 1);
+						break;
+					}
+				}
+			}
+		} else if (nikon_dual_profile && nikon_raw_output) {
 			indigo_raw_header *header = property->items->blob.value;
 			if (property->items->blob.size < 64 * 64 * 2 + sizeof(indigo_raw_header) || property->items->blob.size > sizeof(captured_raw) || header->signature != INDIGO_RAW_MONO16 || header->width != 64 || header->height != 64) {
 				atomic_fetch_add(&bad_blob, 1);
@@ -902,6 +970,10 @@ static indigo_client image_client = { .name = "PTP image observer", .version = I
 static void reset_fake(uint16_t vendor, uint16_t product) {
 	olympus_native_events = false;
 	olympus_event_stage = 0;
+	atomic_store(&canon_transfer_received, 0);
+	atomic_store(&canon_transfer_first_request, 0);
+	atomic_store(&canon_transfer_protocol_errors, 0);
+	canon_transfer_blob_format[0] = 0;
 	atomic_store(&mirror_reject, 0);
 	atomic_store(&mirror_writes, 0);
 	atomic_store(&mirror_value, 0);
@@ -1025,6 +1097,11 @@ static void end_profile(void) {
 	partial_profile = 0;
 	destination_profile = destination_failure = 0;
 	combined_transfer_profile = false;
+	canon_transfer_event = 0;
+	canon_transfer_format = 0xB108;
+	canon_transfer_filename = "IMG_778.CR3";
+	canon_transfer_fault = 0;
+	canon_transfer_large = false;
 	atomic_store(&gate_open, 1);
 	atomic_store(&gate_operation, 0);
 	atomic_store(&fail_register, 0);
@@ -2373,6 +2450,7 @@ cleanup:
 
 static void canon_combined_transfer_handshake(void) {
 	combined_transfer_profile = true;
+	canon_transfer_filename = "C2";
 	PTP_CHECK(begin_profile(0x04a9, 0x3218));
 	((canon_private_data *)((ptp_private_data *)logical[0]->private_data)->vendor_private_data)->use_ram = false;
 	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
@@ -2380,6 +2458,144 @@ static void canon_combined_transfer_handshake(void) {
 	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_TransferComplete) == 1);
 	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_GetObject) == 1);
 	PTP_CHECK(atomic_load(&blobs) == 1);
+cleanup:
+	end_profile();
+}
+
+static void canon_transfer_layout(uint16_t event, uint16_t format, const char *name, const char *extension, bool large) {
+	canon_transfer_event = event;
+	canon_transfer_format = format;
+	canon_transfer_filename = name;
+	canon_transfer_large = large;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	for (int i = 0; i < 2; i++) {
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == i + 1);
+		PTP_CHECK(atomic_load(&bad_blob) == 0);
+		PTP_CHECK(!strcasecmp(canon_transfer_blob_format, extension));
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_GetPartialObject) == (i + 1) * (large ? 2 : 1));
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_TransferComplete) == i + 1);
+		PTP_CHECK(atomic_load(command_count + ptp_operation_GetPartialObject) == 0);
+		PTP_CHECK(atomic_load(&canon_transfer_first_request) == (int)(large ? 0x200000 : jpeg_size));
+		PTP_CHECK(atomic_load(&canon_transfer_protocol_errors) == 0);
+	}
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
+}
+
+static void canon_transfer_ascii(void) {
+	canon_transfer_layout(0xC186, 0xB108, "IMG_778.CR3", ".cr3", false);
+}
+
+static void canon_transfer64_ascii(void) {
+	canon_transfer_layout(0xC1A9, 0xB108, "IMG_779.CR3", ".cr3", false);
+}
+
+static void canon_transfer_filename_boundary(void) {
+	char filename[PTP_MAX_CHARS];
+	memset(filename, 'A', sizeof(filename));
+	memcpy(filename + sizeof(filename) - 5, ".CR3", 5);
+	canon_transfer_layout(0xC186, 0xB108, filename, ".cr3", false);
+	canon_transfer_layout(0xC1A9, 0xB108, filename, ".cr3", false);
+}
+
+static void canon_transfer_lfn_formats(void) {
+	const uint16_t formats[] = { 0x3801, 0xB101, 0xB103, 0xB108 };
+	const char *extensions[] = { ".jpeg", ".cr2", ".cr2", ".cr3" };
+	for (unsigned i = 0; i < ARRAY_SIZE(formats); i++) {
+		canon_transfer_layout(0xC1B8, formats[i], "", extensions[i], false);
+	}
+}
+
+static void canon_transfer_empty_filename(void) {
+	canon_transfer_layout(0xC186, 0xB108, "", ".cr3", false);
+	canon_transfer_layout(0xC1A9, 0xB108, "", ".cr3", false);
+}
+
+static void canon_transfer_large_blocks(void) {
+	canon_transfer_layout(0xC1A9, 0xB108, "LARGE.CR3", ".cr3", true);
+}
+
+static void canon_transfer_combined_events(void) {
+	const uint16_t codes[] = { 0xC186, 0xC1A9, 0xC1B8 };
+	for (unsigned i = 0; i < ARRAY_SIZE(codes); i++) {
+		canon_transfer_event = codes[i];
+		combined_transfer_profile = true;
+		canon_transfer_filename = "C2";
+		PTP_CHECK(begin_profile(0x04a9, 0x3218));
+		((canon_private_data *)((ptp_private_data *)logical[0]->private_data)->vendor_private_data)->use_ram = false;
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == 1);
+		PTP_CHECK(atomic_load(&bad_blob) == 0);
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_TransferComplete) == 1);
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_GetObject) == 1);
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_GetPartialObject) == 0);
+		end_profile();
+	}
+	return;
+cleanup:
+	end_profile();
+}
+
+static void canon_transfer_failure_recovery(uint16_t event, uint16_t operation) {
+	canon_transfer_event = event;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	atomic_store(&fail_operation, operation);
+	atomic_store(&fail_reply, ptp_response_DeviceBusy);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 0);
+	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_DeleteObject) == 0);
+	atomic_store(&fail_operation, 0);
+	atomic_store(&fail_reply, 0);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 1);
+	PTP_CHECK(atomic_load(&bad_blob) == 0);
+	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_TransferComplete) == 2);
+cleanup:
+	end_profile();
+}
+
+static void canon_transfer_errors(void) {
+	const uint16_t codes[] = { 0xC186, 0xC1A9, 0xC1B8 };
+	for (unsigned i = 0; i < ARRAY_SIZE(codes); i++) {
+		canon_transfer_failure_recovery(codes[i], ptp_operation_canon_GetPartialObject);
+		canon_transfer_failure_recovery(codes[i], ptp_operation_canon_TransferComplete);
+	}
+}
+
+static void canon_transfer_malformed(void) {
+	const uint16_t codes[] = { 0xC186, 0xC1A9, 0xC1B8 };
+	for (unsigned i = 0; i < ARRAY_SIZE(codes); i++) {
+		canon_transfer_event = codes[i];
+		PTP_CHECK(begin_profile(0x04a9, 0x3218));
+		for (int fault = 1; fault <= 4; fault++) {
+			if (codes[i] == 0xC1B8 && (fault == 2 || fault == 3)) {
+				continue;
+			}
+			canon_transfer_fault = fault;
+			int reads = atomic_load(command_count + ptp_operation_canon_GetPartialObject);
+			int acks = atomic_load(command_count + ptp_operation_canon_TransferComplete);
+			int images = atomic_load(&blobs);
+			indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+			PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+			PTP_CHECK(atomic_load(&blobs) == images);
+			PTP_CHECK(atomic_load(command_count + ptp_operation_canon_GetPartialObject) == reads);
+			PTP_CHECK(atomic_load(command_count + ptp_operation_canon_TransferComplete) == acks);
+			canon_transfer_fault = 0;
+			indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+			PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+			PTP_CHECK(atomic_load(&blobs) == images + 1);
+		}
+		end_profile();
+	}
+	return;
 cleanup:
 	end_profile();
 }
@@ -2540,6 +2756,15 @@ int main(void) {
 		{ "sony_focus_error", sony_focus_error },
 		{ "olympus_focus_error", olympus_focus_error },
 		{ "canon_partial_native", canon_partial_native },
+		{ "canon_transfer_ascii", canon_transfer_ascii },
+		{ "canon_transfer64_ascii", canon_transfer64_ascii },
+		{ "canon_transfer_filename_boundary", canon_transfer_filename_boundary },
+		{ "canon_transfer_lfn_formats", canon_transfer_lfn_formats },
+		{ "canon_transfer_empty_filename", canon_transfer_empty_filename },
+		{ "canon_transfer_large_blocks", canon_transfer_large_blocks },
+		{ "canon_transfer_combined_events", canon_transfer_combined_events },
+		{ "canon_transfer_errors", canon_transfer_errors },
+		{ "canon_transfer_malformed", canon_transfer_malformed },
 		{ "canon_combined_transfer_handshake", canon_combined_transfer_handshake },
 		{ "canon_partial_default_timeout", canon_partial_default_timeout },
 		{ "canon_transfer_completion_error", canon_transfer_completion_error },
