@@ -30,6 +30,10 @@
 
 #include "../test_runner.h"
 
+// Match the framework lock order when the simulated peers publish from test/timer threads.
+extern void indigo_lock_bus(void);
+extern void indigo_unlock_bus(void);
+
 #define AGENT "Mount Agent"
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define REQUIRE(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return false; } } while (0)
@@ -319,12 +323,15 @@ static void peer_site_timer(indigo_device *device) {
 		indigo_set_timer(device, 0.01, peer_site_timer, NULL);
 		return;
 	}
+	// Bus callbacks take the bus lock before peer_mutex; use the same order.
+	indigo_lock_bus();
 	pthread_mutex_lock(&peer_mutex);
 	int index = (int)(p - peers);
 	indigo_property *site = prop(index, "GEOGRAPHIC_COORDINATES");
 	site->state = INDIGO_OK_STATE;
 	publish(index, site);
 	pthread_mutex_unlock(&peer_mutex);
+	indigo_unlock_bus();
 }
 
 static indigo_result peer_change(indigo_device *device, indigo_client *client, indigo_property *request) {
@@ -502,19 +509,25 @@ static bool wait_request(int index, const char *name, int before) {
 }
 
 static void complete(int index, const char *name, int state) {
+	// Bus callbacks take the bus lock before peer_mutex; use the same order.
+	indigo_lock_bus();
 	pthread_mutex_lock(&peer_mutex);
 	indigo_property *p = prop(index, name);
 	p->state = state;
 	publish(index, p);
 	pthread_mutex_unlock(&peer_mutex);
+	indigo_unlock_bus();
 }
 
 static void emit_number(int index, const char *name, const char *item, double number) {
+	// Bus callbacks take the bus lock before peer_mutex; use the same order.
+	indigo_lock_bus();
 	pthread_mutex_lock(&peer_mutex);
 	indigo_property *p = prop(index, name);
 	indigo_get_item(p, item)->number.value = number;
 	indigo_update_property(&peers[index].device, p, NULL);
 	pthread_mutex_unlock(&peer_mutex);
+	indigo_unlock_bus();
 }
 
 static int state(const char *device, const char *name) {
@@ -1113,6 +1126,90 @@ static void joystick(void) {
 			CHECK(wait_request(0, names[i], n));
 			CHECK(wait_state(AGENT, START, 0, -1));
 		}
+	}
+}
+
+// The peer follows aux_joystick's full two-item axis updates and the mount
+// applies them through the real AT_MOST_ONE property-copy implementation.
+static void check_joystick_motion(const char *name, const char *first, const char *second, int selected, int input_state, bool forwarded) {
+	indigo_property *p = prop(4, name);
+	indigo_get_item(p, first)->sw.value = selected == 0;
+	indigo_get_item(p, second)->sw.value = selected == 1;
+	int before = requests(0, name);
+	int start = command_count;
+	bool ra = !strcmp(name, "MOUNT_MOTION_RA");
+	const char *other = ra ? "MOUNT_MOTION_DEC" : "MOUNT_MOTION_RA";
+	const char *other_first = ra ? "NORTH" : "WEST";
+	const char *other_second = ra ? "SOUTH" : "EAST";
+	double old_other_first = value(peer_names[0], other, other_first);
+	double old_other_second = value(peer_names[0], other, other_second);
+	double old_first = value(peer_names[0], name, first);
+	double old_second = value(peer_names[0], name, second);
+	complete(4, name, input_state);
+	fprintf(stderr, "  axis %s input %s=%d %s=%d state=%d\n", name, p->items[0].name, p->items[0].sw.value, p->items[1].name, p->items[1].sw.value, input_state);
+	for (int i = start; i < command_count; i++) {
+		indigo_property *request = commands[i].property;
+		if (commands[i].peer == 0 && !strcmp(request->name, name)) {
+			fprintf(stderr, "    request");
+			for (int j = 0; j < request->count; j++) {
+				fprintf(stderr, " %s=%d", request->items[j].name, request->items[j].sw.value);
+			}
+			fprintf(stderr, "\n");
+		}
+	}
+	fprintf(stderr, "    result %s=%.0f %s=%.0f\n", first, value(peer_names[0], name, first), second, value(peer_names[0], name, second));
+	ASSERT_EQ_INT(forwarded ? selected == 0 : old_first, value(peer_names[0], name, first));
+	ASSERT_EQ_INT(forwarded ? selected == 1 : old_second, value(peer_names[0], name, second));
+	ASSERT_EQ_INT(before + forwarded, requests(0, name));
+	ASSERT_EQ_INT(old_other_first, value(peer_names[0], other, other_first));
+	ASSERT_EQ_INT(old_other_second, value(peer_names[0], other, other_second));
+	if (forwarded) {
+		ASSERT_EQ_INT(INDIGO_OK_STATE, state(AGENT, name));
+		ASSERT_EQ_INT(selected == 0, value(AGENT, name, first));
+		ASSERT_EQ_INT(selected == 1, value(AGENT, name, second));
+	}
+}
+
+static void joystick_motion_axis(const char *name, const char *first, const char *second) {
+	CHECK(select_peer(0, true, false));
+	CHECK(select_peer(4, false, false));
+	CHECK(sw(AGENT, FEATURES, "ENABLE_JOYSTICK_CONTROL", true, INDIGO_OK_STATE));
+	const int sequence[] = { -1, 0, 0, -1, 1, 1, -1, 0, 1, 0, -1 };
+	for (int reversed = 0; reversed < 2; reversed++) {
+		for (int i = 0; i < ARRAY_SIZE(sequence); i++) {
+			check_joystick_motion(name, first, second, sequence[i], INDIGO_OK_STATE, true);
+		}
+		indigo_property *p = prop(4, name);
+		indigo_item swap = p->items[0];
+		p->items[0] = p->items[1];
+		p->items[1] = swap;
+	}
+}
+
+static void joystick_motion_ra(void) {
+	joystick_motion_axis("MOUNT_MOTION_RA", "WEST", "EAST");
+}
+
+static void joystick_motion_dec(void) {
+	joystick_motion_axis("MOUNT_MOTION_DEC", "NORTH", "SOUTH");
+}
+
+static void joystick_motion_gates(void) {
+	CHECK(select_peer(0, true, false));
+	CHECK(select_peer(4, false, false));
+	const char *names[] = { "MOUNT_MOTION_RA", "MOUNT_MOTION_DEC" };
+	const char *first[] = { "WEST", "NORTH" };
+	const char *second[] = { "EAST", "SOUTH" };
+	for (int axis = 0; axis < 2; axis++) {
+		CHECK(sw(AGENT, FEATURES, "ENABLE_JOYSTICK_CONTROL", false, INDIGO_OK_STATE));
+		check_joystick_motion(names[axis], first[axis], second[axis], 0, INDIGO_OK_STATE, false);
+		CHECK(sw(AGENT, FEATURES, "ENABLE_JOYSTICK_CONTROL", true, INDIGO_OK_STATE));
+		check_joystick_motion(names[axis], first[axis], second[axis], 1, INDIGO_OK_STATE, true);
+		const int states[] = { INDIGO_IDLE_STATE, INDIGO_BUSY_STATE, INDIGO_ALERT_STATE };
+		for (int i = 0; i < ARRAY_SIZE(states); i++) {
+			check_joystick_motion(names[axis], first[axis], second[axis], 0, states[i], false);
+		}
+		check_joystick_motion(names[axis], first[axis], second[axis], -1, INDIGO_OK_STATE, true);
 	}
 }
 
@@ -2387,14 +2484,24 @@ static const indigo_test_case tests[] = {
 	{ "coupled motion", coupled_motion },
 	{ "slaving", slaving },
 	{ "joystick", joystick },
+	{ "joystick motion RA", joystick_motion_ra },
+	{ "joystick motion DEC", joystick_motion_dec },
+	{ "joystick motion gates", joystick_motion_gates },
 	{ "LX200 protocol", lx200_protocol }
 };
 
 int main(int argc, char **argv) {
 	setvbuf(stdout, NULL, _IONBF, 0);
-	int result = 0, executed = 0, passed = 0;
+	int result = 0, executed = 0, passed = 0, planned = 0;
+	const char *filter = argc > 1 ? argv[1] : getenv("INDIGO_TEST_CASE_FILTER");
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
-		if (argc > 1 && !strstr(tests[i].name, argv[1])) {
+		if (filter == NULL || strstr(tests[i].name, filter)) {
+			planned++;
+		}
+	}
+	indigo_test_plan("Mount Agent integration", planned, filter);
+	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+		if (filter != NULL && !strstr(tests[i].name, filter)) {
 			continue;
 		}
 		executed++;
@@ -2419,6 +2526,7 @@ int main(int argc, char **argv) {
 		}
 		remove_test_files();
 	}
+	indigo_test_plan_recorded = false;
 	printf("Mount Agent: %d/%d cases passed (including cleanup)\n", passed, executed);
 	return executed ? result : 2;
 }

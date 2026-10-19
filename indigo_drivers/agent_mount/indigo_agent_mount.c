@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0300001B
+#define DRIVER_VERSION 0x0300001C
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -2013,23 +2013,22 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
-	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_DEC_PROPERTY_NAME)) {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			if (!strcmp(item->name, MOUNT_MOTION_NORTH_ITEM_NAME)) {
-				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, item->sw.value);
-			} else if (!strcmp(item->name, MOUNT_MOTION_SOUTH_ITEM_NAME)) {
-				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, item->sw.value);
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && (!strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_DEC_PROPERTY_NAME) || !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_RA_PROPERTY_NAME))) {
+		bool dec = !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_DEC_PROPERTY_NAME);
+		const char *directions[] = { dec ? MOUNT_MOTION_NORTH_ITEM_NAME : MOUNT_MOTION_WEST_ITEM_NAME, dec ? MOUNT_MOTION_SOUTH_ITEM_NAME : MOUNT_MOTION_EAST_ITEM_NAME };
+		const char *items[2];
+		bool values[2];
+		int count = 0;
+		for (int i = 0; i < 2; i++) {
+			indigo_item *item = indigo_get_item(property, directions[i]);
+			if (item != NULL) {
+				items[count] = item->name;
+				values[count++] = item->sw.value;
 			}
 		}
-	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_RA_PROPERTY_NAME)) {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			if (!strcmp(item->name, MOUNT_MOTION_WEST_ITEM_NAME)) {
-				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, item->sw.value);
-			} else if (!strcmp(item->name, MOUNT_MOTION_EAST_ITEM_NAME)) {
-				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, item->sw.value);
-			}
+		if (count > 0) {
+			// AT_MOST_ONE resets the whole axis on each request, including false items.
+			indigo_change_switch_property(client, device->name, dec ? MOUNT_MOTION_DEC_PROPERTY_NAME : MOUNT_MOTION_RA_PROPERTY_NAME, count, items, values);
 		}
 	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {

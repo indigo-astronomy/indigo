@@ -5900,6 +5900,7 @@
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
+		A1E32A108C92451FB8E2D6F0 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15461,6 +15462,7 @@
 			isa = PBXGroup;
 			children = (
 				9D7244EA21F1CFEB0028FDF4 /* README.md */,
+				A1E32A108C92451FB8E2D6F0 /* REFACTOR.md */,
 				9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */,
 				9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */,
 			);
