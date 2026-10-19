@@ -218,6 +218,7 @@ static void driver_stop(void) {
 	indigo_result result = indigo_focuser_qhy(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_detach_client(&simulator_test_client);
 	indigo_stop();
+	ASSERT_EQ_INT(0, updates_without_define());
 	release_cached_properties();
 	ASSERT_EQ_INT(INDIGO_OK, result);
 }
@@ -972,6 +973,7 @@ static void modes_and_compensation(void) {
 	indigo_usleep(2300000);
 	SERIAL_CHECK_TRUE(control("outside", 20000));
 	SERIAL_CHECK_TRUE(at_position_long(50000));
+	SERIAL_CHECK_EQ_INT(0, updates_without_define());
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(property_presence(FOCUSER_STEPS_PROPERTY_NAME, true));
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->perm == INDIGO_RW_PERM);
@@ -1009,7 +1011,6 @@ static void instances(void) {
 	SERIAL_CHECK_TRUE(at_position(50000));
 cleanup:
 	disconnect_serial_device(&second);
-	reset_simulator_context(&qhy_focuser);
 	disconnect_serial_device(&qhy_focuser);
 	indigo_change_number_property_1(&simulator_test_client, qhy_focuser.device_name, ADDITIONAL_INSTANCES_PROPERTY_NAME, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, 0);
 	driver_stop();

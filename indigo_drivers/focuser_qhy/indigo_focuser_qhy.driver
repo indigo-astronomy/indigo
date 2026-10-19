@@ -22,7 +22,7 @@ driver qhy {
 	label = "QHY Q-Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 13;
+	version = 14;
 	serial {
 		configurable_speed = true;
 	}
@@ -404,7 +404,9 @@ driver qhy {
 			FOCUSER_POSITION_PROPERTY->state = state;
 			FOCUSER_STEPS_PROPERTY->state = state;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			if (FOCUSER_STEPS_PROPERTY->defined) {
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
 		}
 
 		static void motion_finalizer(indigo_device *device) {

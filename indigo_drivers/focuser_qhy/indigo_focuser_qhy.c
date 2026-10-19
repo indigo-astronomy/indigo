@@ -70,7 +70,7 @@ typedef struct {
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_focuser_qhy"
 #define DRIVER_LABEL         "QHY Q-Focuser"
 #define FOCUSER_DEVICE_NAME  "Q-Focuser"
@@ -432,7 +432,9 @@ static void qhy_motion_state(indigo_device *device, indigo_property_state state)
 	FOCUSER_POSITION_PROPERTY->state = state;
 	FOCUSER_STEPS_PROPERTY->state = state;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	if (FOCUSER_STEPS_PROPERTY->defined) {
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	}
 }
 
 static void motion_finalizer(indigo_device *device) {
