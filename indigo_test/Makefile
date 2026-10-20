@@ -48,7 +48,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_uni_io \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
+	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qsi_sdk \
 	$(INTEGRATION_BUILD)/test_guider_asi_sdk \
@@ -424,6 +425,12 @@ $(INTEGRATION_BUILD)/test_ccd_simulator: integration/test_ccd_simulator.c integr
 
 $(INTEGRATION_BUILD)/test_dome_simulator: integration/test_dome_simulator.c integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_dome_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_simulator: integration/test_aux_simulator.c integration/simulator_test_common.h integration/serial_simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_simulator.a $(BUILD_DRIVERS)/indigo_agent_auxiliary.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_aux_simulator.a $(BUILD_DRIVERS)/indigo_agent_auxiliary.a $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_simulator_asan: integration/test_aux_simulator.c ../indigo_drivers/aux_simulator/indigo_aux_simulator.c integration/simulator_test_common.h integration/serial_simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_agent_auxiliary.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/aux_simulator/indigo_aux_simulator.c $(BUILD_DRIVERS)/indigo_agent_auxiliary.a $(TEST_LDFLAGS) -fsanitize=address,undefined
 
 $(INTEGRATION_BUILD)/test_gps_simulator: integration/test_gps_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_gps_simulator.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(GPS_SIMULATOR_TEST_LDFLAGS)

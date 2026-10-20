@@ -73,6 +73,7 @@
 | aux_rts | 2026-09-23 19:19 | 3.0.0.11 | linux arm64 | simulator | 10 / 10 | ✅ OK |
 |  | 2026-09-23 19:22 | 3.0.0.11 | linux arm64 | FTDI serial loopback | 9 / 9 | ✅ OK |
 |  | 2026-09-27 20:55 | 3.0.0.12 | mac arm64 | simulator | 10 / 10 | ✅ OK |
+| aux_simulator | 2026-10-20 11:02 | 3.0.0.1 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 | aux_skyalert | 2026-10-09 15:03 | 3.0.0.9 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-10-09 15:07 | 3.0.0.9 | linux arm64 | Interactive Astronomy SkyAlert Arduino simulator (ESP32-S3) | 6 / 6 | ✅ OK |
 | aux_sqm | 2026-10-09 18:01 | 3.0.0.22 | mac arm64 | simulator | 11 / 11 | ✅ OK |

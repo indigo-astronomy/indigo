@@ -809,6 +809,17 @@ Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`
 
 Source: `indigo_drivers/aux_rts/indigo_aux_rts.c`.
 
+### aux_simulator
+
+Four independent virtual devices, all with the read-only enabled `SIMULATION` property and standard connection lifecycle. Device-specific properties are visible only while connected.
+
+- PowerBox Simulator: `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_STATE`, `AUX_POWER_OUTLET_CURRENT` (`OUTLET_1`–`OUTLET_4`); `AUX_USB_PORT`, `AUX_USB_PORT_STATE` (`PORT_1`–`PORT_4`); `AUX_HEATER_OUTLET`, `AUX_HEATER_OUTLET_STATE`, `AUX_HEATER_OUTLET_CURRENT` (`OUTLET_1`–`OUTLET_2`); `AUX_DEW_CONTROL` (`MANUAL`, `AUTOMATIC`); `AUX_INFO` (`VOLTAGE`, `CURRENT`, `POWER`); `AUX_WEATHER` (`TEMPERATURE`, `HUMIDITY`, `DEWPOINT`). State/current/sensor properties are read-only. Automatic dew control sets heaters to 35%; a manual heater change selects MANUAL.
+- Weather Station Simulator: read-only `AUX_WEATHER` (`TEMPERATURE`, `HUMIDITY`, `WIND_SPEED`, `WIND_DIRECTION`, `ATMOSPHERIC_PRESSURE`, `RAIN`, `SKY_TEMPERATURE`, `DEWPOINT`), `AUX_WIND` (`STRONG`, `MODERATE`, `CALM`), `AUX_RAIN` (`RAINING`, `WET`, `DRY`), `AUX_CLOUD` (`CLEAR`, `CLOUDY`, `OVERCAST`). Custom writable number property `X_SIMULATION_PARAMETERS` has the seven measured items of `AUX_WEATHER` (all except the derived `DEWPOINT`), using the same names, units and ranges; editing it recomputes readings and lights.
+- SQM Simulator: read-only `AUX_WEATHER` (`SKY_BRIGHTNESS`, `SKY_TEMPERATURE`, `SKY_BORTLE_CLASS`); custom writable number property `X_SIMULATION_PARAMETERS` (`SKY_BRIGHTNESS`, `SKY_TEMPERATURE`) updates readings and the derived Bortle class.
+- Flat Panel Simulator: `AUX_LIGHT_SWITCH` (`ON`, `OFF`), `AUX_LIGHT_INTENSITY` (`LIGHT_INTENSITY`, 0–100%), `AUX_COVER` (`OPEN`, `CLOSE`, one-of-many). Cover changes report BUSY for one second, then OK; disconnect cancels unfinished movement and retains the last completed position. Turning `OPEN` off selects `CLOSE` as well as explicitly selecting `CLOSE`.
+
+Source: `indigo_drivers/aux_simulator/indigo_aux_simulator.driver`, `indigo_drivers/aux_simulator/indigo_aux_simulator.c`.
+
 ### aux_skyalert
 
 Driver-specific use of existing properties: `AUX_INFO`, `AUX_WEATHER`.

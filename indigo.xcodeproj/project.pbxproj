@@ -1081,6 +1081,10 @@
 		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
 		C0DE20260916C0C000000011 /* indigo_ccd_uvc_libuvc.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20260916C0C000000003 /* indigo_ccd_uvc_libuvc.c */; };
 		C0DE20260916C0C000000012 /* indigo_ccd_uvc_libuvc.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20260916C0C000000003 /* indigo_ccd_uvc_libuvc.c */; };
+		B6E0D2A16C664281B5CE9061 /* indigo_aux_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */; };
+		9D8D5AD23087655D003F04F2 /* indigo_aux_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */; };
+		9D8D5AD33087655D003F04F2 /* indigo_aux_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */; };
+		A343A1B08EE74FB48C10D674 /* indigo_aux_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -5901,6 +5905,15 @@
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
 		A1E32A108C92451FB8E2D6F0 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		82BA17F9316A48ECBB6C7050 /* indigo_aux_simulator.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_aux_simulator.vcxproj; sourceTree = "<group>"; };
+		BE769F9DAEBA463F9C92816A /* indigo_aux_simulator.vcxproj.filters */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_aux_simulator.vcxproj.filters; sourceTree = "<group>"; };
+		9D8D5ACF308764F1003F04F2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D8D5AD0308764F1003F04F2 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		9D8D5ACB308764F1003F04F2 /* indigo_aux_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_simulator.driver; sourceTree = "<group>"; };
+		9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_simulator.h; sourceTree = "<group>"; };
+		9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_simulator.c; sourceTree = "<group>"; };
+		9D8D5ACD308764F1003F04F2 /* indigo_aux_simulator_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_simulator_main.c; sourceTree = "<group>"; };
+		5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_simulator.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -11392,6 +11405,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D8D5AD1308764F1003F04F2 /* aux_simulator */,
 				C0DE20260913000100000001 /* AGENTS.override.md */,
 				59FA7C0F301DDB2200A35CFB /* REVIEW.md */,
 				5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */,
@@ -14257,6 +14271,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */,
 				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
 				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
 				C0DE20260908000300000001 /* ccd_test_noise.h */,
@@ -16862,6 +16877,21 @@
 			path = dome_dragonfly_simulator;
 			sourceTree = "<group>";
 		};
+		9D8D5AD1308764F1003F04F2 /* aux_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				82BA17F9316A48ECBB6C7050 /* indigo_aux_simulator.vcxproj */,
+				BE769F9DAEBA463F9C92816A /* indigo_aux_simulator.vcxproj.filters */,
+				9D8D5ACF308764F1003F04F2 /* README.md */,
+				9D8D5AD0308764F1003F04F2 /* REFACTOR.md */,
+				9D8D5ACB308764F1003F04F2 /* indigo_aux_simulator.driver */,
+				9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */,
+				9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */,
+				9D8D5ACD308764F1003F04F2 /* indigo_aux_simulator_main.c */,
+			);
+			path = aux_simulator;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -16869,6 +16899,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B6E0D2A16C664281B5CE9061 /* indigo_aux_simulator.h in Headers */,
 				59B8A8C827ADAD8400A27609 /* indigo_align.h in Headers */,
 				9D8D9EA62D4B990E007A5BA3 /* indigo_uni_io.h in Headers */,
 				598A1C1B259BA94A00C0B34C /* libdsusb.h in Headers */,
@@ -17064,6 +17095,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A343A1B08EE74FB48C10D674 /* indigo_aux_simulator.h in Headers */,
 				59D9684221A2FFC40069A64C /* libdsusb.h in Headers */,
 				5910D9C62580284E0015D915 /* duk_config.h in Headers */,
 				595F291E211E211100380EF4 /* DDHidUsageTables.h in Headers */,
@@ -17585,6 +17617,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D8D5AD33087655D003F04F2 /* indigo_aux_simulator.c in Sources */,
 				59647F032F769C5F005F72E3 /* indigo_aux_svbpowerbox.c in Sources */,
 				593894B32C4C22B100CEF4A5 /* indigo_aux_upb3.c in Sources */,
 				59111CF2285F504200E57194 /* indigocat_earth.c in Sources */,
@@ -17872,6 +17905,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9D8D5AD23087655D003F04F2 /* indigo_aux_simulator.c in Sources */,
 				59D29A1B2841469D00D5E7F7 /* indigo_mount_starbook.c in Sources */,
 				9D73E61B21FF37F9003CEC15 /* libuvc_misc.c in Sources */,
 				599EB1772B52ECE300B333E4 /* indigo_aux_wbprov3.c in Sources */,
