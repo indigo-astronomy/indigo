@@ -358,19 +358,25 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 	indigo_serial_info *matching = indigo_usbserial_match_index(free_info, free_count, patterns, patterns_count, &device->matched_pattern_index);
 	if (matching != NULL) {
 		selected = matching->path;
+	} else if (port_exists && port_free) {
+		INDIGO_DEBUG(indigo_debug("%s(): No free matching port found for '%s', keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
+		device->matched_pattern_index = -1;
+		indigo_safe_free(free_info);
+		return true;
+	} else if (free_count > 0) {
+		INDIGO_DEBUG(indigo_debug("%s(): No free matching port found for '%s', selecting first free USB-Serial port", __FUNCTION__, device->name));
+		device->matched_pattern_index = -1;
+		selected = free_info[0].path;
 	} else {
 		matching = indigo_usbserial_match_index(serial_info, num_serial_info, patterns, patterns_count, &device->matched_pattern_index);
 		if (matching != NULL) {
 			/* every matching port is used by another device, the old choice is kept and the connection fails as before */
 			INDIGO_DEBUG(indigo_debug("%s(): All matching ports for '%s' are used by other devices", __FUNCTION__, device->name));
 			selected = matching->path;
-		} else if (port_exists && (port_free || free_count == 0)) {
+		} else if (port_exists) {
 			INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
 			indigo_safe_free(free_info);
 			return true;
-		} else if (free_count > 0) {
-			INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', selecting first free USB-Serial port", __FUNCTION__, device->name));
-			selected = free_info[0].path;
 		} else {
 			INDIGO_DEBUG(indigo_debug("%s(): No matching or free port found for '%s', selecting first USB-Serial port", __FUNCTION__, device->name));
 			selected = serial_info[0].path;

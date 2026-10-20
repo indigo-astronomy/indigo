@@ -20,7 +20,7 @@
 
 // Auto-selection never picks a serial port another device has open or is opening. The binary carries its own copy of
 // indigo_driver.c, built with indigo_enumerate_usbserial_devices() replaced by fake_usbserial_devices(), which lists
-// identical USB-serial adapters (same VID/PID) backed by temporary files. The devices are focusers of the test whose
+// USB-serial adapters with matching or nonmatching VID/PID backed by temporary files. The devices are focusers of the test whose
 // connection succeeds, fails, stays BUSY or ends without being reported to the base class, as each case needs; the
 // port a device "opens" is its DEVICE_PORT at the connect request.
 
@@ -45,6 +45,7 @@ static pthread_mutex_t fake_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char fake_ports[FAKE_PORT_COUNT][PATH_MAX];
 static char fake_auto_ports[FAKE_PORT_COUNT][INDIGO_VALUE_SIZE];
 static int fake_port_count = 0;
+static unsigned int fake_matching_ports = (1U << FAKE_PORT_COUNT) - 1;
 
 int fake_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info) {
 	pthread_mutex_lock(&fake_mutex);
@@ -52,8 +53,9 @@ int fake_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info)
 	for (int i = 0; i < count; i++) {
 		memset(serial_info + i, 0, sizeof(indigo_serial_info));
 		serial_info[i].vendor_id = 0x0403;
-		serial_info[i].product_id = 0x6001;
-		snprintf(serial_info[i].product_string, sizeof(serial_info[i].product_string), "Fake USB-serial");
+		bool matching = (fake_matching_ports & (1U << i)) != 0;
+		serial_info[i].product_id = matching ? 0x6001 : 0x6002;
+		snprintf(serial_info[i].product_string, sizeof(serial_info[i].product_string), "Fake USB-serial %s", matching ? "matching" : "nonmatching");
 		snprintf(serial_info[i].path, sizeof(serial_info[i].path), "%.*s", PATH_MAX - 1, fake_ports[i]);
 	}
 	pthread_mutex_unlock(&fake_mutex);
@@ -272,10 +274,18 @@ cleanup:
 	detach_devices();
 }
 
-static pthread_barrier_t connect_barrier;
+static pthread_mutex_t connect_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t connect_condition = PTHREAD_COND_INITIALIZER;
+static int connect_ready;
 
 static void *connect_thread(void *device) {
-	pthread_barrier_wait(&connect_barrier);
+	pthread_mutex_lock(&connect_mutex);
+	connect_ready++;
+	pthread_cond_broadcast(&connect_condition);
+	while (connect_ready < 2) {
+		pthread_cond_wait(&connect_condition, &connect_mutex);
+	}
+	pthread_mutex_unlock(&connect_mutex);
 	request_connection((indigo_device *)device, true);
 	return NULL;
 }
@@ -286,12 +296,11 @@ static void simultaneous_connects_get_different_ports(void) {
 	SERIAL_CHECK_TRUE(attach_devices(CONNECT_HOLD, CONNECT_HOLD, false));
 	SERIAL_CHECK_TRUE(port_is(&device_a, fake_auto_ports[0]));
 	SERIAL_CHECK_TRUE(port_is(&device_b, fake_auto_ports[0]));
-	pthread_barrier_init(&connect_barrier, NULL, 2);
+	connect_ready = 0;
 	pthread_create(&thread_a, NULL, connect_thread, &device_a);
 	pthread_create(&thread_b, NULL, connect_thread, &device_b);
 	pthread_join(thread_a, NULL);
 	pthread_join(thread_b, NULL);
-	pthread_barrier_destroy(&connect_barrier);
 	printf("    A opened %s, B opened %s\n", data_a.opened, data_b.opened);
 	SERIAL_CHECK_TRUE(connection_state(&device_a) == INDIGO_BUSY_STATE && connection_state(&device_b) == INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(data_a.opened[0] && data_b.opened[0] && strcmp(data_a.opened, data_b.opened));
@@ -352,7 +361,76 @@ cleanup:
 	detach_devices();
 }
 
-// With every matching port in use the selection is the same as before: the device keeps the taken port, and the
+static bool set_matching_ports(unsigned int mask) {
+	pthread_mutex_lock(&fake_mutex);
+	fake_matching_ports = mask;
+	pthread_mutex_unlock(&fake_mutex);
+	return plug_ports(FAKE_PORT_COUNT);
+}
+
+static void claimed_match_uses_free_nonmatching_port(connect_mode mode) {
+	SERIAL_CHECK_TRUE(attach_devices(mode, CONNECT_OK, false));
+	SERIAL_CHECK_TRUE(set_matching_ports(1U << 2));
+	SERIAL_CHECK_TRUE(port_is(&device_a, fake_auto_ports[2]));
+	SERIAL_CHECK_TRUE(port_is(&device_b, fake_auto_ports[2]));
+	SERIAL_CHECK_TRUE(request_connection(&device_a, true));
+	SERIAL_CHECK_TRUE(opened_is(&data_a, fake_auto_ports[2]));
+	SERIAL_CHECK_TRUE(port_is(&device_b, fake_auto_ports[0]));
+	SERIAL_CHECK_TRUE(set_port(&device_b, fake_auto_ports[2]));
+	SERIAL_CHECK_TRUE(request_connection(&device_b, true));
+	SERIAL_CHECK_TRUE(opened_is(&data_b, fake_auto_ports[0]));
+	SERIAL_CHECK_TRUE(device_b.matched_pattern_index == -1);
+	SERIAL_CHECK_TRUE(request_connection(&device_b, false));
+	SERIAL_CHECK_TRUE(set_port(&device_b, fake_auto_ports[1]));
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, device_b.name, DEVICE_PORTS_PROPERTY_NAME, DEVICE_PORTS_REFRESH_ITEM_NAME, true) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(port_is(&device_b, fake_auto_ports[1]));
+	SERIAL_CHECK_TRUE(request_connection(&device_b, true));
+	SERIAL_CHECK_TRUE(opened_is(&data_b, fake_auto_ports[1]));
+	SERIAL_CHECK_TRUE(port_is(&device_a, fake_auto_ports[2]));
+cleanup:
+	detach_devices();
+	set_matching_ports((1U << FAKE_PORT_COUNT) - 1);
+}
+
+static void connected_match_uses_free_nonmatching_port(void) {
+	claimed_match_uses_free_nonmatching_port(CONNECT_OK);
+}
+
+static void busy_match_uses_free_nonmatching_port(void) {
+	claimed_match_uses_free_nonmatching_port(CONNECT_HOLD);
+}
+
+static void free_matches_precede_nonmatching_ports(void) {
+	SERIAL_CHECK_TRUE(attach_devices(CONNECT_OK, CONNECT_OK, false));
+	SERIAL_CHECK_TRUE(set_port(&device_a, fake_auto_ports[0]));
+	SERIAL_CHECK_TRUE(set_port(&device_b, fake_auto_ports[0]));
+	SERIAL_CHECK_TRUE(set_matching_ports((1U << 1) | (1U << 2)));
+	SERIAL_CHECK_TRUE(port_is(&device_a, fake_auto_ports[1]));
+	SERIAL_CHECK_TRUE(request_connection(&device_a, true));
+	SERIAL_CHECK_TRUE(port_is(&device_b, fake_auto_ports[2]));
+	SERIAL_CHECK_TRUE(request_connection(&device_b, true));
+	SERIAL_CHECK_TRUE(opened_is(&data_b, fake_auto_ports[2]));
+cleanup:
+	detach_devices();
+	set_matching_ports((1U << FAKE_PORT_COUNT) - 1);
+}
+
+static void no_matches_use_free_ports(void) {
+	SERIAL_CHECK_TRUE(attach_devices(CONNECT_OK, CONNECT_OK, false));
+	SERIAL_CHECK_TRUE(set_matching_ports(0));
+	SERIAL_CHECK_TRUE(set_port(&device_a, USBSERIAL_AUTO_PREFIX));
+	SERIAL_CHECK_TRUE(set_port(&device_b, fake_auto_ports[0]));
+	SERIAL_CHECK_TRUE(request_connection(&device_a, true));
+	SERIAL_CHECK_TRUE(opened_is(&data_a, fake_auto_ports[0]));
+	SERIAL_CHECK_TRUE(port_is(&device_b, fake_auto_ports[1]));
+	SERIAL_CHECK_TRUE(request_connection(&device_b, true));
+	SERIAL_CHECK_TRUE(opened_is(&data_b, fake_auto_ports[1]));
+cleanup:
+	detach_devices();
+	set_matching_ports((1U << FAKE_PORT_COUNT) - 1);
+}
+
+// With every port in use the selection is the same as before: the device keeps the taken port, and the
 // driver's open is what fails.
 static void taken_ports_fall_back(void) {
 	SERIAL_CHECK_TRUE(attach_devices(CONNECT_OK, CONNECT_OK, false));
@@ -419,6 +497,10 @@ int main(void) {
 		{ "failed_connection_releases_claim", failed_connection_releases_claim },
 		{ "unreported_claim_expires", unreported_claim_expires },
 		{ "explicit_port_is_claimed_but_kept", explicit_port_is_claimed_but_kept },
+		{ "connected_match_uses_free_nonmatching_port", connected_match_uses_free_nonmatching_port },
+		{ "busy_match_uses_free_nonmatching_port", busy_match_uses_free_nonmatching_port },
+		{ "free_matches_precede_nonmatching_ports", free_matches_precede_nonmatching_ports },
+		{ "no_matches_use_free_ports", no_matches_use_free_ports },
 		{ "taken_ports_fall_back", taken_ports_fall_back },
 		{ "master_device_shares_port", master_device_shares_port }
 	};

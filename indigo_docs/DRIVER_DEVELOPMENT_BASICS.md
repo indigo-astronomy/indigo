@@ -705,12 +705,13 @@ The list, the additional items and the registered devices are guarded by the bus
 
 #### Ports in use
 
-Auto-selection never picks a serial port that another device has open or is opening, so two identical devices with the same VID/PID, or devices of drivers matching the same generic USB-serial adapter, get different ports:
+Auto-selection prefers serial ports that no other device has open or is opening, so devices get different ports while free ports remain:
+- VID/PID and other match patterns are preferences, not restrictions. A free matching port is preferred; if none is available, an existing free auto-selected port is kept, or the first free USB-serial port is selected. An occupied matching port never takes precedence over a free nonmatching port, so drivers supporting both uniquely identified devices and generic adapters can use both.
 - When a valid connect request passes *indigo_ignore_connection_change()*, the base class resolves the port (a plain `auto://`, or an `auto://` port used by another device, is selected again) and claims it in the same bus lock section. Two devices connected at the same moment therefore never get the same port.
 - A disconnected device whose `auto://` port was just claimed selects a port again at once and publishes `DEVICE_PORT`. A port set without `auto://` is claimed too, so auto-selection avoids it, but it is never changed.
 - The claim becomes the recorded port of the connection (see below) when CONNECTION ends OK, and is released when it ends in any other state, and when the device is detached. It also expires 5 s after the request once CONNECTION is no longer BUSY, so a driver that does not report the end of its connection through the base class cannot leave a port blocked.
 - Devices sharing a master device never block each other.
-- If every matching port is in use, the selection is the same as before, and the connection fails when the driver opens the port.
+- If every port is in use, the selection is the same as before, and the connection fails when the driver opens the port.
 
 #### Lost connections
 
