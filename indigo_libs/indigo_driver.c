@@ -129,6 +129,10 @@ static int serial_port_devices_size = 0;
 static additional_ports *driver_ports = NULL;
 static int driver_ports_count = 0;
 
+// see the lost serial ports section, the bus lock must be held
+static bool serial_port_in_use(indigo_device *device, const char *name);
+static bool serial_port_claimed_by(indigo_device *device);
+
 static void add_serial_port(serial_port_list *list, const char *name, const char *label) {
 	if (list->port_count < MAX_DEVICE_PORTS - 1) {
 		serial_port *port = list->ports + list->port_count++;
@@ -321,17 +325,19 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 	}
 
 	bool port_exists = false;
-	/* If the selected device port is prefixed with "auto://", but it matches the pattern do not change it */
+	bool port_free = false;
+	/* If the selected device port is prefixed with "auto://", but it matches the pattern and is not used by another device do not change it */
 	if (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
-		char target[PATH_MAX] = {0};
+		char target[PATH_MAX] = { 0 };
 		char *path = DEVICE_PORT_ITEM->text.value + strlen(USBSERIAL_AUTO_PREFIX);
 		if (indigo_uni_realpath(path, target)) {
 			INDIGO_DEBUG(indigo_debug("%s(): Selected port %s for '%s' resolves to %s", __FUNCTION__, path, device->name, target));
 			for (int i = 0; i < num_serial_info; i++) {
 				if (!strcmp(serial_info[i].path, target)) {
 					port_exists = true;
+					port_free = !serial_port_in_use(device, serial_info[i].path);
 					int matched_pattern_index = -1;
-					if (indigo_usbserial_match_index(serial_info + i, 1, patterns, patterns_count, &matched_pattern_index)) {
+					if (port_free && indigo_usbserial_match_index(serial_info + i, 1, patterns, patterns_count, &matched_pattern_index)) {
 						INDIGO_DEBUG(indigo_debug( "%s(): Selected port for '%s' matches the pattern, keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
 						device->matched_pattern_index = matched_pattern_index;
 						return true;
@@ -340,26 +346,42 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 			}
 		}
 	}
-
-	indigo_serial_info *matching = indigo_usbserial_match_index(serial_info, num_serial_info, patterns, patterns_count, &device->matched_pattern_index);
-
-	/* if nothing is matched select first USB-Serial port */
-	if (matching == NULL) {
-		if (port_exists) {
-			INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
-			return true;
+	/* The ports opened or being opened by other devices are candidates only if no free port can be selected */
+	indigo_serial_info *free_info = indigo_safe_malloc(num_serial_info * sizeof(indigo_serial_info));
+	int free_count = 0;
+	for (int i = 0; i < num_serial_info; i++) {
+		if (!serial_port_in_use(device, serial_info[i].path)) {
+			free_info[free_count++] = serial_info[i];
 		}
-		INDIGO_DEBUG(indigo_debug("%s(): Selected port does not exist and no matching port found for '%s', selecting first USB-Serial port", __FUNCTION__, device->name));
-		matching = &serial_info[0];
 	}
-	if (matching) {
-		char buffer[INDIGO_VALUE_SIZE] = {0};
-		snprintf(buffer, INDIGO_VALUE_SIZE-1, "%s%s", USBSERIAL_AUTO_PREFIX, matching->path);
-		INDIGO_DEBUG(indigo_debug("%s(): Selected new port for '%s': %s", __FUNCTION__, device->name, buffer));
-		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, buffer);
-		return true;
+	const char *selected = NULL;
+	indigo_serial_info *matching = indigo_usbserial_match_index(free_info, free_count, patterns, patterns_count, &device->matched_pattern_index);
+	if (matching != NULL) {
+		selected = matching->path;
+	} else {
+		matching = indigo_usbserial_match_index(serial_info, num_serial_info, patterns, patterns_count, &device->matched_pattern_index);
+		if (matching != NULL) {
+			/* every matching port is used by another device, the old choice is kept and the connection fails as before */
+			INDIGO_DEBUG(indigo_debug("%s(): All matching ports for '%s' are used by other devices", __FUNCTION__, device->name));
+			selected = matching->path;
+		} else if (port_exists && (port_free || free_count == 0)) {
+			INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
+			indigo_safe_free(free_info);
+			return true;
+		} else if (free_count > 0) {
+			INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', selecting first free USB-Serial port", __FUNCTION__, device->name));
+			selected = free_info[0].path;
+		} else {
+			INDIGO_DEBUG(indigo_debug("%s(): No matching or free port found for '%s', selecting first USB-Serial port", __FUNCTION__, device->name));
+			selected = serial_info[0].path;
+		}
 	}
-	return false;
+	char buffer[INDIGO_VALUE_SIZE] = { 0 };
+	snprintf(buffer, INDIGO_VALUE_SIZE - 1, "%s%s", USBSERIAL_AUTO_PREFIX, selected);
+	indigo_safe_free(free_info);
+	INDIGO_DEBUG(indigo_debug("%s(): Selected new port for '%s': %s", __FUNCTION__, device->name, buffer));
+	INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, buffer);
+	return true;
 }
 
 static int indigo_find_matching_pattern_index(indigo_device *device, const char *path) {
@@ -931,10 +953,18 @@ static void select_auto_port(indigo_device *device, serial_port_list *list) {
 	/* if there are no USB-Serial ports but there are regular serial ports and we want auto selected port, select the first one.
 	   Otherwise autoselect the matching port from the available USB-Serial ports. Only the serial ports are candidates,
 	   the additional ports of the driver, e.g. askar:// URLs, are not serial ports and can not get the auto:// prefix.
+	   A port opened or being opened by another device is selected only if there is no free one.
 	*/
 	if (device->match_patterns_count == 0 && list->port_count > 0 && list->usb_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
-		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, list->ports[0].name);
-		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
+		int selected = 0;
+		while (selected < list->port_count && serial_port_in_use(device, list->ports[selected].name)) {
+			selected++;
+		}
+		if (selected == list->port_count) {
+			selected = 0;
+		}
+		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, list->ports[selected].name);
+		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
 	} else {
 		indigo_select_matching_usbserial_device(device, list->usb, list->usb_count);
 	}
@@ -955,20 +985,16 @@ static void fill_device_ports(indigo_device *device, serial_port_list *list) {
 	for (int i = 0; additional && i < additional->count; i++) {
 		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + DEVICE_PORTS_PROPERTY->count++, additional->ports[i].name, additional->ports[i].label, false);
 	}
-	if (!IS_DISCONNECTED) {
+	// a connecting device keeps the port it claimed
+	if (!IS_DISCONNECTED || serial_port_claimed_by(device)) {
 		return;
 	}
 	select_auto_port(device, list);
 }
 
-// the bus lock must be held
-static void refresh_device_ports(indigo_device *device) {
-	char port[INDIGO_VALUE_SIZE];
-	INDIGO_COPY_VALUE(port, DEVICE_PORT_ITEM->text.value);
-	indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
-	fill_device_ports(device, serial_ports);
-	indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
-	if (strcmp(port, DEVICE_PORT_ITEM->text.value)) {
+// the bus lock must be held, publishes DEVICE_PORT if the selected port differs from the previous one
+static void update_selected_port(indigo_device *device, const char *previous) {
+	if (strcmp(previous, DEVICE_PORT_ITEM->text.value)) {
 		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 		if (*DEVICE_PORT_ITEM->text.value == '/' && !indigo_uni_is_readable(DEVICE_PORT_ITEM->text.value)) {
 			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -979,14 +1005,29 @@ static void refresh_device_ports(indigo_device *device) {
 	}
 }
 
+// the bus lock must be held
+static void refresh_device_ports(indigo_device *device) {
+	char port[INDIGO_VALUE_SIZE];
+	INDIGO_COPY_VALUE(port, DEVICE_PORT_ITEM->text.value);
+	indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
+	fill_device_ports(device, serial_ports);
+	indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
+	update_selected_port(device, port);
+}
+
 // -------------------------------------------------------------------------------- lost serial ports
 
-// The port of every device connected over a serial port, resolved when it connected, and the devices disconnected
-// because their port disappeared, which end ALERT instead of OK. Both are guarded by the bus lock.
+// The port of every device connected over a serial port, resolved when it connected, the devices disconnected
+// because their port disappeared, which end ALERT instead of OK, and the port claimed by every device being connected,
+// so autoselect of the other devices skips it until the connection ends. All are guarded by the bus lock.
+
+// a claim of a device whose CONNECTION is not BUSY expires after this many seconds, see serial_port_claim_is_live()
+#define SERIAL_PORT_CLAIM_GRACE	5
 
 typedef struct {
 	indigo_device *device;
 	char port[PATH_MAX];
+	time_t time;
 } device_port;
 
 typedef struct {
@@ -997,6 +1038,7 @@ typedef struct {
 
 static device_port_list connected_ports = { 0 };
 static device_port_list lost_ports = { 0 };
+static device_port_list claimed_ports = { 0 };
 
 // The serial port name a device uses, comparable with the names of the serial port list: auto:// removed, a link
 // resolved, on Windows "\\.\" and a trailing ':' removed; empty for a network URL or no port.
@@ -1047,6 +1089,7 @@ static void set_device_port(device_port_list *list, indigo_device *device, const
 		entry->device = device;
 	}
 	snprintf(entry->port, sizeof(entry->port), "%s", port);
+	entry->time = time(NULL);
 }
 
 static void remove_device_port(device_port_list *list, indigo_device *device) {
@@ -1058,6 +1101,57 @@ static void remove_device_port(device_port_list *list, indigo_device *device) {
 
 static bool device_is_connected(indigo_device *device) {
 	return IS_CONNECTED;
+}
+
+// Devices of one driver sharing a port through their master device never block each other.
+static bool same_device_group(indigo_device *a, indigo_device *b) {
+	indigo_device *master_a = a->master_device != NULL ? a->master_device : a;
+	indigo_device *master_b = b->master_device != NULL ? b->master_device : b;
+	return master_a == master_b;
+}
+
+// A claim is released when the connection ends, see serial_port_connection_changed(). A driver that does not publish
+// the end through the base class would leave it forever, so a claim of a device whose CONNECTION is not BUSY expires
+// after a grace period covering the time between the connect request and the driver setting BUSY.
+static bool serial_port_claim_is_live(device_port *entry) {
+	indigo_device *device = entry->device;
+	return CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE || difftime(time(NULL), entry->time) < SERIAL_PORT_CLAIM_GRACE;
+}
+
+// the bus lock must be held
+static void remove_stale_claims(void) {
+	for (int i = claimed_ports.count - 1; i >= 0; i--) {
+		if (!serial_port_claim_is_live(claimed_ports.entries + i)) {
+			INDIGO_DEBUG(indigo_debug("%s(): Claim of %s by '%s' expired", __FUNCTION__, claimed_ports.entries[i].port, claimed_ports.entries[i].device->name));
+			claimed_ports.entries[i] = claimed_ports.entries[--claimed_ports.count];
+		}
+	}
+}
+
+// the bus lock must be held, true if the device has a live claim
+static bool serial_port_claimed_by(indigo_device *device) {
+	remove_stale_claims();
+	return find_device_port(&claimed_ports, device) != NULL;
+}
+
+// the bus lock must be held, true if the serial port is opened or being opened by a device outside the device group
+static bool serial_port_in_use(indigo_device *device, const char *name) {
+	char port[PATH_MAX];
+	serial_port_name(name, port);
+	if (*port == '\0') {
+		return false;
+	}
+	remove_stale_claims();
+	device_port_list *lists[] = { &connected_ports, &claimed_ports };
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < lists[i]->count; j++) {
+			device_port *entry = lists[i]->entries + j;
+			if (!strcmp(entry->port, port) && !same_device_group(device, entry->device)) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 static bool serial_port_listed(serial_port_list *list, const char *port) {
@@ -1102,10 +1196,13 @@ static void disconnect_lost_ports(serial_port_list *previous, serial_port_list *
 
 // Called by the base class with every published CONNECTION: records the port of a device that connected over a serial
 // port, and for a device disconnected because its port disappeared returns true with the port, so the regular end of
-// the disconnection is published ALERT.
+// the disconnection is published ALERT. The claim of the port is released when the connection ends either way.
 static bool serial_port_connection_changed(indigo_device *device, char *lost_port) {
 	bool lost = false;
 	indigo_lock_bus();
+	if (CONNECTION_PROPERTY->state != INDIGO_BUSY_STATE) {
+		remove_device_port(&claimed_ports, device);
+	}
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (CONNECTION_PROPERTY->state == INDIGO_OK_STATE) {
 			remove_device_port(&lost_ports, device);
@@ -1300,6 +1397,7 @@ static void unregister_serial_ports_device(indigo_device *device) {
 	assert(connected == NULL && "a driver must disconnect a device before it detaches it");
 	remove_device_port(&connected_ports, device);
 	remove_device_port(&lost_ports, device);
+	remove_device_port(&claimed_ports, device);
 	for (int i = 0; i < serial_port_devices_count; i++) {
 		if (serial_port_devices[i] == device) {
 			serial_port_devices[i] = serial_port_devices[--serial_port_devices_count];
@@ -1946,10 +2044,30 @@ int indigo_get_dst_state(void) {
 	return dst;
 }
 
-// A port of plain auto:// is resolved when the device connects, so a client that sets it or a port plugged in
-// without a hot-plug event does not leave the driver to open an empty path. Any other port is kept.
-static void resolve_empty_auto_port(indigo_device *device) {
-	if (DEVICE_PORT_PROPERTY == NULL || strcmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX)) {
+// The bus lock must be held. A disconnected device whose auto:// port was just claimed by another device selects
+// a port again, a device with a port set explicitly or being connected is not changed.
+static void move_off_claimed_port(indigo_device *device, const char *port) {
+	if (!IS_DISCONNECTED || DEVICE_PORT_PROPERTY == NULL || DEVICE_PORT_PROPERTY->hidden || serial_port_claimed_by(device) || strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		return;
+	}
+	char name[PATH_MAX];
+	serial_port_name(DEVICE_PORT_ITEM->text.value, name);
+	if (strcmp(name, port)) {
+		return;
+	}
+	char previous[INDIGO_VALUE_SIZE];
+	INDIGO_COPY_VALUE(previous, DEVICE_PORT_ITEM->text.value);
+	select_auto_port(device, current_serial_ports());
+	update_selected_port(device, previous);
+}
+
+// Resolves the port of a device being connected and claims it, so autoselect of the other devices skips it until the
+// connection ends. A port of plain auto:// is resolved, so a client that sets it or a port plugged in without a hot-plug
+// event does not leave the driver to open an empty path, and an auto:// port opened or being opened by another device
+// is selected again. Any other port is kept. The port is selected and claimed under one bus lock, so devices connected
+// at the same time never get the same port.
+static void claim_serial_port(indigo_device *device) {
+	if (DEVICE_PORT_PROPERTY == NULL || DEVICE_PORT_PROPERTY->hidden) {
 		return;
 	}
 	indigo_lock_bus();
@@ -1961,18 +2079,36 @@ static void resolve_empty_auto_port(indigo_device *device) {
 	if (!registered) {
 		return;
 	}
-	// a rescan that finds a change updates the other devices as well
-	update_serial_ports(device);
+	bool empty = !strcmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX);
+	if (empty) {
+		// a rescan that finds a change updates the other devices as well
+		update_serial_ports(device);
+	}
 	indigo_lock_bus();
-	select_auto_port(device, current_serial_ports());
+	char previous[INDIGO_VALUE_SIZE];
+	INDIGO_COPY_VALUE(previous, DEVICE_PORT_ITEM->text.value);
+	if (empty || (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)) && serial_port_in_use(device, DEVICE_PORT_ITEM->text.value))) {
+		select_auto_port(device, current_serial_ports());
+	}
+	char port[PATH_MAX];
+	serial_port_name(DEVICE_PORT_ITEM->text.value, port);
+	if (*port) {
+		set_device_port(&claimed_ports, device, port);
+		INDIGO_DEBUG(indigo_debug("%s(): '%s' claimed %s", __FUNCTION__, device->name, port));
+		for (int i = 0; i < serial_port_devices_count; i++) {
+			if (serial_port_devices[i] != device) {
+				move_off_claimed_port(serial_port_devices[i], port);
+			}
+		}
+	}
 	indigo_unlock_bus();
-	if (strcmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX)) {
+	if (!strcmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX)) {
+		DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DEVICE_PORT_PROPERTY, "No matching serial port found");
+	} else if (strcmp(previous, DEVICE_PORT_ITEM->text.value)) {
 		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
-	} else {
-		DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DEVICE_PORT_PROPERTY, "No matching serial port found");
 	}
 }
 
@@ -2028,7 +2164,7 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 	}
 	/* reqquest is valid */
 	if (connected_item != NULL && connected_item->sw.value) {
-		resolve_empty_auto_port(device);
+		claim_serial_port(device);
 	}
 	return false;
 }

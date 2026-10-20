@@ -172,6 +172,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_moonlite_simulator \
 	$(INTEGRATION_BUILD)/test_serial_port_loss \
+	$(INTEGRATION_BUILD)/test_serial_port_claim \
 	$(INTEGRATION_BUILD)/test_focuser_mypro2_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_nfocus_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_nstep_simulator \
@@ -1061,6 +1062,10 @@ $(INTEGRATION_BUILD)/serial_port_loss_driver.o: ../indigo_drivers/focuser_moonli
 
 $(INTEGRATION_BUILD)/test_serial_port_loss: integration/test_serial_port_loss.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o $(INTEGRATION_BUILD)/serial_port_loss_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o $(INTEGRATION_BUILD)/serial_port_loss_driver.o -o $@ $(FRAMEWORK_TEST_LDFLAGS)
+
+# Auto-selection of claimed ports, against the same framework copy with the fake port list and focusers of the test.
+$(INTEGRATION_BUILD)/test_serial_port_claim: integration/test_serial_port_claim.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/serial_port_loss_framework.o $(INTEGRATION_BUILD)/serial_port_loss_base.o -o $@ $(FRAMEWORK_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_moonlite_simulator_asan: integration/test_focuser_moonlite_simulator.c ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c $(TEST_LDFLAGS)
