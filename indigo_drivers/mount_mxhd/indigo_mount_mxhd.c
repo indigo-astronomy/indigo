@@ -20,7 +20,7 @@
 // version history
 // 3.0 by Makoto Kasahara
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_mount_mxhd"
 
 #include "indigo_mount_mxhd.h"
@@ -51,6 +51,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	int device_count;
 	bool tracking_enabled;
 	bool parked;
@@ -830,7 +831,7 @@ static bool mxhd_open(indigo_device *device) {
 	if (baudrate <= 0) {
 		baudrate = MXHD_DEFAULT_BAUDRATE;
 	}
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(port, baudrate, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(port, baudrate, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
@@ -893,6 +894,7 @@ static void reset_private_state(indigo_device *device) {
 static void mount_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
+		PRIVATE_DATA->error_message = NULL;
 		if (PRIVATE_DATA->device_count++ == 0) {
 			result = mxhd_open(device);
 		}
@@ -920,6 +922,9 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 			indigo_execute_handler(device, position_timer_callback);
 		} else {
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			}
 			PRIVATE_DATA->device_count--;
 			reset_private_state(device);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1529,12 +1534,16 @@ static indigo_result guider_attach(indigo_device *device) {
 static void guider_connect_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
+		PRIVATE_DATA->error_message = NULL;
 		if (PRIVATE_DATA->device_count++ == 0) {
 			result = mxhd_open(device->master_device);
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			}
 			PRIVATE_DATA->device_count--;
 			reset_private_state(device->master_device);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
