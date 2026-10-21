@@ -596,6 +596,8 @@ When opening a handle you pass a **log level** (one of *INDIGO_LOG_ERROR*, *INDI
 
 Serial open functions request exclusive access to the port. Windows opens with sharing disabled; Linux and macOS set the terminal's exclusive mode with `TIOCEXCL`. On Linux, a process with `CAP_SYS_ADMIN` can bypass terminal exclusive mode.
 
+The error-reporting variants *indigo_uni_open_serial2()*, *indigo_uni_open_serial_with_speed2()* and *indigo_uni_open_serial_with_config2()* take an additional optional `unsigned long *error_code` argument. It receives 0 on success or a captured errno-style error on failure on every platform, including a failed second open or reopen. Compare the result with errno constants or format it with `strerror()`; do not use `GetLastError()` or the current `errno` to retrieve this result. Windows sharing/lock violations map to `EBUSY`, and access denied maps to `EACCES`; Windows can report access denied for an already-open COM port, so `EACCES` can mean either permissions or a port already in use. Missing paths map to `ENOENT`, invalid configuration to `EINVAL`, unavailable devices to `ENODEV` and unmapped Windows failures to `EIO`. Native Windows error details remain in the log. Existing serial open functions retain their signatures.
+
 Open functions:
 
 - *indigo_uni_open_serial()* - open serial communication at 9600-8N1
