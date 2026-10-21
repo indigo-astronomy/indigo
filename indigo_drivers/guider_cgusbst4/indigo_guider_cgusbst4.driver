@@ -26,7 +26,7 @@ driver cgusbst4 {
 	label = "CG-USB-ST4 Adapter";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial {
 		pattern {
 			product = "USB to ST4 Astrogene_1000";
@@ -53,7 +53,7 @@ driver cgusbst4 {
 
 		static bool cgusbst4_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
-			PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (cgusbst4_command(device, "\006", 1) && PRIVATE_DATA->response[0] == 'A') {
 					return true;
