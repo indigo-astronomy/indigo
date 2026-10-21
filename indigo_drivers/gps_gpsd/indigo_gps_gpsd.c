@@ -57,7 +57,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	//+ data
 	struct gps_data_t gps_data;
 	//- data
@@ -67,7 +66,7 @@ typedef struct {
 
 //+ code
 
-static bool gpsd_open(indigo_device *device) {
+static bool gpsd_open(indigo_device *device, const char **error_message) {
 	char *text = DEVICE_PORT_ITEM->text.value;
 	char host_name[INDIGO_NAME_SIZE] = { 0 };
 	char port[15] = { 0 };
@@ -219,8 +218,8 @@ static void gps_timer_callback(indigo_device *device) {
 static void gps_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = gpsd_open(device);
+		const char *error_message = NULL;
+		connection_result = gpsd_open(device, &error_message);
 		if (connection_result) {
 			//+ gps.on_connect
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -245,8 +244,8 @@ static void gps_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}

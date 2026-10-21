@@ -42,7 +42,7 @@ driver gpsd {
 		struct gps_data_t gps_data;
 	}
 	code {
-		static bool gpsd_open(indigo_device *device) {
+		static bool gpsd_open(indigo_device *device, const char **error_message) {
 			char *text = DEVICE_PORT_ITEM->text.value;
 			char host_name[INDIGO_NAME_SIZE] = { 0 };
 			char port[15] = { 0 };
