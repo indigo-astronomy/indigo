@@ -20,7 +20,7 @@ driver wemacro {
 	label = "WeMacro Rail Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 10;
+	version = 11;
 	serial {
 		pattern {
 			product = "USB2.0-Serial";
@@ -267,7 +267,7 @@ driver wemacro {
 		}
 
 		static bool wemacro_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle && wemacro_initialise(device)) {
 				return true;
 			}
