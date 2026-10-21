@@ -55,8 +55,8 @@ driver arteskyflat {
 			return response_value == expected_value;
 		}
 
-		static bool arteskyflat_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool arteskyflat_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			return PRIVATE_DATA->handle != NULL;
 		}
 
