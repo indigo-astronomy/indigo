@@ -22,8 +22,6 @@
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-// TODO: Test with real hardware or simulator!!!
-
 driver wcv4ec {
 	label = "WandererCover V4-EC Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";

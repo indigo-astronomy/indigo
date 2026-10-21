@@ -18,8 +18,6 @@
 
 // This file generated from indigo_aux_wcv4ec.driver
 
-// TODO: Test with real hardware or simulator!!!
-
 #pragma mark - Includes
 
 #include <stdlib.h>
