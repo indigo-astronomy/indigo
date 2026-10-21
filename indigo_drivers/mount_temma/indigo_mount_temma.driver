@@ -22,7 +22,7 @@ driver temma {
 	label = "Takahashi Temma Mount";
 	author = "";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 25;
+	version = 26;
 	serial {
 	}
 	include {
@@ -54,7 +54,7 @@ driver temma {
 		static void guider_guide_dec_finalizer(indigo_device *device);
 
 		static bool temma_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(DEVICE_PORT_ITEM->text.value, "19200-8E1", INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(DEVICE_PORT_ITEM->text.value, "19200-8E1", INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			return PRIVATE_DATA->handle != NULL;
 		}
 
