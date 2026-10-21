@@ -286,16 +286,16 @@ driver ioptron {
 			return result > 0;
 		}
 
-		static bool ioptron_open(indigo_device *device) {
+		static bool ioptron_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "ieq")) {
 				if (DEVICE_BAUDRATE_ITEM->text.value[0] != '\0') {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 					if (!ioptron_simple_reply_command(device, ":MountInfo#") || strlen(PRIVATE_DATA->response) < 4) {
 						indigo_uni_close(&PRIVATE_DATA->handle);
 					}
 				} else {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 9600, INDIGO_LOG_DEBUG, error_message);
 					if (PRIVATE_DATA->handle != NULL) {
 						bool reopenAt115200 = true;
 						if (ioptron_command(device, ":V#") && *PRIVATE_DATA->response == 'V') {
@@ -305,7 +305,7 @@ driver ioptron {
 						}
 						if (reopenAt115200) {
 							indigo_uni_close(&PRIVATE_DATA->handle);
-							PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+							PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, error_message);
 							if (!ioptron_simple_reply_command(device, ":MountInfo#") || strlen(PRIVATE_DATA->response) != 4) {
 								indigo_uni_close(&PRIVATE_DATA->handle);
 							}

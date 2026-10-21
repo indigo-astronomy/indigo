@@ -229,7 +229,6 @@ static mount_type PRODUCTS[] = {
 typedef struct {
 	int count;
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *mount_meridian_handling_property;
 	indigo_property *mount_meridian_limit_property;
 	indigo_property *mount_protocol_property;
@@ -350,16 +349,16 @@ static bool ioptron_command(indigo_device *device, char *command, ...) {
 	return result > 0;
 }
 
-static bool ioptron_open(indigo_device *device) {
+static bool ioptron_open(indigo_device *device, const char **error_message) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "ieq")) {
 		if (DEVICE_BAUDRATE_ITEM->text.value[0] != '\0') {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			if (!ioptron_simple_reply_command(device, ":MountInfo#") || strlen(PRIVATE_DATA->response) < 4) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		} else {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 9600, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				bool reopenAt115200 = true;
 				if (ioptron_command(device, ":V#") && *PRIVATE_DATA->response == 'V') {
@@ -369,7 +368,7 @@ static bool ioptron_open(indigo_device *device) {
 				}
 				if (reopenAt115200) {
 					indigo_uni_close(&PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, error_message);
 					if (!ioptron_simple_reply_command(device, ":MountInfo#") || strlen(PRIVATE_DATA->response) != 4) {
 						indigo_uni_close(&PRIVATE_DATA->handle);
 					}
@@ -1832,9 +1831,9 @@ static void mount_timer_callback(indigo_device *device) {
 static void mount_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
-			connection_result = ioptron_open(device);
+			connection_result = ioptron_open(device, &error_message);
 		}
 		if (connection_result) {
 			PRIVATE_DATA->count++;
@@ -1850,8 +1849,8 @@ static void mount_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
@@ -2533,9 +2532,9 @@ static indigo_result mount_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
-			connection_result = ioptron_open(device->master_device);
+			connection_result = ioptron_open(device->master_device, &error_message);
 		}
 		if (connection_result) {
 			PRIVATE_DATA->count++;
@@ -2549,8 +2548,8 @@ static void guider_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
