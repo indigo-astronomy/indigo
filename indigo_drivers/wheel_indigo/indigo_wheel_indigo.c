@@ -42,7 +42,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	//+ data
 	char response[128];
 	double move_started;
@@ -74,8 +73,8 @@ static bool indigo_command(indigo_device *device, char *command, ...) {
 	return result > 0;
 }
 
-static bool indigo_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool indigo_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (indigo_command(device, "W#") && !strncmp(PRIVATE_DATA->response, "FW_OK", 5)) {
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Indigo Wheel");
@@ -130,8 +129,8 @@ static void wheel_move_finalizer(indigo_device *device) {
 static void wheel_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = indigo_open(device);
+		const char *error_message = NULL;
+		connection_result = indigo_open(device, &error_message);
 		if (connection_result) {
 			//+ wheel.on_connect
 			// WI sends the wheel to filter 1, as at power-up; it is there only once WF reports it.
@@ -145,8 +144,8 @@ static void wheel_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
