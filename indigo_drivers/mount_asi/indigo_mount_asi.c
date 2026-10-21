@@ -91,7 +91,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	int device_count;
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	double lastRA, lastDec;
@@ -150,10 +149,10 @@ static int asi_error_code(char *response) {
 
 static bool asi_command(indigo_device *device, const char *command, char *response, int max, float sleep);
 
-static bool asi_open(indigo_device *device) {
+static bool asi_open(indigo_device *device, const char **error_message) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "asi")) {
-		PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, error_message);
 	} else {
 		PRIVATE_DATA->handle = indigo_uni_open_url(name, 4030, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 	}
@@ -1057,9 +1056,9 @@ static void asi_init_mount(indigo_device *device) {
 static void mount_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->device_count++ == 0) {
-			result = asi_open(device);
+			result = asi_open(device, &error_message);
 		}
 		if (result && !asi_detect_mount(device)) {
 			result = false;
@@ -1073,8 +1072,8 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_execute_handler(device, position_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, error_message);
 			}
 			if (--PRIVATE_DATA->device_count <= 0) {
 				asi_close(device->master_device);
@@ -1657,9 +1656,9 @@ static indigo_result guider_attach(indigo_device *device) {
 static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->device_count++ == 0) {
-			result = asi_open(device->master_device);
+			result = asi_open(device->master_device, &error_message);
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1675,8 +1674,8 @@ static void guider_connect_callback(indigo_device *device) {
 				}
 			}
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, error_message);
 			}
 			if (--PRIVATE_DATA->device_count <= 0) {
 				asi_close(device->master_device);
