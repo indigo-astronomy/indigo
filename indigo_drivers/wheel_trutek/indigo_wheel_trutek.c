@@ -42,7 +42,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	//+ data
 	int slot;
 	//- data
@@ -61,9 +60,9 @@ static bool trutek_query(indigo_device *device) {
 	return false;
 }
 
-static bool trutek_open(indigo_device *device) {
+static bool trutek_open(indigo_device *device, const char **error_message) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG | BINARY_LOG, &PRIVATE_DATA->error_message);
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG | BINARY_LOG, error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
 		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x83) {
@@ -109,14 +108,14 @@ static void wheel_move_finalizer(indigo_device *device) {
 static void wheel_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = trutek_open(device);
+		const char *error_message = NULL;
+		connection_result = trutek_open(device, &error_message);
 		if (connection_result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
