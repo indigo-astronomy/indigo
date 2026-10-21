@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_polaralign_mlastro"
 #define DRIVER_LABEL         "MLAstro RPA"
 #define POLARALIGN_DEVICE_NAME DRIVER_LABEL
@@ -111,6 +111,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	indigo_property *x_mlastro_speed_property;
 	indigo_property *x_mlastro_backlash_enable_property;
 	indigo_property *x_mlastro_backlash_steps_property;
@@ -429,7 +430,7 @@ static bool mlastro_set_home(indigo_device *device) {
 }
 
 static bool mlastro_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, MLASTRO_BAUDRATE, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, MLASTRO_BAUDRATE, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
@@ -535,6 +536,7 @@ static void polaralign_timer_callback(indigo_device *device) {
 static void polaralign_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = mlastro_open(device);
 		if (connection_result) {
 			indigo_define_property(device, X_MLASTRO_SPEED_PROPERTY, NULL);
@@ -548,7 +550,11 @@ static void polaralign_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", POLARALIGN_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", POLARALIGN_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", POLARALIGN_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", POLARALIGN_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}

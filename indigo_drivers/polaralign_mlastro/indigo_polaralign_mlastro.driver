@@ -35,7 +35,7 @@ driver mlastro {
 	label = "MLAstro RPA";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 by Rumen G.Bogdanovski";
-	version = 6;
+	version = 7;
 	serial;
 	define {
 		#define MLASTRO_BAUDRATE 115200
@@ -354,7 +354,7 @@ driver mlastro {
 		}
 
 		static bool mlastro_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, MLASTRO_BAUDRATE, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, MLASTRO_BAUDRATE, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle == NULL) {
 				return false;
 			}
