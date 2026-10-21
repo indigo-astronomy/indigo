@@ -22,8 +22,6 @@
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-// TODO: Test with real hardware or simulator!!!
-
 driver wbprov3 {
 	label = "WandererBox Pro V3 Powerbox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
