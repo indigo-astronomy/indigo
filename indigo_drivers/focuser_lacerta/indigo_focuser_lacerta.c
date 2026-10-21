@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_focuser_lacerta"
 #define DRIVER_LABEL         "LACERTA Motorfocus Focuser"
 #define FOCUSER_DEVICE_NAME  "LACERTA Motorfocus"
@@ -57,6 +57,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	//+ data
 	char response[96];
 	int maximum, capability_maximum;
@@ -117,7 +118,7 @@ static bool lacerta_open(indigo_device *device) {
 	char tail;
 	int major, minor, revision;
 	PRIVATE_DATA->capability_maximum = 250000;
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (!PRIVATE_DATA->handle) {
 		return false;
 	}
@@ -301,6 +302,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = lacerta_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
@@ -326,7 +328,11 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
