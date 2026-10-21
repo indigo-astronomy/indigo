@@ -1,0 +1,43 @@
+{
+  "check": [
+    [
+      "git",
+      "diff",
+      "--check"
+    ],
+    [
+      "python3",
+      ".factory/scripts/findings.py",
+      "check"
+    ],
+    [
+      "python3",
+      ".factory/scripts/decision_index.py",
+      "--check"
+    ],
+    [
+      "python3",
+      ".factory/scripts/validate_project.py"
+    ]
+  ],
+  "test": [
+    [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "indigo_test/factory",
+      "-p",
+      "test_*.py"
+    ]
+  ],
+  "security": [
+    [
+      "python3",
+      ".factory/scripts/validate_project.py",
+      "--security"
+    ]
+  ]
+}

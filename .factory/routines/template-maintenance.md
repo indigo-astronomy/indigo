@@ -1,0 +1,24 @@
+# Template repository evidence and exports
+
+## Scope
+
+This routine applies to maintaining the AI Factory template itself. Adopted projects retain their own completed task archives and real maintenance tracking under [task-archive.md](task-archive.md). Both use one outcome-named commit by default under [git.md](git.md).
+
+## Complete and retain in one candidate
+
+1. Create/resume the task branch and task normally. Complete acceptance, documentation, quality/security reviews, findings reconciliation and distribution assessment under [template-updates.md](template-updates.md). Preserve unfinished work. No configured adopter inventory is an explicit result; downstream writes/publication require their own authorization.
+2. Record executed checks, reviewed content, limitations and pending delivery. Mark task execution complete, then move its reports into `.factory/tasks/archive/TASK-ID/` with `./.factory/scripts/archive-task TASK-ID`. Include this archive and any repaired incoming links in the same final commit as the source changes. A null finding revision continues to resolve to that archived report; moving is not pruning and requires no pin commit. Re-review archival changes before capturing final source identities.
+3. With no unfinished task, restore distributable state to idle/coordinator with no blocker and template maintenance counts/checkpoint pointers to zero/null. Preserve cadence settings and the entire findings registry/counter/archive. This is new-project export state, never a claim that an audit occurred. Retain real template cadence decisions and their evidence in the completed task archive. If another task is unfinished, preserve its state and do not describe that revision as a clean export.
+4. Stage reviewed source and record version 2 identities; finish process.json and stage the archive. Create one result commit. Verify the committed range and a `git archive` export. Record final SHA/post-commit results externally, without pin/evidence/cleanup follow-up commits. Integrate/publish/clean branches only with existing authorization.
+
+## Evidence stays versioned; exports omit it
+
+The template-only root `.gitattributes` marks `/.factory/tasks/archive` and itself `export-ignore`. A normal clone/check-out retains committed reports; `git archive VERIFIED_COMMIT` omits that archive and the template-only attributes, retaining `.factory/tasks/.gitkeep` and reusable task templates. New projects therefore do not inherit this exclusion for their own archives. Do not map/install these attributes into adopted projects. Raw filesystem copies and clones do not apply export-ignore: use the documented Git export or explicitly omit template task evidence during reviewed adoption. No hidden ref, unreachable object, Git note or external service is needed for report retention.
+
+Read a historical report only for a concrete question, using its archived path or `git show RELEASE_SHA:.factory/tasks/archive/TASK-ID/REPORT`. Do not routinely load archives. Findings and durable decisions can reference archived reports directly, without a self-referential future commit SHA. Existing full-SHA pins and historical evidence/prune commits remain valid; never rewrite published history or relocate old reports merely to normalize it.
+
+Pruning is exceptional, not task closure. If authorized retention work actually deletes reports, preserve their useful evidence in a retained ancestor, pin affected active AND closed findings, and pass the existing [findings prune gate](findings.md#task-cleanup-gate) before and after deletion. Never squash away the only evidence copy. This exception may require separate meaningful retention work; ordinary task completion does not.
+
+## Audit cadence
+
+Export-state resets are not the template's audit clock. At startup/closure, consult the specific prior completed handoff/audit checkpoint when needed to evaluate the five-task/seven-day cadence. Keep actual cadence decisions in task evidence, including due follow-up; complete due audits or obtain owner-authorized deferral before unrelated work. Archived reports allow this without reconstructing discarded task snapshots. Adopted projects keep real maintenance.json checkpoints unchanged by this export procedure.

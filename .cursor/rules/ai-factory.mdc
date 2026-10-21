@@ -1,0 +1,6 @@
+---
+description: AI Factory shared project bootstrap
+alwaysApply: true
+---
+
+Before edits, explicitly read root AGENTS.md and .factory/bootstrap.md with your file tools. Read the active task and assigned role and all applicable scoped instructions. A file mention is a pointer, not a promise its content was inlined. If you cannot read them, request a context export and work only from its stated snapshot. Do not modify main directly, overwrite another writer's work, claim unexecuted checks, or infer permission to delegate/publish. Keep all project documents in English; the shared files define the full policy.

@@ -1,3 +1,15 @@
+# Test rules
+
+- Derive expected behavior from acceptance criteria and public contracts, not implementation details.
+- Preserve regression coverage. Do not remove, skip, or weaken assertions to conceal failures.
+- Keep tests deterministic; control time, randomness, data, and cleanup where necessary.
+- Use synthetic fixtures. Never copy private production data or credentials.
+- Prefer the lowest test layer that catches the risk. Do not mock away the behavior under test.
+- Keep unit tests independent of external services. Make integration requirements and safe test environments explicit.
+- Record baseline failures and separate expected pre-fix failures of new tests.
+- Tests touching filesystem, network, databases, or accounts must use isolated test resources.
+- Write descriptions and test documentation in English.
+
 # Automated Test Guidelines
 
 ## Scope

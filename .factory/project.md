@@ -1,0 +1,51 @@
+# Current project context
+
+## Purpose and compatibility
+INDIGO is an astronomy device framework and software bus, with native/legacy protocol adapters, server, tools and modular device drivers. Core code is C, with C++, Objective-C, Python, shell and browser assets where already established. Linux, macOS and Windows support must be preserved. Workflow adoption does not change application behavior or public properties.
+
+## Repository map
+| Component | Sources | Tests | Build / documentation evidence |
+| --- | --- | --- | --- |
+| Core bus, protocol, base drivers and portable I/O | indigo_libs/; public headers indigo_libs/indigo/ | indigo_test/unit/, indigo_test/integration/ | indigo_libs/Makefile; indigo_docs/DEVELOPMENT.md |
+| Portable drivers and agents | indigo_drivers/; .driver inputs own generated C/headers/main files | indigo_test/integration/, simulator_common/, fake SDK/USB backends, driver-local simulators | Makefile.drv, Makefile.drvs; driver REFACTOR.md and README.md |
+| Platform and optional drivers | indigo_linux_drivers/, indigo_mac_drivers/, indigo_optional_drivers/ | applicable indigo_test/integration/ and explicit hardware targets | platform make/project files; SDK prerequisites |
+| Server and browser UI | indigo_server/ and indigo_server/resource/ | indigo_test/unit/, indigo_test/integration/ | indigo_server/Makefile; existing UI resources |
+| Tools, examples and developer utilities | indigo_tools/, indigo_examples/, tools/ | indigo_test/; driver editor's existing tests | component Makefiles; indigo_tools/driver_editor/AGENTS.md |
+| Windows and system integration | indigo_windows/, indigo_windows.sln, Directory.Build.props, systemd/ | platform/hardware checks when authorized and available | Visual Studio solution/projects; service units |
+| Automated tests | indigo_test/unit/, integration/, fixtures/, simulator_common/, mountsim/, benchmark/ | indigo_test/Makefile; test_runner.h | indigo_test/AGENTS.md; DRIVER_TESTING_RULES.md |
+| Factory helpers | .factory/scripts/ | indigo_test/factory/ | .factory/checks.json; disposable local fixture tests |
+| Documentation and project configuration | indigo_docs/, root Markdown, indigo.xcodeproj/, .travis.yml | static checks and review | root AGENTS.md; indigo_docs/MAKEFILES.md |
+| Vendor/generated/build/legacy exclusions | externals/ and bin_externals/ at any depth, build/, generated driver outputs, obsoleted_drivers/, indigo_tests/ | no automatic execution | owner exclusions; generated output inspected only with its source when assigned |
+
+## Commands
+All commands start at the Git root unless an explicit -C changes directory. Python helpers require Python 3.9+ and local Git with offline object flags.
+- Workflow validation: `./.factory/scripts/check`, `./.factory/scripts/test`, `./.factory/scripts/security`; configured coverage is Factory integration, not application or hardware certification.
+- Native build: `make all`; Windows: `msbuild indigo_windows.sln /t:Build /p:Configuration=Release`. Review scope first: broad native builds can include off-limits drivers and vendor SDKs.
+- Native unit suite: `make -C indigo_test test-unit`, requiring a built INDIGO library. Full native suite: `make -C indigo_test test`; do not substitute indigo_tests/.
+- Driver runs require an explicit interactive/non-interactive and simulator/hardware mode, then the final recorded run through `python3 tools/run_driver_test.py <driver>`; preserve per-driver commit units.
+- Dependencies remain managed by existing makefiles, vendored SDKs and platform projects. No new package manager, dependency installation or hosted CI is introduced. Existing .travis.yml is retained.
+
+## Authority and scoped rules
+Owner: Peter Polakovic. Root AGENTS.md starts with shared Factory rules followed by INDIGO requirements. Driver rules: indigo_drivers/AGENTS.md; automated test rules: indigo_test/AGENTS.md; source rules: indigo_libs/AGENTS.md; documentation rules: indigo_docs/AGENTS.md; editor rules remain scoped to indigo_tools/driver_editor/AGENTS.md. Vendor instructions remain unchanged.
+Never modify ccd_apogee, ccd_sbig, mount_asi, mount_mxhd or system_ascol under indigo_drivers/. Do not change the generator without approval of a concrete diff. Existing README modification approvals and property/version/testing rules remain effective.
+Legacy REVIEW.md tracking is retired. Current findings live in .factory/findings/active.json; historical aliases/checkpoints are preserved by the adoption task. Do not interpret imported findings as verified fixes or accepted security risks.
+
+## Git, permission and data boundaries
+- Integration branch: local master, origin git@github.com:indigo-astronomy/indigo.git. Adoption base: `eba315b7041b1a19f64a1ad7864dc1a6c0019ea8`. Remote protections are not inspected; publication and integration require separate owner authorization.
+- Task branches: task/<task-id>, matching the reviewed helper guard; this is the explicit Factory branch convention for adopted tasks. Existing branches and history are preserved. No merge or push is authorized by adoption.
+- The owner authorizes workflow installation, the project provenance lock and local opt-in registration. Future upgrades, provider changes, subagents, additional charges, publication and deployment are not authorized.
+- One writer in the current Codex chat. Private configuration, credentials and inventory stay untracked. Cross-provider review is disabled in review-policy.json; enabling it requires an owner-approved policy change. No provider is invoked by model configuration.
+- No budget ceiling was supplied; actual per-task cost and exact host model/effort are unavailable. Retain the current host/model.
+
+## Hosts and maintenance
+Owner timezone: Europe/Bratislava. Entry points: AGENTS.md, CLAUDE.md, GEMINI.md, .cursor/rules/ai-factory.mdc and .github/copilot-instructions.md. Shared bootstrap: .factory/bootstrap.md. Codex explicit loading/context export can be checked here; fresh native sessions for other clients remain unverified. See task verification evidence for precise limits.
+State: .factory/state.json. Maintenance cadence: five completed non-audit tasks or seven calendar days; only a completed full audit resets .factory/maintenance.json. Initial full code audit is owner-deferred until before the first subsequent development task or release. It remains due; legacy checkpoints and a sampled adoption review do not count as completion.
+
+## Provenance and updates
+- Approved template: https://github.com/polakovic/ai_factory, baseline `11392a11253bae4d1c5d5db97e8a532917728c09`; reviewed source-to-target map: .factory/template-lock.json.
+- Persistent local registration alias: indigo. Inventory is kept in the owner-designated persistent AI Factory checkout, outside this project; do not copy its contents or other project paths into task evidence.
+- Future updates require a new owner-authorized project task and the pinned three-way template-update routine. Registration alone does not authorize an upgrade or a background automation.
+- Adoption evidence: [.factory/tasks/001-adopt-ai-factory/migration.md](tasks/archive/001-adopt-ai-factory/migration.md), [verification](tasks/archive/001-adopt-ai-factory/verification.md), [legacy findings](tasks/archive/001-adopt-ai-factory/legacy-findings.md).
+
+## Documentation
+New project documents are English. Keep current facts here, task execution evidence under tasks/, canonical findings under findings/, and durable Factory decisions under docs/decisions/. Product/developer documentation remains under indigo_docs/. No template project task history or findings archive is imported.

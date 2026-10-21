@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "mode": "manual_recommendations",
+  "default_tier": "balanced",
+  "max_same_problem_attempts_before_reassessment": 2,
+  "budget": {
+    "currency": null,
+    "per_task_limit": null,
+    "permission_to_incur_additional_charges": false
+  },
+  "provider": "openai",
+  "tiers": {
+    "economy": {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "reasoning_setting": "low",
+      "verified_on": "2026-10-20"
+    },
+    "balanced": {
+      "provider": "openai",
+      "model": "gpt-6.1-sol",
+      "reasoning_setting": "medium",
+      "verified_on": "2026-10-20"
+    },
+    "strong": {
+      "provider": "openai",
+      "model": "gpt-6-astra",
+      "reasoning_setting": "high",
+      "verified_on": "2026-10-20"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "revision": "11392a11253bae4d1c5d5db97e8a532917728c09",
+  "projects": [
+    {
+      "alias": "indigoapps6",
+      "status": "current"
+    },
+    {
+      "alias": "indigo",
+      "status": "current"
+    }
+  ]
+}

@@ -1,0 +1,570 @@
+[
+  {
+    "source": ".cursor/rules/ai-factory.mdc",
+    "target": ".cursor/rules/ai-factory.mdc",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/antropic-model-policy.json",
+    "target": ".factory/antropic-model-policy.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/bootstrap.md",
+    "target": ".factory/bootstrap.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/migration.md",
+    "target": ".factory/migration.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/openai-model-policy.json",
+    "target": ".factory/openai-model-policy.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/portability.md",
+    "target": ".factory/portability.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/analyst.md",
+    "target": ".factory/roles/analyst.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/coordinator.md",
+    "target": ".factory/roles/coordinator.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/developer.md",
+    "target": ".factory/roles/developer.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/documenter.md",
+    "target": ".factory/roles/documenter.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/planner.md",
+    "target": ".factory/roles/planner.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/quality-reviewer.md",
+    "target": ".factory/roles/quality-reviewer.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/repository-reviewer.md",
+    "target": ".factory/roles/repository-reviewer.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/security-reviewer.md",
+    "target": ".factory/roles/security-reviewer.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/test-designer.md",
+    "target": ".factory/roles/test-designer.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/roles/verifier.md",
+    "target": ".factory/roles/verifier.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/cross-review.md",
+    "target": ".factory/routines/cross-review.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/findings.md",
+    "target": ".factory/routines/findings.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/git.md",
+    "target": ".factory/routines/git.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/model-selection.md",
+    "target": ".factory/routines/model-selection.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/process-checks.md",
+    "target": ".factory/routines/process-checks.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/quality-review.md",
+    "target": ".factory/routines/quality-review.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/repository-review.md",
+    "target": ".factory/routines/repository-review.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/task-archive.md",
+    "target": ".factory/routines/task-archive.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/template-maintenance.md",
+    "target": ".factory/routines/template-maintenance.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/routines/template-updates.md",
+    "target": ".factory/routines/template-updates.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/README.md",
+    "target": ".factory/scripts/README.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/archive-task",
+    "target": ".factory/scripts/archive-task",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/archive_task.py",
+    "target": ".factory/scripts/archive_task.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/check",
+    "target": ".factory/scripts/check",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/context",
+    "target": ".factory/scripts/context",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/context_export.py",
+    "target": ".factory/scripts/context_export.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/decision_index.py",
+    "target": ".factory/scripts/decision_index.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/findings",
+    "target": ".factory/scripts/findings",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/findings.py",
+    "target": ".factory/scripts/findings.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/git_snapshot.py",
+    "target": ".factory/scripts/git_snapshot.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/new-task",
+    "target": ".factory/scripts/new-task",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/new_task.py",
+    "target": ".factory/scripts/new_task.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/process-check",
+    "target": ".factory/scripts/process-check",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/process_check.py",
+    "target": ".factory/scripts/process_check.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/review",
+    "target": ".factory/scripts/review",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/review.py",
+    "target": ".factory/scripts/review.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/review_adapters.py",
+    "target": ".factory/scripts/review_adapters.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/review_protocol.py",
+    "target": ".factory/scripts/review_protocol.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/risk_check.py",
+    "target": ".factory/scripts/risk_check.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/run_checks.py",
+    "target": ".factory/scripts/run_checks.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/security",
+    "target": ".factory/scripts/security",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/template-update",
+    "target": ".factory/scripts/template-update",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/template_update.py",
+    "target": ".factory/scripts/template_update.py",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/scripts/test",
+    "target": ".factory/scripts/test",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/adopters.json",
+    "target": ".factory/templates/adopters.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/checks.json",
+    "target": ".factory/templates/checks.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/finding.json",
+    "target": ".factory/templates/finding.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/migration-report.md",
+    "target": ".factory/templates/migration-report.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/repository-review.md",
+    "target": ".factory/templates/repository-review.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/review-policy.json",
+    "target": ".factory/templates/review-policy.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/brief.md",
+    "target": ".factory/templates/task/brief.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/handoff.md",
+    "target": ".factory/templates/task/handoff.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/plan.md",
+    "target": ".factory/templates/task/plan.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/process.json",
+    "target": ".factory/templates/task/process.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/quality-review.md",
+    "target": ".factory/templates/task/quality-review.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/security.md",
+    "target": ".factory/templates/task/security.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/specification.md",
+    "target": ".factory/templates/task/specification.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/test-plan.md",
+    "target": ".factory/templates/task/test-plan.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/task/verification.md",
+    "target": ".factory/templates/task/verification.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/templates/template-map.json",
+    "target": ".factory/templates/template-map.json",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".factory/workflow.md",
+    "target": ".factory/workflow.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": ".github/copilot-instructions.md",
+    "target": ".github/copilot-instructions.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  },
+  {
+    "source": "AGENTS.md",
+    "target": "AGENTS.md",
+    "exists": true,
+    "action": "merge",
+    "validation": "content review; local static/helper checks",
+    "rollback": "restore exact base blob"
+  },
+  {
+    "source": "CLAUDE.md",
+    "target": "CLAUDE.md",
+    "exists": true,
+    "action": "merge",
+    "validation": "content review; local static/helper checks",
+    "rollback": "restore exact base blob"
+  },
+  {
+    "source": "GEMINI.md",
+    "target": "GEMINI.md",
+    "exists": false,
+    "action": "add",
+    "validation": "content review; local static/helper checks",
+    "rollback": "remove only adoption-added file after checking later edits"
+  }
+]

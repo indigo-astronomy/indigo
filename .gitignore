@@ -48,3 +48,9 @@ indigo_libs/externals/libusb/test-driver
 indigo_libs/externals/hidapi/windows/x64/
 indigo_test/build/
 **/*.dSYM
+
+# Private AI Factory host configuration and adopter inventory
+/.factory/adopters.local.json
+/.factory/review.local.json
+/.factory/telemetry/*.local.json
+/.factory/telemetry/*.local.jsonl

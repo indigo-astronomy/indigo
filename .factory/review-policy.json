@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "allowed_reviewers": [],
+  "share_paths": [],
+  "required_roles": [],
+  "timeout_seconds": 120,
+  "max_attempts": 2
+}

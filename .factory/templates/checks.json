@@ -1,0 +1,30 @@
+{
+  "check": [
+    [
+      "python3",
+      "-m",
+      "compileall",
+      "-q",
+      "src"
+    ]
+  ],
+  "test": [
+    [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_*.py"
+    ]
+  ],
+  "security": [
+    [
+      "python3",
+      "-m",
+      "pip_audit"
+    ]
+  ]
+}

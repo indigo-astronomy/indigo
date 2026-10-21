@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "repository_review": {
+    "review_every_task": true,
+    "full_review_every_completed_tasks": 5,
+    "full_review_every_calendar_days": 7,
+    "last_full_review_date": null,
+    "last_full_review_task": null,
+    "last_full_review_revision": null,
+    "completed_non_audit_tasks_since_full_review": 1,
+    "last_task_review_task": "001-adopt-ai-factory",
+    "initial_audit_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation reply",
+      "date": "2026-10-21",
+      "scope": "Initial full maintained-repository audit only",
+      "reason": "Complete the pinned workflow adoption first; retain partial review and imported findings",
+      "checkpoint": "Before the first subsequent development task or release",
+      "report_task": "001-adopt-ai-factory",
+      "report": "repository-review.md"
+    }
+  }
+}

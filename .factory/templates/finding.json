@@ -1,0 +1,19 @@
+{
+  "id": "FND-000001",
+  "title": "Replace with a concise observed defect",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "001-example",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Synthetic example only. Record reproduction, impact and next action without private payloads.",
+  "evidence": "Replace with a short evidence reference; pin the task report before cleanup.",
+  "resolution": null
+}

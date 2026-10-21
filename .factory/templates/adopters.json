@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "name": "example-project",
+      "path": "/absolute/path/to/example-project"
+    }
+  ]
+}
