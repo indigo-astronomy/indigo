@@ -22,7 +22,7 @@ driver rainbow {
 	label = "RainbowAstro Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, generator migration by OpenAI Codex";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 24;
+	version = 25;
 	serial {
 	}
 	include {
@@ -179,7 +179,7 @@ driver rainbow {
 			if (network) {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, 7100, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			}
 			if (PRIVATE_DATA->handle == NULL) {
 				return false;
