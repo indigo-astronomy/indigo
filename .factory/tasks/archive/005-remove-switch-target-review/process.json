@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "task": "005-remove-switch-target-review",
+  "scope": [
+    "indigo_drivers/REVIEW_SWITCH_TARGETS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/state.json",
+    ".factory/maintenance.json",
+    ".factory/findings/active.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/findings/active.json": [
+      "100644",
+      "blob",
+      "a8d450e04cd0124d62f6fe05c6f52c7616c4f7d3"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "1ec47a8ac5c3150172c1d4b61113d1dd7c685cad"
+    ],
+    "indigo_drivers/REVIEW_SWITCH_TARGETS.md": null
+  }
+}

@@ -4,6 +4,6 @@
   "phase": "idle",
   "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Owner to authorize integration of task/001, task/002 and task/003 (which now contains task 004) into master; open findings include FND-000046 and FND-000047.",
+  "next_action": "Local master holds tasks 001 to 005; push is not authorized. Open follow-ups: FND-000046, FND-000047, FND-000048 and the 44 REFACTOR.md notes that cite the removed REVIEW_SWITCH_TARGETS.md.",
   "blocker": null
 }

@@ -5094,7 +5094,6 @@
 		5A1F0C3E9B7D4E2A8C6B1D04 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		5AB94EEA95AE9510EE9282B0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_simulator.c; sourceTree = "<group>"; };
-		5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW_SWITCH_TARGETS.md; sourceTree = "<group>"; };
 		614E8DC9018E5A0B6DB373BC /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		63BBE88EF358CB9602D7F533 /* git_snapshot.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = git_snapshot.py; sourceTree = "<group>"; };
 		6690353AF13CB11838BACF0D /* test_guider_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_asi_sdk.c; sourceTree = "<group>"; };
@@ -6051,6 +6050,15 @@
 		CC7D16238873F1FD24CB63AE /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
 		33FA0878AF2BD2440F242BD9 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		F44A006122BF032C83EBBB3C /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		16D968F544900BA0C2318CE1 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		457ED18667B72F79C018027C /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		7E832AF70243BA06BF481434 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		66C50A2F7FC1CF2802E09668 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		636841EDE21313196E2FF458 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		AB789B80545E6D1B976175AC /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		754AE79ECF913F2CAC9D4249 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		8F864C4332A9C410D2E4E417 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		B0ED6B838C479A7C21824BD0 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -11677,7 +11685,6 @@
 			isa = PBXGroup;
 			children = (
 				C0DE20260913000100000001 /* AGENTS.md */,
-				5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */,
 				597BD149260137E500239274 /* agent_alpaca */,
 				597E79DB25A5DB6E009B0817 /* agent_astrometry */,
 				9DC4967C22BA7B810052AB3E /* agent_auxiliary */,
@@ -17263,6 +17270,7 @@
 			children = (
 				DC781B8D44EA7ECACDF738C8 /* 002-fix-ftdi-build */,
 				D504511A909474540E1E10EF /* 003-initial-repository-audit */,
+				80CBBD79C9D46FD7EBEFA51C /* 005-remove-switch-target-review */,
 				A332FB20C9B365994D606E82 /* 004-fix-websocket-key-overflow */,
 				997F7A1BB7C452B5CC431453 /* 001-adopt-ai-factory */,
 			);
@@ -17332,6 +17340,22 @@
 				F44A006122BF032C83EBBB3C /* verification.md */,
 			);
 			path = "004-fix-websocket-key-overflow";
+			sourceTree = "<group>";
+		};
+		80CBBD79C9D46FD7EBEFA51C /* 005-remove-switch-target-review */ = {
+			isa = PBXGroup;
+			children = (
+				16D968F544900BA0C2318CE1 /* brief.md */,
+				457ED18667B72F79C018027C /* handoff.md */,
+				7E832AF70243BA06BF481434 /* plan.md */,
+				66C50A2F7FC1CF2802E09668 /* process.json */,
+				636841EDE21313196E2FF458 /* quality-review.md */,
+				AB789B80545E6D1B976175AC /* security.md */,
+				754AE79ECF913F2CAC9D4249 /* specification.md */,
+				8F864C4332A9C410D2E4E417 /* test-plan.md */,
+				B0ED6B838C479A7C21824BD0 /* verification.md */,
+			);
+			path = "005-remove-switch-target-review";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
