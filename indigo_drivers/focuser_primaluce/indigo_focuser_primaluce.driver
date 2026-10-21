@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 25;
+	version = 26;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -422,7 +422,7 @@ driver primaluce {
 				PRIVATE_DATA->http_host[host_length] = 0;
 				PRIVATE_DATA->http_port = host[host_length] == ':' ? atoi(host + host_length + 1) : 80;
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			}
 			if (PRIVATE_DATA->is_http || PRIVATE_DATA->handle != NULL) {
 				char *text;
