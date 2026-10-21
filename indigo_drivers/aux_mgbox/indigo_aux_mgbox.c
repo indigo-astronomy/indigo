@@ -116,7 +116,6 @@
 typedef struct {
 	int count;
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *aux_gpio_outlet_property;
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_outlet_pulse_lengths_property;
@@ -448,7 +447,7 @@ static bool mgbox_command(indigo_device *device, const char *command) {
 	return indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) == (long)strlen(command);
 }
 
-static bool mgbox_open(indigo_device *device) {
+static bool mgbox_open(indigo_device *device, const char **error_message) {
 	PRIVATE_DATA->input_length = 0;
 	PRIVATE_DATA->input_overflow = false;
 	PRIVATE_DATA->transport_failed = false;
@@ -465,7 +464,7 @@ static bool mgbox_open(indigo_device *device) {
 			indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, INDIGO_DELAY(2));
 		}
 	} else {
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, error_message);
 	}
 	if (!PRIVATE_DATA->handle) {
 		return false;
@@ -607,9 +606,9 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
-			connection_result = mgbox_open(device);
+			connection_result = mgbox_open(device, &error_message);
 		}
 		if (connection_result) {
 			PRIVATE_DATA->count++;
@@ -636,8 +635,8 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
@@ -980,9 +979,9 @@ static void gps_timer_callback(indigo_device *device) {
 static void gps_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
-			connection_result = mgbox_open(device->master_device);
+			connection_result = mgbox_open(device->master_device, &error_message);
 		}
 		if (connection_result) {
 			PRIVATE_DATA->count++;
@@ -1005,8 +1004,8 @@ static void gps_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}

@@ -352,7 +352,7 @@ driver mgbox {
 			return indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) == (long)strlen(command);
 		}
 
-		static bool mgbox_open(indigo_device *device) {
+		static bool mgbox_open(indigo_device *device, const char **error_message) {
 			PRIVATE_DATA->input_length = 0;
 			PRIVATE_DATA->input_overflow = false;
 			PRIVATE_DATA->transport_failed = false;
@@ -369,7 +369,7 @@ driver mgbox {
 					indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, INDIGO_DELAY(2));
 				}
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, error_message);
 			}
 			if (!PRIVATE_DATA->handle) {
 				return false;
