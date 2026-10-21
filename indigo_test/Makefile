@@ -114,6 +114,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_asi_sdk \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_detach_abort \
+	$(INTEGRATION_BUILD)/test_server_websocket \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
@@ -419,6 +420,25 @@ $(INTEGRATION_BUILD)/test_ccd_countdown: integration/test_ccd_countdown.c test_r
 
 $(INTEGRATION_BUILD)/test_bus_lifecycle: integration/test_bus_lifecycle.c test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+# WebSocket handshake of the production TCP server (FND-000045). The sanitize build compiles
+# indigo_server_tcp.c into the test and links the static library, so the handshake runs under
+# AddressSanitizer with a single copy of the server code.
+SERVER_WEBSOCKET_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+SERVER_WEBSOCKET_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+$(INTEGRATION_BUILD)/test_server_websocket: integration/test_server_websocket.c test_runner.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_server_websocket_sanitize: integration/test_server_websocket.c ../indigo_libs/indigo_server_tcp.c test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
+	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) -o $@ $< ../indigo_libs/indigo_server_tcp.c $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+.PHONY: test-server-websocket test-server-websocket-sanitize
+test-server-websocket: check-lib $(INTEGRATION_BUILD)/test_server_websocket
+	$(INTEGRATION_BUILD)/test_server_websocket
+
+test-server-websocket-sanitize: check-lib $(INTEGRATION_BUILD)/test_server_websocket_sanitize
+	$(INTEGRATION_BUILD)/test_server_websocket_sanitize
 
 $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o: ../indigo_drivers/ccd_simulator/indigo_ccd_simulator.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -Dindigo_set_timer=sim_test_set_timer -Dindigo_reschedule_timer=sim_test_reschedule_timer -c $< -o $@

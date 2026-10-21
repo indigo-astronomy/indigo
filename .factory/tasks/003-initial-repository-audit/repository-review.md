@@ -19,7 +19,7 @@ Framework public-API, ownership, I/O, protocol and image/resource boundaries (AC
 
 Tools, examples, server UI, platform/optional drivers, portable drivers/agents, tests, build/CI and documentation (AC-002): covered by the systematic review passes migrated during adoption (legacy baselines in tasks/archive/001-adopt-ai-factory/legacy-findings.md), which produced the 43 inherited findings spanning docs (FND-000001..000005), guider/filter (FND-000006, FND-000007), examples (FND-000008..000012), core/linux/optional drivers (FND-000013..000027), tests (FND-000028..000035) and tools (FND-000036..000043). This session reconciled those against current source paths; none was contradicted by the current tree.
 
-Safe baselines (AC-004), evidence in verification.md: Factory check/security/test and build-system suites pass; the available 15-suite unit subset passes under an unrestricted environment; the full native unit target cannot link because `build/drivers/indigo_system_alpaca.a` is absent (environment limitation, not a defect). No driver/hardware mode was inferred or run.
+Safe baselines (AC-004), evidence in verification.md: Factory check/security/test and build-system suites pass; the unit subset fails one platform-fragile case (FND-000047, corrected in task 004) and skips the RAW image suite; the full native unit target cannot link because `build/drivers/indigo_system_alpaca.a` is absent (environment limitation, not a defect). No driver/hardware mode was inferred or run.
 
 ## AI slop inspection
 

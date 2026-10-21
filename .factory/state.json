@@ -3,7 +3,7 @@
   "active_task": "003-initial-repository-audit",
   "phase": "review",
   "status": "active",
-  "assigned_role": "repository-reviewer",
-  "next_action": "Audit coverage and reports recorded. Owner decision needed: disposition blocking FND-000045 (WebSocket key overflow) via a scoped repair task or explicit security risk decision, and confirm the documented coverage satisfies the initial-audit gate. Full-review checkpoint not reset.",
-  "blocker": "Owner disposition of blocking security finding FND-000045"
+  "assigned_role": "coordinator",
+  "next_action": "Resume 003 on task/003-initial-repository-audit: FND-000045 is fixed by task 004 (stacked branch). Owner decides the coverage gate; then finalize 003 reports and process.json and archive it.",
+  "blocker": "Owner confirmation that the documented audit coverage satisfies the initial-audit gate"
 }

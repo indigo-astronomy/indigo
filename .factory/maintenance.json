@@ -7,8 +7,8 @@
     "last_full_review_date": null,
     "last_full_review_task": null,
     "last_full_review_revision": null,
-    "completed_non_audit_tasks_since_full_review": 2,
-    "last_task_review_task": "002-fix-ftdi-build",
+    "completed_non_audit_tasks_since_full_review": 3,
+    "last_task_review_task": "004-fix-websocket-key-overflow",
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
       "date": "2026-10-21",

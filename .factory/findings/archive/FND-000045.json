@@ -1,0 +1,29 @@
+{
+  "id": "FND-000045",
+  "title": "SERVER-001: the HTTP WebSocket upgrade handler overflows websocket_key[256] when the Sec-WebSocket-Key header value exceeds 219 bytes",
+  "category": "security",
+  "severity": "high",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "003-initial-repository-audit",
+      "report": "security.md",
+      "revision": null
+    },
+    {
+      "id": "004-fix-websocket-key-overflow",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_libs/indigo_server_tcp.c:134 copies the attacker-controlled Sec-WebSocket-Key header into a fixed websocket_key[256] with strncpy (up to 255 bytes + NUL), then line 152 unconditionally strcat()s the 36-byte GUID '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'. A header value of 220+ bytes makes the concatenation write past the 256-byte stack buffer; the worker reads the header with indigo_uni_read_line into header[1024], so values up to ~1004 bytes reach this path from an unauthenticated TCP/HTTP client requesting '/'. Confirmed by an isolated ASan reproducer of the exact copy/append operations (control exit 0; 255-byte value aborts with stack-buffer-overflow, WRITE of size 37). Next action: assign a scoped repair task (bound the strncpy length so the buffer always leaves room for the 36-byte suffix plus NUL, e.g. copy at most sizeof(websocket_key)-37, or reject over-length keys) and reverify; owner decision required because the overflow is remotely reachable.",
+  "evidence": "48dc893491f77cddb18fc3188d400a70f67cde19:indigo_libs/indigo_server_tcp.c:129 (char websocket_key[256]), :134 (strncpy header+19, sizeof-1), :152 (strcat GUID), :158 (base64_encode back into buffer); reproducer: .factory/tasks/003-initial-repository-audit/repro-websocket-key.c; recorded results: security.md (raw ASan/control logs kept locally, ignored by .gitignore)",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "004-fix-websocket-key-overflow/verification.md: indigo_server_tcp.c now copies the key only when it leaves room for the 36-byte GUID and NUL and answers 400 Bad Request otherwise. New test-server-websocket passes 4/4; test-server-websocket-sanitize (real server source under ASan/UBSan) passes 4/4 with no AddressSanitizer report; the same final test built against the base server source aborts with stack-buffer-overflow at indigo_server_tcp.c:152 for the 220-byte and 900-byte keys; isolated reproducer and its fixed-logic copy confirm old overflow and new refusal; detach-abort (28/28) and its network mode (6/6) pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

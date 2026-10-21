@@ -6039,6 +6039,18 @@
 		A210BDB7E1B2F7E49895E389 /* unit-subset-command.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "unit-subset-command.json"; sourceTree = "<group>"; };
 		E79ACF8C32575DB8756B41F0 /* unit-subset-results.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; path = "unit-subset-results.tsv"; sourceTree = "<group>"; };
 		EE0CAD2C6BCE1AB40845B470 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		8F4EA6F415E6514CA9C5EDC2 /* test_server_websocket.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_server_websocket.c"; sourceTree = "<group>"; };
+		70F570AEDCA386A9012318DE /* FND-000045.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-000045.json"; sourceTree = "<group>"; };
+		E6F0D6A6AC4C5E4AF955C754 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		CDEC7192E407969B3BC3EA7E /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		B6A4CFA7620CD667F14CFA90 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		6897D837E784D3D2D338651D /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		F41123049A855F8FEFBDFE7E /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		1AF883AF51927E97DEC65CA2 /* repro-websocket-key-fixed.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "repro-websocket-key-fixed.c"; sourceTree = "<group>"; };
+		96803E95A5654C6DDAEC8766 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		CC7D16238873F1FD24CB63AE /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		33FA0878AF2BD2440F242BD9 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		F44A006122BF032C83EBBB3C /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -14583,6 +14595,7 @@
 				5907ACD3301E7DC60009AA99 /* test_aux_wcv4ec_simulator.c */,
 				59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */,
 				C0DE20260926D0AB00000001 /* test_detach_abort.c */,
+				8F4EA6F415E6514CA9C5EDC2 /* test_server_websocket.c */,
 				C0DE20261006D0AB00000001 /* test_server_driver_stress.c */,
 				C0DE20260911000100000001 /* test_ccd_altair_sdk.c */,
 				59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */,
@@ -14994,6 +15007,7 @@
 			isa = PBXGroup;
 			children = (
 				A37218AB75285F589283925B /* FND-000044.json */,
+				70F570AEDCA386A9012318DE /* FND-000045.json */,
 				EB17703C317DA371A5068418 /* .gitkeep */,
 			);
 			path = archive;
@@ -17249,6 +17263,7 @@
 			isa = PBXGroup;
 			children = (
 				DC781B8D44EA7ECACDF738C8 /* 002-fix-ftdi-build */,
+				A332FB20C9B365994D606E82 /* 004-fix-websocket-key-overflow */,
 				997F7A1BB7C452B5CC431453 /* 001-adopt-ai-factory */,
 			);
 			path = archive;
@@ -17300,6 +17315,23 @@
 				EE0CAD2C6BCE1AB40845B470 /* verification.md */,
 			);
 			path = "003-initial-repository-audit";
+			sourceTree = "<group>";
+		};
+		A332FB20C9B365994D606E82 /* 004-fix-websocket-key-overflow */ = {
+			isa = PBXGroup;
+			children = (
+				E6F0D6A6AC4C5E4AF955C754 /* brief.md */,
+				CDEC7192E407969B3BC3EA7E /* handoff.md */,
+				B6A4CFA7620CD667F14CFA90 /* plan.md */,
+				6897D837E784D3D2D338651D /* process.json */,
+				F41123049A855F8FEFBDFE7E /* quality-review.md */,
+				1AF883AF51927E97DEC65CA2 /* repro-websocket-key-fixed.c */,
+				96803E95A5654C6DDAEC8766 /* security.md */,
+				CC7D16238873F1FD24CB63AE /* specification.md */,
+				33FA0878AF2BD2440F242BD9 /* test-plan.md */,
+				F44A006122BF032C83EBBB3C /* verification.md */,
+			);
+			path = "004-fix-websocket-key-overflow";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -85,6 +85,9 @@ static struct resource {
 
 #define BUFFER_SIZE	1024
 
+// RFC 6455 GUID appended to Sec-WebSocket-Key before hashing
+#define WEBSOCKET_GUID	"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
 static void start_worker_thread(indigo_uni_worker_data *data) {
 	indigo_rename_thread("Server worker");
 	indigo_uni_handle *handle = data->handle;
@@ -127,12 +130,18 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						*params++ = 0;
 					}
 					char websocket_key[256] = "";
+					bool websocket_key_too_long = false;
 					bool use_gzip = false;
 					bool use_imagebytes = false;
 					while (indigo_uni_read_line(handle, header, sizeof(header) - 1) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19)) {
-							strncpy(websocket_key, header + 19, sizeof(websocket_key) - 1);
-							websocket_key[sizeof(websocket_key) - 1] = '\0';
+							// the GUID is appended in place before hashing, so the key must leave room for it and the NUL
+							websocket_key_too_long = strlen(header + 19) >= sizeof(websocket_key) - strlen(WEBSOCKET_GUID);
+							if (websocket_key_too_long) {
+								*websocket_key = '\0';
+							} else {
+								strcpy(websocket_key, header + 19);
+							}
 						}
 						if (!strcasecmp(header, "Connection: close"))
 							keep_alive = false;
@@ -146,10 +155,18 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						}
 					}
 					if (!strcmp(path, "/")) {
-						if (*websocket_key) {
+						if (websocket_key_too_long) {
+							INDIGO_PRINTF(handle, "HTTP/1.1 400 Bad Request\r\n");
+							INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(handle, "\r\n");
+							INDIGO_PRINTF(handle, "Sec-WebSocket-Key too long!\r\n");
+							INDIGO_TRACE(indigo_trace("%d <- // Sec-WebSocket-Key too long", handle->index));
+							goto failure;
+						} else if (*websocket_key) {
 							unsigned char shaHash[SHA1_SIZE];
 							memset(shaHash, 0, sizeof(shaHash));
-							strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+							strcat(websocket_key, WEBSOCKET_GUID);
 							sha1(shaHash, websocket_key, strlen(websocket_key));
 							INDIGO_PRINTF(handle, "HTTP/1.1 101 Switching Protocols\r\n");
 							INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
