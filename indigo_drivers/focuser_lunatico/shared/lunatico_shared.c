@@ -185,7 +185,7 @@ static bool lunatico_port_exists(indigo_device *device) {
 
 // --------------------------------------------------------------------------------- Connection
 
-static bool lunatico_open(indigo_device *device) {
+static bool lunatico_open(indigo_device *device, const char **error_message) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (indigo_uni_is_url(name, "lunatico")) {
 		char url[INDIGO_VALUE_SIZE];
@@ -193,7 +193,7 @@ static bool lunatico_open(indigo_device *device) {
 		snprintf(url, sizeof(url), "udp://%s", host == NULL ? name : host + 3);
 		PRIVATE_DATA->handle = indigo_uni_open_url(url, LUNATICO_UDP_PORT, INDIGO_UDP_HANDLE, INDIGO_LOG_DEBUG);
 	} else {
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, error_message);
 	}
 	if (PRIVATE_DATA->handle != NULL) {
 		if (lunatico_identify(device)) {
