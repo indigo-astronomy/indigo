@@ -1460,7 +1460,7 @@ driver synscan {
 			return true;
 		}
 
-		static bool synscan_open(indigo_device *device) {
+		static bool synscan_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (PRIVATE_DATA->handle != NULL) {
 				return true;
@@ -1479,7 +1479,7 @@ driver synscan {
 				}
 			} else {
 				PRIVATE_DATA->udp = false;
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			}
 			if (PRIVATE_DATA->handle == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
