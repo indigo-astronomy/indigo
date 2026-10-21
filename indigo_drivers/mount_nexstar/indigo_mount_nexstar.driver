@@ -120,7 +120,7 @@ driver nexstar {
 			}
 		}
 
-		static bool nexstar_open(indigo_device *device) {
+		static bool nexstar_open(indigo_device *device, const char **error_message) {
 			int dev_id = open_telescope(DEVICE_PORT_ITEM->text.value);
 			if (dev_id == -1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "open_telescope(%s) = %d (%s)", DEVICE_PORT_ITEM->text.value, dev_id, strerror(errno));
