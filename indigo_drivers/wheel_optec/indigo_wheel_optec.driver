@@ -30,8 +30,8 @@ driver optec {
 		int slot;
 	}
 	code {
-		static bool optec_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool optec_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				// A reply left over from an earlier session is discarded, and WSMODE is repeated if it is
 				// not answered with '!', as the manual advises.
