@@ -1553,6 +1553,9 @@ void write_c_private_data_section(void) {
 	}
 	if (driver.serial || driver.hid) {
 		write_line("\tindigo_uni_handle *handle;");
+		if (driver.serial) {
+			write_line("\tconst char *error_message;");
+		}
 		some_content = true;
 	} else if (driver.libusb || driver.sdk) {
 		write_line("\tlibusb_device *usbdev;");
@@ -1685,6 +1688,9 @@ void write_c_connection_change_handler(device_type *device) {
 		}
 	} else {
 		write_line("\t\tbool connection_result = true;");
+		if (driver.serial) {
+			write_line("\t\tPRIVATE_DATA->error_message = NULL;");
+		}
 		if (is_multi_device) {
 			write_line("\t\tif (PRIVATE_DATA->count == 0) {");
 			if (is_master_device) {
@@ -1724,7 +1730,11 @@ void write_c_connection_change_handler(device_type *device) {
 		}
 		write_line("\t\t} else {");
 		if (driver.serial) {
-			write_line("\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+			write_line("\t\t\tif (PRIVATE_DATA->error_message != NULL) {");
+			write_line("\t\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s on %%s (%%s)\", %s, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);", device->handle);
+			write_line("\t\t\t} else {");
+			write_line("\t\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+			write_line("\t\t\t}");
 		} else {
 			write_line("\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s\", device->name);");
 		}
