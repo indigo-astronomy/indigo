@@ -202,10 +202,10 @@ driver beaver {
 			return beaver_int(device, &result, "!dome gotoaz %f#", (float)azimuth) && result == 0;
 		}
 
-		static bool beaver_open(indigo_device *device) {
+		static bool beaver_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "nexdome")) {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, error_message);
 			} else {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, BEAVER_NETWORK_PORT, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			}
