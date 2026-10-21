@@ -81,11 +81,11 @@ driver lacerta {
 			return false;
 		}
 
-		static bool lacerta_open(indigo_device *device) {
+		static bool lacerta_open(indigo_device *device, const char **error_message) {
 			char tail;
 			int major, minor, revision;
 			PRIVATE_DATA->capability_maximum = 250000;
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, error_message);
 			if (!PRIVATE_DATA->handle) {
 				return false;
 			}
