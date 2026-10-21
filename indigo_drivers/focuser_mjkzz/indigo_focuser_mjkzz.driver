@@ -125,8 +125,8 @@ driver mjkzz {
 			return true;
 		}
 
-		static bool mjkzz_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG, &PRIVATE_DATA->error_message);
+		static bool mjkzz_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG, error_message);
 			int32_t version = 0;
 			if (PRIVATE_DATA->handle && mjkzz_command(device, CMD_GVER, 0, 0, &version)) {
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%u.%u.%u.%u", RESPONSE.ucMSG[0], RESPONSE.ucMSG[1], RESPONSE.ucMSG[2], RESPONSE.ucMSG[3]);
