@@ -4,6 +4,6 @@
   "phase": "idle",
   "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Local master holds tasks 001 to 006; push is not authorized. Open findings FND-000046, FND-000047 and FND-000048 have no repair task yet.",
+  "next_action": "Master holds tasks 001 to 007. Open findings FND-000046, FND-000047 and FND-000048 have no repair task yet. Four non-audit tasks completed since the full audit; the next audit is due after one more or after 28 Oct 2026.",
   "blocker": null
 }

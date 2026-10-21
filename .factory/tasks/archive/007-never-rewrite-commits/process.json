@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "task": "007-never-rewrite-commits",
+  "scope": [
+    "AGENTS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/state.json",
+    ".factory/maintenance.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "38e71b647",
+        "c876bf44b"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "b6d8ac3cf524752f577aba5a553995af8b58f5ba"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "135c265c45db9c72b7b5f53c84e76a8c67c6d014"
+    ]
+  }
+}
