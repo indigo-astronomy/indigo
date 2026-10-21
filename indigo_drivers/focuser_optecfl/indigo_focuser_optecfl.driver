@@ -29,7 +29,7 @@ driver optecfl {
 	label = "Optec FocusLynx Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	multi_device_support = true;
 	serial;
 	include {
@@ -235,7 +235,7 @@ driver optecfl {
 		// shared reference count, so this runs only for the first connection.
 		static bool optecfl_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 				return false;
