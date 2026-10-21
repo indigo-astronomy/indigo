@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_wheel_quantum"
 #define DRIVER_LABEL         "Brightstar Quantum Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Quantum Filter Wheel"
@@ -42,6 +42,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 } quantum_private_data;
 
 #pragma mark - Low level code
@@ -61,7 +62,7 @@ static bool quantum_goto(indigo_device *device, int slot) {
 }
 
 static bool quantum_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		int sn;
 		if (indigo_uni_printf(PRIVATE_DATA->handle, "SN\r\n") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "SN%d", &sn) == 1) {
@@ -86,6 +87,7 @@ static void quantum_close(indigo_device *device) {
 static void wheel_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = quantum_open(device);
 		if (connection_result) {
 			//+ wheel.on_connect
@@ -98,7 +100,11 @@ static void wheel_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}

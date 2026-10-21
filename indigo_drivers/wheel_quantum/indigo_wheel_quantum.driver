@@ -22,7 +22,7 @@ driver quantum {
 	label = "Brightstar Quantum Filter Wheel";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	serial;
 	// include { }
 	// define { }
@@ -41,7 +41,7 @@ driver quantum {
 		}
 
 		static bool quantum_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				int sn;
 				if (indigo_uni_printf(PRIVATE_DATA->handle, "SN\r\n") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "SN%d", &sn) == 1) {
