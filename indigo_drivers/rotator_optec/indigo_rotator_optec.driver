@@ -116,8 +116,8 @@ driver optec {
 			return true;
 		}
 
-		static bool optec_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool optec_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL && optec_wakeup(device) && optec_line_command(device, "CCLINK") && !strcmp(PRIVATE_DATA->response, "!")) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 				return true;
