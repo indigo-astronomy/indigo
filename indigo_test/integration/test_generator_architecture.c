@@ -650,8 +650,8 @@ static void sdk_startup_discovery_without_hotplug(void) {
 	ASSERT_TRUE(strstr(generated, "libusb_get_device_list(NULL, &list)") != NULL);
 	ASSERT_TRUE(strstr(generated, "libusb_free_device_list(list, 1)") != NULL);
 	ASSERT_TRUE(strstr(generated, "discover_devices_handler, &driver_queue_mutex)") != NULL);
-	ASSERT_TRUE(strstr(generated, "ccd_connection_handler, &driver_queue_mutex)") != NULL);
-	ASSERT_TRUE(strstr(generated, "guider_connection_handler, &driver_queue_mutex)") != NULL);
+	ASSERT_TRUE(strstr(generated, "INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, ccd_connection_handler);") != NULL);
+	ASSERT_TRUE(strstr(generated, "INDIGO_PROCESS_QUEUED_CONNECT(driver_queue, &driver_queue_mutex, guider_connection_handler);") != NULL);
 	char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
 	ASSERT_TRUE(shutdown != NULL);
 	char *verify = strstr(shutdown, "verify_devices_disconnected()");
