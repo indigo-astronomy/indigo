@@ -100,8 +100,8 @@ driver usbdp {
 			return NULL;
 		}
 
-		static bool usbdp_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool usbdp_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (usbdp_command(device, UDP_IDENTIFY_CMD)) {
 					if (!strcmp(PRIVATE_DATA->response, UDP1_IDENTIFY_RESPONSE)) {
