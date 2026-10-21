@@ -91,7 +91,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *x_rail_config_property;
 	indigo_property *x_rail_shutter_property;
 	indigo_property *x_rail_execute_property;
@@ -322,8 +321,8 @@ static bool wemacro_initialise(indigo_device *device) {
 	return wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_write(device, 0x20, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && wemacro_drain(device) && wemacro_write(device, 0x40, 0, 0, 0, 0) && wemacro_wait_status(device, WEMACRO_STATUS_FORWARD, 2) && wemacro_write(device, wemacro_options(device, true), wemacro_speed(device), 0, 0, 0);
 }
 
-static bool wemacro_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG, &PRIVATE_DATA->error_message);
+static bool wemacro_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG, error_message);
 	if (PRIVATE_DATA->handle && wemacro_initialise(device)) {
 		return true;
 	}
@@ -342,8 +341,8 @@ static void wemacro_close(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = wemacro_open(device);
+		const char *error_message = NULL;
+		connection_result = wemacro_open(device, &error_message);
 		if (connection_result) {
 			//+ focuser.on_connect
 			PRIVATE_DATA->motion_active = PRIVATE_DATA->batch_active = PRIVATE_DATA->batch_start_pending = PRIVATE_DATA->uncertain = false;
@@ -360,8 +359,8 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
