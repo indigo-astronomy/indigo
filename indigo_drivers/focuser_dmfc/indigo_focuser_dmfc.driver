@@ -160,9 +160,9 @@ driver dmfc {
 			return true;
 		}
 
-		static bool dmfc_open(indigo_device *device) {
+		static bool dmfc_open(indigo_device *device, const char **error_message) {
 			// the controller talks at 19200 baud
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (dmfc_command(device, "#") && !strncmp(PRIVATE_DATA->response, "OK_", 3)) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"DMFC Focuser");
