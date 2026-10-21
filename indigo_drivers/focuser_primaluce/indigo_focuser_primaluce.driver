@@ -406,7 +406,7 @@ driver primaluce {
 			return false;
 		}
 
-		static bool primaluce_open(indigo_device *device) {
+		static bool primaluce_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			PRIVATE_DATA->is_http = indigo_uni_is_url(name, "http");
 			if (PRIVATE_DATA->is_http) {
@@ -422,7 +422,7 @@ driver primaluce {
 				PRIVATE_DATA->http_host[host_length] = 0;
 				PRIVATE_DATA->http_port = host[host_length] == ':' ? atoi(host + host_length + 1) : 80;
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, error_message);
 			}
 			if (PRIVATE_DATA->is_http || PRIVATE_DATA->handle != NULL) {
 				char *text;
