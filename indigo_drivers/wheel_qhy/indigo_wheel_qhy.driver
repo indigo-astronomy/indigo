@@ -22,7 +22,7 @@ driver qhy {
 	label = "QHY CFW Filter Wheel";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	serial;
 	include {
 		#include <ctype.h>
@@ -34,7 +34,7 @@ driver qhy {
 	}
 	code {
 		static bool qhy_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			return PRIVATE_DATA->handle != NULL;
 		}
 
