@@ -26,7 +26,7 @@ driver optec {
 	label = "Optec Pyxis Rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 6;
+	version = 7;
 	multi_device_support = true;
 	serial;
 	define {
@@ -117,7 +117,7 @@ driver optec {
 		}
 
 		static bool optec_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL && optec_wakeup(device) && optec_line_command(device, "CCLINK") && !strcmp(PRIVATE_DATA->response, "!")) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 				return true;

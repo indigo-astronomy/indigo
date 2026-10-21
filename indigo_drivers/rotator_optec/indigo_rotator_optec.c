@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000006
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_rotator_optec"
 #define DRIVER_LABEL         "Optec Pyxis Rotator"
 #define ROTATOR_DEVICE_NAME  "Optec Pyxis"
@@ -74,6 +74,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	indigo_property *x_home_property;
 	indigo_property *x_rate_property;
 	indigo_property *x_rotate_property;
@@ -161,7 +162,7 @@ static bool optec_read_integer(indigo_device *device, const char *command, int m
 }
 
 static bool optec_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (PRIVATE_DATA->handle != NULL && optec_wakeup(device) && optec_line_command(device, "CCLINK") && !strcmp(PRIVATE_DATA->response, "!")) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 		return true;
@@ -252,6 +253,7 @@ static bool optec_start_motion(indigo_device *device, int motion, const char *co
 static void rotator_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = optec_open(device);
 		if (connection_result) {
 			//+ rotator.on_connect
@@ -279,7 +281,11 @@ static void rotator_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
