@@ -40,8 +40,8 @@ driver quantum {
 			return false;
 		}
 
-		static bool quantum_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool quantum_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				int sn;
 				if (indigo_uni_printf(PRIVATE_DATA->handle, "SN\r\n") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "SN%d", &sn) == 1) {
