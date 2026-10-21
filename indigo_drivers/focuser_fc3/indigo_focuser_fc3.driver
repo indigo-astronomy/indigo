@@ -259,8 +259,8 @@ driver fc3 {
 			}
 		}
 
-		static bool fc3_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool fc3_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (fc3_command(device, "##") && !strncmp(PRIVATE_DATA->response, "FC3_", 4)) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
