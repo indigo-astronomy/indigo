@@ -47,8 +47,8 @@ driver flipflat {
 			return result > 0 && PRIVATE_DATA->response[0] == '*';
 		}
 
-		static bool flipflat_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool flipflat_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_set_dtr(PRIVATE_DATA->handle, true);
 				indigo_usleep(INDIGO_DELAY(0.1));
