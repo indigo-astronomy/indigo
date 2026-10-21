@@ -61,7 +61,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *x_model_property;
 	//+ data
 	int current_slot;
@@ -73,8 +72,8 @@ typedef struct {
 
 //+ code
 
-static bool qhy_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool qhy_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 	return PRIVATE_DATA->handle != NULL;
 }
 
@@ -131,8 +130,8 @@ static void qhy_close(indigo_device *device) {
 static void wheel_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = qhy_open(device);
+		const char *error_message = NULL;
+		connection_result = qhy_open(device, &error_message);
 		if (connection_result) {
 			//+ wheel.on_connect
 			if (X_MODEL_3_ITEM->sw.value) {
@@ -183,8 +182,8 @@ static void wheel_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
