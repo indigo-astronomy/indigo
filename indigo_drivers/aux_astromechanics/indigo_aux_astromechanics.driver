@@ -26,7 +26,7 @@ driver astromechanics {
 	label = "ASTROMECHANICS LPM";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 8;
+	version = 9;
 	serial;
 	data {
 		char response[16];
@@ -39,7 +39,7 @@ driver astromechanics {
 		#define POLL_INTERVAL		10
 
 		static bool astromechanics_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			return PRIVATE_DATA->handle != NULL;
 		}
 
