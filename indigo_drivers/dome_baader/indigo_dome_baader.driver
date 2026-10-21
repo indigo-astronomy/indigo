@@ -249,12 +249,12 @@ driver baader {
 			}
 		}
 
-		static bool baader_open(indigo_device *device) {
+		static bool baader_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (indigo_uni_is_url(name, "baader")) {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, BAADER_NETWORK_PORT, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, error_message);
 			}
 			if (PRIVATE_DATA->handle != NULL) {
 				char serial_number[INDIGO_VALUE_SIZE] = "N/A";
