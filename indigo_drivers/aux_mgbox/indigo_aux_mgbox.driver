@@ -25,7 +25,7 @@ driver mgbox {
 	label = "Astromi.ch MGBox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 13;
+	version = 14;
 	serial { configurable_speed = true; }
 	include {
 		#include <math.h>
@@ -369,7 +369,7 @@ driver mgbox {
 					indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, INDIGO_DELAY(2));
 				}
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			}
 			if (!PRIVATE_DATA->handle) {
 				return false;
