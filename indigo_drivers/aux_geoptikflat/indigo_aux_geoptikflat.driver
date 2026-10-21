@@ -49,8 +49,8 @@ driver geoptikflat {
 			return result > 0 && PRIVATE_DATA->response[0] == '*' && PRIVATE_DATA->response[1] == command[1];
 		}
 
-		static bool geoptikflat_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool geoptikflat_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (geoptikflat_command(device, ">POOO")) {
 					// "*Viivvv" carries the two digit product id before the three digit firmware version.

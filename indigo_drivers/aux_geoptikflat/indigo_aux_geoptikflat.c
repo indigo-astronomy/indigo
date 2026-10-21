@@ -51,7 +51,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *aux_light_switch_property;
 	indigo_property *aux_light_intensity_property;
 	//+ data
@@ -80,8 +79,8 @@ static bool geoptikflat_command(indigo_device *device, char *command, ...) {
 	return result > 0 && PRIVATE_DATA->response[0] == '*' && PRIVATE_DATA->response[1] == command[1];
 }
 
-static bool geoptikflat_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool geoptikflat_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (geoptikflat_command(device, ">POOO")) {
 			// "*Viivvv" carries the two digit product id before the three digit firmware version.
@@ -111,8 +110,8 @@ static void geoptikflat_close(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = geoptikflat_open(device);
+		const char *error_message = NULL;
+		connection_result = geoptikflat_open(device, &error_message);
 		if (connection_result) {
 			//+ aux.on_connect
 			if (geoptikflat_command(device, ">B%03d", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100))) {
@@ -133,8 +132,8 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
