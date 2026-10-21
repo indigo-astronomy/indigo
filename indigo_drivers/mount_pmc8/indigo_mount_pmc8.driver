@@ -106,11 +106,11 @@ driver pmc8 {
 			indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		}
 
-		static bool pmc8_open(indigo_device *device) {
+		static bool pmc8_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "pmc8")) {
 				PRIVATE_DATA->proto = INDIGO_COM_HANDLE;
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, error_message);
 				if (CONNECTION_SERIAL_DTR_ITEM->sw.value) {
 					indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
 				}

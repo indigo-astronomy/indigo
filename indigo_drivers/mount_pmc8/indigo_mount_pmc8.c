@@ -108,7 +108,6 @@ static mount_type_data MODELS[] = {
 typedef struct {
 	int count;
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *connection_mode_property;
 	indigo_property *mount_type_property;
 	//+ data
@@ -171,11 +170,11 @@ static void pmc8_update_mount_type_perm(indigo_device *device, indigo_property_p
 	indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
 }
 
-static bool pmc8_open(indigo_device *device) {
+static bool pmc8_open(indigo_device *device, const char **error_message) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "pmc8")) {
 		PRIVATE_DATA->proto = INDIGO_COM_HANDLE;
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, error_message);
 		if (CONNECTION_SERIAL_DTR_ITEM->sw.value) {
 			indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
 		}
@@ -804,9 +803,9 @@ static void mount_timer_callback(indigo_device *device) {
 static void mount_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
-			connection_result = pmc8_open(device);
+			connection_result = pmc8_open(device, &error_message);
 		}
 		if (connection_result) {
 			PRIVATE_DATA->count++;
@@ -834,8 +833,8 @@ static void mount_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
@@ -1272,9 +1271,9 @@ static indigo_result mount_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
-			connection_result = pmc8_open(device->master_device);
+			connection_result = pmc8_open(device->master_device, &error_message);
 		}
 		if (connection_result) {
 			PRIVATE_DATA->count++;
@@ -1296,8 +1295,8 @@ static void guider_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
