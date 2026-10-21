@@ -49,8 +49,8 @@ driver skyroof {
 		}
 
 		// "RoofOpen#" and "RoofClosed#" end a motion, "Safety#" is reported while the roof travels
-		static bool skyroof_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool skyroof_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (skyroof_command(device, "Status#", true)) {
 					if (!strcmp(PRIVATE_DATA->response, "RoofOpen#")) {

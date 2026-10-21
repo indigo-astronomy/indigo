@@ -65,7 +65,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *x_mount_park_status_property;
 	indigo_property *x_heater_control_property;
 	//+ data
@@ -90,8 +89,8 @@ static bool skyroof_command(indigo_device *device, char *command, bool reply) {
 }
 
 // "RoofOpen#" and "RoofClosed#" end a motion, "Safety#" is reported while the roof travels
-static bool skyroof_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool skyroof_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (skyroof_command(device, "Status#", true)) {
 			if (!strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
@@ -160,16 +159,16 @@ static void dome_shutter_finalizer(indigo_device *device) {
 static void dome_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = skyroof_open(device);
+		const char *error_message = NULL;
+		connection_result = skyroof_open(device, &error_message);
 		if (connection_result) {
 			indigo_define_property(device, X_MOUNT_PARK_STATUS_PROPERTY, NULL);
 			indigo_define_property(device, X_HEATER_CONTROL_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
