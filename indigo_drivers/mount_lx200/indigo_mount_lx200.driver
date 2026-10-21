@@ -441,7 +441,7 @@ driver lx200 {
 		return false;
 	}
 
-	static bool lx200_open(indigo_device *device) {
+	static bool lx200_open(indigo_device *device, const char **error_message) {
 		char *name = DEVICE_PORT_ITEM->text.value;
 		if (!indigo_uni_is_url(name, "lx200")) {
 			if (device->matched_pattern_index == NYX_TEMPLATE_INDEX) {
@@ -456,7 +456,7 @@ driver lx200 {
 			}
 			PRIVATE_DATA->timeout = 1;
 			for (int i = 0; i < 3; i++) {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, indigo_get_text_item_value(DEVICE_BAUDRATE_ITEM), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, indigo_get_text_item_value(DEVICE_BAUDRATE_ITEM), INDIGO_LOG_DEBUG, error_message);
 				if (PRIVATE_DATA->handle != NULL) {
 					bool answered = (meade_command(device, ":GR#") && strlen(PRIVATE_DATA->response) >= 6) || (meade_command(device, ":GR#") && strlen(PRIVATE_DATA->response) >= 6);
 					if (!answered && (MOUNT_TYPE_DETECT_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value) && gemini_startup(device)) {
