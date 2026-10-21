@@ -26,7 +26,7 @@ driver flatmaster {
 	label = "PegasusAstro FlatMaster";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 13;
+	version = 14;
 	serial {
 		pattern {
 			vid = 0x303a;
@@ -66,7 +66,7 @@ driver flatmaster {
 		}
 
 		static bool flatmaster_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (flatmaster_command(device, "#") && !strcmp("OK_FM", PRIVATE_DATA->response)) {
 					if (flatmaster_command(device, "V")) {
