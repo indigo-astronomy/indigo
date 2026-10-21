@@ -518,12 +518,12 @@ driver qhy {
 			}
 		}
 
-		static bool qhy_open(indigo_device *device) {
+		static bool qhy_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (indigo_uni_is_url(name, "qfocuser")) {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, error_message);
 				if (PRIVATE_DATA->handle) {
 					indigo_usleep(ONE_SECOND_DELAY);
 				}
