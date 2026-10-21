@@ -22,7 +22,7 @@ driver astromechanics {
 	label = "ASTROMECHANICS Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	// include { }
 	define {
@@ -54,7 +54,7 @@ driver astromechanics {
 		}
 
 		static bool astromechanics_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			return PRIVATE_DATA->handle != NULL;
 		}
 
