@@ -20,7 +20,7 @@ driver robofocus {
 	label = "RoboFocus Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	include {
 		#include <stdint.h>
@@ -253,7 +253,7 @@ driver robofocus {
 		}
 
 		static bool robofocus_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG | BINARY_LOG, &PRIVATE_DATA->error_message);
 			int version;
 			if (PRIVATE_DATA->handle && robofocus_value(device, 'V', 'V', 0, 0, 999999, &version)) {
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%06d", version);
