@@ -199,7 +199,7 @@ static bool dragonfly_pulse_relay(indigo_device *device, int relay, int length) 
 
 // --------------------------------------------------------------------------------- Connection
 
-static bool dragonfly_open(indigo_device *device) {
+static bool dragonfly_open(indigo_device *device, const char **error_message) {
 	char url[INDIGO_VALUE_SIZE];
 	if (strstr(DEVICE_PORT_ITEM->text.value, "://")) {
 		INDIGO_COPY_VALUE(url, DEVICE_PORT_ITEM->text.value);
