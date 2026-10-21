@@ -51,9 +51,9 @@ driver cgusbst4 {
 			return result > 0;
 		}
 
-		static bool cgusbst4_open(indigo_device *device) {
+		static bool cgusbst4_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
-			PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (cgusbst4_command(device, "\006", 1) && PRIVATE_DATA->response[0] == 'A') {
 					return true;
