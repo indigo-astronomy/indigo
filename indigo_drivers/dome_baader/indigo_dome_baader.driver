@@ -22,7 +22,7 @@ driver baader {
 	label = "Baader Classic Dome";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 17;
+	version = 18;
 	serial;
 	include {
 		#include <math.h>
@@ -254,7 +254,7 @@ driver baader {
 			if (indigo_uni_is_url(name, "baader")) {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, BAADER_NETWORK_PORT, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			}
 			if (PRIVATE_DATA->handle != NULL) {
 				char serial_number[INDIGO_VALUE_SIZE] = "N/A";
