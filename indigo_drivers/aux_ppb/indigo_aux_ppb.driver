@@ -26,7 +26,7 @@ driver ppb {
 	label = "PegasusAstro Pocket Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, PPBA support by Aaron Freimark <abf@mac.com>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 34;
+	version = 35;
 	serial {
 		pattern {
 			product = "PPB";
@@ -61,7 +61,7 @@ driver ppb {
 		}
 
 		static bool ppb_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (ppb_command(device, "P#")) {
 					bool ok = false;
