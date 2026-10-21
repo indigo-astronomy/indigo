@@ -26,7 +26,7 @@ driver skyalert {
 	label = "Interactive Astronomy SkyAlert";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	data {
 		char response[32];
@@ -75,7 +75,7 @@ driver skyalert {
 		}
 
 		static bool skyalert_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle) {
 				if (skyalert_read_record(device)) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyAlert");
