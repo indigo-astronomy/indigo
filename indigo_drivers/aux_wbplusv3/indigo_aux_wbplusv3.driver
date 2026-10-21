@@ -22,8 +22,6 @@
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-// TODO: Test with real hardware or simulator!!!
-
 driver wbplusv3 {
 	label = "WandererBox Plus V3 Powerbox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";

@@ -18,8 +18,6 @@
 
 // This file generated from indigo_aux_wbplusv3.driver
 
-// TODO: Test with real hardware or simulator!!!
-
 #pragma mark - Includes
 
 #include <stdlib.h>
