@@ -160,30 +160,29 @@ INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file(const char *path, int lo
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig, int log_level);
 
-/** Open serial connection with configuration and report an errno-style error code on all platforms.
- * error_code may be NULL; otherwise it receives the captured error on failure or 0 on success, suitable for strerror().
- * Windows sharing/lock violations map to EBUSY; access denied maps to EACCES (which can also mean the COM port is already open).
- * Unmapped Windows errors map to EIO; native error details remain in the log.
+/** Open serial connection with configuration and report a human readable error message.
+ * error_message may be NULL; otherwise it receives NULL on success or a pointer to a static, platform specific message on failure.
+ * The message must not be freed or modified; native error details remain in the log.
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_config2(const char *serial, const char *baudconfig, int log_level, unsigned long *error_code);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_config2(const char *serial, const char *baudconfig, int log_level, const char **error_message);
 
 /** Open serial connection at speed XXXX-8N1.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *serial, int speed, int log_level);
 
-/** Open serial connection at speed XXXX-8N1 and report an errno-style error code on all platforms.
- * error_code follows the same contract as indigo_uni_open_serial_with_config2().
+/** Open serial connection at speed XXXX-8N1 and report a human readable error message.
+ * error_message follows the same contract as indigo_uni_open_serial_with_config2().
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_speed2(const char *serial, int speed, int log_level, unsigned long *error_code);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_speed2(const char *serial, int speed, int log_level, const char **error_message);
 
 /** Open serial connection at speed 9600-8N1.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level);
 
-/** Open serial connection at speed 9600-8N1 and report an errno-style error code on all platforms.
- * error_code follows the same contract as indigo_uni_open_serial_with_config2().
+/** Open serial connection at speed 9600-8N1 and report a human readable error message.
+ * error_message follows the same contract as indigo_uni_open_serial_with_config2().
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial2(const char *serial, int log_level, unsigned long *error_code);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial2(const char *serial, int log_level, const char **error_message);
 
 
 /** sets/clears DTR on serial port

@@ -33,7 +33,6 @@
 #include <arpa/inet.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <errno.h>
-#include <sys/ioctl.h>
 #endif
 
 #include <indigo/indigo_bus.h>
@@ -45,62 +44,62 @@
 static const char *serial_exclusive_test_port;
 
 static void serial_port_open_is_exclusive(void) {
-	unsigned long first_error = 0;
+	const char *first_error = "unset";
 	indigo_uni_handle *first = indigo_uni_open_serial2(serial_exclusive_test_port, INDIGO_LOG_ERROR, &first_error);
 	ASSERT_TRUE(first != NULL);
-	ASSERT_EQ_INT(0, first_error);
-	unsigned long second_error = 0;
+	ASSERT_TRUE(first_error == NULL);
+	const char *second_error = NULL;
 	indigo_uni_handle *second = indigo_uni_open_serial2(serial_exclusive_test_port, INDIGO_LOG_ERROR, &second_error);
 	bool second_open_rejected = second == NULL;
 	if (second != NULL) {
 		indigo_uni_close(&second);
 	}
 	indigo_uni_close(&first);
-	unsigned long reopen_error = EIO;
+	const char *reopen_error = "unset";
 	indigo_uni_handle *reopened = indigo_uni_open_serial2(serial_exclusive_test_port, INDIGO_LOG_ERROR, &reopen_error);
 	bool reopened_successfully = reopened != NULL;
 	indigo_uni_close(&reopened);
 	ASSERT_TRUE(second_open_rejected);
-	ASSERT_EQ_INT(EBUSY, (int)second_error);
+	ASSERT_TRUE(second_error != NULL);
+	ASSERT_STREQ("Serial port is already in use", second_error);
 	ASSERT_TRUE(reopened_successfully);
-	ASSERT_EQ_INT(0, (int)reopen_error);
+	ASSERT_TRUE(reopen_error == NULL);
 }
 #endif
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 static void serial_open_reports_open_error(void) {
-	unsigned long error_code = 0;
-	indigo_uni_handle *handle = indigo_uni_open_serial2("/dev/indigo-test-nonexistent-serial", INDIGO_LOG_ERROR, &error_code);
+	const char *error_message = NULL;
+	indigo_uni_handle *handle = indigo_uni_open_serial2("/dev/indigo-test-nonexistent-serial", INDIGO_LOG_ERROR, &error_message);
 	ASSERT_TRUE(handle == NULL);
-	ASSERT_EQ_INT(ENOENT, (int)error_code);
-	error_code = 0;
-	handle = indigo_uni_open_serial_with_speed2("/dev/indigo-test-nonexistent-serial", 9600, INDIGO_LOG_ERROR, &error_code);
+	ASSERT_TRUE(error_message != NULL);
+	ASSERT_STREQ("Serial port does not exist", error_message);
+	error_message = NULL;
+	handle = indigo_uni_open_serial_with_speed2("/dev/indigo-test-nonexistent-serial", 9600, INDIGO_LOG_ERROR, &error_message);
 	ASSERT_TRUE(handle == NULL);
-	ASSERT_EQ_INT(ENOENT, (int)error_code);
-	error_code = 0;
-	handle = indigo_uni_open_serial_with_config2("auto:///dev/indigo-test-nonexistent-serial", "9600-8N1", INDIGO_LOG_ERROR, &error_code);
+	ASSERT_TRUE(error_message != NULL);
+	ASSERT_STREQ("Serial port does not exist", error_message);
+	error_message = NULL;
+	handle = indigo_uni_open_serial_with_config2("auto:///dev/indigo-test-nonexistent-serial", "9600-8N1", INDIGO_LOG_ERROR, &error_message);
 	ASSERT_TRUE(handle == NULL);
-	ASSERT_EQ_INT(ENOENT, (int)error_code);
+	ASSERT_TRUE(error_message != NULL);
+	ASSERT_STREQ("Serial port does not exist", error_message);
 }
 
 static void serial_open_reports_configuration_error(void) {
-	unsigned long error_code = 0;
-	indigo_uni_handle *handle = indigo_uni_open_serial_with_config2("/unused", "invalid", INDIGO_LOG_ERROR, &error_code);
+	const char *error_message = NULL;
+	indigo_uni_handle *handle = indigo_uni_open_serial_with_config2("/unused", "invalid", INDIGO_LOG_ERROR, &error_message);
 	ASSERT_TRUE(handle == NULL);
-	ASSERT_EQ_INT(EINVAL, (int)error_code);
+	ASSERT_TRUE(error_message != NULL);
+	ASSERT_STREQ("Invalid serial port configuration", error_message);
 }
 
-static void serial_open_reports_exclusive_mode_error(void) {
-	int descriptor = open("/dev/null", O_RDWR | O_NOCTTY | O_SYNC);
-	ASSERT_TRUE(descriptor >= 0);
-	int result = ioctl(descriptor, TIOCEXCL);
-	int expected_error = errno;
-	close(descriptor);
-	ASSERT_EQ_INT(-1, result);
-	unsigned long error_code = 0;
-	indigo_uni_handle *handle = indigo_uni_open_serial2("/dev/null", INDIGO_LOG_ERROR, &error_code);
+static void serial_open_reports_not_a_serial_port(void) {
+	const char *error_message = NULL;
+	indigo_uni_handle *handle = indigo_uni_open_serial2("/dev/null", INDIGO_LOG_ERROR, &error_message);
 	ASSERT_TRUE(handle == NULL);
-	ASSERT_EQ_INT(expected_error, (int)error_code);
+	ASSERT_TRUE(error_message != NULL);
+	ASSERT_STREQ("Not a serial port", error_message);
 }
 
 static void serial_open_clears_error_on_success(void) {
@@ -108,13 +107,13 @@ static void serial_open_clears_error_on_success(void) {
 	ASSERT_TRUE(master >= 0);
 	ASSERT_EQ_INT(0, grantpt(master));
 	ASSERT_EQ_INT(0, unlockpt(master));
-	unsigned long error_code = EIO;
-	indigo_uni_handle *handle = indigo_uni_open_serial2(ptsname(master), INDIGO_LOG_ERROR, &error_code);
+	const char *error_message = "unset";
+	indigo_uni_handle *handle = indigo_uni_open_serial2(ptsname(master), INDIGO_LOG_ERROR, &error_message);
 	bool opened = handle != NULL;
 	indigo_uni_close(&handle);
 	close(master);
 	ASSERT_TRUE(opened);
-	ASSERT_EQ_INT(0, (int)error_code);
+	ASSERT_TRUE(error_message == NULL);
 }
 #endif
 
@@ -146,6 +145,7 @@ static void read_section_accepts_null_ignore_list(void) {
 	indigo_uni_handle *handle = open_handle_with("ab#cd", path, sizeof(path));
 	ASSERT_TRUE(handle != NULL);
 	ASSERT_EQ_INT(3, (int)indigo_uni_read_section2(handle, buffer, sizeof(buffer) - 1, "#", NULL, -1, -1));
+	ASSERT_TRUE(buffer != NULL);
 	ASSERT_STREQ("ab#", buffer);
 	indigo_uni_close(&handle);
 	unlink(path);
@@ -160,6 +160,7 @@ static void read_section_accepts_null_terminator_list(void) {
 	indigo_uni_handle *handle = open_handle_with("abcdef", path, sizeof(path));
 	ASSERT_TRUE(handle != NULL);
 	ASSERT_EQ_INT(4, (int)indigo_uni_read_section2(handle, buffer, 4, NULL, NULL, -1, -1));
+	ASSERT_TRUE(buffer != NULL);
 	ASSERT_STREQ("abcd", buffer);
 	indigo_uni_close(&handle);
 	unlink(path);
@@ -174,6 +175,7 @@ static void read_section_still_ignores_and_terminates(void) {
 	indigo_uni_handle *handle = open_handle_with("a\rb\r\ncd", path, sizeof(path));
 	ASSERT_TRUE(handle != NULL);
 	ASSERT_EQ_INT(2, (int)indigo_uni_read_section2(handle, buffer, sizeof(buffer) - 1, "\n", "\r\n", -1, -1));
+	ASSERT_TRUE(buffer != NULL);
 	ASSERT_STREQ("ab", buffer);
 	indigo_uni_close(&handle);
 	unlink(path);
@@ -251,6 +253,7 @@ static void wait_for_data_continues_after_signal(void) {
 	interrupt_wait(true, INDIGO_DELAY(2), &result, &elapsed, &last_error, line, sizeof(line));
 	ASSERT_EQ_INT(1, result);
 	ASSERT_EQ_INT(0, last_error);
+	ASSERT_TRUE(line != NULL);
 	ASSERT_STREQ("x", line);
 }
 
@@ -539,7 +542,7 @@ int main(void) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		{ "serial_open_reports_open_error", serial_open_reports_open_error },
 		{ "serial_open_reports_configuration_error", serial_open_reports_configuration_error },
-		{ "serial_open_reports_exclusive_mode_error", serial_open_reports_exclusive_mode_error },
+		{ "serial_open_reports_not_a_serial_port", serial_open_reports_not_a_serial_port },
 		{ "serial_open_clears_error_on_success", serial_open_clears_error_on_success },
 #endif
 		{ "wait_for_data_continues_after_signal", wait_for_data_continues_after_signal },

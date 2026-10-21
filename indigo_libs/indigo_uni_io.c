@@ -630,23 +630,53 @@ static bool configure_tty_options(struct termios *options, const char *baudrate)
 	return true;
 }
 
-static indigo_uni_handle *open_tty(const char *serial, const struct termios *options, int log_level, unsigned long *error_code) {
+static const char *serial_error_message(int error) {
+	switch (error) {
+		case 0:
+			return NULL;
+		case EBUSY:
+			return "Serial port is already in use";
+		case EACCES:
+		case EPERM:
+			return "Permission denied";
+		case ENOENT:
+			return "Serial port does not exist";
+		case ENODEV:
+		case ENXIO:
+			return "Serial device is not connected";
+		case ENOTTY:
+			return "Not a serial port";
+		case EINVAL:
+			return "Invalid serial port configuration";
+		case EMFILE:
+		case ENFILE:
+			return "Too many open files";
+		case ENOMEM:
+			return "Not enough memory";
+		case EIO:
+			return "Serial port I/O error";
+		default:
+			return "Failed to open serial port";
+	}
+}
+
+static indigo_uni_handle *open_tty(const char *serial, const struct termios *options, int log_level, const char **error_message) {
 	if (!strncmp(serial, "auto://", 7)) {
 		serial += 7;
 	}
 	int fd = open(serial, O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
 		int error = errno;
-		if (error_code != NULL) {
-			*error_code = error;
+		if (error_message != NULL) {
+			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to open %s (%s)", serial, strerror(error));
 		return NULL;
 	}
 	if (ioctl(fd, TIOCEXCL) == -1) {
 		int error = errno;
-		if (error_code != NULL) {
-			*error_code = error;
+		if (error_message != NULL) {
+			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to exclusively open %s (%s)", serial, strerror(error));
 		close(fd);
@@ -654,8 +684,8 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 	}
 	if (tcsetattr(fd, TCSANOW, options) == -1) {
 		int error = errno;
-		if (error_code != NULL) {
-			*error_code = error;
+		if (error_message != NULL) {
+			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to open %s (%s)", serial, strerror(error));
 		close(fd);
@@ -668,48 +698,51 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 	handle->log_level = log_level;
 	strncpy(handle->name, serial, sizeof(handle->name) - 1);
 	indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // %s opened", handle->index, serial);
-	if (error_code != NULL) {
-		*error_code = 0;
+	if (error_message != NULL) {
+		*error_message = NULL;
 	}
 	return handle;
 }
 
 #elif defined(INDIGO_WINDOWS)
 
-static int serial_error_to_errno(DWORD error) {
+static const char *serial_error_message(DWORD error) {
 	switch (error) {
 		case ERROR_SUCCESS:
-			return 0;
+			return NULL;
 		case ERROR_SHARING_VIOLATION:
 		case ERROR_LOCK_VIOLATION:
 		case ERROR_BUSY:
-			return EBUSY;
+			return "Serial port is already in use";
 		case ERROR_ACCESS_DENIED:
+			return "Access denied, the serial port may be already in use";
 		case ERROR_PRIVILEGE_NOT_HELD:
-			return EACCES;
+			return "Permission denied";
 		case ERROR_FILE_NOT_FOUND:
 		case ERROR_PATH_NOT_FOUND:
-			return ENOENT;
+			return "Serial port does not exist";
 		case ERROR_INVALID_NAME:
+			return "Invalid serial port name";
 		case ERROR_INVALID_PARAMETER:
-			return EINVAL;
+			return "Invalid serial port configuration";
 		case ERROR_INVALID_HANDLE:
-			return EBADF;
+		case ERROR_INVALID_FUNCTION:
+			return "Not a serial port";
 		case ERROR_TOO_MANY_OPEN_FILES:
-			return EMFILE;
+			return "Too many open files";
 		case ERROR_NOT_ENOUGH_MEMORY:
 		case ERROR_OUTOFMEMORY:
-			return ENOMEM;
+			return "Not enough memory";
 		case ERROR_BAD_UNIT:
 		case ERROR_NOT_READY:
 		case ERROR_DEV_NOT_EXIST:
 		case ERROR_DEVICE_NOT_CONNECTED:
-			return ENODEV;
+			return "Serial device is not connected";
 		case ERROR_NOT_SUPPORTED:
 		case ERROR_CALL_NOT_IMPLEMENTED:
-			return ENOSYS;
+			return "Operation is not supported by the serial driver";
 		default:
-			return EIO;
+			return "Failed to open serial port";
 	}
 }
 
@@ -770,7 +803,7 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 	return true;
 }
 
-static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level, unsigned long *error_code) {
+static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level, const char **error_message) {
 	const char *auto_prefix = "auto://";
 	const int auto_prefix_len = strlen(auto_prefix);
 	const char *serial_buf = serial;
@@ -780,8 +813,8 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level, 
 	HANDLE com = CreateFileA(serial_buf, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 	if (com == INVALID_HANDLE_VALUE) {
 		DWORD error = GetLastError();
-		if (error_code != NULL) {
-			*error_code = serial_error_to_errno(error);
+		if (error_message != NULL) {
+			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		return NULL;
@@ -791,8 +824,8 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level, 
 	old_dcb.DCBlength = sizeof(DCB);
 	if (!GetCommState(com, &old_dcb)) {
 		DWORD error = GetLastError();
-		if (error_code != NULL) {
-			*error_code = serial_error_to_errno(error);
+		if (error_message != NULL) {
+			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		CloseHandle(com);
@@ -800,8 +833,8 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level, 
 	}
 	if (!SetCommState(com, dcb)) {
 		DWORD error = GetLastError();
-		if (error_code != NULL) {
-			*error_code = serial_error_to_errno(error);
+		if (error_message != NULL) {
+			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		CloseHandle(com);
@@ -809,8 +842,8 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level, 
 	}
 	if (!SetCommMask(com, EV_RXCHAR | EV_ERR | EV_BREAK)) {
 		DWORD error = GetLastError();
-		if (error_code != NULL) {
-			*error_code = serial_error_to_errno(error);
+		if (error_message != NULL) {
+			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		CloseHandle(com);
@@ -823,46 +856,44 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level, 
 	handle->log_level = log_level;
 	strncpy(handle->name, serial_buf, sizeof(handle->name) - 1);
 	indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, serial);
-	if (error_code != NULL) {
-		*error_code = 0;
+	if (error_message != NULL) {
+		*error_message = NULL;
 	}
 	return handle;
 }
 
 #endif
 
-indigo_uni_handle *indigo_uni_open_serial_with_config2(const char *serial, const char *baudconfig, int log_level, unsigned long *error_code) {
-	if (error_code != NULL) {
-		*error_code = 0;
+indigo_uni_handle *indigo_uni_open_serial_with_config2(const char *serial, const char *baudconfig, int log_level, const char **error_message) {
+	if (error_message != NULL) {
+		*error_message = NULL;
 	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	struct termios to;
 	if (!configure_tty_options(&to, baudconfig)) {
-		int error = errno;
-		if (error_code != NULL) {
-			*error_code = error;
+		if (error_message != NULL) {
+			*error_message = "Invalid serial port configuration";
 		}
-		indigo_error("Failed to open %s (%s)", serial, strerror(error));
+		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		return NULL;
 	}
-	return open_tty(serial, &to, log_level, error_code);
+	return open_tty(serial, &to, log_level, error_message);
 #elif defined(INDIGO_WINDOWS)
 	DCB dcb;
 	memset(&dcb, 0, sizeof(DCB));
 	dcb.DCBlength = sizeof(DCB);
 	if (!configure_tty_options(&dcb, baudconfig)) {
-		DWORD error = GetLastError();
-		if (error_code != NULL) {
-			*error_code = serial_error_to_errno(error);
+		if (error_message != NULL) {
+			*error_message = "Invalid serial port configuration";
 		}
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		return NULL;
 	}
-	return open_tty(serial, &dcb, log_level, error_code);
+	return open_tty(serial, &dcb, log_level, error_message);
 #else
 #pragma message ("TODO: indigo_open_uni_serial_with_config()")
-	if (error_code != NULL) {
-		*error_code = ENOSYS;
+	if (error_message != NULL) {
+		*error_message = "Serial ports are not supported on this platform";
 	}
 	return NULL;
 #endif
@@ -872,18 +903,18 @@ indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const 
 	return indigo_uni_open_serial_with_config2(serial, baudconfig, log_level, NULL);
 }
 
-indigo_uni_handle *indigo_uni_open_serial_with_speed2(const char *serial, int speed, int log_level, unsigned long *error_code) {
+indigo_uni_handle *indigo_uni_open_serial_with_speed2(const char *serial, int speed, int log_level, const char **error_message) {
 	char baud_str[32];
 	snprintf(baud_str, sizeof(baud_str), "%d-8N1", speed);
-	return indigo_uni_open_serial_with_config2(serial, baud_str, log_level, error_code);
+	return indigo_uni_open_serial_with_config2(serial, baud_str, log_level, error_message);
 }
 
 indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *serial, int speed, int log_level) {
 	return indigo_uni_open_serial_with_speed2(serial, speed, log_level, NULL);
 }
 
-indigo_uni_handle *indigo_uni_open_serial2(const char *serial, int log_level, unsigned long *error_code) {
-	return indigo_uni_open_serial_with_config2(serial, "9600-8N1", log_level, error_code);
+indigo_uni_handle *indigo_uni_open_serial2(const char *serial, int log_level, const char **error_message) {
+	return indigo_uni_open_serial_with_config2(serial, "9600-8N1", log_level, error_message);
 }
 
 indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level) {
