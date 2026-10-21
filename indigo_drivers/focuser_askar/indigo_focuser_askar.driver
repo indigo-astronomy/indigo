@@ -323,10 +323,10 @@ driver askar {
 			askar_motion_state(device, INDIGO_BUSY_STATE);
 		}
 
-		static bool askar_open(indigo_device *device) {
+		static bool askar_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "askar")) {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, error_message);
 			} else {
 				char *host = strstr(name, "://");
 				host = host ? host + 3 : name;
