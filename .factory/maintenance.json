@@ -7,8 +7,8 @@
     "last_full_review_date": "2026-10-21",
     "last_full_review_task": "003-initial-repository-audit",
     "last_full_review_revision": "48dc893491f77cddb18fc3188d400a70f67cde19",
-    "completed_non_audit_tasks_since_full_review": 3,
-    "last_task_review_task": "006-repoint-switch-target-citations",
+    "completed_non_audit_tasks_since_full_review": 4,
+    "last_task_review_task": "007-never-rewrite-commits",
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
       "date": "2026-10-21",
