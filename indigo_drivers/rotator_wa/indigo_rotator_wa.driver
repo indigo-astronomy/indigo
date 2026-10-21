@@ -22,7 +22,7 @@ driver wa {
 	label = "WandererAstro rotator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 9;
+	version = 10;
 	multi_device_support = true;
 	serial;
 	include {
@@ -143,7 +143,7 @@ driver wa {
 		}
 
 		static bool wa_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_sleep(2);
 				if (wa_status(device)) {
