@@ -22,7 +22,7 @@ driver beaver {
 	label = "Nexdome Beaver Dome";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 11;
+	version = 12;
 	serial;
 	include {
 		#include <math.h>
@@ -205,7 +205,7 @@ driver beaver {
 		static bool beaver_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "nexdome")) {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			} else {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, BEAVER_NETWORK_PORT, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			}
