@@ -147,10 +147,10 @@ driver nexdome {
 			return true;
 		}
 
-		static bool nexdome_open(indigo_device *device) {
+		static bool nexdome_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "nexdome")) {
-				PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+				PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, error_message);
 				if (PRIVATE_DATA->handle != NULL) {
 					// the controller resets when the serial port opens
 					indigo_sleep(NEXDOME_RESET_DELAY);
