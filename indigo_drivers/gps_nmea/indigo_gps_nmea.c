@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_gps_nmea"
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
@@ -71,6 +71,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	indigo_property *gps_selected_system_property;
 	//+ data
 	int satellites_in_view[MAX_NB_OF_SYSTEMS];
@@ -88,7 +89,7 @@ static bool nmea_open(indigo_device *device) {
 	if (indigo_uni_is_url(name, "gps")) {
 		PRIVATE_DATA->handle = indigo_uni_client_tcp_socket(name, 9999, INDIGO_LOG_DEBUG);
 	} else {
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	}
 	return PRIVATE_DATA->handle != NULL;
 }
@@ -419,6 +420,7 @@ static void gps_timer_callback(indigo_device *device) {
 static void gps_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = nmea_open(device);
 		if (connection_result) {
 			//+ gps.on_connect
@@ -433,7 +435,11 @@ static void gps_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
