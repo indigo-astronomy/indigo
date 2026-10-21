@@ -48,7 +48,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *aux_weather_property;
 	//+ data
 	char response[16];
@@ -65,8 +64,8 @@ typedef struct {
 #define MEASUREMENT_TIMEOUT  130
 #define POLL_INTERVAL        10
 
-static bool astromechanics_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool astromechanics_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG, error_message);
 	return PRIVATE_DATA->handle != NULL;
 }
 
@@ -116,8 +115,8 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = astromechanics_open(device);
+		const char *error_message = NULL;
+		connection_result = astromechanics_open(device, &error_message);
 		if (connection_result) {
 			//+ aux.on_connect
 			PRIVATE_DATA->measuring = false;
@@ -128,8 +127,8 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}

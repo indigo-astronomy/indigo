@@ -38,8 +38,8 @@ driver astromechanics {
 		#define MEASUREMENT_TIMEOUT	130
 		#define POLL_INTERVAL		10
 
-		static bool astromechanics_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool astromechanics_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG, error_message);
 			return PRIVATE_DATA->handle != NULL;
 		}
 
