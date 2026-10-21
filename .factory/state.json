@@ -4,6 +4,6 @@
   "phase": "idle",
   "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Start the initial full maintained-repository audit before the first subsequent development task or release; owner-approved adoption deferral is recorded in maintenance.json.",
+  "next_action": "Start the initial full maintained-repository audit after the owner-prioritized FTDI repair, before unrelated development or release.",
   "blocker": null
 }

@@ -1,0 +1,100 @@
+{
+  "version": 2,
+  "task": "002-fix-ftdi-build",
+  "scope": [
+    "indigo_libs/Makefile",
+    "tools/build_ftdi_macos.sh",
+    "indigo_test/Makefile",
+    "indigo_test/buildsystem/*",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/state.json",
+    ".factory/maintenance.json",
+    ".factory/findings/active.json",
+    ".factory/findings/archive/FND-000044.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-buildsystem"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "sh",
+        "-n",
+        "tools/build_ftdi_macos.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/findings/active.json": [
+      "100644",
+      "blob",
+      "101358fba880f59767ece321b660c59bb1505d1e"
+    ],
+    ".factory/findings/archive/FND-000044.json": [
+      "100644",
+      "blob",
+      "4e50d4d4bc47b83df29c676e9f15bef022d6bf38"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "e3d59fdad311939462b6b63759e3ba07fe16a46f"
+    ],
+    "indigo_libs/Makefile": [
+      "100644",
+      "blob",
+      "773c71b5591871eb46c9f0b5ab22b47ea4c243f2"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "9bcfcf64a1af64dc4f6151664d00efe2fda8be05"
+    ],
+    "indigo_test/buildsystem/test_ftdi_build.py": [
+      "100644",
+      "blob",
+      "259db60bbd02f4d7bd2aca9392a91958c95db736"
+    ],
+    "tools/build_ftdi_macos.sh": [
+      "100644",
+      "blob",
+      "c1bbe05ff3e5640f16838288e9213b46998a00c3"
+    ]
+  }
+}

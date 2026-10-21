@@ -1,0 +1,22 @@
+{
+  "x86_64": {
+    "remaining_members": 22,
+    "embedded_libusb_members": 0
+  },
+  "arm64": {
+    "remaining_members": 22,
+    "embedded_libusb_members": 0
+  },
+  "arm64e": {
+    "remaining_members": 22,
+    "embedded_libusb_members": 0
+  },
+  "libindigo.a": "x86_64 arm64",
+  "libindigo.dylib": "x86_64 arm64",
+  "libindigo_client.a": "x86_64 arm64",
+  "libindigo_client.dylib": "x86_64 arm64",
+  "libindigocat.a": "x86_64 arm64",
+  "libindigocat.dylib": "x86_64 arm64",
+  "final_build_detach": "normal",
+  "earlier_real_failure_cleanup_force_fallback": true
+}

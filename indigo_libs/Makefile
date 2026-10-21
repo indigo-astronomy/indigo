@@ -1,6 +1,6 @@
 #---------------------------------------------------------------------
 #
-# Copyright (c) 2018-2025 CloudMakers, s. r. o.
+# Copyright (c) 2018-2026 CloudMakers, s. r. o.
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -210,22 +210,10 @@ libftd2xx: $(BUILD_LIB)/libftd2xx.a
 FTD2XX_LIBUSB_OBJECTS = core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o poll_posix.o threads_posix.o
 FTD2XX_LIBUSB_OBJECTS_MACOS = core.o descriptor.o io.o hotplug.o sync.o strerror.o darwin_usb.o events_posix.o threads_posix.o
 
-$(BUILD_LIB)/libftd2xx.a:
+$(BUILD_LIB)/libftd2xx.a: $(if $(filter Darwin,$(OS_DETECTED)),$(INDIGO_ROOT)/tools/build_ftdi_macos.sh $(BIN_EXTERNALS)/D2XX1.4.35.dmg)
 	install -d $(BUILD_LIB)
 ifeq ($(OS_DETECTED),Darwin)
-	rm -rf /tmp/indigo_d2xx
-	hdiutil attach -readonly -noverify -noautoopen $(BIN_EXTERNALS)/D2XX1.4.35.dmg -mountpoint /tmp/indigo_d2xx
-	install -m 0644 /tmp/indigo_d2xx/release/ftd2xx.h /tmp/indigo_d2xx/release/WinTypes.h $(BUILD_INCLUDE)
-	install -m 0644 /tmp/indigo_d2xx/release/build/libftd2xx.a $(BUILD_LIB)
-	hdiutil detach /tmp/indigo_d2xx
-	rm -rf /tmp/indigo_d2xx
-	# The macOS archive is universal, so every slice is stripped separately and
-	# the result is recombined.
-	rm -rf /tmp/indigo_d2xx_thin
-	mkdir -p /tmp/indigo_d2xx_thin
-	for arch in `lipo -archs $(BUILD_LIB)/libftd2xx.a`; do lipo -thin $$arch $(BUILD_LIB)/libftd2xx.a -output /tmp/indigo_d2xx_thin/$$arch.a && ar -d /tmp/indigo_d2xx_thin/$$arch.a $(FTD2XX_LIBUSB_OBJECTS_MACOS) && ranlib /tmp/indigo_d2xx_thin/$$arch.a; done
-	lipo -create /tmp/indigo_d2xx_thin/*.a -output $(BUILD_LIB)/libftd2xx.a
-	rm -rf /tmp/indigo_d2xx_thin
+	sh "$(INDIGO_ROOT)/tools/build_ftdi_macos.sh" "$(BIN_EXTERNALS)/D2XX1.4.35.dmg" "$(BUILD_INCLUDE)" "$@" $(FTD2XX_LIBUSB_OBJECTS_MACOS)
 endif
 ifeq ($(OS_DETECTED),Linux)
 ifeq ($(ARCH_DETECTED),arm)

@@ -1,0 +1,3 @@
+# Test plan
+
+Disposable fixtures use fake hdiutil/lipo/ar/ranlib executables, real filesystem operations and no actual mounts. Exercise normal detach, normal-refused/force-success, both-refused, first and later architecture failure, recombination/verification failure, attach failure, existing archive preservation, shell quoting and real Makefile invocation. Assert target publication, cleanup, call sequence, per-slice handling and failure status rather than source text. The real library build separately validates the actual macOS tools and vendor archive. No hardware or driver test is requested.

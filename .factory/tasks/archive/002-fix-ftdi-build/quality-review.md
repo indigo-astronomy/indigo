@@ -1,0 +1,8 @@
+# FTDI build quality review
+
+Verdict: pass
+
+Separate same-agent quality-reviewer pass on final content against e5f25534910b7f51d3e1e87daace13dcd9820d90; not independent. Reviewed the complete helper, Makefile wiring, disposable regressions, task evidence, FND-000044 and Xcode registration. Exact check/retest evidence belongs to verification.md.
+The macOS target delegates to a small POSIX helper and depends on both helper and DMG. Linux recipe is unchanged. Every slice command fails immediately on error, avoiding the previous loop's last-status behavior. A same-directory staging file and final rename prevent partial target publication and preserve existing target contents. Cleanup is bounded, retains inaccessible mounts rather than deleting through them, and reports the retained path. Signals use the same cleanup path. The force fallback addresses the actual diagnosed Xcode unmount veto, not arbitrary devices.
+Tests run the actual shell helper with disposable command boundaries, assert outputs/status/ownership and include real Makefile invocation. Local lipo argument behavior is included in the contract; the real toolchain build and per-slice object inspection supplement the mocks. New tests are accessible via make -C indigo_test test-buildsystem and included in the normal aggregate test dependency.
+FND-000044 is fixed and reverified. No further task-specific quality finding. Existing legacy backlog remains unchanged; complete repository audit is still due under the owner's narrowly prioritized repair request. No unrelated source/refactor/README/vendor/driver churn or publication.

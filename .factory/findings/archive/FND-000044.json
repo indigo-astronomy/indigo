@@ -1,0 +1,24 @@
+{
+  "id": "FND-000044",
+  "title": "FTDI DMG detach failure leaves an unprocessed archive target",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "002-fix-ftdi-build",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The macOS FTDI Make recipe installs the final archive before detach and stripping. Xcode can veto normal unmount; make then fails while the unprocessed target remains and may be reused. Repair the transaction, cover failures and rerun the real library build.",
+  "evidence": "Previous diagnostic: make -C indigo_libs all exited 2 at Makefile:220; target matched the vendor archive and retained all nine embedded libusb objects. Baseline e5f25534910b7f51d3e1e87daace13dcd9820d90:indigo_libs/Makefile:213-228.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "002-fix-ftdi-build/verification.md: seven focused regression cases, successful real universal library build, all nine embedded libusb objects absent per FTDI slice, no leftover mount",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

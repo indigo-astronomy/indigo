@@ -7,8 +7,8 @@
     "last_full_review_date": null,
     "last_full_review_task": null,
     "last_full_review_revision": null,
-    "completed_non_audit_tasks_since_full_review": 1,
-    "last_task_review_task": "001-adopt-ai-factory",
+    "completed_non_audit_tasks_since_full_review": 2,
+    "last_task_review_task": "002-fix-ftdi-build",
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
       "date": "2026-10-21",
@@ -16,7 +16,13 @@
       "reason": "Complete the pinned workflow adoption first; retain partial review and imported findings",
       "checkpoint": "Before the first subsequent development task or release",
       "report_task": "001-adopt-ai-factory",
-      "report": "repository-review.md"
+      "report": "repository-review.md",
+      "subsequent_owner_priority": {
+        "date": "2026-10-21",
+        "task": "002-fix-ftdi-build",
+        "authority": "Peter Polakovic explicitly requested fixing FTDI dependency construction and rebuilding before proceeding",
+        "checkpoint": "After this bounded build repair, before unrelated development or release; full audit remains due"
+      }
     }
   }
 }

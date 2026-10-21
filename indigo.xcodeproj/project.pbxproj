@@ -6010,6 +6010,19 @@
 		F79366E0F4385E79E0FD4036 /* ADR-001-adopt-factory.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-001-adopt-factory.md"; sourceTree = "<group>"; };
 		BFA8ACBF314CCBDE55CE0777 /* registration.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "registration.json"; sourceTree = "<group>"; };
 		E804BE78983A75E53DCCFD52 /* repository-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "repository-review.md"; sourceTree = "<group>"; };
+		91645B40AF21E521E42CD0C3 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		F590664979935F18A2B1437B /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		F48C991FA56D148646014E46 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		C3CC353C65BA46F17F338E0B /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		35C15AD0D5879AE3BAC6C629 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		A656EE3E629A82FFD4F6F4D3 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		BFB3D3D06A911048B5C2FFE9 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		72C4CA27F97B82A8B4E47BA7 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		14935CA0B560BD134978E22D /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		D7CE00EAEFC3F94DA3E0BDAB /* test_ftdi_build.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "test_ftdi_build.py"; sourceTree = "<group>"; };
+		1DD24DE680C3E763067271B0 /* build_ftdi_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "build_ftdi_macos.sh"; sourceTree = "<group>"; };
+		C63E78F3ABF73BB8F2173100 /* artifact-validation.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "artifact-validation.json"; sourceTree = "<group>"; };
+		A37218AB75285F589283925B /* FND-000044.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-000044.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -7332,6 +7345,7 @@
 		592662AF1D9590630021746A /* indigo_test */ = {
 			isa = PBXGroup;
 			children = (
+				514C82BA37D5A234281ECD52 /* buildsystem */,
 				F559B76B4D9A14829C38BB63 /* factory */,
 				59FA7BE4301D2E9700A35CFB /* AGENTS.md */,
 				59FA7C0B301DCEA000A35CFB /* DRIVER_TESTING_RULES.md */,
@@ -9709,6 +9723,7 @@
 		599A240C1DBEC5820020BF8F /* tools */ = {
 			isa = PBXGroup;
 			children = (
+				1DD24DE680C3E763067271B0 /* build_ftdi_macos.sh */,
 				5995FFEA306832330095A792 /* run_driver_test.py */,
 				59E4ADBC30607CA4002B1629 /* build_windows_installer.sh */,
 				59E4ADBD30607CA4002B1629 /* make_test_summary.py */,
@@ -14961,6 +14976,7 @@
 		7408BDCC962B55A84CDB553C /* archive */ = {
 			isa = PBXGroup;
 			children = (
+				A37218AB75285F589283925B /* FND-000044.json */,
 				EB17703C317DA371A5068418 /* .gitkeep */,
 			);
 			path = archive;
@@ -17215,9 +17231,35 @@
 		5D81F456588D799E5C20FF68 /* archive */ = {
 			isa = PBXGroup;
 			children = (
+				DC781B8D44EA7ECACDF738C8 /* 002-fix-ftdi-build */,
 				997F7A1BB7C452B5CC431453 /* 001-adopt-ai-factory */,
 			);
 			path = archive;
+			sourceTree = "<group>";
+		};
+		DC781B8D44EA7ECACDF738C8 /* 002-fix-ftdi-build */ = {
+			isa = PBXGroup;
+			children = (
+				C63E78F3ABF73BB8F2173100 /* artifact-validation.json */,
+				91645B40AF21E521E42CD0C3 /* brief.md */,
+				F590664979935F18A2B1437B /* handoff.md */,
+				F48C991FA56D148646014E46 /* plan.md */,
+				C3CC353C65BA46F17F338E0B /* process.json */,
+				35C15AD0D5879AE3BAC6C629 /* quality-review.md */,
+				A656EE3E629A82FFD4F6F4D3 /* security.md */,
+				BFB3D3D06A911048B5C2FFE9 /* specification.md */,
+				72C4CA27F97B82A8B4E47BA7 /* test-plan.md */,
+				14935CA0B560BD134978E22D /* verification.md */,
+			);
+			path = "002-fix-ftdi-build";
+			sourceTree = "<group>";
+		};
+		514C82BA37D5A234281ECD52 /* buildsystem */ = {
+			isa = PBXGroup;
+			children = (
+				D7CE00EAEFC3F94DA3E0BDAB /* test_ftdi_build.py */,
+			);
+			path = "buildsystem";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

@@ -292,9 +292,12 @@ AUX_UCH_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_uch.a $(TEST_LDFLAG
 AUX_USBDP_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_usbdp.a $(TEST_LDFLAGS) -lindigocat
 POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_mlastro.a $(TEST_LDFLAGS) -lindigocat
 
-.PHONY: test test-unit test-integration benchmark test-clean check-lib
+.PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-unit test-integration
+test: test-unit test-integration test-buildsystem
+
+test-buildsystem:
+	python3 -B -m unittest discover -s buildsystem -p 'test_*.py'
 
 test-unit: check-lib $(UNIT_TESTS)
 	@for test in $(UNIT_TESTS); do \
