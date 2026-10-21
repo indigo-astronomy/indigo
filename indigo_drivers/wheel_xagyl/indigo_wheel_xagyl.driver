@@ -22,7 +22,7 @@ driver xagyl {
 	label = "Xagyl Filter Wheel";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	// include { }
 	// define { }
@@ -43,7 +43,7 @@ driver xagyl {
 
 		static bool xagyl_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
-			PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				char buffer[128];
 				if (indigo_uni_printf(PRIVATE_DATA->handle, "I0") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1) > 0) {
