@@ -42,8 +42,8 @@ driver rts {
 			return indigo_uni_set_rts(PRIVATE_DATA->handle, false) == 0;
 		}
 
-		static bool rts_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool rts_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle == NULL) {
 				return false;
 			}
