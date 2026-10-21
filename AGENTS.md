@@ -244,6 +244,7 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 - Preserve license headers in existing files and use the same header style for new source/header files.
 - Avoid unrelated refactors, whitespace sweeps, and broad mechanical changes.
 - Avoid destructive commands such as `git clean`, `git reset`, and broad file removal unless explicitly requested.
+- Never rewrite existing commits, whether local or already pushed. Do not use `git commit --amend`, `git rebase`, squash or fixup rewrites, `git reset` that drops commits, `git filter-branch`, `git filter-repo` or `git push --force` / `--force-with-lease` on existing history. Correct a mistake with a new commit on top. This owner rule is stricter than `.factory/routines/git.md` and also excludes the consolidation that routine allows before publication.
 - For automatically refactored code, preserve the existing license header and update its copyright year or year range to include the current year.
 
 ## Change Log
