@@ -373,7 +373,7 @@ driver starbook {
 			return starbook_set(device, path, NULL);
 		}
 
-		static bool starbook_open(indigo_device *device) {
+		static bool starbook_open(indigo_device *device, const char **error_message) {
 			const char *address = DEVICE_PORT_ITEM->text.value;
 			if (!strncmp(address, "http://", 7)) address += 7;
 			if (snprintf(PRIVATE_DATA->endpoint, sizeof(PRIVATE_DATA->endpoint), "tcp://%s", address) >= (int)sizeof(PRIVATE_DATA->endpoint) || snprintf(PRIVATE_DATA->host_header, sizeof(PRIVATE_DATA->host_header), "%s", address) >= (int)sizeof(PRIVATE_DATA->host_header)) return false;
