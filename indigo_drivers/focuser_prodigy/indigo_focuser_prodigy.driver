@@ -20,7 +20,7 @@ driver prodigy {
 	label = "PegasusAstro Prodigy Microfocuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2022-2026 CloudMakers, s. r. o.";
-	version = 12;
+	version = 13;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -115,7 +115,7 @@ driver prodigy {
 		}
 
 		static bool prodigy_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle && prodigy_echo(device, "#", "OK_PRDG")) {
 				PRIVATE_DATA->uncertain = PRIVATE_DATA->rebooting = false;
 				return true;
