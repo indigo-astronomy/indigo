@@ -296,7 +296,7 @@ driver nexstaraux {
 			return nexstaraux_command(device, src, dst, cmd, data, 3, reply);
 		}
 
-		static bool nexstaraux_open(indigo_device *device) {
+		static bool nexstaraux_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (strncmp(name, "nexstar://", 10) == 0) {
 				char *host = name + 10;
