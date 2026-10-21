@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_rotator_falcon"
 #define DRIVER_LABEL         "PegasusAstro Falcon rotator"
 #define ROTATOR_DEVICE_NAME  "Pegasus Falcon rotator"
@@ -42,6 +42,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	//+ data
 	char response[128];
 	bool abort;
@@ -67,7 +68,7 @@ static bool falcon_command(indigo_device *device, char *command, ...) {
 }
 
 static bool falcon_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (falcon_command(device, "F#") && !strncmp(PRIVATE_DATA->response, "FR_OK", 5)) {
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"Falcon Rotator");
@@ -78,7 +79,7 @@ static bool falcon_open(indigo_device *device) {
 			return true;
 		} else {
 			indigo_uni_close(&PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (falcon_command(device, "F#") && !strncmp(PRIVATE_DATA->response, "F2R_", 4)) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator v2");
 				if (falcon_command(device, "FV") && !strncmp(PRIVATE_DATA->response, "FV:", 3)) {
@@ -165,6 +166,7 @@ static void falcon_sync(indigo_device *device) {
 static void rotator_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = falcon_open(device);
 		if (connection_result) {
 			//+ rotator.on_connect
@@ -216,7 +218,11 @@ static void rotator_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
