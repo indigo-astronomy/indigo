@@ -22,7 +22,7 @@ driver nexdome3 {
 	label = "NexDome3";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 17;
+	version = 18;
 	serial;
 	include {
 		#include <math.h>
@@ -128,7 +128,7 @@ driver nexdome3 {
 		static bool nexdome3_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "nexdome")) {
-				PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 				if (PRIVATE_DATA->handle != NULL) {
 					// to be on the safe side
 					indigo_sleep(NEXDOME3_RESET_DELAY);
