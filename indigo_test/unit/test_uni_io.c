@@ -31,11 +31,37 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <errno.h>
+#endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
 
 #include "../test_runner.h"
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+static const char *serial_exclusive_test_port;
+
+static void serial_port_open_is_exclusive(void) {
+	indigo_uni_handle *first = indigo_uni_open_serial(serial_exclusive_test_port, INDIGO_LOG_ERROR);
+	ASSERT_TRUE(first != NULL);
+	errno = 0;
+	indigo_uni_handle *second = indigo_uni_open_serial(serial_exclusive_test_port, INDIGO_LOG_ERROR);
+	int second_error = errno;
+	bool second_open_rejected = second == NULL;
+	if (second != NULL) {
+		indigo_uni_close(&second);
+	}
+	indigo_uni_close(&first);
+	indigo_uni_handle *reopened = indigo_uni_open_serial(serial_exclusive_test_port, INDIGO_LOG_ERROR);
+	bool reopened_successfully = reopened != NULL;
+	indigo_uni_close(&reopened);
+	ASSERT_TRUE(second_open_rejected);
+	ASSERT_EQ_INT(EBUSY, second_error);
+	ASSERT_TRUE(reopened_successfully);
+}
+#endif
 
 // A file handle is enough to exercise the delimited reader: with both timeouts
 // set to -1 the reader skips indigo_uni_wait_for_data() and goes straight to
@@ -469,5 +495,21 @@ int main(void) {
 		{ "connection_lost_after_serial_failure", connection_lost_after_serial_failure },
 		{ "connection_lost_after_peer_close", connection_lost_after_peer_close }
 	};
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	// Set INDIGO_TEST_TIOCEXCL_PORT to opt into testing one physical serial port.
+	serial_exclusive_test_port = getenv("INDIGO_TEST_TIOCEXCL_PORT");
+	if (serial_exclusive_test_port != NULL) {
+		if (*serial_exclusive_test_port == '\0') {
+			fprintf(stderr, "INDIGO_TEST_TIOCEXCL_PORT must contain one serial port path\n");
+			return 1;
+		}
+		const indigo_test_case serial_test[] = {
+			{ "serial_port_open_is_exclusive", serial_port_open_is_exclusive }
+		};
+		if (indigo_run_tests("indigo_uni_io TIOCEXCL physical-port test", serial_test, sizeof(serial_test) / sizeof(serial_test[0]))) {
+			return 1;
+		}
+	}
+#endif
 	return indigo_run_tests("indigo_uni_io unit tests", tests, sizeof(tests) / sizeof(tests[0]));
 }

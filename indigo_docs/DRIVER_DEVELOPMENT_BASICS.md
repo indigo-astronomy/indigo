@@ -594,6 +594,8 @@ typedef struct {
 
 When opening a handle you pass a **log level** (one of *INDIGO_LOG_ERROR*, *INDIGO_LOG_INFO*, *INDIGO_LOG_DEBUG*, ...) which controls how the traffic on that handle is logged. For devices that exchange binary (non text) data, OR the level with the *BINARY_LOG* flag so that the log is rendered as a hex dump instead of text.
 
+Serial open functions request exclusive access to the port. Windows opens with sharing disabled; Linux and macOS set the terminal's exclusive mode with `TIOCEXCL`. On Linux, a process with `CAP_SYS_ADMIN` can bypass terminal exclusive mode.
+
 Open functions:
 
 - *indigo_uni_open_serial()* - open serial communication at 9600-8N1

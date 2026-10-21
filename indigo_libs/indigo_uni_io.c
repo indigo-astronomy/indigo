@@ -639,6 +639,11 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		return NULL;
 	}
+	if (ioctl(fd, TIOCEXCL) == -1) {
+		indigo_error("Failed to exclusively open %s (%s)", serial, strerror(errno));
+		close(fd);
+		return NULL;
+	}
 	if (tcsetattr(fd, TCSANOW, options) == -1) {
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		close(fd);
