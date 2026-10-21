@@ -59,7 +59,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *aux_light_switch_property;
 	indigo_property *aux_light_intensity_property;
 	//+ data
@@ -86,8 +85,8 @@ static bool flatmaster_command(indigo_device *device, char *command, ...) {
 	return result > 0;
 }
 
-static bool flatmaster_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool flatmaster_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (flatmaster_command(device, "#") && !strcmp("OK_FM", PRIVATE_DATA->response)) {
 			if (flatmaster_command(device, "V")) {
@@ -122,8 +121,8 @@ static void flatmaster_close(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = flatmaster_open(device);
+		const char *error_message = NULL;
+		connection_result = flatmaster_open(device, &error_message);
 		if (connection_result) {
 			//+ aux.on_connect
 			/* FlatMaster does not report intensity and ON/OFF state, so we set it to be consistent */
@@ -145,8 +144,8 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
