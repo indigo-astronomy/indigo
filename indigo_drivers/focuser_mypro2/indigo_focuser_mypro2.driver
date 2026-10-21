@@ -27,7 +27,7 @@ driver mypro2 {
 	label = "myFocuserPro2 Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2020-2026 Rumen G. Bogdanovski";
-	version = 16;
+	version = 17;
 	serial {
 		configurable_speed = true;
 	}
@@ -475,7 +475,7 @@ driver mypro2 {
 			if (indigo_uni_is_url(name, "mfp")) {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			}
 			if (PRIVATE_DATA->handle == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", name);
