@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 19;
+	version = 20;
 	serial {
 		configurable_speed = true;
 	}
@@ -1479,7 +1479,7 @@ driver synscan {
 				}
 			} else {
 				PRIVATE_DATA->udp = false;
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			}
 			if (PRIVATE_DATA->handle == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
