@@ -6262,7 +6262,6 @@
 		19C1F488A3228D2B4B97E714 /* tasks */ = {
 			isa = PBXGroup;
 			children = (
-				D504511A909474540E1E10EF /* 003-initial-repository-audit */,
 				5D81F456588D799E5C20FF68 /* archive */,
 			);
 			path = tasks;
@@ -17263,6 +17262,7 @@
 			isa = PBXGroup;
 			children = (
 				DC781B8D44EA7ECACDF738C8 /* 002-fix-ftdi-build */,
+				D504511A909474540E1E10EF /* 003-initial-repository-audit */,
 				A332FB20C9B365994D606E82 /* 004-fix-websocket-key-overflow */,
 				997F7A1BB7C452B5CC431453 /* 001-adopt-ai-factory */,
 			);

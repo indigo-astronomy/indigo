@@ -2,7 +2,7 @@
 
 Own acceptance results, executed checks, baseline comparisons and retest evidence. Diff quality is in quality-review.md; security conclusions are in security.md.
 
-Verdict: pass with documented limitations (acceptance criteria met; one blocking security finding registered for separate repair)
+Verdict: pass
 Reviewer: single agent, repository-reviewer/verifier role (independence limited; same agent produced and reviewed the evidence)
 Date: 21 Oct 2026 (Europe/Bratislava)
 Revision and working-tree state: base/HEAD 48dc893491f77cddb18fc3188d400a70f67cde19; `.factory/state.json` and `.factory/findings/active.json` modified, `.factory/tasks/003-initial-repository-audit/` untracked; no tracked product source changed.
@@ -28,6 +28,17 @@ Review independence: reviewer also performed the audit; no separate implementer 
 | `make -C indigo_test test-unit` (full) | repo root | 2 | no rule to make `build/drivers/indigo_system_alpaca.a`; full unit link unavailable (driver archive not built). baseline-unit.log |
 | `./.factory/scripts/findings check` (post-registration) | repo root | 0 | 44 active, 1 archived, task evidence valid. |
 
+## Final candidate checks, 21 Oct 2026
+Rerun on the finalization working tree, on top of task 004 commit 93f8ae3d5, before the final commit.
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `./.factory/scripts/check` | 0 | passed |
+| `./.factory/scripts/security` | 0 | passed |
+| `./.factory/scripts/test` | 0 | 144 tests OK |
+| `make -C indigo_test test-buildsystem` | 0 | 7 tests OK |
+| `./.factory/scripts/findings check` | 0 | 45 active, 2 archived |
+
 ## Baseline comparison and regressions
 No regression introduced by the audit: the only tracked-tree change is the findings-register insertion of FND-000045 plus task evidence and coordinator state. Reviewed product sources are byte-identical to the base.
 
@@ -40,7 +51,7 @@ Raw `*.log` outputs named in the checks table are ignored by the repository `.gi
 Confirmed locally: real clock reading for this record (date command). Not covered: hardware or driver-mode runs; full native unit link (missing alpaca driver archive); Windows build; line-by-line semantic re-inspection of the full driver corpus this session. A missing SDK/archive or skipped suite is not treated as a pass.
 
 ## Verification verdict rationale
-Acceptance criteria are met with the stated limitations. The one new confirmed finding is blocking for a release but its repair is out of this audit's write scope; it is registered and routed. Next assignment is in handoff.md.
+Acceptance criteria are met with the stated limitations, which the owner accepted on 21 Oct 2026. The blocking finding FND-000045 was repaired and reverified by task 004. Next assignment is in handoff.md.
 
 ## Register reconciliation
-Canonical IDs and evidence references match .factory/findings/active.json (44 active incl. FND-000045, 1 archived FND-000044; next_id 46). Ownership/status stay in the register; not duplicated here.
+Canonical IDs and evidence references match the register: 45 active including FND-000046 and FND-000047, 2 archived (FND-000044, FND-000045); next_id 48. Ownership/status stay in the register; not duplicated here.

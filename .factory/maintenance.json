@@ -4,11 +4,11 @@
     "review_every_task": true,
     "full_review_every_completed_tasks": 5,
     "full_review_every_calendar_days": 7,
-    "last_full_review_date": null,
-    "last_full_review_task": null,
-    "last_full_review_revision": null,
-    "completed_non_audit_tasks_since_full_review": 3,
-    "last_task_review_task": "004-fix-websocket-key-overflow",
+    "last_full_review_date": "2026-10-21",
+    "last_full_review_task": "003-initial-repository-audit",
+    "last_full_review_revision": "48dc893491f77cddb18fc3188d400a70f67cde19",
+    "completed_non_audit_tasks_since_full_review": 1,
+    "last_task_review_task": "003-initial-repository-audit",
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
       "date": "2026-10-21",
@@ -30,8 +30,15 @@
       "date": "2026-10-21",
       "revision": "48dc893491f77cddb18fc3188d400a70f67cde19",
       "coverage": "framework/server/protocol/portable-I-O inspected this session; other component classes via adoption-migrated passes reconciled against current source; full-corpus semantic re-inspection not performed this session",
-      "checkpoint_reset": false,
-      "open_gate": "Owner to (1) disposition blocking FND-000045 (repair task or explicit security risk decision) and (2) confirm the documented coverage satisfies the initial-audit gate before the full-review fields are set"
+      "checkpoint_reset": true,
+      "open_gate": null,
+      "owner_acceptance": {
+        "by": "Peter Polakovic, explicit conversation reply",
+        "date": "2026-10-21",
+        "text": "I accept the documented coverage of task 003 as the initial-audit gate.",
+        "blocking_findings": "FND-000045 fixed and archived by task 004 before acceptance"
+      },
+      "counter_note": "Task 004 completed after the reviewed snapshot and is counted toward the next full audit"
     }
   }
 }

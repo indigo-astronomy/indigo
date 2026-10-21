@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "active_task": "003-initial-repository-audit",
-  "phase": "review",
-  "status": "active",
+  "active_task": null,
+  "phase": "idle",
+  "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Resume 003 on task/003-initial-repository-audit: FND-000045 is fixed by task 004 (stacked branch). Owner decides the coverage gate; then finalize 003 reports and process.json and archive it.",
-  "blocker": "Owner confirmation that the documented audit coverage satisfies the initial-audit gate"
+  "next_action": "Owner to authorize integration of task/001, task/002 and task/003 (which now contains task 004) into master; open findings include FND-000046 and FND-000047.",
+  "blocker": null
 }

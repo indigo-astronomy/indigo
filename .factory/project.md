@@ -39,7 +39,7 @@ Legacy REVIEW.md tracking is retired. Current findings live in .factory/findings
 
 ## Hosts and maintenance
 Owner timezone: Europe/Bratislava. Entry points: AGENTS.md, CLAUDE.md, GEMINI.md, .cursor/rules/ai-factory.mdc and .github/copilot-instructions.md. Shared bootstrap: .factory/bootstrap.md. Codex explicit loading/context export can be checked here; fresh native sessions for other clients remain unverified. See task verification evidence for precise limits.
-State: .factory/state.json. Maintenance cadence: five completed non-audit tasks or seven calendar days; only a completed full audit resets .factory/maintenance.json. Initial full code audit is owner-deferred until before the first subsequent development task or release. It remains due; legacy checkpoints and a sampled adoption review do not count as completion.
+State: .factory/state.json. Maintenance cadence: five completed non-audit tasks or seven calendar days; only a completed full audit resets .factory/maintenance.json. The initial full audit was completed by task 003-initial-repository-audit on 21 Oct 2026 at revision 48dc893491f77cddb18fc3188d400a70f67cde19, with coverage and its limitations accepted by the owner; see its archived [repository-review.md](tasks/archive/003-initial-repository-audit/repository-review.md). The next full audit is due after five completed non-audit tasks or seven days, per maintenance.json.
 
 ## Provenance and updates
 - Approved template: https://github.com/polakovic/ai_factory, baseline `11392a11253bae4d1c5d5db97e8a532917728c09`; reviewed source-to-target map: .factory/template-lock.json.
