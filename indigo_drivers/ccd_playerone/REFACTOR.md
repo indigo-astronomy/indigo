@@ -530,7 +530,7 @@ be crossed; `ccd_atik` was measured the same day and is not (43/43).
 
 ## Coupled mode, pixel format and preset requests (TGT-067, 2026-09-27)
 
-Version 32, finding TGT-067 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`),
+Version 32, finding TGT-067 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`),
 the same structure as TGT-066 in `ccd_asi` and fixed the same way.
 
 ### Semantics

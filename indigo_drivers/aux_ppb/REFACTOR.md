@@ -40,7 +40,7 @@ cd indigo_test && ./build/integration/test_aux_ppb_simulator
 
 ## Switch requests read from their targets (2026-09-27, 3.0.0.31)
 
-Findings TGT-043 to TGT-045 and the aux_ppb part of TGT-B07 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Findings TGT-043 to TGT-045 and the aux_ppb part of TGT-B07 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 ### Defects
 

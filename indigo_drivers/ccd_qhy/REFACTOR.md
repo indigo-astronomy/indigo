@@ -738,7 +738,7 @@ with the rest of the legacy driver.
 
 ## Coupled mode, pixel format, binning and frame requests (TGT-069, 2026-09-27)
 
-Version 40, finding TGT-069 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`),
+Version 40, finding TGT-069 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`),
 the same class as TGT-066/067/068 (`ccd_asi` 3.0.0.70, `ccd_playerone` 3.0.0.32, `ccd_svb` 3.0.0.33).
 
 ### Semantics

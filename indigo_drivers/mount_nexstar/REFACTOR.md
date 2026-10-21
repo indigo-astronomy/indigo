@@ -1166,7 +1166,7 @@ Hardware tests: **12 run, 12 passed** in the final StarSense 1.20 + GPS 11.1 run
 ## Switch, number and UTC targets (2026-09-26)
 
 Version 46, findings TGT-007, TGT-028, TGT-C01 and the nexstar parts of TGT-B04 and TGT-B05 of
-`indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this change.
 
 - TGT-007: while tracking is off, `nexstar_update_position()` asks the mount for its tracking mode and,
   with AUTO selected, replaced `TRACKING_MODE` by the detected EQ/AA without checking that property for

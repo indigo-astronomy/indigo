@@ -176,7 +176,7 @@ identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for
 
 ## Suffix request overwritten by the factory reset (TGT-C06, 3.0.0.9, 2026-09-27)
 
-Found by the switch target review (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-C06), reproduced on Linux x64 with the fake SDK.
+Found by the switch target review (the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` at Git revision `85c7c3d9207b`, TGT-C06), reproduced on Linux x64 with the fake SDK.
 
 - Impact: an X_CUSTOM_SUFFIX request copied while a factory reset was queued or running was lost. The reset handler read the suffix back with `astroasis_read_names()`, wrote it into the item and published X_CUSTOM_SUFFIX OK over the pending BUSY; the queued suffix handler then sent the reset suffix to the wheel instead of the request and reported OK.
 - Root cause: `astroasis_read_names()` wrote value and state of X_CUSTOM_SUFFIX without regard to a pending request, and the reset handler published it unconditionally.
@@ -187,7 +187,7 @@ Found by the switch target review (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TG
 
 ## Slot request overwritten by the factory reset (TGT-D19, 3.0.0.10, 2026-09-27)
 
-Found while fixing TGT-C06 (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-D19), reproduced on Linux x64 with the fake SDK.
+Found while fixing TGT-C06 (the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` at Git revision `85c7c3d9207b`, TGT-D19), reproduced on Linux x64 with the fake SDK.
 
 - Impact: a WHEEL_SLOT request copied while a factory reset was running was lost. `astroasis_idle()` in the reset handler wrote the current slot into the value, the handler then wrote the slot read back after the reset into value and target and published WHEEL_SLOT OK over the pending BUSY; the queued slot handler read the overwritten value, found the wheel already there and reported OK without moving.
 - Root cause: `astroasis_idle()` and the reset handler wrote value, target and state of WHEEL_SLOT without regard to a pending request.
@@ -197,7 +197,7 @@ Found while fixing TGT-C06 (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-D19),
 
 ## Slot request refused over the calibration's BUSY (TGT-D23, 3.0.0.11, 2026-09-27)
 
-Found while fixing TGT-D19 (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-D23), reproduced on Linux x64 with the fake SDK.
+Found while fixing TGT-D19 (the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` at Git revision `85c7c3d9207b`, TGT-D23), reproduced on Linux x64 with the fake SDK.
 
 - Impact: a WHEEL_SLOT request copied while the X_CALIBRATE handler read the status was refused, and its ALERT replaced the BUSY the calibration had just published on WHEEL_SLOT. For the whole calibration WHEEL_SLOT showed ALERT with the requested target while the wheel was turning, and the request was never sent (observed on 3.0.0.10: WHEEL_SLOT ALERT, target 4, X_CALIBRATE BUSY, no move).
 - Root cause: the calibrate handler checked WHEEL_SLOT for BUSY only before `astroasis_idle()`, then started the calibration and set and published WHEEL_SLOT BUSY over the pending request; the queued slot handler found X_CALIBRATE BUSY and ended the request with ALERT.
@@ -208,7 +208,7 @@ Found while fixing TGT-D19 (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-D23),
 
 ## Calibration BUSY hidden by a second request or a slot request (TGT-D26, 3.0.0.12, 2026-09-27)
 
-Found while fixing TGT-D23 (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-D26), both parts reproduced on Linux x64 with the fake SDK.
+Found while fixing TGT-D23 (the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` at Git revision `85c7c3d9207b`, TGT-D26), both parts reproduced on Linux x64 with the fake SDK.
 
 - Impact (a): the X_CALIBRATE handler set X_CALIBRATE to OK at its start, before its status read (hand-written in the `.driver`; the generator emits no OK prologue for this handler). A second calibrate request made during that read passed the framework BUSY guard and was queued; the first handler started the calibration and published BUSY, then the second handler found WHEEL_SLOT BUSY and ended with ALERT. X_CALIBRATE showed ALERT for the whole running calibration, and because the operation finalizer reports completion only while X_CALIBRATE is BUSY, "Calibration finished" was never shown (observed on 3.0.0.11: X_CALIBRATE ALERT while the wheel calibrated).
 - Impact (b): a WHEEL_SLOT request made during the `OFWCalibrate()` call itself was accepted (WHEEL_SLOT was not BUSY yet). The calibration started, and the queued slot handler found X_CALIBRATE BUSY and ended the request with ALERT, which replaced the calibration's BUSY on WHEEL_SLOT for the whole calibration (observed on 3.0.0.11: WHEEL_SLOT ALERT, X_CALIBRATE BUSY, no move). The TGT-D23 check after the status read runs before that call and does not cover it.

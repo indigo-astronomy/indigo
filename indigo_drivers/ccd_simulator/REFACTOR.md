@@ -190,7 +190,7 @@ Final test summary for this change: simulator suite 24 run / 24 passed; hardware
 
 ## Focuser direction selector (TGT-071, 2026-09-27)
 
-Version 34, finding TGT-071 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+Version 34, finding TGT-071 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`).
 
 ### Defect (reproduced)
 

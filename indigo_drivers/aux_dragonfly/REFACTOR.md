@@ -641,7 +641,7 @@ executable dies with SIGSEGV (`rc=139`); against the fixed library all three pas
 
 ### TGT-016 — pulse finalizer writes `AUX_GPIO_OUTLETS` behind a queued request (audit, Won't fix)
 
-*Finding.* `indigo_drivers/REVIEW_SWITCH_TARGETS.md` TGT-016: `relay_pulse_finalizer()` in
+*Finding.* TGT-016 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`): `relay_pulse_finalizer()` in
 `shared/dragonfly_shared.c` sets a relay whose pulse has elapsed to false and publishes without a
 BUSY check, and `AUX_GPIO_OUTLETS` stays OK while pulses run, so a request can be copied before
 the finalizer (a TIME task) runs ahead of its handler.

@@ -203,7 +203,7 @@ Simulated tests run 0, passed 0. Hardware tests run 1, passed 1.
 
 ## Queued cooler request (TGT-061, 2026-09-27)
 
-Version 39, finding TGT-061 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+Version 39, finding TGT-061 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`).
 
 ### Defect (reproduced)
 

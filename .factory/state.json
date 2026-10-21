@@ -4,6 +4,6 @@
   "phase": "idle",
   "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Local master holds tasks 001 to 005; push is not authorized. Open follow-ups: FND-000046, FND-000047, FND-000048 and the 44 REFACTOR.md notes that cite the removed REVIEW_SWITCH_TARGETS.md.",
+  "next_action": "Local master holds tasks 001 to 006; push is not authorized. Open findings FND-000046, FND-000047 and FND-000048 have no repair task yet.",
   "blocker": null
 }

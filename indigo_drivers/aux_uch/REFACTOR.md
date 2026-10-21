@@ -35,7 +35,7 @@ cd indigo_test && ./build/integration/test_aux_uch_simulator
 
 ## USB port requests read from their targets (2026-09-27, 3.0.0.8)
 
-Findings TGT-052 and the aux_uch part of TGT-B07 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Findings TGT-052 and the aux_uch part of TGT-B07 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 ### Defects
 

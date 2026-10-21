@@ -287,7 +287,7 @@ precedes `U DOME_HORIZONTAL_COORDINATES BUSY` in three places. No serial command
 
 ## Switch targets for DOME_SHUTTER and DOME_FLAP (2026-09-27, 3.0.0.11, branch `refactoring_targets`)
 
-Rows TGT-029 and TGT-030 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+Rows TGT-029 and TGT-030 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this change.
 
 - **Baseline on Linux x64:** the suite did not build: the simulator rule in `indigo_test/Makefile` linked without
   `-lm` (`undefined reference to lround` / `floor`; macOS links libm implicitly), the same defect dome_nexdome3 had.
@@ -321,7 +321,7 @@ Rows TGT-029 and TGT-030 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardwa
 
 ## Shutter and flap requests during the first poll after an abort (2026-09-27, 3.0.0.12, branch `refactoring_targets`)
 
-Row TGT-D12 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the item left open in the previous section). No hardware run
+Row TGT-D12 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; the item left open in the previous section). No hardware run
 for this change.
 
 - **Impact (reproduced):** after DOME_ABORT_MOTION the next `dome_status_poll` enters its `aborted` branch, which set
@@ -355,7 +355,7 @@ for this change.
 
 ## Rotation and shutter requests around an abort, DOME_PARK at connect (2026-09-27, 3.0.0.13, branch `refactoring_targets`)
 
-Rows TGT-D20 and TGT-D21 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (TGT-D20 is the item left open in the previous
+Rows TGT-D20 and TGT-D21 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; TGT-D20 is the item left open in the previous
 section). No hardware run for this change.
 
 - **TGT-D20, poll (reproduced):** the `aborted` branch of `dome_status_poll` also set DOME_HORIZONTAL_COORDINATES
@@ -414,7 +414,7 @@ section). No hardware run for this change.
 
 ## Operations started between an abort and the next poll (2026-09-27, 3.0.0.14, branch `refactoring_targets`)
 
-Row TGT-D24 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the item left open in the previous section). No hardware run
+Row TGT-D24 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; the item left open in the previous section). No hardware run
 for this change.
 
 - **Defect (reproduced):** the `aborted` branch of `dome_status_poll` treated every operation running at the first poll
@@ -465,7 +465,7 @@ for this change.
 
 ## Emergency checks in the first poll after an abort (2026-09-27, 3.0.0.15, branch `refactoring_targets`)
 
-Row TGT-D25 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the two items left open in the previous section). No hardware
+Row TGT-D25 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; the two items left open in the previous section). No hardware
 run for this change.
 
 - **(a) Emergency checks skipped in the first poll after an abort (reproduced, fixed):** the three emergency checks of
@@ -514,7 +514,7 @@ run for this change.
 
 ## Failed requests in the first poll after an abort (2026-09-27, 3.0.0.16, branch `refactoring_targets`)
 
-Row TGT-D27 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+Row TGT-D27 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this change.
 
 - **Defect (reproduced, fixed):** a request that failed between DOME_ABORT_MOTION and the first status poll after it
   (a GOTO answered `d#comerro`, a flap OPEN refused with `d#err_sht`, a shutter OPEN answered `d#comerro`) left its

@@ -181,7 +181,7 @@ MountSim simulated acceptance: **13 run / 13 passed**. Portable simulated integr
 
 ## Reader replies on the device queue (3.0.0.21, 2026-09-27)
 
-Findings TGT-B02, TGT-C02 and the rainbow parts of TGT-B03 and TGT-B05 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Findings TGT-B02, TGT-C02 and the rainbow parts of TGT-B03 and TGT-B05 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 Simulator run on Linux x64 only; no hardware and no MountSim run for this change (MountSim needs macOS).
 
 Defects, reproduced against 3.0.0.20 before the fix:

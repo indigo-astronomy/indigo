@@ -174,7 +174,7 @@ PWM channel 1 rather than channel 3.
 
 ## Switch target adoption: PWM requests and the pulse finalizer (3.0.0.6, 2026-09-27)
 
-Findings TGT-018 and the aux_asiair part of TGT-B03 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Findings TGT-018 and the aux_asiair part of TGT-B03 in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 Linux x64 (Ubuntu 24.04, gcc 13.3), hardware-free suite only; no hardware run.
 
 - **Baseline on Linux x64 (reproduced, fixed in the test build):** the unchanged 3.0.0.5 suite
@@ -226,7 +226,7 @@ cd indigo_test && INDIGO_TEST_CASE_FILTER="request survives the poll" ./build/in
 
 ## Failed PWM writes (3.0.0.7, 2026-09-27)
 
-The aux_asiair part of TGT-D11 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (unrelated to D11 in
+The aux_asiair part of TGT-D11 in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; unrelated to D11 in
 this file), fixed the same way as aux_rpio 3.0.0.11. Linux x64 (Ubuntu 24.04, gcc 13.3),
 hardware-free suite only; no hardware run.
 

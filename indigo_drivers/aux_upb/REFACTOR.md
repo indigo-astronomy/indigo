@@ -228,7 +228,7 @@ motion timing, not the USB path, and is not addressed here.
 
 ## Switch requests read from their targets (2026-09-27, 3.0.0.32)
 
-Findings TGT-038 to TGT-042 and TGT-D02 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Findings TGT-038 to TGT-042 and TGT-D02 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 ### Defects
 
@@ -287,7 +287,7 @@ Findings TGT-038 to TGT-042 and TGT-D02 of `indigo_drivers/REVIEW_SWITCH_TARGETS
 
 ## Outlet changes reported by the box are published (2026-09-27, 3.0.0.33)
 
-Finding TGT-D15 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Finding TGT-D15 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 ### Defect
 
@@ -320,7 +320,7 @@ while AUX_POWER_OUTLET_STATE followed the box. Reproduced with the simulator.
 
 ## One dew control mode when the connect status fails, TGT-D22 (2026-09-27, 3.0.0.34)
 
-Finding TGT-D22 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Finding TGT-D22 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 ### Defect
 
@@ -371,7 +371,7 @@ reproducible.
   published OK before the box got `P6:127`). The poll's early OK is not visible as a second update,
   because the handler publishes the same values and the bus suppresses the repeat; the test checks the
   command log when the first OK arrives.
-- **Noticed, not changed (TGT-D29):** `focuser_overlapping_request_is_rejected` fails intermittently
+- **Noticed, not changed (TGT-D29, now FND-000048 in `.factory/findings/active.json`):** `focuser_overlapping_request_is_rejected` fails intermittently
   with version 34 as well (2 of 3 runs; 2 of 9 with version 35): the focuser poll sets FOCUSER_POSITION and FOCUSER_STEPS OK
   when `SI` reports no motion, also while a position request is queued and not yet sent, so the
   following FOCUSER_STEPS request is accepted instead of refused.

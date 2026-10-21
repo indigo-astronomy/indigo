@@ -251,7 +251,7 @@ Counts include development runs; a registered case run inside a complete suite r
 
 ## Switch targets for DOME_SHUTTER and X_CLOSE_COND (2026-09-27, 3.0.0.5, branch `refactoring_targets`)
 
-Rows TGT-034, TGT-073 and the dome_talon6ror part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+Rows TGT-034, TGT-073 and the dome_talon6ror part of TGT-B08 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this change.
 
 - **Baseline on Linux x64:** the suite did not build: the simulator rule in `indigo_test/Makefile` linked without
   `-lm` (`undefined reference to lround`; macOS links libm implicitly), the same defect the other dome simulators had.
@@ -316,7 +316,7 @@ Rows TGT-034, TGT-073 and the dome_talon6ror part of TGT-B08 of `indigo_drivers/
 
 ## Checksum error over a queued request and the isolated trace failure (2026-09-27, 3.0.0.6, branch `refactoring_targets`)
 
-Rows TGT-D13 and TGT-D14 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (the two items left open in the previous section).
+Rows TGT-D13 and TGT-D14 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; the two items left open in the previous section).
 No hardware run for this change.
 
 - **TGT-D13 impact (reproduced):** a status reply with a bad checksum made `dome_status_poll` set DOME_SHUTTER ALERT and

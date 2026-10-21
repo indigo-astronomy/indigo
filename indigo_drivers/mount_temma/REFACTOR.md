@@ -234,7 +234,7 @@ The generator migration (`1db9fb0ff`) dropped the `CRTSCTS` hardware flow contro
 
 ## Switch and number targets (2026-09-26)
 
-Version 19, findings TGT-002 and TGT-B04 (mount_temma part) of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Version 19, findings TGT-002 and TGT-B04 (mount_temma part) of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 - TGT-002: `MOUNT_SIDE_OF_PIER` is writable (a request other than the current side sends `PT`). `temma_update_position()` writes the side the mount reports into the switch from the 0.5 s poll and from the GOTO and park finalizers, all `INDIGO_TASK_PRIORITY_TIME` tasks that run ahead of the queued handler. A pier flip copied before one of them ran was replaced by the current side, the handler saw no change, sent no `PT` and reported OK. The handler now reads the request with `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` when no flip is needed or `PT` was sent (the following `E` reading then shows the side the mount reports), and on a failed `PT` sets the switch to the last reported side before publishing ALERT. `temma_update_position()` keeps writing the value, which the alignment points read as the real side, and does not touch the property state.
 - TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. A handler queued with no delay already runs ahead of a finalizer that is only due, so the window is a copy on the bus thread while the previous pulse's finalizer runs, between the relay mask it writes and the clearing of the values: the finalizer zeroed the new request and the handler read 0, dropped the pulse and reported OK. The finalizers already cleared only `number.value`; the handlers now first restore the values from the targets, which the `on_change_request` blocks still clear before each copy. As in mount_simulator, the finalizer of the finished pulse still publishes OK before the handler of the new one publishes BUSY.
@@ -263,7 +263,7 @@ Portable suite: 17 cases, 14 on Linux (the three PTY reconnection cases are comp
 
 ## Publish a change of the reported side of pier (2026-09-27)
 
-Version 22. TGT-D08 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Version 22. TGT-D08 in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 - Defect (reproduced): `temma_update_position()`, called from the 0.5 s poll, the GOTO and park finalizers and `on_connect`, wrote the side read from byte 13 of the `E` reply into `MOUNT_SIDE_OF_PIER` but never published it. A side change during a session, for example from the hand controller, never reached clients, which kept the side from connection time.
 - Fix: as in the pre-migration driver (`bool changed = ...; if (changed) indigo_update_property(...)`), the side is compared with the last known `telescope_side` and the property is published only on an actual change, so the poll does not publish it every 0.5 s. `F` still keeps the last known side without a comparison. The update is also limited to `IS_CONNECTED`: while `on_connect` reads the first position the property is not defined yet and is defined afterwards with the side just read, so no update of an undefined property is sent.

@@ -245,7 +245,7 @@ identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for
 
 ## Coupled mode, pixel format, binning and bit depth requests (TGT-068, 2026-09-27)
 
-Version 33, finding TGT-068 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+Version 33, finding TGT-068 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`).
 The handlers have the same structure as `ccd_asi` before TGT-066 (3.0.0.70), so the mode/format part
 of that fix was ported; the driver has no X_PRESETS.
 

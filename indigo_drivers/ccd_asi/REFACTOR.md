@@ -651,7 +651,7 @@ identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does for
 
 ## Coupled mode, pixel format and preset requests (TGT-066, 2026-09-27)
 
-Version 70, finding TGT-066 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+Version 70, finding TGT-066 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`).
 
 ### Semantics
 

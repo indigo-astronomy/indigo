@@ -76,7 +76,7 @@ Simulator run with 3.0.0.4: `build/integration/test_polaralign_mlastro_simulator
 
 ## Switch targets in 3.0.0.6 (2026-09-27)
 
-Findings TGT-035, TGT-036 and TGT-037 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+Findings TGT-035, TGT-036 and TGT-037 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this change.
 
 `mlastro_parse_telemetry()` (idle poll every 0.5 s) checks `POLARALIGN_DIRECTION_AZ`, `POLARALIGN_DIRECTION_ALT` and `X_MLASTRO_BACKLASH_ENABLE` for BUSY and then writes the setting the controller reports with `indigo_set_switch()`. A request copied on the bus thread between that check and the write was overwritten, and the queued handler sent the reported setting read from `sw.value` (`AzRD:0` for a requested REVERSED) and published it OK: the request was lost silently. All three are one-of-many properties of two items, so `indigo_property_copy_values()` sets the target of every item and the target pattern applies.
 

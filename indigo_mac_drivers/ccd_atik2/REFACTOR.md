@@ -233,7 +233,7 @@ Simulated (fake SDK) tests run 25, passed 25. Hardware tests run 1, passed 0.
 
 ## Queued cooler request (TGT-064, TGT-B06, 2026-09-27)
 
-Version 18, findings TGT-064 and TGT-B06 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch
+Version 18, findings TGT-064 and TGT-B06 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch
 `refactoring_targets`). Same defect and fix as `ccd_atik` 3.0.0.49 (TGT-060).
 
 ### Defects (both reproduced)

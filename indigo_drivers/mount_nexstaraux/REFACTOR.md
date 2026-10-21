@@ -399,7 +399,7 @@ source is gone.
 ## Switch and number targets (2026-09-26)
 
 Version 22, findings TGT-006, TGT-B04 and TGT-B05 (nexstaraux parts) and TGT-C05 of
-`indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 - TGT-006: `mount_slew_finalizer` switches `MOUNT_TRACKING` on when a goto ends. It is an
   `INDIGO_TASK_PRIORITY_TIME` task re-queued every 0.1 s during the goto, the tracking handler a normal

@@ -436,7 +436,7 @@ result).
 
 ## Queued cooler request (TGT-060, 2026-09-27)
 
-Version 49, finding TGT-060 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+Version 49, finding TGT-060 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`).
 
 ### Defect (reproduced)
 

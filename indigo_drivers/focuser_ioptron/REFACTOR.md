@@ -98,7 +98,7 @@ cd indigo_test && IOPTRON_TEST_FILTER=rejected_change ./build/integration/test_f
 
 ## Switch target adoption: FOCUSER_REVERSE_MOTION (3.0.0.10, 2026-09-27)
 
-Findings TGT-010 and the focuser_ioptron part of TGT-B05 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, both reproduced before the fix.
+Findings TGT-010 and the focuser_ioptron part of TGT-B05 in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`), both reproduced before the fix.
 
 - **Defect (reproduced):** `ioptron_publish()`, called by the 1 s status poll, `motion_finalizer` and the ABORT and X_FOCUSER_ZERO_SYNC handlers, wrote the direction the focuser reported into FOCUSER_REVERSE_MOTION and published it OK without a BUSY check. The poll is an `INDIGO_TASK_PRIORITY_TIME` task and runs ahead of a queued change handler, so a reversal request copied while the poll came due was overwritten; the handler read the overwritten value, sent no `:FR#` and reported OK. The poll also published OK over the pending BUSY, and its read error path `ioptron_read_error()` published ALERT over it, reopening the BUSY guard.
 - **Fix:** `ioptron_publish()` and `ioptron_read_error()` leave value and state of a BUSY FOCUSER_REVERSE_MOTION alone. The handler reads the request with `indigo_get_switch_target()`, applies it with `indigo_apply_switch_targets()` when the focuser reports the requested direction, and otherwise shows the direction the focuser last reported with ALERT.

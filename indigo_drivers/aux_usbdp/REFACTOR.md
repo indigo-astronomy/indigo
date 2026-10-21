@@ -48,7 +48,7 @@ cd indigo_test && ./build/integration/test_aux_usbdp_simulator
 ## Requests read from their targets (2026-09-27, 3.0.0.13)
 
 Findings TGT-053, TGT-054, TGT-055, TGT-D01 and the aux_usbdp part of TGT-B07 of
-`indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 ### Defects
 
@@ -121,7 +121,7 @@ Findings TGT-053, TGT-054, TGT-055, TGT-D01 and the aux_usbdp part of TGT-B07 of
 
 ## Sensor #2 changes are published (2026-09-27, 3.0.0.14)
 
-Finding TGT-D16 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Finding TGT-D16 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 ### Defect
 

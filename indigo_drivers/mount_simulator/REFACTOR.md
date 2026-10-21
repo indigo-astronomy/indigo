@@ -248,7 +248,7 @@ Final test summary for this change: simulator suite 17 run / 17 passed (plus the
 
 ## Switch and number targets (2026-09-26)
 
-Version 22, findings TGT-001 and TGT-B04 (mount_simulator part) of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Version 22, findings TGT-001 and TGT-B04 (mount_simulator part) of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 - TGT-001: `position_handler` switches `MOUNT_TRACKING` on at the end of a slew when it reads OFF. A tracking request copied while the handler was queued was overwritten when that step ran first (it is an `INDIGO_TASK_PRIORITY_TIME` task, the tracking handler a normal one), so a client's OFF ended as ON, reported OK. The `MOUNT_TRACKING` handler now reads the request with `indigo_get_switch_target()` and applies it with `indigo_apply_switch_targets()`; the simulated mount always accepts it, so there is no ALERT path. The park/home writers in `position_handler` cannot meet a pending request (the parked guard refuses it once PARKED is copied) and were left unchanged.
 - TGT-B04: `GUIDER_GUIDE_RA`/`DEC` accept a pulse while one runs. When the request was copied while the previous pulse's finalizer ran, the finalizer zeroed value and target and the new handler read 0 and dropped the pulse. The handler is queued with `INDIGO_TASK_PRIORITY_TIME` and no delay, so it already runs ahead of a finalizer that is only due; the window is a copy on the bus thread while the finalizer runs. The finalizers now clear only the values; the handlers first restore the values from the targets, which the `on_change_request` block and disconnect still clear. After a pulse the target keeps the last requested duration.

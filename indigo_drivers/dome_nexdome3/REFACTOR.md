@@ -268,7 +268,7 @@ cd indigo_test && ./build/integration/test_dome_nexdome3_simulator
 
 ## Switch targets for DOME_SHUTTER and DOME_PARK (2026-09-27, 3.0.0.16)
 
-Rows TGT-008, TGT-009 and the dome_nexdome3 part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Rows TGT-008, TGT-009 and the dome_nexdome3 part of TGT-B08 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 - **Baseline on Linux x64:** the suite did not build: the simulator rule in `indigo_test/Makefile` linked without
   `-lm` (`undefined reference to lround`; macOS links libm implicitly). With `-lm` added, the unchanged 3.0.0.15

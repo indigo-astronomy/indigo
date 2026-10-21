@@ -226,7 +226,7 @@ Updated the `aux_mgbox` row in root `MIGRATION_STATUS.md` to generated code, asy
 
 ## Switch targets for mount forwarding (2026-09-27, 3.0.0.13)
 
-Findings `TGT-057` and `TGT-058` in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. Hardware testing was not performed.
+Findings `TGT-057` and `TGT-058` in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). Hardware testing was not performed.
 
 | Defect | Impact | Root cause | Fix | Test |
 | --- | --- | --- | --- | --- |

@@ -738,7 +738,7 @@ Validation, fake SDK, macOS arm64/x86_64, repeated after the hard flush was rest
 
 ## TT-D09 — a cooler OFF queued behind a temperature change became ON (TGT-065, 2026-09-27)
 
-Finding TGT-065 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+Finding TGT-065 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`).
 
 Defect (reproduced): CCD_TEMPERATURE is accepted with `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME`, and its handler
 switched the cooler on (`put_Option(OPTION_TEC, 1)`) and wrote CCD_COOLER ON/OK whenever CCD_COOLER showed OFF. A

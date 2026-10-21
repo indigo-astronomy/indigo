@@ -498,7 +498,7 @@ does.
 ## Switch target adoption: PWM requests, PWM write failures and the pulse finalizer (3.0.0.11, 2026-09-27)
 
 Findings TGT-019, the aux_rpio part of TGT-B03 and the aux_rpio part of TGT-D11 in
-`indigo_drivers/REVIEW_SWITCH_TARGETS.md` (TGT-D11 there is unrelated to D11 in this file). Linux
+the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; TGT-D11 there is unrelated to D11 in this file). Linux
 x64 (Ubuntu 24.04, gcc 13.3), hardware-free suite only; no hardware run.
 
 - **Baseline on Linux x64:** the unchanged 3.0.0.10 suite failed 1 of 19 cases: the contract case

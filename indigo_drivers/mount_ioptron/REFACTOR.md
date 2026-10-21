@@ -789,7 +789,7 @@ driver disconnected, before reconnecting to a fresh simulator.
 ## Park, home and guide pulse targets (2026-09-27, 3.0.0.61, branch `refactoring_targets`)
 
 Findings TGT-026, TGT-027 and the mount_ioptron part of TGT-B04 of
-`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, and the open question whether the `MOUNT_TRACKING` window of the
+the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`), and the open question whether the `MOUNT_TRACKING` window of the
 3.0.0.59 prototype can get a permanent test. No hardware run for this change. Baseline before the change:
 the unchanged suite (3.0.0.60) passed 105/105 on Linux x64 in the recorded run of 2026-09-26 22:54.
 

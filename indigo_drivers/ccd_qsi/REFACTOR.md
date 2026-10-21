@@ -320,7 +320,7 @@ Validation: `make -C indigo_drivers/ccd_qsi -f ../../Makefile.drv all` and the 6
 
 ## Queued cooler request (TGT-062, 2026-09-27)
 
-Version 23, finding TGT-062 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`).
+Version 23, finding TGT-062 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`).
 
 ### Defect (reproduced)
 

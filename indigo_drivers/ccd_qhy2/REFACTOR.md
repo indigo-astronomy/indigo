@@ -298,7 +298,7 @@ This driver's `unplug_match` carries the `if (!unplug_result)` guard again, so a
 
 ## Coupled mode, pixel format, binning and frame requests (TGT-070, 2026-09-27)
 
-Version 44, finding TGT-070 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (branch `refactoring_targets`),
+Version 44, finding TGT-070 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`; branch `refactoring_targets`),
 the same defect and fix as TGT-069 in `ccd_qhy` (3.0.0.40 and 3.0.0.41); the handlers are the same code
 with `qhy2_modes()` / `qhy2_update_geometry()` in place of the `qhy_` helpers.
 

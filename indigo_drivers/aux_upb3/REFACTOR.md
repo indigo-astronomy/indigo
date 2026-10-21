@@ -45,7 +45,7 @@ Simulated tests run: 29; passed: 29. Hardware tests run: 0; passed: 0.
 
 ## Dew control adoption at connect, TGT-D03 (3.0.0.8, 2026-09-27)
 
-Finding TGT-D03 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, on branch `refactoring_targets`.
+Finding TGT-D03 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`), on branch `refactoring_targets`.
 
 - **Defect (reproduced):** the `PD` branch of `on_connect` set MANUAL only when MANUAL was already
   shown and AUTOMATIC only when AUTOMATIC was already shown, so it never changed the switch. Both
@@ -72,7 +72,7 @@ Recorded run: `TZ=Europe/Bratislava python3 tools/run_driver_test.py aux_upb3`, 
 
 ## One dew control mode when `PD` fails, TGT-D18 (3.0.0.9, 2026-09-27)
 
-Finding TGT-D18 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, on branch `refactoring_targets`.
+Finding TGT-D18 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`), on branch `refactoring_targets`.
 
 - **Defect (reproduced):** both items of the one-of-many AUX_DEW_CONTROL were initialised ON. When
   the `PD` query failed at connect nothing was adopted, so the property was defined with MANUAL and

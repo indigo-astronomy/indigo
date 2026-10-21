@@ -275,7 +275,7 @@ precedes `U DOME_HORIZONTAL_COORDINATES BUSY` in four places. No serial command 
 
 ## Switch targets for DOME_HOME and DOME_SHUTTER (2026-09-27, 3.0.0.9, branch `refactoring_targets`)
 
-Rows TGT-031, TGT-032 and the dome_beaver part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run
+Rows TGT-031, TGT-032 and the dome_beaver part of TGT-B08 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run
 for this change.
 
 - **Baseline on Linux x64 (3.0.0.8):** the suite did not build: the simulator rule in `indigo_test/Makefile` linked

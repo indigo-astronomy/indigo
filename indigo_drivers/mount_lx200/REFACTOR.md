@@ -2286,7 +2286,7 @@ serial simulator and detaches the client that started manual motion:
 ## Switch, number and UTC targets (2026-09-27, 3.0.0.69)
 
 Findings TGT-020 to TGT-025, TGT-C04 and the lx200 part of TGT-B04 of
-`indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change. Baseline before the change:
+the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this change. Baseline before the change:
 the unchanged suite (3.0.0.68) passed 99/99 on Linux x64.
 
 Every finding is a request copied on the bus thread after a background writer on the device queue checked

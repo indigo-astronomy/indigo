@@ -86,7 +86,7 @@ when the second request is discarded, so the replacement was not covered before.
 
 ## Number and UTC targets (2026-09-27)
 
-Version 11, finding TGT-C03 and the starbook part of TGT-B04 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Version 11, finding TGT-C03 and the starbook part of TGT-B04 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 No hardware run for this change.
 
 - TGT-C03: the status poll wrote the mount clock into `MOUNT_UTC_TIME` and published it OK on every pass,

@@ -139,7 +139,7 @@ cd indigo_test && ./build/integration/test_focuser_prodigy_simulator
 
 ## Switch target adoption: AUX_POWER_OUTLET and AUX_USB_PORT (3.0.0.8, 2026-09-27)
 
-Findings TGT-013 and TGT-014 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, both reproduced before the fix.
+Findings TGT-013 and TGT-014 in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`), both reproduced before the fix.
 
 - **Defects (reproduced):** `reboot_finalizer`, on success, called `prodigy_publish_ports()`, which wrote the four port items from the ports it read back and published AUX_POWER_OUTLET and AUX_USB_PORT without a BUSY check. Finalizers are `INDIGO_TASK_PRIORITY_TIME` tasks and run ahead of a queued change handler, so a power or USB request copied while the finalizer came due was overwritten and republished (still BUSY) with the old values; the handler then read the overwritten values, sent the device its current state, read it back as matching and reported OK. The request was never applied. The window is narrow: only a change queued while the reboot completes successfully.
 - **Fix:** `prodigy_publish_ports()` leaves the values of a BUSY AUX_POWER_OUTLET or AUX_USB_PORT alone and does not publish it. Both handlers send the request read item by item with `indigo_get_switch_target()`, apply it with `indigo_apply_switch_targets()` when the device accepted and reports it, and otherwise show the ports the device last reported with ALERT (the command order `X`/`Y` or `U`/`J`, then `D`, is unchanged).
@@ -155,7 +155,7 @@ Final test summary: 57 simulated tests run, 57 passed; 0 hardware tests run, 0 p
 
 ## Port properties published before their definition (TGT-D09, 3.0.0.9, 2026-09-27)
 
-Finding TGT-D09 in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`, reproduced before the fix.
+Finding TGT-D09 in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`), reproduced before the fix.
 
 - **Defect (reproduced):** the powerbox `on_connect` block called `prodigy_publish_ports()`, which published AUX_POWER_OUTLET and AUX_USB_PORT with `indigo_update_property()` before the generated connection handler defines them right after the block. Every powerbox connect therefore sent clients one update of each undefined property; the definition that followed carried the same values.
 - **Fix:** `on_connect` writes the ports read with `D` into the four items and no longer publishes them; the generated definition publishes them. `reboot_finalizer` still uses `prodigy_publish_ports()`, where both properties are defined. The protocol sequence of the connect (`#`, `D`) is unchanged.

@@ -240,7 +240,7 @@ cd indigo_test && ./build/integration/test_dome_nexdome_simulator
 
 ## Switch target for DOME_SHUTTER (2026-09-27, 3.0.0.14, branch `refactoring_targets`)
 
-Rows TGT-033 and the dome_nexdome part of TGT-B08 of `indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this
+Rows TGT-033 and the dome_nexdome part of TGT-B08 of the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this
 change.
 
 - **Baseline on Linux x64 (3.0.0.13):** the suite did not build: the simulator rule in `indigo_test/Makefile` linked

@@ -157,7 +157,7 @@ Driver version is now `0x0300000D`.
 
 ## Switch target for the relay (2026-09-27, 3.0.0.15)
 
-Findings `TGT-056` and the cloudwatcher part of `TGT-B07` in `indigo_drivers/REVIEW_SWITCH_TARGETS.md`.
+Findings `TGT-056` and the cloudwatcher part of `TGT-B07` in the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`).
 
 | Defect | Impact | Root cause | Fix | Test |
 | --- | --- | --- | --- | --- |

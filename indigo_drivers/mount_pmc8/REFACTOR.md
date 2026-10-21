@@ -790,7 +790,7 @@ each way against 0.01045 deg expected.
 ## Switch and number targets (2026-09-27)
 
 Version 15, findings TGT-005 and the pmc8 parts of TGT-B04 and TGT-B05 of
-`indigo_drivers/REVIEW_SWITCH_TARGETS.md`. No hardware run for this change.
+the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` (Git revision `85c7c3d9207b`). No hardware run for this change.
 
 - TGT-005, TGT-B05: `mount_goto_complete()`, called by `mount_goto_finalizer` at the end of a GOTO and by the
   SYNC branch of the coordinates handler, switched `MOUNT_TRACKING` on and published OK/ALERT without a BUSY

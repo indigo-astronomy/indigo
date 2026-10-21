@@ -87,7 +87,7 @@ cd indigo_test && QHY_TEST_FILTER=rejected_change ./build/integration/test_focus
 
 ## Position request overwritten by the poll (TGT-B03, 3.0.0.10, 2026-09-27)
 
-Found by the switch target review (`indigo_drivers/REVIEW_SWITCH_TARGETS.md`, TGT-B03), reproduced on Linux x64 with the simulator.
+Found by the switch target review (the removed `indigo_drivers/REVIEW_SWITCH_TARGETS.md` at Git revision `85c7c3d9207b`, TGT-B03), reproduced on Linux x64 with the simulator.
 
 - Impact: a FOCUSER_POSITION request copied while the 2 s idle poll was due or running was replaced by the current position. The poll wrote `number.target` together with `number.value` and published FOCUSER_POSITION OK over the pending BUSY; the queued handler then read the current position as its target, sent no command 6 and reported OK, so a queued GOTO never moved (and the BUSY guard reopened before the handler ran).
 - Root cause: `on_timer` wrote value, target and state without regard to a pending request. The poll is an `INDIGO_TASK_PRIORITY_TIME` task and runs ahead of the queued change handler; the request can also be copied on the bus thread while the poll is inside its command 5 round trip, so a BUSY check before the read is not enough.
