@@ -23,7 +23,7 @@ driver ioptron {
 	label = "iOptron Mount";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 65;
+	version = 66;
 	serial {
 		configurable_speed = true;
 	}
@@ -290,12 +290,12 @@ driver ioptron {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "ieq")) {
 				if (DEVICE_BAUDRATE_ITEM->text.value[0] != '\0') {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_config2(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 					if (!ioptron_simple_reply_command(device, ":MountInfo#") || strlen(PRIVATE_DATA->response) < 4) {
 						indigo_uni_close(&PRIVATE_DATA->handle);
 					}
 				} else {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 9600, INDIGO_LOG_DEBUG);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 					if (PRIVATE_DATA->handle != NULL) {
 						bool reopenAt115200 = true;
 						if (ioptron_command(device, ":V#") && *PRIVATE_DATA->response == 'V') {
@@ -305,7 +305,7 @@ driver ioptron {
 						}
 						if (reopenAt115200) {
 							indigo_uni_close(&PRIVATE_DATA->handle);
-							PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+							PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 							if (!ioptron_simple_reply_command(device, ":MountInfo#") || strlen(PRIVATE_DATA->response) != 4) {
 								indigo_uni_close(&PRIVATE_DATA->handle);
 							}
