@@ -27,7 +27,7 @@ driver dmfc {
 	label = "PegasusAstro DMFC Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 22;
+	version = 23;
 	serial {
 		pattern {
 			product = "DMFC";
@@ -162,7 +162,7 @@ driver dmfc {
 
 		static bool dmfc_open(indigo_device *device) {
 			// the controller talks at 19200 baud
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (dmfc_command(device, "#") && !strncmp(PRIVATE_DATA->response, "OK_", 3)) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"DMFC Focuser");

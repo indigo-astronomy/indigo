@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_focuser_dmfc"
 #define DRIVER_LABEL         "PegasusAstro DMFC Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus DMFC"
@@ -80,6 +80,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	indigo_property *x_focuser_motor_type_property;
 	indigo_property *x_focuser_encoder_property;
 	indigo_property *x_focuser_led_property;
@@ -203,7 +204,7 @@ static bool dmfc_set(indigo_device *device, const char *command, const char *pre
 
 static bool dmfc_open(indigo_device *device) {
 	// the controller talks at 19200 baud
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (dmfc_command(device, "#") && !strncmp(PRIVATE_DATA->response, "OK_", 3)) {
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"DMFC Focuser");
@@ -368,6 +369,7 @@ static void focuser_timer_callback(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = dmfc_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
@@ -417,7 +419,11 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
