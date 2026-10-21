@@ -1553,9 +1553,6 @@ void write_c_private_data_section(void) {
 	}
 	if (driver.serial || driver.hid) {
 		write_line("\tindigo_uni_handle *handle;");
-		if (driver.serial) {
-			write_line("\tconst char *error_message;");
-		}
 		some_content = true;
 	} else if (driver.libusb || driver.sdk) {
 		write_line("\tlibusb_device *usbdev;");
@@ -1688,23 +1685,16 @@ void write_c_connection_change_handler(device_type *device) {
 		}
 	} else {
 		write_line("\t\tbool connection_result = true;");
+		const char *open_arguments = is_master_device ? "device" : "device->master_device";
 		if (driver.serial) {
-			write_line("\t\tPRIVATE_DATA->error_message = NULL;");
+			write_line("\t\tconst char *error_message = NULL;");
 		}
 		if (is_multi_device) {
 			write_line("\t\tif (PRIVATE_DATA->count == 0) {");
-			if (is_master_device) {
-				write_line("\t\t\tconnection_result = %s_open(device);", driver.name);
-			} else {
-				write_line("\t\t\tconnection_result = %s_open(device->master_device);", driver.name);
-			}
+			write_line("\t\t\tconnection_result = %s_open(%s%s);", driver.name, open_arguments, driver.serial ? ", &error_message" : "");
 			write_line("\t\t}");
 		} else {
-			if (is_master_device) {
-				write_line("\t\tconnection_result = %s_open(device);", driver.name);
-			} else {
-				write_line("\t\tconnection_result = %s_open(device->master_device);", driver.name);
-			}
+			write_line("\t\tconnection_result = %s_open(%s%s);", driver.name, open_arguments, driver.serial ? ", &error_message" : "");
 		}
 		if (is_multi_device) {
 			write_line("\t\tif (connection_result) {");
@@ -1730,8 +1720,8 @@ void write_c_connection_change_handler(device_type *device) {
 		}
 		write_line("\t\t} else {");
 		if (driver.serial) {
-			write_line("\t\t\tif (PRIVATE_DATA->error_message != NULL) {");
-			write_line("\t\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s on %%s (%%s)\", %s, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);", device->handle);
+			write_line("\t\t\tif (error_message != NULL) {");
+			write_line("\t\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s on %%s (%%s)\", %s, DEVICE_PORT_ITEM->text.value, error_message);", device->handle);
 			write_line("\t\t\t} else {");
 			write_line("\t\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
 			write_line("\t\t\t}");

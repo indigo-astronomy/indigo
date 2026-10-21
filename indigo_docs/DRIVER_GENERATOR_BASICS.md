@@ -66,7 +66,7 @@ The names are derived mechanically and must agree:
 * `<type>` is the type of the **first** device block. The generator writes `indigo_<type>_<name>.{c,h}` and `indigo_<type>_<name>_main.c`, defines `DRIVER_NAME` as `"indigo_<type>_<name>"` and exports the entry point `indigo_<type>_<name>(indigo_driver_action action, indigo_driver_info *info)`.
 * `Makefile.drv` names the archive, shared library and executable `indigo_$(notdir $(pwd))`, so the directory must be called `<type>_<name>`.
 * The private data type is `<name>_private_data`, accessed through `PRIVATE_DATA`.
-* The low-level connection helpers must be called exactly `<name>_open(indigo_device *device)` and `<name>_close(indigo_device *device)`; the generated connection handler calls them. A `libusb` driver must also provide `<name>_match(libusb_device *dev, const char **name)`.
+* The low-level connection helpers must be called exactly `<name>_open(indigo_device *device)` and `<name>_close(indigo_device *device)`; the generated connection handler calls them. In a `serial` driver the open helper is `<name>_open(indigo_device *device, const char **error_message)`: pass `error_message` to *indigo_uni_open_serial2()*, *indigo_uni_open_serial_with_speed2()* or *indigo_uni_open_serial_with_config2()*, and the generated handler appends the message to the "Failed to connect" alert when opening the port fails. A `libusb` driver must also provide `<name>_match(libusb_device *dev, const char **name)`.
 
 Driver-specific properties must use the `X_` prefix (for example `X_FOCUSER_STEPPING_MODE`). Every property added to a driver must also be documented in [PROPERTIES.md](PROPERTIES.md).
 
