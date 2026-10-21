@@ -8,6 +8,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_server", "indigo_ser
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_gps_simulator", "indigo_drivers\gps_simulator\indigo_gps_simulator.vcxproj", "{F2F7FD9B-918D-400F-B956-4B61DA9AC713}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_simulator", "indigo_drivers\aux_simulator\indigo_aux_simulator.vcxproj", "{63327FBD-E724-4527-ABBE-5E6135222B4A}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_simulator", "indigo_drivers\mount_simulator\indigo_mount_simulator.vcxproj", "{8FF4A248-D905-4778-BED8-7CAF85E4C6A3}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ccd_simulator", "indigo_drivers\ccd_simulator\indigo_ccd_simulator.vcxproj", "{1555B53F-7ADE-4751-888A-3A3549E3D3D9}"
@@ -294,6 +296,14 @@ Global
 		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|ARM64.Build.0 = Release|ARM64
 		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|x64.ActiveCfg = Release|x64
 		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|x64.Build.0 = Release|x64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Debug|ARM64.Build.0 = Debug|ARM64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Debug|x64.ActiveCfg = Debug|x64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Debug|x64.Build.0 = Debug|x64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Release|ARM64.ActiveCfg = Release|ARM64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Release|ARM64.Build.0 = Release|ARM64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Release|x64.ActiveCfg = Release|x64
+		{63327FBD-E724-4527-ABBE-5E6135222B4A}.Release|x64.Build.0 = Release|x64
 		{8FF4A248-D905-4778-BED8-7CAF85E4C6A3}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{8FF4A248-D905-4778-BED8-7CAF85E4C6A3}.Debug|ARM64.Build.0 = Debug|ARM64
 		{8FF4A248-D905-4778-BED8-7CAF85E4C6A3}.Debug|x64.ActiveCfg = Debug|x64

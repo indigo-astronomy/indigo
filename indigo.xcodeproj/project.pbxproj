@@ -991,6 +991,8 @@
 		9D7FC61F2C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
 		9D7FC6202C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
 		9D84A67D2ECC5BA400E81FDB /* libatikcameras.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; };
+		9D8D5AD23087655D003F04F2 /* indigo_aux_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */; };
+		9D8D5AD33087655D003F04F2 /* indigo_aux_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */; };
 		9D8D9EA52D4B990E007A5BA3 /* indigo_uni_io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */; };
 		9D8D9EA62D4B990E007A5BA3 /* indigo_uni_io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */; };
 		9D8D9EA82D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
@@ -1079,6 +1081,8 @@
 		9DFA598B2361D94B00326A74 /* indigo_aux_flatmaster.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA59852361D92600326A74 /* indigo_aux_flatmaster.c */; };
 		9DFC61A723854DD0003977C7 /* indigo_aux_flipflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFC61A5238530FF003977C7 /* indigo_aux_flipflat.c */; };
 		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
+		A343A1B08EE74FB48C10D674 /* indigo_aux_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */; };
+		B6E0D2A16C664281B5CE9061 /* indigo_aux_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */; };
 		C0DE20260916C0C000000011 /* indigo_ccd_uvc_libuvc.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20260916C0C000000003 /* indigo_ccd_uvc_libuvc.c */; };
 		C0DE20260916C0C000000012 /* indigo_ccd_uvc_libuvc.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20260916C0C000000003 /* indigo_ccd_uvc_libuvc.c */; };
 /* End PBXBuildFile section */
@@ -1224,6 +1228,7 @@
 		4B4DD0B043C0B35EF57DAA8A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		4EB4B98B4C569BFBD5A4A6D3 /* test_aux_upb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_upb_simulator.c; sourceTree = "<group>"; };
 		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
+		561E4947491CFD9C66C4B12F /* test_serial_port_loss.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_port_loss.c; sourceTree = "<group>"; };
 		59019E091DE0AC7400CCB3ED /* indigo_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_client.c; sourceTree = "<group>"; tabWidth = 2; wrapsLines = 0; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59019E0A1DE0AC7400CCB3ED /* indigo_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_client.h; sourceTree = "<group>"; };
 		5903564325AB0C02001DC5DB /* solver_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = solver_test; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2417,7 +2422,6 @@
 		5984A323303B9B1D00D581D2 /* test_focuser_mjkzz_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_mjkzz_simulator.c; sourceTree = "<group>"; };
 		5984A324303B9BC800D581D2 /* focuser_moonlite_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_moonlite_simulator.c; sourceTree = "<group>"; };
 		5984A325303B9BDE00D581D2 /* test_focuser_moonlite_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_moonlite_simulator.c; sourceTree = "<group>"; };
-		561E4947491CFD9C66C4B12F /* test_serial_port_loss.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_port_loss.c; sourceTree = "<group>"; };
 		5984A326303B9CB900D581D2 /* focuser_mypro2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_mypro2_simulator.c; sourceTree = "<group>"; };
 		5984A328303B9CF200D581D2 /* test_focuser_mypro2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_mypro2_simulator.c; sourceTree = "<group>"; };
 		5984A329303B9D8E00D581D2 /* focuser_nfocus_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_nfocus_simulator.c; sourceTree = "<group>"; };
@@ -5043,7 +5047,6 @@
 		59FEFFCF301E7005007FB62D /* serial_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serial_simulator_common.h; sourceTree = "<group>"; };
 		59FEFFD1301E7820007FB62D /* test_aux_svbpowerbox_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_svbpowerbox_simulator.c; sourceTree = "<group>"; };
 		59FEFFD2301E7820007FB62D /* test_focuser_askar_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_askar_simulator.c; sourceTree = "<group>"; };
-		B2A0D3723ACA5570D1FA54A7 /* test_focuser_askar_wifi_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_askar_wifi_simulator.c; sourceTree = "<group>"; };
 		59FEFFD3301E7820007FB62D /* test_focuser_optecfl_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_optecfl_simulator.c; sourceTree = "<group>"; };
 		59FFB048288D3C5D00F172AC /* libsbigudrv.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libsbigudrv.so; sourceTree = "<group>"; };
 		59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone.c; sourceTree = "<group>"; wrapsLines = 0; };
@@ -5061,10 +5064,12 @@
 		59FFB063288D3CB900F172AC /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone_main.c; sourceTree = "<group>"; };
 		5A1F0C3E9B7D4E2A8C6B1D04 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_simulator.c; sourceTree = "<group>"; };
 		5DE1C4FB1E2B03972B9A43BA /* REVIEW_SWITCH_TARGETS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REVIEW_SWITCH_TARGETS.md; sourceTree = "<group>"; };
 		6690353AF13CB11838BACF0D /* test_guider_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_asi_sdk.c; sourceTree = "<group>"; };
 		7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_outputs.c; sourceTree = "<group>"; };
 		76F8AA906122440EB263392A /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		82BA17F9316A48ECBB6C7050 /* indigo_aux_simulator.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_aux_simulator.vcxproj; sourceTree = "<group>"; };
 		83BD4B658762EAB07B1124F7 /* indigo_polaralign_mlastro.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_polaralign_mlastro.c; sourceTree = "<group>"; };
 		842F7CE01D284EB1AA9EBECA /* rpio_sysfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rpio_sysfs.c; sourceTree = "<group>"; };
 		8C1FC871C19C3024C359D9DF /* test_aux_skyalert_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_transport.c; sourceTree = "<group>"; };
@@ -5348,6 +5353,12 @@
 		9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_fc3.h; sourceTree = "<group>"; };
 		9D7FC6152C4906B2004496F2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D89442022DCD297002DFE13 /* mount_synscan_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = mount_synscan_simulator.ino; sourceTree = "<group>"; };
+		9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_simulator.h; sourceTree = "<group>"; };
+		9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_simulator.c; sourceTree = "<group>"; };
+		9D8D5ACB308764F1003F04F2 /* indigo_aux_simulator.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_aux_simulator.driver; sourceTree = "<group>"; };
+		9D8D5ACD308764F1003F04F2 /* indigo_aux_simulator_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_simulator_main.c; sourceTree = "<group>"; };
+		9D8D5ACF308764F1003F04F2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D8D5AD0308764F1003F04F2 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_uni_io.h; sourceTree = "<group>"; };
 		9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_uni_io.c; sourceTree = "<group>"; };
 		9D94A89F2E70400A005C5C56 /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
@@ -5547,8 +5558,11 @@
 		9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dmfc_main.c; sourceTree = "<group>"; };
 		9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "DMFC-Serial-Command-Table.pdf"; sourceTree = "<group>"; };
 		A17E5C012F7A000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		A1E32A108C92451FB8E2D6F0 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		A7C9FBDB98F88319F5159670 /* indigo_polaralign_mlastro.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_polaralign_mlastro.driver; sourceTree = "<group>"; };
+		B2A0D3723ACA5570D1FA54A7 /* test_focuser_askar_wifi_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_askar_wifi_simulator.c; sourceTree = "<group>"; };
 		BB585B0FF8074EBCA4FB2400 /* test_aux_asiair_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_asiair_hw.c; sourceTree = "<group>"; };
+		BE769F9DAEBA463F9C92816A /* indigo_aux_simulator.vcxproj.filters */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_aux_simulator.vcxproj.filters; sourceTree = "<group>"; };
 		C0D0A00132FF000100000001 /* indigo_focuser_optec.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_optec.driver; sourceTree = "<group>"; };
 		C0D0A00232FF000100000001 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0D2A00133AA000000000001 /* REFACTOR.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -5630,7 +5644,6 @@
 		C0DE20260915A0B000000001 /* test_ccd_ptp_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_ptp_sdk.c; sourceTree = "<group>"; };
 		C0DE20260915A0B000000002 /* test_ccd_ptp_ica.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = test_ccd_ptp_ica.m; sourceTree = "<group>"; };
 		C0DE20260915BEEF00000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
-		C0DE20261004BEEF00000001 /* PROTOCOL.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOL.md; sourceTree = "<group>"; };
 		C0DE20260916000100000001 /* test_ccd_svb_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_svb_sdk.c; sourceTree = "<group>"; };
 		C0DE20260916000100000002 /* test_ccd_svb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_svb_hw.c; sourceTree = "<group>"; };
 		C0DE20260916A0A500000001 /* indigo_focuser_astroasis.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_astroasis.driver; sourceTree = "<group>"; };
@@ -5720,47 +5733,10 @@
 		C0DE20260921F00000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260921F00000000004 /* test_aux_rts_shutter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_rts_shutter.c; sourceTree = "<group>"; };
 		C0DE20260922120000000001 /* test_focuser_focusdreampro_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_focusdreampro_hw.c; sourceTree = "<group>"; };
-		C0DE20261008190000000001 /* test_focuser_wemacro_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_wemacro_hw.c; sourceTree = "<group>"; };
-		C0DE20261008195000000001 /* test_focuser_mjkzz_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_mjkzz_hw.c; sourceTree = "<group>"; };
-		C0DE20261008203500000001 /* test_wheel_xagyl_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_xagyl_hw.c; sourceTree = "<group>"; };
-		C0DE20261008205200000001 /* test_wheel_trutek_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_trutek_hw.c; sourceTree = "<group>"; };
-		C0DE20261008210300000001 /* test_wheel_quantum_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_quantum_hw.c; sourceTree = "<group>"; };
-		C0DE20261008212400000001 /* test_wheel_qhy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_qhy_hw.c; sourceTree = "<group>"; };
-		C0DE20261008220200000001 /* test_wheel_optec_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_optec_hw.c; sourceTree = "<group>"; };
-		C0DE20261008222900000001 /* test_wheel_indigo_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_hw.c; sourceTree = "<group>"; };
-		C0DE20261009131800000001 /* test_aux_arteskyflat_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_arteskyflat_hw.c; sourceTree = "<group>"; };
-		C0DE20261009134200000001 /* test_aux_astromechanics_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_astromechanics_hw.c; sourceTree = "<group>"; };
-		C0DE20261009140000000001 /* test_aux_fbc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_fbc_hw.c; sourceTree = "<group>"; };
-		C0DE20261009140800000001 /* test_aux_flatmaster_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_flatmaster_hw.c; sourceTree = "<group>"; };
-		C0DE20261009141600000001 /* test_aux_flipflat_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_flipflat_hw.c; sourceTree = "<group>"; };
-		C0DE20261009143900000001 /* test_aux_ppb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_ppb_hw.c; sourceTree = "<group>"; };
-		C0DE20261009150700000001 /* test_aux_skyalert_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_hw.c; sourceTree = "<group>"; };
-		C0DE20261009180600000001 /* test_aux_sqm_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_hw.c; sourceTree = "<group>"; };
-		C0DE20261009182100000001 /* test_aux_usbdp_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_usbdp_hw.c; sourceTree = "<group>"; };
-		C0DE20261009182500000001 /* test_dome_baader_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_baader_hw.c; sourceTree = "<group>"; };
-		C0DE20261009182500000002 /* dome_hw_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dome_hw_common.h; sourceTree = "<group>"; };
-		C0DE20261009184000000001 /* test_dome_nexdome_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome_hw.c; sourceTree = "<group>"; };
-		C0DE20261009191500000001 /* test_dome_nexdome3_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome3_hw.c; sourceTree = "<group>"; };
-		C0DE20261009190900000001 /* test_dome_talon6ror_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_talon6ror_hw.c; sourceTree = "<group>"; };
-		C0DE20261009192700000001 /* test_dome_skyroof_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_skyroof_hw.c; sourceTree = "<group>"; };
-		C0DE2026100922450001 /* test_rotator_optec_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_optec_hw.c; sourceTree = "<group>"; };
-		C0DE2026100922270001 /* test_focuser_steeldrive2_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_steeldrive2_hw.c; sourceTree = "<group>"; };
-		C0DE2026100922090001 /* test_focuser_robofocus_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_robofocus_hw.c; sourceTree = "<group>"; };
-		C0DE2026100921530001 /* test_focuser_prodigy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_prodigy_hw.c; sourceTree = "<group>"; };
-		C0DE2026100921330001 /* test_focuser_optec_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_optec_hw.c; sourceTree = "<group>"; };
-		C0DE2026100921140001 /* test_focuser_nstep_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_nstep_hw.c; sourceTree = "<group>"; };
-		C0DE2026100920590001 /* test_focuser_nfocus_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_nfocus_hw.c; sourceTree = "<group>"; };
-		C0DE2026100920460001 /* test_focuser_moonlite_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_moonlite_hw.c; sourceTree = "<group>"; };
-		C0DE2026100920370001 /* test_focuser_lakeside_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_lakeside_hw.c; sourceTree = "<group>"; };
-		C0DE2026100920190001 /* test_focuser_dmfc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_dmfc_hw.c; sourceTree = "<group>"; };
-		C0DE2026100920030001 /* test_focuser_efa_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_efa_hw.c; sourceTree = "<group>"; };
-		C0DE2026100919380001 /* test_focuser_astromechanics_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_astromechanics_hw.c; sourceTree = "<group>"; };
-		C0DE20261009140800000002 /* Flatmaster_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Flatmaster_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		C0DE20260922120000000002 /* test_gps_nmea_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_hw.c; sourceTree = "<group>"; };
 		C0DE20260922120000000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = powerbox_hotplug_test_common.h; sourceTree = "<group>"; };
 		C0DE20260922220000000001 /* test_mount_lx200_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_hw.c; sourceTree = "<group>"; };
-		C0DE20261003A10000000003 /* test_system_alpaca_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_hw.c; sourceTree = "<group>"; };
 		C0DE20260923132000000001 /* run_mountsim.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_mountsim.py; sourceTree = "<group>"; };
 		C0DE20260923132000000002 /* mountsim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mountsim_test_common.h; sourceTree = "<group>"; };
 		C0DE20260923132000000003 /* test_mount_temma_mountsim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_temma_mountsim.c; sourceTree = "<group>"; };
@@ -5780,8 +5756,6 @@
 		C0DE20260924A00100000003 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260926120000000001 /* hardware_device_record.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hardware_device_record.h; sourceTree = "<group>"; };
 		C0DE20260926D0AB00000001 /* test_detach_abort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_detach_abort.c; sourceTree = "<group>"; };
-		C0DE20261006D0AB00000001 /* test_server_driver_stress.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_driver_stress.c; sourceTree = "<group>"; };
-		C0DE20261006D0AB00000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20260928A00100000001 /* test_agent_astrometry_solver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_astrometry_solver.c; sourceTree = "<group>"; };
 		C0DE20260930000100000001 /* test_ccd_dsi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_dsi_hw.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000001 /* indigo_system_alpaca.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca.c; sourceTree = "<group>"; };
@@ -5845,6 +5819,46 @@
 		C0DE20261002A10000000001 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		C0DE20261003A10000000001 /* test_system_alpaca_omnisim.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_omnisim.c; sourceTree = "<group>"; };
 		C0DE20261003A10000000002 /* omnisim_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = omnisim_test_common.h; sourceTree = "<group>"; };
+		C0DE20261003A10000000003 /* test_system_alpaca_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_hw.c; sourceTree = "<group>"; };
+		C0DE20261004BEEF00000001 /* PROTOCOL.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOL.md; sourceTree = "<group>"; };
+		C0DE20261006D0AB00000001 /* test_server_driver_stress.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_driver_stress.c; sourceTree = "<group>"; };
+		C0DE20261006D0AB00000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		C0DE20261008190000000001 /* test_focuser_wemacro_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_wemacro_hw.c; sourceTree = "<group>"; };
+		C0DE20261008195000000001 /* test_focuser_mjkzz_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_mjkzz_hw.c; sourceTree = "<group>"; };
+		C0DE20261008203500000001 /* test_wheel_xagyl_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_xagyl_hw.c; sourceTree = "<group>"; };
+		C0DE20261008205200000001 /* test_wheel_trutek_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_trutek_hw.c; sourceTree = "<group>"; };
+		C0DE20261008210300000001 /* test_wheel_quantum_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_quantum_hw.c; sourceTree = "<group>"; };
+		C0DE20261008212400000001 /* test_wheel_qhy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_qhy_hw.c; sourceTree = "<group>"; };
+		C0DE20261008220200000001 /* test_wheel_optec_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_optec_hw.c; sourceTree = "<group>"; };
+		C0DE20261008222900000001 /* test_wheel_indigo_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_hw.c; sourceTree = "<group>"; };
+		C0DE20261009131800000001 /* test_aux_arteskyflat_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_arteskyflat_hw.c; sourceTree = "<group>"; };
+		C0DE20261009134200000001 /* test_aux_astromechanics_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_astromechanics_hw.c; sourceTree = "<group>"; };
+		C0DE20261009140000000001 /* test_aux_fbc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_fbc_hw.c; sourceTree = "<group>"; };
+		C0DE20261009140800000001 /* test_aux_flatmaster_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_flatmaster_hw.c; sourceTree = "<group>"; };
+		C0DE20261009140800000002 /* Flatmaster_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Flatmaster_Serial_Command_Table.pdf; sourceTree = "<group>"; };
+		C0DE20261009141600000001 /* test_aux_flipflat_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_flipflat_hw.c; sourceTree = "<group>"; };
+		C0DE20261009143900000001 /* test_aux_ppb_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_ppb_hw.c; sourceTree = "<group>"; };
+		C0DE20261009150700000001 /* test_aux_skyalert_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_hw.c; sourceTree = "<group>"; };
+		C0DE20261009180600000001 /* test_aux_sqm_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_hw.c; sourceTree = "<group>"; };
+		C0DE20261009182100000001 /* test_aux_usbdp_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_usbdp_hw.c; sourceTree = "<group>"; };
+		C0DE20261009182500000001 /* test_dome_baader_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_baader_hw.c; sourceTree = "<group>"; };
+		C0DE20261009182500000002 /* dome_hw_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dome_hw_common.h; sourceTree = "<group>"; };
+		C0DE20261009184000000001 /* test_dome_nexdome_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome_hw.c; sourceTree = "<group>"; };
+		C0DE20261009190900000001 /* test_dome_talon6ror_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_talon6ror_hw.c; sourceTree = "<group>"; };
+		C0DE20261009191500000001 /* test_dome_nexdome3_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome3_hw.c; sourceTree = "<group>"; };
+		C0DE20261009192700000001 /* test_dome_skyroof_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_skyroof_hw.c; sourceTree = "<group>"; };
+		C0DE2026100919380001 /* test_focuser_astromechanics_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_astromechanics_hw.c; sourceTree = "<group>"; };
+		C0DE2026100920030001 /* test_focuser_efa_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_efa_hw.c; sourceTree = "<group>"; };
+		C0DE2026100920190001 /* test_focuser_dmfc_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_dmfc_hw.c; sourceTree = "<group>"; };
+		C0DE2026100920370001 /* test_focuser_lakeside_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_lakeside_hw.c; sourceTree = "<group>"; };
+		C0DE2026100920460001 /* test_focuser_moonlite_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_moonlite_hw.c; sourceTree = "<group>"; };
+		C0DE2026100920590001 /* test_focuser_nfocus_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_nfocus_hw.c; sourceTree = "<group>"; };
+		C0DE2026100921140001 /* test_focuser_nstep_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_nstep_hw.c; sourceTree = "<group>"; };
+		C0DE2026100921330001 /* test_focuser_optec_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_optec_hw.c; sourceTree = "<group>"; };
+		C0DE2026100921530001 /* test_focuser_prodigy_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_prodigy_hw.c; sourceTree = "<group>"; };
+		C0DE2026100922090001 /* test_focuser_robofocus_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_robofocus_hw.c; sourceTree = "<group>"; };
+		C0DE2026100922270001 /* test_focuser_steeldrive2_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_steeldrive2_hw.c; sourceTree = "<group>"; };
+		C0DE2026100922450001 /* test_rotator_optec_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_optec_hw.c; sourceTree = "<group>"; };
 		C0DE20270913000400000001 /* indigo_focuser_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000002 /* indigo_rotator_lunatico.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_rotator_lunatico.driver; sourceTree = "<group>"; };
 		C0DE20270913000400000003 /* lunatico_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lunatico_shared.h; sourceTree = "<group>"; };
@@ -5900,7 +5914,6 @@
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
-		A1E32A108C92451FB8E2D6F0 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -11419,6 +11432,7 @@
 				59C565002464A13A00344C0C /* aux_mgbox */,
 				5996615022CF3E0F00330652 /* aux_ppb */,
 				59BBD189218246C8008199D6 /* aux_rts */,
+				9D8D5AD1308764F1003F04F2 /* aux_simulator */,
 				59958E2825CC833B00BEFA1B /* aux_skyalert */,
 				9DC4969622C39A170052AB3E /* aux_sqm */,
 				59647F012F769C45005F72E3 /* aux_svbpowerbox */,
@@ -14257,6 +14271,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */,
 				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
 				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
 				C0DE20260908000300000001 /* ccd_test_noise.h */,
@@ -15867,6 +15882,21 @@
 			path = mount_synscan_simulator;
 			sourceTree = "<group>";
 		};
+		9D8D5AD1308764F1003F04F2 /* aux_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				82BA17F9316A48ECBB6C7050 /* indigo_aux_simulator.vcxproj */,
+				BE769F9DAEBA463F9C92816A /* indigo_aux_simulator.vcxproj.filters */,
+				9D8D5ACF308764F1003F04F2 /* README.md */,
+				9D8D5AD0308764F1003F04F2 /* REFACTOR.md */,
+				9D8D5ACB308764F1003F04F2 /* indigo_aux_simulator.driver */,
+				9D8D5AC9308764F1003F04F2 /* indigo_aux_simulator.h */,
+				9D8D5ACA308764F1003F04F2 /* indigo_aux_simulator.c */,
+				9D8D5ACD308764F1003F04F2 /* indigo_aux_simulator_main.c */,
+			);
+			path = aux_simulator;
+			sourceTree = "<group>";
+		};
 		9D94A89E2E703FD7005C5C56 /* hidapi */ = {
 			isa = PBXGroup;
 			children = (
@@ -16956,6 +16986,7 @@
 				59790B2E29B2796300F73B1D /* indigo_service_discovery.h in Headers */,
 				598A1C4D259BA94A00C0B34C /* indigo_ptp_fuji.h in Headers */,
 				598A1C4F259BA94A00C0B34C /* indigo_aux_sqm.h in Headers */,
+				B6E0D2A16C664281B5CE9061 /* indigo_aux_simulator.h in Headers */,
 				593894B52C4C22B100CEF4A5 /* indigo_aux_upb3.h in Headers */,
 				59D29A182841469D00D5E7F7 /* indigo_mount_starbook.h in Headers */,
 				598A1C50259BA94A00C0B34C /* indigo_focuser_steeldrive2.h in Headers */,
@@ -17142,6 +17173,7 @@
 				59C3BB13255077E9000720B4 /* indigo_ptp_fuji.h in Headers */,
 				591CD11429806D46003243AE /* mallincam.h in Headers */,
 				9DC496A322C39A170052AB3E /* indigo_aux_sqm.h in Headers */,
+				A343A1B08EE74FB48C10D674 /* indigo_aux_simulator.h in Headers */,
 				59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */,
 				591CD0E629805CB5003243AE /* indigo_ccd_rising.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
@@ -17763,6 +17795,7 @@
 				598A1BC0259BA94A00C0B34C /* indigo_agent_scripting.c in Sources */,
 				598A1BC2259BA94A00C0B34C /* nexstar_pec.c in Sources */,
 				59111CF0285F504200E57194 /* indigocat_nutation.c in Sources */,
+				9D8D5AD33087655D003F04F2 /* indigo_aux_simulator.c in Sources */,
 				59111CE8285F504200E57194 /* indigocat_neptune.c in Sources */,
 				598A1BC3259BA94A00C0B34C /* indigo_wheel_driver.c in Sources */,
 				598A1BC4259BA94A00C0B34C /* indigo_focuser_wemacro_bt.m in Sources */,
@@ -17961,6 +17994,7 @@
 				9D8D9EA82D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */,
 				595F2923211E211200380EF4 /* NSXReturnThrowError.m in Sources */,
 				59111CFA285F504300E57194 /* indigocat_venus.c in Sources */,
+				9D8D5AD23087655D003F04F2 /* indigo_aux_simulator.c in Sources */,
 				593287A62409AD1000ED61C0 /* indigo_rotator_lunatico.c in Sources */,
 				590BF1AC21EBBBEE00C24DBA /* indigo_ao_driver.c in Sources */,
 				590EA1842C8CD6440080FC69 /* indigo_ptp_fuji.m in Sources */,

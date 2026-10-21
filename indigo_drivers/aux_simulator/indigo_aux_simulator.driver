@@ -1,0 +1,758 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Virtual auxiliary devices for client development and regression testing.
+
+driver simulator {
+	label = "Auxiliary Simulators";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
+	version = 1;
+	multi_device_support = true;
+	data {
+		bool cover_open;
+	}
+	code {
+		static void powerbox_refresh(indigo_device *device, bool publish) {
+			double current = 0.2;
+			for (int i = 0; i < 4; i++) {
+				bool on = PB_POWER_PROPERTY->items[i].sw.value;
+				PB_POWER_STATE_PROPERTY->items[i].light.value = on ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				PB_POWER_CURRENT_PROPERTY->items[i].number.value = on ? 0.5 * (i + 1) : 0;
+				current += PB_POWER_CURRENT_PROPERTY->items[i].number.value;
+				PB_USB_STATE_PROPERTY->items[i].light.value = PB_USB_PROPERTY->items[i].sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			}
+			for (int i = 0; i < 2; i++) {
+				PB_HEATER_STATE_PROPERTY->items[i].light.value = PB_HEATER_PROPERTY->items[i].number.value > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				PB_HEATER_CURRENT_PROPERTY->items[i].number.value = PB_HEATER_PROPERTY->items[i].number.value / 100;
+				current += PB_HEATER_CURRENT_PROPERTY->items[i].number.value;
+			}
+			PB_INFO_CURRENT_ITEM->number.value = current;
+			PB_INFO_POWER_ITEM->number.value = current * PB_INFO_VOLTAGE_ITEM->number.value;
+			indigo_property *properties[] = { PB_POWER_STATE_PROPERTY, PB_POWER_CURRENT_PROPERTY, PB_USB_STATE_PROPERTY, PB_HEATER_STATE_PROPERTY, PB_HEATER_CURRENT_PROPERTY, PB_INFO_PROPERTY, PB_WEATHER_PROPERTY };
+			for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
+				properties[i]->state = INDIGO_OK_STATE;
+				if (publish) {
+					indigo_update_property(device, properties[i], NULL);
+				}
+			}
+		}
+		static void weather_refresh(indigo_device *device, bool publish) {
+			for (int i = 0; i < WX_INPUT_PROPERTY->count; i++) {
+				WX_WEATHER_PROPERTY->items[i].number.value = WX_INPUT_PROPERTY->items[i].number.value;
+			}
+			double temperature = WX_TEMPERATURE_ITEM->number.value;
+			double humidity = WX_HUMIDITY_ITEM->number.value;
+			// Magnus approximation; clamp zero humidity for a finite dew point.
+			double gamma = log(fmax(humidity, 0.1) / 100) + 17.62 * temperature / (243.12 + temperature);
+			WX_DEWPOINT_ITEM->number.value = 243.12 * gamma / (17.62 - gamma);
+			int wind = WX_WIND_SPEED_ITEM->number.value >= 10 ? 0 : (WX_WIND_SPEED_ITEM->number.value >= 3 ? 1 : 2);
+			int rain = WX_RAIN_ITEM->number.value >= 1 ? 0 : (WX_RAIN_ITEM->number.value > 0 ? 1 : 2);
+			double delta = temperature - WX_SKY_TEMPERATURE_ITEM->number.value;
+			int cloud = delta >= 20 ? 0 : (delta >= 10 ? 1 : 2);
+			indigo_property *conditions[] = { WX_WIND_PROPERTY, WX_RAIN_STATE_PROPERTY, WX_CLOUD_PROPERTY };
+			int selected[] = { wind, rain, cloud };
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					conditions[i]->items[j].light.value = j == selected[i] ? (j == (i == 2 ? 0 : 2) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE) : INDIGO_IDLE_STATE;
+				}
+			}
+			indigo_property *properties[] = { WX_WEATHER_PROPERTY, WX_WIND_PROPERTY, WX_RAIN_STATE_PROPERTY, WX_CLOUD_PROPERTY };
+			for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
+				properties[i]->state = INDIGO_OK_STATE;
+				if (publish) {
+					indigo_update_property(device, properties[i], NULL);
+				}
+			}
+		}
+		static void sqm_refresh(indigo_device *device, bool publish) {
+			SQM_BRIGHTNESS_ITEM->number.value = SQM_INPUT_BRIGHTNESS_ITEM->number.value;
+			SQM_TEMPERATURE_ITEM->number.value = SQM_INPUT_TEMPERATURE_ITEM->number.value;
+			SQM_BORTLE_ITEM->number.value = indigo_aux_sky_bortle(SQM_BRIGHTNESS_ITEM->number.value);
+			SQM_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+			if (publish) {
+				indigo_update_property(device, SQM_WEATHER_PROPERTY, NULL);
+			}
+		}
+		static void flat_cover_finalizer(indigo_device *device) {
+			PRIVATE_DATA->cover_open = indigo_get_switch_target(FLAT_COVER_PROPERTY, AUX_COVER_OPEN_ITEM_NAME);
+			indigo_set_switch(FLAT_COVER_PROPERTY, PRIVATE_DATA->cover_open ? FLAT_OPEN_ITEM : FLAT_CLOSE_ITEM, true);
+			INDIGO_UPDATE_PROPERTY_STATE(FLAT_COVER_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+	}
+	aux {
+		id = powerbox;
+		name = "PowerBox Simulator";
+		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
+		on_attach {
+			DEVICE_PORT_PROPERTY->hidden = true;
+			DEVICE_PORTS_PROPERTY->hidden = true;
+		}
+		on_connect {
+			powerbox_refresh(device, false);
+		}
+		switch PB_POWER {
+			name = AUX_POWER_OUTLET_PROPERTY_NAME;
+			group = "Main";
+			label = "Power outlets";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				powerbox_refresh(device, true);
+			}
+			item PB_POWER_1 {
+				name = AUX_POWER_OUTLET_1_ITEM_NAME;
+				label = "Outlet #1";
+				value = true;
+			}
+			item PB_POWER_2 {
+				name = AUX_POWER_OUTLET_2_ITEM_NAME;
+				label = "Outlet #2";
+				value = true;
+			}
+			item PB_POWER_3 {
+				name = AUX_POWER_OUTLET_3_ITEM_NAME;
+				label = "Outlet #3";
+				value = true;
+			}
+			item PB_POWER_4 {
+				name = AUX_POWER_OUTLET_4_ITEM_NAME;
+				label = "Outlet #4";
+				value = true;
+			}
+		}
+		light PB_POWER_STATE {
+			name = AUX_POWER_OUTLET_STATE_PROPERTY_NAME;
+			group = "Main";
+			label = "Power outlet state";
+			perm = INDIGO_RO_PERM;
+			item PB_POWER_STATE_1 {
+				name = AUX_POWER_OUTLET_STATE_1_ITEM_NAME;
+				label = "Outlet #1";
+				value = INDIGO_OK_STATE;
+			}
+			item PB_POWER_STATE_2 {
+				name = AUX_POWER_OUTLET_STATE_2_ITEM_NAME;
+				label = "Outlet #2";
+				value = INDIGO_OK_STATE;
+			}
+			item PB_POWER_STATE_3 {
+				name = AUX_POWER_OUTLET_STATE_3_ITEM_NAME;
+				label = "Outlet #3";
+				value = INDIGO_OK_STATE;
+			}
+			item PB_POWER_STATE_4 {
+				name = AUX_POWER_OUTLET_STATE_4_ITEM_NAME;
+				label = "Outlet #4";
+				value = INDIGO_OK_STATE;
+			}
+		}
+		number PB_POWER_CURRENT {
+			name = AUX_POWER_OUTLET_CURRENT_PROPERTY_NAME;
+			group = "Main";
+			label = "Power outlet current [A]";
+			perm = INDIGO_RO_PERM;
+			item PB_POWER_CURRENT_1 {
+				name = AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME;
+				label = "Outlet #1";
+				value = 0;
+				min = 0;
+				max = 10;
+				step = 0;
+			}
+			item PB_POWER_CURRENT_2 {
+				name = AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME;
+				label = "Outlet #2";
+				value = 0;
+				min = 0;
+				max = 10;
+				step = 0;
+			}
+			item PB_POWER_CURRENT_3 {
+				name = AUX_POWER_OUTLET_CURRENT_3_ITEM_NAME;
+				label = "Outlet #3";
+				value = 0;
+				min = 0;
+				max = 10;
+				step = 0;
+			}
+			item PB_POWER_CURRENT_4 {
+				name = AUX_POWER_OUTLET_CURRENT_4_ITEM_NAME;
+				label = "Outlet #4";
+				value = 0;
+				min = 0;
+				max = 10;
+				step = 0;
+			}
+		}
+		switch PB_USB {
+			name = AUX_USB_PORT_PROPERTY_NAME;
+			group = "Main";
+			label = "USB ports";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			on_change {
+				powerbox_refresh(device, true);
+			}
+			item PB_USB_1 {
+				name = AUX_USB_PORT_1_ITEM_NAME;
+				label = "USB port #1";
+				value = true;
+			}
+			item PB_USB_2 {
+				name = AUX_USB_PORT_2_ITEM_NAME;
+				label = "USB port #2";
+				value = true;
+			}
+			item PB_USB_3 {
+				name = AUX_USB_PORT_3_ITEM_NAME;
+				label = "USB port #3";
+				value = true;
+			}
+			item PB_USB_4 {
+				name = AUX_USB_PORT_4_ITEM_NAME;
+				label = "USB port #4";
+				value = true;
+			}
+		}
+		light PB_USB_STATE {
+			name = AUX_USB_PORT_STATE_PROPERTY_NAME;
+			group = "Main";
+			label = "USB port state";
+			perm = INDIGO_RO_PERM;
+			item PB_USB_STATE_1 {
+				name = AUX_USB_PORT_STATE_1_ITEM_NAME;
+				label = "USB port #1";
+				value = INDIGO_OK_STATE;
+			}
+			item PB_USB_STATE_2 {
+				name = AUX_USB_PORT_STATE_2_ITEM_NAME;
+				label = "USB port #2";
+				value = INDIGO_OK_STATE;
+			}
+			item PB_USB_STATE_3 {
+				name = AUX_USB_PORT_STATE_3_ITEM_NAME;
+				label = "USB port #3";
+				value = INDIGO_OK_STATE;
+			}
+			item PB_USB_STATE_4 {
+				name = AUX_USB_PORT_STATE_4_ITEM_NAME;
+				label = "USB port #4";
+				value = INDIGO_OK_STATE;
+			}
+		}
+		number PB_HEATER {
+			name = AUX_HEATER_OUTLET_PROPERTY_NAME;
+			group = "Main";
+			label = "Heater outputs [%]";
+			on_change {
+				indigo_set_switch(PB_DEW_PROPERTY, PB_DEW_MANUAL_ITEM, true);
+				indigo_update_property(device, PB_DEW_PROPERTY, NULL);
+				powerbox_refresh(device, true);
+			}
+			item PB_HEATER_1 {
+				name = AUX_HEATER_OUTLET_1_ITEM_NAME;
+				label = "Heater #1";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 1;
+			}
+			item PB_HEATER_2 {
+				name = AUX_HEATER_OUTLET_2_ITEM_NAME;
+				label = "Heater #2";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 1;
+			}
+		}
+		light PB_HEATER_STATE {
+			name = AUX_HEATER_OUTLET_STATE_PROPERTY_NAME;
+			group = "Main";
+			label = "Heater output state";
+			perm = INDIGO_RO_PERM;
+			item PB_HEATER_STATE_1 {
+				name = AUX_HEATER_OUTLET_STATE_1_ITEM_NAME;
+				label = "Heater #1";
+				value = INDIGO_IDLE_STATE;
+			}
+			item PB_HEATER_STATE_2 {
+				name = AUX_HEATER_OUTLET_STATE_2_ITEM_NAME;
+				label = "Heater #2";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		number PB_HEATER_CURRENT {
+			name = AUX_HEATER_OUTLET_CURRENT_PROPERTY_NAME;
+			group = "Main";
+			label = "Heater current [A]";
+			perm = INDIGO_RO_PERM;
+			item PB_HEATER_CURRENT_1 {
+				name = AUX_HEATER_OUTLET_CURRENT_1_ITEM_NAME;
+				label = "Heater #1";
+				value = 0;
+				min = 0;
+				max = 1;
+				step = 0;
+			}
+			item PB_HEATER_CURRENT_2 {
+				name = AUX_HEATER_OUTLET_CURRENT_2_ITEM_NAME;
+				label = "Heater #2";
+				value = 0;
+				min = 0;
+				max = 1;
+				step = 0;
+			}
+		}
+		switch PB_DEW {
+			name = AUX_DEW_CONTROL_PROPERTY_NAME;
+			group = "Main";
+			label = "Dew control";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			on_change {
+				if (PB_DEW_AUTO_ITEM->sw.value) {
+					for (int i = 0; i < 2; i++) {
+						PB_HEATER_PROPERTY->items[i].number.value = PB_HEATER_PROPERTY->items[i].number.target = 35;
+					}
+					PB_HEATER_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, PB_HEATER_PROPERTY, NULL);
+				}
+				powerbox_refresh(device, true);
+			}
+			item PB_DEW_MANUAL {
+				name = AUX_DEW_CONTROL_MANUAL_ITEM_NAME;
+				label = "Manual";
+				value = true;
+			}
+			item PB_DEW_AUTO {
+				name = AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME;
+				label = "Automatic";
+				value = false;
+			}
+		}
+		number PB_INFO {
+			name = AUX_INFO_PROPERTY_NAME;
+			group = "Main";
+			label = "Power sensors";
+			perm = INDIGO_RO_PERM;
+			item PB_INFO_VOLTAGE {
+				name = AUX_INFO_VOLTAGE_ITEM_NAME;
+				label = "Voltage [V]";
+				value = 12.5;
+				min = 0;
+				max = 20;
+				step = 0;
+			}
+			item PB_INFO_CURRENT {
+				name = AUX_INFO_CURRENT_ITEM_NAME;
+				label = "Current [A]";
+				value = 0;
+				min = 0;
+				max = 30;
+				step = 0;
+			}
+			item PB_INFO_POWER {
+				name = AUX_INFO_POWER_ITEM_NAME;
+				label = "Power [W]";
+				value = 0;
+				min = 0;
+				max = 600;
+				step = 0;
+			}
+		}
+		number PB_WEATHER {
+			name = AUX_WEATHER_PROPERTY_NAME;
+			group = "Main";
+			label = "Environment";
+			perm = INDIGO_RO_PERM;
+			item PB_TEMPERATURE {
+				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
+				label = "Temperature [C]";
+				value = 10;
+				min = -50;
+				max = 100;
+				step = 0;
+			}
+			item PB_HUMIDITY {
+				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
+				label = "Humidity [%]";
+				value = 60;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item PB_DEWPOINT {
+				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
+				label = "Dew point [C]";
+				value = 2.6;
+				min = -100;
+				max = 100;
+				step = 0;
+			}
+		}
+	}
+	aux {
+		id = weather;
+		name = "Weather Station Simulator";
+		interface = INDIGO_INTERFACE_AUX_WEATHER;
+		on_attach {
+			DEVICE_PORT_PROPERTY->hidden = true;
+			DEVICE_PORTS_PROPERTY->hidden = true;
+		}
+		on_connect {
+			weather_refresh(device, false);
+		}
+		number WX_INPUT {
+			name = "X_SIMULATION_PARAMETERS";
+			group = "Simulation";
+			label = "Simulated weather";
+			on_change {
+				weather_refresh(device, true);
+			}
+			item WX_INPUT_TEMPERATURE {
+				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
+				label = "Temperature [C]";
+				value = 10;
+				min = -50;
+				max = 60;
+				step = 0;
+			}
+			item WX_INPUT_HUMIDITY {
+				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
+				label = "Humidity [%]";
+				value = 60;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item WX_INPUT_WIND_SPEED {
+				name = AUX_WEATHER_WIND_SPEED_ITEM_NAME;
+				label = "Wind speed [m/s]";
+				value = 1;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item WX_INPUT_WIND_DIRECTION {
+				name = AUX_WEATHER_WIND_DIRECTION_ITEM_NAME;
+				label = "Wind direction [deg]";
+				value = 180;
+				min = 0;
+				max = 360;
+				step = 0;
+			}
+			item WX_INPUT_PRESSURE {
+				name = AUX_WEATHER_PRESSURE_ITEM_NAME;
+				label = "Pressure [hPa]";
+				value = 1013;
+				min = 300;
+				max = 1200;
+				step = 0;
+			}
+			item WX_INPUT_RAIN {
+				name = AUX_WEATHER_RAIN_ITEM_NAME;
+				label = "Rain [mm/h]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item WX_INPUT_SKY_TEMPERATURE {
+				name = AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME;
+				label = "Sky temperature [C]";
+				value = -15;
+				min = -100;
+				max = 60;
+				step = 0;
+			}
+		}
+		number WX_WEATHER {
+			name = AUX_WEATHER_PROPERTY_NAME;
+			group = "Main";
+			label = "Weather";
+			perm = INDIGO_RO_PERM;
+			item WX_TEMPERATURE {
+				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
+				label = "Temperature [C]";
+				value = 10;
+				min = -50;
+				max = 60;
+				step = 0;
+			}
+			item WX_HUMIDITY {
+				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
+				label = "Humidity [%]";
+				value = 60;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item WX_WIND_SPEED {
+				name = AUX_WEATHER_WIND_SPEED_ITEM_NAME;
+				label = "Wind speed [m/s]";
+				value = 1;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item WX_WIND_DIRECTION {
+				name = AUX_WEATHER_WIND_DIRECTION_ITEM_NAME;
+				label = "Wind direction [deg]";
+				value = 180;
+				min = 0;
+				max = 360;
+				step = 0;
+			}
+			item WX_PRESSURE {
+				name = AUX_WEATHER_PRESSURE_ITEM_NAME;
+				label = "Pressure [hPa]";
+				value = 1013;
+				min = 300;
+				max = 1200;
+				step = 0;
+			}
+			item WX_RAIN {
+				name = AUX_WEATHER_RAIN_ITEM_NAME;
+				label = "Rain [mm/h]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item WX_SKY_TEMPERATURE {
+				name = AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME;
+				label = "Sky temperature [C]";
+				value = -15;
+				min = -100;
+				max = 60;
+				step = 0;
+			}
+			item WX_DEWPOINT {
+				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
+				label = "Dew point [C]";
+				value = 0;
+				min = -100;
+				max = 60;
+				step = 0;
+			}
+		}
+		light WX_WIND {
+			name = AUX_WIND_PROPERTY_NAME;
+			group = "Main";
+			label = "Wind";
+			perm = INDIGO_RO_PERM;
+			item WX_WIND_STRONG {
+				name = AUX_WIND_STRONG_ITEM_NAME;
+				label = "Strong";
+				value = INDIGO_IDLE_STATE;
+			}
+			item WX_WIND_MODERATE {
+				name = AUX_WIND_MODERATE_ITEM_NAME;
+				label = "Moderate";
+				value = INDIGO_IDLE_STATE;
+			}
+			item WX_WIND_CALM {
+				name = AUX_WIND_CALM_ITEM_NAME;
+				label = "Calm";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		light WX_RAIN_STATE {
+			name = AUX_RAIN_PROPERTY_NAME;
+			group = "Main";
+			label = "Rain";
+			perm = INDIGO_RO_PERM;
+			item WX_RAIN_STATE_RAINING {
+				name = AUX_RAIN_RAINING_ITEM_NAME;
+				label = "Raining";
+				value = INDIGO_IDLE_STATE;
+			}
+			item WX_RAIN_STATE_WET {
+				name = AUX_RAIN_WET_ITEM_NAME;
+				label = "Wet";
+				value = INDIGO_IDLE_STATE;
+			}
+			item WX_RAIN_STATE_DRY {
+				name = AUX_RAIN_DRY_ITEM_NAME;
+				label = "Dry";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+		light WX_CLOUD {
+			name = AUX_CLOUD_PROPERTY_NAME;
+			group = "Main";
+			label = "Cloud cover";
+			perm = INDIGO_RO_PERM;
+			item WX_CLOUD_CLEAR {
+				name = AUX_CLOUD_CLEAR_ITEM_NAME;
+				label = "Clear";
+				value = INDIGO_IDLE_STATE;
+			}
+			item WX_CLOUD_CLOUDY {
+				name = AUX_CLOUD_CLOUDY_ITEM_NAME;
+				label = "Cloudy";
+				value = INDIGO_IDLE_STATE;
+			}
+			item WX_CLOUD_OVERCAST {
+				name = AUX_CLOUD_OVERCAST_ITEM_NAME;
+				label = "Overcast";
+				value = INDIGO_IDLE_STATE;
+			}
+		}
+	}
+	aux {
+		id = sqm;
+		name = "SQM Simulator";
+		interface = INDIGO_INTERFACE_AUX_SQM;
+		on_attach {
+			DEVICE_PORT_PROPERTY->hidden = true;
+			DEVICE_PORTS_PROPERTY->hidden = true;
+		}
+		on_connect {
+			sqm_refresh(device, false);
+		}
+		number SQM_INPUT {
+			name = "X_SIMULATION_PARAMETERS";
+			group = "Simulation";
+			label = "Simulated sky quality";
+			on_change {
+				sqm_refresh(device, true);
+			}
+			item SQM_INPUT_BRIGHTNESS {
+				name = AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME;
+				label = "Sky brightness [mag/arcsec^2]";
+				value = 21.5;
+				min = 0;
+				max = 25;
+				step = 0;
+			}
+			item SQM_INPUT_TEMPERATURE {
+				name = AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME;
+				label = "Sensor temperature [C]";
+				value = 10;
+				min = -50;
+				max = 100;
+				step = 0;
+			}
+		}
+		number SQM_WEATHER {
+			name = AUX_WEATHER_PROPERTY_NAME;
+			group = "Main";
+			label = "Sky quality";
+			perm = INDIGO_RO_PERM;
+			item SQM_BRIGHTNESS {
+				name = AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME;
+				label = "Sky brightness [mag/arcsec^2]";
+				value = 21.5;
+				min = 0;
+				max = 25;
+				step = 0;
+			}
+			item SQM_TEMPERATURE {
+				name = AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME;
+				label = "Sensor temperature [C]";
+				value = 10;
+				min = -50;
+				max = 100;
+				step = 0;
+			}
+			item SQM_BORTLE {
+				name = AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME;
+				label = "Bortle class";
+				value = 0;
+				min = 1;
+				max = 9;
+				step = 1;
+			}
+		}
+	}
+	aux {
+		id = flat;
+		name = "Flat Panel Simulator";
+		interface = INDIGO_INTERFACE_AUX_DUSTCAP | INDIGO_INTERFACE_AUX_LIGHTBOX;
+		on_attach {
+			DEVICE_PORT_PROPERTY->hidden = true;
+			DEVICE_PORTS_PROPERTY->hidden = true;
+		}
+		on_connect {
+			indigo_set_switch(FLAT_COVER_PROPERTY, PRIVATE_DATA->cover_open ? FLAT_OPEN_ITEM : FLAT_CLOSE_ITEM, true);
+			FLAT_COVER_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		on_disconnect {
+			// The generated connection handler cancels delayed work before deleting properties.
+			indigo_set_switch(FLAT_COVER_PROPERTY, PRIVATE_DATA->cover_open ? FLAT_OPEN_ITEM : FLAT_CLOSE_ITEM, true);
+			FLAT_COVER_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		switch FLAT_LIGHT {
+			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
+			group = "Main";
+			label = "Light on/off";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			on_change {
+			}
+			item FLAT_LIGHT_ON {
+				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
+				label = "On";
+				value = false;
+			}
+			item FLAT_LIGHT_OFF {
+				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
+				label = "Off";
+				value = true;
+			}
+		}
+		number FLAT_INTENSITY {
+			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
+			group = "Main";
+			label = "Light intensity [%]";
+			on_change {
+			}
+			item FLAT_INTENSITY {
+				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
+				label = "Intensity [%]";
+				value = 50;
+				min = 0;
+				max = 100;
+				step = 1;
+			}
+		}
+		switch FLAT_COVER {
+			name = AUX_COVER_PROPERTY_NAME;
+			group = "Main";
+			label = "Cover open/close";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			on_change {
+				if (indigo_get_switch_target(FLAT_COVER_PROPERTY, AUX_COVER_OPEN_ITEM_NAME) == PRIVATE_DATA->cover_open) {
+					INDIGO_UPDATE_PROPERTY_STATE(FLAT_COVER_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else {
+					INDIGO_UPDATE_PROPERTY_STATE(FLAT_COVER_PROPERTY, INDIGO_BUSY_STATE, NULL);
+					indigo_execute_handler_in(device, 1, flat_cover_finalizer);
+				}
+			}
+			item FLAT_OPEN {
+				name = AUX_COVER_OPEN_ITEM_NAME;
+				label = "Open";
+				value = false;
+			}
+			item FLAT_CLOSE {
+				name = AUX_COVER_CLOSE_ITEM_NAME;
+				label = "Close";
+				value = true;
+			}
+		}
+	}
+}
