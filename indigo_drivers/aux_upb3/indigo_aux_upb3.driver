@@ -169,8 +169,8 @@ driver upb3 {
 			return false;
 		}
 
-		static bool upb3_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool upb3_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (upb3_command(device, "P#") && !strncmp(PRIVATE_DATA->response, "UPBv3_", 6)) {
 					if (upb3_command(device, "PV")) {
