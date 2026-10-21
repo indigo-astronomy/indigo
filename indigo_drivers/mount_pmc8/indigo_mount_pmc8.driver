@@ -22,7 +22,7 @@ driver pmc8 {
 	label = "PMC Eight Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 16;
+	version = 17;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -110,7 +110,7 @@ driver pmc8 {
 			char *name = DEVICE_PORT_ITEM->text.value;
 			if (!indigo_uni_is_url(name, "pmc8")) {
 				PRIVATE_DATA->proto = INDIGO_COM_HANDLE;
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 				if (CONNECTION_SERIAL_DTR_ITEM->sw.value) {
 					indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
 				}
