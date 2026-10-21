@@ -161,7 +161,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *x_sensors_property;
 	indigo_property *x_motor_conf_property;
 	indigo_property *x_delay_conf_property;
@@ -308,8 +307,8 @@ static bool talon6ror_flush(indigo_device *device) {
 	}
 }
 
-static bool talon6ror_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool talon6ror_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, error_message);
 	if (PRIVATE_DATA->handle == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
 		return false;
@@ -591,8 +590,8 @@ static void dome_status_poll(indigo_device *device) {
 static void dome_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = talon6ror_open(device);
+		const char *error_message = NULL;
+		connection_result = talon6ror_open(device, &error_message);
 		if (connection_result) {
 			//+ dome.on_connect
 			PRIVATE_DATA->last_action = NULL;
@@ -616,8 +615,8 @@ static void dome_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", DOME_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
