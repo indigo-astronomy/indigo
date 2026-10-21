@@ -233,9 +233,9 @@ driver optecfl {
 
 		// Opens the shared port and reads the hub block. The generator owns the
 		// shared reference count, so this runs only for the first connection.
-		static bool optecfl_open(indigo_device *device) {
+		static bool optecfl_open(indigo_device *device, const char **error_message) {
 			char *name = DEVICE_PORT_ITEM->text.value;
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 				return false;
