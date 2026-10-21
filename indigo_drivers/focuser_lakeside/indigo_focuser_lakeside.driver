@@ -100,8 +100,8 @@ driver lakeside {
 			return lakeside_command(device, true, "%s", command) && RESPONSE[0] == prefix && lakeside_integer(RESPONSE + 1, minimum, maximum, value);
 		}
 
-		static bool lakeside_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool lakeside_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, error_message);
 			if (PRIVATE_DATA->handle && lakeside_command(device, true, "??#") && !strcmp(RESPONSE, "OK")) {
 				return true;
 			}
