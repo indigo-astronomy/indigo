@@ -26,7 +26,7 @@ driver arteskyflat {
 	label = "Artesky Flat Box USB";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial;
 	data {
 		char response[16];
@@ -56,7 +56,7 @@ driver arteskyflat {
 		}
 
 		static bool arteskyflat_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			return PRIVATE_DATA->handle != NULL;
 		}
 
