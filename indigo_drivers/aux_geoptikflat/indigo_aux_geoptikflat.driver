@@ -26,7 +26,7 @@ driver geoptikflat {
 	label = "Geoptik flat field generator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2021-2026 Rumen G. Bogdanovski";
-	version = 9;
+	version = 10;
 	serial;
 	data {
 		char response[16];
@@ -50,7 +50,7 @@ driver geoptikflat {
 		}
 
 		static bool geoptikflat_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (geoptikflat_command(device, ">POOO")) {
 					// "*Viivvv" carries the two digit product id before the three digit firmware version.
