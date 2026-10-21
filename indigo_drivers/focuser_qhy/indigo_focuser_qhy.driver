@@ -22,7 +22,7 @@ driver qhy {
 	label = "QHY Q-Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
-	version = 14;
+	version = 15;
 	serial {
 		configurable_speed = true;
 	}
@@ -523,7 +523,7 @@ driver qhy {
 			if (indigo_uni_is_url(name, "qfocuser")) {
 				PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 			} else {
-				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 				if (PRIVATE_DATA->handle) {
 					indigo_usleep(ONE_SECOND_DELAY);
 				}
