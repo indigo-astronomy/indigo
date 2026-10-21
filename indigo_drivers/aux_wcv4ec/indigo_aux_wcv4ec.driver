@@ -28,7 +28,7 @@ driver wcv4ec {
 	label = "WandererCover V4-EC Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2024-2026 Rumen G. Bogdanovski";
-	version = 17;
+	version = 18;
 	serial;
 	define {
 		#define DEVICE_ID "WandererCoverV4"
@@ -131,7 +131,7 @@ driver wcv4ec {
 		}
 
 		static bool wcv4ec_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_sleep(1);
 				if (wcv4ec_read_status(device)) {
