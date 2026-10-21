@@ -163,8 +163,8 @@ driver efa {
 			return efa_ack(device, 0x12, command, data, 3);
 		}
 
-		static bool efa_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG | BINARY_LOG, &PRIVATE_DATA->error_message);
+		static bool efa_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG | BINARY_LOG, error_message);
 			if (!PRIVATE_DATA->handle) {
 				return false;
 			}
