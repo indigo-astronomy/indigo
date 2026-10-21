@@ -1,0 +1,243 @@
+indigo_libs/indigo_bus.c:1578: if (sscanf(url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file) != 3) {
+indigo_libs/indigo_bus.c:1601: if (sscanf(line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response) != 2 || http_result != 200) {
+indigo_libs/indigo_bus.c:1618: if (sscanf(line, "X-Uncompressed-Content-Length: %20ld[^\n]", &uncompressed_content_len) == 1)
+indigo_libs/indigo_bus.c:1621: if (sscanf(line, "Content-Length: %20ld[^\n]", &content_len) == 1)
+indigo_libs/indigo_bus.c:1692: if (sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file) != 3) {
+indigo_libs/indigo_bus.c:1714: if (sscanf(line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response) != 2 || http_result != 200) {
+indigo_libs/indigo_bus.c:2516: sprintf(str, "%.10g", value);
+indigo_libs/indigo_bus.c:2629: strcat(name, tmp);
+indigo_libs/indigo_bus.c:2640: strcat(name, " #");
+indigo_libs/indigo_bus.c:2641: strcat(name, tmp);
+indigo_libs/indigo_ccd_driver.c:713: if (sscanf(item->name, "BIN_%dx%d", &h, &v) == 2) {
+indigo_libs/indigo_ccd_driver.c:1447: strcat(format, prefix);
+indigo_libs/indigo_ccd_driver.c:1450: strcat(format, "%4S");
+indigo_libs/indigo_ccd_driver.c:1451: strcat(format, placeholder + 4);
+indigo_libs/indigo_ccd_driver.c:1454: strcat(format, "%3S");
+indigo_libs/indigo_ccd_driver.c:1455: strcat(format, placeholder + 3);
+indigo_libs/indigo_ccd_driver.c:1458: strcat(format, prefix);
+indigo_libs/indigo_ccd_driver.c:1460: strcat(format, suffix);
+indigo_libs/indigo_ccd_driver.c:1472: strcat(tmp, md5_digest);
+indigo_libs/indigo_ccd_driver.c:1473: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1482: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1483: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1501: sprintf(buffer, "%.*f", digits, value);
+indigo_libs/indigo_ccd_driver.c:1503: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1505: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1507: strcat(tmp, fs + 3);
+indigo_libs/indigo_ccd_driver.c:1519: sprintf(t, "%.*f", digits, CCD_TEMPERATURE_ITEM->number.target);
+indigo_libs/indigo_ccd_driver.c:1522: strcat(tmp, t);
+indigo_libs/indigo_ccd_driver.c:1524: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1526: strcat(tmp, fs + 3);
+indigo_libs/indigo_ccd_driver.c:1533: strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].label);
+indigo_libs/indigo_ccd_driver.c:1536: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1559: sprintf(buffer, "%s_%d", buffer2, gm_time_info->tm_sec / 10);
+indigo_libs/indigo_ccd_driver.c:1596: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1598: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1600: strcat(tmp, fs + 3);
+indigo_libs/indigo_ccd_driver.c:1614: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1615: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1627: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1628: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1632: sprintf(buffer, "%.0f", CCD_GAIN_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:1634: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1635: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1639: sprintf(buffer, "%.0f", CCD_OFFSET_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:1641: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1642: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1646: sprintf(buffer, "%.0fx%.0f", CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:1648: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1649: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1654: sprintf(buffer, "BIN%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:1656: sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:1659: strcat(tmp, buffer);
+indigo_libs/indigo_ccd_driver.c:1660: strcat(tmp, fs + 2);
+indigo_libs/indigo_ccd_driver.c:1671: strcat(tmp, "01d");
+indigo_libs/indigo_ccd_driver.c:1674: strcat(tmp, "02d");
+indigo_libs/indigo_ccd_driver.c:1677: strcat(tmp, "04d");
+indigo_libs/indigo_ccd_driver.c:1680: strcat(tmp, "05d");
+indigo_libs/indigo_ccd_driver.c:1683: strcat(tmp, "03d");
+indigo_libs/indigo_ccd_driver.c:1686: strcat(tmp, fs + 3);
+indigo_libs/indigo_ccd_driver.c:1747: strcat(tmp, "01d");
+indigo_libs/indigo_ccd_driver.c:1750: strcat(tmp, "02d");
+indigo_libs/indigo_ccd_driver.c:1753: strcat(tmp, "04d");
+indigo_libs/indigo_ccd_driver.c:1756: strcat(tmp, "05d");
+indigo_libs/indigo_ccd_driver.c:1759: strcat(tmp, "03d");
+indigo_libs/indigo_ccd_driver.c:1772: for (int z = 0; z < n - 1; z++) strcat(tmp, "0");
+indigo_libs/indigo_ccd_driver.c:1773: strcat(tmp, "1");
+indigo_libs/indigo_ccd_driver.c:1776: strcat(tmp, "001"); // bare %I defaults to 3 places
+indigo_libs/indigo_ccd_driver.c:1779: strcat(tmp, "%%"); // escape so snprintf doesn't misinterpret
+indigo_libs/indigo_ccd_driver.c:1783: strcat(tmp, tail);
+indigo_libs/indigo_ccd_driver.c:2149: header += sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
+indigo_libs/indigo_ccd_driver.c:2161: header += sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+indigo_libs/indigo_ccd_driver.c:2163: header += sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt16' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+indigo_libs/indigo_ccd_driver.c:2165: header += sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+indigo_libs/indigo_ccd_driver.c:2167: header += sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+indigo_libs/indigo_ccd_driver.c:2169: header += sprintf(header, "<FITSKeyword name='IMAGETYP' value='%s' comment='Frame type'/>", frame_type);
+indigo_libs/indigo_ccd_driver.c:2170: header += sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
+indigo_libs/indigo_ccd_driver.c:2171: header += sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs);
+indigo_libs/indigo_ccd_driver.c:2172: header += sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
+indigo_libs/indigo_ccd_driver.c:2173: header += sprintf(header, "<FITSKeyword name='INSTRUME' value='%s' comment='Instrument'/>", device->name);
+indigo_libs/indigo_ccd_driver.c:2174: header += sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
+indigo_libs/indigo_ccd_driver.c:2175: header += sprintf(header, "<FITSKeyword name='XBINNING' value='%d' comment='Binning factor, X-axis'/><FITSKeyword name='YBINNING' value='%d' comment='Binning factor, Y-axis'/>", horizontal_bin, vertical_bin);
+indigo_libs/indigo_ccd_driver.c:2176: header += sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%s'/>", indigo_dtoa(CCD_EXPOSURE_ITEM->number.target, b1));
+indigo_libs/indigo_ccd_driver.c:2178: header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.2f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
+indigo_libs/indigo_ccd_driver.c:2180: header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.4f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
+indigo_libs/indigo_ccd_driver.c:2182: header += sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
+indigo_libs/indigo_ccd_driver.c:2183: header += sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+indigo_libs/indigo_ccd_driver.c:2186: header += sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
+indigo_libs/indigo_ccd_driver.c:2187: header += sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:2190: header += sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAIN_ITEM->number.value, b1));
+indigo_libs/indigo_ccd_driver.c:2191: header += sprintf(header, "<FITSKeyword name='GAIN' value='%20.2f' comment='Gain'/>", CCD_GAIN_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:2194: header += sprintf(header, "<Property id='Instrument:Camera:Offset' type='Float32' value='%s'/>", indigo_dtoa(CCD_OFFSET_ITEM->number.value, b1));
+indigo_libs/indigo_ccd_driver.c:2195: header += sprintf(header, "<FITSKeyword name='OFFSET' value='%20.2f' comment='Offset'/>", CCD_OFFSET_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:2198: header += sprintf(header, "<Property id='Instrument:Camera:Gamma' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAMMA_ITEM->number.value, b1));
+indigo_libs/indigo_ccd_driver.c:2199: header += sprintf(header, "<FITSKeyword name='GAMMA' value='%20.2f' comment='Gamma'/>", CCD_GAMMA_ITEM->number.value);
+indigo_libs/indigo_ccd_driver.c:2203: header += sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_APERTURE_ITEM->number.value / 100, b1));
+indigo_libs/indigo_ccd_driver.c:2204: header += sprintf(header, "<FITSKeyword name='APTDIA' value='%20.2f' comment='Aperture diameter (mm)'/>", CCD_LENS_APERTURE_ITEM->number.value * 10);
+indigo_libs/indigo_ccd_driver.c:2207: header += sprintf(header, "<Property id='Instrument:Camera:FocalLength' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_FOCAL_LENGTH_ITEM->number.value / 100, b1));
+indigo_libs/indigo_ccd_driver.c:2208: header += sprintf(header, "<FITSKeyword name='FOCALLEN' value='%20.2f' comment='Focal length (mm)'/>", CCD_LENS_FOCAL_LENGTH_ITEM->number.value * 10);
+indigo_libs/indigo_ccd_driver.c:2214: header += sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value=%s/>", item->text.value);
+indigo_libs/indigo_ccd_driver.c:2215: header += sprintf(header, "<FITSKeyword name='FILTER' value=%s comment='Name of the used filter'/>", item->text.value);
+indigo_libs/indigo_ccd_driver.c:2217: header += sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value);
+indigo_libs/indigo_ccd_driver.c:2218: header += sprintf(header, "<FITSKeyword name='FOCUSPOS' value='%s' comment='Focuser position'/>", item->text.value);
+indigo_libs/indigo_ccd_driver.c:2224: header += sprintf(header, "<FITSKeyword name='BAYERPAT' value='%s' comment='Bayer color filter array pattern'/>", keywords->string);
+indigo_libs/indigo_ccd_driver.c:2225: header += sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2' name='%s Bayer Filter'/>", keywords->string, keywords->string);
+indigo_libs/indigo_ccd_driver.c:2230: header += sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO %d.%d-%s</Property>", date_time_end, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
+indigo_libs/indigo_ccd_driver.c:2232: header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
+indigo_libs/indigo_ccd_driver.c:2235: header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>macOS</Property>");
+indigo_libs/indigo_ccd_driver.c:2238: header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Windows</Property>");
+indigo_libs/indigo_ccd_driver.c:2240: header += sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
+indigo_libs/indigo_ccd_driver.c:2258: blobsize += sprintf(appendix, "SIMPLE=T;BAYERPAT='%s';", bayerpat);
+indigo_libs/indigo_client.c:113: strcat(path, "\\drivers");
+indigo_libs/indigo_client.c:450: sprintf(name + strlen(name), ":%d", port);
+indigo_libs/indigo_client_xml.c:44: sprintf(device->name, "@ %s", name);
+indigo_libs/indigo_driver.c:1516: sprintf(name, PROFILE_NAME_ITEM_NAME, i);
+indigo_libs/indigo_driver.c:1517: sprintf(label, "Name #%d", i);
+indigo_libs/indigo_driver.c:1518: sprintf(value, "Profile #%d", i);
+indigo_libs/indigo_driver.c:1528: sprintf(name, PROFILE_ITEM_NAME, i);
+indigo_libs/indigo_driver.c:1674: sprintf(name_item->text.value, "Profile #%d", i);
+indigo_libs/indigo_driver.c:1734: strcat(DEVICE_BAUDRATE_ITEM->text.value, "-8N1");
+indigo_libs/indigo_driver.c:1967: if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_ts.tm_year, &tm_ts.tm_mon, &tm_ts.tm_mday, &tm_ts.tm_hour, &tm_ts.tm_min, &tm_ts.tm_sec) == 6) {
+indigo_libs/indigo_driver.c:1998: if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_stamp.tm_year, &tm_stamp.tm_mon, &tm_stamp.tm_mday, &tm_stamp.tm_hour, &tm_stamp.tm_min, &tm_stamp.tm_sec) == 6) {
+indigo_libs/indigo_filter.c:963: strcat(agent_property->name, property->name);
+indigo_libs/indigo_filter.c:967: strcat(agent_property->group, property->group);
+indigo_libs/indigo_fits.c:121: int t = sprintf(p, "SIMPLE  = %20c", 'T'); p[t] = ' ';
+indigo_libs/indigo_fits.c:122: t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
+indigo_libs/indigo_fits.c:124: t = sprintf(p += 80, "NAXIS   = %20d / RGB Image", 3); p[t] = ' ';
+indigo_libs/indigo_fits.c:126: t = sprintf(p += 80, "NAXIS   = %20d / Monochrome or Bayer mosaic color image", 2); p[t] = ' ';
+indigo_libs/indigo_fits.c:128: t = sprintf(p += 80, "NAXIS1  = %20d", frame_width); p[t] = ' ';
+indigo_libs/indigo_fits.c:129: t = sprintf(p += 80, "NAXIS2  = %20d", frame_height); p[t] = ' ';
+indigo_libs/indigo_fits.c:131: t = sprintf(p += 80, "NAXIS3  = %20d", components); p[t] = ' ';
+indigo_libs/indigo_fits.c:133: t = sprintf(p += 80, "EXTEND  = %20c", 'T'); p[t] = ' ';
+indigo_libs/indigo_fits.c:135: t = sprintf(p += 80, "BZERO   = %20d", 32768); p[t] = ' ';
+indigo_libs/indigo_fits.c:136: t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
+indigo_libs/indigo_fits.c:142: t = sprintf(p += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
+indigo_libs/indigo_fits.c:146: t = sprintf(p += 80, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+indigo_libs/indigo_fits.c:149: t = sprintf(p += 80, "%7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
+indigo_libs/indigo_fits.c:173: t = sprintf(p += 80, "%7s= %s", keyword, value);
+indigo_libs/indigo_fits.c:180: t = sprintf(p += 80, "ROWORDER= %20s / Image row order", "'TOP-DOWN'"); p[t] = ' ';
+indigo_libs/indigo_fits.c:181: t = sprintf(p += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); p[t] = ' ';
+indigo_libs/indigo_fits.c:182: t = sprintf(p += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); p[t] = ' ';
+indigo_libs/indigo_fits.c:183: t = sprintf(p += 80, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org"); p[t] = ' ';
+indigo_libs/indigo_fits.c:184: t = sprintf(p += 80, "END"); p[t] = ' ';
+indigo_libs/indigo_json.c:928: size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", indigo_json_escape(property->device));
+indigo_libs/indigo_json.c:930: size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", indigo_json_escape_b(0, property->device), indigo_json_escape_b(1, property->name));
+indigo_libs/indigo_json.c:934: size = sprintf(pnt, ", \"message\": \"%s\" } }", indigo_json_escape(message));
+indigo_libs/indigo_json.c:936: size = sprintf(pnt, " } }");
+indigo_libs/indigo_json.c:964: size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, property->device), indigo_json_escape_b(2, property->name));
+indigo_libs/indigo_json.c:966: size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, device->name));
+indigo_libs/indigo_json.c:968: size = sprintf(pnt, "{ \"message\": \"%s\" }", indigo_json_escape(message));
+indigo_libs/indigo_md5.c:247: sprintf(digest + 2 * i, "%02x", ctx.digest[i]);
+indigo_libs/indigo_md5.c:270: sprintf(digest + 2 * i, "%02x", ctx.digest[i]);
+indigo_libs/indigo_mount_driver.c:364: sprintf(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items->hints, "warn_on_set:\"Clear all alignment points?\";");
+indigo_libs/indigo_mount_driver.c:373: sprintf(MOUNT_ALIGNMENT_RESET_ITEM->hints, "warn_on_set:\"Reset alignment data?\";");
+indigo_libs/indigo_mount_driver.c:432: sscanf(buffer, "%d", &count);
+indigo_libs/indigo_mount_driver.c:440: sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", &used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
+indigo_libs/indigo_platesolver.c:141: FILE *output = popen(command, "r");
+indigo_libs/indigo_polynomial_fit.c:207: p += sprintf(p, "y =");
+indigo_libs/indigo_polynomial_fit.c:211: p += sprintf(p, " %+.15e*x^%d", polynomial_coefficients[i], i);
+indigo_libs/indigo_polynomial_fit.c:213: p += sprintf(p, " %+.15e*x", polynomial_coefficients[i]);
+indigo_libs/indigo_polynomial_fit.c:215: p += sprintf(p, " %+.15e", polynomial_coefficients[i]);
+indigo_libs/indigo_server_tcp.c:152: strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+indigo_libs/indigo_server_tcp.c:180: if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
+indigo_libs/indigo_server_tcp.c:341: if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
+indigo_libs/indigo_token.c:49: if (sscanf(token_string, "%llx", &token) == 1) return token;
+indigo_libs/indigo_token.c:179: if (sscanf(buffer, "%llx %127[^\n]s", &token, device) == 2) {
+indigo_libs/indigo_usb_utils.c:35: sprintf(path + 2 * i, "%02X", data[i]);
+indigo_libs/indigo_xml.c:443: sscanf(value, "%d.%d", &major, &minor);
+indigo_libs/indigo_xml.c:1925: sprintf(token, " token='%llx'", property->access_token);
+indigo_server/indigo_server.c:569: j += sprintf(output + j, "\\u%04x", c);
+indigo_server/indigo_server.c:825: // country code, host time) cannot inject shell metacharacters into the popen() command string.
+indigo_server/indigo_server.c:868: FILE *output = popen(buffer, "r");
+indigo_server/indigo_server.c:908: FILE *output = popen(buffer, "r");
+indigo_server/indigo_server.c:968: sprintf(SERVER_INSTALL_PROPERTY->items[i].hints,"warn_on_set:\"Install INDIGO %s and reboot host computer?\";", versions[ii]);
+indigo_server/indigo_server.c:1771: FILE *output = popen("which s_rpi_ctrl.sh", "r");
+indigo_server/indigo_server.c:1951: strcat(path, "/../share/indigo");
+indigo_tools/indigo_generator.c:2824: if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2 && !strcmp("true", s2)) {
+indigo_tools/indigo_generator.c:2848: if (sscanf(line, "// supported_architecture: %255[^\n]", driver.supported_architecture) == 1) {
+indigo_tools/indigo_generator.c:2860: if (sscanf(line, "// device_id: %127s type: %127s", s1, s2) == 2) {
+indigo_tools/indigo_generator.c:2863: } else if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
+indigo_tools/indigo_generator.c:2865: } else if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
+indigo_tools/indigo_generator.c:2871: } else if (sscanf(line, "// %lf by %127[^\0]", &d1, s1) == 2) {
+indigo_tools/indigo_generator.c:2873: } else if (sscanf(line, "// %lf %127[^\0]", &d1, s1) == 2) {
+indigo_tools/indigo_generator.c:2876: } else if (sscanf(line, " //+ %127[^\"]\"", s1) == 1) {
+indigo_tools/indigo_generator.c:2903: } else if (sscanf(s1, "%127[^.].%127[^.].%127s", s2, s3, s4) == 3) {
+indigo_tools/indigo_generator.c:2905: strcat(s3, "_PROPERTY");
+indigo_tools/indigo_generator.c:2914: } else if (sscanf(s1, "%127[^.].%127s", s2, s3) == 2) {
+indigo_tools/indigo_generator.c:2944: } else if (sscanf(line, "#define DRIVER_VERSION 0x%x", &i1) == 1) {
+indigo_tools/indigo_generator.c:2946: } else if (sscanf(line, "#define DRIVER_NAME \"indigo_%*[^_]_%127[^\"]\"", s1) == 1) {
+indigo_tools/indigo_generator.c:2948: } else if (sscanf(line, "#define DRIVER_LABEL \"%127[^\"]\"", s1) == 1) {
+indigo_tools/indigo_generator.c:2950: } else if (sscanf(line, "#define MAX_DEVICES %d", &i1) == 1) {
+indigo_tools/indigo_generator.c:2953: } else if (sscanf(line, "#define %127[^_]_DEVICE_NAME \"%127[^\"]\"", s1, s2) == 2) {
+indigo_tools/indigo_generator.c:2957: } else if (sscanf(line, "#define %127s %127[^\0]", s1, s2) == 2) {
+indigo_tools/indigo_generator.c:2970: } else if (sscanf(line, " SET_DRIVER_INFO(%*[^,], %*[^,], %*[^,], %*[^,], %127[^,],", s1) == 1) {
+indigo_tools/indigo_generator.c:2972: if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
+indigo_tools/indigo_generator.c:2993: } else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2) {
+indigo_tools/indigo_generator.c:3001: } else if (sscanf(line, " indigo_property_copy_targets(%127[^,], property, false);", s1) == 1) {
+indigo_tools/indigo_generator.c:3006: } else if (sscanf(line, " strcpy(patterns[%d].%127[^,], %127[^)]);", &i1, s1, s2) == 3) {
+indigo_tools/indigo_generator.c:3028: } else if (sscanf(line, " patterns[%d].%127[^= ] = %127[^;];", &i1, s1, s2) == 3) {
+indigo_tools/indigo_generator.c:3050: } else if (sscanf(line, " int rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, %127[^,], %127[^,])", s1, s2) == 2 || sscanf(line, " int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %127[^,], %127[^,])", s1, s2) == 2) {
+indigo_tools/indigo_generator.c:3058: } else if (sscanf(line, " static indigo_device %127[^_]_template = %127[^(](", s1, s2) == 2 && strcmp(s2, "INDIGO_DEVICE_INITIALIZER") == 0) {
+indigo_tools/indigo_generator.c:3060: if (sscanf(line, " \"%127[^\"]\"", s3) == 1) {
+indigo_tools/indigo_generator.c:3065: } else if (sscanf(line, " if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %127[^)])", s1) == 1) {
+indigo_tools/indigo_generator.c:3070: } else if (sscanf(line, " if (indigo_%127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "attach") == 0) {
+indigo_tools/indigo_generator.c:3074: } else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]() {", s1, s2) == 2 && strcmp(s2, "change_property") == 0) {
+indigo_tools/indigo_generator.c:3076: } else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "enumerate_properties") == 0 && line[strlen(line) - 1] == '{') {
+indigo_tools/indigo_generator.c:3089: } else if (sscanf(line, " %127[^(](%127[^)])", s1, s2) == 2 && strcmp(s1, "INDIGO_DEFINE_MATCHING_PROPERTY") == 0) {
+indigo_tools/indigo_generator.c:3094: } else if (sscanf(line, " %s = indigo_init_switch_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %127[^,], %127[^,], %*d)", s1, s2, s3, s4, s5, s6) == 6) {
+indigo_tools/indigo_generator.c:3104: } else if (sscanf(line, " %s = indigo_init_light_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %*d)", s1, s2, s3, s4) == 4) {
+indigo_tools/indigo_generator.c:3112: } else if (sscanf(line, " %s = indigo_init_%127[^_]_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %127[^,], %*d)", s1, s2, s3, s4, s5, s6) == 6) {
+indigo_tools/indigo_generator.c:3121: } else if (sscanf(line, " indigo_init_number_item(%127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5, s6, s7) == 7) {
+indigo_tools/indigo_generator.c:3131: } else if (sscanf(line, " indigo_init_sexagesimal_number_item(%127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5, s6, s7) == 7) {
+indigo_tools/indigo_generator.c:3142: } else if (sscanf(line, " indigo_init_%127[^_]_item(%127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5) == 5) {
+indigo_tools/indigo_generator.c:3149: } else if (sscanf(line, " strcpy(%127[^-]->number.format, %127[^)]);", s1, s2) == 2) {
+indigo_tools/indigo_generator.c:3154: } else if (sscanf(line, " } else if (%127[^(](%127[^,], property)) {", s1, s2) == 2 && strcmp(s1, "indigo_property_match_changeable") == 0) {
+indigo_tools/indigo_generator.c:3160: } else if (sscanf(line, " %127[^(](device, NULL, %127[^)])", s1, s2) == 2 && strcmp(s1, "indigo_save_property") == 0) {
+indigo_tools/indigo_metadata_extractor.c:84: FILE *pipe = popen(line, "r");
+indigo_tools/indigo_metadata_extractor.c:88: if (sscanf(driver_info, "SET_DRIVER_INFO(info, \"%127[^\"]\", __FUNCTION__, 0x%x", driver->label, &driver->version) == 2) {
+indigo_tools/indigo_prop_tool.c:181: sprintf(format, "%%%d[^.].%%%ds", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE);
+indigo_tools/indigo_prop_tool.c:182: res = sscanf(prop_string, format, plr->device_name, plr->property_name);
+indigo_tools/indigo_prop_tool.c:202: sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+indigo_tools/indigo_prop_tool.c:203: res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name[0], remainder);
+indigo_tools/indigo_prop_tool.c:214: sprintf(format, "%%%d[^;];%%%d[^\r]s", INDIGO_VALUE_SIZE, REMINDER_MAX_SIZE);
+indigo_tools/indigo_prop_tool.c:215: res = sscanf(remainder, format, scr->value_string[scr->item_count-1], remainder);
+indigo_tools/indigo_prop_tool.c:224: sprintf(format, "%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+indigo_tools/indigo_prop_tool.c:225: res = sscanf(remainder, format, scr->item_name[scr->item_count-1], remainder);
+indigo_tools/indigo_prop_tool.c:251: sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+indigo_tools/indigo_prop_tool.c:252: res = sscanf(prop_string, format, sgr->device_name, sgr->property_name, remainder);
+indigo_tools/indigo_prop_tool.c:262: sprintf(format, "%%%d[^;];%%%d[^\r]s", INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
+indigo_tools/indigo_prop_tool.c:263: res = sscanf(remainder, format, sgr->item_name[sgr->item_count], remainder);
+indigo_tools/indigo_prop_tool.c:447: sprintf(value_string[items_found], "%.*s + %ld characters\n", TEXT_LEN_TO_PRINT, item->text.value, item->text.length - TEXT_LEN_TO_PRINT - 1);
+indigo_tools/indigo_prop_tool.c:449: sprintf(value_string[items_found], "%s", item->text.value);
+indigo_tools/indigo_prop_tool.c:454: sprintf(value_string[items_found], "%f [%f, %f]", item->number.value, item->number.min, item->number.max);
+indigo_tools/indigo_prop_tool.c:456: sprintf(value_string[items_found], "%g", item->number.value);
+indigo_tools/indigo_prop_tool.c:460: sprintf(value_string[items_found], item->sw.value ? "ON" : "OFF");
+indigo_tools/indigo_prop_tool.c:464: sprintf(value_string[items_found], "ON");
+indigo_tools/indigo_prop_tool.c:466: sprintf(value_string[items_found], "OFF");
+indigo_tools/indigo_prop_tool.c:472: sprintf(value_string[items_found], "file://%s/%s", indigo_uni_getcwd(), filename);
+indigo_tools/indigo_prop_tool.c:477: sprintf(value_string[items_found], "file://%s/%s", indigo_uni_getcwd(), filename);
+indigo_tools/indigo_prop_tool.c:485: sprintf(value_string[items_found], "%s", item->blob.url);
+indigo_tools/indigo_prop_tool.c:487: sprintf(value_string[items_found], "<BLOB NOT SHOWN>");
+indigo_tools/indigo_prop_tool.c:490: sprintf(value_string[items_found], "<NO BLOB DATA>");
+indigo_tools/indigo_prop_tool.c:946: if (sscanf(argv[i], "%[^:]:%s", hostname, port_str) > 1) {
+indigo_tools/indigo_raw_crop.c:57: if (sscanf(argv[3], "%d,%d,%d,%d", &x, &y, &width, &height) != 4) {

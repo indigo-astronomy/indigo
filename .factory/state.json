@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "active_task": null,
-  "phase": "idle",
-  "status": "idle",
-  "assigned_role": "coordinator",
-  "next_action": "Start the initial full maintained-repository audit after the owner-prioritized FTDI repair, before unrelated development or release.",
-  "blocker": null
+  "active_task": "003-initial-repository-audit",
+  "phase": "review",
+  "status": "active",
+  "assigned_role": "repository-reviewer",
+  "next_action": "Audit coverage and reports recorded. Owner decision needed: disposition blocking FND-000045 (WebSocket key overflow) via a scoped repair task or explicit security risk decision, and confirm the documented coverage satisfies the initial-audit gate. Full-review checkpoint not reset.",
+  "blocker": "Owner disposition of blocking security finding FND-000045"
 }

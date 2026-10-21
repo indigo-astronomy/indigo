@@ -1,0 +1,13 @@
+{
+  "cwd": "<repository root>",
+  "argv": [
+    "make",
+    "-C",
+    "indigo_test",
+    "test-unit",
+    "UNIT_BUILD=<private temp build dir>",
+    "UNIT_TESTS=<private temp build dir>/test_align_math <private temp build dir>/test_aux_math <private temp build dir>/test_base64 <private temp build dir>/test_bus_helpers <private temp build dir>/test_bus_property <private temp build dir>/test_dome_azimuth <private temp build dir>/test_driver_loader <private temp build dir>/test_md5 <private temp build dir>/test_polynomial_fit <private temp build dir>/test_protocol_json <private temp build dir>/test_protocol_xml <private temp build dir>/test_timer <private temp build dir>/test_token <private temp build dir>/test_uni_io <private temp build dir>/test_raw_image"
+  ],
+  "excluded": "test_system_alpaca_json: required driver archive absent",
+  "private_build": "<private temp build dir>"
+}
