@@ -120,8 +120,8 @@ driver moonlite {
 			return true;
 		}
 
-		static bool moonlite_open(indigo_device *device) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+		static bool moonlite_open(indigo_device *device, const char **error_message) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, error_message);
 			unsigned version = 0;
 			if (PRIVATE_DATA->handle && moonlite_query(device, ":GV#", 2, &version) && RESPONSE[0] >= '0' && RESPONSE[0] <= '9' && RESPONSE[1] >= '0' && RESPONSE[1] <= '9') {
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%c.%c", RESPONSE[0], RESPONSE[1]);

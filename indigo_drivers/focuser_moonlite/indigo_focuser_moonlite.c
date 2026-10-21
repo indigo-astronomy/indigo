@@ -69,7 +69,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	indigo_property *x_focuser_stepping_mode_property;
 	//+ data
 	char response[64];
@@ -164,8 +163,8 @@ static bool moonlite_stop(indigo_device *device) {
 	return true;
 }
 
-static bool moonlite_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+static bool moonlite_open(indigo_device *device, const char **error_message) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG, error_message);
 	unsigned version = 0;
 	if (PRIVATE_DATA->handle && moonlite_query(device, ":GV#", 2, &version) && RESPONSE[0] >= '0' && RESPONSE[0] <= '9' && RESPONSE[1] >= '0' && RESPONSE[1] <= '9') {
 		snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%c.%c", RESPONSE[0], RESPONSE[1]);
@@ -313,8 +312,8 @@ static void focuser_timer_callback(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
-		PRIVATE_DATA->error_message = NULL;
-		connection_result = moonlite_open(device);
+		const char *error_message = NULL;
+		connection_result = moonlite_open(device, &error_message);
 		if (connection_result) {
 			//+ focuser.on_connect
 			unsigned temperature = 0, position = 0, coefficient = 0, speed = 0, stepping = 0;
@@ -347,8 +346,8 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, error_message);
 			} else {
 				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			}
