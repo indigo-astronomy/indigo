@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_aux_cloudwatcher"
 #define DRIVER_LABEL         "AAG CloudWatcher"
 #define AUX_DEVICE_NAME      "AAG CloudWatcher"
@@ -272,6 +272,7 @@ typedef struct {
 
 typedef struct {
 	indigo_uni_handle *handle;
+	const char *error_message;
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_gpio_outlets_property;
 	indigo_property *x_heater_control_state_property;
@@ -984,7 +985,7 @@ static bool cloudwatcher_open(indigo_device *device) {
 	if (indigo_uni_is_url(name, "cloudwatcher")) {
 		PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_TRACE);
 	} else {
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, DEFAULT_BAUDRATE, INDIGO_LOG_TRACE);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, DEFAULT_BAUDRATE, INDIGO_LOG_TRACE, &PRIVATE_DATA->error_message);
 	}
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
@@ -1052,6 +1053,7 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		connection_result = cloudwatcher_open(device);
 		if (connection_result) {
 			//+ aux.on_connect
@@ -1087,7 +1089,11 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
