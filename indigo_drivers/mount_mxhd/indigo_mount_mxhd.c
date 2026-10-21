@@ -51,7 +51,6 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	const char *error_message;
 	int device_count;
 	bool tracking_enabled;
 	bool parked;
@@ -822,7 +821,7 @@ static void position_timer_callback(indigo_device *device) {
 	indigo_execute_handler_in(device, MXHD_POLL_SECONDS, position_timer_callback);
 }
 
-static bool mxhd_open(indigo_device *device) {
+static bool mxhd_open(indigo_device *device, const char **error_message) {
 	if (PRIVATE_DATA->handle != NULL) {
 		return true;
 	}
@@ -831,7 +830,7 @@ static bool mxhd_open(indigo_device *device) {
 	if (baudrate <= 0) {
 		baudrate = MXHD_DEFAULT_BAUDRATE;
 	}
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(port, baudrate, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(port, baudrate, INDIGO_LOG_DEBUG, error_message);
 	if (PRIVATE_DATA->handle == NULL) {
 		return false;
 	}
@@ -894,9 +893,9 @@ static void reset_private_state(indigo_device *device) {
 static void mount_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->device_count++ == 0) {
-			result = mxhd_open(device);
+			result = mxhd_open(device, &error_message);
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -922,8 +921,8 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 			indigo_execute_handler(device, position_timer_callback);
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, error_message);
 			}
 			PRIVATE_DATA->device_count--;
 			reset_private_state(device);
@@ -1534,15 +1533,15 @@ static indigo_result guider_attach(indigo_device *device) {
 static void guider_connect_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
-		PRIVATE_DATA->error_message = NULL;
+		const char *error_message = NULL;
 		if (PRIVATE_DATA->device_count++ == 0) {
-			result = mxhd_open(device->master_device);
+			result = mxhd_open(device->master_device, &error_message);
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			if (PRIVATE_DATA->error_message != NULL) {
-				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			if (error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", device->name, DEVICE_PORT_ITEM->text.value, error_message);
 			}
 			PRIVATE_DATA->device_count--;
 			reset_private_state(device->master_device);
