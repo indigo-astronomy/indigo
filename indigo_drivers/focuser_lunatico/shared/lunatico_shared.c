@@ -193,7 +193,7 @@ static bool lunatico_open(indigo_device *device) {
 		snprintf(url, sizeof(url), "udp://%s", host == NULL ? name : host + 3);
 		PRIVATE_DATA->handle = indigo_uni_open_url(url, LUNATICO_UDP_PORT, INDIGO_UDP_HANDLE, INDIGO_LOG_DEBUG);
 	} else {
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	}
 	if (PRIVATE_DATA->handle != NULL) {
 		if (lunatico_identify(device)) {
