@@ -26,7 +26,7 @@ driver sx {
 	label = "StarlightXpress AO";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 15;
+	version = 16;
 	serial;
 	data {
 		char response[6];
@@ -52,7 +52,7 @@ driver sx {
 		// helpers step up to the master before touching DEVICE_PORT or INFO.
 		static bool sx_open(indigo_device *device) {
 			device = device->master_device;
-			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
 					if (sx_command(device, "V", 4) && PRIVATE_DATA->response[0] == 'V') {

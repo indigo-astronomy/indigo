@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_ao_sx"
 #define DRIVER_LABEL         "StarlightXpress AO"
 #define AO_DEVICE_NAME       "SX AO"
@@ -45,6 +45,7 @@
 typedef struct {
 	int count;
 	indigo_uni_handle *handle;
+	const char *error_message;
 	//+ data
 	char response[6];
 	//- data
@@ -74,7 +75,7 @@ static bool sx_command(indigo_device *device, char *command, int response, ...) 
 // helpers step up to the master before touching DEVICE_PORT or INFO.
 static bool sx_open(indigo_device *device) {
 	device = device->master_device;
-	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial2(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG, &PRIVATE_DATA->error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
 			if (sx_command(device, "V", 4) && PRIVATE_DATA->response[0] == 'V') {
@@ -104,6 +105,7 @@ static void sx_close(indigo_device *device) {
 static void ao_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
 			connection_result = sx_open(device);
 		}
@@ -129,7 +131,11 @@ static void ao_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				sx_close(device);
 			}
@@ -276,6 +282,7 @@ static indigo_result ao_detach(indigo_device *device) {
 static void guider_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
+		PRIVATE_DATA->error_message = NULL;
 		if (PRIVATE_DATA->count == 0) {
 			connection_result = sx_open(device->master_device);
 		}
@@ -286,7 +293,11 @@ static void guider_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			if (PRIVATE_DATA->error_message != NULL) {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s (%s)", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value, PRIVATE_DATA->error_message);
+			} else {
+				indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			}
 			if (PRIVATE_DATA->count > 0 && --PRIVATE_DATA->count == 0) {
 				sx_close(device);
 			}
