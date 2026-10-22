@@ -1,0 +1,24 @@
+{
+  "id": "FND-000059",
+  "title": "focuser_primaluce ended a move the controller acknowledged but never ran ALERT without a reason",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "011-primaluce-sestosenso3",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "A SESTO SENSO 3 with its motor bridges off (STATUS.HIZ) answered GOTO with done and stayed; the client saw ALERT and no message.",
+  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000059); hardware session 2026-10-23 (position 29312, HIZ 1)",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "011-primaluce-sestosenso3/verification.md: the ALERT carries 'The focuser stopped before reaching the target'; move_not_started passes.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

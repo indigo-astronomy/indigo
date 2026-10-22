@@ -80,6 +80,7 @@ char *PRIMALUCE_REPLY_FOCUSER_BACKLASH_ACK[] = { "res", "set", "MOT1", "BKLASH",
 char *PRIMALUCE_REPLY_FOCUSER_SPEED_ACK[] = { "res", "set", "MOT1", "SPEED", NULL };
 char *PRIMALUCE_REPLY_FOCUSER_HOLD_CURRENT_ACK[] = { "res", "set", "MOT1", "HOLDCURR_STATUS", NULL };
 char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_ACK[] = { "res", "cmd", "MOT1", "CAL_FOCUSER", NULL };
+char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR[] = { "res", "get", "MOT1", "CAL_DIR", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_CALIBRATION_RESTART[] = { "res", "get", "CALRESTART", "MOT2", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_ERROR[] = { "res", "get", "MOT2", "ERROR", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_SERIAL_NUMBER[] = { "res", "get", "ARCO_SN", NULL };
@@ -210,38 +211,25 @@ static bool primalucelib_http_exchange(primalucelib_link *link, const char *requ
 	return result;
 }
 
-bool primalucelib_vrequest(primalucelib_link *link, const char *format, va_list args) {
-	long result;
-	link->last_error[0] = 0;
-	if (link->is_http) {
-		char request[PRIMALUCE_MAX_RESPONSE_SIZE];
-		vsnprintf(request, sizeof(request), format, args);
-		if (!primalucelib_http_exchange(link, request)) {
-			link->link_failed = true;
-			return false;
-		}
-	} else {
-		result = indigo_uni_vprintf(link->handle, format, args);
-		if (result <= 0) {
-			link->link_failed = true;
-			return false;
-		}
-		while (true) {
-			result = indigo_uni_read_section(link->handle, link->response, PRIMALUCE_MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
-			if (result < 1) {
-				link->link_failed = true;
-				return false;
-			}
-			// Diagnostic output of the controller, not a reply.
-			if (*link->response == '[') {
-				INDIGO_DRIVER_DEBUG(link->driver_name, "Ignored");
-				continue;
-			}
-			break;
-		}
+// The verb of a request, "get", "set", "cmd" or "srv", from its {"req":{"<verb>": prefix.
+static bool primalucelib_request_verb(const char *request, char *verb, size_t size) {
+	const char *start = strstr(request, "{\"req\":{\"");
+	if (start == NULL) {
+		return false;
 	}
-	// The controller answered, whatever the answer is.
-	link->link_failed = false;
+	start += 9;
+	size_t length = strcspn(start, "\"");
+	if (length == 0 || length >= size || start[length] != '"') {
+		return false;
+	}
+	memcpy(verb, start, length);
+	verb[length] = 0;
+	return true;
+}
+
+// Parses the response buffer and NUL-terminates its string tokens. False for a quoted string or a
+// reply that is not complete JSON.
+static bool primalucelib_parse_reply(primalucelib_link *link) {
 	memset(link->tokens, 0, sizeof(link->tokens));
 	jsmn_init(&link->parser);
 	if (*link->response == '"' || jsmn_parse(&link->parser, link->response, PRIMALUCE_MAX_RESPONSE_SIZE, link->tokens, PRIMALUCE_MAX_TOKENS) <= 0) {
@@ -254,6 +242,67 @@ bool primalucelib_vrequest(primalucelib_link *link, const char *format, va_list 
 		}
 		if (link->tokens[i].type == JSMN_STRING) {
 			link->response[link->tokens[i].end] = 0;
+		}
+	}
+	return true;
+}
+
+// A reply answers a request when it carries the request verb or a refusal. Anything else is the
+// late answer to an earlier request.
+static bool primalucelib_reply_answers(primalucelib_link *link, char *verb) {
+	char *verb_path[] = { PRIMALUCE_KEY_RESPONSE, verb, NULL };
+	return primalucelib_reply_has(link, verb_path) || primalucelib_reply_has(link, PRIMALUCE_REPLY_CMD_ERROR) || primalucelib_reply_has(link, PRIMALUCE_REPLY_SET_ERROR) || primalucelib_reply_has(link, PRIMALUCE_REPLY_GET_ERROR);
+}
+
+bool primalucelib_vrequest(primalucelib_link *link, const char *format, va_list args) {
+	char request[PRIMALUCE_MAX_RESPONSE_SIZE];
+	char verb[16];
+	link->last_error[0] = 0;
+	vsnprintf(request, sizeof(request), format, args);
+	if (link->is_http) {
+		if (!primalucelib_http_exchange(link, request)) {
+			link->link_failed = true;
+			return false;
+		}
+		// The controller answered, whatever the answer is.
+		link->link_failed = false;
+		if (!primalucelib_parse_reply(link)) {
+			return false;
+		}
+	} else {
+		// One request, one reply: anything still pending belongs to an earlier request, for example a
+		// reply that arrived after its read timed out, and would shift every following reply by one.
+		primalucelib_discard_input(link);
+		if (indigo_uni_write(link->handle, request, (long)strlen(request)) <= 0) {
+			link->link_failed = true;
+			return false;
+		}
+		bool has_verb = primalucelib_request_verb(request, verb, sizeof(verb));
+		int stale_replies = 0;
+		while (true) {
+			long result = indigo_uni_read_section(link->handle, link->response, PRIMALUCE_MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
+			if (result < 1) {
+				link->link_failed = true;
+				return false;
+			}
+			// Diagnostic output of the controller, not a reply.
+			if (*link->response == '[') {
+				INDIGO_DRIVER_DEBUG(link->driver_name, "Ignored");
+				continue;
+			}
+			// The controller answered, whatever the answer is.
+			link->link_failed = false;
+			if (!primalucelib_parse_reply(link)) {
+				return false;
+			}
+			if (has_verb && !primalucelib_reply_answers(link, verb)) {
+				INDIGO_DRIVER_ERROR(link->driver_name, "Dropped a reply that answers another request");
+				if (++stale_replies < PRIMALUCE_MAX_STALE_REPLIES) {
+					continue;
+				}
+				return false;
+			}
+			break;
 		}
 	}
 	// A rejected request is answered as an ERROR under the request verb
@@ -697,6 +746,19 @@ char *primalucelib_reply_stored_position_name(primalucelib_link *link, int index
 
 bool primalucelib_focuser_calibration_step(primalucelib_link *link, const char *step) {
 	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_CALIBRATION_STEP, step);
+}
+
+bool primalucelib_focuser_get_calibration(primalucelib_link *link, double *min_position, double *max_position) {
+	if (!primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_GET_CALIBRATION) || !primalucelib_reply_has(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX)) {
+		return false;
+	}
+	*min_position = primalucelib_reply_number(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MIN);
+	*max_position = primalucelib_reply_number(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX);
+	return true;
+}
+
+char *primalucelib_focuser_get_calibration_direction(primalucelib_link *link) {
+	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_GET_CALIBRATION_DIR) ? primalucelib_reply_string(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR) : NULL;
 }
 
 bool primalucelib_focuser_set_calibration_direction(primalucelib_link *link, const char *direction) {

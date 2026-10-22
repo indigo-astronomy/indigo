@@ -1,0 +1,24 @@
+{
+  "id": "FND-000057",
+  "title": "focuser_primaluce accepted X_CALIBRATE requests while a calibration step ran, which could leave a calibration run unstoppable by END",
+  "category": "functional",
+  "severity": "high",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "011-primaluce-sestosenso3",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The generated handler sets X_CALIBRATE OK when it starts, so the BUSY guard let further requests in during the SESTO SENSO 3 restart wait; queued calibrations ran in sequence, the last cleared the calibration state and END was refused, and the run drove into the mechanical end until the owner unplugged the focuser.",
+  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000057); server log of the hardware session 2026-10-23",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "011-primaluce-sestosenso3/verification.md: requests are refused while a step runs, only END is accepted during the run, END without a run is refused; sestosenso3_calibration, sestosenso3_calibration_restart, calibration_end_without_run pass; hardware calibration with refused extra clicks.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

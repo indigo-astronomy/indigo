@@ -1,0 +1,24 @@
+{
+  "id": "FND-000058",
+  "title": "focuser_primaluce abort did not end a SESTO SENSO 3 calibration run",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "011-primaluce-sestosenso3",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Abort sent the ordinary motor stop; according to the SESTO SENSO 3 protocol document v1.0 the semi-automatic run ends only with CAL_FOCUSER StopMotor (stop_calib leaves the procedure).",
+  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000058); protocol document v1.0 CAL_FOCUSER",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "011-primaluce-sestosenso3/verification.md: abort sends StopMotor and stop_calib and publishes the focuser uncalibrated; sestosenso3_calibration_restart passes against a simulator that ignores the ordinary stop; not exercised on hardware.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

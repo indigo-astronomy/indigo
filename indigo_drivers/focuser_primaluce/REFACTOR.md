@@ -606,3 +606,71 @@ Linux x86_64 only; macOS and Windows builds were not run in this environment. No
   as the original driver did, with byte-identical wire traffic in all 54 simulator cases.
 - Hardware tests: 0 run, 0 passed in this round; the latest hardware record stays 3.0.0.25 (linux
   arm64) and 3.0.0.22 (mac arm64, USB and WiFi).
+
+## SESTO SENSO 3 support (3.0.0.27, 2026-10-23, task 011-primaluce-sestosenso3)
+
+On the owner's SESTO SENSO 3 (application firmware 1.0.9, web 03.06.01, CP2102N on USB, delivered
+uncalibrated) `FOCUSER_POSITION` alternated between OK and ALERT and moves failed. The work followed
+the owner's document "PrimaluceLab - Communication Protocol - SS3 v1.0" (06 Oct 2025, not committed)
+and supervised hardware sessions: small moves and calibrations, approved by the owner.
+
+### Hardware observations
+
+- Every `CAL_DIR` write is acknowledged and then restarts the ESP32 (boot log on the serial line,
+  about 9.5 s without answers); requests sent meanwhile are answered late, after the restart.
+- `LOGLEVEL` is preceded by a `[mLogs_DefaultSetup]` line; `DIMLEDS` is acknowledged as
+  `{"res":{"cmd":{"cmd":"done"}}}`.
+- An uncalibrated controller (`CAL_MAXPOS` 0, `CALRESTART.MOT1` 1) acknowledges `GOTO` with "done"
+  and does not move. A controller with its motor bridges off (`STATUS.HIZ` 1, seen after the motor
+  ran into the mechanical end with the fault flags set) does the same.
+- Semi-automatic calibration: `Init`, `StoreAsMinPos` (zeroes the coordinate),
+  `GoOutToFindMaxPos` (runs until `StopMotor`), `StoreAsMaxPos`. The ordinary stop does not end the
+  run (protocol document); `stop_calib` leaves the procedure and the focuser uncalibrated.
+- `CAL_MAXPOS` keeps the previous value (0, or the previous calibration) for up to about 0.65 s
+  after `StoreAsMaxPos` is acknowledged.
+
+### Found defects
+
+| ID | Defect | Fix | Regression test |
+| --- | --- | --- | --- |
+| FND-000053 | Reproduced on hardware: after a late reply every following reply answered the previous request, so the driver never recovered (OK/ALERT oscillation, failed moves). | The library discards pending input before each request and drops replies without the request verb, up to `PRIMALUCE_MAX_STALE_REPLIES`. | `test_primalucelib` `a_duplicate_reply_is_discarded`, `a_late_reply_is_skipped`, `only_stale_replies_fail_the_request` (the first two fail against the previous library); `sestosenso3_calibration_restart`. |
+| FND-000054 | Reproduced on hardware: an uncalibrated SESTO SENSO 3 accepted moves that never ran. | Moves are refused with "The focuser is not calibrated" while the reported range is empty. | `sestosenso3_uncalibrated`, `sestosenso3_calibration_restart`. |
+| FND-000055 | Reproduced on hardware: START failed, because the `CAL_DIR` write inside the SESTO SENSO 2 sequence restarts the controller. | SESTO SENSO 3: `CAL_DIR` is read and written first, only when it changes, followed by the restart wait (BUSY with "The focuser restarts to change the calibration direction") and `Init`, `StoreAsMinPos`, `GoOutToFindMaxPos`; END sends `StopMotor` before `StoreAsMaxPos`. | `sestosenso3_calibration`, `sestosenso3_calibration_restart`. |
+| FND-000056 | Reproduced on hardware (twice): after END the driver read the range at once, got 0 or the previous maximum and refused moves as uncalibrated or published the position out of range. | END reads the range before `StoreAsMaxPos` and polls (up to 5 s) until the maximum changes; the motion properties are redefined with the new range; no range ends the calibration ALERT. | `sestosenso3_calibration` (with the previous poll it publishes 100000 and fails). |
+| FND-000057 | Reproduced on hardware: X_CALIBRATE requests were accepted while a step ran (the handler sets OK when it starts), queued calibrations ran after each other, the last one cleared the calibration state and END was refused, so the run drove into the mechanical end and the owner had to unplug the focuser. | Requests are refused while a step runs; during the run only END is accepted; END without a run is refused. | `sestosenso3_calibration_restart`, `sestosenso3_calibration`, `calibration_end_without_run`. |
+| FND-000058 | Protocol document and simulator: abort during a SESTO SENSO 3 calibration sent the ordinary stop, which does not end the run. | Abort sends `StopMotor` and `stop_calib` and publishes the focuser uncalibrated. | `sestosenso3_calibration_restart`; not exercised on hardware. |
+| FND-000059 | Reproduced on hardware: a move the controller acknowledged and never ran ended ALERT without a reason. | The ALERT says "The focuser stopped before reaching the target". | `move_not_started`. |
+
+### Simulator additions
+
+`--profile sestosenso3` models the observations above: the log line before `LOGLEVEL`, the
+`DIMLEDS` acknowledgement, the restart after `CAL_DIR` (2 s here, requests answered late), the
+semi-automatic calibration with `StopMotor`, the delayed `CAL_MAXPOS`, `stop_calib` and the ignored
+ordinary stop during the run. `--profile sestosenso3-uncalibrated` is the delivered state, and the
+`ignore` fault acknowledges a move without running it. `CAL_MINPOS`, `CAL_MAXPOS` and `CAL_DIR` are
+simulator state; a SESTO SENSO 2 `StoreAsMaxPos` stores the position at once.
+
+### Limitations
+
+- The SESTO SENSO 3 START handler holds the device queue during the restart wait (up to 10 s of
+  polling, before any motion starts) and END polls the new range for up to 5 s; a request queued
+  meanwhile, including an abort, runs afterwards. No motion is running during either wait.
+- Abort during a SESTO SENSO 3 calibration and the `HIZ` case are verified with the simulator only.
+- The SESTO SENSO 3 SC automatic calibration, `RECOVER_DELAY` and the stored positions 10 to 12
+  are not supported (task non-goals).
+
+### Validation
+
+Driver hardware sessions on the SESTO SENSO 3 (linux x64, supervised): moves after the library fix;
+an inverted-direction calibration (maximum 17197, which showed FND-000056 before its fix); a
+normal-direction calibration after all fixes, with the restart, END accepted during the run and the
+new maximum 30975 published at END without reconnecting; moves after it. The final recorded run is
+in the test summary below.
+
+## Final test summary (3.0.0.27)
+
+- Simulated tests: 60 run, 60 passed: `2026-10-23 02:17 3.0.0.27 linux x64 simulator 60/60 OK`
+  (59 simulator cases, 5 of them new, plus the motion case). Library unit cases: 23 of 23.
+- Hardware: the supervised SESTO SENSO 3 sessions are listed under Validation above. They were
+  manual sessions, not a `tools/run_driver_test.py --hw` run, so they produce no hardware record.
+  The latest hardware records stay 3.0.0.25 (linux arm64) and 3.0.0.22 (mac arm64).

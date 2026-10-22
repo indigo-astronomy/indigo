@@ -79,6 +79,8 @@ extern "C" {
 // After REBOOT the controller prints a boot log on the serial line; it is polled this often, this far apart.
 #define PRIMALUCE_RESTART_POLLS                   20
 #define PRIMALUCE_RESTART_POLL_INTERVAL           0.5
+// Replies that answer an earlier request are dropped, this many at most, before a request fails.
+#define PRIMALUCE_MAX_STALE_REPLIES               4
 
 #pragma mark - Envelope keys
 
@@ -283,6 +285,8 @@ extern "C" {
 #define PRIMALUCE_REQUEST_FOCUSER_GET_POSITION_STEP       "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}"
 #define PRIMALUCE_REQUEST_FOCUSER_GET_POSITION_REGISTER   "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}"
 #define PRIMALUCE_REQUEST_FOCUSER_GET_MOTOR_STATE         "{\"req\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"\"}}}}}"
+#define PRIMALUCE_REQUEST_FOCUSER_GET_CALIBRATION         "{\"req\":{\"get\":{\"MOT1\":{\"CAL_MINPOS\":\"\",\"CAL_MAXPOS\":\"\"}}}}"
+#define PRIMALUCE_REQUEST_FOCUSER_GET_CALIBRATION_DIR     "{\"req\":{\"get\":{\"MOT1\":{\"CAL_DIR\":\"\"}}}}"
 // steps; SESTO SENSO 2 and ESATTO
 #define PRIMALUCE_REQUEST_FOCUSER_MOVE_ABSOLUTE           "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}"
 // steps; SESTO SENSO 3
@@ -390,6 +394,7 @@ extern char *PRIMALUCE_REPLY_FOCUSER_BACKLASH_ACK[];
 extern char *PRIMALUCE_REPLY_FOCUSER_SPEED_ACK[];
 extern char *PRIMALUCE_REPLY_FOCUSER_HOLD_CURRENT_ACK[];
 extern char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_ACK[];
+extern char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR[];
 extern char *PRIMALUCE_REPLY_ROTATOR_CALIBRATION_RESTART[];
 extern char *PRIMALUCE_REPLY_ROTATOR_ERROR[];
 extern char *PRIMALUCE_REPLY_ROTATOR_SERIAL_NUMBER[];
@@ -574,7 +579,11 @@ extern bool primalucelib_focuser_set_stored_position_name(primalucelib_link *lin
 extern double primalucelib_reply_stored_position(primalucelib_link *link, int index);
 extern char *primalucelib_reply_stored_position_name(primalucelib_link *link, int index);
 extern bool primalucelib_focuser_calibration_step(primalucelib_link *link, const char *step);
+// CAL_MINPOS and CAL_MAXPOS; an uncalibrated controller reports a maximum not above the minimum.
+extern bool primalucelib_focuser_get_calibration(primalucelib_link *link, double *min_position, double *max_position);
+// A SESTO SENSO 3 (firmware 1.0.9) acknowledges every CAL_DIR write and then restarts; see primalucelib_wait_for_restart().
 extern bool primalucelib_focuser_set_calibration_direction(primalucelib_link *link, const char *direction);
+extern char *primalucelib_focuser_get_calibration_direction(primalucelib_link *link);
 // SESTO SENSO 3 semi-automatic calibration: MoveOut-<steps> for a positive, MoveIn-<steps> for a negative count.
 extern bool primalucelib_focuser_calibration_jog(primalucelib_link *link, int steps);
 

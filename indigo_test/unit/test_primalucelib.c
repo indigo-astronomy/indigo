@@ -47,8 +47,8 @@
 #define PEER_REQUEST_SIZE  2048
 // The peer does not answer this request at all.
 #define PEER_SILENT        NULL
-// A reply the library accepts: valid JSON, no ERROR.
-#define EMPTY_REPLY        "{\"res\":{}}\n"
+// Expanded by the peer to {"res":{"<verb of the request>":{}}}: an accepted request without acknowledgements.
+#define EMPTY_REPLY        "@empty"
 
 typedef struct {
 	int master;
@@ -116,6 +116,13 @@ static void *peer_run(void *argument) {
 		}
 		const char *reply = index < p->reply_count ? p->replies[index] : p->default_reply;
 		pthread_mutex_unlock(&p->mutex);
+		char expanded[64];
+		if (reply != NULL && !strcmp(reply, EMPTY_REPLY)) {
+			char verb[16] = "get";
+			sscanf(request, "{\"req\":{\"%15[a-z]", verb);
+			snprintf(expanded, sizeof(expanded), "{\"res\":{\"%s\":{}}}\n", verb);
+			reply = expanded;
+		}
 		if (reply != NULL) {
 			size_t length = strlen(reply);
 			if (write(p->master, reply, length) != (ssize_t)length) {
@@ -442,6 +449,60 @@ cleanup:
 	stop_peer();
 }
 
+// A reply the controller sent twice is still pending when the next request goes out; it is
+// dropped, so the next request reads its own reply.
+static void a_duplicate_reply_is_discarded(void) {
+	CHECK(start_peer("{\"res\":{\"get\":{\"MODNAME\":\"SESTOSENSO3\"}}}\n{\"res\":{\"get\":{\"MODNAME\":\"SESTOSENSO3\"}}}\n", "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"1.0.9\"}}}}\n", NULL));
+	char *model = primalucelib_get_model_name(&test_link);
+	CHECK(model != NULL && !strcmp(model, "SESTOSENSO3"));
+	// Give the duplicate time to arrive before the next request is written.
+	indigo_usleep(200000);
+	char *firmware = primalucelib_get_firmware_version(&test_link);
+	CHECK(firmware != NULL && !strcmp(firmware, "1.0.9"));
+cleanup:
+	stop_peer();
+}
+
+// The answer to a request whose read timed out arrives after the next request was written: a reply
+// under another verb is the late one and is skipped, so the link does not stay shifted by one.
+static void a_late_reply_is_skipped(void) {
+	CHECK(start_peer(NULL));
+	script_silent_reply(0);
+	pthread_mutex_lock(&test_peer.mutex);
+	test_peer.replies[1] = "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"done\"}}}}\n{\"res\":{\"get\":{\"MODNAME\":\"SESTOSENSO3\"}}}\n";
+	test_peer.replies[2] = "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"1.0.9\"}}}}\n";
+	test_peer.reply_count = 3;
+	pthread_mutex_unlock(&test_peer.mutex);
+	CHECK(!primalucelib_request(&test_link, PRIMALUCE_REQUEST_FOCUSER_STOP));
+	CHECK(primalucelib_link_failed(&test_link));
+	char *model = primalucelib_get_model_name(&test_link);
+	CHECK(model != NULL && !strcmp(model, "SESTOSENSO3"));
+	CHECK(!primalucelib_link_failed(&test_link));
+	char *firmware = primalucelib_get_firmware_version(&test_link);
+	CHECK(firmware != NULL && !strcmp(firmware, "1.0.9"));
+cleanup:
+	stop_peer();
+}
+
+// A SESTO SENSO 3 (firmware 1.0.9) prints a diagnostic line before it acknowledges LOGLEVEL.
+static void sestosenso3_log_line_before_loglevel(void) {
+	CHECK(start_peer("[mLogs_DefaultSetup] \n{\"res\":{\"cmd\":{\"LOGLEVEL\":\"done\"}}}\r\n", "{\"res\":{\"get\":{\"MODNAME\":\"SESTOSENSO3\"}}}\r\n", NULL));
+	CHECK(primalucelib_disable_log_output(&test_link));
+	char *model = primalucelib_get_model_name(&test_link);
+	CHECK(model != NULL && !strcmp(model, "SESTOSENSO3"));
+cleanup:
+	stop_peer();
+}
+
+// Replies that never answer the request fail it after PRIMALUCE_MAX_STALE_REPLIES lines.
+static void only_stale_replies_fail_the_request(void) {
+	CHECK(start_peer("{\"res\":{\"cmd\":{\"A\":\"done\"}}}\n{\"res\":{\"cmd\":{\"B\":\"done\"}}}\n{\"res\":{\"cmd\":{\"C\":\"done\"}}}\n{\"res\":{\"cmd\":{\"D\":\"done\"}}}\n", NULL));
+	CHECK(primalucelib_get_model_name(&test_link) == NULL);
+	CHECK(!primalucelib_link_failed(&test_link));
+cleanup:
+	stop_peer();
+}
+
 // ----------------------------------------------------------------- acknowledgements
 
 static void moves_return_their_acknowledgement(void) {
@@ -689,6 +750,10 @@ int main(void) {
 		{ "refusals fail with their reason", refusals_fail_with_their_reason },
 		{ "garbage is an answer but not a reply", garbage_is_an_answer_but_not_a_reply },
 		{ "silence marks the link failed", silence_marks_the_link_failed },
+		{ "a duplicate reply is discarded", a_duplicate_reply_is_discarded },
+		{ "a late reply is skipped", a_late_reply_is_skipped },
+		{ "SESTO SENSO 3 log line before LOGLEVEL", sestosenso3_log_line_before_loglevel },
+		{ "only stale replies fail the request", only_stale_replies_fail_the_request },
 		{ "moves return their acknowledgement", moves_return_their_acknowledgement },
 		{ "focuser stop falls back to a decelerated stop", focuser_stop_falls_back_to_a_decelerated_stop },
 		{ "settings need done", settings_need_done },

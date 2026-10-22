@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001A
+#define DRIVER_VERSION       0x0300001B
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -376,9 +376,11 @@ typedef struct {
 	char preset_names[PRIMALUCE_STORED_POSITION_COUNT][INDIGO_VALUE_SIZE];
 	int rotator_calibration_polls;
 	bool is_sestosenso_3;
+	// The controller reports a travel range (CAL_MAXPOS above CAL_MINPOS).
+	bool calibrated;
 	double position, last_position;
 	int stalled_polls, poll_failures, environment_ticks;
-	bool external_motion, poll_alert, abort_requested, calibrating, pending;
+	bool external_motion, poll_alert, abort_requested, calibrating, calibration_pending, pending;
 	int backlash, speed;
 	indigo_item *leds_item, *hold_item, *wifi_item;
 	//- data
@@ -492,15 +494,9 @@ static const char *power_message(const char *state) {
 	return primalucelib_is_power_supply_error(state) ? "The motor has no 12 V power supply" : NULL;
 }
 
-static void focuser_motion_failed(indigo_device *device, const char *state) {
-	// Both motion properties end the move ALERT with the position the focuser has as value and
-	// the request as target, and the reason the controller gave reaches the client.
-	const char *message = power_message(state);
-	char reason[INDIGO_VALUE_SIZE];
-	if (message == NULL && *primalucelib_last_error(LINK)) {
-		snprintf(reason, sizeof(reason), "Move refused: %s", primalucelib_last_error(LINK));
-		message = reason;
-	}
+// Both motion properties end the move ALERT with the position the focuser has as value and the
+// request as target; message, when there is one, reaches the client.
+static void focuser_motion_refused(indigo_device *device, const char *message) {
 	PRIVATE_DATA->abort_requested = false;
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -509,6 +505,44 @@ static void focuser_motion_failed(indigo_device *device, const char *state) {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "%s", message);
 	} else {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+}
+
+// The reason the controller gave for refusing a move.
+static void focuser_motion_failed(indigo_device *device, const char *state) {
+	const char *message = power_message(state);
+	char reason[INDIGO_VALUE_SIZE];
+	if (message == NULL && *primalucelib_last_error(LINK)) {
+		snprintf(reason, sizeof(reason), "Move refused: %s", primalucelib_last_error(LINK));
+		message = reason;
+	}
+	focuser_motion_refused(device, message);
+}
+
+// The calibrated travel limits the positions a client can request; an uncalibrated controller
+// reports no usable range and keeps the wide default. Ranges travel only with a definition, so a
+// running session republishes the motion properties.
+static void focuser_set_range(indigo_device *device, double min_position, double max_position, bool redefine) {
+	PRIVATE_DATA->calibrated = max_position > min_position;
+	if (!PRIVATE_DATA->calibrated) {
+		min_position = 0;
+		max_position = 1000000;
+	}
+	FOCUSER_POSITION_ITEM->number.min = min_position;
+	FOCUSER_POSITION_ITEM->number.max = max_position;
+	FOCUSER_STEPS_ITEM->number.max = max_position - min_position;
+	for (int i = 0; i < PRIMALUCE_STORED_POSITION_COUNT; i++) {
+		X_PRESETS_PROPERTY->items[i].number.max = max_position;
+	}
+	if (redefine) {
+		indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		if (!X_PRESETS_PROPERTY->hidden) {
+			indigo_delete_property(device, X_PRESETS_PROPERTY, NULL);
+			indigo_define_property(device, X_PRESETS_PROPERTY, NULL);
+		}
 	}
 }
 
@@ -538,6 +572,7 @@ static void focuser_movement_ended(indigo_device *device, indigo_property_state 
 static void focuser_movement_finalizer(indigo_device *device) {
 	double position = 0;
 	bool moving = false;
+	const char *message = NULL;
 	if (focuser_read_motion(device, &position, &moving)) {
 		PRIVATE_DATA->poll_failures = 0;
 		FOCUSER_POSITION_ITEM->number.value = position;
@@ -573,6 +608,11 @@ static void focuser_movement_finalizer(indigo_device *device) {
 					FOCUSER_POSITION_ITEM->number.value = position;
 				}
 			}
+			// A SESTO SENSO 3 with its motor bridges off (STATUS.HIZ after a motor fault) or outside its
+			// calibrated range acknowledges GOTO and stays where it is.
+			if (state == INDIGO_ALERT_STATE && !PRIVATE_DATA->abort_requested) {
+				message = "The focuser stopped before reaching the target";
+			}
 			focuser_movement_ended(device, state);
 		}
 	} else if (++PRIVATE_DATA->poll_failures < MAX_POLL_FAILURES) {
@@ -586,8 +626,12 @@ static void focuser_movement_finalizer(indigo_device *device) {
 		primalucelib_focuser_stop(LINK, &reason);
 		focuser_movement_ended(device, INDIGO_ALERT_STATE);
 	}
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	if (message != NULL) {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
 }
 
 // Follows the position while no move of the driver runs: motion nobody commanded here
@@ -818,16 +862,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
 				PRIVATE_DATA->has_abs_pos = primalucelib_reply_has_focuser_position(LINK, true);
-				// The calibrated travel limits the positions a client can request; an uncalibrated controller reports no usable range.
-				double min_position = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MIN);
-				double max_position = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX);
-				if (max_position <= min_position) {
-					min_position = 0;
-					max_position = 1000000;
-				}
-				FOCUSER_POSITION_ITEM->number.min = min_position;
-				FOCUSER_POSITION_ITEM->number.max = max_position;
-				FOCUSER_STEPS_ITEM->number.max = max_position - min_position;
+				focuser_set_range(device, primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MIN), primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX), false);
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = primalucelib_reply_focuser_position(LINK, PRIVATE_DATA->has_abs_pos);
 				if (!primalucelib_reply_has(LINK, PRIMALUCE_REPLY_FOCUSER_SPEED)) {
 					FOCUSER_SPEED_PROPERTY->hidden = true;
@@ -837,7 +872,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_BACKLASH);
 				PRIVATE_DATA->speed = (int)FOCUSER_SPEED_ITEM->number.value;
-				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->pending = false;
+				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->calibration_pending = PRIVATE_DATA->pending = false;
 				PRIVATE_DATA->environment_ticks = 0;
 				// Models without stored positions report no PRESET_n.
 				bool has_presets = primalucelib_reply_has(LINK, PRIMALUCE_REPLY_FIRST_STORED_POSITION);
@@ -845,7 +880,6 @@ static void focuser_connection_handler(indigo_device *device) {
 				for (int i = 0; has_presets && i < PRIMALUCE_STORED_POSITION_COUNT; i++) {
 					PRIVATE_DATA->preset_positions[i] = (int)primalucelib_reply_stored_position(LINK, i + 1);
 					X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = PRIVATE_DATA->preset_positions[i];
-					X_PRESETS_PROPERTY->items[i].number.max = FOCUSER_POSITION_ITEM->number.max;
 					INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], (text = primalucelib_reply_stored_position_name(LINK, i + 1)) ? text : "");
 					INDIGO_COPY_VALUE(X_PRESET_NAMES_PROPERTY->items[i].text.value, PRIVATE_DATA->preset_names[i]);
 				}
@@ -955,7 +989,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop the focuser");
 			}
 		}
-		PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->pending = false;
+		PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->calibration_pending = PRIVATE_DATA->pending = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -1258,7 +1292,29 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 	//+ focuser.X_CALIBRATE_F.on_change
 	bool result = true;
 	bool started = X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value;
-	if (X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value) {
+	if (PRIVATE_DATA->is_sestosenso_3 && (X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value)) {
+		// A SESTO SENSO 3 restarts after every CAL_DIR write (firmware 1.0.9), inside a calibration as well,
+		// so the direction is set first and only when it changes, and the calibration follows the restart.
+		const char *direction = X_CALIBRATE_F_START_ITEM->sw.value ? PRIMALUCE_CALIBRATION_DIRECTION_NORMAL : PRIMALUCE_CALIBRATION_DIRECTION_INVERTED;
+		char *current = primalucelib_focuser_get_calibration_direction(LINK);
+		result = current != NULL;
+		if (result && strcmp(current, direction)) {
+			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_F_PROPERTY, INDIGO_BUSY_STATE, "The focuser restarts to change the calibration direction");
+			result = primalucelib_focuser_set_calibration_direction(LINK, direction) && primalucelib_wait_for_restart(LINK);
+			X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		if (result) {
+			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_INIT);
+		}
+		if (result) {
+			indigo_usleep(1000000);
+			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MIN);
+		}
+		if (result) {
+			indigo_usleep(1000000);
+			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_FIND_MAX);
+		}
+	} else if (X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value) {
 		// The controller needs a second between the calibration steps.
 		result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_INIT);
 		if (result) {
@@ -1275,8 +1331,29 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 		}
 	} else if (X_CALIBRATE_F_END_ITEM->sw.value) {
 		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
-		result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MAX);
+		// A SESTO SENSO 3 stores the maximum only after the calibration run is stopped.
+		if (PRIVATE_DATA->is_sestosenso_3) {
+			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STOP_MOTOR);
+		}
+		// The controller stores the new range a moment after it acknowledges StoreAsMaxPos: a SESTO SENSO 3
+		// still reported the previous CAL_MAXPOS (0 uncalibrated, 15237 from the calibration before) right
+		// after the acknowledgement, so the range is polled until the maximum changes.
+		double previous_min = 0, previous_max = 0;
 		if (result) {
+			primalucelib_focuser_get_calibration(LINK, &previous_min, &previous_max);
+			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MAX);
+		}
+		if (result) {
+			double min_position = 0, max_position = 0;
+			for (int i = 0; i < 20; i++) {
+				if (primalucelib_focuser_get_calibration(LINK, &min_position, &max_position) && max_position > min_position && max_position != previous_max) {
+					break;
+				}
+				indigo_usleep(250000);
+			}
+			focuser_set_range(device, min_position, max_position, true);
+			// A calibration that leaves no travel range has failed.
+			result = PRIVATE_DATA->calibrated;
 			if (primalucelib_focuser_request_position(LINK, PRIVATE_DATA->has_abs_pos)) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = primalucelib_reply_focuser_position(LINK, PRIVATE_DATA->has_abs_pos);
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -1285,6 +1362,7 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 	}
 	// The motor runs out to the far end between START and END.
 	PRIVATE_DATA->calibrating = result && started;
+	PRIVATE_DATA->calibration_pending = false;
 	if (!result) {
 		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
 		X_CALIBRATE_F_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1323,6 +1401,9 @@ static void focuser_position_handler(indigo_device *device) {
 		// An abort overtook this move while it was queued, so it is never sent.
 		primalucelib_clear_last_error(LINK);
 		focuser_motion_failed(device, NULL);
+	} else if (PRIVATE_DATA->is_sestosenso_3 && !PRIVATE_DATA->calibrated) {
+		// An uncalibrated SESTO SENSO 3 acknowledges GOTO with "done" and does not move.
+		focuser_motion_refused(device, "The focuser is not calibrated");
 	} else {
 		char *state = NULL;
 		if (!primalucelib_focuser_move_to(LINK, PRIVATE_DATA->is_sestosenso_3, (int)FOCUSER_POSITION_ITEM->number.target, &state)) {
@@ -1387,7 +1468,19 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
-	if (requested && (moving || PRIVATE_DATA->calibrating)) {
+	if (requested && PRIVATE_DATA->calibrating && PRIVATE_DATA->is_sestosenso_3) {
+		// A SESTO SENSO 3 calibration run stops only on its own StopMotor; stop_calib then leaves the
+		// procedure and the focuser uncalibrated.
+		PRIVATE_DATA->calibrating = false;
+		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
+		if (!primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STOP_MOTOR) || !primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_AUTO_STOP)) {
+			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_F_PROPERTY, INDIGO_ALERT_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+			return;
+		}
+		focuser_set_range(device, 0, 0, true);
+		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_F_PROPERTY, INDIGO_ALERT_STATE, "Calibration aborted, the focuser is not calibrated");
+	} else if (requested && (moving || PRIVATE_DATA->calibrating)) {
 		char *reason;
 		if (!primalucelib_focuser_stop(LINK, &reason)) {
 			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, power_message(reason));
@@ -1684,6 +1777,25 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CALIBRATE_F_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!PRIVATE_DATA->calibrating && (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE), X_CALIBRATE_F_PROPERTY, "The focuser is moving");
+		//+ focuser.X_CALIBRATE_F.on_change_request
+		// The handler sets the property OK when it starts, so the framework BUSY guard does not refuse a request
+		// while a step runs (a SESTO SENSO 3 START takes about 12 s with the restart); such a request would run
+		// a second calibration after the first one. The run started by START or START_INVERTED accepts only END.
+		bool end_requested = indigo_get_switch(property, X_CALIBRATE_F_END_ITEM_NAME);
+		if (PRIVATE_DATA->calibration_pending) {
+			indigo_reject_change(device, X_CALIBRATE_F_PROPERTY, "A calibration step is in progress");
+			return INDIGO_OK;
+		}
+		if (PRIVATE_DATA->calibrating && !end_requested) {
+			indigo_reject_change(device, X_CALIBRATE_F_PROPERTY, "The calibration is running, select End at the far end or abort the motion");
+			return INDIGO_OK;
+		}
+		if (!PRIVATE_DATA->calibrating && end_requested) {
+			indigo_reject_change(device, X_CALIBRATE_F_PROPERTY, "No calibration is running");
+			return INDIGO_OK;
+		}
+		PRIVATE_DATA->calibration_pending = true;
+		//- focuser.X_CALIBRATE_F.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CALIBRATE_F_PROPERTY, focuser_x_calibrate_f_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {

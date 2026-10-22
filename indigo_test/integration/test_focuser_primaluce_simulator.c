@@ -72,6 +72,7 @@
 #define X_HOLD_CURR_ON_ITEM_NAME           "ON"
 #define X_CALIBRATE_F_PROPERTY_NAME        "X_CALIBRATE"
 #define X_CALIBRATE_F_START_ITEM_NAME      "START"
+#define X_CALIBRATE_F_START_INVERTED_ITEM_NAME "START_INVERTED"
 #define X_CALIBRATE_F_END_ITEM_NAME        "END"
 #define X_CALIBRATE_R_PROPERTY_NAME        "X_CALIBRATE_A"
 #define X_CALIBRATE_R_START_ITEM_NAME      "START"
@@ -556,6 +557,92 @@ static void sestosenso3_profile(void) {
 	SERIAL_CHECK_EQ_INT(0, requests("\"MOVE_ABS\""));
 	SERIAL_CHECK_TRUE(position_is(18400));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"STATUS\":{\"MST\"", 1));
+	// The log line printed before the LOGLEVEL reply and the "cmd" acknowledgement of DIMLEDS are accepted.
+	SERIAL_CHECK_TRUE(switch_change(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"DIMLEDS\":\"off\"", 1));
+cleanup:
+	driver_stop();
+}
+
+// An uncalibrated SESTO SENSO 3 acknowledges GOTO without moving, so the driver refuses the move and says why.
+static void sestosenso3_uncalibrated(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18400, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("not calibrated"));
+	SERIAL_CHECK_EQ_INT(0, requests("\"GOTO\""));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18075, 0));
+cleanup:
+	driver_stop();
+}
+
+// The SESTO SENSO 3 semi-automatic calibration keeps the direction it has, ends the run with StopMotor and
+// publishes the new maximum, which the controller reports only a moment after StoreAsMaxPos.
+static void sestosenso3_calibration(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 100000);
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"Init\"", 1));
+	SERIAL_CHECK_EQ_INT(0, requests("\"set\": {\"MOT1\": {\"CAL_DIR\""));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMinPos\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"", 1));
+	SERIAL_CHECK_TRUE(position_in_motion(1000, 1000000));
+	// While the run moves, a second start is refused instead of starting another calibration.
+	clear_messages();
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("The calibration is running"));
+	SERIAL_CHECK_EQ_INT(1, requests("\"CAL_FOCUSER\":\"Init\""));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StopMotor\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMaxPos\"", 1));
+	// The stale maximum the controller still reports right after StoreAsMaxPos is not taken.
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	double maximum = number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	printf("Calibrated to %g, stopped at %g\n", maximum, stopped);
+	SERIAL_CHECK_TRUE(maximum > 1000 && maximum < 100000 && fabs(maximum - stopped) <= 1);
+	SERIAL_CHECK_TRUE(number_max(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == maximum);
+	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(500));
+cleanup:
+	driver_stop();
+}
+
+// A SESTO SENSO 3 restarts after a CAL_DIR write and answers late. Requests meanwhile are refused, the
+// calibration follows the restart once, and an abort stops the run with StopMotor and stop_calib.
+static void sestosenso3_calibration_restart(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	clear_messages();
+	unsigned int busy = property_state_revision(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_BUSY_STATE, busy));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_DIR\":\"invert\"", 1));
+	SERIAL_CHECK_TRUE(message_seen("restarts"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(message_seen("A calibration step is in progress"));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(1, requests("\"CAL_FOCUSER\":\"Init\""));
+	SERIAL_CHECK_EQ_INT(1, requests("\"CAL_DIR\":\"invert\""));
+	SERIAL_CHECK_EQ_INT(0, requests("\"CAL_DIR\":\"normal\""));
+	SERIAL_CHECK_TRUE(position_in_motion(500, 1000000));
+	// The ordinary stop does not end a SESTO SENSO 3 calibration run, so the abort uses the calibration commands.
+	clear_messages();
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StopMotor\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"stop_calib\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("not calibrated"));
+	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(idle_polls());
+	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(idle_polls());
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, stopped, 0));
+	// The focuser is uncalibrated now, so moves are refused without a command.
+	int gotos = requests("\"GOTO\"");
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(gotos, requests("\"GOTO\""));
 cleanup:
 	driver_stop();
 }
@@ -1037,6 +1124,33 @@ static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT_ABORT\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_property_state(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, false));
+cleanup:
+	driver_stop();
+}
+
+// END without a running calibration is refused rather than storing the position as the maximum.
+static void calibration_end_without_run(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	clear_messages();
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("No calibration is running"));
+	SERIAL_CHECK_EQ_INT(0, requests("\"CAL_FOCUSER\""));
+	SERIAL_CHECK_TRUE(number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 100000);
+cleanup:
+	driver_stop();
+}
+
+// A move the controller acknowledges but never runs ends ALERT with the reason.
+static void move_not_started(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("\"MOVE_ABS\"", "ignore"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 19000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 19000));
+	SERIAL_CHECK_TRUE(message_seen("stopped before reaching the target"));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18075, 0));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(18200));
 cleanup:
 	driver_stop();
 }
@@ -1524,6 +1638,9 @@ int main(void) {
 		{ "property_contract", property_contract, "normal" },
 		{ "esatto_profile", esatto_profile, "esatto" },
 		{ "sestosenso3_profile", sestosenso3_profile, "sestosenso3" },
+		{ "sestosenso3_uncalibrated", sestosenso3_uncalibrated, "sestosenso3-uncalibrated" },
+		{ "sestosenso3_calibration", sestosenso3_calibration, "sestosenso3" },
+		{ "sestosenso3_calibration_restart", sestosenso3_calibration_restart, "sestosenso3" },
 		{ "no_abs_pos_profile", no_abs_pos_profile, "no-abs-pos" },
 		{ "no_speed_profile", no_speed_profile, "no-speed" },
 		{ "unsupported_device", unsupported_device, "unsupported" },
@@ -1551,6 +1668,8 @@ int main(void) {
 		{ "run_preset", run_preset, "normal" },
 		{ "settings_reported_failures", settings_reported_failures, "normal" },
 		{ "focuser_calibration", focuser_calibration, "normal" },
+		{ "calibration_end_without_run", calibration_end_without_run, "normal" },
+		{ "move_not_started", move_not_started, "normal" },
 		{ "status_polling", status_polling, "normal" },
 		{ "transport_loss", transport_loss, "normal" },
 		{ "no_probe", no_probe, "no-probe" },

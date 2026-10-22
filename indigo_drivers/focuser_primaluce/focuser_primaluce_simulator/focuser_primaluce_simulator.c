@@ -64,6 +64,19 @@ static const char *motor_error = "";
 static const char *external_temperature = "22.50";
 // A stalled motor keeps reporting MST "move" while the position does not change.
 static bool focus_stalled = false;
+// The calibrated travel; a controller without one reports CAL_MAXPOS 0.
+static int calibration_min = 0;
+static int calibration_max = 100000;
+static const char *calibration_direction = "normal";
+// A SESTO SENSO 3 reports the maximum stored by StoreAsMaxPos only a moment after it acknowledges it.
+static int calibration_max_stored = -1;
+static double calibration_max_visible = 0;
+// The SESTO SENSO 3 calibration run started by GoOutToFindMaxPos ends only with StopMotor or stop_calib.
+static bool calibration_run = false;
+// A SESTO SENSO 3 restarts after a CAL_DIR write; requests arriving meanwhile are answered late, after the restart.
+static double restart_end = 0;
+static char restart_queue[8][512];
+static int restart_queued = 0;
 static FILE *events = NULL;
 
 static void usage(const char *name) {
@@ -72,13 +85,14 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --profile <name>        normal, esatto, sestosenso3, no-abs-pos, no-speed,\n");
-	printf("                          unsupported, old-firmware, needs-calibration or\n");
-	printf("                          external-motion or no-probe, default is normal\n");
+	printf("  --profile <name>        normal, esatto, sestosenso3, sestosenso3-uncalibrated,\n");
+	printf("                          no-abs-pos, no-speed, unsupported, old-firmware,\n");
+	printf("                          needs-calibration, external-motion or no-probe,\n");
+	printf("                          default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_PRIMALUCE_EVENTS names a file receiving every accepted request.\n");
-	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close|slow|stall>' which is\n");
+	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close|slow|stall|ignore>' which is\n");
 	printf("applied once to the next request containing that key and then removed; an 'always_' prefix keeps\n");
 	printf("it armed. 'handmove <position>' moves the focuser as its hand keypad does.\n");
 }
@@ -129,6 +143,12 @@ static void apply_profile(void) {
 		model = "ESATTO";
 	} else if (!strcmp(options.profile, "sestosenso3")) {
 		model = "SESTOSENSO3";
+	} else if (!strcmp(options.profile, "sestosenso3-uncalibrated")) {
+		// The state of a SESTO SENSO 3 as delivered (firmware 1.0.9).
+		model = "SESTOSENSO3";
+		calibration_max = 0;
+		calibration_restart = 1;
+		motor_error = "CalRestart; CalRestart_WrongMaxPos; ";
 	} else if (!strcmp(options.profile, "unsupported")) {
 		model = "ARCO";
 	} else if (!strcmp(options.profile, "old-firmware")) {
@@ -262,9 +282,17 @@ static int extract_int_after(const char *command, const char *needle, int fallba
 	return atoi(start + strlen(needle));
 }
 
+static bool sestosenso3(void) {
+	return !strcmp(model, "SESTOSENSO3");
+}
+
 static void update_motion(void) {
 	focuser_position = (int)serial_motion_update(&focus_motion);
 	rotator_position = (int)serial_motion_update(&rotate_motion);
+	if (calibration_max_stored >= 0 && serial_motion_time() >= calibration_max_visible) {
+		calibration_max = calibration_max_stored;
+		calibration_max_stored = -1;
+	}
 }
 
 static void send_state(int handle) {
@@ -292,14 +320,14 @@ static void send_state(int handle) {
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
 		"\"EXT_T\":\"%s\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
 		"\"MOT1\":{%s\"ABS_POS_STEP\":%d,%s\"BKLASH\":%d,"
-		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,\"CAL_MINPOS\":0,\"CAL_MAXPOS\":100000,"
+		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,\"CAL_MINPOS\":%d,\"CAL_MAXPOS\":%d,\"CAL_DIR\":\"%s\","
 		"\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,"
 		"\"HOLDCURR_STATUS\":%d},"
 		"\"RUNPRESET_L\":{\"M1ACC\":10},\"RUNPRESET_M\":{\"M1SPD\":6},\"RUNPRESET_S\":{\"M1DEC\":1},"
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -317,6 +345,11 @@ static void dispatch_command(int handle, const char *command) {
 	if (fault != NULL && !strcmp(fault, "stall") && strstr(command, "\"MOVE_ABS\"") != NULL) {
 		focus_stalled = true;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"STEP\":\"done\"}}}}\n");
+		return;
+	}
+	// A move that is acknowledged and never runs, as a SESTO SENSO 3 with its motor bridges off (STATUS.HIZ) does.
+	if (fault != NULL && !strcmp(fault, "ignore") && (strstr(command, "\"MOVE_ABS\"") != NULL || strstr(command, "\"GOTO\"") != NULL)) {
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"%s\":\"done\"}}}}\n", strstr(command, "\"GOTO\"") != NULL ? "GOTO" : "STEP");
 		return;
 	}
 	if (fault != NULL) {
@@ -405,7 +438,8 @@ static void dispatch_command(int handle, const char *command) {
 		sim_printf(handle, "ets Jun  8 2016 00:22:57\n\nrst:0xc (SW_CPU_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)\nentry 0x400806a4\nUnable to find DS18B20\n________ shell start __\n");
 	} else if (strstr(command, "DIMLEDS") != NULL) {
 		led_status = strstr(command, "\"low\"") != NULL ? "low" : (strstr(command, "\"middle\"") != NULL ? "middle" : (strstr(command, "\"off\"") != NULL ? "off" : "on"));
-		sim_printf(handle, "{\"res\":{\"cmd\":{\"DIMLEDS\":\"done\"}}}\n");
+		// A SESTO SENSO 3 acknowledges under the key "cmd" (firmware 1.0.9).
+		sim_printf(handle, sestosenso3() ? "{\"res\":{\"cmd\":{\"cmd\":\"done\"}}}\n" : "{\"res\":{\"cmd\":{\"DIMLEDS\":\"done\"}}}\n");
 	} else if (strstr(command, "RUNPRESET") != NULL) {
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"RUNPRESET\":\"done\"},\"get\":{\"MOT1\":{\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,\"HOLDCURR_STATUS\":%d}}}}\n", hold_current);
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
@@ -414,15 +448,25 @@ static void dispatch_command(int handle, const char *command) {
 		serial_motion_start(&focus_motion, focuser_target, 1000);
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"STEP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"GOTO\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
-		focuser_target = extract_int_after(command, "\"GOTO\":", focuser_target);
-		serial_motion_start(&focus_motion, focuser_target, 1000);
+		// An uncalibrated SESTO SENSO 3 acknowledges GOTO and does not move.
+		if (calibration_max > calibration_min) {
+			focuser_target = extract_int_after(command, "\"GOTO\":", focuser_target);
+			serial_motion_start(&focus_motion, focuser_target, 1000);
+		}
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"GOTO\":\"done\"}}}}\n");
+	} else if ((strstr(command, "\"MOT_ABORT\"") != NULL || strstr(command, "\"MOT_STOP\"") != NULL) && strstr(command, "\"MOT1\"") != NULL && calibration_run) {
+		// The SESTO SENSO 3 calibration run ignores the ordinary stop.
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"%s\":\"done\"}}}}\n", strstr(command, "\"MOT_ABORT\"") != NULL ? "MOT_ABORT" : "MOT_STOP");
 	} else if (strstr(command, "\"MOT_ABORT\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		serial_motion_stop(&focus_motion);
 		focus_stalled = false;
 		focuser_target = focuser_position;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"LOGLEVEL\"") != NULL) {
+		// A SESTO SENSO 3 prints a log line of its own before the reply (firmware 1.0.9).
+		if (sestosenso3()) {
+			sim_printf(handle, "[mLogs_DefaultSetup] \n");
+		}
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"LOGLEVEL\":\"done\"}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		serial_motion_stop(&focus_motion);
@@ -449,16 +493,54 @@ static void dispatch_command(int handle, const char *command) {
 		// The ARCO calibration runs for a while after it is started, and "stop" ends it at once.
 		rotator_calibration_end = strstr(command, "\"stop\"") != NULL ? 0 : serial_motion_time() + 2;
 		sim_printf(handle, "{\"res\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"done\"}}}}\n");
-	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL || strstr(command, "\"CAL_DIR\"") != NULL) {
-		// GoOutToFindMaxPos runs the draw tube outward until StoreAsMaxPos stops it.
+	} else if (strstr(command, "\"CAL_DIR\"") != NULL) {
+		calibration_direction = strstr(command, "\"invert\"") != NULL ? "invert" : "normal";
+		sim_printf(handle, "{\"res\":{\"set\":{\"MOT1\":{\"CAL_DIR\":\"done\"}}}}\n");
+		// A SESTO SENSO 3 restarts after every CAL_DIR write (firmware 1.0.9, about 9.5 s on the unit, shortened here).
+		if (sestosenso3()) {
+			serial_motion_stop(&focus_motion);
+			calibration_run = false;
+			sim_printf(handle, "ets Jul 29 2019 12:21:46\n\nrst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)\n[mLogs_DefaultSetup] \n[mLogs_DefaultSetup] \nUnable to find DS18B20\n");
+			restart_end = serial_motion_time() + 2;
+		}
+	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL && sestosenso3()) {
+		// The SESTO SENSO 3 semi-automatic calibration: StoreAsMinPos zeroes the coordinate, the run ends with
+		// StopMotor, StoreAsMaxPos stores the position and stop_calib leaves the focuser uncalibrated.
+		if (strstr(command, "\"StoreAsMinPos\"") != NULL) {
+			serial_motion_sync(&focus_motion, 0);
+			focuser_position = focuser_target = 0;
+		} else if (strstr(command, "\"GoOutToFindMaxPos\"") != NULL) {
+			focuser_target = focuser_position + 1000000;
+			serial_motion_start(&focus_motion, focuser_target, 1000);
+			calibration_run = true;
+		} else if (strstr(command, "\"StopMotor\"") != NULL) {
+			serial_motion_stop(&focus_motion);
+			focuser_target = focuser_position;
+			calibration_run = false;
+		} else if (strstr(command, "\"StoreAsMaxPos\"") != NULL) {
+			calibration_max_stored = focuser_position;
+			calibration_max_visible = serial_motion_time() + 0.6;
+			calibration_restart = 0;
+			motor_error = "";
+		} else if (strstr(command, "\"stop_calib\"") != NULL) {
+			serial_motion_stop(&focus_motion);
+			focuser_target = focuser_position;
+			calibration_run = false;
+			calibration_max = 0;
+			calibration_restart = 1;
+		}
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"done\"}}}}\n");
+	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL) {
+		// GoOutToFindMaxPos runs the draw tube outward until StoreAsMaxPos stops it and stores the position.
 		if (strstr(command, "\"GoOutToFindMaxPos\"") != NULL) {
 			focuser_target = focuser_position + 1000000;
 			serial_motion_start(&focus_motion, focuser_target, 1000);
 		} else if (strstr(command, "\"StoreAsMaxPos\"") != NULL) {
 			serial_motion_stop(&focus_motion);
 			focuser_target = focuser_position;
+			calibration_max = focuser_position;
 		}
-		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"done\"}},\"set\":{\"MOT1\":{\"CAL_DIR\":\"done\"}}}}\n");
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"done\"}}}}\n");
 	} else {
 		sim_printf(handle, "\"Error: invalid cmd\"\n");
 	}
@@ -499,7 +581,19 @@ int main(int argc, char *argv[]) {
 		if (bytes < 0) {
 			break;
 		}
-		if (bytes > 0) {
+		// Requests that reach a restarting SESTO SENSO 3 are answered together once it is up again.
+		bool restarting = serial_motion_time() < restart_end;
+		if (!restarting && restart_queued > 0) {
+			for (int i = 0; i < restart_queued; i++) {
+				dispatch_command(serial_fd, restart_queue[i]);
+			}
+			restart_queued = 0;
+		}
+		if (bytes > 0 && restarting) {
+			if (restart_queued < 8) {
+				snprintf(restart_queue[restart_queued++], sizeof(restart_queue[0]), "%s", buffer);
+			}
+		} else if (bytes > 0) {
 			dispatch_command(serial_fd, buffer);
 		} else {
 			usleep(1000);
