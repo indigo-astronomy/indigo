@@ -4,6 +4,6 @@
   "phase": "idle",
   "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Task 010-primalucelib is complete with three local commits on task/008-primalucelib; integration and push await the owner. Five non-audit tasks are complete since the full audit, so the full repository audit is due before the next unrelated task. Open findings FND-000046, FND-000047, FND-000048 and FND-000052 have no repair task yet.",
+  "next_action": "Task 010-primalucelib is complete on task/010-primalucelib (merged with master, not yet integrated); integration and push await the requester. Seven non-audit tasks are complete since the full review, so the recurring repository audit is due before the next unrelated task or release. Open findings FND-000046, FND-000047, FND-000048 and FND-000052 have no repair task yet.",
   "blocker": null
 }

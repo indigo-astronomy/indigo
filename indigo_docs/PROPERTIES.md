@@ -63,7 +63,7 @@ Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver
 |  |  |  |  | BOTH | yes | Upload and save |
 |  |  |  |  | NONE | no | Hidden by default. |
 | CCD_LOCAL_MODE | text | no | yes | DIR | yes | Directory |
-|  |  |  |  | PREFIX | yes | XXX or XXXX is replaced by sequence or a template with %M (MD5), %E/%nE (exposure), %D/%xD (date), %N/%xN (session night date), %H/%xH (time), %C (filter name), %nS (sequence), %F (frame type), %T (chip temperature), %G (gain), %O (offset), %R (resolution), %B (binning), %P (focuser position) format specifier. |
+|  |  |  |  | PREFIX | yes | XXX or XXXX is replaced by sequence or a template with %M (MD5), %E/%nE (exposure), %D/%xD (date), %N/%xN (session night date), %H/%xH (time), %C (filter name), %nS (sequence), %F (frame type), %T/%nT (target chip temperature), %t/%nt (current chip temperature), %G (gain), %O (offset), %R (resolution), %B (binning), %P (focuser position) format specifier. |
 |  |  |  |  | OBJECT | yes | Object name. |
 | CCD_EXPOSURE | number | no | yes | EXPOSURE | yes | Start exposure |
 | CCD_STREAMING | number | no | no | EXPOSURE | yes | The same as CCD_EXPOSURE, but will upload COUNT images. Use COUNT -1 for endless loop. |
@@ -124,6 +124,8 @@ Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver
 |  |  |  |  | DISABLED | yes | Disabled |
 | CCD_RBI_FLUSH | number | no | no | EXPOSURE | yes | Hidden by default. RBI flush parameters. |
 |  |  |  |  | COUNT | yes | Number of flushes |
+
+Temperature filename macros default to zero decimal places; the optional single digit `n` specifies decimal places, capped at five. `%T`/`%nT` use the target temperature and produce `NA` when temperature or cooler is hidden, or cooling is off. `%t`/`%nt` use the current temperature even when cooling is off or unavailable, and produce `NA` when temperature is hidden.
 
 Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_ccd_driver.c).
 
