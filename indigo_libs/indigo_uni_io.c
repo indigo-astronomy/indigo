@@ -688,6 +688,7 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 			*error_message = serial_error_message(error);
 		}
 		indigo_error("Failed to open %s (%s)", serial, strerror(error));
+		ioctl(fd, TIOCNXCL);
 		close(fd);
 		return NULL;
 	}
@@ -2389,6 +2390,11 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 			hid_close((hid_device *)copy->hid_device);
 		} else
 #endif
+		if (copy->type == INDIGO_COM_HANDLE) {
+			// Release the exclusive claim of the open: a Linux pseudo-terminal keeps TIOCEXCL after its
+			// last descriptor is closed while the other end stays open, and refuses the next open with EBUSY.
+			ioctl(copy->fd, TIOCNXCL);
+		}
 		if (copy->type != INDIGO_FILE_HANDLE) {
 			// Set linger option to avoid TIME_WAIT state
 			struct linger ling;

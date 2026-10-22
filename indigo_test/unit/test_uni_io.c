@@ -115,6 +115,29 @@ static void serial_open_clears_error_on_success(void) {
 	ASSERT_TRUE(opened);
 	ASSERT_TRUE(error_message == NULL);
 }
+
+// The port is opened exclusively; closing it must release the claim even while the other end of
+// the line stays open. A Linux pseudo-terminal keeps TIOCEXCL after its last descriptor is
+// closed, which refused every reconnect to a serial simulator with EBUSY.
+static void serial_port_reopens_after_close(void) {
+	int master = posix_openpt(O_RDWR | O_NOCTTY);
+	ASSERT_TRUE(master >= 0);
+	ASSERT_EQ_INT(0, grantpt(master));
+	ASSERT_EQ_INT(0, unlockpt(master));
+	const char *error_message = NULL;
+	indigo_uni_handle *handle = indigo_uni_open_serial2(ptsname(master), INDIGO_LOG_ERROR, &error_message);
+	bool opened = handle != NULL;
+	indigo_uni_close(&handle);
+	error_message = "unset";
+	handle = indigo_uni_open_serial2(ptsname(master), INDIGO_LOG_ERROR, &error_message);
+	bool reopened = handle != NULL;
+	const char *reopen_error = error_message;
+	indigo_uni_close(&handle);
+	close(master);
+	ASSERT_TRUE(opened);
+	ASSERT_TRUE(reopened);
+	ASSERT_TRUE(reopen_error == NULL);
+}
 #endif
 
 // A file handle is enough to exercise the delimited reader: with both timeouts
@@ -544,6 +567,7 @@ int main(void) {
 		{ "serial_open_reports_configuration_error", serial_open_reports_configuration_error },
 		{ "serial_open_reports_not_a_serial_port", serial_open_reports_not_a_serial_port },
 		{ "serial_open_clears_error_on_success", serial_open_clears_error_on_success },
+		{ "serial_port_reopens_after_close", serial_port_reopens_after_close },
 #endif
 		{ "wait_for_data_continues_after_signal", wait_for_data_continues_after_signal },
 		{ "wait_for_data_keeps_timeout_after_signal", wait_for_data_keeps_timeout_after_signal },
