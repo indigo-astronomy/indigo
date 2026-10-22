@@ -602,6 +602,9 @@ static void handshake_timeout(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(fault("\"MODNAME\"", "silent"));
 	SERIAL_CHECK_TRUE(!connect_focuser());
+	// connect_focuser() gives up after 5 s, the same time the unanswered MODNAME read takes, so the
+	// attempt can still be BUSY with CONNECTED on here; it has to end refused before the check.
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(!context.connected);
 	SERIAL_CHECK_TRUE(connect_focuser());
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
@@ -1046,9 +1049,12 @@ static void status_polling(void) {
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_MOTOR_TEMP_ITEM_NAME, 37.12, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.98, .005));
 	// A lost poll answer is reported ALERT with the last valid reading, the next poll restores OK.
+	// The environment is polled every 10 s (5 position polls of 2 s) and a silent answer takes the
+	// 5 s serial read timeout, so the ALERT is published up to 15 s after the fault is armed; 15 s
+	// was the exact limit and failed whenever the poll came a little late.
 	unsigned int alerts = property_state_revision(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(fault("\"EXT_T\"", "silent"));
-	SERIAL_CHECK_TRUE(state_seen_within(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts, 15));
+	SERIAL_CHECK_TRUE(state_seen_within(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts, 20));
 	SERIAL_CHECK_TRUE(number_is(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 22.5, .005));
 	unsigned int recoveries = property_state_revision(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(state_seen_within(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_OK_STATE, recoveries, 15));
