@@ -1,0 +1,24 @@
+{
+  "id": "FND-000049",
+  "title": "indigo_uni_io never releases TIOCEXCL, so a Linux pseudo-terminal refuses every reopen with EBUSY",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "010-primalucelib",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_uni_io opens serial ports with TIOCEXCL and closed them without TIOCNXCL. On Linux a pseudo-terminal slave keeps the exclusive flag after its last descriptor is closed while the master stays open, so the second open of a serial simulator port failed with 'Device or resource busy'. Every reconnect in a Linux simulator run failed: 9 of 54 focuser_primaluce cases and test_focuser_primaluce_motion. A failed open after a successful TIOCEXCL (tcsetattr error) left the port claimed the same way. Real serial ports are released when the tty is freed (the Linux arm64 hardware run of focuser_primaluce reconnects).",
+  "evidence": "010-primalucelib/verification.md (Baseline, FND-000049); standalone reproducer: open, TIOCEXCL, close, reopen -> EBUSY, with TIOCNXCL -> ok; indigo_test/unit/test_uni_io.c serial_port_reopens_after_close fails before the fix",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "010-primalucelib/verification.md: indigo_uni_close and the open_tty error path issue TIOCNXCL before close(); serial_port_reopens_after_close fails before and passes after; make -C indigo_test test-unit passes; the 9 reconnect cases and the motion case pass in the recorded run.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

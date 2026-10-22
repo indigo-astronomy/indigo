@@ -46,6 +46,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_uni_io \
+	$(UNIT_BUILD)/test_primalucelib \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
@@ -267,7 +268,7 @@ FOCUSER_MYPRO2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_mypro2.a
 FOCUSER_NFOCUS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_nfocus.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_NSTEP_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_nstep.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_optec.a $(TEST_LDFLAGS) -lindigocat
-FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(PRIMALUCELIB) $(TEST_LDFLAGS) -lindigocat
 FOCUSER_PRODIGY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_prodigy.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ROBOFOCUS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_robofocus.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_STEELDRIVE2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_steeldrive2.a $(TEST_LDFLAGS) -lindigocat
@@ -393,6 +394,16 @@ $(UNIT_BUILD)/test_md5: unit/test_md5.c test_runner.h | $(UNIT_BUILD)
 
 $(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+# Static PrimaLuce Lab protocol library, linked by the PrimaLuce drivers and their tests.
+PRIMALUCELIB = $(BUILD_LIB)/libprimalucelib.a
+PRIMALUCELIB_SOURCES = ../indigo_drivers/shared/primalucelib/primalucelib.h ../indigo_drivers/shared/primalucelib/primalucelib.c ../indigo_drivers/shared/primalucelib/jsmn.h ../indigo_drivers/shared/primalucelib/Makefile
+
+$(PRIMALUCELIB): $(PRIMALUCELIB_SOURCES)
+	$(MAKE) -C ../indigo_drivers/shared/primalucelib all
+
+$(UNIT_BUILD)/test_primalucelib: unit/test_primalucelib.c $(PRIMALUCELIB) test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(PRIMALUCELIB) $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_dome_azimuth: unit/test_dome_azimuth.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
@@ -1115,7 +1126,7 @@ $(INTEGRATION_BUILD)/test_focuser_optec_simulator: integration/test_focuser_opte
 $(INTEGRATION_BUILD)/test_focuser_optec_simulator_asan: integration/test_focuser_optec_simulator.c ../indigo_drivers/focuser_optec/indigo_focuser_optec.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optec_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/focuser_optec/indigo_focuser_optec.c $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_primaluce_simulator: integration/test_focuser_primaluce_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_primaluce_simulator $(BUILD_DRIVERS)/indigo_focuser_primaluce.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_focuser_primaluce_simulator: integration/test_focuser_primaluce_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_primaluce_simulator $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(PRIMALUCELIB) | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_prodigy_simulator_asan: integration/test_focuser_prodigy_simulator.c ../indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_prodigy_simulator | $(INTEGRATION_BUILD)
@@ -1694,9 +1705,9 @@ $(TEST_BUILD)/hardware/test_aux_upb_hw: hardware/test_aux_upb_hw.c hardware/hard
 test-focuser-primaluce-hw: check-lib $(TEST_BUILD)/hardware/test_focuser_primaluce_hw
 	$(TEST_BUILD)/hardware/test_focuser_primaluce_hw --run
 
-FOCUSER_PRIMALUCE_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(TEST_LDFLAGS)
+FOCUSER_PRIMALUCE_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(PRIMALUCELIB) $(TEST_LDFLAGS)
 
-$(TEST_BUILD)/hardware/test_focuser_primaluce_hw: hardware/test_focuser_primaluce_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_primaluce.a | $(TEST_BUILD)/hardware
+$(TEST_BUILD)/hardware/test_focuser_primaluce_hw: hardware/test_focuser_primaluce_hw.c hardware/hardware_device_record.h test_runner.h $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(PRIMALUCELIB) | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FOCUSER_PRIMALUCE_HW_TEST_LDFLAGS)
 
 # Physical Starlight Xpress filter wheel hardware is opt-in and excluded from normal integration
@@ -1891,8 +1902,8 @@ $(INTEGRATION_BUILD)/test_focuser_dmfc_motion: integration/test_focuser_motion.c
 $(INTEGRATION_BUILD)/test_focuser_usbv3_motion: integration/test_focuser_motion.c $(INTEGRATION_BUILD)/focuser_usbv3_simulator $(BUILD_DRIVERS)/indigo_focuser_usbv3.a integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_focuser_usbv3 -DTEST_NAME='"USB_Focus v3"' -DTEST_SIMULATOR='"build/integration/focuser_usbv3_simulator"' $< -o $@ $(BUILD_DRIVERS)/indigo_focuser_usbv3.a $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_focuser_primaluce_motion: integration/test_focuser_motion.c $(INTEGRATION_BUILD)/focuser_primaluce_simulator $(BUILD_DRIVERS)/indigo_focuser_primaluce.a integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_focuser_primaluce -DTEST_NAME='"PrimaluceLab Focuser"' -DTEST_SIMULATOR='"build/integration/focuser_primaluce_simulator"' $< -o $@ $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(TEST_LDFLAGS)
+$(INTEGRATION_BUILD)/test_focuser_primaluce_motion: integration/test_focuser_motion.c $(INTEGRATION_BUILD)/focuser_primaluce_simulator $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(PRIMALUCELIB) integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DTEST_ENTRY=indigo_focuser_primaluce -DTEST_NAME='"PrimaluceLab Focuser"' -DTEST_SIMULATOR='"build/integration/focuser_primaluce_simulator"' $< -o $@ $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(PRIMALUCELIB) $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/focuser_astromechanics_simulator: simulator_common/serial_motion.h
 

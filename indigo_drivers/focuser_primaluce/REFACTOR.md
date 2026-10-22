@@ -491,3 +491,118 @@ abort, also for a request to the current angle; the exact case of a running move
 reproducible with the simulator and is covered by the code change only.
 
 Simulated tests: 55 run, 55 passed. Hardware tests: 0 run, 0 passed.
+
+## Protocol library extraction (2026-10-22, task 010-primalucelib)
+
+More PrimaLuce drivers are planned, so the JSON protocol code moves out of this driver into the
+shared library `indigo_drivers/shared/primalucelib/`. This is a pure extraction: no behaviour,
+property or wire-traffic change is intended, and the driver version stays at 3.0.0.26.
+
+### Audit of the code that moves
+
+- Transport: USB serial at 115200 baud through `indigo_uni_open_serial_with_speed2()` and HTTP
+  `GET /ajax.php?jreq=<URL-encoded request>` with one connection per request and the body ended by
+  `Content-Length` (see "Network connection" above).
+- Framing: a request is written as is; a reply is one line ended by `\n` (a `\r` before it is
+  dropped). Lines that start with `[` are diagnostic output and are skipped.
+- Parsing: jsmn (strict, parent links) over an 8192-byte response with 1024 tokens; string tokens
+  are NUL-terminated in place. A reply that starts with `"` or does not parse fails the request.
+- Errors: an `ERROR` key under `res/cmd`, `res/set` or `res/get` fails the request and keeps its
+  text for the motion refusal message; a request without any answer sets `link_failed`, which the
+  idle abort reports.
+- About 100 request strings and reply paths, among them irregular spacing (`{"req":{"get": ""}}`,
+  `"VIN_12V": ""`, `{"req":{"cmd": {"MOT1": {"CAL_FOCUSER":...}}}}`) that the simulator matches and
+  that therefore must stay byte-identical.
+- Risks: the order and manner of the requests is a compatibility contract
+  (`indigo_drivers/AGENTS.md`). The library therefore takes the existing code verbatim, and each
+  driver call site maps to exactly one library call that sends the same request.
+
+### Baseline (original driver, Linux x86_64, gcc 13.3.0, revision 80d073bcb)
+
+```sh
+make -C indigo_drivers/focuser_primaluce -f ../../Makefile.drv all
+make -C indigo_test build/integration/test_focuser_primaluce_simulator build/integration/test_focuser_primaluce_motion
+cd indigo_test && ./build/integration/test_focuser_primaluce_simulator; ./build/integration/test_focuser_primaluce_motion
+```
+
+44 of 54 simulator cases pass; `test_focuser_primaluce_motion` fails its single case. None of the
+failures is caused by this driver, and the earlier records were all made on macOS arm64:
+
+- `handshake_timeout`, `repeated_init_shutdown`, `reconnect`, `disconnect_during_motion`,
+  `controller_settings`, `led_middle`, `stored_positions`, `wifi_station_mode`,
+  `rotator_lifecycle` and the motion case fail at their second open of the simulator port with
+  `Failed to open /dev/pts/N (Device or resource busy)`. `indigo_uni_io` opens serial ports with
+  `TIOCEXCL` and never clears it; on Linux a PTY slave keeps the exclusive flag after its last
+  descriptor is closed while the master stays open, so a reconnect is refused. A standalone
+  reproducer (open, `TIOCEXCL`, close, reopen) gets EBUSY, and gets a working reopen when
+  `TIOCNXCL` is issued before the close. This is a framework issue outside this driver.
+- `status_polling` is timing-flaky on Linux (2 of 3 isolated reruns failed): it allows 15 s for the
+  ALERT that follows a silent environment reply, which arrives at the next environment poll
+  (every 10 s) plus the read timeout.
+
+Both are recorded as central findings; this task does not change them. The extraction is accepted
+when the same cases pass and fail for the same reasons, and when the wire traffic is unchanged.
+
+### Hardware decision
+
+No hardware test in this round (requester decision: non-interactive simulator run). The
+extraction does not change any request, which the unit test proves byte for byte, so the
+hardware records of 3.0.0.22 remain the latest hardware evidence. No hardware validation is
+claimed.
+
+### Plan
+
+| Step | Change | Verification | State |
+| --- | --- | --- | --- |
+| E1 | Trace capture: the simulator suite copies each case's event log to `INDIGO_SIMULATOR_TRACE_DIR` | Suite result unchanged | done: same 10 failures, 54 traces written |
+| E2 | Reference traces of the original driver, two runs to measure nondeterminism | Traces stored outside the tree | done: both runs identical in all 54 cases (distinct requests, command order, collapsed sequence) |
+| E3 | `primalucelib.{h,c}`, `jsmn.h` moved, `PROTOCOL.md` | Standalone compile | done: clean with `-Wall -Wextra`; `git mv` keeps `jsmn.h` unchanged |
+| E4 | Unit test `test_primalucelib` (golden requests, parsing, error forms, framing, device helpers) | Unit test passes | done: 19/19; a one-space change in one request macro fails the golden case |
+| E5 | Driver uses the library; regenerate | Build; generated diff reviewed | done: generator-owned code identical outside the `//+`/`//-` user blocks, `.h`/`_main.c` unchanged, regeneration reproducible, archive exports only `indigo_focuser_primaluce` |
+| E6 | Post-change suites and trace comparison | Same pass/fail set, same request sets per case | done: same 10 failures; all 54 traces byte-identical to both reference runs (865 requests) |
+| E7 | Xcode, Visual Studio and test Makefile registration | Review | done |
+| E8 | Recorded run `python3 tools/run_driver_test.py focuser_primaluce` | Record written | done: 55/55 OK, linux x64, 3.0.0.26 |
+
+### Library contents
+
+`indigo_drivers/shared/primalucelib/` holds `primalucelib.h` (keys, values, exact request strings,
+reply paths, types and the API), `primalucelib.c`, the relocated `jsmn.h`, `PROTOCOL.md` and the
+static library builds: `Makefile` (`build/lib/libprimalucelib.a`) and `primalucelib.vcxproj`
+(`primalucelib.lib`, in `indigo_windows.sln`). The driver includes the header and links the library:
+its `Makefile.inc` routes the archive through `SDK_LIB`/`MAKE_SDK` (rebuilt and relinked when a library
+source changes); its `.vcxproj` has a `ProjectReference`; in Xcode the library source is compiled once
+into the `indigo` and `indigo_m1` targets, which hold all drivers. The driver archive contains only
+the driver (`nm` shows only `indigo_focuser_primaluce`); the library exports its `primalucelib_`
+functions and `PRIMALUCE_REPLY_` tables and keeps jsmn internal. The driver calls the library for
+every request; it keeps only device policy (property states, polling cadence, stall and abort logic).
+The library also offers the GIOTTO, ALTO and further SESTO SENSO 3 commands known from the INDI
+drivers for future drivers; they are unit-tested against INDI-shaped replies only.
+
+### Found defects (this round)
+
+None of them is in the driver; the driver version therefore stays 3.0.0.26.
+
+| ID | Defect | Fix | Regression test |
+| --- | --- | --- | --- |
+| FND-000049 | Reproduced: on Linux every reconnect to the simulator failed with EBUSY (9 simulator cases and the motion case). `indigo_uni_io` opened serial ports with `TIOCEXCL` and closed them without `TIOCNXCL`; a Linux pseudo-terminal keeps the flag after its last descriptor is closed while the master stays open. | `indigo_uni_close()` and the `open_tty()` error path clear the flag before closing. | `indigo_test/unit/test_uni_io.c` `serial_port_reopens_after_close` (fails before, passes after); the 10 cases pass. |
+| FND-000050 | Reproduced: `status_polling` allowed 15 s for an ALERT that arrives up to 15 s after the fault is armed (10 s environment poll plus the 5 s read timeout); it failed 2 of 3 Linux reruns. | The window is 20 s and the cadence is documented in the case. | `status_polling` 3 of 3 and in the recorded run. |
+| FND-000051 | Reproduced: `handshake_timeout` asserted that the device was not connected while the refused attempt could still be BUSY with CONNECTED on; `connect_focuser()` and the unanswered read both take 5 s. Failed in all 5 Linux runs. | The case waits for CONNECTION ALERT before the check. | `handshake_timeout` 3 of 3 and in the recorded run. |
+| FND-000052 | Source audit, not fixed: WiFi SSIDs and passwords are inserted into the JSON without escaping, so a `"` or `\` produces an invalid request. The extraction preserved the behaviour. | Open finding; needs its own change with a version bump. | none yet |
+
+### Validation
+
+```sh
+make -C indigo_test build/unit/test_primalucelib && (cd indigo_test && ./build/unit/test_primalucelib)
+make -C indigo_test test-unit
+python3 tools/run_driver_test.py focuser_primaluce
+```
+
+Linux x86_64 only; macOS and Windows builds were not run in this environment. No hardware test.
+
+## Final test summary
+
+- Simulated tests: 55 run, 55 passed (recorded run of 3.0.0.26, linux x64, with the library), plus 19 of
+  19 library unit cases. Before the FND-000049/50/51 fixes the same driver passed 44 of 55, exactly
+  as the original driver did, with byte-identical wire traffic in all 54 simulator cases.
+- Hardware tests: 0 run, 0 passed in this round; the latest hardware record stays 3.0.0.25 (linux
+  arm64) and 3.0.0.22 (mac arm64, USB and WiFi).

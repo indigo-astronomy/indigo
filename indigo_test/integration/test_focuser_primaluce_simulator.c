@@ -1490,6 +1490,34 @@ cleanup:
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
 
+// Opt-in reference trace: with INDIGO_SIMULATOR_TRACE_DIR set, the requests a case sent are kept
+// as <case>.events, so a refactoring can compare the wire traffic of the driver before and after.
+static void copy_case_trace(const char *name) {
+	const char *directory = getenv("INDIGO_SIMULATOR_TRACE_DIR");
+	if (directory == NULL || *directory == 0) {
+		return;
+	}
+	char target_path[PATH_MAX];
+	if (snprintf(target_path, sizeof(target_path), "%s/%s.events", directory, name) >= (int)sizeof(target_path)) {
+		fprintf(stderr, "trace target path does not fit %zu bytes\n", sizeof(target_path));
+		return;
+	}
+	FILE *source = fopen(event_path, "r");
+	if (source == NULL) {
+		return;
+	}
+	FILE *target = fopen(target_path, "w");
+	if (target != NULL) {
+		char buffer[4096];
+		size_t count;
+		while ((count = fread(buffer, 1, sizeof(buffer), source)) > 0) {
+			fwrite(buffer, 1, count, target);
+		}
+		fclose(target);
+	}
+	fclose(source);
+}
+
 int main(void) {
 	const simulated_case cases[] = {
 		{ "metadata", metadata, "normal" },
@@ -1591,6 +1619,7 @@ int main(void) {
 			}
 		}
 		stop_external_serial_simulator(&fixture);
+		copy_case_trace(cases[i].name);
 		if (child < 0 || status == -1 || !WIFEXITED(status) || WEXITSTATUS(status)) {
 			failures++;
 			printf("FAIL: %s (exit=%d, signal=%d)\n", cases[i].name, WIFEXITED(status) ? WEXITSTATUS(status) : -1, WIFSIGNALED(status) ? WTERMSIG(status) : 0);

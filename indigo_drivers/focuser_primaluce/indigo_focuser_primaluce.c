@@ -27,10 +27,7 @@
 
 //+ include
 
-#define JSMN_STRICT          
-#define JSMN_PARENT_LINKS    
-#include "jsmn.h"
-#include <ctype.h>
+#include "../shared/primalucelib/primalucelib.h"
 
 //- include
 
@@ -52,10 +49,8 @@
 
 //+ define
 
-#define MAX_RESPONSE_SIZE    8192
-#define MAX_TOKEN_COUT       1024
-// The controller stores named focuser positions as PRESET_1 to PRESET_9 (M1POS).
-#define PRESET_COUNT         9
+// The controller connection, see indigo_drivers/shared/primalucelib (linked as a static library).
+#define LINK                 (&PRIVATE_DATA->link)
 // Idle position poll period; the controller state (temperature, supplies) is read every ENVIRONMENT_TICKS polls.
 #define POLL_PERIOD          2
 #define ENVIRONMENT_TICKS    5
@@ -63,8 +58,6 @@
 #define STALL_POLLS          25
 // Consecutive failed position reads tolerated during a move.
 #define MAX_POLL_FAILURES    3
-// EXT_T reported by a controller without an external probe.
-#define NO_PROBE_TEMPERATURE -127
 
 //- define
 
@@ -375,22 +368,15 @@ typedef struct {
 	indigo_property *x_calibrate_f_property;
 	indigo_property *x_calibrate_r_property;
 	//+ data
-	char response[MAX_RESPONSE_SIZE];
-	jsmntok_t tokens[MAX_TOKEN_COUT];
-	jsmn_parser parser;
+	primalucelib_link link;
 	bool has_abs_pos;
 	bool rotator_has_abs_pos;
 	bool rotator_has_position_deg;
-	int preset_positions[PRESET_COUNT];
-	char preset_names[PRESET_COUNT][INDIGO_VALUE_SIZE];
+	int preset_positions[PRIMALUCE_STORED_POSITION_COUNT];
+	char preset_names[PRIMALUCE_STORED_POSITION_COUNT][INDIGO_VALUE_SIZE];
 	int rotator_calibration_polls;
 	bool is_sestosenso_3;
-	bool is_http;
-	char http_host[INDIGO_NAME_SIZE];
-	int http_port;
-	char last_error[INDIGO_VALUE_SIZE];
 	double position, last_position;
-	bool link_failed;
 	int stalled_polls, poll_failures, environment_ticks;
 	bool external_motion, poll_alert, abort_requested, calibrating, pending;
 	int backlash, speed;
@@ -405,291 +391,6 @@ typedef struct {
 static void focuser_position_handler(indigo_device *device);
 static void focuser_steps_handler(indigo_device *device);
 static void rotator_position_handler(indigo_device *device);
-
-static char *GET_MODNAME[] = { "res", "get", "MODNAME", NULL };
-static char *GET_ERROR[] = { "res", "get", "ERROR", NULL };
-static char *SET_ERROR[] = { "res", "set", "ERROR", NULL };
-static char *CMD_ERROR[] = { "res", "cmd", "ERROR", NULL };
-static char *GET_SN[] = { "res", "get", "SN", NULL };
-static char *GET_SWAPP[] = { "res", "get", "SWVERS", "SWAPP", NULL };
-static char *GET_SWWEB[] = { "res", "get", "SWVERS", "SWWEB", NULL };
-static char *GET_CALRESTART_MOT1[] = { "res", "get", "CALRESTART", "MOT1", NULL };
-static char *GET_CALRESTART_MOT2[] = { "res", "get", "CALRESTART", "MOT2", NULL };
-static char *GET_MOT1_ABS_POS_STEP[] = { "res", "get", "MOT1", "ABS_POS_STEP", NULL };
-static char *GET_MOT1_ABS_POS[] = { "res", "get", "MOT1", "ABS_POS", NULL };
-static char *GET_MOT2_ABS_POS_DEG[] = { "res", "get", "MOT2", "ABS_POS_DEG", NULL };
-static char *GET_MOT2_ABS_POS[] = { "res", "get", "MOT2", "ABS_POS", NULL };
-static char *GET_MOT2_POSITION_DEG[] = { "res", "get", "MOT2", "POSITION_DEG", NULL };
-static char *GET_MOT2_CAL_STATUS[] = { "res", "get", "MOT2", "CAL_STATUS", NULL };
-static char *SET_MOT2_CAL_STATUS[] = { "res", "set", "MOT2", "CAL_STATUS", NULL };
-static char *GET_MOT1_BKLASH[] = { "res", "get", "MOT1", "BKLASH", NULL };
-static char *SET_MOT1_BKLASH[] = { "res", "set", "MOT1", "BKLASH", NULL };
-static char *GET_MOT1_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
-static char *SET_MOT1_SPEED[] = { "res", "set", "MOT1", "SPEED", NULL };
-static char *GET_MOT1_MST[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
-static char *GET_MOT2_MST[] = { "res", "get", "MOT2", "STATUS", "MST", NULL };
-static char *CMD_MOT1_STEP[] = { "res", "cmd", "MOT1", "STEP", NULL };
-static char *CMD_MOT1_GOTO[] = { "res", "cmd", "MOT1", "GOTO", NULL };
-//static char *CMD_MOT1_MOVE_REL[] = { "res", "cmd", "MOT1", "MOVE_REL", NULL };
-static char *CMD_MOT1_MOT_STOP[] = { "res", "cmd", "MOT1", "MOT_STOP", NULL };
-static char *CMD_MOT1_MOT_ABORT[] = { "res", "cmd", "MOT1", "MOT_ABORT", NULL };
-static char *GET_PRESET_1[] = { "res", "get", "PRESET_1", NULL };
-static char *CMD_MOT2_STEP[] = { "res", "cmd", "MOT2", "STEP", NULL };
-static char *CMD_MOT2_MOT_STOP[] = { "res", "cmd", "MOT2", "MOT_STOP", NULL };
-static char *CMD_MOT2_SYNC_POS[] = { "res", "cmd", "MOT2", "SYNC_POS", NULL };
-static char *GET_MOT1_CAL_MINPOS[] = { "res", "get", "MOT1", "CAL_MINPOS", NULL };
-static char *GET_MOT1_CAL_MAXPOS[] = { "res", "get", "MOT1", "CAL_MAXPOS", NULL };
-static char *GET_EXT_T[] = { "res", "get", "EXT_T", NULL };
-static char *GET_DIMLEDS[] = { "res", "get", "DIMLEDS", NULL };
-static char *GET_VIN_12V[] = { "res", "get", "VIN_12V", NULL };
-static char *GET_VIN_USB[] = { "res", "get", "VIN_USB", NULL };
-static char *GET_MOT1_NTC_T[] = { "res", "get", "MOT1", "NTC_T", NULL };
-static char *GET_MOT1_ERROR[] = { "res", "get", "MOT1", "ERROR", NULL };
-static char *GET_MOT2_ERROR[] = { "res", "get", "MOT2", "ERROR", NULL };
-static char *GET_WIFIAP_STATUS[] = { "res", "get", "WIFIAP", "STATUS", NULL };
-static char *GET_LANCFG[] = { "res", "get", "LANCFG", NULL };
-static char *GET_WIFIAP_SSID[] = { "res", "get", "WIFIAP", "SSID", NULL };
-static char *GET_WIFIAP_PWD[] = { "res", "get", "WIFIAP", "PWD", NULL };
-static char *GET_WIFISTA_SSID[] = { "res", "get", "WIFISTA", "SSID", NULL };
-static char *GET_WIFISTA_PWD[] = { "res", "get", "WIFISTA", "PWD", NULL };
-static char *GET_MOT1_FnRUN_ACC[] = { "res", "get", "MOT1", "FnRUN_ACC", NULL };
-static char *GET_MOT1_FnRUN_SPD[] = { "res", "get", "MOT1", "FnRUN_SPD", NULL };
-static char *GET_MOT1_FnRUN_DEC[] = { "res", "get", "MOT1", "FnRUN_DEC", NULL };
-static char *GET_MOT1_FnRUN_CURR_ACC[] = { "res", "get", "MOT1", "FnRUN_CURR_ACC", NULL };
-static char *GET_MOT1_FnRUN_CURR_SPD[] = { "res", "get", "MOT1", "FnRUN_CURR_SPD", NULL };
-static char *GET_MOT1_FnRUN_CURR_DEC[] = { "res", "get", "MOT1", "FnRUN_CURR_DEC", NULL };
-static char *GET_MOT1_FnRUN_CURR_HOLD[] = { "res", "get", "MOT1", "FnRUN_CURR_HOLD", NULL };
-static char *GET_MOT1_HOLDCURR_STATUS[] = { "res", "get", "MOT1", "HOLDCURR_STATUS", NULL };
-static char *SET_MOT1_HOLDCURR_STATUS[] = { "res", "set", "MOT1", "HOLDCURR_STATUS", NULL };
-static char *GET_RUNPRESET_L_M1ACC[] = { "res", "get", "RUNPRESET_L", "M1ACC", NULL };
-static char *GET_RUNPRESET_L_M1SPD[] = { "res", "get", "RUNPRESET_L", "M1SPD", NULL };
-static char *GET_RUNPRESET_L_M1DEC[] = { "res", "get", "RUNPRESET_L", "M1DEC", NULL };
-static char *GET_RUNPRESET_L_M1CACC[] = { "res", "get", "RUNPRESET_L", "M1CACC", NULL };
-static char *GET_RUNPRESET_L_M1CSPD[] = { "res", "get", "RUNPRESET_L", "M1CSPD", NULL };
-static char *GET_RUNPRESET_L_M1CDEC[] = { "res", "get", "RUNPRESET_L", "M1CDEC", NULL };
-static char *GET_RUNPRESET_L_M1HOLD[] = { "res", "get", "RUNPRESET_L", "M1HOLD", NULL };
-static char *GET_RUNPRESET_M_M1ACC[] = { "res", "get", "RUNPRESET_M", "M1ACC", NULL };
-static char *GET_RUNPRESET_M_M1SPD[] = { "res", "get", "RUNPRESET_M", "M1SPD", NULL };
-static char *GET_RUNPRESET_M_M1DEC[] = { "res", "get", "RUNPRESET_M", "M1DEC", NULL };
-static char *GET_RUNPRESET_M_M1CACC[] = { "res", "get", "RUNPRESET_M", "M1CACC", NULL };
-static char *GET_RUNPRESET_M_M1CSPD[] = { "res", "get", "RUNPRESET_M", "M1CSPD", NULL };
-static char *GET_RUNPRESET_M_M1CDEC[] = { "res", "get", "RUNPRESET_M", "M1CDEC", NULL };
-static char *GET_RUNPRESET_M_M1HOLD[] = { "res", "get", "RUNPRESET_M", "M1HOLD", NULL };
-static char *GET_RUNPRESET_S_M1ACC[] = { "res", "get", "RUNPRESET_S", "M1ACC", NULL };
-static char *GET_RUNPRESET_S_M1SPD[] = { "res", "get", "RUNPRESET_S", "M1SPD", NULL };
-static char *GET_RUNPRESET_S_M1DEC[] = { "res", "get", "RUNPRESET_S", "M1DEC", NULL };
-static char *GET_RUNPRESET_S_M1CACC[] = { "res", "get", "RUNPRESET_S", "M1CACC", NULL };
-static char *GET_RUNPRESET_S_M1CSPD[] = { "res", "get", "RUNPRESET_S", "M1CSPD", NULL };
-static char *GET_RUNPRESET_S_M1CDEC[] = { "res", "get", "RUNPRESET_S", "M1CDEC", NULL };
-static char *GET_RUNPRESET_S_M1HOLD[] = { "res", "get", "RUNPRESET_S", "M1HOLD", NULL };
-static char *GET_RUNPRESET_1_M1ACC[] = { "res", "get", "RUNPRESET_1", "M1ACC", NULL };
-static char *GET_RUNPRESET_1_M1SPD[] = { "res", "get", "RUNPRESET_1", "M1SPD", NULL };
-static char *GET_RUNPRESET_1_M1DEC[] = { "res", "get", "RUNPRESET_1", "M1DEC", NULL };
-static char *GET_RUNPRESET_1_M1CACC[] = { "res", "get", "RUNPRESET_1", "M1CACC", NULL };
-static char *GET_RUNPRESET_1_M1CSPD[] = { "res", "get", "RUNPRESET_1", "M1CSPD", NULL };
-static char *GET_RUNPRESET_1_M1CDEC[] = { "res", "get", "RUNPRESET_1", "M1CDEC", NULL };
-static char *GET_RUNPRESET_1_M1HOLD[] = { "res", "get", "RUNPRESET_1", "M1HOLD", NULL };
-static char *GET_RUNPRESET_2_M1ACC[] = { "res", "get", "RUNPRESET_2", "M1ACC", NULL };
-static char *GET_RUNPRESET_2_M1SPD[] = { "res", "get", "RUNPRESET_2", "M1SPD", NULL };
-static char *GET_RUNPRESET_2_M1DEC[] = { "res", "get", "RUNPRESET_2", "M1DEC", NULL };
-static char *GET_RUNPRESET_2_M1CACC[] = { "res", "get", "RUNPRESET_2", "M1CACC", NULL };
-static char *GET_RUNPRESET_2_M1CSPD[] = { "res", "get", "RUNPRESET_2", "M1CSPD", NULL };
-static char *GET_RUNPRESET_2_M1CDEC[] = { "res", "get", "RUNPRESET_2", "M1CDEC", NULL };
-static char *GET_RUNPRESET_2_M1HOLD[] = { "res", "get", "RUNPRESET_2", "M1HOLD", NULL };
-static char *GET_RUNPRESET_3_M1ACC[] = { "res", "get", "RUNPRESET_3", "M1ACC", NULL };
-static char *GET_RUNPRESET_3_M1SPD[] = { "res", "get", "RUNPRESET_3", "M1SPD", NULL };
-static char *GET_RUNPRESET_3_M1DEC[] = { "res", "get", "RUNPRESET_3", "M1DEC", NULL };
-static char *GET_RUNPRESET_3_M1CACC[] = { "res", "get", "RUNPRESET_3", "M1CACC", NULL };
-static char *GET_RUNPRESET_3_M1CSPD[] = { "res", "get", "RUNPRESET_3", "M1CSPD", NULL };
-static char *GET_RUNPRESET_3_M1CDEC[] = { "res", "get", "RUNPRESET_3", "M1CDEC", NULL };
-static char *GET_RUNPRESET_3_M1HOLD[] = { "res", "get", "RUNPRESET_3", "M1HOLD", NULL };
-
-// Over the network the controller serves the same JSON requests as GET /ajax.php?jreq=<request>, one request per connection.
-static bool primaluce_http_exchange(indigo_device *device, const char *request) {
-	char query[3 * MAX_RESPONSE_SIZE + 1];
-	char *out = query;
-	for (const unsigned char *in = (const unsigned char *)request; *in && out < query + sizeof(query) - 4; in++) {
-		if (isalnum(*in) || strchr("-_.~", *in)) {
-			*out++ = *in;
-		} else {
-			out += sprintf(out, "%%%02X", *in);
-		}
-	}
-	*out = 0;
-	indigo_uni_handle *handle = indigo_uni_open_client_socket_with_timeout(PRIVATE_DATA->http_host, PRIVATE_DATA->http_port, SOCK_STREAM, INDIGO_DELAY(5), INDIGO_LOG_DEBUG);
-	if (handle == NULL) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't connect to %s:%d", PRIVATE_DATA->http_host, PRIVATE_DATA->http_port);
-		return false;
-	}
-	bool result = false;
-	char reply[MAX_RESPONSE_SIZE + 1024];
-	long length = 0;
-	if (indigo_uni_printf(handle, "GET /ajax.php?jreq=%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", query, PRIVATE_DATA->http_host) > 0) {
-		char *body = NULL;
-		long content_length = -1;
-		// The controller keeps the connection open after the reply, so Content-Length ends the read.
-		while (length < (long)sizeof(reply) - 1 && indigo_uni_wait_for_data(handle, INDIGO_DELAY(5)) > 0) {
-			long count = indigo_uni_read_available(handle, reply + length, sizeof(reply) - 1 - length);
-			if (count <= 0) {
-				break;
-			}
-			length += count;
-			reply[length] = 0;
-			if (body == NULL && (body = strstr(reply, "\r\n\r\n")) != NULL) {
-				char *field = strstr(reply, "\r\nContent-Length:");
-				if (field != NULL && field < body) {
-					content_length = atol(field + 17);
-				}
-			}
-			if (body != NULL && content_length >= 0 && length >= body + 4 - reply + content_length) {
-				break;
-			}
-		}
-		reply[length] = 0;
-		if (strncmp(reply, "HTTP/1.", 7) || strncmp(reply + 8, " 200 ", 5) || body == NULL) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected HTTP response: %.40s", reply);
-		} else if (strlen(body + 4) >= MAX_RESPONSE_SIZE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "HTTP response too long");
-		} else {
-			strcpy(PRIVATE_DATA->response, body + 4);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", PRIVATE_DATA->response);
-			result = *PRIVATE_DATA->response != 0;
-		}
-	}
-	indigo_uni_close(&handle);
-	return result;
-}
-
-static char *get_string(indigo_device *device, char *path[]);
-
-static bool primaluce_command(indigo_device *device, char *command, ...) {
-	long result;
-	PRIVATE_DATA->last_error[0] = 0;
-	va_list args;
-	va_start(args, command);
-	if (PRIVATE_DATA->is_http) {
-		char request[MAX_RESPONSE_SIZE];
-		vsnprintf(request, sizeof(request), command, args);
-		va_end(args);
-		if (!primaluce_http_exchange(device, request)) {
-			PRIVATE_DATA->link_failed = true;
-			return false;
-		}
-	} else {
-		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
-		va_end(args);
-		if (result <= 0) {
-			PRIVATE_DATA->link_failed = true;
-			return false;
-		}
-		while (true) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
-			if (result < 1) {
-				PRIVATE_DATA->link_failed = true;
-				return false;
-			}
-			if (*PRIVATE_DATA->response == '[') {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Ignored");
-				continue;
-			}
-			break;
-		}
-	}
-	// The controller answered, whatever the answer is.
-	PRIVATE_DATA->link_failed = false;
-	memset(PRIVATE_DATA->tokens, 0, sizeof(PRIVATE_DATA->tokens));
-	jsmn_init(&PRIVATE_DATA->parser);
-	if (*PRIVATE_DATA->response == '"' || jsmn_parse(&PRIVATE_DATA->parser, PRIVATE_DATA->response, MAX_RESPONSE_SIZE, PRIVATE_DATA->tokens, MAX_TOKEN_COUT) <= 0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failed to parse");
-		return false;
-	}
-	for (int i = 0; i < MAX_TOKEN_COUT; i++) {
-		if (PRIVATE_DATA->tokens[i].type == JSMN_UNDEFINED) {
-			break;
-		}
-		if (PRIVATE_DATA->tokens[i].type == JSMN_STRING) {
-			PRIVATE_DATA->response[PRIVATE_DATA->tokens[i].end] = 0;
-		}
-	}
-	// A rejected request is answered as an ERROR under the request verb
-	char *error = get_string(device, CMD_ERROR);
-	if (error == NULL) {
-		error = get_string(device, SET_ERROR);
-	}
-	if (error == NULL) {
-		error = get_string(device, GET_ERROR);
-	}
-	if (error != NULL) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Request rejected: %s", error);
-		INDIGO_COPY_VALUE(PRIVATE_DATA->last_error, error);
-		return false;
-	}
-	return true;
-}
-
-static int getToken(indigo_device *device, int start, char *path[]) {
-	if (PRIVATE_DATA->tokens[start].type != JSMN_OBJECT) {
-		return -1;
-	}
-	int count = PRIVATE_DATA->tokens[start].size;
-	int index = start + 1;
-	char *name = *path;
-	for (int i = 0; i < count; i++) {
-		if (PRIVATE_DATA->tokens[index].type != JSMN_STRING) {
-			return -1;
-		}
-		char *n = PRIVATE_DATA->response + PRIVATE_DATA->tokens[index].start;
-		int l = PRIVATE_DATA->tokens[index].end - PRIVATE_DATA->tokens[index].start;
-		if (!strncmp(n, name, l)) {
-			index++;
-			if (*++path == NULL) {
-				return index;
-			}
-			return getToken(device, index, path);
-		} else {
-			while (true) {
-				index++;
-				if (PRIVATE_DATA->tokens[index].type == JSMN_UNDEFINED) {
-					return -1;
-				}
-				if (PRIVATE_DATA->tokens[index].parent == start) {
-					break;
-				}
-			}
-		}
-	}
-	return -1;
-}
-
-static char *get_string(indigo_device *device, char *path[]) {
-	int index = getToken(device, 0, path);
-	if (index == -1 || PRIVATE_DATA->tokens[index].type != JSMN_STRING) {
-		return NULL;
-	}
-	return PRIVATE_DATA->response + PRIVATE_DATA->tokens[index].start;
-}
-
-static double get_number2(indigo_device *device, char *path[], char *alt_path[]) {
-	int index = getToken(device, 0, path);
-	if (index == -1) {
-		if (alt_path != NULL) {
-			index = getToken(device, 0, alt_path);
-			if (index == -1) {
-				return 0;
-			}
-		} else {
-			return 0;
-		}
-	}
-	if  (PRIVATE_DATA->tokens[index].type == JSMN_PRIMITIVE || PRIVATE_DATA->tokens[index].type == JSMN_STRING) {
-		return atof(PRIVATE_DATA->response + PRIVATE_DATA->tokens[index].start);
-	}
-	return 0;
-}
-
-static double get_number(indigo_device *device, char *path[]) {
-	return get_number2(device, path, NULL);
-}
 
 static indigo_item *selected_item(indigo_property *property) {
 	for (int i = 0; i < property->count; i++) {
@@ -711,61 +412,36 @@ static void restore_switch(indigo_property *property, indigo_item *item) {
 // The firmware applies a new LANCFG only after a restart, so a changed mode restarts the controller.
 static bool primaluce_set_lan_cfg(indigo_device *device, const char *mode) {
 	char *text;
-	if (!primaluce_command(device, "{\"req\":{\"get\":{\"LANCFG\":\"\"}}}") || (text = get_string(device, GET_LANCFG)) == NULL) {
+	if ((text = primalucelib_get_lan_config(LINK)) == NULL) {
 		return false;
 	}
 	if (!strcmp(text, mode)) {
 		return true;
 	}
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"LANCFG\":\"%s\"}}}", mode) || !primaluce_command(device, "{\"req\":{\"cmd\":{\"REBOOT\":\"\"}}}")) {
+	if (!primalucelib_set_lan_config(LINK, mode) || !primalucelib_reboot(LINK)) {
 		return false;
 	}
-	if (PRIVATE_DATA->is_http) {
+	if (primalucelib_is_http(LINK)) {
 		indigo_send_message(device, X_WIFI_PROPERTY, "The controller restarts to apply the WiFi mode and leaves its current network");
 		return true;
 	}
-	// The restart prints a boot log on the serial line before the controller answers again.
-	for (int i = 0; i < 20; i++) {
-		indigo_usleep(INDIGO_DELAY(0.5));
-		indigo_uni_discard(PRIVATE_DATA->handle);
-		if (primaluce_command(device, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}") && get_string(device, GET_MODNAME) != NULL) {
-			return true;
-		}
-	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "No answer after restart");
-	return false;
+	return primalucelib_wait_for_restart(LINK);
 }
 
 static bool primaluce_open(indigo_device *device, const char **error_message) {
-	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->is_http = indigo_uni_is_url(name, "http");
-	if (PRIVATE_DATA->is_http) {
-		// http://host[:port] or tcp://host[:port] reaches the controller on a WiFi network
-		char *host = strchr(name, ':') + 3;
-		size_t host_length = strcspn(host, ":/");
-		if (host_length == 0 || host_length >= sizeof(PRIVATE_DATA->http_host)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Malformed URL '%s'", name);
-			PRIVATE_DATA->is_http = false;
-			return false;
-		}
-		memcpy(PRIVATE_DATA->http_host, host, host_length);
-		PRIVATE_DATA->http_host[host_length] = 0;
-		PRIVATE_DATA->http_port = host[host_length] == ':' ? atoi(host + host_length + 1) : 80;
-	} else {
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(name, 115200, INDIGO_LOG_DEBUG, error_message);
-	}
-	if (PRIVATE_DATA->is_http || PRIVATE_DATA->handle != NULL) {
+	if (primalucelib_open(LINK, DRIVER_NAME, DEVICE_PORT_ITEM->text.value, error_message)) {
 		char *text;
-		if (primaluce_command(device, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}") && (text = get_string(device, GET_MODNAME))) {
-			if (!strncmp(text, "SESTOSENSO", 10) || !strncmp(text, "ESATTO", 6)) {
-				PRIVATE_DATA->is_sestosenso_3 = strncmp(text, "SESTOSENSO3", 11)==0;
-				if (primaluce_command(device, "{\"req\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"\"}}}}") && (text = get_string(device, GET_SWAPP))) {
+		if ((text = primalucelib_get_model_name(LINK))) {
+			primalucelib_model model = primalucelib_model_from_name(text);
+			if (primalucelib_model_is_focuser(model)) {
+				PRIVATE_DATA->is_sestosenso_3 = model == PRIMALUCELIB_MODEL_SESTOSENSO3;
+				if ((text = primalucelib_get_firmware_version(LINK))) {
 					double version = atof(text);
-					if (!PRIVATE_DATA->is_sestosenso_3 && version < 3.05) {
+					if (!PRIVATE_DATA->is_sestosenso_3 && version < PRIMALUCE_MINIMUM_FIRMWARE_VERSION) {
 						indigo_send_message(device, BUSY_PROPERTY, "%s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
 					}
 					// Diagnostic output would interleave with the replies on the serial line.
-					primaluce_command(device, "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}");
+					primalucelib_disable_log_output(LINK);
 					return true;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported version");
@@ -774,20 +450,14 @@ static bool primaluce_open(indigo_device *device, const char **error_message) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported device");
 			}
 		}
-		if (PRIVATE_DATA->handle != NULL) {
-			indigo_uni_close(&PRIVATE_DATA->handle);
-		}
-		PRIVATE_DATA->is_http = false;
+		primalucelib_close(LINK);
 	}
 	return false;
 }
 
 static void primaluce_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL || PRIVATE_DATA->is_http) {
-		if (PRIVATE_DATA->handle != NULL) {
-			indigo_uni_close(&PRIVATE_DATA->handle);
-		}
-		PRIVATE_DATA->is_http = false;
+	if (primalucelib_is_open(LINK)) {
+		primalucelib_close(LINK);
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "N/A");
 		INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "N/A");
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
@@ -800,9 +470,26 @@ static void primaluce_close(indigo_device *device) {
 
 //+ focuser.code
 
+// X_CONFIG and the X_RUNPRESET_* properties list M1ACC, M1SPD, M1DEC, M1CACC, M1CSPD, M1CDEC and M1HOLD in this order.
+static void set_run_config_items(indigo_property *property, primalucelib_run_config *config) {
+	double values[] = { config->acceleration_speed, config->run_speed, config->deceleration_speed, config->acceleration_current, config->run_current, config->deceleration_current, config->hold_current };
+	for (int i = 0; i < 7; i++) {
+		property->items[i].number.value = property->items[i].number.target = values[i];
+	}
+}
+
+static void get_run_config_targets(indigo_property *property, primalucelib_run_config *config) {
+	config->acceleration_speed = property->items[0].number.target;
+	config->run_speed = property->items[1].number.target;
+	config->deceleration_speed = property->items[2].number.target;
+	config->acceleration_current = property->items[3].number.target;
+	config->run_current = property->items[4].number.target;
+	config->deceleration_current = property->items[5].number.target;
+	config->hold_current = property->items[6].number.target;
+}
 // The controller refuses to drive the motor without its 12 V supply and says so in the command reply.
 static const char *power_message(const char *state) {
-	return state != NULL && !strcmp(state, "12V_PowerSupply_Error") ? "The motor has no 12 V power supply" : NULL;
+	return primalucelib_is_power_supply_error(state) ? "The motor has no 12 V power supply" : NULL;
 }
 
 static void focuser_motion_failed(indigo_device *device, const char *state) {
@@ -810,8 +497,8 @@ static void focuser_motion_failed(indigo_device *device, const char *state) {
 	// the request as target, and the reason the controller gave reaches the client.
 	const char *message = power_message(state);
 	char reason[INDIGO_VALUE_SIZE];
-	if (message == NULL && *PRIVATE_DATA->last_error) {
-		snprintf(reason, sizeof(reason), "Move refused: %s", PRIVATE_DATA->last_error);
+	if (message == NULL && *primalucelib_last_error(LINK)) {
+		snprintf(reason, sizeof(reason), "Move refused: %s", primalucelib_last_error(LINK));
 		message = reason;
 	}
 	PRIVATE_DATA->abort_requested = false;
@@ -829,35 +516,15 @@ static void focuser_motion_failed(indigo_device *device, const char *state) {
 // is a failed read; a reply without MST cannot prove the motor is still running, so it
 // counts as stopped.
 static bool focuser_read_motion(indigo_device *device, double *position, bool *moving) {
-	char *get_position = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
-	char **path = PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP;
-	if (!primaluce_command(device, get_position) || getToken(device, 0, path) == -1) {
+	if (!primalucelib_focuser_get_position(LINK, PRIVATE_DATA->has_abs_pos, position)) {
 		return false;
 	}
-	*position = PRIVATE_DATA->position = get_number(device, path);
+	PRIVATE_DATA->position = *position;
 	char *state = NULL;
-	if (!PRIVATE_DATA->is_sestosenso_3 || primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"\"}}}}}")) {
-		state = get_string(device, GET_MOT1_MST);
+	if (!PRIVATE_DATA->is_sestosenso_3 || primalucelib_focuser_request_motor_state(LINK)) {
+		state = primalucelib_reply_focuser_motor_state(LINK);
 	}
-	*moving = state != NULL && strcmp(state, "stop");
-	return true;
-}
-
-// MOT_ABORT stops the motor at once, MOT_STOP decelerates first and is the fallback.
-static bool focuser_stop(indigo_device *device, char **reason) {
-	char *state = NULL;
-	*reason = NULL;
-	if (primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_ABORT\":\"\"}}}}") && (state = get_string(device, CMD_MOT1_MOT_ABORT)) != NULL && !strcmp(state, "done")) {
-		return true;
-	}
-	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}")) {
-		return false;
-	}
-	state = get_string(device, CMD_MOT1_MOT_STOP);
-	if (state == NULL || strcmp(state, "done")) {
-		*reason = state;
-		return false;
-	}
+	*moving = state != NULL && !primalucelib_is_motor_stopped(state);
 	return true;
 }
 
@@ -881,7 +548,7 @@ static void focuser_movement_finalizer(indigo_device *device) {
 			} else if (++PRIVATE_DATA->stalled_polls >= STALL_POLLS) {
 				// The motor reports running but the position no longer changes.
 				char *reason;
-				focuser_stop(device, &reason);
+				primalucelib_focuser_stop(LINK, &reason);
 				if (focuser_read_motion(device, &position, &moving)) {
 					FOCUSER_POSITION_ITEM->number.value = position;
 				}
@@ -916,7 +583,7 @@ static void focuser_movement_finalizer(indigo_device *device) {
 		// A persistent failure must neither leave the motion properties busy nor let the
 		// motor run unobserved.
 		char *reason;
-		focuser_stop(device, &reason);
+		primalucelib_focuser_stop(LINK, &reason);
 		focuser_movement_ended(device, INDIGO_ALERT_STATE);
 	}
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -978,16 +645,7 @@ static void focuser_poll_position(indigo_device *device) {
 // POSITION_DEG is the angle after a sync and ABS_POS_DEG the mechanical one, so the
 // synced angle is reported where the firmware has it.
 static bool rotator_read_angle(indigo_device *device) {
-	bool result;
-	if (PRIVATE_DATA->rotator_has_position_deg) {
-		result = primaluce_command(device, "{\"req\":{\"get\":{\"MOT2\":{\"POSITION_DEG\":\"\",\"STATUS\":\"\"}}}}");
-	} else {
-		result = primaluce_command(device, PRIVATE_DATA->rotator_has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"STATUS\":\"\"}}}}");
-	}
-	if (result) {
-		ROTATOR_POSITION_ITEM->number.value = get_number(device, PRIVATE_DATA->rotator_has_position_deg ? GET_MOT2_POSITION_DEG : (PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG));
-	}
-	return result;
+	return primalucelib_rotator_get_angle(LINK, primalucelib_rotator_angle_source(PRIVATE_DATA->rotator_has_position_deg, PRIVATE_DATA->rotator_has_abs_pos), &ROTATOR_POSITION_ITEM->number.value);
 }
 
 // The controller calibrates the ARCO on its own and reports CAL_STATUS "stop" when it is done.
@@ -997,9 +655,9 @@ static void rotator_calibration_poll(indigo_device *device) {
 	if (X_CALIBRATE_R_PROPERTY->state != INDIGO_BUSY_STATE) {
 		return;
 	}
-	if (!primaluce_command(device, "{\"req\":{\"get\":{\"MOT2\":{\"CAL_STATUS\":\"\"}}}}") || (state = get_string(device, GET_MOT2_CAL_STATUS)) == NULL) {
+	if ((state = primalucelib_rotator_get_calibration_status(LINK)) == NULL) {
 		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, NULL);
-	} else if (strcmp(state, "stop")) {
+	} else if (!primalucelib_is_rotator_calibration_finished(state)) {
 		if (++PRIVATE_DATA->rotator_calibration_polls > 600) {
 			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, "Calibration did not finish");
 		} else {
@@ -1016,8 +674,8 @@ static void rotator_calibration_poll(indigo_device *device) {
 
 static void rotator_movement_finalizer(indigo_device *device) {
 	if (rotator_read_angle(device)) {
-		char *state = get_string(device, GET_MOT2_MST);
-		if (state != NULL && strcmp(state, "stop")) {
+		char *state = primalucelib_reply_rotator_motor_state(LINK);
+		if (state != NULL && !primalucelib_is_motor_stopped(state)) {
 			indigo_execute_handler_in(device, 0.2, rotator_movement_finalizer);
 		} else if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			for (int i = 0; i < 10; i++) {
@@ -1052,18 +710,18 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	//+ focuser.on_timer
 	if (PRIVATE_DATA->environment_ticks++ % ENVIRONMENT_TICKS == 0) {
-		if (primaluce_command(device, "{\"req\":{\"get\":{\"EXT_T\":\"\", \"VIN_12V\": \"\", \"MOT1\":{\"NTC_T\":\"\"}}}}") && getToken(device, 0, GET_EXT_T) != -1) {
-			double temp = get_number(device, GET_EXT_T);
+		if (primalucelib_get_environment(LINK)) {
+			double temp = primalucelib_reply_external_temperature(LINK);
 			// A controller without an external probe reports -127, which is no reading.
-			if (temp <= NO_PROBE_TEMPERATURE) {
+			if (primalucelib_is_no_probe_temperature(temp)) {
 				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
 			} else {
 				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			double motor_temp = get_number(device, GET_MOT1_NTC_T);
-			double vin12v = get_number(device, GET_VIN_12V);
+			double motor_temp = primalucelib_reply_motor_temperature(LINK);
+			double vin12v = primalucelib_reply_supply_voltage(LINK);
 			if (motor_temp != X_STATE_MOTOR_TEMP_ITEM->number.value || vin12v != X_STATE_VIN_12V_ITEM->number.value || X_STATE_PROPERTY->state != INDIGO_OK_STATE) {
 				X_STATE_MOTOR_TEMP_ITEM->number.value = motor_temp;
 				X_STATE_VIN_12V_ITEM->number.value = vin12v;
@@ -1098,11 +756,12 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ focuser.on_connect
 			char *text;
-			if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
-				if ((text = get_string(device, GET_MODNAME))) {
+			if (primalucelib_get_state(LINK)) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_MODEL_NAME))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
 					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, text);
-					if (!strncmp(text, "SESTOSENSO", 10)) {
+					primalucelib_model model = primalucelib_model_from_name(text);
+					if (primalucelib_model_is_sestosenso(model)) {
 						X_STATE_PROPERTY->count = 2;
 						X_CONFIG_PROPERTY->hidden = false;
 						X_RUNPRESET_PROPERTY->hidden = false;
@@ -1113,7 +772,7 @@ static void focuser_connection_handler(indigo_device *device) {
 						X_RUNPRESET_2_PROPERTY->hidden = false;
 						X_RUNPRESET_3_PROPERTY->hidden = false;
 						X_HOLD_CURR_PROPERTY->hidden = false;
-					} else if (!strncmp(text, "ESATTO", 6)) {
+					} else if (model == PRIMALUCELIB_MODEL_ESATTO) {
 						X_STATE_PROPERTY->count = 3;
 						X_CONFIG_PROPERTY->hidden = true;
 						X_RUNPRESET_PROPERTY->hidden = true;
@@ -1138,30 +797,30 @@ static void focuser_connection_handler(indigo_device *device) {
 						X_HOLD_CURR_PROPERTY->hidden = true;
 					}
 				}
-				if ((text = get_string(device, GET_SWAPP))) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_APPLICATION_FIRMWARE))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWAPP: %s", text);
 					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
-					if ((text = get_string(device, GET_SWWEB))) {
+					if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_WEB_FIRMWARE))) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWWEB: %s", text);
 						strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
 						strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
 					}
 				}
-				if ((text = get_string(device, GET_SN))) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_SERIAL_NUMBER))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SN: %s", text);
 					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
 				}
 				indigo_update_property(device, INFO_PROPERTY, NULL);
-				if ((text = get_string(device, GET_MOT1_ERROR)) && *text) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_FOCUSER_ERROR)) && *text) {
 					indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 				}
-				if (get_number(device, GET_CALRESTART_MOT1)) {
+				if (primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_RESTART)) {
 					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
-				PRIVATE_DATA->has_abs_pos = getToken(device, 0, GET_MOT1_ABS_POS) != -1;
+				PRIVATE_DATA->has_abs_pos = primalucelib_reply_has_focuser_position(LINK, true);
 				// The calibrated travel limits the positions a client can request; an uncalibrated controller reports no usable range.
-				double min_position = get_number(device, GET_MOT1_CAL_MINPOS);
-				double max_position = get_number(device, GET_MOT1_CAL_MAXPOS);
+				double min_position = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MIN);
+				double max_position = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX);
 				if (max_position <= min_position) {
 					min_position = 0;
 					max_position = 1000000;
@@ -1169,117 +828,79 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_POSITION_ITEM->number.min = min_position;
 				FOCUSER_POSITION_ITEM->number.max = max_position;
 				FOCUSER_STEPS_ITEM->number.max = max_position - min_position;
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
-				if (getToken(device, 0, GET_MOT1_SPEED) == -1) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = primalucelib_reply_focuser_position(LINK, PRIVATE_DATA->has_abs_pos);
+				if (!primalucelib_reply_has(LINK, PRIMALUCE_REPLY_FOCUSER_SPEED)) {
 					FOCUSER_SPEED_PROPERTY->hidden = true;
 				} else {
-					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = get_number(device, GET_MOT1_SPEED);
+					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_SPEED);
 					FOCUSER_SPEED_PROPERTY->hidden = false;
 				}
-				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash = (int)get_number(device, GET_MOT1_BKLASH);
+				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_BACKLASH);
 				PRIVATE_DATA->speed = (int)FOCUSER_SPEED_ITEM->number.value;
 				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->pending = false;
 				PRIVATE_DATA->environment_ticks = 0;
 				// Models without stored positions report no PRESET_n.
-				bool has_presets = getToken(device, 0, GET_PRESET_1) != -1;
+				bool has_presets = primalucelib_reply_has(LINK, PRIMALUCE_REPLY_FIRST_STORED_POSITION);
 				X_PRESETS_PROPERTY->hidden = X_PRESET_NAMES_PROPERTY->hidden = X_PRESET_GOTO_PROPERTY->hidden = !has_presets;
-				for (int i = 0; has_presets && i < PRESET_COUNT; i++) {
-					char key[16];
-					snprintf(key, sizeof(key), "PRESET_%d", i + 1);
-					char *position_path[] = { "res", "get", key, "M1POS", NULL };
-					char *name_path[] = { "res", "get", key, "NAME", NULL };
-					PRIVATE_DATA->preset_positions[i] = (int)get_number(device, position_path);
+				for (int i = 0; has_presets && i < PRIMALUCE_STORED_POSITION_COUNT; i++) {
+					PRIVATE_DATA->preset_positions[i] = (int)primalucelib_reply_stored_position(LINK, i + 1);
 					X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = PRIVATE_DATA->preset_positions[i];
 					X_PRESETS_PROPERTY->items[i].number.max = FOCUSER_POSITION_ITEM->number.max;
-					INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], (text = get_string(device, name_path)) ? text : "");
+					INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], (text = primalucelib_reply_stored_position_name(LINK, i + 1)) ? text : "");
 					INDIGO_COPY_VALUE(X_PRESET_NAMES_PROPERTY->items[i].text.value, PRIVATE_DATA->preset_names[i]);
 				}
-				X_STATE_MOTOR_TEMP_ITEM->number.value = get_number(device, GET_MOT1_NTC_T);
-				X_STATE_VIN_12V_ITEM->number.value = get_number(device, GET_VIN_12V);
-				X_STATE_VIN_USB_ITEM->number.value = get_number(device, GET_VIN_USB);
+				X_STATE_MOTOR_TEMP_ITEM->number.value = primalucelib_reply_motor_temperature(LINK);
+				X_STATE_VIN_12V_ITEM->number.value = primalucelib_reply_supply_voltage(LINK);
+				X_STATE_VIN_USB_ITEM->number.value = primalucelib_reply_usb_voltage(LINK);
 				// LANCFG selects between the access point and a connection to an existing network
-				if ((text = get_string(device, GET_LANCFG)) && !strcmp(text, "sta")) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_LAN_CONFIG)) && !strcmp(text, PRIMALUCE_LAN_STATION)) {
 					indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_STA_ITEM, true);
-				} else if ((text = get_string(device, GET_WIFIAP_STATUS))) {
-					if (!strcmp(text, "on")) {
+				} else if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ACCESS_POINT_STATUS))) {
+					if (!strcmp(text, PRIMALUCE_ACCESS_POINT_ON)) {
 						indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_AP_ITEM, true);
 					} else {
 						indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_OFF_ITEM, true);
 					}
 				}
-				if ((text = get_string(device, GET_WIFIAP_SSID))) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ACCESS_POINT_SSID))) {
 					INDIGO_COPY_VALUE(X_WIFI_AP_SSID_ITEM->text.value, text);
 				}
-				if ((text = get_string(device, GET_WIFIAP_PWD))) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ACCESS_POINT_PASSWORD))) {
 					INDIGO_COPY_VALUE(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
 				}
-				if ((text = get_string(device, GET_WIFISTA_SSID))) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_STATION_SSID))) {
 					INDIGO_COPY_VALUE(X_WIFI_STA_SSID_ITEM->text.value, text);
 				}
-				if ((text = get_string(device, GET_WIFISTA_PWD))) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_STATION_PASSWORD))) {
 					INDIGO_COPY_VALUE(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
 				}
-				if ((text = get_string(device, GET_DIMLEDS))) {
-					if (!strcmp(text, "on")) {
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_LEDS))) {
+					if (!strcmp(text, PRIMALUCE_LEDS_ON)) {
 						indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_ON_ITEM, true);
-					} else if (!strcmp(text, "low")) {
+					} else if (!strcmp(text, PRIMALUCE_LEDS_LOW)) {
 						indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_DIM_ITEM, true);
-					} else if (!strcmp(text, "middle")) {
+					} else if (!strcmp(text, PRIMALUCE_LEDS_MIDDLE)) {
 						indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_MIDDLE_ITEM, true);
 					} else {
 						indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_OFF_ITEM, true);
 					}
 				}
-				X_CONFIG_M1ACC_ITEM->number.value = X_CONFIG_M1ACC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_ACC);
-				X_CONFIG_M1SPD_ITEM->number.value = X_CONFIG_M1SPD_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_SPD);
-				X_CONFIG_M1DEC_ITEM->number.value = X_CONFIG_M1DEC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_DEC);
-				X_CONFIG_M1CACC_ITEM->number.value = X_CONFIG_M1CACC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_ACC);
-				X_CONFIG_M1CSPD_ITEM->number.value = X_CONFIG_M1CSPD_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_SPD);
-				X_CONFIG_M1CDEC_ITEM->number.value = X_CONFIG_M1CDEC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_DEC);
-				X_CONFIG_M1HOLD_ITEM->number.value = X_CONFIG_M1HOLD_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_HOLD);
-				X_RUNPRESET_L_M1ACC_ITEM->number.value = X_RUNPRESET_L_M1ACC_ITEM->number.target = get_number(device, GET_RUNPRESET_L_M1ACC);
-				X_RUNPRESET_L_M1SPD_ITEM->number.value = X_RUNPRESET_L_M1SPD_ITEM->number.target = get_number(device, GET_RUNPRESET_L_M1SPD);
-				X_RUNPRESET_L_M1DEC_ITEM->number.value = X_RUNPRESET_L_M1DEC_ITEM->number.target = get_number(device, GET_RUNPRESET_L_M1DEC);
-				X_RUNPRESET_L_M1CACC_ITEM->number.value = X_RUNPRESET_L_M1CACC_ITEM->number.target = get_number(device, GET_RUNPRESET_L_M1CACC);
-				X_RUNPRESET_L_M1CSPD_ITEM->number.value = X_RUNPRESET_L_M1CSPD_ITEM->number.target = get_number(device, GET_RUNPRESET_L_M1CSPD);
-				X_RUNPRESET_L_M1CDEC_ITEM->number.value = X_RUNPRESET_L_M1CDEC_ITEM->number.target = get_number(device, GET_RUNPRESET_L_M1CDEC);
-				X_RUNPRESET_L_M1HOLD_ITEM->number.value = X_RUNPRESET_L_M1HOLD_ITEM->number.target = get_number(device, GET_RUNPRESET_L_M1HOLD);
-				X_RUNPRESET_M_M1ACC_ITEM->number.value = X_RUNPRESET_M_M1ACC_ITEM->number.target = get_number(device, GET_RUNPRESET_M_M1ACC);
-				X_RUNPRESET_M_M1SPD_ITEM->number.value = X_RUNPRESET_M_M1SPD_ITEM->number.target = get_number(device, GET_RUNPRESET_M_M1SPD);
-				X_RUNPRESET_M_M1DEC_ITEM->number.value = X_RUNPRESET_M_M1DEC_ITEM->number.target = get_number(device, GET_RUNPRESET_M_M1DEC);
-				X_RUNPRESET_M_M1CACC_ITEM->number.value = X_RUNPRESET_M_M1CACC_ITEM->number.target = get_number(device, GET_RUNPRESET_M_M1CACC);
-				X_RUNPRESET_M_M1CSPD_ITEM->number.value = X_RUNPRESET_M_M1CSPD_ITEM->number.target = get_number(device, GET_RUNPRESET_M_M1CSPD);
-				X_RUNPRESET_M_M1CDEC_ITEM->number.value = X_RUNPRESET_M_M1CDEC_ITEM->number.target = get_number(device, GET_RUNPRESET_M_M1CDEC);
-				X_RUNPRESET_M_M1HOLD_ITEM->number.value = X_RUNPRESET_M_M1HOLD_ITEM->number.target = get_number(device, GET_RUNPRESET_M_M1HOLD);
-				X_RUNPRESET_S_M1ACC_ITEM->number.value = X_RUNPRESET_S_M1ACC_ITEM->number.target = get_number(device, GET_RUNPRESET_S_M1ACC);
-				X_RUNPRESET_S_M1SPD_ITEM->number.value = X_RUNPRESET_S_M1SPD_ITEM->number.target = get_number(device, GET_RUNPRESET_S_M1SPD);
-				X_RUNPRESET_S_M1DEC_ITEM->number.value = X_RUNPRESET_S_M1DEC_ITEM->number.target = get_number(device, GET_RUNPRESET_S_M1DEC);
-				X_RUNPRESET_S_M1CACC_ITEM->number.value = X_RUNPRESET_S_M1CACC_ITEM->number.target = get_number(device, GET_RUNPRESET_S_M1CACC);
-				X_RUNPRESET_S_M1CSPD_ITEM->number.value = X_RUNPRESET_S_M1CSPD_ITEM->number.target = get_number(device, GET_RUNPRESET_S_M1CSPD);
-				X_RUNPRESET_S_M1CDEC_ITEM->number.value = X_RUNPRESET_S_M1CDEC_ITEM->number.target = get_number(device, GET_RUNPRESET_S_M1CDEC);
-				X_RUNPRESET_S_M1HOLD_ITEM->number.value = X_RUNPRESET_S_M1HOLD_ITEM->number.target = get_number(device, GET_RUNPRESET_S_M1HOLD);
-				X_RUNPRESET_1_M1ACC_ITEM->number.value = X_RUNPRESET_1_M1ACC_ITEM->number.target = get_number(device, GET_RUNPRESET_1_M1ACC);
-				X_RUNPRESET_1_M1SPD_ITEM->number.value = X_RUNPRESET_1_M1SPD_ITEM->number.target = get_number(device, GET_RUNPRESET_1_M1SPD);
-				X_RUNPRESET_1_M1DEC_ITEM->number.value = X_RUNPRESET_1_M1DEC_ITEM->number.target = get_number(device, GET_RUNPRESET_1_M1DEC);
-				X_RUNPRESET_1_M1CACC_ITEM->number.value = X_RUNPRESET_1_M1CACC_ITEM->number.target = get_number(device, GET_RUNPRESET_1_M1CACC);
-				X_RUNPRESET_1_M1CSPD_ITEM->number.value = X_RUNPRESET_1_M1CSPD_ITEM->number.target = get_number(device, GET_RUNPRESET_1_M1CSPD);
-				X_RUNPRESET_1_M1CDEC_ITEM->number.value = X_RUNPRESET_1_M1CDEC_ITEM->number.target = get_number(device, GET_RUNPRESET_1_M1CDEC);
-				X_RUNPRESET_1_M1HOLD_ITEM->number.value = X_RUNPRESET_1_M1HOLD_ITEM->number.target = get_number(device, GET_RUNPRESET_1_M1HOLD);
-				X_RUNPRESET_2_M1ACC_ITEM->number.value = X_RUNPRESET_2_M1ACC_ITEM->number.target = get_number(device, GET_RUNPRESET_2_M1ACC);
-				X_RUNPRESET_2_M1SPD_ITEM->number.value = X_RUNPRESET_2_M1SPD_ITEM->number.target = get_number(device, GET_RUNPRESET_2_M1SPD);
-				X_RUNPRESET_2_M1DEC_ITEM->number.value = X_RUNPRESET_2_M1DEC_ITEM->number.target = get_number(device, GET_RUNPRESET_2_M1DEC);
-				X_RUNPRESET_2_M1CACC_ITEM->number.value = X_RUNPRESET_2_M1CACC_ITEM->number.target = get_number(device, GET_RUNPRESET_2_M1CACC);
-				X_RUNPRESET_2_M1CSPD_ITEM->number.value = X_RUNPRESET_2_M1CSPD_ITEM->number.target = get_number(device, GET_RUNPRESET_2_M1CSPD);
-				X_RUNPRESET_2_M1CDEC_ITEM->number.value = X_RUNPRESET_2_M1CDEC_ITEM->number.target = get_number(device, GET_RUNPRESET_2_M1CDEC);
-				X_RUNPRESET_2_M1HOLD_ITEM->number.value = X_RUNPRESET_2_M1HOLD_ITEM->number.target = get_number(device, GET_RUNPRESET_2_M1HOLD);
-				X_RUNPRESET_3_M1ACC_ITEM->number.value = X_RUNPRESET_3_M1ACC_ITEM->number.target = get_number(device, GET_RUNPRESET_3_M1ACC);
-				X_RUNPRESET_3_M1SPD_ITEM->number.value = X_RUNPRESET_3_M1SPD_ITEM->number.target = get_number(device, GET_RUNPRESET_3_M1SPD);
-				X_RUNPRESET_3_M1DEC_ITEM->number.value = X_RUNPRESET_3_M1DEC_ITEM->number.target = get_number(device, GET_RUNPRESET_3_M1DEC);
-				X_RUNPRESET_3_M1CACC_ITEM->number.value = X_RUNPRESET_3_M1CACC_ITEM->number.target = get_number(device, GET_RUNPRESET_3_M1CACC);
-				X_RUNPRESET_3_M1CSPD_ITEM->number.value = X_RUNPRESET_3_M1CSPD_ITEM->number.target = get_number(device, GET_RUNPRESET_3_M1CSPD);
-				X_RUNPRESET_3_M1CDEC_ITEM->number.value = X_RUNPRESET_3_M1CDEC_ITEM->number.target = get_number(device, GET_RUNPRESET_3_M1CDEC);
-				X_RUNPRESET_3_M1HOLD_ITEM->number.value = X_RUNPRESET_3_M1HOLD_ITEM->number.target = get_number(device, GET_RUNPRESET_3_M1HOLD);
-				if (get_number(device, GET_MOT1_HOLDCURR_STATUS)) {
+				primalucelib_run_config config;
+				primalucelib_reply_motor_config(LINK, &config);
+				set_run_config_items(X_CONFIG_PROPERTY, &config);
+				primalucelib_reply_run_preset(LINK, PRIMALUCE_KEY_RUN_PRESET_LIGHT, &config);
+				set_run_config_items(X_RUNPRESET_L_PROPERTY, &config);
+				primalucelib_reply_run_preset(LINK, PRIMALUCE_KEY_RUN_PRESET_MEDIUM, &config);
+				set_run_config_items(X_RUNPRESET_M_PROPERTY, &config);
+				primalucelib_reply_run_preset(LINK, PRIMALUCE_KEY_RUN_PRESET_SLOW, &config);
+				set_run_config_items(X_RUNPRESET_S_PROPERTY, &config);
+				primalucelib_reply_run_preset(LINK, PRIMALUCE_KEY_RUN_PRESET_USER_PREFIX "1", &config);
+				set_run_config_items(X_RUNPRESET_1_PROPERTY, &config);
+				primalucelib_reply_run_preset(LINK, PRIMALUCE_KEY_RUN_PRESET_USER_PREFIX "2", &config);
+				set_run_config_items(X_RUNPRESET_2_PROPERTY, &config);
+				primalucelib_reply_run_preset(LINK, PRIMALUCE_KEY_RUN_PRESET_USER_PREFIX "3", &config);
+				set_run_config_items(X_RUNPRESET_3_PROPERTY, &config);
+				if (primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_HOLD_CURRENT_STATUS)) {
 					indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_ON_ITEM, true);
 				} else {
 					indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_OFF_ITEM, true);
@@ -1330,7 +951,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		// connection closes.
 		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || PRIVATE_DATA->calibrating) {
 			char *reason;
-			if (!focuser_stop(device, &reason)) {
+			if (!primalucelib_focuser_stop(LINK, &reason)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop the focuser");
 			}
 		}
@@ -1411,11 +1032,11 @@ static void focuser_x_wifi_handler(indigo_device *device) {
 		return;
 	}
 	if (X_WIFI_OFF_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}");
+		result = primalucelib_set_access_point(LINK, false);
 	} else if (X_WIFI_AP_ITEM->sw.value) {
-		result = primaluce_set_lan_cfg(device, "ap") && primaluce_command(device, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"on\"}}}");
+		result = primaluce_set_lan_cfg(device, PRIMALUCE_LAN_ACCESS_POINT) && primalucelib_set_access_point(LINK, true);
 	} else if (X_WIFI_STA_ITEM->sw.value) {
-		result = primaluce_set_lan_cfg(device, "sta");
+		result = primaluce_set_lan_cfg(device, PRIMALUCE_LAN_STATION);
 	}
 	if (result) {
 		PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
@@ -1429,7 +1050,7 @@ static void focuser_x_wifi_handler(indigo_device *device) {
 static void focuser_x_wifi_ap_handler(indigo_device *device) {
 	X_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_WIFI_AP.on_change
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value)) {
+	if (!primalucelib_set_access_point_credentials(LINK, X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value)) {
 		X_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_WIFI_AP.on_change
@@ -1439,7 +1060,7 @@ static void focuser_x_wifi_ap_handler(indigo_device *device) {
 static void focuser_x_wifi_sta_handler(indigo_device *device) {
 	X_WIFI_STA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_WIFI_STA.on_change
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
+	if (!primalucelib_set_station_credentials(LINK, X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
 		X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.X_WIFI_STA.on_change
@@ -1451,13 +1072,13 @@ static void focuser_x_leds_handler(indigo_device *device) {
 	//+ focuser.X_LEDS.on_change
 	bool result = false;
 	if (X_LEDS_OFF_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"DIMLEDS\":\"off\"}}}");
+		result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_OFF);
 	} else if (X_LEDS_DIM_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"DIMLEDS\":\"low\"}}}");
+		result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_LOW);
 	} else if (X_LEDS_MIDDLE_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"DIMLEDS\":\"middle\"}}}");
+		result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_MIDDLE);
 	} else if (X_LEDS_ON_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"DIMLEDS\":\"on\"}}}");
+		result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_ON);
 	}
 	if (result) {
 		PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
@@ -1471,7 +1092,9 @@ static void focuser_x_leds_handler(indigo_device *device) {
 static void focuser_x_runpreset_1_handler(indigo_device *device) {
 	X_RUNPRESET_1_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_RUNPRESET_1.on_change
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"RUNPRESET_1\":{\"M1ACC\":%d,\"M1DEC\":%d,\"M1SPD\":%d,\"M1CACC\":%d,\"M1CDEC\":%d,\"M1CSPD\":%d,\"M1HOLD\":%d}}}}", (int)X_RUNPRESET_1_M1ACC_ITEM->number.target, (int)X_RUNPRESET_1_M1DEC_ITEM->number.target, (int)X_RUNPRESET_1_M1SPD_ITEM->number.target, (int)X_RUNPRESET_1_M1CACC_ITEM->number.target, (int)X_RUNPRESET_1_M1CDEC_ITEM->number.target, (int)X_RUNPRESET_1_M1CSPD_ITEM->number.target, (int)X_RUNPRESET_1_M1HOLD_ITEM->number.target)) {
+	primalucelib_run_config config;
+	get_run_config_targets(X_RUNPRESET_1_PROPERTY, &config);
+	if (!primalucelib_focuser_set_user_run_preset(LINK, 1, &config)) {
 		INDIGO_UPDATE_PROPERTY_STATE(X_RUNPRESET_1_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
@@ -1482,7 +1105,9 @@ static void focuser_x_runpreset_1_handler(indigo_device *device) {
 static void focuser_x_runpreset_2_handler(indigo_device *device) {
 	X_RUNPRESET_2_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_RUNPRESET_2.on_change
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"RUNPRESET_2\":{\"M1ACC\":%d,\"M1DEC\":%d,\"M1SPD\":%d,\"M1CACC\":%d,\"M1CDEC\":%d,\"M1CSPD\":%d,\"M1HOLD\":%d}}}}", (int)X_RUNPRESET_2_M1ACC_ITEM->number.target, (int)X_RUNPRESET_2_M1DEC_ITEM->number.target, (int)X_RUNPRESET_2_M1SPD_ITEM->number.target, (int)X_RUNPRESET_2_M1CACC_ITEM->number.target, (int)X_RUNPRESET_2_M1CDEC_ITEM->number.target, (int)X_RUNPRESET_2_M1CSPD_ITEM->number.target, (int)X_RUNPRESET_2_M1HOLD_ITEM->number.target)) {
+	primalucelib_run_config config;
+	get_run_config_targets(X_RUNPRESET_2_PROPERTY, &config);
+	if (!primalucelib_focuser_set_user_run_preset(LINK, 2, &config)) {
 		INDIGO_UPDATE_PROPERTY_STATE(X_RUNPRESET_2_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
@@ -1493,7 +1118,9 @@ static void focuser_x_runpreset_2_handler(indigo_device *device) {
 static void focuser_x_runpreset_3_handler(indigo_device *device) {
 	X_RUNPRESET_3_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_RUNPRESET_3.on_change
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"RUNPRESET_3\":{\"M1ACC\":%d,\"M1DEC\":%d,\"M1SPD\":%d,\"M1CACC\":%d,\"M1CDEC\":%d,\"M1CSPD\":%d,\"M1HOLD\":%d}}}}", (int)X_RUNPRESET_3_M1ACC_ITEM->number.target, (int)X_RUNPRESET_3_M1DEC_ITEM->number.target, (int)X_RUNPRESET_3_M1SPD_ITEM->number.target, (int)X_RUNPRESET_3_M1CACC_ITEM->number.target, (int)X_RUNPRESET_3_M1CDEC_ITEM->number.target, (int)X_RUNPRESET_3_M1CSPD_ITEM->number.target, (int)X_RUNPRESET_3_M1HOLD_ITEM->number.target)) {
+	primalucelib_run_config config;
+	get_run_config_targets(X_RUNPRESET_3_PROPERTY, &config);
+	if (!primalucelib_focuser_set_user_run_preset(LINK, 3, &config)) {
 		INDIGO_UPDATE_PROPERTY_STATE(X_RUNPRESET_3_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
@@ -1507,36 +1134,32 @@ static void focuser_x_runpreset_handler(indigo_device *device) {
 	bool result = false;
 	X_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 	if (X_RUNPRESET_L_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"RUNPRESET\":\"light\"}}}");
+		result = primalucelib_focuser_apply_run_preset(LINK, PRIMALUCE_RUN_PRESET_LIGHT);
 		X_RUNPRESET_L_ITEM->sw.value = false;
 	} else if (X_RUNPRESET_M_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"RUNPRESET\":\"medium\"}}}");
+		result = primalucelib_focuser_apply_run_preset(LINK, PRIMALUCE_RUN_PRESET_MEDIUM);
 		X_RUNPRESET_M_ITEM->sw.value = false;
 	} else if (X_RUNPRESET_S_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"RUNPRESET\":\"slow\"}}}");
+		result = primalucelib_focuser_apply_run_preset(LINK, PRIMALUCE_RUN_PRESET_SLOW);
 		X_RUNPRESET_S_ITEM->sw.value = false;
 	} else if (X_RUNPRESET_1_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"RUNPRESET\":1}}}");
+		result = primalucelib_focuser_apply_user_run_preset(LINK, 1);
 		X_RUNPRESET_1_ITEM->sw.value = false;
 	} else if (X_RUNPRESET_2_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"RUNPRESET\":2}}}");
+		result = primalucelib_focuser_apply_user_run_preset(LINK, 2);
 		X_RUNPRESET_2_ITEM->sw.value = false;
 	} else if (X_RUNPRESET_3_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"RUNPRESET\":3}}}");
+		result = primalucelib_focuser_apply_user_run_preset(LINK, 3);
 		X_RUNPRESET_3_ITEM->sw.value = false;
 	}
 	if (!result) {
 		X_RUNPRESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else  if (!primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"HOLDCURR_STATUS\":\"\",\"FnRUN_SPD\":\"\",\"FnRUN_DEC\":\"\",\"FnRUN_ACC\":\"\",\"FnRUN_CURR_SPD\":\"\",\"FnRUN_CURR_DEC\":\"\",\"FnRUN_CURR_ACC\":\"\",\"FnRUN_CURR_HOLD\":\"\"}}}}")) {
+	} else  if (!primalucelib_focuser_get_motor_config(LINK)) {
 		X_CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	X_CONFIG_M1ACC_ITEM->number.value = X_CONFIG_M1ACC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_ACC);
-	X_CONFIG_M1SPD_ITEM->number.value = X_CONFIG_M1SPD_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_SPD);
-	X_CONFIG_M1DEC_ITEM->number.value = X_CONFIG_M1DEC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_DEC);
-	X_CONFIG_M1CACC_ITEM->number.value = X_CONFIG_M1CACC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_ACC);
-	X_CONFIG_M1CSPD_ITEM->number.value = X_CONFIG_M1CSPD_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_SPD);
-	X_CONFIG_M1CDEC_ITEM->number.value = X_CONFIG_M1CDEC_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_DEC);
-	X_CONFIG_M1HOLD_ITEM->number.value = X_CONFIG_M1HOLD_ITEM->number.target = get_number(device, GET_MOT1_FnRUN_CURR_HOLD);
+	primalucelib_run_config config;
+	primalucelib_reply_motor_config(LINK, &config);
+	set_run_config_items(X_CONFIG_PROPERTY, &config);
 	indigo_update_property(device, X_CONFIG_PROPERTY, NULL);
 	//- focuser.X_RUNPRESET.on_change
 	indigo_update_property(device, X_RUNPRESET_PROPERTY, NULL);
@@ -1546,16 +1169,12 @@ static void focuser_x_presets_handler(indigo_device *device) {
 	X_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_PRESETS.on_change
 	// The controller refuses a zero position, so only positions that changed to a stored value are written.
-	for (int i = 0; i < PRESET_COUNT; i++) {
+	for (int i = 0; i < PRIMALUCE_STORED_POSITION_COUNT; i++) {
 		int position = (int)X_PRESETS_PROPERTY->items[i].number.target;
 		if (position == PRIVATE_DATA->preset_positions[i]) {
 			continue;
 		}
-		char key[16];
-		snprintf(key, sizeof(key), "PRESET_%d", i + 1);
-		char *path[] = { "res", "set", key, "M1POS", NULL };
-		char *state;
-		if (position > 0 && primaluce_command(device, "{\"req\":{\"set\":{\"%s\":{\"M1POS\":%d}}}}", key, position) && (state = get_string(device, path)) != NULL && !strcmp(state, "done")) {
+		if (primalucelib_focuser_set_stored_position(LINK, i + 1, position)) {
 			PRIVATE_DATA->preset_positions[i] = position;
 		} else {
 			X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1569,16 +1188,12 @@ static void focuser_x_presets_handler(indigo_device *device) {
 static void focuser_x_preset_names_handler(indigo_device *device) {
 	X_PRESET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_PRESET_NAMES.on_change
-	for (int i = 0; i < PRESET_COUNT; i++) {
+	for (int i = 0; i < PRIMALUCE_STORED_POSITION_COUNT; i++) {
 		char *name = X_PRESET_NAMES_PROPERTY->items[i].text.value;
 		if (!strcmp(name, PRIVATE_DATA->preset_names[i])) {
 			continue;
 		}
-		char key[16];
-		snprintf(key, sizeof(key), "PRESET_%d", i + 1);
-		char *path[] = { "res", "set", key, "NAME", NULL };
-		char *state;
-		if (strchr(name, '"') == NULL && strchr(name, '\\') == NULL && primaluce_command(device, "{\"req\":{\"set\":{\"%s\":{\"NAME\":\"%s\"}}}}", key, name) && (state = get_string(device, path)) != NULL && !strcmp(state, "done")) {
+		if (primalucelib_focuser_set_stored_position_name(LINK, i + 1, name)) {
 			INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], name);
 		} else {
 			X_PRESET_NAMES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1593,7 +1208,7 @@ static void focuser_x_preset_goto_handler(indigo_device *device) {
 	X_PRESET_GOTO_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_PRESET_GOTO.on_change
 	int index = -1;
-	for (int i = 0; i < PRESET_COUNT; i++) {
+	for (int i = 0; i < PRIMALUCE_STORED_POSITION_COUNT; i++) {
 		if (X_PRESET_GOTO_PROPERTY->items[i].sw.value) {
 			index = i;
 		}
@@ -1625,13 +1240,9 @@ static void focuser_x_hold_curr_handler(indigo_device *device) {
 	//+ focuser.X_HOLD_CURR.on_change
 	bool result = false;
 	if (X_HOLD_CURR_OFF_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"HOLDCURR_STATUS\":0}}}}");
+		result = primalucelib_focuser_set_hold_current(LINK, false);
 	} else if (X_HOLD_CURR_ON_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"HOLDCURR_STATUS\":1}}}}");
-	}
-	if (result) {
-		char *state = get_string(device, SET_MOT1_HOLDCURR_STATUS);
-		result = state != NULL && !strcmp(state, "done");
+		result = primalucelib_focuser_set_hold_current(LINK, true);
 	}
 	if (result) {
 		PRIVATE_DATA->hold_item = selected_item(X_HOLD_CURR_PROPERTY);
@@ -1647,41 +1258,27 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 	//+ focuser.X_CALIBRATE_F.on_change
 	bool result = true;
 	bool started = X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value;
-	if (X_CALIBRATE_F_START_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"Init\"}}}}");
+	if (X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value) {
+		// The controller needs a second between the calibration steps.
+		result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_INIT);
 		if (result) {
 			indigo_usleep(1000000);
-			result = primaluce_command(device, "{\"req\":{\"set\": {\"MOT1\": {\"CAL_DIR\":\"normal\"}}}}");
+			result = primalucelib_focuser_set_calibration_direction(LINK, X_CALIBRATE_F_START_ITEM->sw.value ? PRIMALUCE_CALIBRATION_DIRECTION_NORMAL : PRIMALUCE_CALIBRATION_DIRECTION_INVERTED);
 		}
 		if (result) {
 			indigo_usleep(1000000);
-			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMinPos\"}}}}");
+			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MIN);
 		}
 		if (result) {
 			indigo_usleep(1000000);
-			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"}}}}");
-		}
-	} else if (X_CALIBRATE_F_START_INVERTED_ITEM->sw.value) {
-		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"Init\"}}}}");
-		if (result) {
-			indigo_usleep(1000000);
-			result = primaluce_command(device, "{\"req\":{\"set\": {\"MOT1\": {\"CAL_DIR\":\"invert\"}}}}");
-		}
-		if (result) {
-			indigo_usleep(1000000);
-			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMinPos\"}}}}");
-		}
-		if (result) {
-			indigo_usleep(1000000);
-			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"}}}}");
+			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_FIND_MAX);
 		}
 	} else if (X_CALIBRATE_F_END_ITEM->sw.value) {
 		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
-		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMaxPos\"}}}}");
+		result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MAX);
 		if (result) {
-			char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
-			if (primaluce_command(device, get_pos_command)) {
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+			if (primalucelib_focuser_request_position(LINK, PRIVATE_DATA->has_abs_pos)) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = primalucelib_reply_focuser_position(LINK, PRIVATE_DATA->has_abs_pos);
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		}
@@ -1699,8 +1296,7 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 static void focuser_backlash_handler(indigo_device *device) {
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_BACKLASH.on_change
-	char *state = NULL;
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"BKLASH\":%d}}}}", (int)FOCUSER_BACKLASH_ITEM->number.target) || (state = get_string(device, SET_MOT1_BKLASH)) == NULL || strcmp(state, "done")) {
+	if (!primalucelib_focuser_set_backlash(LINK, (int)FOCUSER_BACKLASH_ITEM->number.target)) {
 		// The controller keeps the backlash it had.
 		FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash;
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_BACKLASH_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -1725,13 +1321,13 @@ static void focuser_position_handler(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 	if (PRIVATE_DATA->abort_requested) {
 		// An abort overtook this move while it was queued, so it is never sent.
-		PRIVATE_DATA->last_error[0] = 0;
-		focuser_motion_failed(device, NULL);
-	} else if (!primaluce_command(device, PRIVATE_DATA->is_sestosenso_3 ? "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}" : "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target)) {
+		primalucelib_clear_last_error(LINK);
 		focuser_motion_failed(device, NULL);
 	} else {
-		char *state = get_string(device, PRIVATE_DATA->is_sestosenso_3 ? CMD_MOT1_GOTO : CMD_MOT1_STEP);
-		if (state == NULL || strcmp(state, "done")) {
+		char *state = NULL;
+		if (!primalucelib_focuser_move_to(LINK, PRIVATE_DATA->is_sestosenso_3, (int)FOCUSER_POSITION_ITEM->number.target, &state)) {
+			focuser_motion_failed(device, NULL);
+		} else if (!primalucelib_is_done(state)) {
 			focuser_motion_failed(device, state);
 		} else {
 			indigo_execute_handler(device, focuser_movement_finalizer);
@@ -1764,8 +1360,7 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
-	char *state = NULL;
-	if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"SPEED\":%d}}}}", (int)FOCUSER_SPEED_ITEM->number.target) || (state = get_string(device, SET_MOT1_SPEED)) == NULL || strcmp(state, "done")) {
+	if (!primalucelib_focuser_set_speed(LINK, (int)FOCUSER_SPEED_ITEM->number.target)) {
 		// The controller keeps the speed it had.
 		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = PRIVATE_DATA->speed;
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_SPEED_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -1787,14 +1382,14 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	bool requested = FOCUSER_ABORT_MOTION_ITEM->sw.value;
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	bool moving = PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
-	if (requested && !moving && !PRIVATE_DATA->calibrating && PRIVATE_DATA->link_failed) {
+	if (requested && !moving && !PRIVATE_DATA->calibrating && primalucelib_link_failed(LINK)) {
 		// Nothing to stop, but the controller did not answer the last request.
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
 	}
 	if (requested && (moving || PRIVATE_DATA->calibrating)) {
 		char *reason;
-		if (!focuser_stop(device, &reason)) {
+		if (!primalucelib_focuser_stop(LINK, &reason)) {
 			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, power_message(reason));
 			return;
 		}
@@ -2168,18 +1763,18 @@ static void rotator_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ rotator.on_connect
 			char *text;
-			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":1}}}")) {
-				if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
-					if ((text = get_string(device, GET_MOT2_ERROR)) && *text) {
+			if (primalucelib_rotator_enable(LINK, true)) {
+				if (primalucelib_get_state(LINK)) {
+					if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ROTATOR_ERROR)) && *text) {
 						indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 					}
-					if (get_number(device, GET_CALRESTART_MOT2)) {
+					if (primalucelib_reply_number(LINK, PRIMALUCE_REPLY_ROTATOR_CALIBRATION_RESTART)) {
 						indigo_send_message(device, BUSY_PROPERTY, "ARCO needs calibration");
 					}
 				}
-				PRIVATE_DATA->rotator_has_abs_pos = getToken(device, 0, GET_MOT2_ABS_POS) != -1;
-				PRIVATE_DATA->rotator_has_position_deg = getToken(device, 0, GET_MOT2_POSITION_DEG) != -1;
-				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->rotator_has_position_deg ? GET_MOT2_POSITION_DEG : (PRIVATE_DATA->rotator_has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG));
+				PRIVATE_DATA->rotator_has_abs_pos = primalucelib_reply_has(LINK, PRIMALUCE_REPLY_ROTATOR_ABS_POS_REGISTER);
+				PRIVATE_DATA->rotator_has_position_deg = primalucelib_reply_has(LINK, PRIMALUCE_REPLY_ROTATOR_POSITION_DEG);
+				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = primalucelib_reply_rotator_angle(LINK, primalucelib_rotator_angle_source(PRIVATE_DATA->rotator_has_position_deg, PRIVATE_DATA->rotator_has_abs_pos));
 			} else {
 				connection_result = false;
 			}
@@ -2204,7 +1799,7 @@ static void rotator_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_pending_handlers(device);
 		//+ rotator.on_disconnect
-		primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":0}}}");
+		primalucelib_rotator_enable(LINK, false);
 		//- rotator.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -2233,8 +1828,7 @@ static void rotator_x_calibrate_r_handler(indigo_device *device) {
 	//+ rotator.X_CALIBRATE_R.on_change
 	if (X_CALIBRATE_R_START_ITEM->sw.value) {
 		X_CALIBRATE_R_START_ITEM->sw.value = false;
-		char *state;
-		if (!primaluce_command(device, "{\"req\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"exec\"}}}}") || (state = get_string(device, SET_MOT2_CAL_STATUS)) == NULL || strcmp(state, "done")) {
+		if (!primalucelib_rotator_start_calibration(LINK)) {
 			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		} else {
 			// The property stays busy until the controller reports the calibration finished.
@@ -2251,8 +1845,7 @@ static void rotator_position_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_POSITION.on_change
 	if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 		// A sync redefines the current angle without moving the rotator.
-		char *state = NULL;
-		if (primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"SYNC_POS\":{\"DEG\":%g}}}}}", ROTATOR_POSITION_ITEM->number.target) && (state = get_string(device, CMD_MOT2_SYNC_POS)) != NULL && !strcmp(state, "done")) {
+		if (primalucelib_rotator_sync(LINK, ROTATOR_POSITION_ITEM->number.target)) {
 			ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target;
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -2263,12 +1856,9 @@ static void rotator_position_handler(indigo_device *device) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-	} else if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOVE_ABS\":{\"DEG\":%g}}}}}", ROTATOR_POSITION_ITEM->number.target)) {
-		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	} else {
-		char *state = get_string(device, CMD_MOT2_STEP);
-		if (state == NULL || strcmp(state, "done")) {
+		char *state = NULL;
+		if (!primalucelib_rotator_move_to(LINK, ROTATOR_POSITION_ITEM->number.target, &state) || !primalucelib_is_done(state)) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		} else {
@@ -2284,20 +1874,15 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 	indigo_cancel_pending_handler(device, rotator_position_handler);
 	if (X_CALIBRATE_R_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_pending_handler(device, rotator_calibration_poll);
-		primaluce_command(device, "{\"req\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"stop\"}}}}");
+		primalucelib_rotator_stop_calibration(LINK);
 		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_ALERT_STATE, "Calibration aborted");
 	}
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
-	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOT_STOP\":\"\"}}}}")) {
+	if (!primalucelib_rotator_stop(LINK)) {
 		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		char *state = get_string(device, CMD_MOT2_MOT_STOP);
-		if (state == NULL || strcmp(state, "done")) {
-			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
 	}
 	//- rotator.ROTATOR_ABORT_MOTION.on_change
 	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);

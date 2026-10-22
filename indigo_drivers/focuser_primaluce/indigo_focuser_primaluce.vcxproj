@@ -166,9 +166,13 @@
     <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj">
       <Project>{aa10be9e-6416-4f58-b821-2d0e479eb81b}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\shared\primalucelib\primalucelib.vcxproj">
+      <Project>{f3a6c2b1-5d4e-4c8a-9b7f-2e1d0c9a8b71}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="indigo_focuser_primaluce.h" />
+    <ClInclude Include="..\shared\primalucelib\primalucelib.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

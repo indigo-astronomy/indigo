@@ -32,5 +32,8 @@
     <ClInclude Include="indigo_focuser_primaluce.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\primalucelib\primalucelib.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

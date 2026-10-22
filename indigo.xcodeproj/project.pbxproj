@@ -759,6 +759,8 @@
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		59B348A029E854080062C2EA /* indigo_focuser_primaluce.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */; };
 		59B348A229E854080062C2EA /* indigo_focuser_primaluce.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */; };
+		C0DE20261022000000000007 /* primalucelib.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261022000000000004 /* primalucelib.c */; };
+		C0DE20261022000000000008 /* primalucelib.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261022000000000004 /* primalucelib.c */; };
 		59B348A529E85E2F0062C2EA /* jsmn.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B348A329E85E2F0062C2EA /* jsmn.h */; };
 		59B348A729E85F8A0062C2EA /* libaltaircam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; };
 		59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -5981,6 +5983,12 @@
 		DF10000000000000000003 /* dome_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dome_dragonfly_simulator.c; sourceTree = "<group>"; };
 		DF10000000000000000004 /* test_dome_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_dragonfly_simulator.c; sourceTree = "<group>"; };
 		DF10000000000000000005 /* test_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_uni_io.c; sourceTree = "<group>"; };
+		C0DE20261022000000000003 /* primalucelib.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = primalucelib.h; sourceTree = "<group>"; };
+		C0DE20261022000000000004 /* primalucelib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = primalucelib.c; sourceTree = "<group>"; };
+		C0DE20261022000000000009 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		C0DE2026102200000000000A /* primalucelib.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = primalucelib.vcxproj; sourceTree = "<group>"; };
+		C0DE20261022000000000005 /* PROTOCOL.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOL.md; sourceTree = "<group>"; };
+		C0DE20261022000000000006 /* test_primalucelib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_primalucelib.c; sourceTree = "<group>"; };
 		DF9510A9A0388C24156FC1BA /* polaralign_mlastro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = polaralign_mlastro_simulator.c; sourceTree = "<group>"; };
 		E2AB6009F0F6DC1E9BC0E5AF /* archive_task.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = archive_task.py; sourceTree = "<group>"; };
 		E3E24DC4AC744AD3CEED2BD9 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
@@ -11251,6 +11259,27 @@
 			path = data;
 			sourceTree = "<group>";
 		};
+		C0DE20261022000000000001 /* shared */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20261022000000000002 /* primalucelib */,
+			);
+			path = shared;
+			sourceTree = "<group>";
+		};
+		C0DE20261022000000000002 /* primalucelib */ = {
+			isa = PBXGroup;
+			children = (
+				C0DE20261022000000000005 /* PROTOCOL.md */,
+				C0DE20261022000000000003 /* primalucelib.h */,
+				C0DE20261022000000000004 /* primalucelib.c */,
+				59B348A329E85E2F0062C2EA /* jsmn.h */,
+				C0DE20261022000000000009 /* Makefile */,
+				C0DE2026102200000000000A /* primalucelib.vcxproj */,
+			);
+			path = primalucelib;
+			sourceTree = "<group>";
+		};
 		59B3489229E728D80062C2EA /* focuser_primaluce */ = {
 			isa = PBXGroup;
 			children = (
@@ -11260,7 +11289,6 @@
 				59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */,
 				59B3489E29E854070062C2EA /* indigo_focuser_primaluce_main.c */,
 				59666B1F2F5B0B0A00E0DD90 /* indigo_focuser_primaluce.driver */,
-				59B348A329E85E2F0062C2EA /* jsmn.h */,
 				59B3489329E729380062C2EA /* focuser_primaluce_simulator */,
 			);
 			path = focuser_primaluce;
@@ -11702,6 +11730,7 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE20261022000000000001 /* shared */,
 				C0DE20260913000100000001 /* AGENTS.md */,
 				597BD149260137E500239274 /* agent_alpaca */,
 				597E79DB25A5DB6E009B0817 /* agent_astrometry */,
@@ -14558,6 +14587,7 @@
 				59FA7BE7301D35FD00A35CFB /* test_raw_image.c */,
 				59FA7BE8301D35FD00A35CFB /* test_token.c */,
 				DF10000000000000000005 /* test_uni_io.c */,
+				C0DE20261022000000000006 /* test_primalucelib.c */,
 				C0DE20261001A10000000023 /* test_system_alpaca_json.c */,
 			);
 			path = unit;
@@ -18303,6 +18333,7 @@
 				59E717D92D50234B00BA2CBE /* indigo_focuser_qhy.c in Sources */,
 				598A1BBA259BA94A00C0B34C /* indigo_timer.c in Sources */,
 				59B348B529E85FC50062C2EA /* indigo_focuser_primaluce.c in Sources */,
+				C0DE20261022000000000008 /* primalucelib.c in Sources */,
 				59A4132F2971E54C00F0A80B /* indigo_wheel_playerone.c in Sources */,
 				598A1BBB259BA94A00C0B34C /* indigo_dome_azimuth.c in Sources */,
 				598A1BBC259BA94A00C0B34C /* indigo_mount_pmc8_main.c in Sources */,
@@ -18656,6 +18687,7 @@
 				595F2930211E211200380EF4 /* DDHidDevice.m in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
 				59B348A229E854080062C2EA /* indigo_focuser_primaluce.c in Sources */,
+				C0DE20261022000000000007 /* primalucelib.c in Sources */,
 				9D3E90762899679A0093C9EB /* indigo_focuser_prodigy.c in Sources */,
 				9D743A5923FD573E0093319F /* indigo_rotator_simulator.c in Sources */,
 				593A8F10285F616F00F6CF1C /* indigocat_precession.c in Sources */,

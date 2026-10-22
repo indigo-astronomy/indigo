@@ -1,0 +1,24 @@
+{
+  "id": "FND-000050",
+  "title": "status_polling allowed exactly the 15 s the environment poll plus a silent reply take, so it failed whenever the poll came late",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "010-primalucelib",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "test_focuser_primaluce_simulator status_polling waits 15 s for FOCUSER_TEMPERATURE ALERT after arming a silent EXT_T reply. The environment is polled every 10 s and a silent reply costs the 5 s serial read timeout, so the ALERT arrives up to 15 s later. On Linux it failed 2 of 3 isolated reruns and in all three full baseline runs.",
+  "evidence": "010-primalucelib/verification.md (Baseline, FND-000050)",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "010-primalucelib/verification.md: the window is 20 s with the cadence documented in the test; 3 of 3 isolated reruns and the recorded run pass. The assertion itself is unchanged.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}
