@@ -1507,20 +1507,21 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				strcat(tmp, fs + 3);
 			}
 			strcpy(format, tmp);
-		} else if (fs[1] == 'T' || (isdigit(fs[1]) && fs[2] == 'T')) { // %T or %nT - temperature
+		} else if (fs[1] == 'T' || fs[1] == 't' || (isdigit(fs[1]) && (fs[2] == 'T' || fs[2] == 't'))) { // %T or %nT - target temperature, %t or %nt - current temperature
 			char t[16] = "NA";
+			bool current = fs[1] == 't' || (isdigit(fs[1]) && fs[2] == 't');
 			int digits = 0;
 			if (isdigit(fs[1])) {
 				digits = fs[1] - '0';
 				if (digits < 0) digits = 0;
 				if (digits > 5) digits = 5;
 			}
-			if (!CCD_TEMPERATURE_PROPERTY->hidden && !CCD_COOLER_PROPERTY->hidden && CCD_COOLER_ON_ITEM->sw.value) {
-				sprintf(t, "%.*f", digits, CCD_TEMPERATURE_ITEM->number.target);
+			if (!CCD_TEMPERATURE_PROPERTY->hidden && (current || (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_ON_ITEM->sw.value))) {
+				sprintf(t, "%.*f", digits, current ? CCD_TEMPERATURE_ITEM->number.value : CCD_TEMPERATURE_ITEM->number.target);
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, t);
-			if (fs[1] == 'T') {
+			if (fs[1] == 'T' || fs[1] == 't') {
 				strcat(tmp, fs + 2);
 			} else {
 				strcat(tmp, fs + 3);

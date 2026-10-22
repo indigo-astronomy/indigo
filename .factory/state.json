@@ -4,6 +4,6 @@
   "phase": "idle",
   "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Master holds tasks 001 to 007. Open findings FND-000046, FND-000047 and FND-000048 have no repair task yet. Four non-audit tasks completed since the full audit; the next audit is due after one more or after 28 Oct 2026.",
+  "next_action": "Task 008 verified on its task branch; integration/publication pending owner authorization. Five non-audit tasks completed since full review; perform the recurring repository audit before the next unrelated task or release.",
   "blocker": null
 }
