@@ -19,6 +19,7 @@ Review independence: not independent; this was a separate review pass over the f
 | Data, secrets, cryptography, and logs | Yes | New log lines carry no payload. The simulator's WiFi strings are synthetic. No secrets are added. |
 | Filesystem and outbound network access | No | No new access. The simulator queue is in memory. |
 | Dependencies and configuration | No | No new dependency. |
+| Data model (MIGRATION_STATUS.md) | Yes | Only the simulated test count of the focuser_primaluce row changed (55 to 60, matching the recorded run); the Comment column is untouched. No schema or other row changed. |
 | Abuse and failure behavior | Yes | FND-000057, a calibration run that END could not stop, was a physical-safety defect. Fixed and covered: extra requests are refused, END is accepted during the run, and abort sends the SESTO SENSO 3 stop commands (FND-000058). The restart wait and the range poll are bounded (10 s, 5 s), and no motion runs during them. |
 
 ## Automated checks

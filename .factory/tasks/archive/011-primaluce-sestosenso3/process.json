@@ -59,7 +59,8 @@
   ],
   "risk_reviews": {
     "serial-io": "security.md",
-    "input-parsing": "security.md"
+    "input-parsing": "security.md",
+    "data-model": "security.md"
   },
   "reviews": [],
   "reviewed_content": {
