@@ -4,6 +4,6 @@
   "phase": "idle",
   "status": "idle",
   "assigned_role": "coordinator",
-  "next_action": "Task 008 verified on its task branch; integration/publication pending owner authorization. Five non-audit tasks completed since full review; perform the recurring repository audit before the next unrelated task or release.",
+  "next_action": "Tasks 008-ccd-current-temperature-filename and 009-commit-permission-rule are on master. Task 008-primalucelib waits unmerged on task/008-primalucelib and needs a new task ID, because 008 is taken. Six non-audit tasks are complete since the full review; the recurring repository audit is due before the next unrelated task or release.",
   "blocker": null
 }
