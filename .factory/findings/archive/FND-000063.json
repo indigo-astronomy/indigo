@@ -1,0 +1,24 @@
+{
+  "id": "FND-000063",
+  "title": "primalucelib failed replies preceded by SESTO SENSO 3 debug text on the same line",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "013-primaluce-arco-sestosenso3",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "After quick repeated ARCO syncs the controller printed mJsonAPI_ParseCmdReq_Motor in front of the JSON reply on one line, which did not parse, so the request failed.",
+  "evidence": "013-primaluce-arco-sestosenso3/verification.md (FND-000063); hardware session 2026-10-23",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "013-primaluce-arco-sestosenso3/verification.md: a reply line is parsed from its first brace; debug_text_before_a_reply_is_skipped and sestosenso3_rotator_sync pass and fail without the fix; hardware sync behind debug text ended OK.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

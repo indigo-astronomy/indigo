@@ -1,0 +1,24 @@
+{
+  "id": "FND-000061",
+  "title": "primalucelib refused SESTO SENSO 3 ARCO moves and syncs it had acknowledged",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "013-primaluce-arco-sestosenso3",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The SESTO SENSO 3 (firmware 1.0.9) acknowledges MOT2 MOVE_ABS and SYNC_POS under MOT2.DEG; the library read only MOT2.STEP and MOT2.SYNC_POS, so the ARCO moved while ROTATOR_POSITION went ALERT at once, and syncs failed.",
+  "evidence": "013-primaluce-arco-sestosenso3/verification.md (FND-000061); server log of the hardware session 2026-10-23",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "013-primaluce-arco-sestosenso3/verification.md: both acknowledgements are accepted under either key; sestosenso3_rotator_move/_sync pass and fail without the fix; hardware moves and syncs end OK.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

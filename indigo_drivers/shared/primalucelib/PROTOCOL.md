@@ -10,8 +10,10 @@ Each command below says how it is known:
 - **HW**: verified with `indigo_focuser_primaluce` on a SESTO SENSO 2 (application firmware
   03.05.08, web firmware 03.03.00), over USB and over WiFi. Evidence:
   `indigo_drivers/focuser_primaluce/REFACTOR.md`.
+- **HW (SESTO SENSO 3)**: verified on a SESTO SENSO 3 with an ARCO (application firmware 1.0.9, web
+  03.06.01) over USB, tasks 011 to 013. Evidence: `indigo_drivers/focuser_primaluce/REFACTOR.md`.
 - **SIM**: used by `indigo_focuser_primaluce` and covered by its simulator, but not observed on
-  hardware. This includes everything on the ARCO, because the tested unit had none attached.
+  hardware. The ARCO calibration and the older angle requests remain in this class.
 - **INDI**: taken from the INDI drivers (`primalucacommandset.cpp`, `alto.cpp`, `giotto.cpp`,
   `sestosenso3.cpp`). Not verified by INDIGO; no INDIGO driver uses it yet. Treat a reply format
   marked INDI as an assumption until a driver has seen it.
@@ -179,18 +181,21 @@ Full-state keys used by the focuser driver (**HW**):
 | Purpose | Request | Acknowledged under | Known |
 | --- | --- | --- | --- |
 | Enable / disable | `{"req":{"set": {"ARCO":1}}}` | | SIM |
-| Angle, synced | `{"req":{"get":{"MOT2":{"POSITION_DEG":"","STATUS":""}}}}` | `MOT2.POSITION_DEG` | SIM |
+| Angle, synced | `{"req":{"get":{"MOT2":{"POSITION_DEG":"","STATUS":""}}}}` | `MOT2.POSITION_DEG`; a SESTO SENSO 3 reports five decimals with a step rounding (a move to 15 reads 14.99994) | HW (SESTO SENSO 3) |
 | Angle, mechanical | `{"req":{"get":{"MOT2":{"ABS_POS_DEG":"","STATUS":""}}}}` | `MOT2.ABS_POS_DEG` | SIM |
 | Angle, older firmware | `{"req":{"get":{"MOT2":{"ABS_POS":"DEG","STATUS":""}}}}` | `MOT2.ABS_POS` | SIM |
-| Move | `{"req":{"cmd":{"MOT2":{"MOVE_ABS":{"DEG":45}}}}}` | `MOT2.STEP` | SIM |
-| Sync | `{"req":{"cmd":{"MOT2":{"SYNC_POS":{"DEG":45}}}}}` | `MOT2.SYNC_POS` | SIM |
-| Stop | `{"req":{"cmd":{"MOT2":{"MOT_STOP":""}}}}` | `MOT2.MOT_STOP` | SIM |
+| Move | `{"req":{"cmd":{"MOT2":{"MOVE_ABS":{"DEG":45}}}}}` | `MOT2.STEP`; a SESTO SENSO 3 answers `MOT2.DEG` | HW (SESTO SENSO 3) |
+| Sync | `{"req":{"cmd":{"MOT2":{"SYNC_POS":{"DEG":45}}}}}` | `MOT2.SYNC_POS`; a SESTO SENSO 3 answers `MOT2.DEG` | HW (SESTO SENSO 3) |
+| Stop | `{"req":{"cmd":{"MOT2":{"MOT_STOP":""}}}}` | `MOT2.MOT_STOP` | HW (SESTO SENSO 3) |
 | Calibrate | `{"req":{"set":{"MOT2":{"CAL_STATUS":"exec"}}}}` | `MOT2.CAL_STATUS`; poll `CAL_STATUS` until `stop`; `stop` also ends it | SIM |
 | Serial number | `{"req":{"get":{"ARCO_SN":""}}}` | | INDI |
 
 - **Synced angle:** `MOVE_ABS` targets the synced angle `POSITION_DEG`.
 - **Calibration is a `set`:** ARCO calibration is started with `set`, not `cmd`; sent as `cmd`
   it completes at once.
+- **Debug text (HW, SESTO SENSO 3 firmware 1.0.9):** after quick repeated ARCO syncs the controller
+  printed `mJsonAPI_ParseCmdReq_Motor` several times in front of the reply on the same line; the
+  library parses a reply from its first `{`.
 - **Without an ARCO:** a controller without an ARCO refuses ARCO commands with
   "Error: invalid command; ARCO is not connected" (**HW**, sync request).
 - **Native reverse:** INDI does not use the ARCO's native `REVERSE` setting, reporting that it

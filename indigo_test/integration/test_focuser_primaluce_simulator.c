@@ -1633,7 +1633,8 @@ static void rotator_sync(void) {
 	// A refused sync keeps the angle the rotator had.
 	SERIAL_CHECK_TRUE(fault("\"SYNC_POS\"", "reject"));
 	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(number_is(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 130, 0));
+	// A SESTO SENSO 3 reads the angle back with the rounding of its step conversion.
+	SERIAL_CHECK_TRUE(number_is(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 130, 0.01));
 	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
 cleanup:
 	driver_stop();
@@ -1740,6 +1741,10 @@ int main(void) {
 		{ "rotator_lifecycle", rotator_lifecycle, "normal" },
 		{ "shared_connection", shared_connection, "normal" },
 		{ "rotator_move", rotator_move, "normal" },
+		// A SESTO SENSO 3 acknowledges the ARCO move under DEG instead of STEP.
+		{ "sestosenso3_rotator_move", rotator_move, "sestosenso3" },
+		// A SESTO SENSO 3 acknowledges the ARCO sync under DEG, behind debug text.
+		{ "sestosenso3_rotator_sync", rotator_sync, "sestosenso3" },
 		{ "rotator_abort", rotator_abort, "normal" },
 		{ "rotator_calibration", rotator_calibration, "normal" },
 		{ "rotator_sync", rotator_sync, "normal" },

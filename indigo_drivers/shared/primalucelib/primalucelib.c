@@ -93,6 +93,7 @@ char *PRIMALUCE_REPLY_ROTATOR_CALIBRATION_MAX[] = { "res", "get", "MOT2", "CAL_M
 char *PRIMALUCE_REPLY_ROTATOR_CALIBRATION_STATUS[] = { "res", "get", "MOT2", "CAL_STATUS", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_CALIBRATION_ACK[] = { "res", "set", "MOT2", "CAL_STATUS", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_MOVE_ACK[] = { "res", "cmd", "MOT2", "STEP", NULL };
+char *PRIMALUCE_REPLY_ROTATOR_MOVE_DEG_ACK[] = { "res", "cmd", "MOT2", "DEG", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_SYNC_ACK[] = { "res", "cmd", "MOT2", "SYNC_POS", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_STOP_ACK[] = { "res", "cmd", "MOT2", "MOT_STOP", NULL };
 char *PRIMALUCE_REPLY_PANEL_MAX_BRIGHTNESS[] = { "res", "get", "MAX_BRIGHTNESS", NULL };
@@ -231,6 +232,14 @@ static bool primalucelib_request_verb(const char *request, char *verb, size_t si
 // Parses the response buffer and NUL-terminates its string tokens. False for a quoted string or a
 // reply that is not complete JSON.
 static bool primalucelib_parse_reply(primalucelib_link *link) {
+	// A SESTO SENSO 3 (firmware 1.0.9) sometimes prints debug text in front of the reply on the same line,
+	// e.g. "mJsonAPI_ParseCmdReq_Motor{"res":...}", so the reply starts at the first brace.
+	if (*link->response != '{' && *link->response != '"') {
+		char *start = strchr(link->response, '{');
+		if (start != NULL) {
+			memmove(link->response, start, strlen(start) + 1);
+		}
+	}
 	memset(link->tokens, 0, sizeof(link->tokens));
 	jsmn_init(&link->parser);
 	if (*link->response == '"' || jsmn_parse(&link->parser, link->response, PRIMALUCE_MAX_RESPONSE_SIZE, link->tokens, PRIMALUCE_MAX_TOKENS) <= 0) {
@@ -859,12 +868,16 @@ bool primalucelib_rotator_move_to(primalucelib_link *link, double angle, char **
 	if (!primalucelib_request(link, PRIMALUCE_REQUEST_ROTATOR_MOVE_ABSOLUTE, angle)) {
 		return false;
 	}
-	*acknowledgement = primalucelib_reply_string(link, PRIMALUCE_REPLY_ROTATOR_MOVE_ACK);
+	// A SESTO SENSO 2 acknowledges under STEP, a SESTO SENSO 3 (firmware 1.0.9) under DEG.
+	if ((*acknowledgement = primalucelib_reply_string(link, PRIMALUCE_REPLY_ROTATOR_MOVE_ACK)) == NULL) {
+		*acknowledgement = primalucelib_reply_string(link, PRIMALUCE_REPLY_ROTATOR_MOVE_DEG_ACK);
+	}
 	return true;
 }
 
 bool primalucelib_rotator_sync(primalucelib_link *link, double angle) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_ROTATOR_SYNC, angle) && primalucelib_reply_is_done(link, PRIMALUCE_REPLY_ROTATOR_SYNC_ACK);
+	// A SESTO SENSO 2 acknowledges under SYNC_POS, a SESTO SENSO 3 (firmware 1.0.9) under DEG.
+	return primalucelib_request(link, PRIMALUCE_REQUEST_ROTATOR_SYNC, angle) && (primalucelib_reply_is_done(link, PRIMALUCE_REPLY_ROTATOR_SYNC_ACK) || primalucelib_reply_is_done(link, PRIMALUCE_REPLY_ROTATOR_MOVE_DEG_ACK));
 }
 
 bool primalucelib_rotator_stop(primalucelib_link *link) {

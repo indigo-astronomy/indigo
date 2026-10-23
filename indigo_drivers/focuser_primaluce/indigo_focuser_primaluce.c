@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -58,6 +58,8 @@
 #define STALL_POLLS          25
 // Consecutive failed position reads tolerated during a move.
 #define MAX_POLL_FAILURES    3
+// A rotator angle this close to the target (degrees) has reached it; a SESTO SENSO 3 stops a move to 15 at 14.99994.
+#define ROTATOR_POSITION_TOLERANCE 0.1
 // The controller needs this long between calibration steps (seconds).
 #define CALIBRATION_STEP_INTERVAL 1.0
 // After END the new range is polled this often, this far apart (seconds).
@@ -815,7 +817,7 @@ static void rotator_movement_finalizer(indigo_device *device) {
 			for (int i = 0; i < 10; i++) {
 				indigo_usleep(100000);
 				rotator_read_angle(device);
-				if (ROTATOR_POSITION_ITEM->number.target == ROTATOR_POSITION_ITEM->number.value) {
+				if (fabs(ROTATOR_POSITION_ITEM->number.target - ROTATOR_POSITION_ITEM->number.value) <= ROTATOR_POSITION_TOLERANCE) {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 					break;
 				}

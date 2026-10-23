@@ -749,3 +749,27 @@ Hardware (supervised, SESTO SENSO 3):
   Library unit cases: 24 of 24.
 - Hardware: the supervised SESTO SENSO 3 session above was manual, so it produces no hardware
   record.
+
+## ARCO on the SESTO SENSO 3 (3.0.0.29, 2026-10-23, task 013-primaluce-arco-sestosenso3)
+
+The requester's SESTO SENSO 3 with an ARCO (firmware 1.0.9) had three defects, all found on hardware:
+
+| ID | Defect | Fix | Regression test |
+| --- | --- | --- | --- |
+| FND-000061 | An absolute move turned the ARCO but ended ALERT at once. The SESTO SENSO 3 acknowledges `MOVE_ABS` and `SYNC_POS` under `MOT2.DEG`, while the library expected `MOT2.STEP` and `MOT2.SYNC_POS` (SESTO SENSO 2), so sync also failed. | The library accepts either key for both. | `sestosenso3_rotator_move` and `sestosenso3_rotator_sync`; both fail without the fix. |
+| FND-000062 | A move to 15° ended ALERT at 14.99994°: the driver compared the target and the angle for equality. | The target is reached within `ROTATOR_POSITION_TOLERANCE` (0.1°, the requester's choice). | `sestosenso3_rotator_move`; fails at 44.9999 with the exact comparison. |
+| FND-000063 | After quick repeated syncs the controller printed debug text in front of the reply on the same line, so the reply failed to parse. | The library parses a reply line from its first `{`. | `test_primalucelib` `debug_text_before_a_reply_is_skipped`; `sestosenso3_rotator_sync`. |
+
+Simulator: the SESTO SENSO 3 profile acknowledges ARCO moves and syncs under `DEG`, the sync behind
+debug text, and reports the angle with five decimals and the step rounding (the target − 0.00006°).
+
+Hardware (supervised): absolute moves end OK, an abort stops the ARCO and ends ALERT, a sync takes
+effect without moving (three syncs in a row, one behind debug text), and moves after the sync use the
+synced angles.
+
+## Final test summary (3.0.0.29)
+
+- Simulated tests: 63 run, 63 passed: `2026-10-23 05:01 3.0.0.29 linux x64 simulator 63/63 OK`.
+  Library unit cases: 25 of 25.
+- Hardware: the supervised SESTO SENSO 3 ARCO session above was manual, so it produces no hardware
+  record.

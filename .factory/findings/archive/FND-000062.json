@@ -1,0 +1,24 @@
+{
+  "id": "FND-000062",
+  "title": "focuser_primaluce ended ARCO moves ALERT when the angle differed from the target by a rounding error",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "013-primaluce-arco-sestosenso3",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The rotator move finalizer compared target and angle for equality; a SESTO SENSO 3 stops a move to 15 degrees at 14.99994.",
+  "evidence": "013-primaluce-arco-sestosenso3/verification.md (FND-000062); hardware session 2026-10-23",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "013-primaluce-arco-sestosenso3/verification.md: a 0.1 degree tolerance (owner's choice); sestosenso3_rotator_move passes and fails with the exact comparison; hardware moves end OK.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

@@ -494,6 +494,15 @@ cleanup:
 	stop_peer();
 }
 
+// A SESTO SENSO 3 (firmware 1.0.9) sometimes prints debug text in front of a reply on the same line.
+static void debug_text_before_a_reply_is_skipped(void) {
+	CHECK(start_peer("mJsonAPI_ParseCmdReq_MotormJsonAPI_ParseCmdReq_Motor{\"res\":{\"cmd\":{\"MOT2\":{\"DEG\":\"done\"}}}}\n", NULL));
+	CHECK(primalucelib_rotator_sync(&test_link, 160));
+	CHECK(!primalucelib_link_failed(&test_link));
+cleanup:
+	stop_peer();
+}
+
 // A restarting controller answers nothing: requests fail at once without reaching it, and a short probe
 // reopens the link when the controller is back.
 static void a_restarting_link_refuses_requests_until_probed(void) {
@@ -781,6 +790,7 @@ int main(void) {
 		{ "SESTO SENSO 3 log line before LOGLEVEL", sestosenso3_log_line_before_loglevel },
 		{ "only stale replies fail the request", only_stale_replies_fail_the_request },
 		{ "a restarting link refuses requests until probed", a_restarting_link_refuses_requests_until_probed },
+		{ "debug text before a reply is skipped", debug_text_before_a_reply_is_skipped },
 		{ "moves return their acknowledgement", moves_return_their_acknowledgement },
 		{ "focuser stop falls back to a decelerated stop", focuser_stop_falls_back_to_a_decelerated_stop },
 		{ "settings need done", settings_need_done },

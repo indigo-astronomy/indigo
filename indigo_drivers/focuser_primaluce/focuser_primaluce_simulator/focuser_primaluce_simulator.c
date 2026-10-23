@@ -307,6 +307,14 @@ static void send_state(int handle) {
 	if (report_speed) {
 		snprintf(mot1_speed, sizeof(mot1_speed), "\"SPEED\":%d,", speed);
 	}
+	// A SESTO SENSO 3 reports the ARCO angle with five decimals and the rounding of its step conversion: a move to
+	// 15 degrees reads back 14.99994 (firmware 1.0.9).
+	char rotator_angle[32];
+	if (sestosenso3() && rotator_position > 0) {
+		snprintf(rotator_angle, sizeof(rotator_angle), "%.5f", rotator_position - 0.00006);
+	} else {
+		snprintf(rotator_angle, sizeof(rotator_angle), "%d", rotator_position);
+	}
 	char presets[1024] = { 0 };
 	for (int i = 0; i < 9; i++) {
 		size_t used = strlen(presets);
@@ -325,9 +333,9 @@ static void send_state(int handle) {
 		"\"HOLDCURR_STATUS\":%d},"
 		"\"RUNPRESET_L\":{\"M1ACC\":10},\"RUNPRESET_M\":{\"M1SPD\":6},\"RUNPRESET_S\":{\"M1DEC\":1},"
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
-		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%d,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
+		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%s,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_position, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -478,13 +486,15 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		rotator_target = extract_int_after(command, "\"DEG\":", rotator_target);
 		serial_motion_start(&rotate_motion, rotator_target, 90);
-		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"STEP\":\"done\"}}}}\n");
+		// A SESTO SENSO 3 (firmware 1.0.9) acknowledges under DEG, a SESTO SENSO 2 under STEP.
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"%s\":\"done\"}}}}\n", sestosenso3() ? "DEG" : "STEP");
 	} else if (strstr(command, "\"SYNC_POS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		int synced = extract_int_after(command, "\"DEG\":", rotator_position);
 		rotator_offset += synced - rotator_position;
 		serial_motion_sync(&rotate_motion, synced);
 		rotator_position = rotator_target = synced;
-		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"SYNC_POS\":\"done\"}}}}\n");
+		// A SESTO SENSO 3 (firmware 1.0.9) acknowledges under DEG and may print debug text in front of the reply.
+		sim_printf(handle, sestosenso3() ? "mJsonAPI_ParseCmdReq_Motor{\"res\":{\"cmd\":{\"MOT2\":{\"DEG\":\"done\"}}}}\n" : "{\"res\":{\"cmd\":{\"MOT2\":{\"SYNC_POS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"MOT_STOP\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		serial_motion_stop(&rotate_motion);
 		rotator_target = rotator_position;
