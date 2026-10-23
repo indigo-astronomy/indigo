@@ -1,0 +1,4 @@
+Working directory: /private/tmp/indigo-20261023181250-5c67-fix-raw-fits-bounds
+[security] python3 .factory/scripts/validate_project.py --security
+Factory local security boundaries valid.
+Configured security commands passed. Assess coverage separately.

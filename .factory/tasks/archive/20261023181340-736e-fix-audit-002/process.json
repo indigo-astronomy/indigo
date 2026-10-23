@@ -1,0 +1,106 @@
+{
+  "version": 2,
+  "task": "20261023181340-736e-fix-audit-002",
+  "scope": [
+    "indigo_libs/indigo_io.c",
+    "indigo_libs/indigo_uni_io.c",
+    "indigo_test/unit/test_network_url.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/maintenance.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-002.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-002.json",
+    ".factory/completions/20261023181340-736e-fix-audit-002.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_network_url"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-imager-download"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023181340-736e-fix-audit-002.json": [
+      "100644",
+      "blob",
+      "4f3568b8217bae3ce2e1a277b94ea804d7fab722"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-002.json": null,
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "342e54b8a4ba20c2083ab6de7991b206a88dcc30"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "f91fffc65e185732f716140eee08fed39595b0a3"
+    ],
+    "indigo_libs/indigo_io.c": [
+      "100644",
+      "blob",
+      "015258c7daac5bd7c7c91f2be1330e8ebd1534d9"
+    ],
+    "indigo_libs/indigo_uni_io.c": [
+      "100644",
+      "blob",
+      "1c8652459eb924585d7a3e1dc7885663ed37e546"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "44330f04a69f4554bc0b64735cf18fd822e908ec"
+    ],
+    "indigo_test/unit/test_network_url.c": [
+      "100644",
+      "blob",
+      "909d7e79d5c02c5c5271a4898dc5388c73a2feb5"
+    ]
+  }
+}

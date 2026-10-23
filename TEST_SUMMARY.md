@@ -265,11 +265,11 @@
 | focuser_optecfl | 2026-10-10 13:51 | 3.0.0.9 | mac arm64 | simulator | 51 / 51 | ✅ OK |
 | focuser_primaluce | 2026-09-20 19:54 | 3.0.0.13 | mac arm64 | SESTO SENSO 2 | 18 / 18 | ✅ OK |
 |  | 2026-10-03 19:54 | 3.0.0.16 | linux arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
-|  | 2026-10-05 22:14 | 3.0.0.22 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-05 22:15 | 3.0.0.22 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
 |  | 2026-10-11 09:56 | 3.0.0.25 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-23 09:41 | 3.0.0.29 | mac arm64 | simulator | 61 / 61 | ✅ OK |
 |  | 2026-10-23 16:31 | 3.0.0.34 | linux x64 | simulator | 66 / 66 | ✅ OK |
+|  | 2026-10-23 21:07 | 3.0.0.34 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-10-09 21:53 | 3.0.0.11 | linux arm64 | Prodigy Arduino simulator (ESP32-S3) | 13 / 13 | ✅ OK |
 |  | 2026-10-10 03:54 | 3.0.0.12 | mac arm64 | simulator | 62 / 62 | ✅ OK |
@@ -363,10 +363,10 @@
 |  | 2026-09-24 21:48 | 3.0.0.9 | mac arm64 | AstroEQ 8.25 (ESP32-S3) | 16 / 16 | ✅ OK |
 |  | 2026-09-26 22:41 | 3.0.0.13 | linux x64 | simulator | 24 / 24 | ✅ OK |
 |  | 2026-10-04 11:20 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
-|  | 2026-10-06 22:15 | 3.0.0.18 | mac arm64 | AZGTi | 19 / 19 | ✅ OK |
 |  | 2026-10-07 03:01 | 3.0.0.18 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 19 / 19 | ✅ OK |
 |  | 2026-10-07 07:05 | 3.0.0.18 | linux arm64 | AZGTi | 19 / 19 | ✅ OK |
-|  | 2026-10-15 01:17 | 3.0.0.19 | mac arm64 | simulator | 47 / 47 | ✅ OK |
+|  | 2026-10-23 20:44 | 3.0.0.21 | mac arm64 | simulator | 94 / 94 | ✅ OK |
+|  | 2026-10-23 21:14 | 3.0.0.21 | mac arm64 | AZGTi | 19 / 19 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:16 | 3.0.0.22 | linux x64 | simulator | 15 / 15 | ✅ OK |
 |  | 2026-10-04 19:34 | 3.0.0.25 | mac arm64 | simulator | 28 / 28 | ✅ OK |

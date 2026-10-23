@@ -1,0 +1,33 @@
+FILTER=selection_rejects_incomplete_rois EXIT=1
+unit/test_raw_image.c:133: expected 1, got 0
+Running raw image unit tests
+  FAIL selection_rejects_incomplete_rois
+raw image unit tests: 1 test(s) failed
+
+FILTER=selection_rejects_invalid_geometry EXIT=1
+unit/test_raw_image.c:148: expected 1, got 0
+Running raw image unit tests
+  FAIL selection_rejects_invalid_geometry
+raw image unit tests: 1 test(s) failed
+
+FILTER=psf_high_contrast_mono16 EXIT=0
+Running raw image unit tests
+  PASS psf_high_contrast_mono16_border_uses_finite_variance
+raw image unit tests: all tests passed
+
+FILTER=psf_fractional_border EXIT=1
+unit/test_raw_image.c:219: expected 5, got 5.65685424949, tolerance 1e-12
+Running raw image unit tests
+  FAIL psf_fractional_border_variance_is_preserved
+raw image unit tests: 1 test(s) failed
+
+FILTER=selection_accepts_complete_edge_rois EXIT=0
+Running raw image unit tests
+  PASS selection_accepts_complete_edge_rois
+raw image unit tests: all tests passed
+
+FILTER=selection_interior_star EXIT=1
+unit/test_raw_image.c:236: expected 4, got 4.5, tolerance 1e-12
+Running raw image unit tests
+  FAIL selection_interior_star_preserves_measurements
+raw image unit tests: 1 test(s) failed

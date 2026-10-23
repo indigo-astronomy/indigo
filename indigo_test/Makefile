@@ -51,7 +51,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_network_url \
 	$(UNIT_BUILD)/test_primalucelib \
 	$(UNIT_BUILD)/test_system_alpaca_json \
-	$(UNIT_BUILD)/test_raw_image
+	$(UNIT_BUILD)/test_raw_image \
+	$(UNIT_BUILD)/test_raw_to_fits
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
 	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
@@ -201,7 +202,6 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator \
 	$(INTEGRATION_BUILD)/test_aux_flipflat_simulator \
 	$(INTEGRATION_BUILD)/test_ao_sx_simulator \
-	$(INTEGRATION_BUILD)/test_mount_synscan_simulator \
 	$(INTEGRATION_BUILD)/test_aux_upb3_simulator \
 	$(INTEGRATION_BUILD)/test_aux_ppb_simulator \
 	$(INTEGRATION_BUILD)/test_aux_skyalert_simulator \
@@ -332,6 +332,7 @@ endif
 # driver's recorded run: tools/run_driver_test.py selects a driver's tests from
 # INTEGRATION_TESTS and this list.
 OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
+	$(INTEGRATION_BUILD)/test_mount_synscan_simulator \
 	$(INTEGRATION_BUILD)/test_dome_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_askar_wifi_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator \
@@ -392,8 +393,24 @@ $(UNIT_BUILD)/test_driver_loader: unit/test_driver_loader.c test_runner.h $(UNIT
 $(UNIT_BUILD)/test_token: unit/test_token.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
+$(UNIT_BUILD)/test_raw_to_fits: unit/test_raw_to_fits.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
 $(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+# Instrument the production RAW helpers as a separate object, before the static library.
+RAW_IMAGE_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer
+
+$(UNIT_BUILD)/raw_utils_sanitize.o: ../indigo_libs/indigo_raw_utils.c ../indigo_libs/indigo/indigo_raw_utils.h | $(UNIT_BUILD)
+	$(CC) $(RAW_IMAGE_SANITIZE_CFLAGS) -c $< -o $@
+
+$(UNIT_BUILD)/test_raw_image_sanitize: unit/test_raw_image.c test_runner.h $(UNIT_BUILD)/raw_utils_sanitize.o $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(RAW_IMAGE_SANITIZE_CFLAGS) -o $@ $< $(UNIT_BUILD)/raw_utils_sanitize.o $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+.PHONY: test-raw-image-sanitize
+test-raw-image-sanitize: $(UNIT_BUILD)/test_raw_image_sanitize
+	UBSAN_OPTIONS=halt_on_error=1 $(UNIT_BUILD)/test_raw_image_sanitize
 
 $(UNIT_BUILD)/test_base64: unit/test_base64.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
@@ -1923,7 +1940,7 @@ $(INTEGRATION_BUILD)/focuser_usbv3_simulator: simulator_common/serial_motion.h
 $(INTEGRATION_BUILD)/focuser_primaluce_simulator: simulator_common/serial_motion.h
 
 $(INTEGRATION_BUILD)/mount_synscan_test_driver.o: ../indigo_drivers/mount_synscan/indigo_mount_synscan.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -Dindigo_monotonic_time=synscan_test_monotonic_time -Dindigo_perform_active_discovery=synscan_test_active_discovery -c $< -o $@
 
 USB_OUTPUT_INCLUDES = -I../indigo_drivers/aux_dsusb/bin_externals/libdsusb/include -I../indigo_drivers/focuser_fcusb/bin_externals/libfcusb/include -I../indigo_drivers/guider_gpusb/bin_externals/libgpusb/include -I../indigo_drivers/wheel_atik/bin_externals/libatik/include
 USB_OUTPUT_REPLACEMENTS = -Dindigo_queue_create=output_queue_create -Dindigo_attach_device=output_attach -Dindigo_detach_device=output_detach -Dindigo_start_usb_event_handler=output_usb_start -Dlibusb_hotplug_register_callback=output_usb_register -Dlibusb_hotplug_deregister_callback=output_usb_deregister -Dlibusb_hotplug_register_callback_sim=output_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=output_usb_deregister_poll -Dlibusb_ref_device=output_usb_ref -Dlibusb_unref_device=output_usb_unref -Dindigo_get_usb_path=output_usb_path -Dindigo_uni_open_hid=output_hid_open -Dindigo_uni_close=output_hid_close -Dindigo_uni_read=output_hid_read -Dindigo_uni_write=output_hid_write

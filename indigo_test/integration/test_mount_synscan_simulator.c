@@ -27,6 +27,20 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+static _Atomic double autohome_clock_offset;
+
+double synscan_test_monotonic_time(void) {
+	return indigo_monotonic_time() + atomic_load(&autohome_clock_offset);
+}
+
+// Keep real discovery framing, retries and UDP I/O inside the simulator-only boundary.
+bool synscan_test_active_discovery(const char *host, int port, int timeout, const char *payload, int payload_size, char *responder, int max_responder, char *message, int max_message) {
+	if (strcmp(host, "255.255.255.255")) {
+		return false;
+	}
+	return indigo_perform_active_discovery("127.0.0.1", port, timeout, payload, payload_size, responder, max_responder, message, max_message);
+}
+
 static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 
 
@@ -75,6 +89,29 @@ static const simulator_driver_case synscan_aux = {
 	false,
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
+
+static FILE *autohome_property_trace;
+static indigo_client autohome_trace_client;
+
+static indigo_result autohome_trace_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (autohome_property_trace != NULL && !strcmp(property->device, synscan_mount.device_name) && (!strcmp(property->name, MOUNT_AUTOHOME_PROPERTY_NAME) || !strcmp(property->name, MOUNT_STATE_PROPERTY_NAME) || !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) || !strcmp(property->name, CONNECTION_PROPERTY_NAME))) {
+		fprintf(autohome_property_trace, "%s %s %d", indigo_current_test_name, property->name, property->state);
+		if (property->type == INDIGO_SWITCH_VECTOR) {
+			for (int i = 0; i < property->count; i++) {
+				fprintf(autohome_property_trace, " %s=%d", property->items[i].name, property->items[i].sw.value);
+			}
+		} else if (property->type == INDIGO_LIGHT_VECTOR) {
+			for (int i = 0; i < property->count; i++) {
+				fprintf(autohome_property_trace, " %s=%d", property->items[i].name, property->items[i].light.value);
+			}
+		}
+		fputc('\n', autohome_property_trace);
+		fflush(autohome_property_trace);
+	}
+	return INDIGO_OK;
+}
+
+static indigo_client autohome_trace_client = { .name = "AUTOHOME trace", .version = INDIGO_VERSION_CURRENT, .update_property = autohome_trace_update };
 
 static bool start_udp_simulator(external_serial_simulator *simulator, int port) {
 	char port_text[16];
@@ -539,6 +576,9 @@ static void synscan_mount_autohome_finds_home_index(void) {
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	if (autohome_property_trace != NULL) {
+		indigo_attach_client(&autohome_trace_client);
+	}
 
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME, MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME, 0));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME, INDIGO_OK_STATE));
@@ -559,6 +599,9 @@ static void synscan_mount_autohome_finds_home_index(void) {
 	SERIAL_CHECK_TRUE(fabs(raw_dec_item->number.value - 90.0) < 0.1);
 
 cleanup:
+	if (autohome_property_trace != NULL) {
+		indigo_detach_client(&autohome_trace_client);
+	}
 	if (context.connected) {
 		stop_serial_driver(&synscan_mount);
 	}
@@ -1228,14 +1271,10 @@ static void synscan_mount_connects_with_udp_autodetection(void) {
 		SERIAL_CHECK_TRUE(connected);
 	}
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-	// The broadcast reaches every SynScan WiFi mount on the network, and the simulator drops its first replies, so a
-	// real mount powered on nearby answers first. Then this case cannot isolate the simulator and checks no further.
+	// The test driver routes discovery to loopback. A nonlocal responder is a failure, never a skipped pass.
 	indigo_item *port = find_cached_item(DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME);
 	SERIAL_CHECK_TRUE(port != NULL);
-	if (!synscan_port_is_local(port->text.value)) {
-		printf("    a SynScan mount on the network answered the broadcast before the simulator, the simulator was not exercised\n");
-		goto cleanup;
-	}
+	SERIAL_CHECK_TRUE(synscan_port_is_local(port->text.value));
 	assert_serial_mount_class_property_completeness();
 
 cleanup:
@@ -2711,11 +2750,463 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// AUTOHOME stage markers come from the real protocol, including physical sensor crossings.
+static bool autohome_wait_command(external_serial_simulator *simulator, int mark, const char *prefix, int count) {
+	double deadline = indigo_monotonic_time() + 45;
+	while (indigo_monotonic_time() < deadline) {
+		if (count_synscan_commands(simulator, mark, prefix, NULL, 0, NULL) >= count) {
+			return true;
+		}
+		indigo_usleep(1000);
+	}
+	return false;
+}
+
+static void autohome_interrupt(const char *prefix, int occurrence, bool disconnect, bool extra_offset) {
+	external_serial_simulator simulator = { 0 };
+	int mark = 0, stopped = 0;
+	bool started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	started = true;
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &mark) >= 0);
+	if (!strcmp(prefix, ":K1") && occurrence == 1) {
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":f1", "=011", 50));
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	if (extra_offset) {
+		SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":J1", 1));
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":q1000000", "=000080", 1));
+	}
+	if ((!strcmp(prefix, ":K1") || !strcmp(prefix, ":K2")) && occurrence >= 3) {
+		SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, occurrence == 4 ? ":J1" : (!strcmp(prefix, ":K1") ? "@index1" : "@index2"), occurrence == 4 ? 3 : 1));
+		SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, !strcmp(prefix, ":K1") ? ":f1" : ":f2", "=011", 10000));
+	}
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, prefix, occurrence));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &stopped) >= 0);
+	double requested = indigo_monotonic_time();
+	if (disconnect) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	} else {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		assert_switch_item_value(MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, false);
+	}
+	double elapsed = indigo_monotonic_time() - requested;
+	printf("    %s %s #%d completed in %.3f s\n", disconnect ? "disconnect" : "abort", prefix, occurrence, elapsed);
+	SERIAL_CHECK_TRUE(elapsed < 1.5);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, stopped, ":L1", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, stopped, ":L2", NULL, 0, NULL) > 0);
+	int after_stop = last_synscan_command_line(&simulator, ":L2") + 1;
+	indigo_usleep(400000);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, after_stop, ":J", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, after_stop, ":E", NULL, 0, NULL));
+	remove_synscan_fault(&simulator);
+	if (disconnect) {
+		SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, simulator.port));
+		assert_switch_item_value(MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, false);
+		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	}
+cleanup:
+	remove_synscan_fault(&simulator);
+	if (started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_abort_initial_stop(void) { autohome_interrupt(":K1", 1, false, false); }
+static void synscan_autohome_disconnect_initial_stop(void) { autohome_interrupt(":K1", 1, true, false); }
+static void synscan_autohome_abort_ra_offset(void) { autohome_interrupt(":J1", 1, false, false); }
+static void synscan_autohome_disconnect_ra_offset(void) { autohome_interrupt(":J1", 1, true, false); }
+static void synscan_autohome_abort_ra_reverse(void) { autohome_interrupt(":J1", 2, false, false); }
+static void synscan_autohome_disconnect_ra_reverse(void) { autohome_interrupt(":J1", 2, true, false); }
+static void synscan_autohome_abort_ra_dwell(void) { autohome_interrupt("@index1", 1, false, false); }
+static void synscan_autohome_disconnect_ra_dwell(void) { autohome_interrupt("@index1", 1, true, false); }
+static void synscan_autohome_abort_dec_offset(void) { autohome_interrupt(":J2", 1, false, false); }
+static void synscan_autohome_disconnect_dec_offset(void) { autohome_interrupt(":J2", 1, true, false); }
+static void synscan_autohome_abort_dec_reverse(void) { autohome_interrupt(":J2", 2, false, false); }
+static void synscan_autohome_disconnect_dec_reverse(void) { autohome_interrupt(":J2", 2, true, false); }
+static void synscan_autohome_abort_dec_dwell(void) { autohome_interrupt("@index2", 1, false, false); }
+static void synscan_autohome_disconnect_dec_dwell(void) { autohome_interrupt("@index2", 1, true, false); }
+static void synscan_autohome_abort_forward_search(void) { autohome_interrupt(":J2", 3, false, false); }
+static void synscan_autohome_disconnect_forward_search(void) { autohome_interrupt(":J2", 3, true, false); }
+static void synscan_autohome_abort_backoff(void) { autohome_interrupt(":J2", 4, false, false); }
+static void synscan_autohome_disconnect_backoff(void) { autohome_interrupt(":J2", 4, true, false); }
+static void synscan_autohome_abort_return(void) { autohome_interrupt(":J2", 5, false, false); }
+static void synscan_autohome_disconnect_return(void) { autohome_interrupt(":J2", 5, true, false); }
+
+static void synscan_autohome_extra_offset(void) {
+	external_serial_simulator simulator = { 0 };
+	int mark = 0;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &mark) >= 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":J1", 1));
+	// A latched sensor position on the first offset requires the second clearance move.
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":q1000000", "=000080", 1));
+	for (int i = 0; i < 600 && find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":J1", NULL, 0, NULL) >= 6);
+cleanup:
+	remove_synscan_fault(&simulator);
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_abort_extra_offset(void) { autohome_interrupt(":J1", 2, false, true); }
+static void synscan_autohome_disconnect_extra_offset(void) { autohome_interrupt(":J1", 2, true, true); }
+static void synscan_autohome_abort_ra_stopping(void) { autohome_interrupt(":K1", 3, false, false); }
+static void synscan_autohome_disconnect_ra_stopping(void) { autohome_interrupt(":K1", 3, true, false); }
+static void synscan_autohome_abort_dec_stopping(void) { autohome_interrupt(":K2", 3, false, false); }
+static void synscan_autohome_disconnect_dec_stopping(void) { autohome_interrupt(":K2", 3, true, false); }
+static void synscan_autohome_abort_forward_stopping(void) { autohome_interrupt(":K1", 4, false, false); }
+static void synscan_autohome_disconnect_forward_stopping(void) { autohome_interrupt(":K1", 4, true, false); }
+static void synscan_autohome_abort_queued(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(check_queued_abort(synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, 0, true, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_negative_start(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--home-start-degrees", "-5", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void autohome_failure(const char *prefix, const char *reply, int deadline) {
+	external_serial_simulator simulator = { 0 };
+	int mark = 0;
+	atomic_store(&autohome_clock_offset, 0);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &mark) >= 0);
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, prefix, reply, deadline ? 10000 : 1));
+	unsigned int revision = property_revision(MOUNT_AUTOHOME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	if (deadline) {
+		if (deadline == 120) {
+			SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":J1", 2));
+			SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, 0, ":", NULL, 0, &mark) >= 0);
+		}
+		SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, prefix, 1));
+		atomic_store(&autohome_clock_offset, 200);
+	}
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	assert_switch_item_value(MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, false);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L1", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator) || deadline != 0);
+	remove_synscan_fault(&simulator);
+	atomic_store(&autohome_clock_offset, 0);
+	// Fresh requests still run after failure, with no stale AUTOHOME continuation.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	remove_synscan_fault(&simulator);
+	atomic_store(&autohome_clock_offset, 0);
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_encoder_refusal(void) { autohome_failure(":W1050000", "!2", 0); }
+static void synscan_autohome_counter_refusal(void) { autohome_failure(":E1", "!2", 0); }
+static void synscan_autohome_move_refusal(void) { autohome_failure(":G1", "!2", 0); }
+static void synscan_autohome_stop_refusal(void) { autohome_failure(":K1", "!2", 0); }
+static void synscan_autohome_index_malformed(void) { autohome_failure(":q1000000", "=1", 0); }
+static void synscan_autohome_reply_missing(void) { autohome_failure(":W1050000", "silent", 0); }
+static void synscan_autohome_motion_timeout(void) { autohome_failure(":f1", "=011", 30); }
+static void synscan_autohome_index_timeout(void) { autohome_failure(":q1000000", "=FFFFFF", 120); }
+
+static void synscan_autohome_false_request(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	int mark = synscan_mark(&simulator);
+	unsigned int revision = property_revision(MOUNT_AUTOHOME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":W1050000", NULL, 0, NULL));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_defers_tracking(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":J1", 1));
+	unsigned int revision = property_revision(MOUNT_TRACKING_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(last_synscan_command_line(&simulator, ":I1") > last_synscan_command_line(&simulator, ":E2"));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_owns_previous_guide_pulse(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(synscan_start_tracking(&simulator) > 0);
+	SERIAL_CHECK_TRUE(connect_sibling_guider());
+	int pulse_mark = synscan_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&sibling_client, synscan_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 500));
+	for (int i = 0; i < 100 && atomic_load(&sibling_guide_state[1]) != INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(1000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, atomic_load(&sibling_guide_state[1]));
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, pulse_mark, ":I1", 1));
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":f1", "=011", 10000));
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":K1", 1));
+	for (int i = 0; i < 1000 && atomic_load(&sibling_guide_state[1]) == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(1000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, atomic_load(&sibling_guide_state[1]));
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":I1", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":J1", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	remove_synscan_fault(&simulator);
+	disconnect_sibling_guider();
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static double synscan_wire_pulse(external_serial_simulator *simulator, int mark, const char *start, const char *stop) {
+	char path[PATH_MAX], line[256], command[128];
+	double first = -1, last = -1, timestamp = 0;
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return NAN;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return NAN;
+	}
+	int index = 0;
+	while (fgets(line, sizeof(line), file)) {
+		if (index++ < mark || sscanf(line, "%lf\t%127s", &timestamp, command) != 2) {
+			continue;
+		}
+		if (first < 0 && !strncmp(command, start, strlen(start))) {
+			first = timestamp;
+		} else if (first >= 0 && !strncmp(command, stop, strlen(stop))) {
+			last = timestamp;
+			break;
+		}
+	}
+	fclose(file);
+	return first < 0 || last < 0 ? NAN : (last - first) * 1000;
+}
+
+static void synscan_guider_wire_timing(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	const int durations[] = { 20, 100, 500 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(synscan_start_tracking(&simulator) > 0);
+	SERIAL_CHECK_TRUE(connect_sibling_guider());
+	for (int workload = 0; workload < 2; workload++) {
+		// The mount has no camera acquisition. Repeated property enumerations add bus
+		// traffic to the ordinary tracking/poll workload; physical guide output is not measured.
+		for (int direction = 0; direction < 4; direction++) {
+			for (int duration = 0; duration < ARRAY_SIZE(durations); duration++) {
+				for (int sample = -1; sample < 5; sample++) {
+					int mark = synscan_mark(&simulator);
+					if (workload) {
+						indigo_enumerate_properties(&simulator_test_client, &INDIGO_ALL_PROPERTIES);
+					}
+					SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, sibling_pulse(direction < 2 ? GUIDER_GUIDE_DEC_PROPERTY_NAME : GUIDER_GUIDE_RA_PROPERTY_NAME, items[direction], durations[duration]));
+					double measured = synscan_wire_pulse(&simulator, mark, direction < 2 ? ":J2" : ":I1", direction < 2 ? ":K2" : ":I1");
+					SERIAL_CHECK_TRUE(isfinite(measured) && measured > 0);
+					if (sample >= 0) {
+						printf("GUIDE_WIRE %s %s %d %.6f\n", workload ? "enumeration" : "tracking", items[direction], durations[duration], measured);
+					}
+				}
+			}
+		}
+	}
+cleanup:
+	disconnect_sibling_guider();
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void autohome_stop_failure(bool disconnect) {
+	external_serial_simulator simulator = { 0 };
+	bool started = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	started = true;
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":J1", 1));
+	mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":L1", "!2", 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, disconnect ? CONNECTION_PROPERTY_NAME : MOUNT_ABORT_MOTION_PROPERTY_NAME, disconnect ? CONNECTION_DISCONNECTED_ITEM_NAME : MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(disconnect ? CONNECTION_PROPERTY_NAME : MOUNT_ABORT_MOTION_PROPERTY_NAME, disconnect ? INDIGO_OK_STATE : INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL) > 0);
+	int stopped = last_synscan_command_line(&simulator, ":L2") + 1;
+	indigo_usleep(300000);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, stopped, ":J", NULL, 0, NULL));
+	if (!disconnect) {
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		// A refused emergency stop is reported, and a subsequent stop can be retried.
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	}
+cleanup:
+	remove_synscan_fault(&simulator);
+	if (started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_abort_stop_failure(void) { autohome_stop_failure(false); }
+static void synscan_autohome_disconnect_stop_failure(void) { autohome_stop_failure(true); }
+
+static void synscan_autohome_abort_then_restart(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":J1", 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	unsigned int revision = property_revision(MOUNT_AUTOHOME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	for (int i = 0; i < 600 && find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_autohome_disconnect_with_guider(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(connect_sibling_guider());
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(autohome_wait_command(&simulator, mark, ":J1", 1));
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(atomic_load(&sibling_guider_connected));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, sibling_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 100));
+cleanup:
+	disconnect_sibling_guider();
+	stop_serial_driver(&synscan_mount);
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
+	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "synscan_autohome_abort_stop_failure", synscan_autohome_abort_stop_failure },
+		{ "synscan_autohome_disconnect_stop_failure", synscan_autohome_disconnect_stop_failure },
+		{ "synscan_autohome_abort_then_restart", synscan_autohome_abort_then_restart },
+		{ "synscan_autohome_disconnect_with_guider", synscan_autohome_disconnect_with_guider },
+		{ "synscan_guider_wire_timing", synscan_guider_wire_timing },
+		{ "synscan_autohome_false_request", synscan_autohome_false_request },
+		{ "synscan_autohome_defers_tracking", synscan_autohome_defers_tracking },
+		{ "synscan_autohome_owns_previous_guide_pulse", synscan_autohome_owns_previous_guide_pulse },
+		{ "synscan_autohome_abort_extra_offset", synscan_autohome_abort_extra_offset },
+		{ "synscan_autohome_disconnect_extra_offset", synscan_autohome_disconnect_extra_offset },
+		{ "synscan_autohome_abort_ra_stopping", synscan_autohome_abort_ra_stopping },
+		{ "synscan_autohome_disconnect_ra_stopping", synscan_autohome_disconnect_ra_stopping },
+		{ "synscan_autohome_abort_dec_stopping", synscan_autohome_abort_dec_stopping },
+		{ "synscan_autohome_disconnect_dec_stopping", synscan_autohome_disconnect_dec_stopping },
+		{ "synscan_autohome_abort_forward_stopping", synscan_autohome_abort_forward_stopping },
+		{ "synscan_autohome_disconnect_forward_stopping", synscan_autohome_disconnect_forward_stopping },
+		{ "synscan_autohome_abort_queued", synscan_autohome_abort_queued },
+		{ "synscan_autohome_encoder_refusal", synscan_autohome_encoder_refusal },
+		{ "synscan_autohome_counter_refusal", synscan_autohome_counter_refusal },
+		{ "synscan_autohome_move_refusal", synscan_autohome_move_refusal },
+		{ "synscan_autohome_stop_refusal", synscan_autohome_stop_refusal },
+		{ "synscan_autohome_index_malformed", synscan_autohome_index_malformed },
+		{ "synscan_autohome_reply_missing", synscan_autohome_reply_missing },
+		{ "synscan_autohome_motion_timeout", synscan_autohome_motion_timeout },
+		{ "synscan_autohome_index_timeout", synscan_autohome_index_timeout },
+		{ "synscan_autohome_abort_initial_stop", synscan_autohome_abort_initial_stop },
+		{ "synscan_autohome_disconnect_initial_stop", synscan_autohome_disconnect_initial_stop },
+		{ "synscan_autohome_abort_ra_offset", synscan_autohome_abort_ra_offset },
+		{ "synscan_autohome_disconnect_ra_offset", synscan_autohome_disconnect_ra_offset },
+		{ "synscan_autohome_abort_ra_reverse", synscan_autohome_abort_ra_reverse },
+		{ "synscan_autohome_disconnect_ra_reverse", synscan_autohome_disconnect_ra_reverse },
+		{ "synscan_autohome_abort_ra_dwell", synscan_autohome_abort_ra_dwell },
+		{ "synscan_autohome_disconnect_ra_dwell", synscan_autohome_disconnect_ra_dwell },
+		{ "synscan_autohome_abort_dec_offset", synscan_autohome_abort_dec_offset },
+		{ "synscan_autohome_disconnect_dec_offset", synscan_autohome_disconnect_dec_offset },
+		{ "synscan_autohome_abort_dec_reverse", synscan_autohome_abort_dec_reverse },
+		{ "synscan_autohome_disconnect_dec_reverse", synscan_autohome_disconnect_dec_reverse },
+		{ "synscan_autohome_abort_dec_dwell", synscan_autohome_abort_dec_dwell },
+		{ "synscan_autohome_disconnect_dec_dwell", synscan_autohome_disconnect_dec_dwell },
+		{ "synscan_autohome_abort_forward_search", synscan_autohome_abort_forward_search },
+		{ "synscan_autohome_disconnect_forward_search", synscan_autohome_disconnect_forward_search },
+		{ "synscan_autohome_abort_backoff", synscan_autohome_abort_backoff },
+		{ "synscan_autohome_disconnect_backoff", synscan_autohome_disconnect_backoff },
+		{ "synscan_autohome_abort_return", synscan_autohome_abort_return },
+		{ "synscan_autohome_disconnect_return", synscan_autohome_disconnect_return },
+		{ "synscan_autohome_extra_offset", synscan_autohome_extra_offset },
+		{ "synscan_autohome_negative_start", synscan_autohome_negative_start },
 		{ "synscan_pec_training_disconnect", synscan_pec_training_disconnect },
 		{ "synscan_mount_passes_serial_compliance_checks", synscan_mount_passes_serial_compliance_checks },
 		{ "synscan_mount_parks_after_axis_status_initialized_reply", synscan_mount_parks_after_axis_status_initialized_reply },
@@ -2765,11 +3256,22 @@ int main(void) {
 		{ "synscan_mount_releases_motion_of_detached_client", synscan_mount_releases_motion_of_detached_client }
 	};
 	int result = 0;
+	const char *trace_path = getenv("INDIGO_SYNSCAN_PROPERTY_TRACE");
+	if (trace_path != NULL) {
+		autohome_property_trace = fopen(trace_path, "w");
+		if (autohome_property_trace == NULL) {
+			return 1;
+		}
+	}
 	const char *filter = getenv("INDIGO_TEST_FILTER");
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
 		if (filter == NULL || strstr(tests[i].name, filter)) {
 			result |= indigo_run_tests("SynScan EQ8", tests + i, 1);
 		}
+	}
+	if (autohome_property_trace != NULL) {
+		fclose(autohome_property_trace);
+		autohome_property_trace = NULL;
 	}
 	char park_path[PATH_MAX];
 	snprintf(park_path, sizeof(park_path), "%s/synscan-EQ8.park", park_folder);

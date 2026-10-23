@@ -34,6 +34,7 @@
 #include <signal.h>
 #include <limits.h>
 #include <time.h>
+#include <math.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -105,6 +106,7 @@ typedef struct {
 	uint32_t dec_features;
 	const char *ready_file;
 	int stop_lag;
+	double home_start_degrees;
 	double ppec_training_seconds;
 } simulator_options;
 
@@ -138,6 +140,7 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --pcdirect              Start axes as initialized for PC Direct style probing\n");
+	printf("  --home-start-degrees <d>  Physical initial angle relative to each home sensor (default 0)\n");
 	printf("  --stop-lag <n>          Report an axis as still running for n status queries after a stop\n");
 	printf("  --ppec-training-seconds <s>  End PPEC training by itself s seconds after it started, as the\n");
 	printf("                          mount does after one worm revolution (default: never)\n");
@@ -220,6 +223,16 @@ static bool parse_args(int argc, char *argv[]) {
 			}
 			options.udp = true;
 			options.udp_port = atoi(argv[i]);
+		} else if (!strcmp(argv[i], "--home-start-degrees")) {
+			if (++i == argc) {
+				return false;
+			}
+			char *end = NULL;
+			double value = strtod(argv[i], &end);
+			if (end == argv[i] || *end != 0 || !isfinite(value) || value < -90 || value > 90) {
+				return false;
+			}
+			options.home_start_degrees = value;
 		} else if (!strcmp(argv[i], "--stop-lag")) {
 			if (++i == argc) {
 				fprintf(stderr, "--stop-lag requires a value\n");
@@ -306,6 +319,7 @@ static double axis_ppec_training_started[2] = { 0, 0 };
 static bool axis_home_index_hit[2] = { false, false };
 
 static void initialize_state(void) {
+	axis_abs_position[0] = axis_abs_position[1] = (int32_t)(options.home_start_degrees / 360.0 * STEPS_PER_REVOLUTION);
 	if (options.pcdirect) {
 		axis_status[0] = INITIALIZED;
 		axis_status[1] = INITIALIZED;
@@ -619,6 +633,13 @@ static void process_home_index(uint8_t axis, int32_t steps) {
 	} else if (axis_abs_position[axis] >= 0 && axis_abs_position[axis] + steps < 0) {
 		axis_home_index_hit[axis] = true;
 		axis_home_index[axis] = axis_position[axis] - axis_abs_position[axis];
+	}
+	if (axis_home_index_hit[axis]) {
+		char event[32];
+		snprintf(event, sizeof(event), "@index%d", axis + 1);
+		if ((axis_abs_position[axis] < 0) != (axis_abs_position[axis] + steps < 0)) {
+			record_event(event);
+		}
 	}
 	axis_abs_position[axis] += steps;
 }

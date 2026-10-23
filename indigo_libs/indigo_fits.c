@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 Rumen G. Bogdanovski
+// Copyright (c) 2021-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -20,212 +20,244 @@
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 #include <stdlib.h>
-#include <math.h>
+#include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <errno.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_fits.h>
 
-static int raw_read_keyword_value(const uint8_t *ptr8, char *keyword, char *value) {
-	int i;
-	int length = (int)strlen((const char *)ptr8);
+typedef struct {
+	char *data;
+	size_t used;
+	size_t size;
+} raw_fits_header;
 
-	for (i = 0; i < 8 && ptr8[i] != ' '; i++) {
-		keyword[i] = ptr8[i];
+static bool raw_fits_append(raw_fits_header *header, const char *format, ...) {
+	char card[81];
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(card, sizeof(card), format, args);
+	va_end(args);
+	if (length < 0 || length > 80) {
+		errno = EINVAL;
+		return false;
 	}
-	keyword[i] = '\0';
-
-	if (ptr8[8] == '=') {
-		i++;
-		while (i < length && ptr8[i] == ' ') {
-			i++;
+	if (header->used == header->size) {
+		if (header->size > INT_MAX - FITS_RECORD_SIZE) {
+			errno = EOVERFLOW;
+			return false;
 		}
+		char *data = realloc(header->data, header->size + FITS_RECORD_SIZE);
+		if (data == NULL) {
+			return false;
+		}
+		header->data = data;
+		memset(data + header->size, ' ', FITS_RECORD_SIZE);
+		header->size += FITS_RECORD_SIZE;
+	}
+	memcpy(header->data + header->used, card, length);
+	header->used += 80;
+	return true;
+}
 
-		if (i < length) {
-			*value++ = ptr8[i];
-			i++;
-			if (ptr8[i-1] == '\'') {
-				for (; i < length && ptr8[i] != '\''; i++) {
-					*value++ = ptr8[i];
+static bool raw_fits_keywords(raw_fits_header *header, const indigo_fits_keyword *keywords) {
+	for (; keywords && keywords->type; keywords++) {
+		if (keywords->name == NULL || keywords->name[0] == '\0' || strlen(keywords->name) > 8) {
+			errno = EINVAL;
+			return false;
+		}
+		const char *comment = keywords->comment ? keywords->comment : "";
+		switch (keywords->type) {
+			case INDIGO_FITS_NUMBER: {
+				char number[81];
+				int length = snprintf(number, sizeof(number), "%20f", keywords->number);
+				if (length < 0 || length > 70) {
+					errno = EINVAL;
+					return false;
 				}
-				*value++ = '\'';
-			} else if (ptr8[i-1] == '(') {
-				for (; i < length && ptr8[i] != ')'; i++) {
-					*value++ = ptr8[i];
+				indigo_fix_locale(number);
+				if (!raw_fits_append(header, "%-8s= %s%s%s", keywords->name, number, comment[0] ? " / " : "", comment)) {
+					return false;
 				}
-				*value++ = ')';
-			} else {
-				for (; i < length && ptr8[i] != ' ' && ptr8[i] != '/'; i++) {
-					*value++ = ptr8[i];
+				break;
+			}
+			case INDIGO_FITS_STRING:
+				if (keywords->string == NULL || strlen(keywords->string) > 68) {
+					errno = EINVAL;
+					return false;
 				}
+				if (!raw_fits_append(header, "%-8s= '%s'%*s%s%s", keywords->name, keywords->string, (int)(strlen(keywords->string) < 18 ? 18 - strlen(keywords->string) : 0), "", comment[0] ? " / " : "", comment)) {
+					return false;
+				}
+				break;
+			case INDIGO_FITS_LOGICAL:
+				if (!raw_fits_append(header, "%-8s= %20c / %s", keywords->name, keywords->logical ? 'T' : 'F', comment)) {
+					return false;
+				}
+				break;
+			default:
+				errno = EINVAL;
+				return false;
+		}
+	}
+	return true;
+}
+
+static bool raw_fits_extension(raw_fits_header *header, const char *extension, size_t length) {
+	if (length < 9 || memcmp(extension, "SIMPLE=T;", 9)) {
+		return true;
+	}
+	extension += 9;
+	length -= 9;
+	while (length && *extension) {
+		const char *end = memchr(extension, ';', length);
+		if (end == NULL) {
+			errno = EINVAL;
+			return false;
+		}
+		size_t field_size = end - extension;
+		const char *equals = memchr(extension, '=', field_size);
+		if (equals == NULL) {
+			errno = EINVAL;
+			return false;
+		}
+		size_t name_size = equals - extension;
+		while (name_size && extension[name_size - 1] == ' ') {
+			name_size--;
+		}
+		if (name_size == 0 || name_size > 8) {
+			errno = EINVAL;
+			return false;
+		}
+		char name[9];
+		memcpy(name, extension, name_size);
+		name[name_size] = '\0';
+		const char *value = equals + 1;
+		while (value < end && *value == ' ') {
+			value++;
+		}
+		const char *value_end = value;
+		if (value < end && (*value == '\'' || *value == '(')) {
+			char closing = *value == '\'' ? '\'' : ')';
+			value_end = memchr(value + 1, closing, end - value - 1);
+			if (value_end == NULL) {
+				errno = EINVAL;
+				return false;
+			}
+			value_end++;
+		} else {
+			while (value_end < end && *value_end != ' ' && *value_end != '/') {
+				value_end++;
 			}
 		}
+		size_t value_size = value_end - value;
+		if (value_size == 0 || value_size > 70 || memchr(value, '\0', value_size)) {
+			errno = EINVAL;
+			return false;
+		}
+		if (!raw_fits_append(header, "%-8s= %.*s", name, (int)value_size, value)) {
+			return false;
+		}
+		length -= field_size + 1;
+		extension = end + 1;
 	}
-	*value = '\0';
-	return 0;
+	return true;
 }
 
 indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fits_size, indigo_fits_keyword *keywords) {
-	int byte_per_pixel = 0, components = 0;
-	int frame_width = 0, frame_height = 0;
-	if (!strncmp("RAW1", (const char *)(image), 4)) {
-		// 8 bit RAW
+	if (image == NULL || fits == NULL || fits_size == NULL || in_size < (int)sizeof(indigo_raw_header)) {
+		errno = EINVAL;
+		return INDIGO_FAILED;
+	}
+	indigo_raw_header raw;
+	memcpy(&raw, image, sizeof(raw));
+	int byte_per_pixel, components;
+	if (!memcmp(image, "RAW1", 4)) {
 		byte_per_pixel = 1;
 		components = 1;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
-	} else if (!strncmp("RAW2", (const char *)(image), 4)) {
-		// 16 bit RAW
+	} else if (!memcmp(image, "RAW2", 4)) {
 		byte_per_pixel = 2;
 		components = 1;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
-	} else if (!strncmp("RAW3", (const char *)(image), 4)) {
-		// 8 bit RGB
+	} else if (!memcmp(image, "RAW3", 4)) {
 		byte_per_pixel = 1;
 		components = 3;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
-	} else if (!strncmp("RAW6", (const char *)(image), 4)) {
-		// 16 bit RGB
+	} else if (!memcmp(image, "RAW6", 4)) {
 		byte_per_pixel = 2;
 		components = 3;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
 	} else {
 		errno = EINVAL;
 		return INDIGO_FAILED;
 	}
-
-	int pixel_count = frame_width * frame_height;
-	int data_size = pixel_count * byte_per_pixel;
-	int image_size = data_size * components + FITS_RECORD_SIZE;
-	if (image_size % FITS_RECORD_SIZE) {
-		image_size = (image_size / FITS_RECORD_SIZE + 1) * FITS_RECORD_SIZE;
-	}
-
-	*fits = realloc(*fits, image_size);
-	char *buffer = *fits;
-	if (buffer == NULL) {
+	size_t available = (size_t)in_size - sizeof(raw);
+	if (raw.width == 0 || raw.height == 0 || raw.width > INT_MAX || raw.height > INT_MAX || raw.width > available / raw.height / components / byte_per_pixel) {
+		errno = EINVAL;
 		return INDIGO_FAILED;
 	}
-
-	char *p = buffer;
-	memset(buffer, ' ', image_size);
-
-	int t = sprintf(p, "SIMPLE  = %20c", 'T'); p[t] = ' ';
-	t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
-	if (components > 1) {
-		t = sprintf(p += 80, "NAXIS   = %20d / RGB Image", 3); p[t] = ' ';
-	} else {
-		t = sprintf(p += 80, "NAXIS   = %20d / Monochrome or Bayer mosaic color image", 2); p[t] = ' ';
+	size_t pixel_count = (size_t)raw.width * raw.height;
+	size_t data_size = pixel_count * components * byte_per_pixel;
+	image += sizeof(raw);
+	raw_fits_header header = { 0 };
+	if (!raw_fits_append(&header, "SIMPLE  = %20c", 'T') ||
+		!raw_fits_append(&header, "BITPIX  = %20d", byte_per_pixel * 8) ||
+		!raw_fits_append(&header, "NAXIS   = %20d / %s", components > 1 ? 3 : 2, components > 1 ? "RGB Image" : "Monochrome or Bayer mosaic color image") ||
+		!raw_fits_append(&header, "NAXIS1  = %20u", raw.width) ||
+		!raw_fits_append(&header, "NAXIS2  = %20u", raw.height)) {
+		goto failure;
 	}
-	t = sprintf(p += 80, "NAXIS1  = %20d", frame_width); p[t] = ' ';
-	t = sprintf(p += 80, "NAXIS2  = %20d", frame_height); p[t] = ' ';
-	if (components > 1) {
-		t = sprintf(p += 80, "NAXIS3  = %20d", components); p[t] = ' ';
+	if (components > 1 && !raw_fits_append(&header, "NAXIS3  = %20d", components)) {
+		goto failure;
 	}
-	t = sprintf(p += 80, "EXTEND  = %20c", 'T'); p[t] = ' ';
-	if (byte_per_pixel == 2) {
-		t = sprintf(p += 80, "BZERO   = %20d", 32768); p[t] = ' ';
-		t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
+	if (!raw_fits_append(&header, "EXTEND  = %20c", 'T')) {
+		goto failure;
 	}
-	if (keywords) {
-		while (keywords->type && (p - (char *)buffer) < (FITS_RECORD_SIZE - 80)) {
-			switch (keywords->type) {
-				case INDIGO_FITS_NUMBER:
-					t = sprintf(p += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
-					indigo_fix_locale(p - 80);
-					break;
-				case INDIGO_FITS_STRING:
-					t = sprintf(p += 80, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
-					break;
-				case INDIGO_FITS_LOGICAL:
-					t = sprintf(p += 80, "%7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
-					break;
-			}
-			p[t] = ' ';
-			keywords++;
-		}
+	if (byte_per_pixel == 2 && (!raw_fits_append(&header, "BZERO   = %20d", 32768) ||
+		!raw_fits_append(&header, "BSCALE  = %20d", 1))) {
+		goto failure;
 	}
-
-	/* add embedded keywords to the fits header */
-	int extension_length = in_size - data_size - sizeof(indigo_raw_header);
-	if (extension_length > 9) {
-		char *extension = indigo_safe_malloc(extension_length + 1);
-		char *extension_start = extension;
-		strncpy(extension, image + data_size, extension_length);
-		if (!strncmp(extension_start, "SIMPLE=T;", 9)) {
-			extension_start += 9;
-			extension_length -= 9;
-			char *pos = NULL;
-			while ((pos = strchr(extension_start, ';'))) {
-				char keyword[80];
-				char value[80];
-				*pos = '\0';
-				raw_read_keyword_value((const unsigned char *)extension_start, keyword, value);
-				extension_start = pos+1;
-				t = sprintf(p += 80, "%7s= %s", keyword, value);
-				p[t] = ' ';
-			}
-		}
-		indigo_safe_free(extension);
+	if (!raw_fits_keywords(&header, keywords) ||
+		!raw_fits_extension(&header, image + data_size, available - data_size) ||
+		!raw_fits_append(&header, "ROWORDER= %20s / Image row order", "'TOP-DOWN'") ||
+		!raw_fits_append(&header, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy") ||
+		!raw_fits_append(&header, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H") ||
+		!raw_fits_append(&header, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org") ||
+		!raw_fits_append(&header, "END")) {
+		goto failure;
 	}
-
-	t = sprintf(p += 80, "ROWORDER= %20s / Image row order", "'TOP-DOWN'"); p[t] = ' ';
-	t = sprintf(p += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); p[t] = ' ';
-	t = sprintf(p += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); p[t] = ' ';
-	t = sprintf(p += 80, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org"); p[t] = ' ';
-	t = sprintf(p += 80, "END"); p[t] = ' ';
-	p = buffer + FITS_RECORD_SIZE;
-	if (components == 1) {
-		// mono
-		if (byte_per_pixel == 2) {
-			// 16 bit RAW - swap endianness
-			uint16_t *in = (uint16_t *)image;
-			uint16_t *out = (uint16_t *)p;
-			for (int i = 0; i < pixel_count; i++) {
-				int value = *in++ - 32768;
-				*out++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-			}
-		} else {
-			// 8 bit RAW
-			memcpy(p, image, pixel_count);
-		}
-	} else {
-		// RGB
-		if (byte_per_pixel == 2) {
-			uint16_t *out_ch0 = (uint16_t *)p;
-			uint16_t *out_ch1 = (uint16_t *)p + pixel_count;
-			uint16_t *out_ch2 = (uint16_t *)p + 2 * pixel_count;
-			// 16 bit RGB - average and swap endianness
-			uint16_t *in = (uint16_t *)image;
-			for (int i = 0; i < pixel_count; i++) {
-				int value =  *in++ - 32768;
-				*out_ch0++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				value =  *in++ - 32768;
-				*out_ch1++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				value =  *in++ - 32768;
-				*out_ch2++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-			}
-		} else {
-			uint8_t *out_ch0 = (uint8_t *)p;
-			uint8_t *out_ch1 = (uint8_t *)p + pixel_count;
-			uint8_t *out_ch2 = (uint8_t *)p + 2 * pixel_count;
-			uint8_t *in = (uint8_t *)image;
-			for (int i = 0; i < pixel_count; i++) {
-				*out_ch0++ = *in++;
-				*out_ch1++ = *in++;
-				*out_ch2++ = *in++;
+	size_t padded_data_size = data_size + (FITS_RECORD_SIZE - data_size % FITS_RECORD_SIZE) % FITS_RECORD_SIZE;
+	if (padded_data_size > INT_MAX - header.size) {
+		errno = EOVERFLOW;
+		goto failure;
+	}
+	size_t image_size = header.size + padded_data_size;
+	char *buffer = realloc(*fits, image_size);
+	if (buffer == NULL) {
+		goto failure;
+	}
+	memcpy(buffer, header.data, header.size);
+	unsigned char *data = (unsigned char *)buffer + header.size;
+	memset(data + data_size, 0, padded_data_size - data_size);
+	for (size_t i = 0; i < pixel_count; i++) {
+		for (int component = 0; component < components; component++) {
+			size_t input_offset = (i * components + component) * byte_per_pixel;
+			size_t output_offset = (component * pixel_count + i) * byte_per_pixel;
+			if (byte_per_pixel == 2) {
+				uint16_t value;
+				memcpy(&value, image + input_offset, sizeof(value));
+				value ^= 0x8000;
+				data[output_offset] = value >> 8;
+				data[output_offset + 1] = value & 0xff;
+			} else {
+				data[output_offset] = (unsigned char)image[input_offset];
 			}
 		}
 	}
+	free(header.data);
 	*fits = buffer;
-	*fits_size = image_size;
+	*fits_size = (int)image_size;
 	return INDIGO_OK;
+failure:
+	free(header.data);
+	return INDIGO_FAILED;
 }

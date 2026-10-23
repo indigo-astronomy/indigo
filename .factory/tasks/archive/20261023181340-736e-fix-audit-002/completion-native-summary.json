@@ -1,0 +1,86 @@
+[
+  {
+    "suite": "test_align_math",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_aux_math",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_base64",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_bus_helpers",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_bus_property",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_dome_azimuth",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_driver_loader",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_md5",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_polynomial_fit",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_protocol_json",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_protocol_xml",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_protocol_security",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_transport_cache_security",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_timer",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_token",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_uni_io",
+    "exit_code": 1
+  },
+  {
+    "suite": "test_network_url",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_primalucelib",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_system_alpaca_json",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_raw_image",
+    "exit_code": 0
+  },
+  {
+    "suite": "test_raw_to_fits",
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,3 @@
+indigo_libs/indigo_raw_utils.c:512:10: runtime error: 2.41585e+09 is outside the range of representable values of type 'int'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior indigo_libs/indigo_raw_utils.c:512:10
+Running raw image unit tests

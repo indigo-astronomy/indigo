@@ -1,0 +1,8 @@
+Working directory: /private/tmp/indigo-20261023181250-5c67-fix-raw-fits-bounds
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+...............................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 175 tests in 118.816s
+
+OK
+Configured test commands passed. Assess coverage separately.

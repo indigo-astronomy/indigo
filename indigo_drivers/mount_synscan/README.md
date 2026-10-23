@@ -36,7 +36,7 @@ Use URL in form synscan://host:port to connect to the mount over UDP (default po
 - 2026-09-24 21:48 3.0.0.9 mac arm64 AstroEQ 8.25 (ESP32-S3) 16/16 OK
 - 2026-09-26 22:41 3.0.0.13 linux x64 simulator 24/24 OK
 - 2026-10-04 11:20 3.0.0.15 linux arm64 simulator 29/29 OK
-- 2026-10-06 22:15 3.0.0.18 mac arm64 AZGTi 19/19 OK
 - 2026-10-07 03:01 3.0.0.18 linux arm64 AstroEQ 8.25 (ESP32-S3) 19/19 OK
 - 2026-10-07 07:05 3.0.0.18 linux arm64 AZGTi 19/19 OK
-- 2026-10-15 01:17 3.0.0.19 mac arm64 simulator 47/47 OK
+- 2026-10-23 20:44 3.0.0.21 mac arm64 simulator 94/94 OK
+- 2026-10-23 21:14 3.0.0.21 mac arm64 AZGTi 19/19 OK

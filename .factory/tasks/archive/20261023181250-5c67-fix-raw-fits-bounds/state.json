@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261023181250-5c67-fix-raw-fits-bounds",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive reviewed execution, commit final candidate and verify exact committed range; coordinator integrates and cleans up.",
+  "blocker": null
+}

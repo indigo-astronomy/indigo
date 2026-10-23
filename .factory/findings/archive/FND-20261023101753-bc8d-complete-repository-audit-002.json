@@ -4,7 +4,7 @@
   "severity": "high",
   "summary": "indigo_uni_io.c:1584-1588 and indigo_io.c:367-370: explicit-port URL parsing copies colon-host bytes to host_name[INDIGO_NAME_SIZE] and writes a terminator at the same unbounded index. Public helpers accept longer URLs; drivers pass device URL property strings into this path. A malformed/overlong hostname corrupts stack before any network connection. Next: Reject host segments >= sizeof(host_name) before copying and validate URL/port syntax. Cover both helpers at limit-1/limit/over-limit. No network is needed to exercise parsing rejection.",
   "evidence": "indigo_uni_io.c:1584-1588 and indigo_io.c:367-370: explicit-port URL parsing copies colon-host bytes to host_name[INDIGO_NAME_SIZE] and writes a terminator at the same unbounded index. Public helpers accept longer URLs; drivers pass device URL property strings into this path. A malformed/overlong hostname corrupts stack before any network connection.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -12,8 +12,18 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "framework-formats-review.md",
       "revision": null
+    },
+    {
+      "id": "20261023181340-736e-fix-audit-002",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023181340-736e-fix-audit-002/verification.md: repaired URL regressions and ASan/UBSan pass on synchronized target 110f87e5413630c1c960d30f36cf32d0fc7115e6; configured groups pass; unrelated pre-existing FND-000047 retained explicitly.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-002"
 }

@@ -76,6 +76,23 @@
       "resets_checkpoint": false,
       "expanded_authorization": "Peter Polakovic explicitly approved extending the deferral to 026 on 2026-10-23"
     },
+    "raw_selection_fix_deferral": {
+      "approved_by": "Peter Polakovic, direct async reply in the 006 chat and explicit reply relayed by coordinator",
+      "date": "2026-10-23",
+      "task": "20261023181210-45bf-fix-raw-selection",
+      "scope": "Fix FND-20261023101753-bc8d-complete-repository-audit-006 before the due repository audit alongside authorized repairs 039 and 026; owner subsequently authorized readiness-based integration order.",
+      "checkpoint": "After the authorized 039/026/006 fixes, before unrelated development or release unless further expressly scoped owner deferrals apply.",
+      "resets_checkpoint": false
+    },
+    "raw_fits_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection relayed by coordinating session",
+      "date": "2026-10-23",
+      "task": "20261023181250-5c67-fix-raw-fits-bounds",
+      "scope": "Repair FND-20261023101753-bc8d-complete-repository-audit-005 alongside authorized repairs 039/026/006 before due audit; owner permits readiness-based integration order",
+      "authority": "Owner answered \u00c1no, odlo\u017ei\u0165 aj pre 005 to explicit extension question",
+      "checkpoint": "After authorized repairs 039/026/006/005, before unrelated work or release",
+      "resets_checkpoint": false
+    },
     "network_url_fix_deferral": {
       "approved_by": "Peter Polakovic, direct human reply verified in coordinator chat 01a169ed-63c1-7443-a96e-007a7872884e",
       "date": "2026-10-23",
