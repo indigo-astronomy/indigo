@@ -106,6 +106,11 @@ static void pixel_formats_remain_correct(void) {
 		int size = 0;
 		ASSERT_EQ_INT(INDIGO_OK, indigo_raw_to_fits(raw, sizeof(indigo_raw_header) + 2 * bytes[i], &fits, &size, NULL));
 		ASSERT_EQ_INT(2 * FITS_RECORD_SIZE, size);
+		ASSERT_TRUE(memcmp(fits, "SIMPLE  =                    T", 30) == 0);
+		ASSERT_TRUE(memcmp(fits + 3 * 80, "NAXIS1  =                    2", 30) == 0);
+		ASSERT_TRUE(memcmp(fits + 4 * 80, "NAXIS2  =                    1", 30) == 0);
+		ASSERT_EQ_INT(i % 2 ? '6' : '8', fits[80 + 29]);
+		ASSERT_EQ_INT(i > 1 ? '3' : '2', fits[2 * 80 + 29]);
 		ASSERT_TRUE(memcmp(fits + FITS_RECORD_SIZE, expected[i], 2 * bytes[i]) == 0);
 		free(fits);
 		free(raw);

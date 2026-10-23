@@ -1,0 +1,119 @@
+{
+  "version": 2,
+  "task": "20261023181250-5c67-fix-raw-fits-bounds",
+  "scope": [
+    "indigo_libs/indigo_fits.c",
+    "indigo_libs/indigo/indigo_fits.h",
+    "indigo_test/unit/test_raw_to_fits.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/maintenance.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-005.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-005.json",
+    ".factory/completions/20261023181250-5c67-fix-raw-fits-bounds.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "sh",
+        ".factory/tasks/20261023181250-5c67-fix-raw-fits-bounds/verify-fits.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-imager-download"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "clang",
+        "--analyze",
+        "-Wall",
+        "-Wextra",
+        "-Iindigo_libs",
+        "indigo_libs/indigo_fits.c",
+        "-Xanalyzer",
+        "-analyzer-output=text"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "quality-review.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023181250-5c67-fix-raw-fits-bounds.json": [
+      "100644",
+      "blob",
+      "280b7a43348b6256711e5d18d8108851a549dc2f"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-005.json": null,
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-005.json": [
+      "100644",
+      "blob",
+      "a1dbffd34b11de0cea133538927d2f8a79a2dc17"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "4465f87b1c4fa85093c0d434b0d3ee8a97857ac5"
+    ],
+    "indigo_libs/indigo/indigo_fits.h": [
+      "100644",
+      "blob",
+      "d01caae3f6e22fb6e4f0f6b3f0892c8efe61bd41"
+    ],
+    "indigo_libs/indigo_fits.c": [
+      "100644",
+      "blob",
+      "e59078711b73be0934fe4efe4ae127da90321883"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "5d36ea76d6f6128839ce32d49d2a0adecdda2652"
+    ],
+    "indigo_test/unit/test_raw_to_fits.c": [
+      "100644",
+      "blob",
+      "9b8882da260072b91f2e2fdb2df5ed7d62b0aa74"
+    ]
+  }
+}

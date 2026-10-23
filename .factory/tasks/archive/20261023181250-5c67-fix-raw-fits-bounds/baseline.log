@@ -1,0 +1,79 @@
+=================================================================
+==34277==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x6020000022d1 at pc 0x000105a2b4e8 bp 0x00016ae04df0 sp 0x00016ae04588
+READ of size 2 at 0x6020000022d1 thread T0
+==34277==WARNING: external symbolizer didn't start up correctly!
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x105a2b4e4"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x105000c3c"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x104ff8de0"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x104fffb98"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x104ff8b18"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x000105a2b4e4 in strncmp+0x538 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x174e4)
+    #1 0x000105000c3c in indigo_raw_to_fits+0x18c (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100008c3c)
+    #2 0x000104ff8de0 in short_headers_are_rejected+0x1e8 (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100000de0)
+    #3 0x000104fffb98 in indigo_run_tests+0x7b8 (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100007b98)
+    #4 0x000104ff8b18 in main+0x180 (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100000b18)
+    #5 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x6020000022d1 is located 0 bytes after 1-byte region [0x6020000022d0,0x6020000022d1)
+allocated by thread T0 here:
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x105a55274"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x104ff8d7c"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x104fffb98"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x104ff8b18"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x000105a55274 in malloc+0x78 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x000104ff8d7c in short_headers_are_rejected+0x184 (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100000d7c)
+    #2 0x000104fffb98 in indigo_run_tests+0x7b8 (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100007b98)
+    #3 0x000104ff8b18 in main+0x180 (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100000b18)
+    #4 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x105a2b4e4"
+==34277==WARNING: Can't read from symbolizer at fd 3
+==34277==WARNING: atos failed to symbolize address "0x105000c3c"
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/private/tmp/indigo-fits-005-baseline/test_raw_to_fits:arm64+0x100008c3c) in indigo_raw_to_fits+0x18c
+Shadow bytes around the buggy address:
+  0x602000002000: fa fa 00 00 fa fa fd fd fa fa fd fd fa fa fd fd
+  0x602000002080: fa fa fd fd fa fa fd fd fa fa fd fd fa fa fd fd
+  0x602000002100: fa fa fd fd fa fa fd fd fa fa fd fd fa fa fd fd
+  0x602000002180: fa fa fd fd fa fa fd fd fa fa fd fd fa fa fd fd
+  0x602000002200: fa fa 00 00 fa fa 00 00 fa fa 00 00 fa fa 00 00
+=>0x602000002280: fa fa 00 fa fa fa fd fa fa fa[01]fa fa fa fa fa
+  0x602000002300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002380: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002400: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002480: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002500: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==34277==ABORTING
+Running RAW to FITS unit tests

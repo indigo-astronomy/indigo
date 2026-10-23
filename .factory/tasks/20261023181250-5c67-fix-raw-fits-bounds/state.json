@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "active_task": "20261023181250-5c67-fix-raw-fits-bounds",
-  "phase": "verification",
-  "status": "active",
-  "assigned_role": "coordinator",
-  "next_action": "Preserve reviewed repair checkpoint, then synchronize coordinator-authorized master and rerun final review/checks.",
-  "blocker": null
-}

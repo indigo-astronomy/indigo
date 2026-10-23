@@ -117,6 +117,10 @@ INDIGO_EXTERN indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, 
 INDIGO_EXTERN indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, const void *data, const int radius, const double stddev_threshold_factor, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found);
 INDIGO_EXTERN indigo_result indigo_find_stars_precise_filtered(indigo_raw_type raw_type, const void *data, const int radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found);
 INDIGO_EXTERN indigo_result indigo_find_stars_precise_clipped(indigo_raw_type raw_type, const void *data, const int radius, const int width, const int height, const int stars_max, const int include_left, const int include_top, const int include_width, const int include_height, const int exclude_left, const int exclude_top, const int exclude_width, const int exclude_height, indigo_star_detection star_list[], int *stars_found);
+/* Selection measurements require a positive radius and the complete inclusive ROI
+ * around the rounded center inside the frame. Frame dimensions must exceed the ROI
+ * diameter. Invalid geometry returns INDIGO_FAILED without changing outputs.
+ * PSF with no requested outputs remains a no-op; digest radius is limited to 128. */
 INDIGO_EXTERN indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, double x, double y, const int radius, const int width, const int height, double *fwhm, double *hfd, double *peak);
 
 INDIGO_EXTERN indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest);

@@ -1,0 +1,99 @@
+{
+  "version": 2,
+  "task": "20261023180252-b61d-fix-imager-download",
+  "scope": [
+    "indigo_server/resource/imager.html",
+    "indigo_test/unit/test_imager_download.js",
+    "indigo_test/Makefile",
+    "indigo_test/AGENTS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/maintenance.json",
+    ".factory/completions/20261023180252-b61d-fix-imager-download.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-039.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-039.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-imager-download"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023180252-b61d-fix-imager-download.json": [
+      "100644",
+      "blob",
+      "38817a416f27a777be5acb8819a63bca5cf0b006"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-039.json": null,
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-039.json": [
+      "100644",
+      "blob",
+      "6ab2a2ef541021012b81deca0885242ff8865854"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "8e8fd8c25bdde625ee27482a26cb51cc0caf2bdd"
+    ],
+    "indigo_server/resource/imager.html": [
+      "100644",
+      "blob",
+      "e09a6a41ce19eeca866b6149a745df9deef0feed"
+    ],
+    "indigo_test/AGENTS.md": [
+      "100644",
+      "blob",
+      "1045486dc802da33410f9d803f9f41a05cbfbbc1"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "8c5b108b84082c1827f60188a85363da994afabe"
+    ],
+    "indigo_test/unit/test_imager_download.js": [
+      "100644",
+      "blob",
+      "775855c9c44f80c76e4a8656d3f6c9e76ef42a81"
+    ]
+  }
+}

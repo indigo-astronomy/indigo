@@ -4,16 +4,26 @@
   "severity": "high",
   "summary": "indigo_raw_utils.c:438-449 and 667-675: selection guards accept xx == width-radius or yy == height-radius, but inclusive loops reach index width/height. PSF accesses all formats directly; selection digest RGB/RGBA variants do too. Public APIs and imager star selection can reach frame-edge selections. Radius zero also allocates zero border storage in PSF before writing one border value. PSF lines 509-515 use int squared-deviation sum, which overflows for ordinary high-contrast 16-bit borders and corrupts HFD/FWHM thresholds. Next: Require a complete positive-radius inclusive ROI (xx+radius < width, yy+radius < height); use double statistics; return failure before reads. Verify right/bottom boundary and a high-contrast mono16 border. This confirms the prior RAW/PSF boundary candidate, without assuming framework generic-number validation solves geometry.",
   "evidence": "indigo_raw_utils.c:438-449 and 667-675: selection guards accept xx == width-radius or yy == height-radius, but inclusive loops reach index width/height. PSF accesses all formats directly; selection digest RGB/RGBA variants do too. Public APIs and imager star selection can reach frame-edge selections. Radius zero also allocates zero border storage in PSF before writing one border value. PSF lines 509-515 use int squared-deviation sum, which overflows for ordinary high-contrast 16-bit borders and corrupts HFD/FWHM thresholds.",
-  "status": "open",
-  "owner": "coordinator",
+  "status": "closed",
+  "owner": "20261023181210-45bf-fix-raw-selection",
   "blocking": false,
   "tasks": [
     {
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "framework-formats-review.md",
       "revision": null
+    },
+    {
+      "id": "20261023181210-45bf-fix-raw-selection",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023181210-45bf-fix-raw-selection: complete positive-radius inclusive ROI validation before reads and integer narrowing; double PSF variance; synchronized native and ASan/UBSan RAW tests pass 15/15. See verification.md and security.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-006"
 }

@@ -1,0 +1,52 @@
+Apple clang version 21.0.0 (clang-2100.3.34.2)
+Target: arm64-apple-darwin27.0.0
+Thread model: posix
+InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+Running RAW to FITS unit tests
+  PASS exact_card_capacity_and_padding_are_preserved
+  PASS combined_metadata_and_keyword_types_are_preserved
+  PASS short_headers_are_rejected
+  PASS invalid_arguments_and_dimensions_preserve_output
+  PASS all_component_payloads_are_required
+  PASS pixel_formats_remain_correct
+  PASS unaligned_input_is_supported
+  PASS header_record_boundaries_preserve_pixels
+  PASS embedded_rgb_metadata_follows_full_payload
+  PASS embedded_metadata_can_span_records
+  PASS malformed_and_oversized_cards_are_rejected
+RAW to FITS unit tests: all tests passed
+Running RAW to FITS unit tests
+  PASS exact_card_capacity_and_padding_are_preserved
+  PASS combined_metadata_and_keyword_types_are_preserved
+  PASS short_headers_are_rejected
+  PASS invalid_arguments_and_dimensions_preserve_output
+  PASS all_component_payloads_are_required
+  PASS pixel_formats_remain_correct
+  PASS unaligned_input_is_supported
+  PASS header_record_boundaries_preserve_pixels
+  PASS embedded_rgb_metadata_follows_full_payload
+  PASS embedded_metadata_can_span_records
+  PASS malformed_and_oversized_cards_are_rejected
+RAW to FITS unit tests: all tests passed
+PASS allocation failure at all five allocation sites; success after fault budget exhausted
+mkdir -p build/unit
+/usr/bin/clang -O2 -g -Wall -Wextra -Werror -Wno-unused-function -I../indigo_libs -I.. -o build/unit/test_raw_to_fits unit/test_raw_to_fits.c /private/tmp/indigo-fits-005.GlJPPs/libfits.a -fsanitize=address,undefined
+Running RAW to FITS unit tests
+  PASS exact_card_capacity_and_padding_are_preserved
+  PASS combined_metadata_and_keyword_types_are_preserved
+  PASS short_headers_are_rejected
+  PASS invalid_arguments_and_dimensions_preserve_output
+  PASS all_component_payloads_are_required
+  PASS pixel_formats_remain_correct
+  PASS unaligned_input_is_supported
+  PASS header_record_boundaries_preserve_pixels
+  PASS embedded_rgb_metadata_follows_full_payload
+  PASS embedded_metadata_can_span_records
+  PASS malformed_and_oversized_cards_are_rejected
+RAW to FITS unit tests: all tests passed
+rm -rf build
+  1 raw files sucessfully converted
+Can not convert '/private/tmp/indigo-fits-005.GlJPPs/invalid.raw' to FITS: Invalid argument
+  0 raw files sucessfully converted
+  1 files failed.
+PASS command-line converter: metadata spans records; truncated file rejected

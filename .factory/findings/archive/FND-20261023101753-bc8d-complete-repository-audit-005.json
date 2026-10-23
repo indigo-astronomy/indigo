@@ -4,16 +4,26 @@
   "severity": "high",
   "summary": "indigo_fits.c:69-119, 140-179: converter reads RAW header before checking in_size, computes signed size products without validating dimensions/payload, and emits unbounded sprintf keyword cards into one fixed 2880-byte header. Embedded extension cards have no remaining-header check. Short/corrupt RAW input or large metadata can read/write beyond allocations; many cards also overwrite the data region. Called by the file converter at indigo_tools/indigo_raw_to_fits.c:185. Next: Validate minimum header, type, overflow-safe full components*pixel-byte payload and extension bounds; bounded cards with reserved END/comments or properly allocated multiple header records; preserve old allocation on realloc failure. Cover truncated data and header-capacity boundaries.",
   "evidence": "indigo_fits.c:69-119, 140-179: converter reads RAW header before checking in_size, computes signed size products without validating dimensions/payload, and emits unbounded sprintf keyword cards into one fixed 2880-byte header. Embedded extension cards have no remaining-header check. Short/corrupt RAW input or large metadata can read/write beyond allocations; many cards also overwrite the data region. Called by the file converter at indigo_tools/indigo_raw_to_fits.c:185.",
-  "status": "open",
-  "owner": "coordinator",
+  "status": "closed",
+  "owner": "20261023181250-5c67-fix-raw-fits-bounds",
   "blocking": false,
   "tasks": [
     {
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "framework-formats-review.md",
       "revision": null
+    },
+    {
+      "id": "20261023181250-5c67-fix-raw-fits-bounds",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023181250-5c67-fix-raw-fits-bounds verification.md: all four RAW formats, complete/truncated component payloads, overflow/short-header rejection, bounded 80-byte/multi-record headers, embedded RGB offset, ASan/UBSan and all five allocator failure positions verified after synchronizing master a1beecfdb8ad4e71af9df6670ef7b047e72ab107",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-005"
 }

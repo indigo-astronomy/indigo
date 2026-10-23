@@ -57,7 +57,7 @@
 													<path d="M16,5A11,11,0,1,0,27,16,11.01245,11.01245,0,0,0,16,5Zm0,19a8,8,0,1,1,8-8A8.00917,8.00917,0,0,1,16,24Zm5-8a5,5,0,1,1-5-5A5,5,0,0,1,21,16Z"/>
 												</svg>
 											</indigo-status-button>
-											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" cid="download_button" class="btn btn-svg idle-state" :disabled="window.imagerStartProcessBusy()" onclick="download()" data-bs-toggle="tooltip" title="Download images">
+											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" id="download_button" class="btn btn-svg idle-state" :disabled="window.imagerStartProcessBusy()" onclick="download()" data-bs-toggle="tooltip" title="Download images">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M30.5,18a7.45207,7.45207,0,0,1-1.92773,5,6.49979,6.49979,0,0,1-4.61915,2H23V22h.95312a3.50194,3.50194,0,0,0,2.39258-1.01074A4.45541,4.45541,0,0,0,27.5,18a5.00588,5.00588,0,0,0-5-5,5.10006,5.10006,0,0,0-.70605.05664l-1.22266.168-.40039-1.168A5.993,5.993,0,0,0,8.665,15.37109l.32031,1.37012-1.34765.40723A2.97242,2.97242,0,0,0,5.5,20a2.01441,2.01441,0,0,0,.41406,1.22852A2.42324,2.42324,0,0,0,7.70312,22H10v3H7.70312a5.35308,5.35308,0,0,1-4.23535-2.03516A5.03407,5.03407,0,0,1,2.5,20a5.93806,5.93806,0,0,1,3.03809-5.19922C5.5127,14.53223,5.5,14.26465,5.5,14a8.99653,8.99653,0,0,1,17.05664-4A8.00931,8.00931,0,0,1,30.5,18ZM20.25885,23H18V17.5a.5.5,0,0,0-.5-.5h-2a.5.5,0,0,0-.5.5V23H12.74115a.5.5,0,0,0-.40393.79468l3.75885,5.15173a.50008.50008,0,0,0,.80786,0l3.75885-5.15173A.5.5,0,0,0,20.25885,23Z"/>
 												</svg>
@@ -501,24 +501,59 @@
 						imagerStartProcessItem = null;
 				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
 					if (property.state == "Ok" && downloadFileName != "") {
+						const fileName = downloadFileName;
+						downloadFileName = "";
 						var xhr = new XMLHttpRequest();
-						xhr.open("GET", property.item("IMAGE").value);
-						xhr.responseType = "blob";
-						xhr.onload = function () {
-							var a = document.createElement("a");
-							a.style = "display: none";
-							document.body.appendChild(a);
-							var url = URL.createObjectURL(this.response);
-							a.href = url;
-							a.download = downloadFileName;
-							a.click();
-							URL.revokeObjectURL(url);
-							var values = { };
-							values["FILE"] = downloadFileName;
-							changeProperty("Imager Agent", "AGENT_IMAGER_DELETE_FILE", values);
+						var finished = false;
+						function failed() {
+							if (!finished) {
+								finished = true;
+								imagerDownloadFailed(fileName);
+							}
+						}
+						xhr.onload = function (event) {
+							if (finished) {
+								return;
+							}
+							if (this.status !== 200 || !(this.response instanceof Blob) || this.response.size === 0 || (event.lengthComputable && event.loaded !== event.total)) {
+								failed();
+								return;
+							}
+							var a, url;
+							try {
+								a = document.createElement("a");
+								a.style = "display: none";
+								document.body.appendChild(a);
+								url = URL.createObjectURL(this.response);
+								a.href = url;
+								a.download = fileName;
+								a.click();
+							} catch (error) {
+								failed();
+								return;
+							} finally {
+								if (url) {
+									URL.revokeObjectURL(url);
+								}
+								if (a) {
+									a.remove();
+								}
+							}
+							finished = true;
+							downloadInProgress = false;
+							changeProperty("Imager Agent", "AGENT_IMAGER_DELETE_FILE", { "FILE": fileName });
 							setTimeout(download, 100);
 						};
-						xhr.send();
+						xhr.onerror = xhr.onabort = xhr.ontimeout = failed;
+						try {
+							xhr.open("GET", property.item("IMAGE").value);
+							xhr.responseType = "blob";
+							xhr.send();
+						} catch (error) {
+							failed();
+						}
+					} else if (property.state == "Alert" && downloadFileName != "") {
+						imagerDownloadFailed(downloadFileName);
 					}
 				}
 			}
@@ -556,7 +591,18 @@
 			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
 		}
 	
+	function imagerDownloadFailed(fileName) {
+		downloadFileName = "";
+		downloadInProgress = false;
+		$("#download_button").removeClass("busy-state");
+		$("#download_button").addClass("idle-state");
+		window.alert("Could not download " + fileName + ". The original image has been kept. Click Download images to retry.");
+	}
+
 	function download() {
+		if (downloadInProgress) {
+			return;
+		}
 		var files = INDIGO.devices["Imager Agent"]["AGENT_IMAGER_DOWNLOAD_FILES"];
 		if (files.items.length > 1) {
 			downloadInProgress = true;
@@ -567,6 +613,7 @@
 			values["FILE"] = downloadFileName;
 			changeProperty("Imager Agent", "AGENT_IMAGER_DOWNLOAD_FILE", values);
 		} else {
+			downloadInProgress = false;
 			downloadFileName = "";
 			$("#download_button").removeClass("busy-state");
 			$("#download_button").addClass("idle-state");

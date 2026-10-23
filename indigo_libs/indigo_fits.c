@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2025 Rumen G. Bogdanovski
+// Copyright (c) 2021-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -199,7 +199,11 @@ indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fit
 	size_t data_size = pixel_count * components * byte_per_pixel;
 	image += sizeof(raw);
 	raw_fits_header header = { 0 };
-	if (!raw_fits_append(&header, "SIMPLE  = %20c", 'T') || !raw_fits_append(&header, "BITPIX  = %20d", byte_per_pixel * 8) || !raw_fits_append(&header, "NAXIS   = %20d / %s", components > 1 ? 3 : 2, components > 1 ? "RGB Image" : "Monochrome or Bayer mosaic color image") || !raw_fits_append(&header, "NAXIS1  = %20u", raw.width) || !raw_fits_append(&header, "NAXIS2  = %20u", raw.height)) {
+	if (!raw_fits_append(&header, "SIMPLE  = %20c", 'T') ||
+		!raw_fits_append(&header, "BITPIX  = %20d", byte_per_pixel * 8) ||
+		!raw_fits_append(&header, "NAXIS   = %20d / %s", components > 1 ? 3 : 2, components > 1 ? "RGB Image" : "Monochrome or Bayer mosaic color image") ||
+		!raw_fits_append(&header, "NAXIS1  = %20u", raw.width) ||
+		!raw_fits_append(&header, "NAXIS2  = %20u", raw.height)) {
 		goto failure;
 	}
 	if (components > 1 && !raw_fits_append(&header, "NAXIS3  = %20d", components)) {
@@ -208,10 +212,17 @@ indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fit
 	if (!raw_fits_append(&header, "EXTEND  = %20c", 'T')) {
 		goto failure;
 	}
-	if (byte_per_pixel == 2 && (!raw_fits_append(&header, "BZERO   = %20d", 32768) || !raw_fits_append(&header, "BSCALE  = %20d", 1))) {
+	if (byte_per_pixel == 2 && (!raw_fits_append(&header, "BZERO   = %20d", 32768) ||
+		!raw_fits_append(&header, "BSCALE  = %20d", 1))) {
 		goto failure;
 	}
-	if (!raw_fits_keywords(&header, keywords) || !raw_fits_extension(&header, image + data_size, available - data_size) || !raw_fits_append(&header, "ROWORDER= %20s / Image row order", "'TOP-DOWN'") || !raw_fits_append(&header, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy") || !raw_fits_append(&header, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H") || !raw_fits_append(&header, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org") || !raw_fits_append(&header, "END")) {
+	if (!raw_fits_keywords(&header, keywords) ||
+		!raw_fits_extension(&header, image + data_size, available - data_size) ||
+		!raw_fits_append(&header, "ROWORDER= %20s / Image row order", "'TOP-DOWN'") ||
+		!raw_fits_append(&header, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy") ||
+		!raw_fits_append(&header, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H") ||
+		!raw_fits_append(&header, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org") ||
+		!raw_fits_append(&header, "END")) {
 		goto failure;
 	}
 	size_t padded_data_size = data_size + (FITS_RECORD_SIZE - data_size % FITS_RECORD_SIZE) % FITS_RECORD_SIZE;
