@@ -34,7 +34,8 @@
   ],
   "risk_reviews": {
     "process-policy": "security.md",
-    "data-model": "security.md"
+    "data-model": "security.md",
+    "authentication": "security.md"
   },
   "reviews": [],
   "reviewed_content": {
