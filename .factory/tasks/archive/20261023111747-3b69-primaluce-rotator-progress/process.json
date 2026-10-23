@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "task": "20261023111747-3b69-primaluce-rotator-progress",
+  "scope": [
+    "indigo_drivers/focuser_primaluce/*",
+    "indigo_test/integration/test_focuser_primaluce_simulator.c",
+    "TEST_SUMMARY.md",
+    ".factory/tasks/*",
+    ".factory/findings/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_primaluce"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "input-parsing": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023111747-3b69-primaluce-rotator-progress.json": [
+      "100644",
+      "blob",
+      "207f0ab634ba3c705b00e8a47fbe07e889b5c344"
+    ],
+    ".factory/findings/archive/FND-20261023111747-3b69-primaluce-rotator-progress-001.json": [
+      "100644",
+      "blob",
+      "2cfb30dcb0b6599f758f23a32faa2427acba5c16"
+    ],
+    ".factory/findings/archive/FND-20261023111747-3b69-primaluce-rotator-progress-002.json": [
+      "100644",
+      "blob",
+      "ae20ab715e4ca8189e2ebf0e280947c415a7a685"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "9fa569e5a7238aff31ca026d0cb7ae98578998b5"
+    ],
+    "indigo_drivers/focuser_primaluce/README.md": [
+      "100644",
+      "blob",
+      "6741ad8f6731707f4db44aa906b13048ea300705"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "100644",
+      "blob",
+      "3ecf9b6018740a6d673d3c3e36e554dad875241a"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": [
+      "100644",
+      "blob",
+      "1a7bf936e2232731d1b08ec827708b459193dcec"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": [
+      "100644",
+      "blob",
+      "c64c1c0ee3a92210a26953a124333121130fa09d"
+    ],
+    "indigo_test/integration/test_focuser_primaluce_simulator.c": [
+      "100644",
+      "blob",
+      "80ad8c7a36f71014b76e0ea4509bcc21308d8ca1"
+    ]
+  }
+}

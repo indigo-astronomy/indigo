@@ -191,18 +191,45 @@ static bool remove_fault(void) {
 
 // ----------------------------------------------------------------- helpers
 
-// Every FOCUSER_POSITION state the focuser published, in order.
+// Every FOCUSER_POSITION state the focuser published, in order, and the values of the focuser and rotator
+// position updates.
 static atomic_uint position_log_count;
 static indigo_property_state position_log[256];
+static double position_value_log[256];
+static atomic_uint rotator_log_count;
+static indigo_property_state rotator_log[256];
+static double rotator_value_log[256];
 
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, PRIMALUCE_FOCUSER_NAME) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 		unsigned slot = atomic_fetch_add(&position_log_count, 1);
 		if (slot < ARRAY_SIZE(position_log)) {
 			position_log[slot] = property->state;
+			position_value_log[slot] = property->items[0].number.value;
+		}
+	} else if (!strcmp(property->device, PRIMALUCE_ROTATOR_NAME) && !strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
+		unsigned slot = atomic_fetch_add(&rotator_log_count, 1);
+		if (slot < ARRAY_SIZE(rotator_log)) {
+			rotator_log[slot] = property->state;
+			rotator_value_log[slot] = property->items[0].number.value;
 		}
 	}
 	return simulator_client_update_property(client, device, property, message);
+}
+
+// The first BUSY update logged from index from on shows the measured position as its value, not the request.
+static bool first_busy_value_is(indigo_property_state *states, double *values, unsigned count, unsigned from, double expected) {
+	for (unsigned i = from; i < count && i < 256; i++) {
+		if (states[i] == INDIGO_BUSY_STATE) {
+			if (fabs(values[i] - expected) > 0.01) {
+				fprintf(stderr, "First BUSY update shows %g instead of %g\n", values[i], expected);
+				return false;
+			}
+			return true;
+		}
+	}
+	fprintf(stderr, "No BUSY update logged\n");
+	return false;
 }
 
 static const char *device_name(void) {
@@ -336,6 +363,20 @@ static bool position_is(double expected) {
 	indigo_property *property = find_cached_property(FOCUSER_POSITION_PROPERTY_NAME);
 	indigo_item *item = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	fprintf(stderr, "Focuser did not settle at %g (value %g, state %d)\n", expected, item == NULL ? NAN : item->number.value, property == NULL ? -1 : property->state);
+	return false;
+}
+
+// The rotator publishes an angle strictly between origin and target while the move is BUSY.
+static bool rotator_in_motion(double origin, double target) {
+	for (int i = 0; i < 400; i++) {
+		indigo_property *property = find_cached_property(ROTATOR_POSITION_PROPERTY_NAME);
+		indigo_item *item = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+		if (property != NULL && item != NULL && property->state == INDIGO_BUSY_STATE && ((item->number.value > origin && item->number.value < target) || (item->number.value < origin && item->number.value > target))) {
+			return true;
+		}
+		indigo_usleep(25000);
+	}
+	fprintf(stderr, "Rotator never published an angle between %g and %g while moving\n", origin, target);
 	return false;
 }
 
@@ -806,7 +847,10 @@ cleanup:
 static void absolute_move(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	unsigned int steps_busy = property_state_revision(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	unsigned position_updates = atomic_load(&position_log_count);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 19000, INDIGO_BUSY_STATE));
+	// The move starts from the measured position rather than showing the request as the value.
+	SERIAL_CHECK_TRUE(first_busy_value_is(position_log, position_value_log, atomic_load(&position_log_count), position_updates, 18075));
 	// An absolute move holds FOCUSER_STEPS busy too.
 	SERIAL_CHECK_TRUE(state_seen(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE, steps_busy));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"STEP\":19000", 1));
@@ -1589,6 +1633,13 @@ static void rotator_move(void) {
 	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 10, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"DEG\":10", 1));
 	SERIAL_CHECK_TRUE(rotator_position_is(10));
+	// The angle is published while the rotator turns, not only when it arrives, and the move starts from the
+	// measured angle rather than showing the request as the value.
+	unsigned rotator_updates = atomic_load(&rotator_log_count);
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(first_busy_value_is(rotator_log, rotator_value_log, atomic_load(&rotator_log_count), rotator_updates, 10));
+	SERIAL_CHECK_TRUE(rotator_in_motion(10, 200));
+	SERIAL_CHECK_TRUE(rotator_position_is(200));
 cleanup:
 	driver_stop();
 }

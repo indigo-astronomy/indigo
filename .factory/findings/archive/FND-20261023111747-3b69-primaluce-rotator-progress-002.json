@@ -1,0 +1,24 @@
+{
+  "title": "focuser_primaluce showed the requested position as the value in the first BUSY update of a move",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023111747-3b69-primaluce-rotator-progress",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "FOCUSER_POSITION and ROTATOR_POSITION were dispatched with INDIGO_COPY_VALUES_PROCESS_CHANGE, so the request replaced the measured value and the first BUSY update showed the target for one update before the first readback.",
+  "evidence": "20261023111747-3b69-primaluce-rotator-progress/verification.md (FND-002); hardware log 2026-10-23 (BUSY value 17 for a move from 10 to 17)",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023111747-3b69-primaluce-rotator-progress/verification.md: FOCUSER_POSITION and ROTATOR_POSITION use preserve_values (targets only); absolute_move and the rotator move cases check the first BUSY value and fail without it; recorded run 65/65; hardware first BUSY value is the measured angle.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023111747-3b69-primaluce-rotator-progress-002"
+}

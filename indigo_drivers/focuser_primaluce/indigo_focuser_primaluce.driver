@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 32;
+	version = 33;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -1771,6 +1771,8 @@ driver primaluce {
 			// on_detach { }
 		}
 		inherited FOCUSER_POSITION {
+			// The request goes to the target; the value keeps the measured position until the first readback.
+			preserve_values = true;
 			reject_change {
 				// A relative move runs through this property too, so both motion properties are
 				// busy while any move runs and both have to be inspected. pending covers a move
@@ -1968,6 +1970,8 @@ driver primaluce {
 				if (rotator_read_angle(device)) {
 					char *state = primalucelib_reply_rotator_motor_state(LINK);
 					if (state != NULL && !primalucelib_is_motor_stopped(state)) {
+						// The angle is published on every poll, so a client follows the rotation.
+						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 						indigo_execute_handler_in(device, 0.2, rotator_movement_finalizer);
 					} else if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 						for (int i = 0; i < 10; i++) {
@@ -2052,6 +2056,8 @@ driver primaluce {
 			// on_detach { }
 		}
 		inherited ROTATOR_POSITION {
+			// The request goes to the target; the value keeps the measured angle until the first readback.
+			preserve_values = true;
 			on_change {
 				if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 					// A sync redefines the current angle without moving the rotator.

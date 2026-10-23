@@ -1,0 +1,24 @@
+{
+  "title": "focuser_primaluce did not publish the ARCO angle during a move",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023111747-3b69-primaluce-rotator-progress",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The rotator movement finalizer read the angle every 0.2 s during a move but published ROTATOR_POSITION only when the move ended, so clients showed the start angle until arrival.",
+  "evidence": "20261023111747-3b69-primaluce-rotator-progress/verification.md (FND); requester report 2026-10-23 on the SESTO SENSO 3",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023111747-3b69-primaluce-rotator-progress/verification.md: the rotator finalizer publishes the angle on every poll; rotator_move and sestosenso3_rotator_move pass and fail without it; recorded run 65/65; hardware angle counted up during a move.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023111747-3b69-primaluce-rotator-progress-001"
+}

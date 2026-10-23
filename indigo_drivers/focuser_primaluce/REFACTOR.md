@@ -851,3 +851,31 @@ calibration", and the ARCO calibration was started.
 - Simulated tests: 65 run, 65 passed: `2026-10-23 13:36 3.0.0.32 linux x64 simulator 65/65 OK`.
   Library unit cases: 26 of 26.
 - Hardware: the supervised rotator check above was manual, so it produces no hardware record.
+
+## Rotator angle and value during a move (3.0.0.33, 2026-10-23, task 20261023111747-3b69-primaluce-rotator-progress)
+
+During an ARCO move the movement finalizer read the angle every 0.2 s but published ROTATOR_POSITION
+only at the end, so a client saw the start angle until the rotator arrived (FND-20261023111747-3b69-primaluce-rotator-progress-001, requester's report
+on the SESTO SENSO 3). The finalizer now publishes the angle on every poll while the move is BUSY,
+like the focuser.
+
+Regression test: `rotator_move` and `sestosenso3_rotator_move` also move from 10° to 200° and
+require an angle strictly between them while BUSY. Both fail without the fix.
+
+Hardware (supervised): during a move from 10° to 17° the published angle counted 10.0, 10.4, 11.1,
+… before it ended OK.
+
+The first BUSY publication of a move also showed the requested angle or position as its value for one
+update, because both position properties were dispatched with `INDIGO_COPY_VALUES_PROCESS_CHANGE`
+(FND-20261023111747-3b69-primaluce-rotator-progress-002). FOCUSER_POSITION and ROTATOR_POSITION now use `preserve_values = true`, the generator's copy
+of the targets only (`INDIGO_COPY_TARGETS_PROCESS_CHANGE`), as the ZWO rotator does: the request
+goes to the target, and the value keeps the measured position. Regression tests: `absolute_move`,
+`rotator_move` and `sestosenso3_rotator_move` check the value of the first BUSY update (logged by the
+test client); without the change it shows 19000 or 200, the request. Hardware: the first BUSY update
+of a rotator move showed the angle the ARCO had reported (0) with the target 20.556.
+
+## Final test summary (3.0.0.33)
+
+- Simulated tests: 65 run, 65 passed: `2026-10-23 15:55 3.0.0.33 linux x64 simulator 65/65 OK`.
+  Library unit cases: 26 of 26.
+- Hardware: the supervised checks above were manual, so they produce no hardware record.
