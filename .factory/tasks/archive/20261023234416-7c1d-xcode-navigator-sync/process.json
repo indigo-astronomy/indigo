@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "task": "20261023234416-7c1d-xcode-navigator-sync",
+  "scope": [
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023234416-7c1d-xcode-navigator-sync.json": [
+      "100644",
+      "blob",
+      "1b29964fdbd226ef49359fcfbc9bcd92e440005b"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "a86c7cc5a24cdff7c27e2157742991833dddcce3"
+    ]
+  }
+}
