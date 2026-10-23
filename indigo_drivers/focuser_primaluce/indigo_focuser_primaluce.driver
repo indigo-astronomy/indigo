@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 36;
+	version = 37;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -325,7 +325,7 @@ driver primaluce {
 				}
 				PRIVATE_DATA->calibration_pending = PRIVATE_DATA->focuser_needs_calibration = false;
 				X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+				indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "Calibration complete, range %.0f to %.0f", min_position, max_position);
 			}
 
 			// Reads the focuser position and whether the motor runs. A reply without the position
@@ -1971,7 +1971,7 @@ driver primaluce {
 						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 					}
 					PRIVATE_DATA->rotator_needs_calibration = false;
-					INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, "ARCO calibration complete");
 				}
 			}
 

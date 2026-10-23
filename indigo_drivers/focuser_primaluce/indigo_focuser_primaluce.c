@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000024
+#define DRIVER_VERSION       0x03000025
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -653,7 +653,7 @@ static void focuser_calibration_end_finalizer(indigo_device *device) {
 	}
 	PRIVATE_DATA->calibration_pending = PRIVATE_DATA->focuser_needs_calibration = false;
 	X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "Calibration complete, range %.0f to %.0f", min_position, max_position);
 }
 
 // Reads the focuser position and whether the motor runs. A reply without the position
@@ -823,7 +823,7 @@ static void rotator_calibration_poll(indigo_device *device) {
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 		PRIVATE_DATA->rotator_needs_calibration = false;
-		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, "ARCO calibration complete");
 	}
 }
 

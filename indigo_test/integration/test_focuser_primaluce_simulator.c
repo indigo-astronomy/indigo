@@ -650,6 +650,9 @@ static void sestosenso3_calibration(void) {
 	double maximum = number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	printf("Calibrated to %g, stopped at %g\n", maximum, stopped);
 	SERIAL_CHECK_TRUE(maximum > 1000 && maximum < 100000 && fabs(maximum - stopped) <= 1);
+	char completed[64];
+	snprintf(completed, sizeof(completed), "Calibration complete, range 0 to %.0f", maximum);
+	SERIAL_CHECK_TRUE(message_seen(completed));
 	SERIAL_CHECK_TRUE(number_max(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == maximum);
 	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_BUSY_STATE));
@@ -1235,6 +1238,8 @@ static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMaxPos\"", 1));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, false));
+	// A finished calibration says so, with the range it stored.
+	SERIAL_CHECK_TRUE(message_seen("Calibration complete, range 0 to"));
 	// A failed step is reported instead of being published as a calibration.
 	SERIAL_CHECK_TRUE(fault("\"CAL_FOCUSER\":\"Init\"", "silent"));
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_ALERT_STATE));
@@ -1749,6 +1754,7 @@ static void rotator_calibration(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"set\":{\"MOT2\":{\"CAL_STATUS\":\"exec\"", 1));
 	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_OK_STATE, completions));
+	SERIAL_CHECK_TRUE(message_seen("ARCO calibration complete"));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, false));
 	// An abort stops a running calibration.
 	unsigned int alerts = property_state_revision(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_ALERT_STATE);

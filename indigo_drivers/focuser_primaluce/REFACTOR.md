@@ -985,3 +985,22 @@ of them.
 
 - Simulated tests: 67 run, 67 passed: `2026-10-23 23:25 3.0.0.36 linux x64 simulator 67/67 OK`.
 - Hardware: none for this change; it affects text only.
+
+## Calibration complete messages (3.0.0.37, 2026-10-23, task 20261023205001-3f61-primaluce-calibration-complete-message)
+
+A successful calibration used to turn X_CALIBRATE OK without saying what it stored. The requester
+asked for a completion message for the focuser and for the ARCO:
+
+- A focuser END that stores a valid range publishes "Calibration complete, range <min> to <max>",
+  with the range the controller reported (both models).
+- A finished ARCO calibration publishes "ARCO calibration complete". Its range is in motor steps
+  (±1536000 on the requester's unit), so the message gives none.
+- Failed calibrations keep their existing reasons.
+
+Regression tests: `focuser_calibration`, `sestosenso3_calibration` (which checks the exact range)
+and `rotator_calibration` check the messages. All three fail without them.
+
+## Final test summary (3.0.0.37)
+
+- Simulated tests: 67 run, 67 passed: `2026-10-23 23:54 3.0.0.37 linux x64 simulator 67/67 OK`.
+- Hardware: none for this change; it adds messages only.
