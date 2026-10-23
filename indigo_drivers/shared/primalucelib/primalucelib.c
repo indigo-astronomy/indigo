@@ -81,6 +81,7 @@ char *PRIMALUCE_REPLY_FOCUSER_SPEED_ACK[] = { "res", "set", "MOT1", "SPEED", NUL
 char *PRIMALUCE_REPLY_FOCUSER_HOLD_CURRENT_ACK[] = { "res", "set", "MOT1", "HOLDCURR_STATUS", NULL };
 char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_ACK[] = { "res", "cmd", "MOT1", "CAL_FOCUSER", NULL };
 char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR[] = { "res", "get", "MOT1", "CAL_DIR", NULL };
+char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR_ACK[] = { "res", "set", "MOT1", "CAL_DIR", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_CALIBRATION_RESTART[] = { "res", "get", "CALRESTART", "MOT2", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_ERROR[] = { "res", "get", "MOT2", "ERROR", NULL };
 char *PRIMALUCE_REPLY_ROTATOR_SERIAL_NUMBER[] = { "res", "get", "ARCO_SN", NULL };
@@ -424,6 +425,20 @@ double primalucelib_reply_number(primalucelib_link *link, char *path[]) {
 
 bool primalucelib_reply_is_done(primalucelib_link *link, char *path[]) {
 	return primalucelib_is_done(primalucelib_reply_string(link, path));
+}
+
+bool primalucelib_reply_is_acknowledged(primalucelib_link *link, char *path[]) {
+	char *acknowledgement = primalucelib_reply_string(link, path);
+	if (primalucelib_is_done(acknowledgement)) {
+		return true;
+	}
+	// The controller reports a refusal in the field of the parameter, e.g. "Error: invalid parameter"
+	// (SESTO SENSO 3 protocol v1.0), and that text is the reason.
+	if (acknowledgement != NULL && *acknowledgement) {
+		INDIGO_DRIVER_ERROR(link->driver_name, "Request refused: %s", acknowledgement);
+		INDIGO_COPY_VALUE(link->last_error, acknowledgement);
+	}
+	return false;
 }
 
 #pragma mark - Values
@@ -789,7 +804,7 @@ char *primalucelib_reply_stored_position_name(primalucelib_link *link, int index
 }
 
 bool primalucelib_focuser_calibration_step(primalucelib_link *link, const char *step) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_CALIBRATION_STEP, step);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_CALIBRATION_STEP, step) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_ACK);
 }
 
 bool primalucelib_focuser_get_calibration(primalucelib_link *link, double *min_position, double *max_position) {
@@ -806,13 +821,13 @@ char *primalucelib_focuser_get_calibration_direction(primalucelib_link *link) {
 }
 
 bool primalucelib_focuser_set_calibration_direction(primalucelib_link *link, const char *direction) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_SET_CALIBRATION_DIR, direction);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_SET_CALIBRATION_DIR, direction) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR_ACK);
 }
 
 bool primalucelib_focuser_calibration_jog(primalucelib_link *link, int steps) {
 	char step[32];
 	snprintf(step, sizeof(step), steps < 0 ? "MoveIn-%d" : "MoveOut-%d", abs(steps));
-	return primalucelib_focuser_calibration_step(link, step) && primalucelib_reply_is_done(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_ACK);
+	return primalucelib_focuser_calibration_step(link, step);
 }
 
 #pragma mark - Rotator (ARCO, MOT2)
@@ -877,7 +892,10 @@ bool primalucelib_rotator_move_to(primalucelib_link *link, double angle, char **
 
 bool primalucelib_rotator_sync(primalucelib_link *link, double angle) {
 	// A SESTO SENSO 2 acknowledges under SYNC_POS, a SESTO SENSO 3 (firmware 1.0.9) under DEG.
-	return primalucelib_request(link, PRIMALUCE_REQUEST_ROTATOR_SYNC, angle) && (primalucelib_reply_is_done(link, PRIMALUCE_REPLY_ROTATOR_SYNC_ACK) || primalucelib_reply_is_done(link, PRIMALUCE_REPLY_ROTATOR_MOVE_DEG_ACK));
+	if (!primalucelib_request(link, PRIMALUCE_REQUEST_ROTATOR_SYNC, angle)) {
+		return false;
+	}
+	return primalucelib_reply_has(link, PRIMALUCE_REPLY_ROTATOR_SYNC_ACK) ? primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_ROTATOR_SYNC_ACK) : primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_ROTATOR_MOVE_DEG_ACK);
 }
 
 bool primalucelib_rotator_stop(primalucelib_link *link) {

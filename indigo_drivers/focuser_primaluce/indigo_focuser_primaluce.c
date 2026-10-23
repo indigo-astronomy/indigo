@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000021
+#define DRIVER_VERSION       0x03000022
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -529,6 +529,10 @@ static void focuser_motion_failed(indigo_device *device, const char *state) {
 	char reason[INDIGO_VALUE_SIZE];
 	if (message == NULL && *primalucelib_last_error(LINK)) {
 		snprintf(reason, sizeof(reason), "Move refused: %s", primalucelib_last_error(LINK));
+		message = reason;
+	} else if (message == NULL && state != NULL && *state) {
+		// The controller reports a refusal in the acknowledgement itself, e.g. "Error: invalid parameter".
+		snprintf(reason, sizeof(reason), "Move refused: %s", state);
 		message = reason;
 	}
 	focuser_motion_refused(device, message);
@@ -2051,22 +2055,36 @@ static void rotator_position_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_POSITION.on_change
 	if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 		// A sync redefines the current angle without moving the rotator.
+		char reason[INDIGO_VALUE_SIZE] = "";
 		if (primalucelib_rotator_sync(LINK, ROTATOR_POSITION_ITEM->number.target)) {
 			ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target;
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			// The request already replaced the value, so the angle the rotator keeps is read back.
+			// The reason of the refusal is copied before the angle the rotator keeps is read back.
+			if (*primalucelib_last_error(LINK)) {
+				snprintf(reason, sizeof(reason), "Sync refused: %s", primalucelib_last_error(LINK));
+			}
 			if (rotator_read_angle(device)) {
 				ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value;
 			}
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		if (*reason) {
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "%s", reason);
+		} else {
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		}
 	} else {
 		char *state = NULL;
 		if (!primalucelib_rotator_move_to(LINK, ROTATOR_POSITION_ITEM->number.target, &state) || !primalucelib_is_done(state)) {
+			// The reason is the refusal the controller sent, in an ERROR or in the acknowledgement.
+			const char *reason = *primalucelib_last_error(LINK) ? primalucelib_last_error(LINK) : state;
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			if (reason != NULL && *reason) {
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "Move refused: %s", reason);
+			} else {
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			}
 		} else {
 			indigo_execute_handler(device, rotator_movement_finalizer);
 		}

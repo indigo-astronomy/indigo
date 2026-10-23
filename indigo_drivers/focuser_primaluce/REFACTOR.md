@@ -879,3 +879,49 @@ of a rotator move showed the angle the ARCO had reported (0) with the target 20.
 - Simulated tests: 65 run, 65 passed: `2026-10-23 15:55 3.0.0.33 linux x64 simulator 65/65 OK`.
   Library unit cases: 26 of 26.
 - Hardware: the supervised checks above were manual, so they produce no hardware record.
+
+## Review against the SESTO SENSO 3 protocol document (3.0.0.34, 2026-10-23, task 20261023132326-3447-primaluce-field-errors)
+
+The driver and the library were checked against all 11 pages of "PrimaluceLab - Communication
+Protocol - SS3 v1.0". The document covers only the SESTO SENSO 3 specific commands and refers to the
+SESTO SENSO 2 document for the rest.
+
+**Follows the document:**
+- The request and reply envelope, and `"name":""` reads.
+- One request at a time, waiting for its reply.
+- `GOTO` with integer steps, and `"done"` acknowledgements.
+- The semi-automatic sequence from `Init` through `GoOutToFindMaxPos`, `StopMotor` and `StoreAsMaxPos`. `StoreAsMaxPos` ends the procedure.
+- `stop_calib` leaves the procedure and the focuser uncalibrated.
+
+**Fixed here (FND-20261023132326-3447-primaluce-field-errors-001):** the document reports a refusal in the parameter's own field, for example
+`"PRESET_1": "Error: invalid parameter"`, but the library only recognised `ERROR` keys:
+- The `CAL_FOCUSER` steps and the `CAL_DIR` write were taken as done without checking the reply.
+- Refused moves and syncs ended ALERT without the reason.
+
+`primalucelib_reply_is_acknowledged()` accepts `"done"` and keeps any other text as the reason. It
+is used by the calibration steps, the direction write, the `MoveIn`/`MoveOut` steps and the ARCO
+sync. Refused focuser and rotator moves and syncs now show "Move refused: …" or "Sync refused: …".
+INDI also requires `"done"` for every command on both models.
+
+**Deviation, kept:** the driver does not search for the closed end with `GoInToFindMinPos`. It stores
+the current position as the minimum, as the SESTO SENSO 2 flow does, so the tube has to be fully in
+before START.
+
+**Not implemented:**
+- The manual procedure (`Init-Manual`, `StoreAsMaxPos-Manual`).
+- The `MoveIn`/`MoveOut` fine steps.
+- The SC automatic calibration (`start_auto_cal`, `CAL_STATUS`).
+- `RECOVER_DELAY`.
+
+**Simulator:** the `fielderror` fault answers `CAL_FOCUSER`, `CAL_DIR`, `GOTO`, `MOVE_ABS` and
+`SYNC_POS` with the error in the field.
+
+**Regression tests (both fail without the fix):**
+- `test_primalucelib` `field_errors_refuse_calibration_requests`.
+- `sestosenso3_field_errors`, which covers the calibration step, the focuser move, the rotator move and the sync.
+
+## Final test summary (3.0.0.34)
+
+- Simulated tests: 66 run, 66 passed: `2026-10-23 16:31 3.0.0.34 linux x64 simulator 66/66 OK`.
+  Library unit cases: 27 of 27.
+- Hardware: none for this change; the refusal cannot be provoked on demand.

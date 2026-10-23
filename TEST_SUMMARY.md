@@ -269,7 +269,7 @@
 |  | 2026-10-05 22:15 | 3.0.0.22 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
 |  | 2026-10-11 09:56 | 3.0.0.25 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-23 09:41 | 3.0.0.29 | mac arm64 | simulator | 61 / 61 | ✅ OK |
-|  | 2026-10-23 15:55 | 3.0.0.33 | linux x64 | simulator | 65 / 65 | ✅ OK |
+|  | 2026-10-23 16:31 | 3.0.0.34 | linux x64 | simulator | 66 / 66 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-10-09 21:53 | 3.0.0.11 | linux arm64 | Prodigy Arduino simulator (ESP32-S3) | 13 / 13 | ✅ OK |
 |  | 2026-10-10 03:54 | 3.0.0.12 | mac arm64 | simulator | 62 / 62 | ✅ OK |

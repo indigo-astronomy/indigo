@@ -397,6 +397,7 @@ extern char *PRIMALUCE_REPLY_FOCUSER_SPEED_ACK[];
 extern char *PRIMALUCE_REPLY_FOCUSER_HOLD_CURRENT_ACK[];
 extern char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_ACK[];
 extern char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR[];
+extern char *PRIMALUCE_REPLY_FOCUSER_CALIBRATION_DIR_ACK[];
 extern char *PRIMALUCE_REPLY_ROTATOR_CALIBRATION_RESTART[];
 extern char *PRIMALUCE_REPLY_ROTATOR_ERROR[];
 extern char *PRIMALUCE_REPLY_ROTATOR_SERIAL_NUMBER[];
@@ -508,6 +509,8 @@ extern char *primalucelib_reply_string(primalucelib_link *link, char *path[]);
 extern double primalucelib_reply_number(primalucelib_link *link, char *path[]);
 // The acknowledgement at path is "done".
 extern bool primalucelib_reply_is_done(primalucelib_link *link, char *path[]);
+// True for "done"; any other text at path is kept as primalucelib_last_error(), the reason of the refusal.
+extern bool primalucelib_reply_is_acknowledged(primalucelib_link *link, char *path[]);
 
 #pragma mark - Values
 

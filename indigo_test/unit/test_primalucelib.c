@@ -511,6 +511,21 @@ cleanup:
 	stop_peer();
 }
 
+// A refusal in the field of the parameter (SESTO SENSO 3 protocol v1.0) fails a calibration step and a
+// direction write, and its text becomes the reason.
+static void field_errors_refuse_calibration_requests(void) {
+	CHECK(start_peer("{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"Error: invalid parameter\"}}}}\n", "{\"res\":{\"set\":{\"MOT1\":{\"CAL_DIR\":\"Error: invalid parameter\"}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"done\"}}}}\n", NULL));
+	CHECK(!primalucelib_focuser_calibration_step(&test_link, PRIMALUCE_FOCUSER_CALIBRATION_INIT));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: invalid parameter"));
+	CHECK(!primalucelib_link_failed(&test_link));
+	CHECK(!primalucelib_focuser_set_calibration_direction(&test_link, PRIMALUCE_CALIBRATION_DIRECTION_INVERTED));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: invalid parameter"));
+	CHECK(primalucelib_focuser_calibration_step(&test_link, PRIMALUCE_FOCUSER_CALIBRATION_INIT));
+	CHECK(!*primalucelib_last_error(&test_link));
+cleanup:
+	stop_peer();
+}
+
 // A SESTO SENSO 3 (firmware 1.0.9) sometimes prints debug text in front of a reply on the same line.
 static void debug_text_before_a_reply_is_skipped(void) {
 	CHECK(start_peer("mJsonAPI_ParseCmdReq_MotormJsonAPI_ParseCmdReq_Motor{\"res\":{\"cmd\":{\"MOT2\":{\"DEG\":\"done\"}}}}\n", NULL));
@@ -809,6 +824,7 @@ int main(void) {
 		{ "only stale replies fail the request", only_stale_replies_fail_the_request },
 		{ "a restarting link refuses requests until probed", a_restarting_link_refuses_requests_until_probed },
 		{ "debug text before a reply is skipped", debug_text_before_a_reply_is_skipped },
+		{ "field errors refuse calibration requests", field_errors_refuse_calibration_requests },
 		{ "moves return their acknowledgement", moves_return_their_acknowledgement },
 		{ "focuser stop falls back to a decelerated stop", focuser_stop_falls_back_to_a_decelerated_stop },
 		{ "settings need done", settings_need_done },

@@ -1,0 +1,24 @@
+{
+  "title": "primalucelib accepted calibration steps the controller refused in the parameter field",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023132326-3447-primaluce-field-errors",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The SESTO SENSO 3 protocol v1.0 reports a refusal in the field of the parameter (\"Error: invalid parameter\"); the library only recognised ERROR keys, so CAL_FOCUSER steps and the CAL_DIR write were taken as done whatever the field said, and refused moves and syncs ended ALERT without the reason.",
+  "evidence": "20261023132326-3447-primaluce-field-errors/verification.md (FND); protocol document v1.0 page 4; driver review against the document 2026-10-23",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023132326-3447-primaluce-field-errors/verification.md: primalucelib_reply_is_acknowledged() fails calibration steps, the CAL_DIR write, fine steps and the ARCO sync on any reply but done and keeps the text as the reason; refused moves and syncs show it; field_errors_refuse_calibration_requests and sestosenso3_field_errors pass and fail without the change; recorded run 66/66.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023132326-3447-primaluce-field-errors-001"
+}

@@ -658,6 +658,34 @@ cleanup:
 	driver_stop();
 }
 
+// A refusal the controller reports in the field of the parameter ("Error: invalid parameter", SESTO SENSO 3
+// protocol v1.0) fails the calibration step, the move and the sync with that text as the reason.
+static void sestosenso3_field_errors(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("\"CAL_FOCUSER\":\"Init\"", "fielderror"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Error: invalid parameter"));
+	SERIAL_CHECK_EQ_INT(0, requests("\"CAL_FOCUSER\":\"StoreAsMinPos\""));
+	SERIAL_CHECK_TRUE(fault("\"GOTO\"", "fielderror"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18400, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Move refused: Error: invalid parameter"));
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(fault("\"MOVE_ABS\"", "fielderror"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 45, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Move refused: Error: invalid parameter"));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("\"SYNC_POS\"", "fielderror"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 120, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Sync refused: Error: invalid parameter"));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 // A SESTO SENSO 3 that reports a lost coordinate (1000000) after StoreAsMaxPos fails the calibration and asks
 // for another one instead of publishing a position outside the new range as calibrated.
 static void sestosenso3_calibration_lost_position(void) {
@@ -1788,6 +1816,7 @@ int main(void) {
 		{ "sestosenso3_calibration", sestosenso3_calibration, "sestosenso3" },
 		{ "sestosenso3_calibration_restart", sestosenso3_calibration_restart, "sestosenso3" },
 		{ "sestosenso3_calibration_lost_position", sestosenso3_calibration_lost_position, "sestosenso3" },
+		{ "sestosenso3_field_errors", sestosenso3_field_errors, "sestosenso3" },
 		{ "sestosenso3_abort_during_restart", sestosenso3_abort_during_restart, "sestosenso3" },
 		{ "no_abs_pos_profile", no_abs_pos_profile, "no-abs-pos" },
 		{ "no_speed_profile", no_speed_profile, "no-speed" },

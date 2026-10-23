@@ -97,7 +97,7 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_PRIMALUCE_EVENTS names a file receiving every accepted request.\n");
-	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close|slow|stall|ignore|lostposition>' which is\n");
+	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close|slow|stall|ignore|lostposition|fielderror>' which is\n");
 	printf("applied once to the next request containing that key and then removed; an 'always_' prefix keeps\n");
 	printf("it armed. 'handmove <position>' moves the focuser as its hand keypad does.\n");
 }
@@ -354,6 +354,22 @@ static void dispatch_command(int handle, const char *command) {
 		fflush(events);
 	}
 	const char *fault = pending_fault(command);
+	// A refusal in the field of the parameter, as the SESTO SENSO 3 protocol v1.0 describes it.
+	if (fault != NULL && !strcmp(fault, "fielderror")) {
+		const char *verb = "cmd", *motor = strstr(command, "\"MOT2\"") != NULL ? "MOT2" : "MOT1", *key = "GOTO";
+		if (strstr(command, "\"CAL_FOCUSER\"") != NULL) {
+			key = "CAL_FOCUSER";
+		} else if (strstr(command, "\"CAL_DIR\"") != NULL) {
+			verb = "set";
+			key = "CAL_DIR";
+		} else if (strstr(command, "\"SYNC_POS\"") != NULL) {
+			key = sestosenso3() ? "DEG" : "SYNC_POS";
+		} else if (strstr(command, "\"MOVE_ABS\"") != NULL) {
+			key = strstr(command, "\"MOT2\"") != NULL && sestosenso3() ? "DEG" : "STEP";
+		}
+		sim_printf(handle, "{\"res\":{\"%s\":{\"%s\":{\"%s\":\"Error: invalid parameter\"}}}}\n", verb, motor, key);
+		return;
+	}
 	if (fault != NULL && !strcmp(fault, "lostposition")) {
 		lose_position = true;
 		fault = NULL;
