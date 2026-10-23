@@ -394,6 +394,23 @@ cleanup:
 	stop_peer();
 }
 
+// Shorter leaf/ancestor keys must not satisfy a requested path, including when both position forms exist.
+static void reply_keys_require_full_names(void) {
+	CHECK(start_peer("{\"res\":{\"get\":{\"MOT1\":{\"ABS_POS\":123}}}}\n", "{\"res\":{\"get\":{\"MOT1\":{\"ABS_POS\":123,\"ABS_POS_STEP\":456}}}}\n", "{\"res\":{\"get\":{\"MOT\":{\"ABS_POS_STEP\":999},\"MOT1\":{\"ABS_POS_STEP_EXTRA\":888,\"ABS_POS_STEP\":456,\"ABS_POS\":123}}}}\n", NULL));
+	CHECK(primalucelib_get_state(&test_link));
+	CHECK(!primalucelib_reply_has_focuser_position(&test_link, false));
+	CHECK(primalucelib_reply_has_focuser_position(&test_link, true));
+	CHECK(primalucelib_reply_focuser_position(&test_link, true) == 123);
+	CHECK(primalucelib_get_state(&test_link));
+	CHECK(primalucelib_reply_focuser_position(&test_link, false) == 456);
+	CHECK(primalucelib_reply_focuser_position(&test_link, true) == 123);
+	CHECK(primalucelib_get_state(&test_link));
+	CHECK(primalucelib_reply_focuser_position(&test_link, false) == 456);
+	CHECK(primalucelib_reply_focuser_position(&test_link, true) == 123);
+cleanup:
+	stop_peer();
+}
+
 // Diagnostic lines starting with '[' are skipped, CR before LF is dropped.
 static void diagnostic_lines_are_skipped(void) {
 	CHECK(start_peer("[I] wifi connected\r\n[W] low voltage\n{\"res\":{\"get\":{\"MODNAME\":\"ESATTO\"}}}\r\n", NULL));
@@ -772,6 +789,7 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "golden requests match the original driver", golden_requests_match_the_original_driver },
 		{ "reply values are found by path", reply_values_are_found_by_path },
+		{ "reply keys require full names", reply_keys_require_full_names },
 		{ "diagnostic lines are skipped", diagnostic_lines_are_skipped },
 		{ "refusals fail with their reason", refusals_fail_with_their_reason },
 		{ "garbage is an answer but not a reply", garbage_is_an_answer_but_not_a_reply },

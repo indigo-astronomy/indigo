@@ -1,0 +1,887 @@
+[
+  {
+    "path": "indigo_drivers/ao_sx/indigo_ao_sx.driver",
+    "classes": [
+      "ao",
+      "guider"
+    ],
+    "lines": 181
+  },
+  {
+    "path": "indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 120
+  },
+  {
+    "path": "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 101
+  },
+  {
+    "path": "indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 1600
+  },
+  {
+    "path": "indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 411
+  },
+  {
+    "path": "indigo_drivers/aux_dsusb/indigo_aux_dsusb.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 204
+  },
+  {
+    "path": "indigo_drivers/aux_fbc/indigo_aux_fbc.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 190
+  },
+  {
+    "path": "indigo_drivers/aux_flatmaster/indigo_aux_flatmaster.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 182
+  },
+  {
+    "path": "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 224
+  },
+  {
+    "path": "indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 138
+  },
+  {
+    "path": "indigo_drivers/aux_mgbox/indigo_aux_mgbox.driver",
+    "classes": [
+      "aux",
+      "gps"
+    ],
+    "lines": 909
+  },
+  {
+    "path": "indigo_drivers/aux_ppb/indigo_aux_ppb.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 536
+  },
+  {
+    "path": "indigo_drivers/aux_rts/indigo_aux_rts.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 150
+  },
+  {
+    "path": "indigo_drivers/aux_simulator/indigo_aux_simulator.driver",
+    "classes": [
+      "aux",
+      "aux",
+      "aux",
+      "aux"
+    ],
+    "lines": 758
+  },
+  {
+    "path": "indigo_drivers/aux_skyalert/indigo_aux_skyalert.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 165
+  },
+  {
+    "path": "indigo_drivers/aux_sqm/indigo_aux_sqm.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 131
+  },
+  {
+    "path": "indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 718
+  },
+  {
+    "path": "indigo_drivers/aux_uch/indigo_aux_uch.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 321
+  },
+  {
+    "path": "indigo_drivers/aux_upb/indigo_aux_upb.driver",
+    "classes": [
+      "aux",
+      "focuser"
+    ],
+    "lines": 1421
+  },
+  {
+    "path": "indigo_drivers/aux_upb3/indigo_aux_upb3.driver",
+    "classes": [
+      "aux",
+      "focuser"
+    ],
+    "lines": 1115
+  },
+  {
+    "path": "indigo_drivers/aux_usbdp/indigo_aux_usbdp.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 728
+  },
+  {
+    "path": "indigo_drivers/aux_wbplusv3/indigo_aux_wbplusv3.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 501
+  },
+  {
+    "path": "indigo_drivers/aux_wbprov3/indigo_aux_wbprov3.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 671
+  },
+  {
+    "path": "indigo_drivers/aux_wcv4ec/indigo_aux_wcv4ec.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 480
+  },
+  {
+    "path": "indigo_drivers/ccd_asi/indigo_ccd_asi.driver",
+    "classes": [
+      "ccd",
+      "guider"
+    ],
+    "lines": 1641
+  },
+  {
+    "path": "indigo_drivers/ccd_atik/indigo_ccd_atik.driver",
+    "classes": [
+      "ccd",
+      "guider",
+      "wheel"
+    ],
+    "lines": 784
+  },
+  {
+    "path": "indigo_drivers/ccd_dsi/indigo_ccd_dsi.driver",
+    "classes": [
+      "ccd"
+    ],
+    "lines": 399
+  },
+  {
+    "path": "indigo_drivers/ccd_fli/indigo_ccd_fli.driver",
+    "classes": [
+      "ccd"
+    ],
+    "lines": 597
+  },
+  {
+    "path": "indigo_drivers/ccd_iidc/indigo_ccd_iidc.driver",
+    "classes": [
+      "ccd"
+    ],
+    "lines": 634
+  },
+  {
+    "path": "indigo_drivers/ccd_mi/indigo_ccd_mi.driver",
+    "classes": [
+      "ccd",
+      "guider",
+      "wheel"
+    ],
+    "lines": 761
+  },
+  {
+    "path": "indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver",
+    "classes": [
+      "ccd",
+      "guider"
+    ],
+    "lines": 1799
+  },
+  {
+    "path": "indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver",
+    "classes": [
+      "ccd",
+      "guider",
+      "wheel"
+    ],
+    "lines": 979
+  },
+  {
+    "path": "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver",
+    "classes": [
+      "ccd",
+      "guider",
+      "wheel"
+    ],
+    "lines": 1099
+  },
+  {
+    "path": "indigo_drivers/ccd_qsi/indigo_ccd_qsi.driver",
+    "classes": [
+      "ccd",
+      "wheel"
+    ],
+    "lines": 823
+  },
+  {
+    "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver",
+    "classes": [
+      "ccd",
+      "ccd",
+      "ccd",
+      "ccd",
+      "ccd",
+      "wheel",
+      "focuser",
+      "guider",
+      "ao"
+    ],
+    "lines": 1525
+  },
+  {
+    "path": "indigo_drivers/ccd_ssag/indigo_ccd_ssag.driver",
+    "classes": [
+      "ccd",
+      "guider"
+    ],
+    "lines": 529
+  },
+  {
+    "path": "indigo_drivers/ccd_svb/indigo_ccd_svb.driver",
+    "classes": [
+      "ccd",
+      "guider"
+    ],
+    "lines": 1378
+  },
+  {
+    "path": "indigo_drivers/ccd_sx/indigo_ccd_sx.driver",
+    "classes": [
+      "ccd",
+      "guider"
+    ],
+    "lines": 1121
+  },
+  {
+    "path": "indigo_drivers/ccd_uvc/indigo_ccd_uvc.driver",
+    "classes": [
+      "ccd"
+    ],
+    "lines": 567
+  },
+  {
+    "path": "indigo_drivers/dome_baader/indigo_dome_baader.driver",
+    "classes": [
+      "dome"
+    ],
+    "lines": 758
+  },
+  {
+    "path": "indigo_drivers/dome_beaver/indigo_dome_beaver.driver",
+    "classes": [
+      "dome"
+    ],
+    "lines": 936
+  },
+  {
+    "path": "indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.driver",
+    "classes": [
+      "dome",
+      "aux"
+    ],
+    "lines": 665
+  },
+  {
+    "path": "indigo_drivers/dome_nexdome/indigo_dome_nexdome.driver",
+    "classes": [
+      "dome"
+    ],
+    "lines": 732
+  },
+  {
+    "path": "indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.driver",
+    "classes": [
+      "dome"
+    ],
+    "lines": 1111
+  },
+  {
+    "path": "indigo_drivers/dome_simulator/indigo_dome_simulator.driver",
+    "classes": [
+      "dome"
+    ],
+    "lines": 253
+  },
+  {
+    "path": "indigo_drivers/dome_skyroof/indigo_dome_skyroof.driver",
+    "classes": [
+      "dome"
+    ],
+    "lines": 205
+  },
+  {
+    "path": "indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.driver",
+    "classes": [
+      "dome"
+    ],
+    "lines": 839
+  },
+  {
+    "path": "indigo_drivers/focuser_asi/indigo_focuser_asi.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 910
+  },
+  {
+    "path": "indigo_drivers/focuser_askar/indigo_focuser_askar.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 800
+  },
+  {
+    "path": "indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 961
+  },
+  {
+    "path": "indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 258
+  },
+  {
+    "path": "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 656
+  },
+  {
+    "path": "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 854
+  },
+  {
+    "path": "indigo_drivers/focuser_efa/indigo_focuser_efa.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 596
+  },
+  {
+    "path": "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 543
+  },
+  {
+    "path": "indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 148
+  },
+  {
+    "path": "indigo_drivers/focuser_fli/indigo_focuser_fli.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 433
+  },
+  {
+    "path": "indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 495
+  },
+  {
+    "path": "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 375
+  },
+  {
+    "path": "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 429
+  },
+  {
+    "path": "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 465
+  },
+  {
+    "path": "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver",
+    "classes": [
+      "focuser",
+      "focuser",
+      "rotator",
+      "aux",
+      "focuser",
+      "rotator",
+      "aux"
+    ],
+    "lines": 1092
+  },
+  {
+    "path": "indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 356
+  },
+  {
+    "path": "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 482
+  },
+  {
+    "path": "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 924
+  },
+  {
+    "path": "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 301
+  },
+  {
+    "path": "indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 587
+  },
+  {
+    "path": "indigo_drivers/focuser_optec/indigo_focuser_optec.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 433
+  },
+  {
+    "path": "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver",
+    "classes": [
+      "focuser",
+      "focuser"
+    ],
+    "lines": 978
+  },
+  {
+    "path": "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver",
+    "classes": [
+      "focuser",
+      "rotator"
+    ],
+    "lines": 2084
+  },
+  {
+    "path": "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver",
+    "classes": [
+      "focuser",
+      "aux"
+    ],
+    "lines": 629
+  },
+  {
+    "path": "indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 872
+  },
+  {
+    "path": "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 627
+  },
+  {
+    "path": "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver",
+    "classes": [
+      "focuser",
+      "aux"
+    ],
+    "lines": 1056
+  },
+  {
+    "path": "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 656
+  },
+  {
+    "path": "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver",
+    "classes": [
+      "focuser"
+    ],
+    "lines": 479
+  },
+  {
+    "path": "indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver",
+    "classes": [
+      "gps"
+    ],
+    "lines": 213
+  },
+  {
+    "path": "indigo_drivers/gps_nmea/indigo_gps_nmea.driver",
+    "classes": [
+      "gps"
+    ],
+    "lines": 439
+  },
+  {
+    "path": "indigo_drivers/gps_simulator/indigo_gps_simulator.driver",
+    "classes": [
+      "gps"
+    ],
+    "lines": 134
+  },
+  {
+    "path": "indigo_drivers/guider_asi/indigo_guider_asi.driver",
+    "classes": [
+      "guider"
+    ],
+    "lines": 305
+  },
+  {
+    "path": "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.driver",
+    "classes": [
+      "guider"
+    ],
+    "lines": 143
+  },
+  {
+    "path": "indigo_drivers/guider_gpusb/indigo_guider_gpusb.driver",
+    "classes": [
+      "guider"
+    ],
+    "lines": 170
+  },
+  {
+    "path": "indigo_drivers/mount_ioptron/indigo_mount_ioptron.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 2374
+  },
+  {
+    "path": "indigo_drivers/mount_lx200/indigo_mount_lx200.driver",
+    "classes": [
+      "mount",
+      "guider",
+      "focuser",
+      "aux"
+    ],
+    "lines": 5043
+  },
+  {
+    "path": "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 1312
+  },
+  {
+    "path": "indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 1410
+  },
+  {
+    "path": "indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 1171
+  },
+  {
+    "path": "indigo_drivers/mount_rainbow/indigo_mount_rainbow.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 1153
+  },
+  {
+    "path": "indigo_drivers/mount_simulator/indigo_mount_simulator.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 597
+  },
+  {
+    "path": "indigo_drivers/mount_starbook/indigo_mount_starbook.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 743
+  },
+  {
+    "path": "indigo_drivers/mount_synscan/indigo_mount_synscan.driver",
+    "classes": [
+      "mount",
+      "guider",
+      "aux"
+    ],
+    "lines": 2473
+  },
+  {
+    "path": "indigo_drivers/mount_temma/indigo_mount_temma.driver",
+    "classes": [
+      "mount",
+      "guider"
+    ],
+    "lines": 835
+  },
+  {
+    "path": "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.driver",
+    "classes": [
+      "polaralign"
+    ],
+    "lines": 777
+  },
+  {
+    "path": "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.driver",
+    "classes": [
+      "polaralign"
+    ],
+    "lines": 156
+  },
+  {
+    "path": "indigo_drivers/rotator_asi/indigo_rotator_asi.driver",
+    "classes": [
+      "rotator"
+    ],
+    "lines": 544
+  },
+  {
+    "path": "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver",
+    "classes": [
+      "rotator"
+    ],
+    "lines": 256
+  },
+  {
+    "path": "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver",
+    "classes": [
+      "rotator",
+      "focuser",
+      "rotator",
+      "aux",
+      "focuser",
+      "rotator",
+      "aux"
+    ],
+    "lines": 994
+  },
+  {
+    "path": "indigo_drivers/rotator_optec/indigo_rotator_optec.driver",
+    "classes": [
+      "rotator"
+    ],
+    "lines": 359
+  },
+  {
+    "path": "indigo_drivers/rotator_simulator/indigo_rotator_simulator.driver",
+    "classes": [
+      "rotator"
+    ],
+    "lines": 158
+  },
+  {
+    "path": "indigo_drivers/rotator_wa/indigo_rotator_wa.driver",
+    "classes": [
+      "rotator"
+    ],
+    "lines": 390
+  },
+  {
+    "path": "indigo_drivers/wheel_asi/indigo_wheel_asi.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 342
+  },
+  {
+    "path": "indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 423
+  },
+  {
+    "path": "indigo_drivers/wheel_atik/indigo_wheel_atik.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 129
+  },
+  {
+    "path": "indigo_drivers/wheel_fli/indigo_wheel_fli.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 218
+  },
+  {
+    "path": "indigo_drivers/wheel_indigo/indigo_wheel_indigo.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 145
+  },
+  {
+    "path": "indigo_drivers/wheel_manual/indigo_wheel_manual.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 56
+  },
+  {
+    "path": "indigo_drivers/wheel_mi/indigo_wheel_mi.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 296
+  },
+  {
+    "path": "indigo_drivers/wheel_optec/indigo_wheel_optec.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 135
+  },
+  {
+    "path": "indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 292
+  },
+  {
+    "path": "indigo_drivers/wheel_qhy/indigo_wheel_qhy.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 190
+  },
+  {
+    "path": "indigo_drivers/wheel_quantum/indigo_wheel_quantum.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 95
+  },
+  {
+    "path": "indigo_drivers/wheel_sx/indigo_wheel_sx.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 147
+  },
+  {
+    "path": "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 114
+  },
+  {
+    "path": "indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.driver",
+    "classes": [
+      "wheel"
+    ],
+    "lines": 130
+  },
+  {
+    "path": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 453
+  },
+  {
+    "path": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver",
+    "classes": [
+      "aux"
+    ],
+    "lines": 671
+  },
+  {
+    "path": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver",
+    "classes": [
+      "ccd",
+      "guider",
+      "wheel"
+    ],
+    "lines": 546
+  },
+  {
+    "path": "indigo_tools/template.driver",
+    "classes": [],
+    "lines": 373
+  }
+]

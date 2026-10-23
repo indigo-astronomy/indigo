@@ -1,0 +1,6 @@
+Running polynomial fit unit tests
+  PASS polynomial_value_and_derivative_are_correct
+  PASS polynomial_extremum_and_minimum_are_correct_for_quadratic
+  PASS polynomial_fit_recovers_exact_line
+  PASS polynomial_string_contains_terms
+polynomial fit unit tests: all tests passed

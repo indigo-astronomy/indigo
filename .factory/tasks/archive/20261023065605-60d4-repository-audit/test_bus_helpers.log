@@ -1,0 +1,13 @@
+Running bus helper unit tests
+  PASS refusal_of_an_idle_property_publishes_alert
+  PASS refusal_of_a_busy_property_is_only_a_message
+  PASS numeric_string_helpers_parse_and_format_values
+  PASS sexagesimal_helpers_parse_and_format_values
+  PASS sexagesimal_rounding_follows_format
+  PASS sexagesimal_buffers_are_bounded_and_independent
+  PASS sexagesimal_caller_buffers_support_concurrent_calls
+  PASS pixel_scale_and_local_service_helpers_are_deterministic
+  PASS switch_helpers_find_and_update_items
+  PASS copy_values_and_targets_clamp_numbers
+  PASS message_properties_survive_bus_restarts
+bus helper unit tests: all tests passed

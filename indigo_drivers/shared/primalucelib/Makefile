@@ -39,7 +39,7 @@ status:
 
 $(LIB): $(SOURCES) $(HEADERS) Makefile
 	@install -d $(BUILD_LIB)
-	@tmp=`mktemp -d $(BUILD_LIB)/primalucelib.XXXXXX` && $(CC) $(CFLAGS) -c -o $$tmp/primalucelib.o primalucelib.c && $(AR) rcs $$tmp/libprimalucelib.a $$tmp/primalucelib.o && mv -f $$tmp/libprimalucelib.a $@; status=$$?; rm -rf $$tmp; exit $$status
+	@tmp=`mktemp -d $(BUILD_LIB)/primalucelib.XXXXXX` && $(CC) $(CFLAGS) -c -o $$tmp/primalucelib.o primalucelib.c && $(AR) $(ARFLAGS) $$tmp/libprimalucelib.a $$tmp/primalucelib.o && mv -f $$tmp/libprimalucelib.a $@; status=$$?; rm -rf $$tmp; exit $$status
 
 clean:
 	rm -rf $(LIB) $(BUILD_LIB)/primalucelib.*

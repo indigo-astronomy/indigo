@@ -1,0 +1,4 @@
+unit/test_primalucelib.c:401: assertion failed: !primalucelib_reply_has_focuser_position(&test_link, false)
+Running PrimaLuce Lab protocol library
+  FAIL reply keys require full names
+PrimaLuce Lab protocol library: 1 test(s) failed

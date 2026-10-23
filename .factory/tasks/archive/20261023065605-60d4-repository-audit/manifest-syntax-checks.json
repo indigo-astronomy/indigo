@@ -1,0 +1,335 @@
+{
+  "xml_parse_errors": [],
+  "project_source_path_candidates": [
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\bonjour-sdk\\CommonServices.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\bonjour-sdk\\DebugServices.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_ipc.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\bonjour-sdk\\dns_sd.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\pthreads4w\\include\\pthread.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\pthreads4w\\include\\sched.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\pthreads4w\\include\\semaphore.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\pthreads4w\\include\\_ptw32.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\crc32.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\deflate.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\gzguts.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\inffast.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\inffixed.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\inflate.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\inftrees.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\trees.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\zconf.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\zlib.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\zlib\\include\\zutil.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_clientlib.c"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_clientstub.c"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_ipc.c"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\crc32.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\deflate.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\gzguts.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\inffast.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\inffixed.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\inflate.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\inftrees.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\trees.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\zconf.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\zlib.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\zlib\\include\\zutil.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\bonjour-sdk\\CommonServices.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\bonjour-sdk\\DebugServices.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\bonjour-sdk\\dns_sd.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_ipc.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\pthreads4w\\include\\_ptw32.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\pthreads4w\\include\\pthread.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\pthreads4w\\include\\sched.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\pthreads4w\\include\\semaphore.h"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_clientlib.c"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_clientstub.c"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "target": "..\\externals\\bonjour-sdk\\dnssd_ipc.c"
+    }
+  ],
+  "javascript_syntax": [
+    {
+      "path": "indigo_drivers/agent_scripting/boot.js",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "indigo_drivers/agent_scripting/library/Sequencer.js",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "indigo_server/resource/components.js",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "indigo_server/resource/indigo.js",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "indigo_server/resource/vue.global.prod.js",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "indigo_tools/driver_editor/static/app.js",
+      "exit": 0,
+      "diagnostic": ""
+    }
+  ],
+  "shell_syntax": [
+    {
+      "path": ".factory/scripts/archive-task",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/check",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/context",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/findings",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/maintenance",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/new-task",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/process-check",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/review",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/security",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/template-update",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": ".factory/scripts/test",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "indigo_libs/indigocat/example/run_example.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "indigo_windows/gcc/build_windows_sdk.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/build_debs.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/build_ftdi_macos.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/build_windows_installer.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/cltools.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/make_indigo_build.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/make_source_tarball.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/rpi_ctrl.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/rpi_ctrl_fake.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/rpi_ctrl_fix.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/rpi_ctrl_v2.sh",
+      "exit": 0,
+      "diagnostic": ""
+    },
+    {
+      "path": "tools/update_DELTA_UT1_UTC.sh",
+      "exit": 0,
+      "diagnostic": ""
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "title": "GP solve allocation failure leaves caller outputs uninitialized",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "independent-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "ldlt_solve returns void on temporaryY allocation failure; callers consume output without a failure signal. Source-confirmed by independent core review; no OOM injection performed. Next: make failure explicit and add a focused allocator-failure regression.",
+  "evidence": "indigo_libs/indigo_gp_guider.c:302-304,833,863,924,1274",
+  "resolution": null,
+  "id": "FND-20261023065605-60d4-repository-audit-010"
+}

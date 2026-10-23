@@ -1,0 +1,279 @@
+plan	8	align math unit tests
+pass	align math unit tests	polar_error_correction_inverts_its_application
+pass	align math unit tests	polar_alignment_recalculation_follows_the_polar_error
+pass	align math unit tests	parallactic_angle_matches_reference_values
+pass	align math unit tests	parallactic_angle_is_zero_on_the_meridian
+pass	align math unit tests	derotation_rate_equals_parallactic_angle_rate
+pass	align math unit tests	derotation_rate_matches_reference_values
+pass	align math unit tests	derotation_rate_vanishes_due_east_and_west
+pass	align math unit tests	derotation_rate_grows_towards_the_zenith
+plan	2	aux math unit tests
+pass	aux math unit tests	dewpoint_matches_magnus_reference_values
+pass	aux math unit tests	sky_bortle_thresholds_are_stable
+plan	3	base64 unit tests
+pass	base64 unit tests	known_vectors_encode_correctly
+pass	base64 unit tests	encoded_data_decodes_back_to_original
+pass	base64 unit tests	newline_tolerant_decoder_handles_embedded_newline
+plan	11	bus helper unit tests
+pass	bus helper unit tests	refusal_of_an_idle_property_publishes_alert
+pass	bus helper unit tests	refusal_of_a_busy_property_is_only_a_message
+pass	bus helper unit tests	numeric_string_helpers_parse_and_format_values
+pass	bus helper unit tests	sexagesimal_helpers_parse_and_format_values
+pass	bus helper unit tests	sexagesimal_rounding_follows_format
+pass	bus helper unit tests	sexagesimal_buffers_are_bounded_and_independent
+pass	bus helper unit tests	sexagesimal_caller_buffers_support_concurrent_calls
+pass	bus helper unit tests	pixel_scale_and_local_service_helpers_are_deterministic
+pass	bus helper unit tests	switch_helpers_find_and_update_items
+pass	bus helper unit tests	copy_values_and_targets_clamp_numbers
+pass	bus helper unit tests	message_properties_survive_bus_restarts
+plan	11	bus property unit tests
+pass	bus property unit tests	properties_are_initialized_for_all_vector_types
+pass	bus property unit tests	property_matching_works_for_all_vector_types
+pass	bus property unit tests	copied_properties_are_independent_for_all_vector_types
+pass	bus property unit tests	resized_properties_preserve_items_for_all_vector_types
+pass	bus property unit tests	numeric_copy_ignores_nonfinite_inputs
+pass	bus property unit tests	numeric_copy_still_clamps_finite_inputs
+pass	bus property unit tests	switch_target_follows_init_and_copy
+pass	bus property unit tests	switch_target_survives_a_poll_overwriting_the_value
+pass	bus property unit tests	switch_targets_are_applied_after_a_poll_overwrote_the_values
+pass	bus property unit tests	switch_target_keeps_unnamed_items_for_any_of_many
+pass	bus property unit tests	switch_target_is_not_written_for_read_only_or_empty_requests
+plan	8	dome azimuth unit tests
+pass	dome azimuth unit tests	map24_wraps_hours_into_day_range
+pass	dome azimuth unit tests	azimuth_distance_uses_shortest_arc
+pass	dome azimuth unit tests	dome_azimuth_solution_stays_in_valid_range
+pass	dome azimuth unit tests	dome_azimuth_mirrors_pivot_offsets_across_the_equator
+pass	dome azimuth unit tests	dome_azimuth_matches_the_vector_model
+pass	dome azimuth unit tests	dome_azimuth_keeps_the_ota_on_the_reported_side
+pass	dome azimuth unit tests	dome_azimuth_follows_reported_side_of_pier_past_the_meridian
+pass	dome azimuth unit tests	dome_azimuth_agrees_with_counterweight_down_for_a_normal_mount
+plan	5	driver loader unit tests
+pass	driver loader unit tests	long_path_without_extension_loads_driver
+pass	driver loader unit tests	long_path_with_extension_loads_driver
+pass	driver loader unit tests	name_longer_than_path_limit_is_rejected
+pass	driver loader unit tests	too_long_entry_point_name_is_rejected
+pass	driver loader unit tests	missing_entry_point_is_reported_and_driver_still_loads
+plan	3	md5 unit tests
+pass	md5 unit tests	known_md5_vectors_match
+pass	md5 unit tests	partial_md5_uses_requested_prefix_length
+pass	md5 unit tests	file_partial_md5_hashes_file_prefix
+plan	4	polynomial fit unit tests
+pass	polynomial fit unit tests	polynomial_value_and_derivative_are_correct
+pass	polynomial fit unit tests	polynomial_extremum_and_minimum_are_correct_for_quadratic
+pass	polynomial fit unit tests	polynomial_fit_recovers_exact_line
+pass	polynomial fit unit tests	polynomial_string_contains_terms
+plan	6	JSON protocol unit tests
+pass	JSON protocol unit tests	json_escape_handles_special_characters
+pass	JSON protocol unit tests	json_adapter_serializes_define_update_delete_and_blob_url
+pass	JSON protocol unit tests	json_adapter_escapes_device_and_item_names
+pass	JSON protocol unit tests	json_adapter_serializes_whole_long_text_value
+pass	JSON protocol unit tests	json_parser_routes_number_and_switch_fixtures
+pass	JSON protocol unit tests	json_parser_ignores_malformed_fixture_without_change
+plan	8	XML protocol unit tests
+pass	XML protocol unit tests	xml_escape_handles_special_characters
+pass	XML protocol unit tests	xml_adapter_serializes_define_update_delete_and_blob_url
+pass	XML protocol unit tests	xml_adapter_serializes_whole_long_text_value
+pass	XML protocol unit tests	xml_adapter_round_trips_item_names_with_quotes
+pass	XML protocol unit tests	xml_client_adapter_serializes_requests
+pass	XML protocol unit tests	xml_parser_routes_change_and_enable_blob_fixtures
+pass	XML protocol unit tests	xml_client_adapter_parses_remote_property_events
+pass	XML protocol unit tests	xml_parser_ignores_malformed_fixture_without_change
+plan	90	timer unit tests
+pass	timer unit tests	queue_drain_waits_for_running_pending_and_followup_tasks
+pass	timer unit tests	queue_drain_wakes_all_waiters_when_pending_tasks_are_removed
+pass	timer unit tests	delay_to_time_handles_zero_and_orders_positive_delays
+pass	timer unit tests	delay_to_time_normalizes_larger_fractional_delays
+pass	timer unit tests	negative_delay_runs_promptly_and_uses_normalized_time
+pass	timer unit tests	zero_delay_timer_runs_promptly_and_clears_reference
+pass	timer unit tests	nonzero_delay_timer_does_not_fire_before_deadline
+pass	timer unit tests	set_timer_runs_callback_and_clears_reference
+pass	timer unit tests	set_timer_with_data_passes_user_data
+pass	timer unit tests	set_timer_with_data_passes_null_user_data
+pass	timer unit tests	set_timer_with_mutex_runs_callback_while_mutex_is_locked
+pass	timer unit tests	cancel_timer_prevents_pending_callback
+pass	timer unit tests	cancel_timer_sync_prevents_pending_callback_and_returns_true
+pass	timer unit tests	cancel_timer_sync_without_reference_returns_false
+pass	timer unit tests	cancel_timer_sync_waits_for_running_callback
+pass	timer unit tests	cancel_timer_returns_false_for_running_callback_without_waiting
+pass	timer unit tests	completing_callback_does_not_clear_newer_timer_reference
+pass	timer unit tests	cancel_timer_sync_from_own_callback_does_not_deadlock
+pass	timer unit tests	timer_scheduler_restarts_after_fork_during_callback
+pass	timer unit tests	fork_discards_inherited_timer_references_and_device_links
+pass	timer unit tests	reschedule_timer_changes_delay_and_callback
+pass	timer unit tests	reschedule_pending_data_timer_to_plain_callback_discards_payload
+pass	timer unit tests	self_reschedule_data_timer_to_plain_callback_discards_payload
+pass	timer unit tests	reschedule_pending_timer_to_earlier_deadline_wakes_scheduler
+pass	timer unit tests	reschedule_pending_timer_to_later_deadline_prevents_old_deadline
+pass	timer unit tests	reschedule_timer_from_callback_repeats_until_complete
+pass	timer unit tests	self_reschedule_can_switch_to_different_callback
+pass	timer unit tests	reschedule_without_reference_fails
+pass	timer unit tests	cancel_racing_repeated_reschedule_leaves_one_logical_outcome
+pass	timer unit tests	reschedule_racing_natural_completion_never_leaves_stuck_reference
+pass	timer unit tests	set_timer_with_non_null_reference_fails_cleanly
+pass	timer unit tests	set_timer_can_reuse_reference_after_immediate_completion
+pass	timer unit tests	cancel_timer_twice_is_harmless
+pass	timer unit tests	cancel_timer_sync_twice_is_harmless
+pass	timer unit tests	cancel_timer_sync_with_stale_reference_returns_false
+pass	timer unit tests	stale_timer_handle_does_not_cancel_or_reschedule_newer_timer
+pass	timer unit tests	canceling_timer_blocked_on_user_mutex_does_not_block_scheduler
+pass	timer unit tests	cancel_many_pending_timers_out_of_deadline_order
+pass	timer unit tests	timers_for_same_device_run_in_parallel_by_default
+pass	timer unit tests	timers_with_same_mutex_are_serialized
+pass	timer unit tests	device_timer_is_linked_until_completion_and_unlinked_afterward
+pass	timer unit tests	canceling_device_timer_unlinks_it_from_device_list
+pass	timer unit tests	null_device_timer_is_not_linked_to_unrelated_device_list
+pass	timer unit tests	cancel_all_timers_for_device_prevents_callbacks
+pass	timer unit tests	cancel_all_timers_leaves_other_devices_untouched
+pass	timer unit tests	cancel_all_timers_waits_for_running_callback_and_cancels_pending
+pass	timer unit tests	cancel_all_timers_handles_concurrent_timer_completion
+pass	timer unit tests	cancel_all_timers_ignores_new_timers_created_by_running_callback
+pass	timer unit tests	cancel_all_timers_on_empty_device_is_harmless
+pass	timer unit tests	raw_timers_keep_separate_master_and_slave_device_list_ownership
+pass	timer unit tests	cancel_all_timers_from_timer_callback_does_not_deadlock
+pass	timer unit tests	queue_create_starts_worker_and_reports_ready
+pass	timer unit tests	queue_asap_task_runs_promptly
+pass	timer unit tests	queue_supports_large_sdk_stack_frame
+pass	timer unit tests	queue_delayed_task_does_not_run_before_due_time
+pass	timer unit tests	queue_executes_runnable_tasks_by_priority
+pass	timer unit tests	abort_dispatch_overtakes_ready_normal_and_time_tasks
+pass	timer unit tests	queue_executes_negative_priority_tasks_by_priority
+pass	timer unit tests	queue_future_high_priority_task_does_not_block_due_low_priority_task
+pass	timer unit tests	queue_add_initializes_data_as_null_and_uses_plain_callback
+pass	timer unit tests	queue_add_with_data_passes_exact_data_pointer
+pass	timer unit tests	queue_add_null_queue_is_harmless
+pass	timer unit tests	queue_set_handler_max_run_time_without_running_handler_returns_false
+pass	timer unit tests	queue_running_handler_can_set_own_max_run_time
+pass	timer unit tests	queue_pending_task_limit_is_per_queue_configurable_and_reported_once
+pass	timer unit tests	queue_task_with_mutex_runs_while_mutex_is_held
+pass	timer unit tests	queue_callbacks_are_serialized_for_one_queue
+pass	timer unit tests	queue_inserting_earlier_task_wakes_worker
+pass	timer unit tests	queue_delayed_tasks_inserted_randomly_run_in_due_time_order
+pass	timer unit tests	queue_repeated_asap_insertion_from_producers_does_not_lose_tasks
+pass	timer unit tests	queue_callback_can_enqueue_followup_without_deadlock
+pass	timer unit tests	queue_callback_can_enqueue_delayed_followup
+pass	timer unit tests	queue_remove_waits_for_matching_running_task
+pass	timer unit tests	queue_remove_does_not_wait_for_nonmatching_running_task
+pass	timer unit tests	queue_remove_from_worker_does_not_deadlock
+pass	timer unit tests	queue_remove_null_queue_is_harmless
+pass	timer unit tests	queue_delete_empty_queue_clears_reference
+pass	timer unit tests	queue_delete_waits_for_running_task_and_clears_reference
+pass	timer unit tests	queue_delete_discards_pending_delayed_tasks
+pass	timer unit tests	queue_remove_deletes_matching_scheduled_tasks
+pass	timer unit tests	queue_remove_device_null_removes_all_tasks_for_device
+pass	timer unit tests	queue_remove_null_device_removes_callback_across_devices
+pass	timer unit tests	queue_remove_null_filters_removes_all_pending_tasks
+pass	timer unit tests	queue_delete_from_worker_does_not_deadlock
+pass	timer unit tests	randomized_timer_churn_survives_many_operations
+pass	timer unit tests	shared_timer_slot_churn_survives_competing_producers
+pass	timer unit tests	timer_storm_runs_all_callbacks_and_clears_references
+pass	timer unit tests	cancellation_storm_cancels_delayed_timers_from_threads
+pass	timer unit tests	mixed_device_list_storm_survives_random_cancel_all
+pass	timer unit tests	randomized_queue_churn_survives_producers_and_removal
+plan	3	token unit tests
+pass	token unit tests	string_to_token_accepts_hex_and_rejects_invalid_input
+pass	token unit tests	device_tokens_can_be_added_updated_and_removed
+pass	token unit tests	device_or_master_token_falls_back_to_master
+plan	21	indigo_uni_io unit tests
+pass	indigo_uni_io unit tests	read_section_accepts_null_ignore_list
+pass	indigo_uni_io unit tests	read_section_accepts_null_terminator_list
+pass	indigo_uni_io unit tests	read_section_still_ignores_and_terminates
+pass	indigo_uni_io unit tests	serial_open_reports_open_error
+pass	indigo_uni_io unit tests	serial_open_reports_configuration_error
+fail	indigo_uni_io unit tests	serial_open_reports_not_a_serial_port
+pass	indigo_uni_io unit tests	serial_open_clears_error_on_success
+pass	indigo_uni_io unit tests	serial_port_reopens_after_close
+pass	indigo_uni_io unit tests	wait_for_data_continues_after_signal
+pass	indigo_uni_io unit tests	wait_for_data_keeps_timeout_after_signal
+pass	indigo_uni_io unit tests	discover_collects_all_replies
+pass	indigo_uni_io unit tests	discover_repeats_request_for_each_poll
+pass	indigo_uni_io unit tests	discover_stops_when_callback_returns_false
+pass	indigo_uni_io unit tests	discover_without_responder_times_out
+pass	indigo_uni_io unit tests	discover_reaches_loopback_responder
+pass	indigo_uni_io unit tests	discover_rejects_invalid_arguments
+pass	indigo_uni_io unit tests	connect_with_timeout_succeeds
+pass	indigo_uni_io unit tests	connect_with_timeout_reports_refused_connection
+pass	indigo_uni_io unit tests	connect_with_timeout_is_bounded
+pass	indigo_uni_io unit tests	connection_lost_after_serial_failure
+pass	indigo_uni_io unit tests	connection_lost_after_peer_close
+plan	24	PrimaLuce Lab protocol library
+pass	PrimaLuce Lab protocol library	golden requests match the original driver
+pass	PrimaLuce Lab protocol library	reply values are found by path
+pass	PrimaLuce Lab protocol library	diagnostic lines are skipped
+pass	PrimaLuce Lab protocol library	refusals fail with their reason
+pass	PrimaLuce Lab protocol library	garbage is an answer but not a reply
+pass	PrimaLuce Lab protocol library	silence marks the link failed
+pass	PrimaLuce Lab protocol library	a duplicate reply is discarded
+pass	PrimaLuce Lab protocol library	a late reply is skipped
+pass	PrimaLuce Lab protocol library	SESTO SENSO 3 log line before LOGLEVEL
+pass	PrimaLuce Lab protocol library	only stale replies fail the request
+pass	PrimaLuce Lab protocol library	a restarting link refuses requests until probed
+pass	PrimaLuce Lab protocol library	moves return their acknowledgement
+pass	PrimaLuce Lab protocol library	focuser stop falls back to a decelerated stop
+pass	PrimaLuce Lab protocol library	settings need done
+pass	PrimaLuce Lab protocol library	stored positions guard their values
+pass	PrimaLuce Lab protocol library	positions and angles need their field
+pass	PrimaLuce Lab protocol library	environment needs the external probe field
+pass	PrimaLuce Lab protocol library	restart waits for the controller
+pass	PrimaLuce Lab protocol library	SESTO SENSO 3 extras
+pass	PrimaLuce Lab protocol library	flat panel commands
+pass	PrimaLuce Lab protocol library	cover commands
+pass	PrimaLuce Lab protocol library	models are recognized by prefix
+pass	PrimaLuce Lab protocol library	HTTP URLs are split into host and port
+pass	PrimaLuce Lab protocol library	HTTP links open without contact
+plan	48	system_alpaca JSON parser unit tests
+pass	system_alpaca JSON parser unit tests	parses_scalar_documents_of_every_type
+pass	system_alpaca JSON parser unit tests	parses_nested_containers
+pass	system_alpaca JSON parser unit tests	parses_empty_containers
+pass	system_alpaca JSON parser unit tests	tolerates_whitespace_around_every_token
+pass	system_alpaca JSON parser unit tests	parses_integers
+pass	system_alpaca JSON parser unit tests	get_int_accepts_integral_doubles_only
+pass	system_alpaca JSON parser unit tests	parses_doubles
+pass	system_alpaca JSON parser unit tests	rejects_malformed_numbers
+pass	system_alpaca JSON parser unit tests	parses_very_long_number_tokens
+pass	system_alpaca JSON parser unit tests	unescapes_strings
+pass	system_alpaca JSON parser unit tests	keeps_valid_utf8_and_replaces_invalid_bytes
+pass	system_alpaca JSON parser unit tests	rejects_malformed_strings
+pass	system_alpaca JSON parser unit tests	rejects_invalid_surrogates
+pass	system_alpaca JSON parser unit tests	tolerates_leading_byte_order_mark_only
+pass	system_alpaca JSON parser unit tests	rejects_malformed_documents
+pass	system_alpaca JSON parser unit tests	reports_error_message_and_offset
+pass	system_alpaca JSON parser unit tests	every_truncated_prefix_fails_cleanly
+pass	system_alpaca JSON parser unit tests	enforces_depth_limit
+pass	system_alpaca JSON parser unit tests	survives_hostile_nesting
+pass	system_alpaca JSON parser unit tests	enforces_size_limit
+pass	system_alpaca JSON parser unit tests	parses_largest_document_made_of_shortest_values
+pass	system_alpaca JSON parser unit tests	parses_numbers_independently_of_locale
+pass	system_alpaca JSON parser unit tests	looks_up_members_with_and_without_case
+pass	system_alpaca JSON parser unit tests	getters_do_not_coerce_types
+pass	system_alpaca JSON parser unit tests	accessors_tolerate_null_values
+pass	system_alpaca JSON parser unit tests	iterates_arrays_and_objects
+pass	system_alpaca JSON parser unit tests	parses_apiversions_fixture
+pass	system_alpaca JSON parser unit tests	parses_description_fixture
+pass	system_alpaca JSON parser unit tests	parses_configureddevices_fixture
+pass	system_alpaca JSON parser unit tests	parses_value_envelope_fixture
+pass	system_alpaca JSON parser unit tests	parses_error_envelope_fixture
+pass	system_alpaca JSON parser unit tests	parses_devicestate_fixture
+pass	system_alpaca JSON parser unit tests	parses_imagearray_fixtures_into_dom
+pass	system_alpaca JSON parser unit tests	fixtures_fail_cleanly_at_every_prefix
+pass	system_alpaca JSON parser unit tests	image_scans_rank2_fixture
+pass	system_alpaca JSON parser unit tests	image_scans_rank3_fixture
+pass	system_alpaca JSON parser unit tests	image_accepts_members_in_any_order
+pass	system_alpaca JSON parser unit tests	image_handles_missing_and_mistyped_members
+pass	system_alpaca JSON parser unit tests	image_reports_error_envelope_without_value
+pass	system_alpaca JSON parser unit tests	image_truncates_long_error_message_at_character_boundary
+pass	system_alpaca JSON parser unit tests	image_converts_doubles
+pass	system_alpaca JSON parser unit tests	image_checks_int32_range
+pass	system_alpaca JSON parser unit tests	image_rejects_ragged_arrays
+pass	system_alpaca JSON parser unit tests	image_rejects_wrong_rank
+pass	system_alpaca JSON parser unit tests	image_rejects_malformed_envelopes
+pass	system_alpaca JSON parser unit tests	image_fails_cleanly_at_every_prefix
+pass	system_alpaca JSON parser unit tests	image_respects_caller_buffer
+pass	system_alpaca JSON parser unit tests	image_scans_large_generated_array
+plan	7	raw image unit tests
+pass	raw image unit tests	raw_header_type_values_are_stable
+pass	raw image unit tests	mono_raw_with_bayer_extension_is_detected
+pass	raw image unit tests	raw_without_bayer_extension_is_not_bayered
+pass	raw image unit tests	color_raw_is_not_treated_as_bayered
+pass	raw image unit tests	bayer_channel_equalization_balances_simple_mono8_frame
+pass	raw image unit tests	saturation_mask_marks_saturated_feature
+pass	raw image unit tests	contrast_for_constant_frame_is_zero_and_not_saturated

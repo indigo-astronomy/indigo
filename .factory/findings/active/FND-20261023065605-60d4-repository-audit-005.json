@@ -1,0 +1,19 @@
+{
+  "title": "Editor attribute catalog omits the generator-supported device id",
+  "category": "quality",
+  "severity": "low",
+  "blocking": false,
+  "evidence": "indigo_tools/template.driver device attribute catalog; indigo_tools/driver_editor/test_editor.py:209-216; editor-fresh-generator-tests.log",
+  "summary": "The template-derived device catalog does not offer id, accepted by parse_device_block and needed for named logical devices. Source-to-catalog contract test fails without any generator binary dependency. Next: coordinator assigns a template/editor catalog correction and reruns the existing attribute contract test; preserve existing DSL input.",
+  "status": "open",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023065605-60d4-repository-audit-005"
+}

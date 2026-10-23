@@ -1,0 +1,51 @@
+................................F.
+======================================================================
+ERROR: test_all_real_drivers_generate_without_modification (test_editor.MappingTests) (file='indigo_polaralign_mlastro.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 529, in test_all_real_drivers_generate_without_modification
+    outputs, _ = generate(source, path.name, root, GENERATOR, ROOT, 15)
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+ERROR: test_all_real_drivers_generate_without_modification (test_editor.MappingTests) (file='indigo_polaralign_simulator.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 529, in test_all_real_drivers_generate_without_modification
+    outputs, _ = generate(source, path.name, root, GENERATOR, ROOT, 15)
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+FAIL: test_all_real_drivers_generate_without_modification (test_editor.MappingTests) (file='indigo_ccd_simulator.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 538, in test_all_real_drivers_generate_without_modification
+    self.assertTrue(mapping['ranges'][node['id']], node['id'])
+AssertionError: [] is not true : /driver:simulator:1/ccd:1/inherited:CCD_EXPOSURE:1
+
+======================================================================
+FAIL: test_template_matches_generator_attribute_contexts (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakop/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 216, in test_template_matches_generator_attribute_contexts
+    self.assertEqual({name: entry['type'] for name, entry in catalog[context].items()}, accepted('parse_' + context + '_block'))
+AssertionError: {'attach_if': 'expression', 'name_value': '[91 chars]ion'} != {'id': 'identifier', 'attach_if': 'expressi[111 chars]ean'}
+  {'additional_instances': 'boolean',
+   'attach_if': 'expression',
++  'id': 'identifier',
+   'interface': 'expression',
+   'name': 'expression',
+   'name_value': 'expression'}
+
+----------------------------------------------------------------------
+Ran 35 tests in 10.303s
+
+FAILED (failures=2, errors=2)

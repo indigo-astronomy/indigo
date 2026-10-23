@@ -1,0 +1,18 @@
+{
+  "command": [
+    "make",
+    "-C",
+    "indigo_drivers/shared/primalucelib",
+    "BUILD_LIB=/tmp/indigo-final-ar-thin",
+    "CC=clang",
+    "CFLAGS=-g -O1 -std=gnu11 -DINDIGO_MACOS -I../../../indigo_libs -I../../../build/include",
+    "AR=/usr/bin/ar",
+    "ARFLAGS=-rv",
+    "all"
+  ],
+  "exit": 0,
+  "diagnostics": "a - /tmp/indigo-final-ar-thin/primalucelib.PtEuLe/primalucelib.o\nar: creating archive /tmp/indigo-final-ar-thin/primalucelib.PtEuLe/libprimalucelib.a\n",
+  "nm_exit": 0,
+  "symbol_present": true,
+  "host": "macOS arm64, thin native object; not Linux execution"
+}

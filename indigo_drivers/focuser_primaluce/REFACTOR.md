@@ -749,3 +749,22 @@ Hardware (supervised, SESTO SENSO 3):
   Library unit cases: 24 of 24.
 - Hardware: the supervised SESTO SENSO 3 session above was manual, so it produces no hardware
   record.
+
+## Audit blocker repair (2026-10-23)
+
+Task: 20261023065605-60d4-repository-audit. Two scoped defects: the shared archive recipe hard-codes ar flags despite the macOS libtool configuration, and shared JSON lookup accepts a shorter received key as a requested longer key. The latter can confuse ABS_POS and ABS_POS_STEP units/availability. Public property schema, command bytes, queue/finalizer lifecycle and shared-open ownership remain unchanged.
+
+Baseline: audit clean archive build failed on macOS; original shared-library 24 cases passed using an explicitly constructed archive, and the actual JSON reproducer returned ABS_POS=123 for missing ABS_POS_STEP. Exact commands/results are retained in the task verification evidence. Existing simulator and protocol golden-request suites characterize supported behavior. This is a bounded defect repair, not a driver migration or transport refactor.
+
+Hardware decision: no hardware access; noninteractive serial-simulator validation only. No physical device, WiFi credentials or saved configuration will be used.
+
+Atomic plan: forward configured archiver flags and verify clean builds; add failing reply-prefix regression; require exact keys; bump driver 28 to 29 and regenerate using the unchanged generator; run full library/driver simulator checks and independent review. No generator source changes.
+
+Executed repair: the archive recipe forwards ARFLAGS and preserves atomic publication; shared parsed-reply lookup now requires equal key lengths. Added the failing-then-passing parsed serial-peer regression. Driver version increased from 28 to 29; isolated regeneration matches all three checked-in outputs. No property changes or generator modifications.
+
+## Final test summary (3.0.0.29)
+
+- `python3 tools/run_driver_test.py focuser_primaluce`: exit 0; simulated tests 61 run, 61 passed. Recorded: `2026-10-23 09:41 3.0.0.29 mac arm64 simulator 61/61 OK`. README Testing and TEST_SUMMARY were updated by the runner.
+- Library: 25 run, 25 passed; ASan/UBSan library/regression build: 25 run, 25 passed. Clean macOS/libtool and ar-compatible builds pass; forced archiver failure preserves the previous archive and removes temporary files. Linux/Windows execution remains unverified.
+- Hardware: 0 run, 0 passed in this repair task. Historical manual hardware observations above do not validate this version.
+- Independent source review: core_audit PASS; exact baseline/repair commands, logs and limits are retained in `.factory/tasks/archive/20261023065605-60d4-repository-audit/verification.md`.

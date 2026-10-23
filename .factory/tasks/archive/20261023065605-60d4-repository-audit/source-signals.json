@@ -1,0 +1,5699 @@
+{
+  ".factory/scripts/archive_task.py": {},
+  ".factory/scripts/context_export.py": {},
+  ".factory/scripts/decision_index.py": {
+    "placeholder": [
+      33
+    ]
+  },
+  ".factory/scripts/findings.py": {},
+  ".factory/scripts/git_snapshot.py": {},
+  ".factory/scripts/maintenance.py": {},
+  ".factory/scripts/metadata_upgrade.py": {},
+  ".factory/scripts/new_task.py": {
+    "placeholder": [
+      81,
+      83,
+      86
+    ]
+  },
+  ".factory/scripts/process_check.py": {},
+  ".factory/scripts/review.py": {},
+  ".factory/scripts/review_adapters.py": {},
+  ".factory/scripts/review_protocol.py": {},
+  ".factory/scripts/risk_check.py": {},
+  ".factory/scripts/run_checks.py": {},
+  ".factory/scripts/task_store.py": {},
+  ".factory/scripts/task_upgrade.py": {},
+  ".factory/scripts/template_update.py": {},
+  ".factory/scripts/validate_project.py": {},
+  "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": {
+    "unbounded_format": [
+      995,
+      996,
+      1214
+    ],
+    "property_schema": [
+      985,
+      989,
+      990,
+      998,
+      1000,
+      1009,
+      1018,
+      1019,
+      1020,
+      1053,
+      1058
+    ]
+  },
+  "indigo_drivers/agent_alpaca/indigo_agent_alpaca.h": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_common.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_common.h": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_dome.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_focuser.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_guider.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_lightbox.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_mount.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_rotator.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_switch.c": {},
+  "indigo_drivers/agent_alpaca/indigo_alpaca_wheel.c": {},
+  "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": {
+    "unbounded_format": [
+      767,
+      768,
+      769,
+      770,
+      771,
+      772,
+      774,
+      775,
+      777,
+      866,
+      869,
+      879,
+      882,
+      885,
+      888,
+      890,
+      893,
+      1144,
+      1146,
+      1148,
+      1152,
+      1165,
+      1167,
+      1169,
+      1173
+    ],
+    "property_schema": [
+      1071,
+      1138,
+      1151,
+      1156,
+      1159,
+      1172,
+      1177
+    ]
+  },
+  "indigo_drivers/agent_astrometry/indigo_agent_astrometry.h": {},
+  "indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c": {
+    "property_schema": [
+      58,
+      59,
+      60,
+      61,
+      63,
+      65,
+      66,
+      67
+    ]
+  },
+  "indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h": {},
+  "indigo_drivers/agent_config/indigo_agent_config.c": {
+    "blocking_wait": [
+      263
+    ],
+    "property_schema": [
+      155,
+      504,
+      508,
+      509,
+      511,
+      515,
+      517,
+      521,
+      523,
+      527,
+      529,
+      533,
+      536,
+      541,
+      545,
+      792,
+      843,
+      870,
+      938
+    ]
+  },
+  "indigo_drivers/agent_config/indigo_agent_config.h": {},
+  "indigo_drivers/agent_guider/indigo_agent_guider.c": {
+    "unbounded_format": [
+      2702,
+      2703,
+      2705,
+      2706
+    ],
+    "blocking_wait": [
+      760,
+      779,
+      1281
+    ],
+    "property_schema": [
+      843,
+      859,
+      865,
+      919,
+      973,
+      2440,
+      2444,
+      2533,
+      2534,
+      2536,
+      2538,
+      2541,
+      2542,
+      2543,
+      2544,
+      2545,
+      2547,
+      2550,
+      2551,
+      2552,
+      2553,
+      2555,
+      2559,
+      2560,
+      2561,
+      2562,
+      2564,
+      2568,
+      2569,
+      2570,
+      2571,
+      2573,
+      2577,
+      2578,
+      2580,
+      2584,
+      2585,
+      2586,
+      2587,
+      2588,
+      2589,
+      2590,
+      2592,
+      2596,
+      2598,
+      2602,
+      2603,
+      2604,
+      2605,
+      2606,
+      2607,
+      2608,
+      2609,
+      2611,
+      2615,
+      2616,
+      2617,
+      2620,
+      2624,
+      2625,
+      2626,
+      2627,
+      2628,
+      2629,
+      2630,
+      2631,
+      2632,
+      2633,
+      2634,
+      2635,
+      2636,
+      2637,
+      2638,
+      2639,
+      2640,
+      2641,
+      2642,
+      2643,
+      2644,
+      2645,
+      2646,
+      2647,
+      2648,
+      2649,
+      2650,
+      2651,
+      2652,
+      2653,
+      2654,
+      2655,
+      2656,
+      2657,
+      2658,
+      2659,
+      2660,
+      2661,
+      2662,
+      2663,
+      2664,
+      2665,
+      2666,
+      2668,
+      2672,
+      2673,
+      2675,
+      2679,
+      2680,
+      2682,
+      2686,
+      2687,
+      2688,
+      2689,
+      2690,
+      2691,
+      2692,
+      2693,
+      2694,
+      2695,
+      2696,
+      2697,
+      2704,
+      2707,
+      2709,
+      2711,
+      2715,
+      2716,
+      2717,
+      2718,
+      2719,
+      2720,
+      2721,
+      2722,
+      2723,
+      2724,
+      2725,
+      2726,
+      2727,
+      2728,
+      2729,
+      2730,
+      2731,
+      2732,
+      2733,
+      2734,
+      2735,
+      2736,
+      2737,
+      2738,
+      2739,
+      2740,
+      2741,
+      2742,
+      2743,
+      2744,
+      2745,
+      2747,
+      2751,
+      2752,
+      2754,
+      2758,
+      2759,
+      2761,
+      2765,
+      2766,
+      2767,
+      2769,
+      2773,
+      2774,
+      2776,
+      2780,
+      2782,
+      2786,
+      2789,
+      2790,
+      3086
+    ]
+  },
+  "indigo_drivers/agent_guider/indigo_agent_guider.h": {},
+  "indigo_drivers/agent_imager/indigo_agent_imager.c": {
+    "unbounded_format": [
+      2703,
+      2704,
+      2742,
+      2743,
+      2745,
+      2746,
+      2792,
+      2793
+    ],
+    "blocking_wait": [
+      610,
+      642,
+      702,
+      727,
+      915,
+      1337,
+      1366,
+      1541,
+      1571
+    ],
+    "property_schema": [
+      764,
+      770,
+      818,
+      830,
+      1205,
+      2402,
+      2452,
+      2456,
+      2507,
+      2511,
+      2568,
+      2569,
+      2570,
+      2572,
+      2573,
+      2578,
+      2582,
+      2583,
+      2584,
+      2585,
+      2586,
+      2589,
+      2593,
+      2594,
+      2595,
+      2596,
+      2597,
+      2598,
+      2599,
+      2600,
+      2601,
+      2602,
+      2603,
+      2604,
+      2605,
+      2607,
+      2611,
+      2612,
+      2614,
+      2618,
+      2621,
+      2622,
+      2623,
+      2625,
+      2629,
+      2631,
+      2635,
+      2636,
+      2637,
+      2638,
+      2639,
+      2640,
+      2641,
+      2642,
+      2646,
+      2647,
+      2648,
+      2649,
+      2653,
+      2654,
+      2658,
+      2659,
+      2660,
+      2661,
+      2662,
+      2665,
+      2669,
+      2670,
+      2674,
+      2675,
+      2676,
+      2680,
+      2681,
+      2685,
+      2687,
+      2690,
+      2691,
+      2692,
+      2697,
+      2705,
+      2707,
+      2709,
+      2713,
+      2714,
+      2716,
+      2720,
+      2721,
+      2723,
+      2727,
+      2728,
+      2729,
+      2730,
+      2731,
+      2732,
+      2733,
+      2734,
+      2735,
+      2736,
+      2737,
+      2744,
+      2747,
+      2749,
+      2752,
+      2756,
+      2757,
+      2758,
+      2759,
+      2760,
+      2761,
+      2764,
+      2768,
+      2769,
+      2770,
+      2771,
+      2772,
+      2773,
+      2774,
+      2775,
+      2776,
+      2777,
+      2778,
+      2779,
+      2780,
+      2781,
+      2782,
+      2783,
+      2784,
+      2785,
+      2786,
+      2787,
+      2794,
+      2796,
+      2798,
+      2802,
+      2803,
+      2804,
+      2805,
+      2806,
+      2807,
+      2808,
+      2812,
+      2813,
+      2814,
+      2820,
+      2821,
+      3015,
+      3026,
+      3311,
+      3556,
+      3562,
+      3585,
+      3586,
+      3592
+    ]
+  },
+  "indigo_drivers/agent_imager/indigo_agent_imager.h": {},
+  "indigo_drivers/agent_mount/indigo_agent_mount.c": {
+    "property_schema": [
+      2053,
+      2054,
+      2055,
+      2056,
+      2057,
+      2059,
+      2061,
+      2065,
+      2066,
+      2067,
+      2069,
+      2073,
+      2074,
+      2075,
+      2076,
+      2078,
+      2082,
+      2083,
+      2085,
+      2089,
+      2090,
+      2092,
+      2096,
+      2097,
+      2098,
+      2102,
+      2103,
+      2105,
+      2109,
+      2110,
+      2111,
+      2113,
+      2117,
+      2118,
+      2119,
+      2121,
+      2125,
+      2126,
+      2128,
+      2132,
+      2133,
+      2134,
+      2135,
+      2136,
+      2137,
+      2138,
+      2139,
+      2140,
+      2141,
+      2142,
+      2143,
+      2144,
+      2146,
+      2150,
+      2151,
+      2152,
+      2153,
+      2154,
+      2155,
+      2156,
+      2157,
+      2158,
+      2159,
+      2160,
+      2161,
+      2162,
+      2166,
+      2167,
+      2171,
+      2172,
+      2173,
+      2174,
+      2175,
+      2176,
+      2177,
+      2179,
+      2183,
+      2184,
+      2185,
+      2186,
+      2187,
+      2188,
+      2190,
+      2194,
+      2195,
+      2196,
+      2198,
+      2202,
+      2203,
+      2204,
+      2205,
+      2206,
+      2208,
+      2212,
+      2213,
+      2214,
+      2215,
+      2217,
+      2218
+    ]
+  },
+  "indigo_drivers/agent_mount/indigo_agent_mount.h": {},
+  "indigo_drivers/agent_scripting/boot.js": {},
+  "indigo_drivers/agent_scripting/duk_config.h": {},
+  "indigo_drivers/agent_scripting/duktape.c": {
+    "unbounded_format": [
+      40181
+    ],
+    "generic_swallow": [
+      69017,
+      80344,
+      85584
+    ],
+    "placeholder": [
+      41864,
+      84106
+    ]
+  },
+  "indigo_drivers/agent_scripting/duktape.h": {},
+  "indigo_drivers/agent_scripting/indigo_agent_scripting.c": {
+    "property_schema": [
+      363,
+      392,
+      414,
+      436,
+      477,
+      530,
+      596,
+      648,
+      1093,
+      1098,
+      1102,
+      1104,
+      1108,
+      1109,
+      1113,
+      1114,
+      1118,
+      1119,
+      1120,
+      1124,
+      1125,
+      1127,
+      1128,
+      1129,
+      1324,
+      1325,
+      1335,
+      1336,
+      1337
+    ]
+  },
+  "indigo_drivers/agent_scripting/indigo_agent_scripting.h": {},
+  "indigo_drivers/agent_scripting/library/Sequencer.js": {},
+  "indigo_drivers/agent_solver/indigo_agent_solver.c": {},
+  "indigo_drivers/agent_solver/indigo_agent_solver.h": {},
+  "indigo_drivers/agent_test/indigo_agent_test.c": {
+    "property_schema": [
+      99,
+      103,
+      104,
+      105,
+      106
+    ]
+  },
+  "indigo_drivers/agent_test/indigo_agent_test.h": {},
+  "indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c": {
+    "blocking_wait": [
+      148,
+      153
+    ]
+  },
+  "indigo_drivers/ao_sx/indigo_ao_sx.driver": {
+    "property_schema": [
+      96
+    ]
+  },
+  "indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.c": {
+    "blocking_wait": [
+      146,
+      151,
+      306
+    ]
+  },
+  "indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.driver": {},
+  "indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c": {
+    "blocking_wait": [
+      143,
+      148,
+      183,
+      226
+    ]
+  },
+  "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver": {},
+  "indigo_drivers/aux_cloudwatcher/aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c": {
+    "blocking_wait": [
+      43
+    ]
+  },
+  "indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver": {
+    "blocking_wait": [
+      766
+    ],
+    "property_schema": [
+      792
+    ]
+  },
+  "indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/aux_dragonfly_simulator.c": {},
+  "indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/dragonfly_simulator_common.h": {},
+  "indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.driver": {
+    "property_schema": [
+      73,
+      92
+    ]
+  },
+  "indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c": {},
+  "indigo_drivers/aux_dragonfly/shared/dragonfly_shared.h": {},
+  "indigo_drivers/aux_dsusb/indigo_aux_dsusb.driver": {},
+  "indigo_drivers/aux_fbc/aux_fbc_simulator/aux_fbc_simulator.c": {
+    "blocking_wait": [
+      140,
+      145,
+      233
+    ]
+  },
+  "indigo_drivers/aux_fbc/indigo_aux_fbc.driver": {
+    "property_schema": [
+      103
+    ]
+  },
+  "indigo_drivers/aux_flatmaster/aux_flatmaster_simulator/aux_flatmaster_simulator.c": {
+    "blocking_wait": [
+      146,
+      151,
+      255
+    ]
+  },
+  "indigo_drivers/aux_flatmaster/indigo_aux_flatmaster.driver": {
+    "unbounded_format": [
+      132,
+      134
+    ],
+    "property_schema": [
+      119
+    ]
+  },
+  "indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.c": {
+    "blocking_wait": [
+      169,
+      174,
+      272
+    ]
+  },
+  "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver": {
+    "blocking_wait": [
+      157
+    ],
+    "property_schema": [
+      63,
+      64,
+      68,
+      69,
+      73,
+      74,
+      78,
+      79,
+      83,
+      84,
+      88,
+      89,
+      143
+    ]
+  },
+  "indigo_drivers/aux_geoptikflat/aux_geoptikflat_simulator/aux_geoptikflat_simulator.c": {
+    "blocking_wait": [
+      167,
+      172,
+      340
+    ]
+  },
+  "indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.driver": {
+    "property_schema": [
+      93
+    ]
+  },
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidAppleMikey.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidAppleMikey.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidAppleRemote.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidAppleRemote.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidDevice.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidDevice.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidElement.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidElement.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidEvent.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidEvent.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidJoystick.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidJoystick.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidKeyboard.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidKeyboard.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidKeyboardBarcodeScanner.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidKeyboardBarcodeScanner.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidLib.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidMouse.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidMouse.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidQueue.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidQueue.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidUsage.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidUsage.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidUsageTables.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/DDHidUsageTables.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/NSDictionary+DDHidExtras.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/NSDictionary+DDHidExtras.m": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/NSXReturnThrowError.h": {},
+  "indigo_drivers/aux_joystick/external/DDHidLib/NSXReturnThrowError.m": {},
+  "indigo_drivers/aux_joystick/indigo_aux_joystick.c": {
+    "property_schema": [
+      190,
+      198,
+      202,
+      210,
+      213,
+      217,
+      218,
+      219,
+      220,
+      221,
+      222,
+      223,
+      224,
+      225,
+      226,
+      227,
+      228,
+      230,
+      234,
+      235,
+      236,
+      238,
+      242,
+      243,
+      245,
+      249,
+      251,
+      255,
+      256,
+      257,
+      258,
+      260,
+      264,
+      265,
+      267,
+      271,
+      272,
+      274,
+      278,
+      280,
+      284,
+      285
+    ],
+    "capacity_override": [
+      63
+    ]
+  },
+  "indigo_drivers/aux_joystick/indigo_aux_joystick.h": {},
+  "indigo_drivers/aux_joystick/indigo_aux_joystick.m": {},
+  "indigo_drivers/aux_joystick/indigo_aux_joystick_main.c": {},
+  "indigo_drivers/aux_mgbox/aux_mgbox_simulator/aux_mgbox_simulator.c": {
+    "blocking_wait": [
+      49
+    ]
+  },
+  "indigo_drivers/aux_mgbox/indigo_aux_mgbox.driver": {
+    "property_schema": [
+      501,
+      800,
+      827,
+      833
+    ]
+  },
+  "indigo_drivers/aux_ppb/aux_ppb_simulator/aux_ppb_simulator.c": {
+    "blocking_wait": [
+      227,
+      232,
+      403
+    ]
+  },
+  "indigo_drivers/aux_ppb/indigo_aux_ppb.driver": {
+    "property_schema": [
+      73,
+      74,
+      75,
+      82,
+      83,
+      84,
+      91,
+      92,
+      93,
+      102,
+      103,
+      104,
+      278
+    ]
+  },
+  "indigo_drivers/aux_rts/indigo_aux_rts.driver": {},
+  "indigo_drivers/aux_simulator/indigo_aux_simulator.driver": {
+    "property_schema": [
+      103,
+      104,
+      413,
+      414,
+      622,
+      623,
+      688,
+      689
+    ]
+  },
+  "indigo_drivers/aux_skyalert/aux_skyalert_simulator/aux_skyalert_simulator.c": {
+    "blocking_wait": [
+      143,
+      148,
+      307
+    ]
+  },
+  "indigo_drivers/aux_skyalert/indigo_aux_skyalert.driver": {
+    "property_schema": [
+      116
+    ]
+  },
+  "indigo_drivers/aux_sqm/aux_sqm_simulator/aux_sqm_simulator.c": {
+    "blocking_wait": [
+      170,
+      175,
+      378
+    ]
+  },
+  "indigo_drivers/aux_sqm/indigo_aux_sqm.driver": {},
+  "indigo_drivers/aux_svbpowerbox/aux_svbpowerbox_simulator/aux_svbpowerbox_simulator.c": {
+    "blocking_wait": [
+      144,
+      207,
+      212,
+      495
+    ]
+  },
+  "indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.driver": {
+    "property_schema": [
+      195
+    ]
+  },
+  "indigo_drivers/aux_uch/aux_uch_simulator/aux_uch_simulator.c": {
+    "blocking_wait": [
+      163,
+      168,
+      205,
+      208,
+      281
+    ]
+  },
+  "indigo_drivers/aux_uch/indigo_aux_uch.driver": {
+    "property_schema": [
+      153
+    ]
+  },
+  "indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.c": {
+    "blocking_wait": [
+      101,
+      106,
+      211
+    ]
+  },
+  "indigo_drivers/aux_upb/indigo_aux_upb.driver": {
+    "property_schema": [
+      457,
+      458,
+      459,
+      460,
+      462,
+      463,
+      464,
+      465,
+      466,
+      467,
+      579,
+      580,
+      607,
+      608,
+      635
+    ]
+  },
+  "indigo_drivers/aux_upb3/aux_upb3_simulator/aux_upb3_simulator.c": {
+    "blocking_wait": [
+      138,
+      251,
+      297,
+      543
+    ]
+  },
+  "indigo_drivers/aux_upb3/indigo_aux_upb3.driver": {
+    "property_schema": [
+      181,
+      402,
+      1022,
+      1026,
+      1027,
+      1035
+    ]
+  },
+  "indigo_drivers/aux_usbdp/aux_usbdp_simulator/aux_usbdp_simulator.c": {
+    "blocking_wait": [
+      260,
+      265,
+      314,
+      404
+    ]
+  },
+  "indigo_drivers/aux_usbdp/indigo_aux_usbdp.driver": {
+    "unbounded_format": [
+      126
+    ],
+    "property_schema": [
+      113,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      348
+    ]
+  },
+  "indigo_drivers/aux_wbplusv3/aux_wbplusv3_simulator/aux_wbplusv3_simulator.c": {
+    "blocking_wait": [
+      174,
+      190,
+      195,
+      305
+    ]
+  },
+  "indigo_drivers/aux_wbplusv3/indigo_aux_wbplusv3.driver": {
+    "blocking_wait": [
+      147,
+      313,
+      332,
+      368,
+      388,
+      489
+    ],
+    "property_schema": [
+      239
+    ]
+  },
+  "indigo_drivers/aux_wbprov3/aux_wbprov3_simulator/aux_wbprov3_simulator.c": {
+    "blocking_wait": [
+      196,
+      212,
+      217,
+      361
+    ]
+  },
+  "indigo_drivers/aux_wbprov3/indigo_aux_wbprov3.driver": {
+    "blocking_wait": [
+      212,
+      409,
+      433,
+      489,
+      531,
+      660
+    ],
+    "property_schema": [
+      320
+    ]
+  },
+  "indigo_drivers/aux_wcv4ec/aux_wcv4ec_simulator/aux_wcv4ec_simulator.c": {
+    "blocking_wait": [
+      235,
+      295,
+      312,
+      317,
+      407,
+      455
+    ]
+  },
+  "indigo_drivers/aux_wcv4ec/indigo_aux_wcv4ec.driver": {
+    "blocking_wait": [
+      134,
+      157,
+      379,
+      421,
+      464
+    ],
+    "property_schema": [
+      259
+    ]
+  },
+  "indigo_drivers/ccd_altair/indigo_ccd_altair.c": {},
+  "indigo_drivers/ccd_altair/indigo_ccd_altair.h": {},
+  "indigo_drivers/ccd_altair/indigo_ccd_altair_main.c": {},
+  "indigo_drivers/ccd_asi/indigo_ccd_asi.driver": {
+    "unbounded_format": [
+      891,
+      893,
+      895
+    ],
+    "property_schema": [
+      672,
+      692,
+      693,
+      716,
+      739,
+      762,
+      782,
+      799,
+      808,
+      858,
+      864,
+      865,
+      892,
+      894,
+      896,
+      936,
+      940,
+      944,
+      948,
+      951,
+      953,
+      959,
+      990,
+      996,
+      1002,
+      1008,
+      1012,
+      1015,
+      1016,
+      1017
+    ]
+  },
+  "indigo_drivers/ccd_atik/indigo_ccd_atik.driver": {
+    "property_schema": [
+      164,
+      166,
+      167,
+      179,
+      193,
+      208,
+      218,
+      221,
+      581,
+      584,
+      751,
+      753
+    ]
+  },
+  "indigo_drivers/ccd_baccam/indigo_ccd_baccam.c": {},
+  "indigo_drivers/ccd_baccam/indigo_ccd_baccam.h": {},
+  "indigo_drivers/ccd_baccam/indigo_ccd_baccam_main.c": {},
+  "indigo_drivers/ccd_bresser/indigo_ccd_bresser.c": {},
+  "indigo_drivers/ccd_bresser/indigo_ccd_bresser.h": {},
+  "indigo_drivers/ccd_bresser/indigo_ccd_bresser_main.c": {},
+  "indigo_drivers/ccd_dsi/indigo_ccd_dsi.driver": {
+    "unbounded_format": [
+      271,
+      272,
+      289,
+      291,
+      298
+    ],
+    "property_schema": [
+      285,
+      288,
+      290,
+      292,
+      294,
+      297,
+      299,
+      306,
+      311,
+      316,
+      323,
+      334
+    ],
+    "capacity_override": [
+      74,
+      75
+    ],
+    "placeholder": [
+      121,
+      185,
+      217
+    ]
+  },
+  "indigo_drivers/ccd_dsi/libdsi.c": {
+    "unbounded_format": [
+      1156,
+      1201,
+      1203
+    ],
+    "placeholder": [
+      458,
+      467,
+      476,
+      485,
+      494,
+      503,
+      785,
+      928,
+      1408,
+      1461,
+      1513,
+      1521
+    ]
+  },
+  "indigo_drivers/ccd_dsi/libdsi.h": {},
+  "indigo_drivers/ccd_dsi/libdsi_firmware.h": {},
+  "indigo_drivers/ccd_fli/indigo_ccd_fli.driver": {
+    "property_schema": [
+      125,
+      128,
+      129,
+      148,
+      426,
+      427,
+      428,
+      433
+    ]
+  },
+  "indigo_drivers/ccd_iidc/indigo_ccd_iidc.driver": {
+    "property_schema": [
+      128,
+      141,
+      242,
+      243,
+      244,
+      485,
+      488,
+      490,
+      491,
+      492
+    ]
+  },
+  "indigo_drivers/ccd_mallin/indigo_ccd_mallin.c": {},
+  "indigo_drivers/ccd_mallin/indigo_ccd_mallin.h": {},
+  "indigo_drivers/ccd_mallin/indigo_ccd_mallin_main.c": {},
+  "indigo_drivers/ccd_meade/indigo_ccd_meade.c": {},
+  "indigo_drivers/ccd_meade/indigo_ccd_meade.h": {},
+  "indigo_drivers/ccd_meade/indigo_ccd_meade_main.c": {},
+  "indigo_drivers/ccd_mi/indigo_ccd_mi.driver": {
+    "property_schema": [
+      250,
+      258,
+      270,
+      285,
+      298,
+      299,
+      300,
+      302,
+      309,
+      317,
+      401,
+      649,
+      730,
+      741
+    ]
+  },
+  "indigo_drivers/ccd_ogma/indigo_ccd_ogma.c": {},
+  "indigo_drivers/ccd_ogma/indigo_ccd_ogma.h": {},
+  "indigo_drivers/ccd_ogma/indigo_ccd_ogma_main.c": {},
+  "indigo_drivers/ccd_omegonpro/indigo_ccd_omegonpro.c": {},
+  "indigo_drivers/ccd_omegonpro/indigo_ccd_omegonpro.h": {},
+  "indigo_drivers/ccd_omegonpro/indigo_ccd_omegonpro_main.c": {},
+  "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c": {
+    "unbounded_format": [
+      311,
+      363,
+      380,
+      382,
+      391,
+      394,
+      567,
+      592,
+      594,
+      917
+    ],
+    "blocking_wait": [
+      472,
+      487
+    ],
+    "property_schema": [
+      662,
+      669,
+      905,
+      918,
+      922,
+      977,
+      983,
+      985,
+      989,
+      992,
+      994,
+      998
+    ],
+    "capacity_override": [
+      1054
+    ]
+  },
+  "indigo_drivers/ccd_pentax/indigo_ccd_pentax.h": {},
+  "indigo_drivers/ccd_pentax/indigo_ccd_pentax_main.c": {},
+  "indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver": {
+    "unbounded_format": [
+      971,
+      973,
+      975,
+      977
+    ],
+    "property_schema": [
+      541,
+      542,
+      559,
+      576,
+      597,
+      618,
+      638,
+      655,
+      661,
+      670,
+      713,
+      716,
+      725,
+      763,
+      822,
+      826,
+      830,
+      834,
+      837,
+      842,
+      875,
+      881,
+      887,
+      893,
+      897,
+      907,
+      908,
+      909,
+      943,
+      944,
+      956,
+      960,
+      963,
+      972,
+      974,
+      976,
+      978,
+      1729
+    ]
+  },
+  "indigo_drivers/ccd_ptp/indigo_ccd_ptp.c": {
+    "property_schema": [
+      71,
+      72,
+      81,
+      83,
+      87,
+      88,
+      89,
+      90,
+      91,
+      93,
+      97,
+      98,
+      100,
+      104,
+      105,
+      107,
+      111,
+      112,
+      113,
+      115,
+      119,
+      120,
+      121,
+      123,
+      127,
+      128,
+      130,
+      134,
+      135,
+      590,
+      591
+    ],
+    "capacity_override": [
+      43
+    ]
+  },
+  "indigo_drivers/ccd_ptp/indigo_ccd_ptp.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ccd_ptp.m": {},
+  "indigo_drivers/ccd_ptp/indigo_ccd_ptp_main.c": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp.c": {
+    "blocking_wait": [
+      1280
+    ],
+    "property_schema": [
+      1490,
+      1491,
+      1493,
+      1494,
+      1497,
+      1502,
+      1506
+    ]
+  },
+  "indigo_drivers/ccd_ptp/indigo_ptp.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp.m": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_canon.c": {
+    "unbounded_format": [
+      571,
+      663,
+      789,
+      794
+    ]
+  },
+  "indigo_drivers/ccd_ptp/indigo_ptp_canon.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_canon.m": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_fuji.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_fuji.m": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_ica.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_nikon.c": {
+    "unbounded_format": [
+      523,
+      691
+    ],
+    "placeholder": [
+      72
+    ]
+  },
+  "indigo_drivers/ccd_ptp/indigo_ptp_nikon.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_nikon.m": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_olympus.c": {
+    "unbounded_format": [
+      151,
+      172,
+      174,
+      176,
+      184,
+      189
+    ],
+    "property_schema": [
+      552
+    ]
+  },
+  "indigo_drivers/ccd_ptp/indigo_ptp_olympus.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_olympus.m": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_sony.c": {
+    "unbounded_format": [
+      268,
+      337,
+      546,
+      548,
+      613
+    ],
+    "blocking_wait": [
+      1361
+    ],
+    "property_schema": [
+      1303,
+      1304
+    ]
+  },
+  "indigo_drivers/ccd_ptp/indigo_ptp_sony.h": {},
+  "indigo_drivers/ccd_ptp/indigo_ptp_sony.m": {},
+  "indigo_drivers/ccd_ptp/ptp_camera_model.h": {},
+  "indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver": {
+    "property_schema": [
+      176,
+      179,
+      183,
+      197,
+      200,
+      203,
+      205,
+      206,
+      252,
+      253,
+      265,
+      279,
+      280,
+      281,
+      664,
+      666,
+      667,
+      957
+    ]
+  },
+  "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver": {
+    "property_schema": [
+      217,
+      220,
+      224,
+      238,
+      241,
+      244,
+      246,
+      247,
+      293,
+      297,
+      298,
+      310,
+      324,
+      325,
+      326,
+      340,
+      342,
+      765,
+      767,
+      768,
+      1077
+    ]
+  },
+  "indigo_drivers/ccd_qsi/indigo_ccd_qsi.driver": {
+    "property_schema": [
+      443,
+      448,
+      450,
+      457,
+      465,
+      466,
+      478,
+      481,
+      490,
+      493,
+      502,
+      505,
+      523,
+      530,
+      778,
+      794
+    ]
+  },
+  "indigo_drivers/ccd_rising/indigo_ccd_rising.c": {},
+  "indigo_drivers/ccd_rising/indigo_ccd_rising.h": {},
+  "indigo_drivers/ccd_rising/indigo_ccd_rising_main.c": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver": {
+    "property_schema": [
+      787,
+      790,
+      793,
+      805,
+      808,
+      810,
+      812,
+      815,
+      816,
+      826,
+      829,
+      832,
+      841,
+      843,
+      844,
+      850,
+      851,
+      852,
+      853,
+      855,
+      1152,
+      1257,
+      1352,
+      1354,
+      1356,
+      1357,
+      1445
+    ]
+  },
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-1.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-10.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-11.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-12.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-13.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-14.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-15.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-2.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-3.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-4.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-5.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-6.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-7.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-8.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-9.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_0.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_1.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_10.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_11.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_12.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_13.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_14.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_15.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_2.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_3.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_4.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_5.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_6.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_7.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_8.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_9.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.c": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_mono.h": {},
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_rgb.h": {},
+  "indigo_drivers/ccd_ssag/indigo_ccd_ssag.driver": {
+    "blocking_wait": [
+      147
+    ]
+  },
+  "indigo_drivers/ccd_ssag/indigo_ccd_ssag_firmware.h": {},
+  "indigo_drivers/ccd_ssg/indigo_ccd_ssg.c": {},
+  "indigo_drivers/ccd_ssg/indigo_ccd_ssg.h": {},
+  "indigo_drivers/ccd_ssg/indigo_ccd_ssg_main.c": {},
+  "indigo_drivers/ccd_svb/indigo_ccd_svb.driver": {
+    "property_schema": [
+      560,
+      580,
+      603,
+      626,
+      649,
+      669,
+      680,
+      689,
+      732,
+      740,
+      741,
+      781,
+      785,
+      789,
+      793,
+      797,
+      800,
+      802,
+      808,
+      839,
+      845,
+      851,
+      857,
+      863,
+      867,
+      870,
+      871,
+      872
+    ]
+  },
+  "indigo_drivers/ccd_svb2/indigo_ccd_svb2.c": {},
+  "indigo_drivers/ccd_svb2/indigo_ccd_svb2.h": {},
+  "indigo_drivers/ccd_svb2/indigo_ccd_svb2_main.c": {},
+  "indigo_drivers/ccd_sx/indigo_ccd_sx.driver": {
+    "unbounded_format": [
+      901,
+      903,
+      905
+    ],
+    "property_schema": [
+      899,
+      902,
+      904,
+      906,
+      907,
+      913,
+      921
+    ]
+  },
+  "indigo_drivers/ccd_touptek/indigo_ccd_touptek.c": {
+    "unbounded_format": [
+      1005,
+      1058,
+      1065,
+      1068,
+      1308,
+      1989,
+      2132,
+      2329
+    ],
+    "property_schema": [
+      774,
+      775,
+      1111,
+      1168,
+      1170,
+      1635,
+      1641,
+      1662,
+      1668,
+      1677,
+      1686,
+      1695,
+      1703,
+      1709,
+      1715,
+      1724,
+      1733,
+      1742,
+      1760,
+      1763,
+      1764,
+      1770,
+      1771,
+      1772,
+      1773,
+      1777,
+      1778,
+      1779,
+      1780,
+      1781,
+      1782,
+      1783,
+      1784,
+      1785,
+      1787,
+      1790,
+      1794,
+      1797,
+      1801,
+      1804,
+      1808,
+      1809,
+      1810,
+      1812,
+      1814,
+      1817,
+      1821,
+      1822,
+      1823,
+      1824,
+      1828,
+      1829,
+      1830,
+      2067,
+      2232,
+      2234,
+      2238,
+      2240,
+      2244,
+      2245,
+      2246,
+      2636,
+      2644,
+      2645,
+      2656,
+      2657,
+      2658,
+      2660,
+      2663,
+      2665,
+      2667,
+      2671,
+      2672
+    ],
+    "placeholder": [
+      690
+    ]
+  },
+  "indigo_drivers/ccd_touptek/indigo_ccd_touptek.h": {},
+  "indigo_drivers/ccd_touptek/indigo_ccd_touptek_main.c": {},
+  "indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h": {},
+  "indigo_drivers/ccd_uvc/indigo_ccd_uvc.driver": {
+    "property_schema": [
+      100,
+      130,
+      484,
+      489,
+      490,
+      491,
+      492
+    ]
+  },
+  "indigo_drivers/ccd_uvc/indigo_ccd_uvc_libuvc.c": {},
+  "indigo_drivers/ccd_uvc/indigo_ccd_uvc_libuvc.h": {},
+  "indigo_drivers/ccd_uvc/libuvc.h": {},
+  "indigo_drivers/ccd_uvc/libuvc_config.h": {},
+  "indigo_drivers/ccd_uvc/libuvc_ctrl.c": {},
+  "indigo_drivers/ccd_uvc/libuvc_ctrl_gen.c": {
+    "placeholder": [
+      389,
+      390,
+      419,
+      420,
+      447,
+      475,
+      501,
+      529,
+      555,
+      583,
+      609,
+      637,
+      663,
+      691,
+      717,
+      718,
+      719,
+      749,
+      750,
+      751,
+      779,
+      780,
+      809,
+      810,
+      837,
+      838,
+      839,
+      840,
+      871,
+      872,
+      873,
+      874,
+      903,
+      931,
+      957,
+      958,
+      987,
+      988,
+      1015,
+      1043,
+      1069,
+      1070,
+      1071,
+      1072,
+      1073,
+      1074,
+      1107,
+      1108,
+      1109,
+      1110,
+      1111,
+      1112,
+      1143,
+      1144,
+      1145,
+      1146,
+      1147,
+      1179,
+      1180,
+      1181,
+      1182,
+      1183,
+      1267,
+      1295,
+      1321,
+      1349,
+      1375,
+      1403,
+      1429,
+      1462,
+      1488,
+      1516,
+      1542,
+      1570,
+      1596,
+      1624,
+      1650,
+      1678,
+      1704,
+      1732,
+      1758,
+      1792,
+      1818,
+      1846,
+      1872,
+      1900,
+      1926,
+      1927,
+      1956,
+      1957,
+      1984,
+      2012,
+      2038,
+      2066,
+      2092,
+      2120,
+      2146,
+      2174,
+      2200,
+      2228,
+      2254,
+      2282
+    ]
+  },
+  "indigo_drivers/ccd_uvc/libuvc_device.c": {},
+  "indigo_drivers/ccd_uvc/libuvc_diag.c": {},
+  "indigo_drivers/ccd_uvc/libuvc_frame.c": {},
+  "indigo_drivers/ccd_uvc/libuvc_frame_mjpeg.c": {},
+  "indigo_drivers/ccd_uvc/libuvc_init.c": {},
+  "indigo_drivers/ccd_uvc/libuvc_internal.h": {},
+  "indigo_drivers/ccd_uvc/libuvc_misc.c": {},
+  "indigo_drivers/ccd_uvc/libuvc_stream.c": {
+    "placeholder": [
+      578,
+      1520
+    ]
+  },
+  "indigo_drivers/ccd_uvc/utlist.h": {},
+  "indigo_drivers/dome_baader/dome_baader_simulator/baader_simulator_test.py": {
+    "blocking_wait": [
+      45
+    ]
+  },
+  "indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.c": {
+    "blocking_wait": [
+      353,
+      493
+    ]
+  },
+  "indigo_drivers/dome_baader/indigo_dome_baader.driver": {
+    "property_schema": [
+      481
+    ]
+  },
+  "indigo_drivers/dome_beaver/dome_beaver_simulator/dome_beaver_simulator.c": {
+    "blocking_wait": [
+      470,
+      637
+    ]
+  },
+  "indigo_drivers/dome_beaver/indigo_dome_beaver.driver": {
+    "property_schema": [
+      507,
+      519,
+      545
+    ]
+  },
+  "indigo_drivers/dome_dragonfly/dome_dragonfly_simulator/dome_dragonfly_simulator.c": {},
+  "indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.driver": {
+    "property_schema": [
+      232,
+      254,
+      422,
+      439
+    ]
+  },
+  "indigo_drivers/dome_nexdome/dome_nexdome_simulator/dome_nexdome_simulator.c": {
+    "blocking_wait": [
+      475,
+      655,
+      727
+    ]
+  },
+  "indigo_drivers/dome_nexdome/indigo_dome_nexdome.driver": {
+    "blocking_wait": [
+      156
+    ],
+    "property_schema": [
+      374,
+      417
+    ]
+  },
+  "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.c": {
+    "blocking_wait": [
+      648,
+      879
+    ]
+  },
+  "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_EEPROM_test.py": {
+    "blocking_wait": [
+      11
+    ]
+  },
+  "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_open_abort_close_abort_test.py": {
+    "blocking_wait": [
+      36,
+      56,
+      66,
+      86
+    ]
+  },
+  "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_open_close_test.py": {
+    "blocking_wait": [
+      33,
+      41
+    ]
+  },
+  "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_rotate_test.py": {
+    "blocking_wait": [
+      34,
+      44,
+      53,
+      65,
+      74,
+      83,
+      92
+    ]
+  },
+  "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_test.py": {
+    "blocking_wait": [
+      39
+    ]
+  },
+  "indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.driver": {
+    "blocking_wait": [
+      134
+    ],
+    "property_schema": [
+      711,
+      750
+    ]
+  },
+  "indigo_drivers/dome_simulator/indigo_dome_simulator.driver": {},
+  "indigo_drivers/dome_skyroof/dome_skyroof_simulator/dome_skyroof_simulator.c": {
+    "blocking_wait": [
+      124,
+      129
+    ]
+  },
+  "indigo_drivers/dome_skyroof/indigo_dome_skyroof.driver": {
+    "property_schema": [
+      116
+    ]
+  },
+  "indigo_drivers/dome_talon6ror/dome_talon6ror_simulator/dome_talon6ror_simulator.c": {
+    "blocking_wait": [
+      494,
+      635
+    ]
+  },
+  "indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.driver": {
+    "property_schema": [
+      460
+    ]
+  },
+  "indigo_drivers/focuser_asi/indigo_focuser_asi.driver": {
+    "property_schema": [
+      474,
+      478,
+      493,
+      498,
+      505,
+      506,
+      516,
+      517,
+      518,
+      520,
+      523,
+      525
+    ]
+  },
+  "indigo_drivers/focuser_askar/focuser_askar_simulator/focuser_askar_simulator.c": {
+    "blocking_wait": [
+      160,
+      262,
+      385,
+      468,
+      652
+    ]
+  },
+  "indigo_drivers/focuser_askar/indigo_focuser_askar.driver": {
+    "property_schema": [
+      429,
+      430,
+      455,
+      459,
+      464
+    ]
+  },
+  "indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver": {
+    "property_schema": [
+      447,
+      458,
+      468,
+      469,
+      472
+    ]
+  },
+  "indigo_drivers/focuser_astromechanics/focuser_astromechanics_simulator/focuser_astromechanics_simulator.c": {
+    "blocking_wait": [
+      183,
+      213,
+      220
+    ]
+  },
+  "indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.driver": {
+    "property_schema": [
+      179,
+      180
+    ]
+  },
+  "indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.c": {
+    "blocking_wait": [
+      147,
+      265,
+      367
+    ]
+  },
+  "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver": {
+    "property_schema": [
+      364,
+      465
+    ]
+  },
+  "indigo_drivers/focuser_dsd/focuser_dsd_simulator/focuser_dsd_simulator.c": {
+    "blocking_wait": [
+      103,
+      150
+    ]
+  },
+  "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver": {
+    "property_schema": [
+      407,
+      414,
+      415,
+      416,
+      420,
+      438,
+      441,
+      442,
+      485,
+      486,
+      487,
+      490
+    ]
+  },
+  "indigo_drivers/focuser_efa/focuser_efa_simulator/focuser_efa_simulator.c": {
+    "blocking_wait": [
+      66,
+      122,
+      295
+    ]
+  },
+  "indigo_drivers/focuser_efa/indigo_focuser_efa.driver": {
+    "property_schema": [
+      350,
+      358,
+      359,
+      360,
+      361
+    ]
+  },
+  "indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c": {
+    "blocking_wait": [
+      114,
+      227,
+      324,
+      335,
+      433
+    ]
+  },
+  "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver": {
+    "property_schema": [
+      289
+    ]
+  },
+  "indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.driver": {
+    "property_schema": [
+      79
+    ]
+  },
+  "indigo_drivers/focuser_fli/indigo_focuser_fli.driver": {
+    "property_schema": [
+      347
+    ]
+  },
+  "indigo_drivers/focuser_focusdreampro/focuser_focusdreampro_simulator/focuser_focusdreampro_simulator.c": {
+    "blocking_wait": [
+      143,
+      232,
+      312
+    ]
+  },
+  "indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver": {
+    "property_schema": [
+      230,
+      242,
+      248
+    ]
+  },
+  "indigo_drivers/focuser_ioptron/focuser_ioptron_simulator/focuser_ioptron_simulator.c": {
+    "blocking_wait": [
+      51,
+      127,
+      246
+    ]
+  },
+  "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver": {
+    "blocking_wait": [
+      91
+    ],
+    "property_schema": [
+      205
+    ]
+  },
+  "indigo_drivers/focuser_lacerta/focuser_lacerta_simulator/focuser_lacerta_simulator.c": {
+    "blocking_wait": [
+      64,
+      122,
+      282
+    ]
+  },
+  "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver": {
+    "property_schema": [
+      225
+    ]
+  },
+  "indigo_drivers/focuser_lakeside/focuser_lakeside_simulator/focuser_lakeside_simulator.c": {
+    "blocking_wait": [
+      57,
+      134
+    ]
+  },
+  "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver": {
+    "property_schema": [
+      248,
+      251,
+      252
+    ]
+  },
+  "indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/focuser_lunatico_simulator.c": {},
+  "indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/lunatico_simulator_common.h": {},
+  "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver": {
+    "property_schema": [
+      78,
+      283,
+      487,
+      618,
+      690,
+      894,
+      1025
+    ]
+  },
+  "indigo_drivers/focuser_lunatico/shared/lunatico_main_shared.c": {},
+  "indigo_drivers/focuser_lunatico/shared/lunatico_shared.c": {},
+  "indigo_drivers/focuser_lunatico/shared/lunatico_shared.h": {},
+  "indigo_drivers/focuser_mjkzz/focuser_mjkzz_simulator/focuser_mjkzz_simulator.c": {
+    "blocking_wait": [
+      138,
+      174
+    ]
+  },
+  "indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver": {
+    "property_schema": [
+      208
+    ]
+  },
+  "indigo_drivers/focuser_mjkzz/mjkzz_def.h": {},
+  "indigo_drivers/focuser_moonlite/focuser_moonlite_simulator/focuser_moonlite_simulator.c": {
+    "blocking_wait": [
+      118,
+      147
+    ]
+  },
+  "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver": {
+    "property_schema": [
+      229
+    ]
+  },
+  "indigo_drivers/focuser_mypro2/focuser_mypro2_simulator/focuser_mypro2_simulator.c": {
+    "blocking_wait": [
+      259,
+      266,
+      410
+    ]
+  },
+  "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver": {
+    "property_schema": [
+      506,
+      511,
+      522,
+      643
+    ]
+  },
+  "indigo_drivers/focuser_nfocus/focuser_nfocus_simulator/focuser_nfocus_simulator.c": {
+    "blocking_wait": [
+      453
+    ]
+  },
+  "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver": {
+    "property_schema": [
+      176,
+      186
+    ]
+  },
+  "indigo_drivers/focuser_nstep/focuser_nstep_simulator/focuser_nstep_simulator.c": {
+    "blocking_wait": [
+      376,
+      553
+    ]
+  },
+  "indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver": {
+    "property_schema": [
+      287,
+      318,
+      463,
+      483,
+      501
+    ]
+  },
+  "indigo_drivers/focuser_optec/focuser_optec_simulator/focuser_optec_simulator.c": {
+    "blocking_wait": [
+      132,
+      170
+    ]
+  },
+  "indigo_drivers/focuser_optec/indigo_focuser_optec.driver": {
+    "property_schema": [
+      256
+    ]
+  },
+  "indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c": {
+    "blocking_wait": [
+      208,
+      232,
+      237,
+      566,
+      684
+    ]
+  },
+  "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver": {
+    "property_schema": [
+      474,
+      735
+    ]
+  },
+  "indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c": {
+    "blocking_wait": [
+      341,
+      600
+    ]
+  },
+  "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": {
+    "property_schema": [
+      494,
+      495,
+      496,
+      497,
+      498,
+      499,
+      500,
+      501,
+      502,
+      503,
+      505,
+      506,
+      507,
+      508,
+      509,
+      510,
+      511,
+      512,
+      513,
+      514,
+      516,
+      517,
+      518,
+      519,
+      520,
+      521,
+      522,
+      523,
+      524,
+      525,
+      526,
+      553,
+      556,
+      564,
+      644
+    ]
+  },
+  "indigo_drivers/focuser_prodigy/focuser_prodigy_simulator/focuser_prodigy_simulator.c": {
+    "blocking_wait": [
+      108,
+      179,
+      272
+    ]
+  },
+  "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver": {
+    "property_schema": [
+      219
+    ]
+  },
+  "indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c": {
+    "blocking_wait": [
+      76
+    ]
+  },
+  "indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver": {
+    "property_schema": [
+      564,
+      752
+    ]
+  },
+  "indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.c": {
+    "blocking_wait": [
+      73,
+      186
+    ]
+  },
+  "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver": {
+    "property_schema": [
+      388
+    ]
+  },
+  "indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.c": {
+    "blocking_wait": [
+      124,
+      245
+    ]
+  },
+  "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver": {
+    "property_schema": [
+      550,
+      801,
+      913
+    ]
+  },
+  "indigo_drivers/focuser_usbv3/focuser_usbv3_simulator/focuser_usbv3_simulator.c": {
+    "blocking_wait": [
+      277,
+      375
+    ]
+  },
+  "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver": {
+    "property_schema": [
+      411,
+      461
+    ]
+  },
+  "indigo_drivers/focuser_wemacro/focuser_wemacro_simulator/focuser_wemacro_simulator.c": {
+    "blocking_wait": [
+      100
+    ]
+  },
+  "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver": {
+    "property_schema": [
+      286
+    ]
+  },
+  "indigo_drivers/gps_gpsd/gps_gpsd_simulator/gps_gpsd_simulator.c": {},
+  "indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver": {
+    "property_schema": [
+      165,
+      166,
+      167,
+      168,
+      169
+    ]
+  },
+  "indigo_drivers/gps_nmea/gps_nmea_simulator/gps_nmea_simulator.c": {
+    "blocking_wait": [
+      148
+    ]
+  },
+  "indigo_drivers/gps_nmea/indigo_gps_nmea.driver": {
+    "unbounded_format": [
+      214,
+      378
+    ],
+    "property_schema": [
+      382,
+      383,
+      384,
+      385,
+      386
+    ]
+  },
+  "indigo_drivers/gps_simulator/indigo_gps_simulator.driver": {
+    "property_schema": [
+      124,
+      125,
+      126,
+      127,
+      128,
+      129,
+      130
+    ]
+  },
+  "indigo_drivers/guider_asi/indigo_guider_asi.driver": {
+    "property_schema": [
+      254,
+      255,
+      263,
+      264
+    ]
+  },
+  "indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c": {
+    "blocking_wait": [
+      81
+    ]
+  },
+  "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.driver": {},
+  "indigo_drivers/guider_gpusb/indigo_guider_gpusb.driver": {},
+  "indigo_drivers/mount_ioptron/indigo_mount_ioptron.driver": {
+    "unbounded_format": [
+      1713,
+      2049
+    ],
+    "property_schema": [
+      1268,
+      1270,
+      1272,
+      1275,
+      1276,
+      1279,
+      1280,
+      1282,
+      1283,
+      1285,
+      1286,
+      1290,
+      1291,
+      1293,
+      1295,
+      1297,
+      1300,
+      1303,
+      1306,
+      1310,
+      1312,
+      1316,
+      1317,
+      1318,
+      1319,
+      1321,
+      1322,
+      1327,
+      1328,
+      1330,
+      1331,
+      1332,
+      1341,
+      1346,
+      1347,
+      1348,
+      1349,
+      1353,
+      1359,
+      1364,
+      1365,
+      1366,
+      1367,
+      1368,
+      1369,
+      1373,
+      1379,
+      1387,
+      1388,
+      1389,
+      1390,
+      1391,
+      1392,
+      1393,
+      1397,
+      1398,
+      1405,
+      1413,
+      1414,
+      1415,
+      1416,
+      1417,
+      1418,
+      1420,
+      1421,
+      1422,
+      1427,
+      1428,
+      1436,
+      1437,
+      1445,
+      1446,
+      1447,
+      1490,
+      1495,
+      1496,
+      1506,
+      1507,
+      1517,
+      1518,
+      1526,
+      1534,
+      1535,
+      1667,
+      1757,
+      1758,
+      1759,
+      1760,
+      1788,
+      1792,
+      1796,
+      1808
+    ],
+    "placeholder": [
+      547,
+      564,
+      577
+    ]
+  },
+  "indigo_drivers/mount_ioptron/mount_ioptron_simulator/common.h": {
+    "unbounded_format": [
+      58
+    ]
+  },
+  "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_simulator.c": {
+    "blocking_wait": [
+      312,
+      742,
+      1753,
+      1762
+    ]
+  },
+  "indigo_drivers/mount_lx200/indigo_mount_lx200.driver": {
+    "unbounded_format": [
+      360,
+      899,
+      3475
+    ],
+    "property_schema": [
+      81,
+      1527,
+      1963,
+      1964,
+      1965,
+      1966,
+      1971,
+      1972,
+      2043,
+      2044,
+      2045,
+      2046,
+      2047,
+      2123,
+      2124,
+      2125,
+      2126,
+      2127,
+      2128,
+      2138,
+      2239,
+      2240,
+      2290,
+      2291,
+      2292,
+      2293,
+      2294,
+      2330,
+      2331,
+      2332,
+      2333,
+      2334,
+      2335,
+      2355,
+      2357,
+      2425,
+      2426,
+      2427,
+      2428,
+      2429,
+      2430,
+      2432,
+      2433,
+      2434,
+      2435,
+      2436,
+      2437,
+      2460,
+      2464,
+      2470,
+      2477,
+      2559,
+      2560,
+      2561,
+      2562,
+      2563,
+      2564,
+      2565,
+      2716,
+      2717,
+      2718,
+      2719,
+      2720,
+      2722,
+      2723,
+      2738,
+      2739,
+      2740,
+      2750,
+      2752,
+      2759,
+      2852,
+      2853,
+      2854,
+      2855,
+      2856,
+      2857,
+      2859,
+      2860,
+      2861,
+      2862,
+      2863,
+      2864,
+      2865,
+      2866,
+      2867,
+      2868,
+      2975,
+      2976,
+      2980,
+      2982,
+      3043,
+      3044,
+      3045,
+      3046,
+      3047,
+      3048,
+      3049,
+      3050,
+      3051,
+      3052,
+      3053,
+      3097,
+      3098,
+      3104,
+      3110,
+      3111,
+      3112,
+      3113,
+      3115,
+      3116,
+      3119,
+      3153,
+      3154,
+      3155,
+      3156,
+      3157,
+      3172,
+      3173,
+      3174,
+      3175,
+      3176,
+      3177,
+      3181,
+      3182,
+      3183,
+      3185,
+      3186,
+      3187,
+      3188,
+      3189,
+      3190,
+      3191,
+      3192,
+      3193,
+      3194,
+      3195,
+      3199,
+      3200,
+      3201,
+      3202,
+      3203,
+      3204,
+      3205,
+      3206,
+      3207,
+      3208,
+      3209,
+      3218,
+      3219,
+      3221,
+      3262,
+      3263,
+      3290,
+      3432,
+      3434,
+      3461,
+      3492,
+      4158,
+      4227,
+      4530,
+      4535,
+      4540,
+      4636,
+      4637,
+      4765,
+      4766,
+      4827,
+      4828,
+      4829,
+      4830,
+      4832,
+      4833,
+      4838,
+      4839
+    ],
+    "placeholder": [
+      90,
+      618
+    ]
+  },
+  "indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c": {
+    "unbounded_format": [
+      264
+    ],
+    "blocking_wait": [
+      394,
+      1669,
+      1679
+    ]
+  },
+  "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver": {
+    "blocking_wait": [
+      244
+    ],
+    "property_schema": [
+      215,
+      220,
+      233,
+      236,
+      239,
+      274,
+      280,
+      283,
+      778,
+      780,
+      781,
+      816,
+      817,
+      818,
+      819,
+      820,
+      821,
+      823,
+      824
+    ]
+  },
+  "indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.c": {
+    "blocking_wait": [
+      269,
+      354,
+      360,
+      793,
+      795
+    ]
+  },
+  "indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.driver": {
+    "unbounded_format": [
+      306,
+      320
+    ],
+    "property_schema": [
+      997,
+      1015,
+      1018,
+      1019,
+      1304
+    ]
+  },
+  "indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.c": {
+    "blocking_wait": [
+      349,
+      375,
+      588
+    ]
+  },
+  "indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver": {
+    "blocking_wait": [
+      251
+    ],
+    "property_schema": [
+      746,
+      748,
+      750,
+      751,
+      1094
+    ]
+  },
+  "indigo_drivers/mount_pmc8/mount_pmc8_simulator/mount_pmc8_simulator.c": {
+    "blocking_wait": [
+      400,
+      486,
+      649
+    ]
+  },
+  "indigo_drivers/mount_rainbow/indigo_mount_rainbow.driver": {
+    "property_schema": [
+      614,
+      615,
+      616,
+      617,
+      618,
+      644,
+      645,
+      650,
+      651,
+      652,
+      653,
+      654,
+      655,
+      656
+    ]
+  },
+  "indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.c": {
+    "blocking_wait": [
+      227,
+      338
+    ]
+  },
+  "indigo_drivers/mount_simulator/indigo_mount_simulator.driver": {
+    "property_schema": [
+      254,
+      258,
+      259,
+      260,
+      261,
+      263,
+      264,
+      265,
+      266,
+      268,
+      269,
+      274,
+      275,
+      277,
+      278,
+      593
+    ]
+  },
+  "indigo_drivers/mount_starbook/indigo_mount_starbook.driver": {
+    "property_schema": [
+      472,
+      473,
+      492,
+      493,
+      495,
+      497,
+      499
+    ]
+  },
+  "indigo_drivers/mount_starbook/mount_starbook_simulator/mount_starbook_simulator.c": {
+    "blocking_wait": [
+      272,
+      325
+    ]
+  },
+  "indigo_drivers/mount_synscan/indigo_mount_synscan.driver": {
+    "blocking_wait": [
+      699
+    ],
+    "property_schema": [
+      1364,
+      1365,
+      1366,
+      1367,
+      1369,
+      1684,
+      1712,
+      2255,
+      2256,
+      2257,
+      2258,
+      2413,
+      2414
+    ]
+  },
+  "indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.c": {
+    "blocking_wait": [
+      690,
+      695,
+      810,
+      823,
+      890
+    ]
+  },
+  "indigo_drivers/mount_temma/indigo_mount_temma.driver": {
+    "property_schema": [
+      440,
+      442,
+      443,
+      444,
+      445,
+      447,
+      448
+    ]
+  },
+  "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c": {
+    "blocking_wait": [
+      235
+    ]
+  },
+  "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.driver": {
+    "property_schema": [
+      419
+    ]
+  },
+  "indigo_drivers/polaralign_mlastro/polaralign_mlastro_simulator/polaralign_mlastro_simulator.c": {
+    "blocking_wait": [
+      534,
+      587,
+      592,
+      909
+    ]
+  },
+  "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.driver": {},
+  "indigo_drivers/rotator_asi/indigo_rotator_asi.driver": {
+    "property_schema": [
+      309
+    ]
+  },
+  "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver": {
+    "blocking_wait": [
+      161,
+      181
+    ],
+    "property_schema": [
+      142
+    ]
+  },
+  "indigo_drivers/rotator_falcon/rotator_falcon_simulator/rotator_falcon_simulator.c": {
+    "blocking_wait": [
+      101,
+      173,
+      317
+    ]
+  },
+  "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver": {
+    "property_schema": [
+      78,
+      209,
+      401,
+      532,
+      604,
+      796,
+      927
+    ]
+  },
+  "indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c": {},
+  "indigo_drivers/rotator_optec/indigo_rotator_optec.driver": {},
+  "indigo_drivers/rotator_optec/rotator_optec_simulator/rotator_optec_simulator.c": {},
+  "indigo_drivers/rotator_simulator/indigo_rotator_simulator.driver": {},
+  "indigo_drivers/rotator_wa/indigo_rotator_wa.driver": {
+    "blocking_wait": [
+      148
+    ],
+    "property_schema": [
+      225
+    ]
+  },
+  "indigo_drivers/rotator_wa/rotator_wa_simulator/rotator_wa_simulator.c": {
+    "blocking_wait": [
+      171,
+      193,
+      213,
+      282
+    ]
+  },
+  "indigo_drivers/shared/primalucelib/jsmn.h": {},
+  "indigo_drivers/shared/primalucelib/primalucelib.c": {
+    "unbounded_format": [
+      167
+    ]
+  },
+  "indigo_drivers/shared/primalucelib/primalucelib.h": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca.c": {
+    "property_schema": [
+      1198,
+      1211,
+      1212,
+      1827,
+      1829,
+      2274,
+      2275,
+      2279,
+      2280,
+      2281,
+      2285,
+      2286,
+      2287,
+      2288,
+      2289,
+      2290,
+      2294,
+      2295,
+      2299,
+      2300,
+      2304,
+      2305,
+      2306,
+      2307,
+      2311,
+      2312,
+      2316,
+      2317,
+      2322,
+      2323,
+      2327,
+      2328,
+      2329,
+      2330,
+      2334,
+      2335
+    ],
+    "capacity_override": [
+      82
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca.h": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_ccd.c": {
+    "property_schema": [
+      1417,
+      1499,
+      1501,
+      1504,
+      1516,
+      1520,
+      1523,
+      1527,
+      1532,
+      1536,
+      1662,
+      1666,
+      1667,
+      1668,
+      1669,
+      1673,
+      1674,
+      1675,
+      1679,
+      1680
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_dome.c": {
+    "property_schema": [
+      476,
+      481,
+      485,
+      814,
+      815,
+      816,
+      817,
+      818,
+      820,
+      821,
+      822,
+      823,
+      824,
+      825,
+      826,
+      877,
+      881,
+      882,
+      883,
+      887,
+      889,
+      890
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_focuser.c": {
+    "property_schema": [
+      361,
+      362,
+      363,
+      364,
+      365,
+      366,
+      367,
+      368,
+      369,
+      370,
+      371,
+      616,
+      650,
+      654,
+      655
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_guider.c": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_http.c": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_http.h": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_json.c": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_json.h": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_lightbox.c": {
+    "property_schema": [
+      341,
+      402,
+      581,
+      706,
+      707,
+      708,
+      765,
+      769,
+      770,
+      771,
+      775,
+      776,
+      780,
+      781,
+      782,
+      786
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_main.c": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_mount.c": {
+    "property_schema": [
+      1505,
+      1508,
+      1511,
+      1513,
+      1514,
+      1517,
+      1518,
+      1519,
+      1520,
+      1523,
+      1525,
+      1526,
+      1527,
+      1530,
+      1531,
+      1532,
+      1534,
+      1536,
+      1537,
+      1538,
+      1539,
+      1622,
+      1626,
+      1627,
+      1628,
+      1629,
+      1633,
+      1634,
+      1635
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_private.h": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_rotator.c": {
+    "property_schema": [
+      289,
+      290,
+      291,
+      292,
+      293,
+      294,
+      295,
+      296,
+      297,
+      298,
+      450,
+      486,
+      533,
+      562,
+      566,
+      567
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_safety.c": {
+    "property_schema": [
+      211,
+      212
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_switch.c": {
+    "property_schema": [
+      558,
+      563,
+      568,
+      569,
+      575,
+      580,
+      585,
+      586,
+      595,
+      597,
+      601
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.c": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.h": {},
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_weather.c": {
+    "property_schema": [
+      304,
+      372,
+      376,
+      381,
+      382,
+      390,
+      391,
+      393,
+      396,
+      399,
+      436,
+      440,
+      444,
+      448,
+      449,
+      453,
+      454,
+      458
+    ]
+  },
+  "indigo_drivers/system_alpaca/indigo_system_alpaca_wheel.c": {
+    "property_schema": [
+      210
+    ]
+  },
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator.c": {
+    "capacity_override": [
+      84
+    ]
+  },
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator.h": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_camera.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_covercalibrator.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_dome.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_filterwheel.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_focuser.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_observingconditions.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_rotator.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_safetymonitor.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_switch.c": {},
+  "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_telescope.c": {},
+  "indigo_drivers/wheel_asi/indigo_wheel_asi.driver": {
+    "property_schema": [
+      209,
+      232
+    ]
+  },
+  "indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver": {
+    "property_schema": [
+      213,
+      231
+    ]
+  },
+  "indigo_drivers/wheel_atik/indigo_wheel_atik.driver": {
+    "blocking_wait": [
+      63
+    ],
+    "property_schema": [
+      101
+    ]
+  },
+  "indigo_drivers/wheel_fli/indigo_wheel_fli.driver": {
+    "property_schema": [
+      117,
+      184
+    ]
+  },
+  "indigo_drivers/wheel_indigo/indigo_wheel_indigo.driver": {
+    "property_schema": [
+      119,
+      140,
+      141
+    ]
+  },
+  "indigo_drivers/wheel_indigo/wheel_indigo_simulator/wheel_indigo_simulator.c": {
+    "blocking_wait": [
+      173
+    ]
+  },
+  "indigo_drivers/wheel_manual/indigo_wheel_manual.driver": {
+    "property_schema": [
+      46
+    ]
+  },
+  "indigo_drivers/wheel_mi/indigo_wheel_mi.driver": {
+    "property_schema": [
+      158,
+      168,
+      274,
+      275,
+      279
+    ]
+  },
+  "indigo_drivers/wheel_optec/indigo_wheel_optec.driver": {
+    "property_schema": [
+      104,
+      114
+    ]
+  },
+  "indigo_drivers/wheel_optec/wheel_optec_simulator/wheel_optec_simulator.c": {
+    "blocking_wait": [
+      213
+    ]
+  },
+  "indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver": {
+    "property_schema": [
+      171,
+      196
+    ]
+  },
+  "indigo_drivers/wheel_qhy/indigo_wheel_qhy.driver": {
+    "property_schema": [
+      106,
+      126,
+      133,
+      140
+    ]
+  },
+  "indigo_drivers/wheel_qhy/wheel_qhy_simulator/wheel_qhy_simulator.c": {
+    "blocking_wait": [
+      205,
+      274
+    ]
+  },
+  "indigo_drivers/wheel_quantum/indigo_wheel_quantum.driver": {
+    "property_schema": [
+      90
+    ]
+  },
+  "indigo_drivers/wheel_quantum/wheel_quantum_simulator/wheel_quantum_simulator.c": {
+    "blocking_wait": [
+      224
+    ]
+  },
+  "indigo_drivers/wheel_sx/indigo_wheel_sx.driver": {
+    "property_schema": [
+      110
+    ]
+  },
+  "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver": {
+    "property_schema": [
+      49
+    ]
+  },
+  "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c": {
+    "blocking_wait": [
+      218
+    ]
+  },
+  "indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.driver": {
+    "property_schema": [
+      58,
+      89
+    ]
+  },
+  "indigo_drivers/wheel_xagyl/wheel_xagyl_simulator/wheel_xagyl_simulator.c": {
+    "blocking_wait": [
+      229
+    ]
+  },
+  "indigo_examples/client.c": {},
+  "indigo_examples/dynamic_driver_client.c": {
+    "unbounded_format": [
+      112
+    ],
+    "blocking_wait": [
+      166
+    ]
+  },
+  "indigo_examples/executable_driver_client.c": {
+    "unbounded_format": [
+      105
+    ]
+  },
+  "indigo_examples/remote_server_client.c": {
+    "unbounded_format": [
+      108
+    ],
+    "blocking_wait": [
+      165
+    ]
+  },
+  "indigo_examples/remote_server_client_mount.c": {},
+  "indigo_examples/service_discovery.c": {},
+  "indigo_libs/indigo/indigo_agent.h": {},
+  "indigo_libs/indigo/indigo_align.h": {},
+  "indigo_libs/indigo/indigo_ao_driver.h": {},
+  "indigo_libs/indigo/indigo_aux_driver.h": {},
+  "indigo_libs/indigo/indigo_avi.h": {},
+  "indigo_libs/indigo/indigo_base64.h": {},
+  "indigo_libs/indigo/indigo_base64_luts.h": {},
+  "indigo_libs/indigo/indigo_bus.h": {
+    "blocking_wait": [
+      911
+    ],
+    "property_schema": [
+      646,
+      649,
+      652,
+      655,
+      661,
+      688,
+      694,
+      696,
+      700,
+      703,
+      706
+    ]
+  },
+  "indigo_libs/indigo/indigo_ccd_driver.h": {},
+  "indigo_libs/indigo/indigo_client.h": {},
+  "indigo_libs/indigo/indigo_client_xml.h": {},
+  "indigo_libs/indigo/indigo_config.h": {},
+  "indigo_libs/indigo/indigo_dome_azimuth.h": {},
+  "indigo_libs/indigo/indigo_dome_driver.h": {},
+  "indigo_libs/indigo/indigo_driver.h": {},
+  "indigo_libs/indigo/indigo_driver_json.h": {},
+  "indigo_libs/indigo/indigo_driver_xml.h": {},
+  "indigo_libs/indigo/indigo_dslr_raw.h": {},
+  "indigo_libs/indigo/indigo_filter.h": {},
+  "indigo_libs/indigo/indigo_fits.h": {},
+  "indigo_libs/indigo/indigo_focuser_driver.h": {},
+  "indigo_libs/indigo/indigo_gp_guider.h": {},
+  "indigo_libs/indigo/indigo_gps_driver.h": {},
+  "indigo_libs/indigo/indigo_guider_driver.h": {},
+  "indigo_libs/indigo/indigo_io.h": {},
+  "indigo_libs/indigo/indigo_json.h": {},
+  "indigo_libs/indigo/indigo_md5.h": {},
+  "indigo_libs/indigo/indigo_mount_driver.h": {},
+  "indigo_libs/indigo/indigo_names.h": {},
+  "indigo_libs/indigo/indigo_platesolver.h": {},
+  "indigo_libs/indigo/indigo_polaralign_driver.h": {},
+  "indigo_libs/indigo/indigo_polynomial_fit.h": {},
+  "indigo_libs/indigo/indigo_raw_utils.h": {},
+  "indigo_libs/indigo/indigo_rotator_driver.h": {},
+  "indigo_libs/indigo/indigo_ser.h": {},
+  "indigo_libs/indigo/indigo_server_tcp.h": {},
+  "indigo_libs/indigo/indigo_service_discovery.h": {},
+  "indigo_libs/indigo/indigo_session.h": {},
+  "indigo_libs/indigo/indigo_stretch.h": {},
+  "indigo_libs/indigo/indigo_tiff.h": {},
+  "indigo_libs/indigo/indigo_timer.h": {},
+  "indigo_libs/indigo/indigo_token.h": {},
+  "indigo_libs/indigo/indigo_uni_io.h": {},
+  "indigo_libs/indigo/indigo_usb_utils.h": {},
+  "indigo_libs/indigo/indigo_usbserial_utils.h": {},
+  "indigo_libs/indigo/indigo_version.h": {},
+  "indigo_libs/indigo/indigo_wheel_driver.h": {},
+  "indigo_libs/indigo/indigo_xml.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_dso.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_dynamical_time.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_nutation.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_precession.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_solar_system.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_ss.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_star.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_transform.h": {},
+  "indigo_libs/indigo/indigocat/indigocat_vsop87.h": {},
+  "indigo_libs/indigo_agent.c": {
+    "property_schema": [
+      44,
+      45,
+      46,
+      75,
+      79,
+      80,
+      81,
+      82,
+      93,
+      97,
+      98,
+      99,
+      100
+    ]
+  },
+  "indigo_libs/indigo_align.c": {},
+  "indigo_libs/indigo_ao_driver.c": {
+    "property_schema": [
+      45,
+      49,
+      50,
+      52,
+      56,
+      57,
+      59,
+      63,
+      64
+    ]
+  },
+  "indigo_libs/indigo_aux_driver.c": {},
+  "indigo_libs/indigo_avi.c": {},
+  "indigo_libs/indigo_base64.c": {},
+  "indigo_libs/indigo_bus.c": {
+    "unbounded_format": [
+      2516
+    ],
+    "property_schema": [
+      692,
+      693,
+      694,
+      695,
+      725,
+      726,
+      777,
+      1260,
+      1285,
+      1310,
+      1336,
+      1361,
+      1502,
+      1526,
+      1539,
+      1548,
+      1557,
+      2076,
+      2091,
+      2098,
+      2105,
+      2127,
+      2130,
+      2142,
+      2144,
+      2159,
+      2176,
+      2190,
+      2193,
+      2205,
+      2207
+    ],
+    "capacity_override": [
+      56
+    ]
+  },
+  "indigo_libs/indigo_ccd_driver.c": {
+    "unbounded_format": [
+      1501,
+      1520,
+      1560,
+      1633,
+      1640,
+      1647,
+      1655,
+      1657,
+      2150,
+      2162,
+      2164,
+      2166,
+      2168,
+      2170,
+      2171,
+      2172,
+      2173,
+      2174,
+      2175,
+      2176,
+      2177,
+      2179,
+      2181,
+      2183,
+      2184,
+      2187,
+      2188,
+      2191,
+      2192,
+      2195,
+      2196,
+      2199,
+      2200,
+      2204,
+      2205,
+      2208,
+      2209,
+      2215,
+      2216,
+      2218,
+      2219,
+      2225,
+      2226,
+      2231,
+      2233,
+      2236,
+      2239,
+      2241,
+      2259
+    ],
+    "property_schema": [
+      156,
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      169,
+      173,
+      174,
+      175,
+      177,
+      181,
+      182,
+      183,
+      184,
+      185,
+      187,
+      191,
+      192,
+      193,
+      195,
+      199,
+      200,
+      201,
+      203,
+      207,
+      209,
+      211,
+      215,
+      216,
+      217,
+      219,
+      223,
+      226,
+      230,
+      231,
+      233,
+      235,
+      239,
+      240,
+      242,
+      246,
+      248,
+      252,
+      254,
+      258,
+      259,
+      260,
+      261,
+      262,
+      264,
+      268,
+      269,
+      271,
+      275,
+      276,
+      278,
+      282,
+      283,
+      285,
+      289,
+      290,
+      292,
+      296,
+      297,
+      299,
+      303,
+      304,
+      305,
+      306,
+      307,
+      309,
+      313,
+      314,
+      315,
+      316,
+      317,
+      318,
+      319,
+      320,
+      322,
+      326,
+      328,
+      332,
+      333,
+      335,
+      339,
+      340,
+      342,
+      346,
+      348,
+      352,
+      353,
+      354,
+      356,
+      360,
+      361,
+      363,
+      367,
+      368,
+      370,
+      375,
+      379,
+      380,
+      382,
+      386,
+      388,
+      392,
+      393,
+      394,
+      395,
+      397,
+      401,
+      402,
+      403,
+      404,
+      406,
+      410,
+      411,
+      412,
+      414,
+      418,
+      419,
+      420,
+      783,
+      787,
+      792,
+      797,
+      802,
+      806,
+      862
+    ],
+    "placeholder": [
+      1955
+    ]
+  },
+  "indigo_libs/indigo_client.c": {
+    "unbounded_format": [
+      450
+    ],
+    "placeholder": [
+      143,
+      164,
+      174
+    ]
+  },
+  "indigo_libs/indigo_client_xml.c": {
+    "unbounded_format": [
+      44
+    ]
+  },
+  "indigo_libs/indigo_dome_azimuth.c": {},
+  "indigo_libs/indigo_dome_driver.c": {
+    "property_schema": [
+      86,
+      90,
+      92,
+      96,
+      97,
+      99,
+      103,
+      104,
+      105,
+      107,
+      111,
+      113,
+      117,
+      118,
+      119,
+      121,
+      125,
+      126,
+      128,
+      132,
+      134,
+      138,
+      139,
+      141,
+      145,
+      146,
+      147,
+      149,
+      153,
+      154,
+      156,
+      160,
+      161,
+      162,
+      163,
+      165,
+      169,
+      170,
+      172,
+      176,
+      177,
+      178,
+      179,
+      180,
+      181,
+      187,
+      191,
+      192,
+      193,
+      195,
+      199,
+      200,
+      201,
+      203,
+      207,
+      208,
+      210,
+      214,
+      215,
+      216,
+      217,
+      374
+    ]
+  },
+  "indigo_libs/indigo_driver.c": {
+    "unbounded_format": [
+      1516,
+      1517,
+      1518,
+      1528,
+      1674
+    ],
+    "property_schema": [
+      987,
+      989,
+      992,
+      1464,
+      1468,
+      1469,
+      1471,
+      1475,
+      1476,
+      1481,
+      1482,
+      1483,
+      1484,
+      1485,
+      1486,
+      1488,
+      1491,
+      1495,
+      1496,
+      1497,
+      1499,
+      1503,
+      1504,
+      1505,
+      1507,
+      1510,
+      1519,
+      1522,
+      1529,
+      1532,
+      1536,
+      1537,
+      1542,
+      1546,
+      1547,
+      1549,
+      1553,
+      1554,
+      1556,
+      1560,
+      1561,
+      1562,
+      1564,
+      1568,
+      1569,
+      1647,
+      1663,
+      1698,
+      1704
+    ],
+    "placeholder": [
+      1947,
+      1959,
+      1975,
+      1989,
+      2029,
+      2046
+    ]
+  },
+  "indigo_libs/indigo_driver_json.c": {},
+  "indigo_libs/indigo_driver_xml.c": {},
+  "indigo_libs/indigo_dslr_raw.c": {},
+  "indigo_libs/indigo_filter.c": {
+    "property_schema": [
+      50,
+      52,
+      56,
+      57,
+      58,
+      60,
+      64,
+      65,
+      66,
+      68,
+      72,
+      73,
+      74,
+      76,
+      80,
+      81,
+      82,
+      84,
+      88,
+      89,
+      90,
+      92,
+      96,
+      97,
+      98,
+      100,
+      104,
+      105,
+      106,
+      108,
+      112,
+      113,
+      114,
+      116,
+      120,
+      121,
+      122,
+      124,
+      128,
+      129,
+      130,
+      132,
+      136,
+      137,
+      138,
+      140,
+      144,
+      145,
+      146,
+      148,
+      152,
+      153,
+      154,
+      156,
+      160,
+      161,
+      162,
+      164,
+      168,
+      169,
+      170,
+      172,
+      176,
+      177,
+      178,
+      180,
+      184,
+      185,
+      186,
+      188,
+      192,
+      193,
+      194,
+      196,
+      200,
+      201,
+      202,
+      204,
+      208,
+      209,
+      210,
+      212,
+      216,
+      217,
+      218,
+      220,
+      224,
+      225,
+      226,
+      228,
+      232,
+      233,
+      234,
+      236,
+      240,
+      241,
+      242,
+      244,
+      248,
+      249,
+      250,
+      252,
+      256,
+      257,
+      258,
+      260,
+      264,
+      265,
+      267,
+      271,
+      272,
+      274,
+      278,
+      279,
+      280,
+      281,
+      286,
+      288,
+      289,
+      319,
+      501,
+      509,
+      511,
+      525,
+      707,
+      813
+    ]
+  },
+  "indigo_libs/indigo_fits.c": {
+    "unbounded_format": [
+      121,
+      122,
+      124,
+      126,
+      128,
+      129,
+      131,
+      133,
+      135,
+      136,
+      142,
+      146,
+      149,
+      173,
+      180,
+      181,
+      182,
+      183,
+      184
+    ]
+  },
+  "indigo_libs/indigo_focuser_driver.c": {
+    "property_schema": [
+      45,
+      49,
+      51,
+      55,
+      56,
+      57,
+      59,
+      63,
+      64,
+      66,
+      70,
+      72,
+      76,
+      77,
+      78,
+      80,
+      84,
+      86,
+      90,
+      92,
+      96,
+      97,
+      99,
+      103,
+      104,
+      106,
+      110,
+      111,
+      112,
+      113,
+      114,
+      116,
+      120,
+      121,
+      122,
+      124,
+      128,
+      129,
+      130
+    ]
+  },
+  "indigo_libs/indigo_gp_guider.c": {},
+  "indigo_libs/indigo_gps_driver.c": {
+    "property_schema": [
+      46,
+      50,
+      51,
+      52,
+      54,
+      58,
+      59,
+      60,
+      61,
+      63,
+      67,
+      68,
+      69,
+      71,
+      75,
+      76,
+      77,
+      79,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      99
+    ]
+  },
+  "indigo_libs/indigo_guider_driver.c": {
+    "property_schema": [
+      45,
+      49,
+      50,
+      52,
+      56,
+      57,
+      59,
+      63,
+      64,
+      65,
+      66
+    ]
+  },
+  "indigo_libs/indigo_io.c": {},
+  "indigo_libs/indigo_json.c": {
+    "unbounded_format": [
+      928,
+      930,
+      934,
+      936,
+      964,
+      966,
+      968
+    ]
+  },
+  "indigo_libs/indigo_md5.c": {
+    "unbounded_format": [
+      247,
+      270
+    ]
+  },
+  "indigo_libs/indigo_mount_driver.c": {
+    "unbounded_format": [
+      364,
+      373
+    ],
+    "property_schema": [
+      143,
+      145,
+      165,
+      169,
+      170,
+      171,
+      173,
+      177,
+      178,
+      179,
+      181,
+      185,
+      187,
+      191,
+      192,
+      193,
+      195,
+      199,
+      200,
+      202,
+      206,
+      207,
+      209,
+      213,
+      214,
+      215,
+      217,
+      221,
+      222,
+      223,
+      225,
+      229,
+      230,
+      231,
+      232,
+      233,
+      235,
+      239,
+      240,
+      241,
+      243,
+      247,
+      248,
+      249,
+      251,
+      255,
+      256,
+      257,
+      259,
+      263,
+      264,
+      265,
+      266,
+      268,
+      272,
+      273,
+      275,
+      279,
+      280,
+      282,
+      286,
+      287,
+      288,
+      289,
+      290,
+      291,
+      293,
+      297,
+      298,
+      300,
+      304,
+      305,
+      307,
+      311,
+      312,
+      314,
+      318,
+      319,
+      321,
+      325,
+      326,
+      328,
+      332,
+      334,
+      338,
+      339,
+      340,
+      341,
+      342,
+      344,
+      348,
+      349,
+      350,
+      352,
+      356,
+      357,
+      359,
+      363,
+      365,
+      366,
+      368,
+      372,
+      374,
+      376,
+      380,
+      382,
+      386,
+      387,
+      388,
+      390,
+      394,
+      395,
+      396,
+      399,
+      403,
+      404,
+      405,
+      407,
+      411,
+      412,
+      413,
+      414,
+      415,
+      434,
+      435,
+      444,
+      445,
+      495,
+      499,
+      797,
+      809,
+      813,
+      814,
+      832,
+      833,
+      835,
+      836,
+      841,
+      842,
+      844,
+      845,
+      852,
+      853,
+      855,
+      856,
+      863,
+      864,
+      865,
+      866,
+      1338
+    ],
+    "placeholder": [
+      1126
+    ]
+  },
+  "indigo_libs/indigo_platesolver.c": {
+    "shell_execution": [
+      141
+    ],
+    "blocking_wait": [
+      268
+    ],
+    "property_schema": [
+      766,
+      769,
+      773,
+      775,
+      779,
+      780,
+      781,
+      782,
+      783,
+      784,
+      785,
+      786,
+      787,
+      793,
+      797,
+      798,
+      799,
+      800,
+      801,
+      802,
+      803,
+      804,
+      805,
+      806,
+      814,
+      818,
+      819,
+      820,
+      821,
+      822,
+      824,
+      828,
+      829,
+      830,
+      831,
+      832,
+      833,
+      834,
+      836,
+      840,
+      842,
+      846,
+      847,
+      849,
+      853,
+      855,
+      859,
+      860,
+      861,
+      865,
+      869,
+      870,
+      871,
+      872,
+      873,
+      874,
+      875,
+      876,
+      877,
+      878,
+      879,
+      880,
+      881,
+      896,
+      900,
+      901,
+      903,
+      907,
+      909,
+      913,
+      919,
+      921,
+      925,
+      927,
+      931,
+      932,
+      933,
+      935,
+      939,
+      941,
+      945,
+      946,
+      947,
+      948,
+      950,
+      954,
+      955,
+      956,
+      957,
+      959,
+      960,
+      961
+    ],
+    "placeholder": [
+      42
+    ]
+  },
+  "indigo_libs/indigo_polaralign_driver.c": {
+    "property_schema": [
+      46,
+      49,
+      50,
+      52,
+      55,
+      57,
+      60,
+      61,
+      63,
+      66,
+      67,
+      69,
+      72,
+      73,
+      75,
+      78,
+      80,
+      83,
+      85,
+      88,
+      89,
+      90,
+      91
+    ]
+  },
+  "indigo_libs/indigo_polynomial_fit.c": {
+    "unbounded_format": [
+      207,
+      211,
+      213,
+      215
+    ]
+  },
+  "indigo_libs/indigo_raw_utils.c": {},
+  "indigo_libs/indigo_rotator_driver.c": {
+    "property_schema": [
+      98,
+      102,
+      103,
+      105,
+      109,
+      110,
+      111,
+      113,
+      117,
+      118,
+      120,
+      124,
+      126,
+      130,
+      131,
+      133,
+      137,
+      139,
+      143,
+      144,
+      146,
+      150,
+      151,
+      152,
+      154,
+      158,
+      159,
+      161,
+      165,
+      166
+    ]
+  },
+  "indigo_libs/indigo_ser.c": {},
+  "indigo_libs/indigo_server_tcp.c": {},
+  "indigo_libs/indigo_service_discovery.c": {},
+  "indigo_libs/indigo_session.c": {
+    "property_schema": [
+      45,
+      46,
+      47
+    ]
+  },
+  "indigo_libs/indigo_stretch.cpp": {},
+  "indigo_libs/indigo_tiff.c": {},
+  "indigo_libs/indigo_timer.c": {},
+  "indigo_libs/indigo_token.c": {},
+  "indigo_libs/indigo_uni_io.c": {
+    "placeholder": [
+      65,
+      130,
+      243,
+      322,
+      400,
+      474,
+      497,
+      518,
+      895,
+      949,
+      978,
+      1001,
+      1118,
+      1210,
+      1274,
+      1543,
+      1784,
+      1818,
+      1842,
+      1865,
+      1910,
+      2214,
+      2258,
+      2314,
+      2373,
+      2428,
+      2449,
+      2473,
+      2526,
+      2540,
+      2555,
+      2570,
+      2585,
+      2596,
+      2614,
+      2624,
+      2671,
+      2734,
+      2744
+    ]
+  },
+  "indigo_libs/indigo_usb_utils.c": {
+    "unbounded_format": [
+      35
+    ]
+  },
+  "indigo_libs/indigo_usbserial_utils.c": {},
+  "indigo_libs/indigo_version.c": {},
+  "indigo_libs/indigo_wheel_driver.c": {
+    "property_schema": [
+      45,
+      49,
+      51,
+      60,
+      63,
+      72
+    ]
+  },
+  "indigo_libs/indigo_xml.c": {
+    "unbounded_format": [
+      1925
+    ],
+    "property_schema": [
+      818,
+      830,
+      835,
+      840,
+      1747
+    ]
+  },
+  "indigo_libs/indigocat/example/planets_test.c": {},
+  "indigo_libs/indigocat/example/run_example.sh": {},
+  "indigo_libs/indigocat/indigocat_dso.c": {},
+  "indigo_libs/indigocat/indigocat_dynamical_time.c": {},
+  "indigo_libs/indigocat/indigocat_earth.c": {},
+  "indigo_libs/indigocat/indigocat_jupiter.c": {},
+  "indigo_libs/indigocat/indigocat_mars.c": {},
+  "indigo_libs/indigocat/indigocat_mercury.c": {},
+  "indigo_libs/indigocat/indigocat_moon.c": {},
+  "indigo_libs/indigocat/indigocat_neptune.c": {},
+  "indigo_libs/indigocat/indigocat_nutation.c": {},
+  "indigo_libs/indigocat/indigocat_pluto.c": {},
+  "indigo_libs/indigocat/indigocat_precession.c": {},
+  "indigo_libs/indigocat/indigocat_saturn.c": {},
+  "indigo_libs/indigocat/indigocat_ss.c": {},
+  "indigo_libs/indigocat/indigocat_star.c": {},
+  "indigo_libs/indigocat/indigocat_sun.c": {},
+  "indigo_libs/indigocat/indigocat_transform.c": {},
+  "indigo_libs/indigocat/indigocat_uranus.c": {},
+  "indigo_libs/indigocat/indigocat_venus.c": {},
+  "indigo_libs/indigocat/indigocat_vsop87.c": {},
+  "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver": {
+    "property_schema": [
+      219,
+      236
+    ]
+  },
+  "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver": {
+    "property_schema": [
+      244,
+      261
+    ]
+  },
+  "indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c": {},
+  "indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h": {},
+  "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver": {
+    "property_schema": [
+      112,
+      114,
+      517,
+      519
+    ]
+  },
+  "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.h": {},
+  "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m": {
+    "property_schema": [
+      316,
+      317,
+      319,
+      321,
+      331
+    ]
+  },
+  "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_main_bt.c": {},
+  "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.h": {},
+  "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m": {
+    "property_schema": [
+      314,
+      315,
+      316,
+      317,
+      321,
+      324,
+      325,
+      327,
+      330,
+      332,
+      335,
+      336,
+      337,
+      338,
+      339
+    ]
+  },
+  "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_main_bt.c": {},
+  "indigo_optional_drivers/ccd_andor/indigo_ccd_andor.c": {
+    "unbounded_format": [
+      936,
+      937
+    ],
+    "property_schema": [
+      268,
+      280,
+      301,
+      306,
+      307,
+      308,
+      309,
+      310,
+      327,
+      337,
+      354,
+      392,
+      421,
+      433,
+      447,
+      452,
+      453,
+      464,
+      469,
+      470,
+      491,
+      496,
+      506,
+      511,
+      512,
+      513,
+      520,
+      525,
+      526,
+      759,
+      879,
+      885,
+      929,
+      939,
+      940
+    ],
+    "capacity_override": [
+      1434
+    ]
+  },
+  "indigo_optional_drivers/ccd_andor/indigo_ccd_andor.h": {},
+  "indigo_optional_drivers/ccd_andor/indigo_ccd_andor_main.c": {},
+  "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp": {
+    "unbounded_format": [
+      1140,
+      1141,
+      1159,
+      1160,
+      1178,
+      1179,
+      1581
+    ],
+    "property_schema": [
+      1049,
+      1054,
+      1055,
+      1125,
+      1142,
+      1161,
+      1180,
+      1195,
+      1203,
+      1213,
+      1221,
+      1230,
+      1239,
+      1339,
+      1340
+    ],
+    "capacity_override": [
+      1633
+    ],
+    "placeholder": [
+      150,
+      158
+    ]
+  },
+  "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.h": {},
+  "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi_main.c": {},
+  "indigo_server/indigo_server.c": {
+    "unbounded_format": [
+      569,
+      968
+    ],
+    "shell_execution": [
+      825,
+      868,
+      908,
+      1771
+    ],
+    "blocking_wait": [
+      978,
+      2203
+    ],
+    "property_schema": [
+      939,
+      940,
+      967,
+      1077,
+      1078,
+      1079,
+      1080,
+      1081,
+      1084,
+      1087,
+      1090,
+      1091,
+      1101,
+      1108,
+      1113,
+      1114,
+      1115,
+      1116,
+      1117,
+      1118,
+      1120,
+      1121,
+      1122,
+      1123,
+      1124,
+      1125,
+      1126,
+      1127,
+      1128,
+      1129,
+      1130,
+      1131,
+      1132,
+      1133,
+      1134,
+      1135,
+      1136,
+      1139,
+      1140,
+      1141,
+      1144,
+      1145,
+      1146,
+      1149,
+      1150,
+      1153,
+      1154,
+      1159,
+      1160,
+      1161,
+      1172,
+      1173,
+      1174,
+      1175,
+      1177,
+      1178,
+      1356,
+      1548
+    ]
+  },
+  "indigo_server/resource/bootstrap.min.js": {},
+  "indigo_server/resource/celestial.min.js": {
+    "placeholder": [
+      1172,
+      3679
+    ]
+  },
+  "indigo_server/resource/components.js": {},
+  "indigo_server/resource/d3.geo.projection.min.js": {},
+  "indigo_server/resource/d3.min.js": {},
+  "indigo_server/resource/indigo.js": {},
+  "indigo_server/resource/jquery.min.js": {},
+  "indigo_server/resource/popper.min.js": {},
+  "indigo_server/resource/vue.global.prod.js": {},
+  "indigo_server/resource/vue.min.js": {},
+  "indigo_test/benchmark/bench_queue.c": {},
+  "indigo_test/benchmark/bench_timer.c": {},
+  "indigo_test/buildsystem/test_ftdi_build.py": {},
+  "indigo_test/factory/test_concurrent_tasks.py": {},
+  "indigo_test/factory/test_context_export.py": {},
+  "indigo_test/factory/test_decision_index.py": {
+    "placeholder": [
+      48,
+      52,
+      56
+    ]
+  },
+  "indigo_test/factory/test_findings.py": {},
+  "indigo_test/factory/test_independent_records.py": {},
+  "indigo_test/factory/test_new_task.py": {},
+  "indigo_test/factory/test_process_check.py": {},
+  "indigo_test/factory/test_review.py": {
+    "blocking_wait": [
+      57,
+      357
+    ]
+  },
+  "indigo_test/factory/test_task_archive.py": {},
+  "indigo_test/factory/test_template_update.py": {},
+  "indigo_test/fakes/linux/joystick.h": {},
+  "indigo_test/fakes/malloc.h": {},
+  "indigo_test/hardware/dome_hw_common.h": {},
+  "indigo_test/hardware/focuser_hw_common.h": {},
+  "indigo_test/hardware/hardware_device_record.h": {},
+  "indigo_test/hardware/hardware_test_common.h": {},
+  "indigo_test/hardware/powerbox_hotplug_test_common.h": {},
+  "indigo_test/hardware/test_ao_sx_hw.c": {
+    "capacity_override": [
+      58
+    ]
+  },
+  "indigo_test/hardware/test_aux_arteskyflat_hw.c": {},
+  "indigo_test/hardware/test_aux_asiair_hw.c": {
+    "shell_execution": [
+      69,
+      131
+    ]
+  },
+  "indigo_test/hardware/test_aux_astromechanics_hw.c": {},
+  "indigo_test/hardware/test_aux_dsusb_hw.c": {},
+  "indigo_test/hardware/test_aux_fbc_hw.c": {},
+  "indigo_test/hardware/test_aux_flatmaster_hw.c": {},
+  "indigo_test/hardware/test_aux_flipflat_hw.c": {},
+  "indigo_test/hardware/test_aux_ppb_hw.c": {},
+  "indigo_test/hardware/test_aux_rpio_hw.c": {
+    "shell_execution": [
+      69,
+      131
+    ]
+  },
+  "indigo_test/hardware/test_aux_rts_hw.c": {},
+  "indigo_test/hardware/test_aux_skyalert_hw.c": {},
+  "indigo_test/hardware/test_aux_sqm_hw.c": {},
+  "indigo_test/hardware/test_aux_upb_hw.c": {
+    "capacity_override": [
+      51
+    ]
+  },
+  "indigo_test/hardware/test_aux_usbdp_hw.c": {},
+  "indigo_test/hardware/test_ccd_asi_hw.c": {
+    "capacity_override": [
+      40
+    ]
+  },
+  "indigo_test/hardware/test_ccd_atik_hw.c": {
+    "capacity_override": [
+      31
+    ]
+  },
+  "indigo_test/hardware/test_ccd_dsi_hw.c": {
+    "capacity_override": [
+      42
+    ]
+  },
+  "indigo_test/hardware/test_ccd_hotplug_hw.c": {},
+  "indigo_test/hardware/test_ccd_iidc_hw.c": {
+    "capacity_override": [
+      33
+    ]
+  },
+  "indigo_test/hardware/test_ccd_mi_hw.c": {
+    "capacity_override": [
+      35
+    ]
+  },
+  "indigo_test/hardware/test_ccd_playerone_hw.c": {
+    "capacity_override": [
+      40
+    ]
+  },
+  "indigo_test/hardware/test_ccd_qhy_hw.c": {
+    "capacity_override": [
+      34
+    ]
+  },
+  "indigo_test/hardware/test_ccd_ssag_hw.c": {},
+  "indigo_test/hardware/test_ccd_svb_hw.c": {
+    "capacity_override": [
+      38
+    ]
+  },
+  "indigo_test/hardware/test_ccd_sx_hw.c": {
+    "capacity_override": [
+      37
+    ]
+  },
+  "indigo_test/hardware/test_ccd_touptek_hw.c": {
+    "capacity_override": [
+      38
+    ]
+  },
+  "indigo_test/hardware/test_ccd_uvc_hw.c": {
+    "capacity_override": [
+      33
+    ]
+  },
+  "indigo_test/hardware/test_dome_baader_hw.c": {},
+  "indigo_test/hardware/test_dome_nexdome3_hw.c": {},
+  "indigo_test/hardware/test_dome_nexdome_hw.c": {},
+  "indigo_test/hardware/test_dome_skyroof_hw.c": {},
+  "indigo_test/hardware/test_dome_talon6ror_hw.c": {},
+  "indigo_test/hardware/test_focuser_astromechanics_hw.c": {},
+  "indigo_test/hardware/test_focuser_dmfc_hw.c": {},
+  "indigo_test/hardware/test_focuser_efa_hw.c": {},
+  "indigo_test/hardware/test_focuser_fcusb_hw.c": {},
+  "indigo_test/hardware/test_focuser_focusdreampro_hw.c": {},
+  "indigo_test/hardware/test_focuser_lakeside_hw.c": {},
+  "indigo_test/hardware/test_focuser_mjkzz_hw.c": {},
+  "indigo_test/hardware/test_focuser_moonlite_hw.c": {},
+  "indigo_test/hardware/test_focuser_nfocus_hw.c": {},
+  "indigo_test/hardware/test_focuser_nstep_hw.c": {},
+  "indigo_test/hardware/test_focuser_optec_hw.c": {},
+  "indigo_test/hardware/test_focuser_primaluce_hw.c": {
+    "unbounded_format": [
+      964
+    ],
+    "capacity_override": [
+      67
+    ]
+  },
+  "indigo_test/hardware/test_focuser_prodigy_hw.c": {},
+  "indigo_test/hardware/test_focuser_robofocus_hw.c": {},
+  "indigo_test/hardware/test_focuser_steeldrive2_hw.c": {},
+  "indigo_test/hardware/test_focuser_usbv3_hw.c": {},
+  "indigo_test/hardware/test_focuser_wemacro_hw.c": {},
+  "indigo_test/hardware/test_gps_nmea_hw.c": {},
+  "indigo_test/hardware/test_guider_cgusbst4_hw.c": {},
+  "indigo_test/hardware/test_guider_gpusb_hw.c": {},
+  "indigo_test/hardware/test_mount_lx200_hw.c": {},
+  "indigo_test/hardware/test_mount_nexstar_hw.c": {},
+  "indigo_test/hardware/test_mount_nexstaraux_hw.c": {},
+  "indigo_test/hardware/test_mount_pmc8_hw.c": {},
+  "indigo_test/hardware/test_mount_synscan_hw.c": {
+    "capacity_override": [
+      56
+    ]
+  },
+  "indigo_test/hardware/test_polaralign_mlastro_hw.c": {},
+  "indigo_test/hardware/test_rotator_optec_hw.c": {},
+  "indigo_test/hardware/test_system_alpaca_hw.c": {},
+  "indigo_test/hardware/test_wheel_asi_hw.c": {
+    "capacity_override": [
+      53
+    ]
+  },
+  "indigo_test/hardware/test_wheel_indigo_hw.c": {},
+  "indigo_test/hardware/test_wheel_optec_hw.c": {},
+  "indigo_test/hardware/test_wheel_qhy_hw.c": {},
+  "indigo_test/hardware/test_wheel_quantum_hw.c": {},
+  "indigo_test/hardware/test_wheel_sx_hw.c": {
+    "capacity_override": [
+      54
+    ]
+  },
+  "indigo_test/hardware/test_wheel_trutek_hw.c": {},
+  "indigo_test/hardware/test_wheel_xagyl_hw.c": {},
+  "indigo_test/hardware/usb_hotplug_test_common.h": {
+    "shell_execution": [
+      224
+    ]
+  },
+  "indigo_test/integration/abort_queue_test_common.h": {},
+  "indigo_test/integration/aux_test_isolation.h": {},
+  "indigo_test/integration/ccd_test_noise.h": {},
+  "indigo_test/integration/fli_fake_sdk.h": {
+    "blocking_wait": [
+      422
+    ]
+  },
+  "indigo_test/integration/fli_sdk_test_common.h": {},
+  "indigo_test/integration/lunatico_test_common.h": {},
+  "indigo_test/integration/parallel_case_runner.h": {},
+  "indigo_test/integration/qsi_fake_sdk.cpp": {},
+  "indigo_test/integration/qsi_fake_sdk.h": {},
+  "indigo_test/integration/serial_simulator_test_common.h": {},
+  "indigo_test/integration/simulator_test_common.h": {
+    "property_schema": [
+      679
+    ]
+  },
+  "indigo_test/integration/sysfs_gpio_fake.h": {},
+  "indigo_test/integration/system_alpaca/ccd_cases.h": {},
+  "indigo_test/integration/system_alpaca/core_cases.h": {
+    "property_schema": [
+      1326
+    ]
+  },
+  "indigo_test/integration/system_alpaca/dome_cases.h": {},
+  "indigo_test/integration/system_alpaca/focuser_cases.h": {},
+  "indigo_test/integration/system_alpaca/guider_cases.h": {},
+  "indigo_test/integration/system_alpaca/interface_cases.h": {},
+  "indigo_test/integration/system_alpaca/lightbox_cases.h": {},
+  "indigo_test/integration/system_alpaca/mount_cases.h": {},
+  "indigo_test/integration/system_alpaca/omnisim_test_common.h": {
+    "blocking_wait": [
+      233
+    ]
+  },
+  "indigo_test/integration/system_alpaca/rotator_cases.h": {},
+  "indigo_test/integration/system_alpaca/safety_cases.h": {},
+  "indigo_test/integration/system_alpaca/switch_cases.h": {},
+  "indigo_test/integration/system_alpaca/system_alpaca_test_common.h": {},
+  "indigo_test/integration/system_alpaca/weather_cases.h": {},
+  "indigo_test/integration/system_alpaca/wheel_cases.h": {},
+  "indigo_test/integration/test_agent_astrometry.c": {
+    "property_schema": [
+      436,
+      437,
+      446,
+      447,
+      448,
+      449,
+      450,
+      451,
+      452,
+      453,
+      455,
+      456,
+      457,
+      458,
+      459,
+      460,
+      461,
+      462,
+      463,
+      464,
+      465,
+      466,
+      467,
+      468,
+      469,
+      470,
+      471
+    ]
+  },
+  "indigo_test/integration/test_agent_astrometry_solver.c": {
+    "shell_execution": [
+      578,
+      647,
+      940
+    ],
+    "property_schema": [
+      814,
+      815,
+      816,
+      817,
+      818,
+      819,
+      820,
+      821
+    ]
+  },
+  "indigo_test/integration/test_agent_config.c": {
+    "property_schema": [
+      284,
+      286,
+      425,
+      662,
+      736,
+      841,
+      950,
+      951,
+      1053
+    ]
+  },
+  "indigo_test/integration/test_agent_guider.c": {
+    "property_schema": [
+      1888,
+      1889
+    ]
+  },
+  "indigo_test/integration/test_agent_imager.c": {
+    "property_schema": [
+      399,
+      400,
+      403,
+      404,
+      888,
+      889,
+      1077,
+      1078,
+      1079,
+      1080
+    ]
+  },
+  "indigo_test/integration/test_agent_imager_guider_mount.c": {},
+  "indigo_test/integration/test_agent_imager_instances.c": {},
+  "indigo_test/integration/test_agent_mount.c": {
+    "property_schema": [
+      259,
+      264,
+      266,
+      268,
+      270
+    ]
+  },
+  "indigo_test/integration/test_agent_scripting.c": {
+    "property_schema": [
+      336,
+      337,
+      342,
+      343,
+      345,
+      346,
+      347,
+      348,
+      349,
+      350,
+      351,
+      352,
+      837,
+      838,
+      856,
+      949,
+      950
+    ]
+  },
+  "indigo_test/integration/test_agent_scripting_sequencer.c": {
+    "property_schema": [
+      119,
+      120,
+      121,
+      122,
+      123,
+      124,
+      125,
+      126,
+      127,
+      128,
+      129,
+      130
+    ]
+  },
+  "indigo_test/integration/test_ao_sx_simulator.c": {},
+  "indigo_test/integration/test_ao_sx_transport.c": {},
+  "indigo_test/integration/test_aux_arteskyflat_simulator.c": {},
+  "indigo_test/integration/test_aux_asiair_sysfs.c": {},
+  "indigo_test/integration/test_aux_astromechanics_simulator.c": {},
+  "indigo_test/integration/test_aux_cloudwatcher_simulator.c": {},
+  "indigo_test/integration/test_aux_dragonfly_simulator.c": {},
+  "indigo_test/integration/test_aux_dsusb_sdk.c": {},
+  "indigo_test/integration/test_aux_fbc_simulator.c": {},
+  "indigo_test/integration/test_aux_flatmaster_simulator.c": {},
+  "indigo_test/integration/test_aux_flipflat_simulator.c": {},
+  "indigo_test/integration/test_aux_geoptikflat_simulator.c": {},
+  "indigo_test/integration/test_aux_joystick_hid.c": {},
+  "indigo_test/integration/test_aux_mgbox_simulator.c": {},
+  "indigo_test/integration/test_aux_ppb_simulator.c": {},
+  "indigo_test/integration/test_aux_rpio_sysfs.c": {},
+  "indigo_test/integration/test_aux_rts_shutter.c": {},
+  "indigo_test/integration/test_aux_simulator.c": {},
+  "indigo_test/integration/test_aux_skyalert_simulator.c": {},
+  "indigo_test/integration/test_aux_skyalert_transport.c": {},
+  "indigo_test/integration/test_aux_sqm_simulator.c": {},
+  "indigo_test/integration/test_aux_sqm_transport.c": {},
+  "indigo_test/integration/test_aux_svbpowerbox_simulator.c": {},
+  "indigo_test/integration/test_aux_uch_simulator.c": {},
+  "indigo_test/integration/test_aux_upb3_simulator.c": {},
+  "indigo_test/integration/test_aux_upb_simulator.c": {
+    "shell_execution": [
+      1451
+    ]
+  },
+  "indigo_test/integration/test_aux_usbdp_simulator.c": {},
+  "indigo_test/integration/test_aux_wbplusv3_simulator.c": {},
+  "indigo_test/integration/test_aux_wbprov3_simulator.c": {},
+  "indigo_test/integration/test_aux_wcv4ec_simulator.c": {},
+  "indigo_test/integration/test_bus_lifecycle.c": {
+    "property_schema": [
+      52,
+      56,
+      151,
+      174,
+      176
+    ]
+  },
+  "indigo_test/integration/test_ccd_altair_sdk.c": {},
+  "indigo_test/integration/test_ccd_asi_sdk.c": {},
+  "indigo_test/integration/test_ccd_atik2_sdk.c": {},
+  "indigo_test/integration/test_ccd_atik_sdk.c": {
+    "unbounded_format": [
+      459,
+      468
+    ]
+  },
+  "indigo_test/integration/test_ccd_baccam_sdk.c": {},
+  "indigo_test/integration/test_ccd_bresser_sdk.c": {},
+  "indigo_test/integration/test_ccd_countdown.c": {},
+  "indigo_test/integration/test_ccd_fli_sdk.c": {},
+  "indigo_test/integration/test_ccd_iidc_sdk.c": {},
+  "indigo_test/integration/test_ccd_mallin_sdk.c": {},
+  "indigo_test/integration/test_ccd_meade_sdk.c": {},
+  "indigo_test/integration/test_ccd_mi_sdk.c": {},
+  "indigo_test/integration/test_ccd_ogma_sdk.c": {},
+  "indigo_test/integration/test_ccd_omegonpro_sdk.c": {},
+  "indigo_test/integration/test_ccd_playerone_sdk.c": {},
+  "indigo_test/integration/test_ccd_ptp_ica.m": {},
+  "indigo_test/integration/test_ccd_ptp_sdk.c": {},
+  "indigo_test/integration/test_ccd_qhy_sdk.cpp": {},
+  "indigo_test/integration/test_ccd_qsi_sdk.c": {},
+  "indigo_test/integration/test_ccd_rising_sdk.c": {},
+  "indigo_test/integration/test_ccd_simulator.c": {},
+  "indigo_test/integration/test_ccd_ssag_usb.c": {},
+  "indigo_test/integration/test_ccd_ssg_sdk.c": {},
+  "indigo_test/integration/test_ccd_svb2_sdk.c": {},
+  "indigo_test/integration/test_ccd_svb_sdk.c": {},
+  "indigo_test/integration/test_ccd_sx_usb.c": {},
+  "indigo_test/integration/test_ccd_touptek_sdk.c": {},
+  "indigo_test/integration/test_ccd_uvc_sdk.c": {},
+  "indigo_test/integration/test_detach_abort.c": {
+    "property_schema": [
+      422,
+      423,
+      424
+    ]
+  },
+  "indigo_test/integration/test_dome_baader_simulator.c": {},
+  "indigo_test/integration/test_dome_beaver_simulator.c": {},
+  "indigo_test/integration/test_dome_dragonfly_simulator.c": {},
+  "indigo_test/integration/test_dome_nexdome3_simulator.c": {},
+  "indigo_test/integration/test_dome_nexdome_simulator.c": {},
+  "indigo_test/integration/test_dome_simulator.c": {},
+  "indigo_test/integration/test_dome_skyroof_simulator.c": {},
+  "indigo_test/integration/test_dome_talon6ror_simulator.c": {},
+  "indigo_test/integration/test_focuser_asi_sdk.c": {},
+  "indigo_test/integration/test_focuser_askar_simulator.c": {},
+  "indigo_test/integration/test_focuser_askar_wifi_simulator.c": {},
+  "indigo_test/integration/test_focuser_astroasis_sdk.c": {},
+  "indigo_test/integration/test_focuser_astromechanics_simulator.c": {},
+  "indigo_test/integration/test_focuser_dmfc_simulator.c": {},
+  "indigo_test/integration/test_focuser_dsd_simulator.c": {
+    "property_schema": [
+      1717
+    ]
+  },
+  "indigo_test/integration/test_focuser_efa_simulator.c": {},
+  "indigo_test/integration/test_focuser_fc3_simulator.c": {},
+  "indigo_test/integration/test_focuser_fcusb_sdk.c": {},
+  "indigo_test/integration/test_focuser_fli_sdk.c": {},
+  "indigo_test/integration/test_focuser_focusdreampro_simulator.c": {},
+  "indigo_test/integration/test_focuser_ioptron_simulator.c": {},
+  "indigo_test/integration/test_focuser_lacerta_simulator.c": {},
+  "indigo_test/integration/test_focuser_lakeside_simulator.c": {},
+  "indigo_test/integration/test_focuser_lunatico_simulator.c": {},
+  "indigo_test/integration/test_focuser_mjkzz_simulator.c": {},
+  "indigo_test/integration/test_focuser_moonlite_simulator.c": {},
+  "indigo_test/integration/test_focuser_motion.c": {},
+  "indigo_test/integration/test_focuser_mypro2_simulator.c": {},
+  "indigo_test/integration/test_focuser_nfocus_simulator.c": {},
+  "indigo_test/integration/test_focuser_nstep_simulator.c": {},
+  "indigo_test/integration/test_focuser_optec_simulator.c": {},
+  "indigo_test/integration/test_focuser_optecfl_simulator.c": {},
+  "indigo_test/integration/test_focuser_primaluce_simulator.c": {},
+  "indigo_test/integration/test_focuser_prodigy_simulator.c": {},
+  "indigo_test/integration/test_focuser_qhy_simulator.c": {},
+  "indigo_test/integration/test_focuser_robofocus_simulator.c": {},
+  "indigo_test/integration/test_focuser_steeldrive2_simulator.c": {},
+  "indigo_test/integration/test_focuser_usbv3_simulator.c": {},
+  "indigo_test/integration/test_focuser_wemacro_simulator.c": {},
+  "indigo_test/integration/test_generator_architecture.c": {
+    "property_schema": [
+      311,
+      312,
+      334,
+      356,
+      357,
+      358,
+      359
+    ],
+    "capacity_override": [
+      589,
+      596,
+      601
+    ]
+  },
+  "indigo_test/integration/test_gps_gpsd_simulator.c": {},
+  "indigo_test/integration/test_gps_nmea_simulator.c": {},
+  "indigo_test/integration/test_gps_nmea_transport.c": {},
+  "indigo_test/integration/test_gps_simulator.c": {},
+  "indigo_test/integration/test_guider_asi_sdk.c": {},
+  "indigo_test/integration/test_guider_cgusbst4_simulator.c": {},
+  "indigo_test/integration/test_guider_gpusb_sdk.c": {},
+  "indigo_test/integration/test_mount_asi_simulator.c": {},
+  "indigo_test/integration/test_mount_ioptron_simulator.c": {},
+  "indigo_test/integration/test_mount_lx200_simulator.c": {},
+  "indigo_test/integration/test_mount_nexstar_simulator.c": {},
+  "indigo_test/integration/test_mount_nexstaraux_simulator.c": {},
+  "indigo_test/integration/test_mount_pmc8_simulator.c": {},
+  "indigo_test/integration/test_mount_rainbow_simulator.c": {},
+  "indigo_test/integration/test_mount_simulator.c": {},
+  "indigo_test/integration/test_mount_starbook_simulator.c": {},
+  "indigo_test/integration/test_mount_synscan_simulator.c": {},
+  "indigo_test/integration/test_mount_temma_simulator.c": {},
+  "indigo_test/integration/test_polaralign_mlastro_simulator.c": {},
+  "indigo_test/integration/test_polaralign_simulator.c": {},
+  "indigo_test/integration/test_rotator_asi_sdk.c": {},
+  "indigo_test/integration/test_rotator_falcon_simulator.c": {},
+  "indigo_test/integration/test_rotator_lunatico_simulator.c": {},
+  "indigo_test/integration/test_rotator_optec_simulator.c": {},
+  "indigo_test/integration/test_rotator_simulator.c": {},
+  "indigo_test/integration/test_rotator_wa_simulator.c": {},
+  "indigo_test/integration/test_serial_outputs.c": {},
+  "indigo_test/integration/test_serial_port_claim.c": {
+    "property_schema": [
+      87,
+      88
+    ]
+  },
+  "indigo_test/integration/test_serial_port_loss.c": {
+    "property_schema": [
+      164
+    ]
+  },
+  "indigo_test/integration/test_server_driver_stress.c": {
+    "shell_execution": [
+      282
+    ]
+  },
+  "indigo_test/integration/test_server_websocket.c": {},
+  "indigo_test/integration/test_system_alpaca_http.c": {
+    "blocking_wait": [
+      405
+    ]
+  },
+  "indigo_test/integration/test_system_alpaca_omnisim.c": {},
+  "indigo_test/integration/test_system_alpaca_simulator.c": {},
+  "indigo_test/integration/test_usb_outputs.c": {},
+  "indigo_test/integration/test_wheel_asi_sdk.c": {},
+  "indigo_test/integration/test_wheel_astroasis_sdk.c": {},
+  "indigo_test/integration/test_wheel_fli_sdk.c": {},
+  "indigo_test/integration/test_wheel_hid.c": {},
+  "indigo_test/integration/test_wheel_indigo_simulator.c": {},
+  "indigo_test/integration/test_wheel_indigo_transport.c": {},
+  "indigo_test/integration/test_wheel_manual.c": {},
+  "indigo_test/integration/test_wheel_mi_sdk.c": {},
+  "indigo_test/integration/test_wheel_optec_simulator.c": {},
+  "indigo_test/integration/test_wheel_playerone_sdk.c": {},
+  "indigo_test/integration/test_wheel_qhy_simulator.c": {},
+  "indigo_test/integration/test_wheel_quantum_simulator.c": {},
+  "indigo_test/integration/test_wheel_trutek_simulator.c": {},
+  "indigo_test/integration/test_wheel_xagyl_simulator.c": {},
+  "indigo_test/mountsim/mountsim_test_common.h": {},
+  "indigo_test/mountsim/run_mountsim.py": {
+    "blocking_wait": [
+      62,
+      125
+    ]
+  },
+  "indigo_test/mountsim/test_mount_ioptron_mountsim.c": {},
+  "indigo_test/mountsim/test_mount_lx200_mountsim.c": {},
+  "indigo_test/mountsim/test_mount_nexstar_mountsim.c": {},
+  "indigo_test/mountsim/test_mount_rainbow_mountsim.c": {},
+  "indigo_test/mountsim/test_mount_synscan_mountsim.c": {
+    "capacity_override": [
+      27
+    ]
+  },
+  "indigo_test/mountsim/test_mount_temma_mountsim.c": {},
+  "indigo_test/simulator_common/aux_simulator_common.h": {
+    "blocking_wait": [
+      100
+    ]
+  },
+  "indigo_test/simulator_common/serial_motion.h": {},
+  "indigo_test/simulator_common/serial_simulator_common.h": {
+    "blocking_wait": [
+      116
+    ]
+  },
+  "indigo_test/test_runner.h": {},
+  "indigo_test/unit/test_align_math.c": {},
+  "indigo_test/unit/test_aux_math.c": {},
+  "indigo_test/unit/test_base64.c": {},
+  "indigo_test/unit/test_bus_helpers.c": {
+    "property_schema": [
+      156,
+      158,
+      159,
+      172,
+      173,
+      176,
+      177,
+      240,
+      241
+    ]
+  },
+  "indigo_test/unit/test_bus_property.c": {
+    "property_schema": [
+      64,
+      66,
+      68,
+      70,
+      80,
+      83,
+      86,
+      89,
+      92,
+      357,
+      358,
+      359,
+      360,
+      365,
+      366
+    ]
+  },
+  "indigo_test/unit/test_dome_azimuth.c": {},
+  "indigo_test/unit/test_driver_loader.c": {},
+  "indigo_test/unit/test_driver_loader_fixture.c": {},
+  "indigo_test/unit/test_md5.c": {},
+  "indigo_test/unit/test_polynomial_fit.c": {},
+  "indigo_test/unit/test_primalucelib.c": {},
+  "indigo_test/unit/test_protocol_json.c": {
+    "property_schema": [
+      147,
+      149,
+      161,
+      195,
+      197,
+      231,
+      233
+    ]
+  },
+  "indigo_test/unit/test_protocol_xml.c": {
+    "property_schema": [
+      238,
+      240,
+      250,
+      285,
+      318,
+      320,
+      321,
+      373,
+      378,
+      381,
+      385,
+      387,
+      391,
+      393,
+      399
+    ]
+  },
+  "indigo_test/unit/test_raw_image.c": {},
+  "indigo_test/unit/test_system_alpaca_json.c": {},
+  "indigo_test/unit/test_timer.c": {
+    "property_schema": [
+      1802,
+      1803,
+      1804,
+      1805
+    ]
+  },
+  "indigo_test/unit/test_token.c": {},
+  "indigo_test/unit/test_uni_io.c": {},
+  "indigo_tools/driver_editor/driver_editor.py": {},
+  "indigo_tools/driver_editor/driver_format.py": {},
+  "indigo_tools/driver_editor/editor.py": {},
+  "indigo_tools/driver_editor/source_map.py": {},
+  "indigo_tools/driver_editor/static/app.js": {},
+  "indigo_tools/driver_editor/test_editor.py": {
+    "blocking_wait": [
+      409
+    ],
+    "generic_swallow": [
+      428
+    ]
+  },
+  "indigo_tools/fits_to_raw.c": {},
+  "indigo_tools/fix_fits.c": {},
+  "indigo_tools/fix_xisf.c": {},
+  "indigo_tools/indigo_driver_metadata.c": {},
+  "indigo_tools/indigo_drivers.c": {},
+  "indigo_tools/indigo_generator.c": {
+    "property_schema": [
+      1849,
+      1852,
+      1854,
+      1858,
+      1870,
+      1875,
+      1879,
+      1884,
+      1891,
+      1896,
+      1900,
+      1905,
+      2965,
+      2969,
+      2974,
+      2978,
+      3084,
+      3094,
+      3111,
+      3121
+    ],
+    "capacity_override": [
+      2940
+    ],
+    "placeholder": [
+      358,
+      2845
+    ]
+  },
+  "indigo_tools/indigo_list_usbserial.c": {},
+  "indigo_tools/indigo_metadata_extractor.c": {
+    "shell_execution": [
+      84
+    ]
+  },
+  "indigo_tools/indigo_prop_tool.c": {
+    "unbounded_format": [
+      181,
+      202,
+      214,
+      224,
+      251,
+      262,
+      447,
+      449,
+      454,
+      456,
+      460,
+      464,
+      466,
+      472,
+      477,
+      485,
+      487,
+      490
+    ],
+    "blocking_wait": [
+      1070,
+      1102
+    ]
+  },
+  "indigo_tools/indigo_raw_crop.c": {},
+  "indigo_tools/indigo_raw_to_fits.c": {},
+  "indigo_tools/indigo_scan_drivers.c": {},
+  "indigo_tools/template.driver": {},
+  "indigo_windows/dllmain.cpp": {},
+  "indigo_windows/gcc/build_windows_sdk.sh": {},
+  "indigo_windows/indigo_client/dllmain.cpp": {},
+  "indigo_windows/indigo_client/stdafx.h": {},
+  "indigo_windows/indigo_client/targetver.h": {},
+  "indigo_windows/make_indigo_drivers/make_indigo_drivers.cpp": {},
+  "tools/alpaca_omnisim_conformu.py": {
+    "blocking_wait": [
+      86,
+      210,
+      310
+    ],
+    "generic_swallow": [
+      84,
+      149,
+      152,
+      208
+    ]
+  },
+  "tools/build_debs.sh": {},
+  "tools/build_ftdi_macos.sh": {},
+  "tools/build_windows_installer.sh": {},
+  "tools/cltools.sh": {},
+  "tools/fxload/ezusb.c": {
+    "placeholder": [
+      418
+    ]
+  },
+  "tools/fxload/ezusb.h": {},
+  "tools/fxload/fxload.c": {},
+  "tools/make_indigo_build.sh": {},
+  "tools/make_source_tarball.sh": {},
+  "tools/make_test_summary.py": {},
+  "tools/rjsmin.py": {},
+  "tools/rpi_ctrl.sh": {},
+  "tools/rpi_ctrl_fake.sh": {},
+  "tools/rpi_ctrl_fix.sh": {},
+  "tools/rpi_ctrl_v2.sh": {},
+  "tools/run_driver_test.py": {
+    "shell_execution": [
+      166
+    ]
+  },
+  "tools/update_DELTA_UT1_UTC.sh": {}
+}

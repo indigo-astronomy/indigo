@@ -1,0 +1,10 @@
+Running XML protocol unit tests
+  PASS xml_escape_handles_special_characters
+  PASS xml_adapter_serializes_define_update_delete_and_blob_url
+  PASS xml_adapter_serializes_whole_long_text_value
+  PASS xml_adapter_round_trips_item_names_with_quotes
+  PASS xml_client_adapter_serializes_requests
+  PASS xml_parser_routes_change_and_enable_blob_fixtures
+  PASS xml_client_adapter_parses_remote_property_events
+  PASS xml_parser_ignores_malformed_fixture_without_change
+XML protocol unit tests: all tests passed

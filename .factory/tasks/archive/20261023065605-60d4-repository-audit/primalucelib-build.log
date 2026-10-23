@@ -1,0 +1,18 @@
+Usage: libtool -static [-arch_only <arch>] <options>* <mach-o file>+ -o <file>
+	-static                              Required.  Means create a static library
+	-arch_only <arch>                    Build a once-arch static library from fat files
+	-arch_variant <arch>                 Include a variant arch in a once-arch static library
+	-o <file>                            Output path of static library
+	-filelist <file>                     Reads list of input files from specified file
+	-no_warning_for_no_symbols           Don't warn about .o files that have no global symbols
+	-toc64                               Force 64-bit table-of-contents
+	-c                                   Add tentative-defintins to table-of-contents
+	-s                                   Generate sorted table-of-contents (default)
+	-a                                   Generate unsorted table-of-contents (for very old linkers)
+	-D                                   Reproducible builds, zero out archive mtime info
+	-V                                   Prints the version of libtool
+	-encode_sdk_libraries_as_references  Encode static libs from SDK as auto-link hints instead of merging
+	-ref-framework <Foo>                 Encode static Foo.framework as auto-link hint instead of merging
+	-ref-l<foo>                          Encode libfoo.a as auto-link hint instead of merging
+	-dependency_info <file>              Write an xcode dependency file
+make: *** [/tmp/indigo-audit-primalucelib-20261023/libprimalucelib.a] Error 1

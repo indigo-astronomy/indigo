@@ -1,0 +1,121 @@
+[
+  {
+    "command": [
+      "build/unit/test_align_math"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_aux_math"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_base64"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_bus_helpers"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_bus_property"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_dome_azimuth"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_driver_loader"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_md5"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_polynomial_fit"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_protocol_json"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_protocol_xml"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_timer"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_token"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_uni_io"
+    ],
+    "cwd": "indigo_test",
+    "exit": 1
+  },
+  {
+    "command": [
+      "build/unit/test_primalucelib"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_system_alpaca_json"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  },
+  {
+    "command": [
+      "build/unit/test_raw_image"
+    ],
+    "cwd": "indigo_test",
+    "exit": 0
+  }
+]

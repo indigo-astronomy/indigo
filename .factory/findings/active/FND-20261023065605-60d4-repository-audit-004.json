@@ -1,0 +1,19 @@
+{
+  "title": "Driver editor omits the supported polaralign device class",
+  "category": "functional",
+  "severity": "medium",
+  "blocking": false,
+  "evidence": "indigo_tools/driver_editor/driver_format.py:26; editor.py:63-66; editor-fresh-generator-tests.log",
+  "summary": "DEVICES excludes polaralign although the generator and two checked-in definitions support it. Both polaralign definitions fail preview with no supported device. The fresh unchanged generator directly regenerates both successfully. Next: coordinator assigns editor class/catalog integration and corpus regression coverage; no generator change is needed.",
+  "status": "open",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023065605-60d4-repository-audit-004"
+}

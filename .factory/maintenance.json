@@ -50,6 +50,14 @@
       "scope": "Repair FND-000001 through FND-000005 before the overdue repository audit",
       "checkpoint": "After these five repairs, before unrelated work or release",
       "resets_checkpoint": false
+    },
+    "audit_repair_closure_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection",
+      "date": "2026-10-23",
+      "task": "20261023065605-60d4-repository-audit",
+      "scope": "Close verified repairs 001/002 and retain the current repository audit as partial; defer remaining full semantic audit.",
+      "checkpoint": "Complete the remaining mandatory audit in the next audit task before unrelated development or release.",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"
