@@ -6308,6 +6308,19 @@
 		96FCE073F2AE5053F195D873 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
 		A23AA4DD6992737D276206C5 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		D3C22800B0993357E97A493C /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		7B4D36CD564EAE063A28C313 /* autohome-reference.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "autohome-reference.json"; sourceTree = "<group>"; };
+		791A0F37824712C2F2E13479 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "brief.md"; sourceTree = "<group>"; };
+		DD3DCDFD80438348F7EC6B92 /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "handoff.md"; sourceTree = "<group>"; };
+		A735C064B85FB5BB6E9F40D7 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "plan.md"; sourceTree = "<group>"; };
+		92DD6484BB5DCA2975F8481B /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		C68669EF09CA7633252EBA4D /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "quality-review.md"; sourceTree = "<group>"; };
+		D894D626A79BA0FDD3649DE1 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "security.md"; sourceTree = "<group>"; };
+		29020DB47BF6DBA2BBDF5B53 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "specification.md"; sourceTree = "<group>"; };
+		E5A8719CD8E48B1B1188B1E8 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		7B74E69C06B8BC6230445F10 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test-plan.md"; sourceTree = "<group>"; };
+		F560631A2A8E291620CFB7D5 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
+		C9A52F05B574213F98D7E04F /* 20261023180923-1f46-fix-synscan-autohome.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261023180923-1f46-fix-synscan-autohome.json"; sourceTree = "<group>"; };
+		D3C6448BE4580E160762A1ED /* FND-20261023101753-bc8d-complete-repository-audit-026.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261023101753-bc8d-complete-repository-audit-026.json"; sourceTree = "<group>"; };
 		6AEDF98ED527D4A951544E35 /* baseline-sanitize.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "baseline-sanitize.log"; sourceTree = "<group>"; };
 		179E1B26B89229FD492C4797 /* baseline.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "baseline.log"; sourceTree = "<group>"; };
 		0F6DD841D3F2531C46B8A64E /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "brief.md"; sourceTree = "<group>"; };
@@ -6322,6 +6335,7 @@
 		36C7B9774DDA5B671FE84DE8 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
 		2DFAFADCCCAD85A79E1398D9 /* 20261023181210-45bf-fix-raw-selection.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261023181210-45bf-fix-raw-selection.json"; sourceTree = "<group>"; };
 		A0654F9546BAB2E568FAD9AB /* FND-20261023101753-bc8d-complete-repository-audit-006.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261023101753-bc8d-complete-repository-audit-006.json"; sourceTree = "<group>"; };
+		2B56040ACE51ADC5C956CA7F /* guider-timing.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "guider-timing.json"; sourceTree = "<group>"; };
 		8C89475FC90D6302C58246A3 /* allocation-failure.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "allocation-failure.c"; sourceTree = "<group>"; };
 		F07E5435D4C46591C63F4113 /* baseline.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "baseline.log"; sourceTree = "<group>"; };
 		91A99980A5F891A44EA172B7 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
@@ -6342,6 +6356,8 @@
 		C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_raw_to_fits.c"; sourceTree = "<group>"; };
 		36E41BCDB8724B72516C0349 /* 20261023181250-5c67-fix-raw-fits-bounds.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261023181250-5c67-fix-raw-fits-bounds.json"; sourceTree = "<group>"; };
 		9DAD0C6F6F2098B2DAD79A6F /* FND-20261023101753-bc8d-complete-repository-audit-005.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261023101753-bc8d-complete-repository-audit-005.json"; sourceTree = "<group>"; };
+		E3A4D504F64B7EFBD8E9395D /* FND-20261023180923-1f46-fix-synscan-autohome-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261023180923-1f46-fix-synscan-autohome-001.json"; sourceTree = "<group>"; };
+		05DC3C32CA939072B423B301 /* compare-autohome.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "compare-autohome.py"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6604,7 +6620,6 @@
 		266F3967ACFB9DBEEAF8366A /* .github */ = {
 			isa = PBXGroup;
 			children = (
-				A671866D9379F67151B3EFA7 /* 20261023180252-b61d-fix-imager-download */,
 				C681D632B6D3592436C4369C /* copilot-instructions.md */,
 			);
 			path = .github;
@@ -6684,7 +6699,6 @@
 		43FC55CCDD648364C6BDAB7D /* findings */ = {
 			isa = PBXGroup;
 			children = (
-				01465DBD43F9BA6178E5A4DF /* 20261023180252-b61d-fix-imager-download.json */,
 				7408BDCC962B55A84CDB553C /* archive */,
 				E4AEE37682BCB91ADDE76C3C /* active */,
 				3FDC8ED80DA3AC9312AF4B29 /* registry.json */,
@@ -6695,7 +6709,6 @@
 		4B00CB1392F9F549E171A7F6 /* 20261022212521-61cf-primalucelib */ = {
 			isa = PBXGroup;
 			children = (
-				8E474CDDDF840E041D14272B /* FND-20261023101753-bc8d-complete-repository-audit-039.json */,
 				63A9C5D1E2D208445D1DF196 /* brief.md */,
 				1925C4DCB92F22D7C75BA4DB /* handoff.md */,
 				90132ED092D4E4021CD2FDA5 /* plan.md */,
@@ -7782,7 +7795,6 @@
 		592C3357304BE541004D5AE6 /* benchmark */ = {
 			isa = PBXGroup;
 			children = (
-				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
 				592C3354304BE541004D5AE6 /* bench_queue.c */,
 				592C3355304BE541004D5AE6 /* bench_timer.c */,
 				592C3356304BE541004D5AE6 /* TIMERS_AND_QUEUES_MERGE_REVIEW.md */,
@@ -14906,6 +14918,7 @@
 		59FA7BE9301D35FD00A35CFB /* unit */ = {
 			isa = PBXGroup;
 			children = (
+				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
 				D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */,
 				C1709E72227841389E72BABD /* test_transport_cache_security.c */,
 				59FA7C0C301DD71000A35CFB /* test_timer.c */,
@@ -15376,6 +15389,8 @@
 		5D81F456588D799E5C20FF68 /* archive */ = {
 			isa = PBXGroup;
 			children = (
+				65D03F94812B78532C43FC3C /* 20261023180923-1f46-fix-synscan-autohome */,
+				A671866D9379F67151B3EFA7 /* 20261023180252-b61d-fix-imager-download */,
 				DC326EC1082C69905B94CDF1 /* 20261023181210-45bf-fix-raw-selection */,
 				1988C3819D9B614274CAFB20 /* 20261023112118-8e5e-server-security-audit */,
 				DC781B8D44EA7ECACDF738C8 /* 20261021195453-0ff1-fix-ftdi-build */,
@@ -15439,6 +15454,9 @@
 		7408BDCC962B55A84CDB553C /* archive */ = {
 			isa = PBXGroup;
 			children = (
+				E3A4D504F64B7EFBD8E9395D /* FND-20261023180923-1f46-fix-synscan-autohome-001.json */,
+				D3C6448BE4580E160762A1ED /* FND-20261023101753-bc8d-complete-repository-audit-026.json */,
+				8E474CDDDF840E041D14272B /* FND-20261023101753-bc8d-complete-repository-audit-039.json */,
 				A0654F9546BAB2E568FAD9AB /* FND-20261023101753-bc8d-complete-repository-audit-006.json */,
 				A37218AB75285F589283925B /* FND-000044.json */,
 				70F570AEDCA386A9012318DE /* FND-000045.json */,
@@ -17542,6 +17560,8 @@
 		AFDBB818F553FC60124A5A5B /* completions */ = {
 			isa = PBXGroup;
 			children = (
+				C9A52F05B574213F98D7E04F /* 20261023180923-1f46-fix-synscan-autohome.json */,
+				01465DBD43F9BA6178E5A4DF /* 20261023180252-b61d-fix-imager-download.json */,
 				2DFAFADCCCAD85A79E1398D9 /* 20261023181210-45bf-fix-raw-selection.json */,
 				56FFB0DEBF25A72E944416CF /* 20261023112118-8e5e-server-security-audit.json */,
 				D9D573A7A484CAA9F88121F1 /* .gitkeep */,
@@ -18021,6 +18041,26 @@
 				D3C22800B0993357E97A493C /* verification.md */,
 			);
 			path = "20261023180252-b61d-fix-imager-download";
+			sourceTree = "<group>";
+		};
+		65D03F94812B78532C43FC3C /* 20261023180923-1f46-fix-synscan-autohome */ = {
+			isa = PBXGroup;
+			children = (
+				05DC3C32CA939072B423B301 /* compare-autohome.py */,
+				2B56040ACE51ADC5C956CA7F /* guider-timing.json */,
+				7B4D36CD564EAE063A28C313 /* autohome-reference.json */,
+				791A0F37824712C2F2E13479 /* brief.md */,
+				DD3DCDFD80438348F7EC6B92 /* handoff.md */,
+				A735C064B85FB5BB6E9F40D7 /* plan.md */,
+				92DD6484BB5DCA2975F8481B /* process.json */,
+				C68669EF09CA7633252EBA4D /* quality-review.md */,
+				D894D626A79BA0FDD3649DE1 /* security.md */,
+				29020DB47BF6DBA2BBDF5B53 /* specification.md */,
+				E5A8719CD8E48B1B1188B1E8 /* state.json */,
+				7B74E69C06B8BC6230445F10 /* test-plan.md */,
+				F560631A2A8E291620CFB7D5 /* verification.md */,
+			);
+			path = "20261023180923-1f46-fix-synscan-autohome";
 			sourceTree = "<group>";
 		};
 		DC326EC1082C69905B94CDF1 /* 20261023181210-45bf-fix-raw-selection */ = {

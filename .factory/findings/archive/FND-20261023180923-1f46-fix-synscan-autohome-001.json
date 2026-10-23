@@ -1,0 +1,24 @@
+{
+  "title": "SynScan simulator discovery can initialize a physical network mount",
+  "category": "quality",
+  "severity": "high",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023180923-1f46-fix-synscan-autohome",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The existing simulator autodetection case broadcasts to 255.255.255.255 and connects before checking that DEVICE_PORT is local. A physical mount can answer before the fixture (which drops five replies), receive connection/initialization commands, and the test then skips as a pass. Constrain discovery to loopback in the test build, retain real UDP parsing/retries and fail a nonlocal responder; verify before closure. Production hardware discovery must remain unchanged.",
+  "evidence": "verification.md: simulator-only discovery boundary; test source previously documented that physical mounts could win discovery before its local check.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task verification.md: test-only loopback discovery substitution, nonlocal assertion, passing confined discovery with real UDP retries in normal and ASan/UBSan builds. Production discovery unchanged.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023180923-1f46-fix-synscan-autohome-001"
+}

@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261023180923-1f46-fix-synscan-autohome",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive, commit and verify content/process gates; then release exact candidate to coordinator for authorized local integration. No push.",
+  "blocker": null
+}

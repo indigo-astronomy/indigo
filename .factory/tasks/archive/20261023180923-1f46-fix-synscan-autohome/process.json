@@ -1,0 +1,130 @@
+{
+  "version": 2,
+  "task": "20261023180923-1f46-fix-synscan-autohome",
+  "scope": [
+    "indigo_drivers/mount_synscan/*",
+    "indigo_test/integration/test_mount_synscan_simulator.c",
+    "indigo_test/Makefile",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-026.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-026.json",
+    ".factory/findings/archive/FND-20261023180923-1f46-fix-synscan-autohome-001.json",
+    ".factory/completions/20261023180923-1f46-fix-synscan-autohome.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "mount_synscan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "INDIGO_TEST_FILTER=synscan_autohome",
+        "ASAN_OPTIONS=detect_leaks=0",
+        "/private/tmp/test_mount_synscan_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023180923-1f46-fix-synscan-autohome.json": [
+      "100644",
+      "blob",
+      "6c85a6e95fc63128cf2e45be45187bb4c46c3a01"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-026.json": null,
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-026.json": [
+      "100644",
+      "blob",
+      "66d6105c90e4428df59288a86f9e66ccabc46902"
+    ],
+    ".factory/findings/archive/FND-20261023180923-1f46-fix-synscan-autohome-001.json": [
+      "100644",
+      "blob",
+      "87d210ca3c7f35a30b08b76210ab411d876b67f8"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "4551a616b10e023a9d599f42fe20708a5b382fa7"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "a8678965dc2613bcd72071e72682de85e9453bd8"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "c36d0ed3d1a3be7daddaa6c19d0afe05b93eb97b"
+    ],
+    "indigo_drivers/mount_synscan/README.md": [
+      "100644",
+      "blob",
+      "2e04e5eb239534ecc4df3ba78f24ef7150dc8236"
+    ],
+    "indigo_drivers/mount_synscan/REFACTOR.md": [
+      "100644",
+      "blob",
+      "45a877bf5940b9fd12dc238a5dd1354b7ce5029a"
+    ],
+    "indigo_drivers/mount_synscan/indigo_mount_synscan.c": [
+      "100644",
+      "blob",
+      "750453534f7679dddf38c840b6bdb1a6ec89cbf3"
+    ],
+    "indigo_drivers/mount_synscan/indigo_mount_synscan.driver": [
+      "100644",
+      "blob",
+      "2e99438cd5cc49d89448eab099e10fc8f9b63691"
+    ],
+    "indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.c": [
+      "100644",
+      "blob",
+      "58126311251a132ca643274e6aa411fd0b640ad2"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "dcb52904f5a2876cca63b6e01020ffb3de5f11e3"
+    ],
+    "indigo_test/integration/test_mount_synscan_simulator.c": [
+      "100644",
+      "blob",
+      "467bc97f91efa589d90e53dafbb63da3ab9b423a"
+    ]
+  }
+}
