@@ -877,8 +877,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 			if (!strncmp(line, "ALERT", 5)) {
 				property->state = INDIGO_ALERT_STATE;
 				char *message = strchr(line, ':');
-				if (message) message++; /* if found ':', skip it */
-				indigo_update_property(device, property, message);
+				indigo_update_property(device, property, "%s", message ? message + 1 : line);
 			} else {
 				property->state = INDIGO_OK_STATE;
 				indigo_update_property(device, property, NULL);
@@ -895,7 +894,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 		return INDIGO_OK;
 	}
 	property->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, property, strerror(errno));
+	indigo_update_property(device, property, "%s", strerror(errno));
 	return INDIGO_OK;
 }
 
@@ -1413,13 +1412,32 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	pthread_mutex_lock(&install_property_mutex);
 	if (indigo_property_match(SERVER_INSTALL_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- INSTALL
-		indigo_property_copy_values(SERVER_INSTALL_PROPERTY, property, false);
+		int selected = -1;
 		for (int i = 0; i < property->count; i++) {
 			if (property->items[i].sw.value) {
-				indigo_result result = execute_command(device, SERVER_INSTALL_PROPERTY, "s_rpi_ctrl.sh --install-version %s", property->items[i].name);
-				pthread_mutex_unlock(&install_property_mutex);
-				return result;
+				int j;
+				for (j = 0; j < SERVER_INSTALL_PROPERTY->count; j++) {
+					if (!strcmp(property->items[i].name, SERVER_INSTALL_PROPERTY->items[j].name)) {
+						break;
+					}
+				}
+				if (j == SERVER_INSTALL_PROPERTY->count) {
+					SERVER_INSTALL_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, SERVER_INSTALL_PROPERTY, "Unknown installation version");
+					pthread_mutex_unlock(&install_property_mutex);
+					return INDIGO_OK;
+				}
+				if (selected < 0) {
+					selected = j;
+				}
 			}
+		}
+		indigo_property_copy_values(SERVER_INSTALL_PROPERTY, property, false);
+		if (selected >= 0) {
+			char version[INDIGO_NAME_SIZE * 4 + 3];
+			indigo_result result = execute_command(device, SERVER_INSTALL_PROPERTY, "s_rpi_ctrl.sh --install-version %s", shell_escape(SERVER_INSTALL_PROPERTY->items[selected].name, version, sizeof(version)));
+			pthread_mutex_unlock(&install_property_mutex);
+			return result;
 		}
 	}
 	pthread_mutex_unlock(&install_property_mutex);

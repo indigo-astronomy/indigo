@@ -1,0 +1,24 @@
+{
+  "title": "Upstream XML messages are interpreted as variadic formats",
+  "category": "security",
+  "severity": "high",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Remote XML message attributes are passed directly to variadic property publication APIs, allowing undefined format evaluation. Repair literal forwarding and verify percent diagnostics on upstream adapter paths.",
+  "evidence": "preliminary-review.md records independent observation and coordinator-confirmed XML forwarding to bus vsnprintf; no exploit executed.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023121227-a609-fix-server-security-high-001"
+}

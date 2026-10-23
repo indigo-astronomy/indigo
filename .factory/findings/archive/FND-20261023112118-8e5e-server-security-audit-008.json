@@ -2,18 +2,28 @@
   "title": "RPI INSTALL incoming item names reach shell commands",
   "category": "security",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
-  "blocking": true,
+  "blocking": false,
   "tasks": [
     {
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "access-security.md",
       "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Enabled RPI management INSTALL iterates original incoming items after copying known values, then interpolates selected item.name unquoted into popen. JSON accepts arbitrary names and bus dispatch does not whitelist versions. Requires initialized INSTALL and permission to change Server; executes shell syntax with server privileges. Source-contract confirmation only; no command payload executed. Next: Reject unknown version items, iterate validated canonical selection, and use an argument-vector helper invocation or correct quoting. Verify with intercepted invocation without installing packages.",
   "evidence": "indigo_server/indigo_server.c:1414-1419;860-868; access-security.md section A-01",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-008"
 }

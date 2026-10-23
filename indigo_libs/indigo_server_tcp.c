@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <dns_sd.h>
 #include <sys/stat.h>
@@ -47,6 +48,7 @@
 #include <indigo/indigo_client_xml.h>
 #include <indigo/indigo_base64.h>
 #include <indigo/indigo_uni_io.h>
+#include <indigo/indigo_timer.h>
 
 #define SHA1_SIZE 20
 #if _MSC_VER
@@ -88,6 +90,139 @@ static struct resource {
 // RFC 6455 GUID appended to Sec-WebSocket-Key before hashing
 #define WEBSOCKET_GUID	"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
+#ifndef INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT
+#define INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT 5.0
+#endif
+#ifndef INDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT
+#define INDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT 60.0
+#endif
+
+static bool upload_wait(indigo_uni_handle *handle, double deadline) {
+	double remaining = deadline - indigo_monotonic_time();
+	if (remaining <= 0) {
+		return false;
+	}
+	if (remaining > INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT) {
+		remaining = INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT;
+	}
+	return indigo_uni_wait_for_data(handle, (long)(remaining * 1000000)) > 0;
+}
+
+// Require an actual complete line; the generic serial line reader also returns partial lines.
+static long upload_header_line(indigo_uni_handle *handle, char *buffer, size_t capacity, double deadline) {
+	size_t length = 0;
+	while (length + 1 < capacity) {
+		char c;
+		if (!upload_wait(handle, deadline) || indigo_uni_read_available(handle, &c, 1) != 1) {
+			return -1;
+		}
+		if (c == '\n') {
+			if (length && buffer[length - 1] == '\r') {
+				length--;
+			}
+			buffer[length] = 0;
+			return (long)length;
+		}
+		if (c == 0) {
+			return -1;
+		}
+		buffer[length++] = c;
+	}
+	return -1;
+}
+
+static bool parse_upload_length(const char *text, size_t *size) {
+	while (*text == ' ' || *text == '\t') {
+		text++;
+	}
+	if (*text < '0' || *text > '9') {
+		return false;
+	}
+	size_t value = 0;
+	while (*text >= '0' && *text <= '9') {
+		unsigned digit = *text++ - '0';
+		if (value > (INDIGO_BLOB_UPLOAD_LIMIT - digit) / 10) {
+			return false;
+		}
+		value = value * 10 + digit;
+	}
+	while (*text == ' ' || *text == '\t') {
+		text++;
+	}
+	if (*text) {
+		return false;
+	}
+	*size = value;
+	return true;
+}
+
+static int receive_blob_upload(indigo_uni_handle *handle, indigo_blob_entry *entry) {
+	char header[BUFFER_SIZE];
+	size_t size = 0;
+	bool have_length = false;
+	bool complete = false;
+	double deadline = indigo_monotonic_time() + INDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT;
+	for (int i = 0; i < 64; i++) {
+		long length = upload_header_line(handle, header, sizeof(header), deadline);
+		if (length < 0) {
+			return 400;
+		}
+		if (length == 0) {
+			complete = true;
+			break;
+		}
+		char *colon = strchr(header, ':');
+		if (colon == NULL || colon == header) {
+			return 400;
+		}
+		for (char *p = header; p < colon; p++) {
+			if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || strchr("!#$%&'*+-.^_`|~", *p))) {
+				return 400;
+			}
+		}
+		*colon++ = 0;
+		if (!strcasecmp(header, "Content-Length")) {
+			if (have_length || !parse_upload_length(colon, &size)) {
+				return 400;
+			}
+			have_length = true;
+		} else if (!strcasecmp(header, "Transfer-Encoding")) {
+			return 400;
+		}
+	}
+	if (!complete || !have_length) {
+		return 400;
+	}
+	void *buffer = indigo_allocate_blob_upload(size);
+	if (buffer == NULL) {
+		return 503;
+	}
+	size_t received = 0;
+	int status = 200;
+	int log_level = handle->log_level;
+	handle->log_level = -abs(log_level);
+	while (received < size) {
+		if (!upload_wait(handle, deadline)) {
+			status = 408;
+			break;
+		}
+		long count = indigo_uni_read_available(handle, (char *)buffer + received, (long)(size - received));
+		if (count <= 0) {
+			status = 400;
+			break;
+		}
+		received += count;
+	}
+	handle->log_level = log_level;
+	if (status == 200 && !indigo_publish_blob_upload(entry, buffer, size)) {
+		status = 404;
+	}
+	if (status != 200) {
+		indigo_free_blob_upload(buffer, size);
+	}
+	return status;
+}
+
 static void start_worker_thread(indigo_uni_worker_data *data) {
 	indigo_rename_thread("Server worker");
 	indigo_uni_handle *handle = data->handle;
@@ -96,7 +231,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 	long res = 0;
 	char c;
 	void *free_on_exit = NULL;
-	pthread_mutex_t *unlock_at_exit = NULL;
+	indigo_blob_entry *release_at_exit = NULL;
 	if (indigo_uni_peek_available(handle, &c, 1) == 1) {
 		if (c == '<') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", handle->index));
@@ -194,80 +329,64 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 					} else if (!strncmp(path, "/blob/", 6)) {
 						indigo_item *item;
 						indigo_blob_entry *entry;
-						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
-							pthread_mutex_lock(unlock_at_exit = &entry->mutext);
-							long working_size = entry->size;
-							if (working_size == 0) {
-								assert(entry->content == NULL);
-								indigo_item item_copy = *item;
-								item_copy.blob.size = 0;
-								item_copy.blob.value = NULL;
-								if (indigo_populate_http_blob_item(&item_copy)) {
-									working_size = entry->size = item_copy.blob.size;
-									entry->content = item_copy.blob.value;
-								} else {
-									indigo_error("%d <- // Failed to populate BLOB", handle->index);
-								}
-							}
-							void *working_copy = indigo_use_blob_buffering ? (free_on_exit = malloc(working_size)) : entry->content;
-							if (working_copy) {
-								char working_format[INDIGO_NAME_SIZE];
-								strcpy(working_format, entry->format);
-								INDIGO_PRINTF(handle, "HTTP/1.1 200 OK\r\n");
-								if (indigo_use_blob_buffering) {
-									if (use_gzip && indigo_use_blob_compression && strcmp(entry->format, ".jpeg")) {
-										unsigned compressed_size = (unsigned)working_size;
-										indigo_uni_compress("image", entry->content, (unsigned)working_size, working_copy, &compressed_size);
-										INDIGO_PRINTF(handle, "Content-Encoding: gzip\r\n");
-										INDIGO_PRINTF(handle, "X-Uncompressed-Content-Length: %ld\r\n", working_size);
-										working_size = compressed_size;
-									} else {
-										memcpy(working_copy, entry->content, working_size);
-									}
-									pthread_mutex_unlock(&entry->mutext);
-									unlock_at_exit = NULL;
-								}
-								INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-								if (!strcmp(entry->format, ".jpeg")) {
-									INDIGO_PRINTF(handle, "Content-Type: image/jpeg\r\n");
-								} else {
-									INDIGO_PRINTF(handle, "Content-Type: application/octet-stream\r\n");
-									INDIGO_PRINTF(handle, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, working_format);
-								}
-								if (keep_alive) {
-									INDIGO_PRINTF(handle, "Connection: keep-alive\r\n");
-								}
-								INDIGO_PRINTF(handle, "Content-Length: %ld\r\n", working_size);
-								INDIGO_PRINTF(handle, "\r\n");
-								handle->log_level = -abs(handle->log_level);
-								if (indigo_uni_write(handle, working_copy, working_size) < 0) {
-									handle->log_level = abs(handle->log_level);
-									goto failure;
-								}
-								handle->log_level = abs(handle->log_level);
-								if (indigo_use_blob_buffering) {
-									free(working_copy);
-									free_on_exit = NULL;
-								} else {
-									pthread_mutex_unlock(&entry->mutext);
-									unlock_at_exit = NULL;
-								}
-							} else {
-								pthread_mutex_unlock(&entry->mutext);
-								unlock_at_exit = NULL;
-								INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-								INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-								INDIGO_PRINTF(handle, "\r\n");
-								INDIGO_PRINTF(handle, "Out of buffer memory!\r\n");
-								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", handle->index));
+						if (sscanf(path, "/blob/%p.", &item) && (entry = release_at_exit = indigo_acquire_blob(item))) {
+							indigo_item copy;
+							bool copied = indigo_snapshot_blob(entry, &copy);
+							indigo_release_blob(entry);
+							release_at_exit = NULL;
+							if (!copied) {
+								INDIGO_PRINTF(handle, "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
 								goto failure;
 							}
+							if (copy.blob.size == 0 && copy.blob.url[0]) {
+								if (!indigo_populate_http_blob_item(&copy)) {
+									free(copy.blob.value);
+									INDIGO_PRINTF(handle, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+									goto failure;
+								}
+							}
+							free_on_exit = copy.blob.value;
+							long working_size = copy.blob.size;
+							INDIGO_PRINTF(handle, "HTTP/1.1 200 OK\r\n");
+							if (indigo_use_blob_buffering && use_gzip && indigo_use_blob_compression && strcmp(copy.blob.format, ".jpeg") && working_size > 0) {
+								// Compression can expand incompressible bytes; leave room for deflate and gzip framing.
+								size_t capacity = (size_t)working_size + (size_t)working_size / 1000 + 64;
+								void *compressed = capacity <= UINT_MAX ? malloc(capacity) : NULL;
+								unsigned compressed_size = (unsigned)capacity;
+								if (compressed) {
+									indigo_uni_compress("image", copy.blob.value, (unsigned)working_size, compressed, &compressed_size);
+								}
+								if (compressed && compressed_size > 0) {
+									free(copy.blob.value);
+									copy.blob.value = free_on_exit = compressed;
+									INDIGO_PRINTF(handle, "Content-Encoding: gzip\r\n");
+									INDIGO_PRINTF(handle, "X-Uncompressed-Content-Length: %ld\r\n", working_size);
+									working_size = compressed_size;
+								} else {
+									free(compressed);
+								}
+							}
+							INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							if (!strcmp(copy.blob.format, ".jpeg")) {
+								INDIGO_PRINTF(handle, "Content-Type: image/jpeg\r\n");
+							} else {
+								INDIGO_PRINTF(handle, "Content-Type: application/octet-stream\r\n");
+								INDIGO_PRINTF(handle, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, copy.blob.format);
+							}
+							if (keep_alive) {
+								INDIGO_PRINTF(handle, "Connection: keep-alive\r\n");
+							}
+							INDIGO_PRINTF(handle, "Content-Length: %ld\r\n\r\n", working_size);
+							handle->log_level = -abs(handle->log_level);
+							if (working_size && indigo_uni_write(handle, copy.blob.value, working_size) != working_size) {
+								handle->log_level = abs(handle->log_level);
+								goto failure;
+							}
+							handle->log_level = abs(handle->log_level);
+							free(free_on_exit);
+							free_on_exit = NULL;
 						} else {
-							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_PRINTF(handle, "BLOB not found!\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", handle->index));
+							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
 							goto failure;
 						}
 					} else {
@@ -355,45 +474,16 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 					if (!strncmp(path, "/blob/", 6)) {
 						indigo_item *item;
 						indigo_blob_entry *entry;
-						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
-							int content_length = 0;
-							char header[BUFFER_SIZE];
-							while (indigo_uni_read_line(handle, header, sizeof(header) - 1) > 0) {
-								if (!strncasecmp(header, "Content-Length:", 15)) {
-									content_length = atoi(header + 15);
-								}
-							}
-							pthread_mutex_lock(unlock_at_exit = &entry->mutext);
-							entry->content = indigo_safe_realloc(entry->content, entry->size = content_length);
-							if (entry->content) {
-								handle->log_level = -abs(handle->log_level);
-								if (!indigo_uni_read(handle, entry->content, content_length)) {
-									handle->log_level = abs(handle->log_level);
-									goto failure;
-								}
-								handle->log_level = abs(handle->log_level);
-								pthread_mutex_unlock(&entry->mutext);
-								unlock_at_exit = NULL;
-								INDIGO_PRINTF(handle, "HTTP/1.1 200 OK\r\n");
-								INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-								INDIGO_PRINTF(handle, "Content-Length: 0\r\n");
-								INDIGO_PRINTF(handle, "\r\n");
-							} else {
-								INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-								INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-								INDIGO_PRINTF(handle, "\r\n");
-								INDIGO_PRINTF(handle, "Out of buffer memory!\r\n");
-								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", handle->index));
-								goto failure;
-							}
+						if (sscanf(path, "/blob/%p.", &item) && (entry = release_at_exit = indigo_acquire_blob(item))) {
+							int status = receive_blob_upload(handle, entry);
+							indigo_release_blob(entry);
+							release_at_exit = NULL;
+							const char *reason = status == 200 ? "OK" : status == 408 ? "Request Timeout" : status == 404 ? "Not Found" : status == 503 ? "Service Unavailable" : "Bad Request";
+							INDIGO_PRINTF(handle, "HTTP/1.1 %d %s\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", status, reason);
 						} else {
-							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_PRINTF(handle, "BLOB not found!\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", handle->index));
-							goto failure;
+							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
 						}
+						keep_alive = false;
 					} else {
 						pthread_mutex_lock(&resource_list_mutex);
 						struct resource *resource = resources;
@@ -431,8 +521,8 @@ failure:
 	if (free_on_exit) {
 		indigo_safe_free(free_on_exit);
 	}
-	if (unlock_at_exit) {
-		pthread_mutex_unlock(unlock_at_exit);
+	if (release_at_exit) {
+		indigo_release_blob(release_at_exit);
 	}
 }
 

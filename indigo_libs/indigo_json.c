@@ -32,6 +32,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <stdint.h>
+#include <limits.h>
 
 #include <indigo/indigo_json.h>
 #include <indigo/indigo_io.h>
@@ -56,55 +57,77 @@
 #endif
 #endif
 
-static long ws_read(indigo_uni_handle* handle, char* buffer, long length) {
-	uint8_t header[2];
-	long bytes_read = indigo_uni_read(handle, (char*)header, 2);
-	if (bytes_read <= 0) {
-		return bytes_read;
-	}
-	INDIGO_TRACE_PARSER(indigo_trace("ws_read -> %2x", header[0]));
-	int masked = (header[1] & 0x80) != 0;
-	uint64_t payload_length = header[1] & 0x7F;
-	if (payload_length == 0x7E) {
-		uint8_t ext[2];
-		bytes_read = indigo_uni_read(handle, (char*)ext, 2);
-		if (bytes_read <= 0) {
-			return bytes_read;
+static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static long ws_read(indigo_uni_handle *handle, indigo_uni_handle *output, char *buffer, long capacity) {
+	long used = 0;
+	bool fragmented = false;
+	while (true) {
+		uint8_t header[2], extension[8], mask[4];
+		if (indigo_uni_read(handle, (char *)header, 2) != 2) {
+			return -1;
 		}
-		uint16_t tmp16;
-		memcpy(&tmp16, ext, 2);
-		payload_length = ntohs(tmp16);
-	} else if (payload_length == 0x7F) {
-		uint8_t ext[8];
-		bytes_read = indigo_uni_read(handle, (char*)ext, 8);
-		if (bytes_read <= 0) {
-			return bytes_read;
+		bool final = (header[0] & 0x80) != 0;
+		unsigned opcode = header[0] & 0x0f;
+		bool control = (opcode & 8) != 0;
+		if ((header[0] & 0x70) || !(header[1] & 0x80) || (control ? (!final || (opcode != 8 && opcode != 9 && opcode != 10)) : (fragmented ? opcode != 0 : opcode != 1))) {
+			return -1;
 		}
-		uint64_t tmp64;
-		memcpy(&tmp64, ext, 8);
-		payload_length = ntohll(tmp64);
-	}
-	uint8_t masking_key[4] = { 0 };
-	if (masked) {
-		bytes_read = indigo_uni_read(handle, (char*)masking_key, 4);
-		if (bytes_read <= 0) {
-			return bytes_read;
+		uint64_t length = header[1] & 0x7f;
+		unsigned extended = length == 126 ? 2 : length == 127 ? 8 : 0;
+		if (control && length > 125) {
+			return -1;
+		}
+		if (extended) {
+			if (indigo_uni_read(handle, (char *)extension, extended) != extended) {
+				return -1;
+			}
+			length = 0;
+			for (unsigned i = 0; i < extended; i++) {
+				length = (length << 8) | extension[i];
+			}
+			if ((extended == 2 && length < 126) || (extended == 8 && (length < 65536 || (extension[0] & 0x80)))) {
+				return -1;
+			}
+		}
+		if (capacity < used || length > (uint64_t)LONG_MAX || (!control && length > (uint64_t)(capacity - used))) {
+			return -1;
+		}
+		if (indigo_uni_read(handle, (char *)mask, 4) != 4) {
+			return -1;
+		}
+		char control_payload[125];
+		char *payload = control ? control_payload : buffer + used;
+		if (length && indigo_uni_read(handle, payload, (long)length) != (long)length) {
+			return -1;
+		}
+		for (long i = 0; i < (long)length; i++) {
+			payload[i] ^= mask[i % 4];
+		}
+		if (control) {
+			if (opcode == 8 && length == 1) {
+				return -1;
+			}
+			if (opcode == 8 || opcode == 9) {
+				uint8_t reply[2] = { opcode == 8 ? 0x88 : 0x8a, (uint8_t)length };
+				pthread_mutex_lock(&json_mutex);
+				bool written = indigo_uni_write(output, (char *)reply, 2) == 2 && (!length || indigo_uni_write(output, payload, (long)length) == (long)length);
+				pthread_mutex_unlock(&json_mutex);
+				if (!written) {
+					return -1;
+				}
+			}
+			if (opcode == 8) {
+				return 0;
+			}
+			continue;
+		}
+		used += (long)length;
+		fragmented = !final;
+		if (final && used) {
+			return used;
 		}
 	}
-	if (length < (long)payload_length) {
-		errno = ENODATA;
-		return -1;
-	}
-	bytes_read = indigo_uni_read(handle, buffer, (long)payload_length);
-	if (bytes_read <= 0) {
-		return bytes_read;
-	}
-	if (masked) {
-		for (uint64_t i = 0; i < payload_length; i++) {
-			buffer[i] ^= masking_key[i % 4];
-		}
-	}
-	return (long)payload_length;
 }
 
 typedef enum {
@@ -330,8 +353,8 @@ static void* top_level_handler(parser_state state, char* name, char* value, indi
 void indigo_json_parse(indigo_device* device, indigo_client* client) {
 	indigo_adapter_context* context = (indigo_adapter_context*)client->client_context;
 	indigo_uni_handle* handle = context->input;
-	char* buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
-	char* value_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
+	char* buffer = indigo_safe_malloc(JSON_BUFFER_SIZE + 1);
+	char* value_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE + 1);
 	char* name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
 	indigo_property* property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
 	property->allocated_count = INDIGO_PREALLOCATED_COUNT;
@@ -353,7 +376,7 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 			goto exit_loop;
 		}
 		while ((c = *pointer++) == 0) {
-			long count = context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : indigo_uni_read_line(handle, buffer, JSON_BUFFER_SIZE - 1);
+			long count = context->web_socket ? ws_read(handle, context->output, buffer, JSON_BUFFER_SIZE) : indigo_uni_read_line(handle, buffer, JSON_BUFFER_SIZE - 1);
 			if (count <= 0) {
 				goto exit_loop;
 			}
@@ -407,7 +430,7 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 				state = NAME1_STATE;
 				*name_pointer = 0;
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME -> NAME1", c));
-			} else if (name_pointer - name_buffer < INDIGO_NAME_SIZE) {
+			} else if (name_pointer - name_buffer < INDIGO_NAME_SIZE - 1) {
 				*name_pointer++ = c;
 			} else {
 				state = ERROR_STATE;
@@ -474,7 +497,11 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 			}
 			break;
 		case NUMBER_VALUE_STATE:
-			if ((isdigit(c) || c == '.' || c == 'e' || c == 'E' || c == '-') && value_pointer - value_buffer < JSON_BUFFER_SIZE) {
+			if (isdigit(c) || c == '.' || c == 'e' || c == 'E' || c == '-') {
+				if (value_pointer - value_buffer >= JSON_BUFFER_SIZE) {
+					state = ERROR_STATE;
+					break;
+				}
 				*value_pointer++ = c;
 			} else {
 				state = VALUE1_STATE;
@@ -485,7 +512,11 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 			}
 			break;
 		case LOGICAL_VALUE_STATE:
-			if ((isalpha(c)) && value_pointer - value_buffer < JSON_BUFFER_SIZE) {
+			if (isalpha(c)) {
+				if (value_pointer - value_buffer >= JSON_BUFFER_SIZE) {
+					state = ERROR_STATE;
+					break;
+				}
 				*value_pointer++ = c;
 			} else {
 				*value_pointer = 0;
@@ -607,7 +638,6 @@ const char* indigo_json_escape_b(int index, const char* string) {
 	return string;
 }
 
-static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static long ws_write(indigo_uni_handle *handle, const char *buffer, long length) {
 	uint8_t header[10] = { 0x81 };
@@ -921,7 +951,7 @@ indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, 
 	pthread_mutex_lock(&json_mutex);
 	indigo_uni_handle *handle = client_context->output;
 	assert(handle != NULL);
-	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
+	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE + 1);
 	char *pnt = output_buffer;
 	long size;
 	if (*property->name == 0) {
@@ -957,7 +987,7 @@ indigo_result indigo_json_device_adapter_message_property(indigo_client *client,
 	pthread_mutex_lock(&json_mutex);
 	indigo_uni_handle *handle = client_context->output;
 	assert(handle != NULL);
-	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
+	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE + 1);
 	char *pnt = output_buffer;
 	long size;
 	if (property) {

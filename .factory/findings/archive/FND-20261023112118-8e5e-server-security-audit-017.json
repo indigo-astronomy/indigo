@@ -2,18 +2,28 @@
   "title": "WebSocket reads do not validate lengths in the correct integer domain or require complete frames",
   "category": "security",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
-  "blocking": true,
+  "blocking": false,
   "tasks": [
     {
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "parsers-security.md",
       "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "WebSocket uint64 length is compared after signed-long conversion but masking uses original length; Windows 32-bit long can admit oversized masked frames. Positive short reads are also accepted. Next: validate before conversion, exact reads and frame semantics; Windows/LP64 regressions. Confirmed by current source contracts; no fix or runtime retest claimed.",
   "evidence": "indigo_libs/indigo_json.c:61-116; indigo_libs/indigo_uni_io.c:247-327,1916-1944; parsers-security.md section P07",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-017"
 }

@@ -62,6 +62,11 @@ upload the data to http://localhost:7624/blob/0x10381d798 with PUT method
 
 INDI style BLOB uploads are not supported by INDIGO for performance reasons.
 
+HTTP BLOB PUT requests require one decimal `Content-Length` header; duplicate lengths, transfer encodings, malformed or incomplete headers and invalid sizes are rejected. The default maximum upload is 64 MiB. Pending uploads and retained uploaded cache content share a 256 MiB budget; exceeding it fails without replacing the previous BLOB. Builds may override `INDIGO_BLOB_UPLOAD_LIMIT` and `INDIGO_BLOB_UPLOAD_BUDGET` consistently for the library and its consumers. Empty uploads are allowed. A complete body is received privately before atomic publication; failed or incomplete uploads leave the prior cache unchanged. Uploads allow at most 5 seconds without progress and 60 seconds in total, including headers, and close the HTTP connection after their response. These defaults can be changed at build time with `INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT` and `INDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT` in seconds.
+
+Inline XML BLOBs received from an upstream device are limited to 256 MiB per item. Their declared size must match the decoded BASE64 bytes exactly; malformed padding and incomplete data terminate parsing. Each item retains its own decoded data until dispatch. This is a per-item limit, not a total session allocation budget.
+
+
 4. Number property items has 'target' attribute to distinguish between current and target item value for properties like CCD_EXPOSURE.
 
 5. Every property and every item may have optional attribute 'hints' containing presentation hints in CSS declaration syntax (see below for the list of defined properties and values).
@@ -79,6 +84,8 @@ e.g. javascript client used by web applications or .net client used by ASCOM dri
 over TCP or WEB-cocket stream.
 
 JSON protocol offers just BLOBs referenced by URL, no inline data.
+
+WebSocket clients send masked text frames. Text fragmentation and ping/pong/close control frames are supported; invalid lengths, incomplete frames, binary frames and unsupported flags/opcodes terminate parsing. A text message, including all continuation frames, is limited to 256 KiB.
 
 The mapping of XML to JSON messages demonstrated on a few examples is as follows:
 

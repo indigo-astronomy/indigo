@@ -2,18 +2,28 @@
   "title": "XML attribute accumulation has no enforced bound",
   "category": "security",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
-  "blocking": true,
+  "blocking": false,
   "tasks": [
     {
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "parsers-security.md",
       "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Inbound XML attributes append without a capacity check before authorization, causing debug assertion failure or release heap overwrite. Next: enforce checked lexical limit with reserved NUL, session-local rejection, and boundary/read-split sanitizer regressions. Confirmed by current source contracts; no fix or runtime retest claimed.",
   "evidence": "indigo_libs/indigo_xml.c:1349-1351,1398-1401,1705-1723; parsers-security.md section P01",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-011"
 }

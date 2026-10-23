@@ -675,13 +675,39 @@ INDIGO_EXTERN void *indigo_alloc_blob_buffer(long size);
  */
 INDIGO_EXTERN void indigo_release_property(indigo_property *property);
 
-/** Validate address of item of registered BLOB property.
+/** Legacy borrowed lookups. Callers must externally serialize property lifetime.
+ * Use the retained acquisition API for concurrent consumers.
  */
 INDIGO_EXTERN indigo_blob_entry *indigo_validate_blob(indigo_item *item);
-
-/** Find BLOB entry.
- */
 INDIGO_EXTERN indigo_blob_entry *indigo_find_blob(indigo_property *other_property, indigo_item *other_item);
+
+/** Retain a registered cache entry until indigo_release_blob(). This pins cache data,
+ * not the original item/property: never dereference entry->item or entry->property.
+ * Access content/size/format under mutext, and unlock before releasing the reference.
+ */
+INDIGO_EXTERN indigo_blob_entry *indigo_acquire_blob(indigo_item *item);
+INDIGO_EXTERN indigo_blob_entry *indigo_acquire_blob_by_name(indigo_property *property, indigo_item *item);
+INDIGO_EXTERN void indigo_release_blob(indigo_blob_entry *entry);
+
+/** Copy metadata and content under the entry lock. Caller frees copy->blob.value.
+ * A zero-sized external BLOB retains its URL for private lazy retrieval.
+ */
+INDIGO_EXTERN bool indigo_snapshot_blob(indigo_blob_entry *entry, indigo_item *copy);
+
+#ifndef INDIGO_BLOB_UPLOAD_LIMIT
+#define INDIGO_BLOB_UPLOAD_LIMIT (64u * 1024u * 1024u)
+#endif
+#ifndef INDIGO_BLOB_UPLOAD_BUDGET
+#define INDIGO_BLOB_UPLOAD_BUDGET (256u * 1024u * 1024u)
+#endif
+
+/** Recoverable bounded upload storage. The budget covers pending and published uploads.
+ * Free a failed upload with its original size. Successful publication takes ownership;
+ * failed publication leaves ownership with the caller. Zero-sized uploads are valid.
+ */
+INDIGO_EXTERN void *indigo_allocate_blob_upload(size_t size);
+INDIGO_EXTERN void indigo_free_blob_upload(void *buffer, size_t size);
+INDIGO_EXTERN bool indigo_publish_blob_upload(indigo_blob_entry *entry, void *buffer, size_t size);
 
 /** Initialize text item.
  */

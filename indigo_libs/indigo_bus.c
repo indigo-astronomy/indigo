@@ -82,6 +82,137 @@ static pthread_mutex_t bus_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 
 static pthread_mutex_t blob_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// The public entry layout is retained for ABI compatibility; lifetime metadata is private.
+typedef struct {
+	indigo_blob_entry entry;
+	unsigned references;
+	bool retired;
+	bool uploaded;
+	size_t upload_charge;
+	char device[INDIGO_NAME_SIZE];
+	char property[INDIGO_NAME_SIZE];
+	indigo_item item;
+} blob_record;
+
+static pthread_mutex_t blob_upload_mutex = PTHREAD_MUTEX_INITIALIZER;
+static size_t blob_upload_bytes;
+
+void *indigo_allocate_blob_upload(size_t size) {
+	if (size > INDIGO_BLOB_UPLOAD_LIMIT) {
+		return NULL;
+	}
+	pthread_mutex_lock(&blob_upload_mutex);
+	if (size > INDIGO_BLOB_UPLOAD_BUDGET - blob_upload_bytes) {
+		pthread_mutex_unlock(&blob_upload_mutex);
+		return NULL;
+	}
+	blob_upload_bytes += size;
+	pthread_mutex_unlock(&blob_upload_mutex);
+	void *buffer = malloc(size ? size : 1);
+	if (buffer == NULL) {
+		pthread_mutex_lock(&blob_upload_mutex);
+		blob_upload_bytes -= size;
+		pthread_mutex_unlock(&blob_upload_mutex);
+	}
+	return buffer;
+}
+
+void indigo_free_blob_upload(void *buffer, size_t size) {
+	if (buffer) {
+		free(buffer);
+		pthread_mutex_lock(&blob_upload_mutex);
+		blob_upload_bytes -= size;
+		pthread_mutex_unlock(&blob_upload_mutex);
+	}
+}
+
+static void clear_blob_content(indigo_blob_entry *entry) {
+	blob_record *record = (blob_record *)entry;
+	if (record->uploaded) {
+		indigo_free_blob_upload(entry->content, record->upload_charge);
+	} else {
+		free(entry->content);
+	}
+	entry->content = NULL;
+	entry->size = 0;
+	record->uploaded = false;
+	record->upload_charge = 0;
+}
+
+static void destroy_blob(indigo_blob_entry *entry) {
+	clear_blob_content(entry);
+	pthread_mutex_destroy(&entry->mutext);
+	free(entry);
+}
+
+// Caller holds the registry lock. Existing references retain only the cache snapshot.
+static void retire_blob(int slot) {
+	indigo_blob_entry *entry = blobs[slot];
+	blob_record *record = (blob_record *)entry;
+	pthread_mutex_lock(&entry->mutext);
+	blobs[slot] = NULL;
+	record->retired = true;
+	entry->item = NULL;
+	entry->property = NULL;
+	pthread_mutex_unlock(&entry->mutext);
+	if (record->references == 0) {
+		destroy_blob(entry);
+	}
+}
+
+static indigo_blob_entry *create_blob(indigo_property *property, indigo_item *item) {
+	blob_record *record = indigo_safe_malloc(sizeof(blob_record));
+	memset(record, 0, sizeof(*record));
+	record->entry.property = property;
+	record->entry.item = item;
+	record->item = *item;
+	record->item.blob.value = NULL;
+	record->item.blob.size = 0;
+	INDIGO_COPY_NAME(record->device, property->device);
+	INDIGO_COPY_NAME(record->property, property->name);
+	INDIGO_COPY_NAME(record->entry.format, item->blob.format);
+	pthread_mutex_init(&record->entry.mutext, NULL);
+	return &record->entry;
+}
+
+bool indigo_publish_blob_upload(indigo_blob_entry *entry, void *buffer, size_t size) {
+	blob_record *record = (blob_record *)entry;
+	pthread_mutex_lock(&entry->mutext);
+	if (record->retired) {
+		pthread_mutex_unlock(&entry->mutext);
+		return false;
+	}
+	clear_blob_content(entry);
+	entry->content = buffer;
+	entry->size = (long)size;
+	record->uploaded = true;
+	record->upload_charge = size;
+	pthread_mutex_unlock(&entry->mutext);
+	return true;
+}
+
+bool indigo_snapshot_blob(indigo_blob_entry *entry, indigo_item *copy) {
+	blob_record *record = (blob_record *)entry;
+	pthread_mutex_lock(&entry->mutext);
+	*copy = record->item;
+	copy->blob.size = entry->size;
+	copy->blob.value = NULL;
+	INDIGO_COPY_NAME(copy->blob.format, entry->format);
+	if (record->uploaded) {
+		copy->blob.url[0] = 0;
+	}
+	if (entry->size > 0) {
+		copy->blob.value = malloc(entry->size);
+		if (copy->blob.value == NULL) {
+			pthread_mutex_unlock(&entry->mutext);
+			return false;
+		}
+		memcpy(copy->blob.value, entry->content, entry->size);
+	}
+	pthread_mutex_unlock(&entry->mutext);
+	return true;
+}
+
 static bool is_started = false;
 
 // Registry of operations started by a client that must be aborted if the client detaches before they end,
@@ -910,12 +1041,7 @@ indigo_result indigo_define_property_to_client(indigo_device *device, indigo_cli
 					entry = NULL;
 				}
 				if (entry == NULL && free_index >= 0) {
-					entry = indigo_safe_malloc(sizeof(indigo_blob_entry));
-					blobs[free_index] = entry;
-					memset(entry, 0, sizeof(indigo_blob_entry));
-					entry->item = item;
-					entry->property = property;
-					pthread_mutex_init(&entry->mutext, NULL);
+					entry = blobs[free_index] = create_blob(property, item);
 				}
 				if (entry == NULL) {
 					pthread_mutex_unlock(&blob_mutex);
@@ -968,12 +1094,7 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 					entry = NULL;
 				}
 				if (entry == NULL && free_index >= 0) {
-					entry = indigo_safe_malloc(sizeof(indigo_blob_entry));
-					blobs[free_index] = entry;
-					memset(entry, 0, sizeof(indigo_blob_entry));
-					entry->item = item;
-					entry->property = property;
-					pthread_mutex_init(&entry->mutext, NULL);
+					entry = blobs[free_index] = create_blob(property, item);
 				}
 				if (entry == NULL) {
 					pthread_mutex_unlock(&blob_mutex);
@@ -1098,19 +1219,20 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					entry = NULL;
 				}
 				if (entry == NULL && free_index >= 0) {
-					entry = indigo_safe_malloc(sizeof(indigo_blob_entry));
-					blobs[free_index] = entry;
-					memset(entry, 0, sizeof(indigo_blob_entry));
-					entry->item = item;
-					entry->property = property;
-					pthread_mutex_init(&entry->mutext, NULL);
+					entry = blobs[free_index] = create_blob(property, item);
 				}
 				if (entry) {
 					pthread_mutex_lock(&entry->mutext);
+					if (((blob_record *)entry)->uploaded) {
+						clear_blob_content(entry);
+					}
+					((blob_record *)entry)->item = *item;
+					((blob_record *)entry)->item.blob.value = NULL;
+					((blob_record *)entry)->item.blob.size = 0;
+					INDIGO_COPY_NAME(entry->format, item->blob.format);
 					if (item->blob.size) {
 						entry->content = indigo_safe_realloc(entry->content, entry->size = item->blob.size);
 						memcpy(entry->content, item->blob.value, entry->size);
-						strcpy(entry->format, item->blob.format);
 					} else if (entry->content) {
 						free(entry->content);
 						entry->size = 0;
@@ -1395,7 +1517,36 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	if (property->count == count) {
 		return property;
 	}
-	if (count > property->allocated_count) {
+	if (property->type == INDIGO_BLOB_VECTOR) {
+		pthread_mutex_lock(&blob_mutex);
+		int indices[MAX_BLOBS];
+		for (int j = 0; j < MAX_BLOBS; j++) {
+			indices[j] = -1;
+			indigo_blob_entry *entry = blobs[j];
+			if (entry && entry->property == property) {
+				int index = (int)(entry->item - property->items);
+				if (index >= count) {
+					retire_blob(j);
+				} else {
+					indices[j] = index;
+				}
+			}
+		}
+		if (count > property->allocated_count) {
+			property = indigo_safe_realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
+			property->allocated_count = count;
+			for (int j = 0; j < MAX_BLOBS; j++) {
+				if (indices[j] >= 0) {
+					indigo_blob_entry *entry = blobs[j];
+					pthread_mutex_lock(&entry->mutext);
+					entry->property = property;
+					entry->item = property->items + indices[j];
+					pthread_mutex_unlock(&entry->mutext);
+				}
+			}
+		}
+		pthread_mutex_unlock(&blob_mutex);
+	} else if (count > property->allocated_count) {
 		property = indigo_safe_realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
 		property->allocated_count = count;
 	}
@@ -1432,21 +1583,15 @@ static void release_dependencies(indigo_property *property) {
 		pthread_mutex_lock(&blob_mutex);
 		for (int i = 0; i < property->allocated_count; i++) {
 			indigo_item *item = property->items + i;
+			for (int j = 0; j < MAX_BLOBS; j++) {
+				indigo_blob_entry *entry = blobs[j];
+				if (entry && entry->item == item) {
+					retire_blob(j);
+					break;
+				}
+			}
 			if (property->perm == INDIGO_WO_PERM) {
 				indigo_safe_free(item->blob.value);
-			} else {
-				for (int j = 0; j < MAX_BLOBS; j++) {
-					indigo_blob_entry *entry = blobs[j];
-					if (entry && entry->item == item) {
-						pthread_mutex_lock(&entry->mutext);
-						blobs[j] = NULL;
-						indigo_safe_free(entry->content);
-						pthread_mutex_unlock(&entry->mutext);
-						pthread_mutex_destroy(&entry->mutext);
-						indigo_safe_free(entry);
-						break;
-					}
-				}
 			}
 		}
 		pthread_mutex_unlock(&blob_mutex);
@@ -1474,29 +1619,57 @@ void indigo_release_property(indigo_property *property) {
 	indigo_safe_free(property);
 }
 
-indigo_blob_entry *indigo_validate_blob(indigo_item *item) {
-	for (int j = 0; j < MAX_BLOBS; j++) {
-		indigo_blob_entry *entry = blobs[j];
-		if (entry && entry->item == item) {
-			return entry;
-		}
-	}
-	return NULL;
-}
-
-indigo_blob_entry *indigo_find_blob(indigo_property *other_property, indigo_item *other_item) {
-	assert(other_property != NULL);
-	assert(other_item != NULL);
+static indigo_blob_entry *lookup_blob(indigo_item *item, indigo_property *property, bool retain) {
+	indigo_blob_entry *found = NULL;
+	pthread_mutex_lock(&blob_mutex);
 	for (int j = 0; j < MAX_BLOBS; j++) {
 		indigo_blob_entry *entry = blobs[j];
 		if (entry) {
-			indigo_property *property = entry->property;
-			indigo_item *item = entry->item;
-			if (!strncmp(property->device, other_property->device, INDIGO_NAME_SIZE) && !strncmp(property->name, other_property->name, INDIGO_NAME_SIZE) && !strncmp(item->name, other_item->name, INDIGO_NAME_SIZE))
-				return entry;
+			blob_record *record = (blob_record *)entry;
+			bool match = property ? !strncmp(record->device, property->device, INDIGO_NAME_SIZE) && !strncmp(record->property, property->name, INDIGO_NAME_SIZE) && !strncmp(record->item.name, item->name, INDIGO_NAME_SIZE) : entry->item == item;
+			if (match) {
+				if (retain) {
+					record->references++;
+				}
+				found = entry;
+				break;
+			}
 		}
 	}
-	return NULL;
+	pthread_mutex_unlock(&blob_mutex);
+	return found;
+}
+
+indigo_blob_entry *indigo_validate_blob(indigo_item *item) {
+	return lookup_blob(item, NULL, false);
+}
+
+indigo_blob_entry *indigo_find_blob(indigo_property *property, indigo_item *item) {
+	assert(property != NULL);
+	assert(item != NULL);
+	return lookup_blob(item, property, false);
+}
+
+indigo_blob_entry *indigo_acquire_blob(indigo_item *item) {
+	return lookup_blob(item, NULL, true);
+}
+
+indigo_blob_entry *indigo_acquire_blob_by_name(indigo_property *property, indigo_item *item) {
+	assert(property != NULL);
+	assert(item != NULL);
+	return lookup_blob(item, property, true);
+}
+
+void indigo_release_blob(indigo_blob_entry *entry) {
+	if (entry) {
+		pthread_mutex_lock(&blob_mutex);
+		blob_record *record = (blob_record *)entry;
+		assert(record->references > 0);
+		if (--record->references == 0 && record->retired) {
+			destroy_blob(entry);
+		}
+		pthread_mutex_unlock(&blob_mutex);
+	}
 }
 
 void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...) {

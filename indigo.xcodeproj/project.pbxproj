@@ -6294,6 +6294,12 @@
 		76D0F1B7524098D77E83A4C2 /* FND-20261023112118-8e5e-server-security-audit-017.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261023112118-8e5e-server-security-audit-017.json"; sourceTree = "<group>"; };
 		AAA43A8123B85E90CE1A31D4 /* FND-20261023112118-8e5e-server-security-audit-018.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261023112118-8e5e-server-security-audit-018.json"; sourceTree = "<group>"; };
 		56FFB0DEBF25A72E944416CF /* 20261023112118-8e5e-server-security-audit.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261023112118-8e5e-server-security-audit.json"; sourceTree = "<group>"; };
+		D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_protocol_security.c; sourceTree = "<group>"; };
+		C1709E72227841389E72BABD /* test_transport_cache_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_transport_cache_security.c; sourceTree = "<group>"; };
+		FBDFAF3D3E554044BBDDB275 /* test_transport_http_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_transport_http_security.c; sourceTree = "<group>"; };
+		CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_cache.c; sourceTree = "<group>"; };
+		48931A9C9D9E4BFAB7A87777 /* test_server_management_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_management_security.c; sourceTree = "<group>"; };
+		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -7626,6 +7632,7 @@
 		592662AF1D9590630021746A /* indigo_test */ = {
 			isa = PBXGroup;
 			children = (
+				584F9CD031F245BAB977B4BE /* security */,
 				514C82BA37D5A234281ECD52 /* buildsystem */,
 				F559B76B4D9A14829C38BB63 /* factory */,
 				59FA7BE4301D2E9700A35CFB /* AGENTS.md */,
@@ -14791,6 +14798,8 @@
 		59FA7BE9301D35FD00A35CFB /* unit */ = {
 			isa = PBXGroup;
 			children = (
+				D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */,
+				C1709E72227841389E72BABD /* test_transport_cache_security.c */,
 				59FA7C0C301DD71000A35CFB /* test_timer.c */,
 				59FA7BFE301D41A000A35CFB /* test_protocol_json.c */,
 				59FA7BFC301D410D00A35CFB /* test_protocol_xml.c */,
@@ -14815,6 +14824,8 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				FBDFAF3D3E554044BBDDB275 /* test_transport_http_security.c */,
+				CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */,
 				5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */,
 				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
 				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
@@ -17936,6 +17947,15 @@
 				06523DE2B4467D24B2E71D85 /* verification.md */,
 			);
 			path = "20261023112118-8e5e-server-security-audit";
+			sourceTree = "<group>";
+		};
+		584F9CD031F245BAB977B4BE /* security */ = {
+			isa = PBXGroup;
+			children = (
+				48931A9C9D9E4BFAB7A87777 /* test_server_management_security.c */,
+				57EF51D50C114C36BDA05461 /* run_server_management_security.py */,
+			);
+			path = security;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

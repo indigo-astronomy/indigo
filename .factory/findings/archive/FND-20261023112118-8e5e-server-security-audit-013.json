@@ -2,18 +2,28 @@
   "title": "JSON token and frame terminators exceed allocations",
   "category": "security",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
-  "blocking": true,
+  "blocking": false,
   "tasks": [
     {
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "parsers-security.md",
       "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "JSON name/value accumulation and full-capacity WebSocket frames append NUL beyond exact allocations before dispatch. Next: separate content/allocation capacities and test exact boundaries across input reads. Confirmed by current source contracts; no fix or runtime retest claimed.",
   "evidence": "indigo_libs/indigo_json.c:333-335,349-361,405-415,451-491; parsers-security.md section P03",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-013"
 }

@@ -2,18 +2,28 @@
   "title": "Unvalidated BLOB lengths reach a process-fatal allocator",
   "category": "security",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
-  "blocking": true,
+  "blocking": false,
   "tasks": [
     {
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "transport-security.md",
       "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Network access and registered BLOB identifier. Source-contract confirmed; runtime unverified. Next: Validate bounded decimal framing, budgets and recoverable allocation",
   "evidence": "indigo_libs/indigo_server_tcp.c:355-370; indigo_libs/indigo/indigo_bus.h:1030-1037; transport-security.md section T01",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-001"
 }

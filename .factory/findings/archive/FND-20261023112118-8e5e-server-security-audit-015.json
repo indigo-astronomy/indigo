@@ -2,18 +2,28 @@
   "title": "Legacy XML BLOB decode trusts declared size without bounding decoded bytes",
   "category": "security",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
-  "blocking": true,
+  "blocking": false,
   "tasks": [
     {
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "parsers-security.md",
       "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "A connected legacy XML remote server can declare a small BLOB size while base64 decoding writes more bytes than size+3 allocation. Next: checked numeric/encoded/decoded budgets and exact length consistency; upstream-only source evidence, runtime unverified. Confirmed by current source contracts; no fix or runtime retest claimed.",
   "evidence": "indigo_libs/indigo_xml.c:739-759,1630-1648,1667-1679; indigo_libs/indigo_base64.c:62-117; parsers-security.md section P05",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-015"
 }
