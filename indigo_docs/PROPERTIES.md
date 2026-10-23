@@ -1288,7 +1288,7 @@ Source: `indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver`.
 
 Custom properties: `X_CALIBRATE`, `X_CALIBRATE_A`, `X_CONFIG`, `X_HOLD_CURR`, `X_LEDS`, `X_RUNPRESET`, `X_RUNPRESET_1`, `X_RUNPRESET_2`, `X_RUNPRESET_3`, `X_RUNPRESET_L`, `X_RUNPRESET_M`, `X_RUNPRESET_S`, `X_STATE`, `X_WIFI`, `X_WIFI_AP`, `X_WIFI_STA`.
 
-Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_POSITION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`, `ROTATOR_ABORT_MOTION`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_POSITION`, `ROTATOR_RELATIVE_MOVE` (shown; a move by the offset from the current angle, refused outside the `ROTATOR_POSITION` range, as the ARCO has no relative command).
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_POSITION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`, `ROTATOR_ABORT_MOTION`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_POSITION`, `ROTATOR_RELATIVE_MOVE` (shown; a move by the offset from the current angle, refused outside the `ROTATOR_POSITION` range, using the absolute move on every model).
 
 Source: `indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c`.
 

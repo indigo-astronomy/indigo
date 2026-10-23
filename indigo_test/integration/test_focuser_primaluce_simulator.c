@@ -583,10 +583,39 @@ static void esatto_profile(void) {
 	// An Esatto reports no stored positions.
 	SERIAL_CHECK_TRUE(!has_defined_property(X_PRESETS_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(X_PRESET_GOTO_PROPERTY_NAME));
-	// The focuser calibration stays available on an Esatto.
-	SERIAL_CHECK_TRUE(has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
+	// An Esatto has no calibration command (protocol v4.0: CAL_FOCUSER is SESTOSENSO2 only; an ESATTO2 answers
+	// "Error: invalid command"), so the focuser calibration is not offered.
+	SERIAL_CHECK_TRUE(!has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(18200));
+	SERIAL_CHECK_EQ_INT(0, requests("\"CAL_FOCUSER\""));
+cleanup:
+	driver_stop();
+}
+
+// An Esatto moving inward close to its home sensor stops and resets its coordinate to 0; the move ends ALERT
+// with that reason, and the next move runs from 0.
+static void esatto_home_reset(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 17500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(17500));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 400));
+	SERIAL_CHECK_TRUE(message_seen("The focuser reached its home sensor and reset its position to 0"));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(500));
+cleanup:
+	driver_stop();
+}
+
+// An Esatto flagged for calibration names the reason without pointing to a calibration it cannot run.
+static void esatto_needs_calibration(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(message_seen("CalRestart_NoSensorActiveInMinPos"));
+	SERIAL_CHECK_TRUE(message_seen("needs calibration, which an ESATTO cannot run from the driver"));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
 cleanup:
 	driver_stop();
 }
@@ -1872,6 +1901,8 @@ int main(void) {
 		{ "metadata", metadata, "normal" },
 		{ "property_contract", property_contract, "normal" },
 		{ "esatto_profile", esatto_profile, "esatto" },
+		{ "esatto_home_reset", esatto_home_reset, "esatto" },
+		{ "esatto_needs_calibration", esatto_needs_calibration, "esatto-needs-calibration" },
 		{ "sestosenso3_profile", sestosenso3_profile, "sestosenso3" },
 		{ "sestosenso3_uncalibrated", sestosenso3_uncalibrated, "sestosenso3-uncalibrated" },
 		{ "sestosenso3_calibration", sestosenso3_calibration, "sestosenso3" },

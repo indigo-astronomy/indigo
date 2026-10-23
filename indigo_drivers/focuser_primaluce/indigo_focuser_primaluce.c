@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000026
+#define DRIVER_VERSION       0x03000027
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -383,6 +383,8 @@ typedef struct {
 	char preset_names[PRIMALUCE_STORED_POSITION_COUNT][INDIGO_VALUE_SIZE];
 	int rotator_calibration_polls;
 	bool is_sestosenso_3;
+	// An ESATTO has no calibration command (protocol v4.0: CAL_FOCUSER is SESTOSENSO2 only) and homes on a hall sensor.
+	bool is_esatto;
 	// The controller flags a motor for calibration (CALRESTART); its moves may be acknowledged and not run.
 	bool focuser_needs_calibration, rotator_needs_calibration;
 	// The controller reports a travel range (CAL_MAXPOS above CAL_MINPOS).
@@ -452,6 +454,7 @@ static bool primaluce_open(indigo_device *device, const char **error_message) {
 			primalucelib_model model = primalucelib_model_from_name(text);
 			if (primalucelib_model_is_focuser(model)) {
 				PRIVATE_DATA->is_sestosenso_3 = model == PRIMALUCELIB_MODEL_SESTOSENSO3;
+				PRIVATE_DATA->is_esatto = model == PRIMALUCELIB_MODEL_ESATTO;
 				if ((text = primalucelib_get_firmware_version(LINK))) {
 					double version = atof(text);
 					if (!PRIVATE_DATA->is_sestosenso_3 && version < PRIMALUCE_MINIMUM_FIRMWARE_VERSION) {
@@ -721,7 +724,15 @@ static void focuser_movement_finalizer(indigo_device *device) {
 			// A SESTO SENSO 3 with its motor bridges off (STATUS.HIZ after a motor fault) or outside its
 			// calibrated range acknowledges GOTO and stays where it is.
 			if (state == INDIGO_ALERT_STATE && !PRIVATE_DATA->abort_requested) {
-				message = PRIVATE_DATA->focuser_needs_calibration ? "The focuser needs calibration" : "The focuser stopped before reaching the target";
+				if (PRIVATE_DATA->focuser_needs_calibration) {
+					message = "The focuser needs calibration";
+				} else if (PRIVATE_DATA->is_esatto && FOCUSER_POSITION_ITEM->number.value == 0 && FOCUSER_POSITION_ITEM->number.target > 0) {
+					// An ESATTO2 (SWAPP 3.05.28) moving inward close to its home sensor stops and resets its
+					// coordinate to 0, reporting NOPCMD.
+					message = "The focuser reached its home sensor and reset its position to 0";
+				} else {
+					message = "The focuser stopped before reaching the target";
+				}
 			}
 			focuser_movement_ended(device, state);
 		}
@@ -938,6 +949,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					primalucelib_model model = primalucelib_model_from_name(text);
 					if (primalucelib_model_is_sestosenso(model)) {
 						X_STATE_PROPERTY->count = 2;
+						X_CALIBRATE_F_PROPERTY->hidden = false;
 						X_CONFIG_PROPERTY->hidden = false;
 						X_RUNPRESET_PROPERTY->hidden = false;
 						X_RUNPRESET_L_PROPERTY->hidden = false;
@@ -949,6 +961,7 @@ static void focuser_connection_handler(indigo_device *device) {
 						X_HOLD_CURR_PROPERTY->hidden = false;
 					} else if (model == PRIMALUCELIB_MODEL_ESATTO) {
 						X_STATE_PROPERTY->count = 3;
+						X_CALIBRATE_F_PROPERTY->hidden = true;
 						X_CONFIG_PROPERTY->hidden = true;
 						X_RUNPRESET_PROPERTY->hidden = true;
 						X_RUNPRESET_L_PROPERTY->hidden = true;
@@ -990,7 +1003,10 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 				}
 				PRIVATE_DATA->focuser_needs_calibration = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_RESTART) != 0;
-				if (PRIVATE_DATA->focuser_needs_calibration) {
+				if (PRIVATE_DATA->focuser_needs_calibration && PRIVATE_DATA->is_esatto) {
+					// The calibration property is hidden on an ESATTO, so the message does not point to it.
+					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration, which an ESATTO cannot run from the driver", INFO_DEVICE_MODEL_ITEM->text.value);
+				} else if (PRIVATE_DATA->focuser_needs_calibration) {
 					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
 				PRIVATE_DATA->has_abs_pos = primalucelib_reply_has_focuser_position(LINK, true);
@@ -2108,8 +2124,9 @@ static void rotator_position_handler(indigo_device *device) {
 
 static void rotator_relative_move_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_RELATIVE_MOVE.on_change
-	// The ARCO has no relative command, so the rotator goes to the angle it has plus the offset; the
-	// absolute move publishes the progress and ends this one (rotator_relative_move_ended()).
+	// The relative MOVE of protocol v4.0 is not in the SESTO SENSO 3 document, so the rotator goes to the
+	// angle it has plus the offset on every model; the absolute move publishes the progress and ends
+	// this one (rotator_relative_move_ended()).
 	char reason[INDIGO_VALUE_SIZE] = "";
 	char *state = NULL;
 	if (!rotator_read_angle(device)) {

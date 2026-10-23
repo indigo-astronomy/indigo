@@ -1039,3 +1039,69 @@ Regression tests: `rotator_relative_move` and `sestosenso3_rotator_relative_move
   - +90 from -10 was aborted at -4.75, and both properties ended ALERT after `MOT_STOP`.
   The ARCO turns at about 2°/s. A fresh connect found the ARCO still enabled and calibrated,
   confirming the previous task on the unit. This was not a `--hw` run, so there is no hardware record.
+
+## ESATTO calibration and home sensor (3.0.0.39, 2026-10-24, task 20261023231027-08cd-esatto-calibration-home)
+
+Checked against the PrimaLuce Lab "Communication Protocol" v4.0 (05 Dec 2022, ESATTO, SESTOSENSO2 and
+ARCO models) and the requester's ESATTO2 log (application firmware 3.05.28, with an ARCO):
+
+- **No calibration on an ESATTO.** v4.0 lists `CAL_FOCUSER` as SESTOSENSO2 only, and the ESATTO2 answered
+  all 44 `CAL_FOCUSER` `Init` requests of the session with `"Error: invalid command"`. The ESATTO is
+  calibrated in the factory and uses hall sensors at both ends (`HSENDET`, `CAL_MIN_LO`/`HI`,
+  `CAL_MAX_LO`/`HI`). X_CALIBRATE is now hidden on an ESATTO and shown on a SESTO SENSO. The
+  `esatto_profile` expectation that the calibration stays available on an ESATTO was wrong and is
+  corrected; the document and the hardware log above are the reason.
+- **Needs calibration on an ESATTO.** A `CALRESTART` flag gives "<model> needs calibration, which an
+  ESATTO cannot run from the driver", so the message no longer points to the hidden property. The
+  controller's `ERROR` text is still sent as an alert at connect.
+- **Home sensor reset.** An inward move from 500 to 400 stopped, reported `NOPCMD` and reset the
+  coordinate to 0; moves of ±100 around 5000 ran normally. A move that ends at 0 short of a target above
+  0 on an ESATTO now ends ALERT with "The focuser reached its home sensor and reset its position to 0"
+  instead of "The focuser stopped before reaching the target". The document does not describe the
+  reset; the simulator models it on `CAL_HOMEP` (1000), which is an assumption.
+- **Relative ARCO move.** v4.0 documents a relative `MOVE` for both motors, so "the ARCO has no relative
+  command" in the previous section holds only for the SESTO SENSO 3 document. The relative rotator move
+  keeps using `MOVE_ABS` on every model, as `MOVE` is not in the SESTO SENSO 3 document and has not been
+  tried; the comment, `PROTOCOL.md` and `PROPERTIES.md` are corrected.
+- Already correct for an ESATTO: `MOVE_ABS` instead of the deprecated `GOTO`, no `SPEED`, the SESTO
+  SENSO 2-only run presets, motor settings and hold current hidden, `VIN_USB` shown, `-127` external
+  temperature treated as no reading.
+
+Simulator: the `esatto` profile refuses `CAL_FOCUSER` and re-homes an inward move to a target below
+1000; a new `esatto-needs-calibration` profile reports `CALRESTART` with a sensor error.
+
+Regression tests, each confirmed to fail without the driver change:
+- `esatto_profile`: no X_CALIBRATE and no `CAL_FOCUSER` request;
+- `esatto_home_reset`: 17500 to 400 ends ALERT at 0 with the home-sensor reason, then 500 runs normally;
+- `esatto_needs_calibration`: the sensor error and the ESATTO needs-calibration message at connect.
+
+The simulator's ESATTO profile now also acknowledges the ARCO move under `DEG`, as the unit does.
+
+Hardware check (requester's ESATTO2 with ARCO on `/dev/ttyUSB0`, application firmware 3.05.28, driven with
+`indigo_prop_tool` while the requester watched):
+- Connect: no X_CALIBRATE; the focuser stood at 1000.
+- 1000 to 500: the readback went 1270, 0 with `NOPCMD` 1, 1000, then 0; the move ended ALERT at 0 with
+  "The focuser reached its home sensor and reset its position to 0". This also fits the `CAL_HOMEP`
+  model of the simulator.
+- 0 to 400 outward ended OK at 400 (one readback of -370 on the way).
+- 400 to 60000 ran at about 12000 steps/s and finished before the abort arrived; the abort then found the
+  motor stopped, and the move ended OK at 60000.
+- 60000 to 300000, aborted after about 4 s: `MOT_ABORT` done, FOCUSER_POSITION ALERT at 107855.
+- Rotator connect: the controller's "CalRestart; CalRestart_MaxPosEqualMinPos; " and "ARCO needs
+  calibration"; the ARCO was enabled already, so no `ARCO` write was sent.
+- A 10° move of the uncalibrated ARCO: `MOVE_ABS` acknowledged under `DEG`, `HIZ` 1 and no movement;
+  ROTATOR_POSITION ended ALERT with "The rotator needs calibration".
+- Disconnect sent no `"ARCO":0`.
+
+- ARCO calibration (requested by the requester): `{"set":{"MOT2":{"CAL_STATUS":"exec"}}}` acknowledged
+  `"done"`, `CAL_STATUS` read `exec` once a second and `stop` after about 66 s; X_CALIBRATE_A ended OK
+  with "ARCO calibration complete".
+- A 10° move then turned the ARCO at about 3°/s and ended OK at 10.
+- A rotator disconnect and reconnect reported `CALRESTART` `MOT2` 0 and no notice, at 10°.
+
+This was not a `--hw` run, so there is no hardware record.
+
+## Final test summary (3.0.0.39)
+
+- Simulated tests: 71 run, 71 passed: `2026-10-24 02:22 3.0.0.39 linux x64 simulator 71/71 OK`.
+- Hardware: the requester's ESATTO2 with ARCO, see the checks above.
