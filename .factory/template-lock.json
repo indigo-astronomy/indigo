@@ -96,6 +96,6 @@
     "tests/unit/test_template_update.py": "indigo_test/factory/test_template_update.py"
   },
   "repository": "https://github.com/polakovic/ai_factory",
-  "revision": "495c6914325d1c1313fb18f4d93fa61b877e44fe",
+  "revision": "9b346c67b039725783164d5fcf3274cc67d7370a",
   "version": 1
 }
