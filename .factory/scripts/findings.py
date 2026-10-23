@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect and validate the local findings register without modifying any files."""
+"""Manage and validate local task-scoped findings."""
 import argparse
 import json
 from pathlib import Path
@@ -9,10 +9,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 ACTIVE = ".factory/findings/active.json"
+REGISTRY = ".factory/findings/registry.json"
+ACTIVE_DIR = ".factory/findings/active"
 ARCHIVE = ".factory/findings/archive"
 MAX_BYTES = 1024 * 1024
 GIT_FLAGS = ("--no-replace-objects", "--no-lazy-fetch", "--no-optional-locks")
-ID = re.compile(r"FND-[0-9]{6}")
+ID = re.compile(r"FND-(?:[0-9]{6}|[a-z0-9]+(?:-[a-z0-9]+)*-[0-9]{3,})")
+LEGACY_ID = re.compile(r"FND-[0-9]{6}")
 TASK = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 REVISION = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})")
 FIELDS = {"id", "title", "category", "severity", "status", "owner", "blocking", "tasks", "summary", "evidence", "resolution"}
@@ -28,7 +31,12 @@ def matches(pattern, value):
 
 def local(relative):
     path = ROOT / relative
-    path.resolve().relative_to(ROOT)
+    path.resolve().relative_to(ROOT.resolve())
+    current = ROOT
+    for part in path.relative_to(ROOT).parts:
+        current /= part
+        if current.is_symlink():
+            raise ValueError("symbolic links are not supported for findings")
     return path
 
 
@@ -81,6 +89,10 @@ def validate_record(record, archived=False):
         if key in seen:
             raise ValueError("duplicate task/report reference")
         seen.add(key)
+    if not matches(LEGACY_ID, record['id']):
+        origin, number = record['id'][4:].rsplit('-', 1)
+        if int(number) < 1 or number != f'{int(number):03d}' or origin not in {t['id'] for t in tasks}:
+            raise ValueError('task-qualified finding ID needs its origin reference and a canonical positive sequence')
     resolution = record["resolution"]
     if not archived:
         if resolution is not None:
@@ -104,6 +116,15 @@ def validate_record(record, archived=False):
 
 
 def active_register(snapshot=None):
+    modern = snapshot.exists(REGISTRY) if snapshot else local(REGISTRY).exists()
+    if modern:
+        marker = snapshot.json(REGISTRY) if snapshot else read_json(REGISTRY)
+        if not isinstance(marker, dict) or type(marker.get('version')) is not int or marker != {'version': 2, 'storage': 'per-record'}:
+            raise ValueError('invalid per-record findings marker')
+        if snapshot.exists(ACTIVE) if snapshot else local(ACTIVE).exists():
+            raise ValueError('legacy active.json and per-record registry coexist; finish migration')
+        records = directory_records(ACTIVE_DIR, False, snapshot)
+        return {'version': 2, 'findings': records}
     data = snapshot.json(ACTIVE) if snapshot else read_json(ACTIVE)
     if not isinstance(data, dict) or set(data) != {"version", "next_id", "findings"}:
         raise ValueError("invalid active register fields")
@@ -121,28 +142,37 @@ def active_register(snapshot=None):
     return data
 
 
-def all_records(data, snapshot=None):
-    directory = None if snapshot else local(ARCHIVE)
-    if not (snapshot.exists(ARCHIVE) if snapshot else directory.is_dir()):
-        raise ValueError("archive directory is missing")
-    records = list(data["findings"])
-    paths = (Path(name) for name in snapshot.entries if name.startswith(ARCHIVE + '/')) if snapshot else directory.iterdir()
+
+def directory_records(directory, archived, snapshot=None):
+    if not (snapshot.exists(directory) if snapshot else local(directory).is_dir()):
+        raise ValueError('finding record directory is missing')
+    paths = [Path(name) for name in snapshot.entries if name.startswith(directory + '/')] if snapshot else local(directory).iterdir()
+    records = []
     for path in sorted(paths):
-        if snapshot and path.parent.as_posix() != ARCHIVE:
-            raise ValueError("unexpected nested archive entry")
-        if path.name == ".gitkeep":
+        if snapshot and path.parent.as_posix() != directory:
+            raise ValueError('unexpected nested finding entry')
+        if snapshot:
+            if snapshot.entries[path.as_posix()][0] not in ('100644', '100755'):
+                raise ValueError('finding entries must be regular files')
+        else:
+            local(path.relative_to(ROOT))
+        if path.name == '.gitkeep':
             continue
-        if path.suffix != ".json" or not matches(ID, path.stem):
-            raise ValueError("unexpected archive entry")
+        if path.suffix != '.json' or not matches(ID, path.stem):
+            raise ValueError('unexpected finding record entry')
         record = snapshot.json(path.as_posix()) if snapshot else read_json(path.relative_to(ROOT))
-        validate_record(record, archived=True)
-        if path.stem != record["id"]:
-            raise ValueError("archive filename does not match finding ID")
+        validate_record(record, archived=archived)
+        if path.stem != record['id']:
+            raise ValueError('record filename does not match finding ID')
         records.append(record)
+    return records
+
+def all_records(data, snapshot=None):
+    records = list(data['findings']) + directory_records(ARCHIVE, True, snapshot)
     ids = [record["id"] for record in records]
     if len(ids) != len(set(ids)):
         raise ValueError("duplicate finding ID across active register/archive")
-    if any(int(value[4:]) >= data["next_id"] for value in ids):
+    if data["version"] == 1 and any(not matches(LEGACY_ID, value) or int(value[4:]) >= data["next_id"] for value in ids):
         raise ValueError("next_id must exceed every allocated finding ID")
     for record in records:
         resolution = record["resolution"]
@@ -199,17 +229,65 @@ def check_tasks(records, pruning, snapshot=None):
                     raise ValueError(f"{record['id']}: pruned report commit must be retained in candidate history")
 
 
+
+def next_task_id(data, task):
+    import task_store
+    if not matches(TASK, task) or task == 'archive' or not task_store.ORDERED.fullmatch(task):
+        raise ValueError('valid --task required for per-task allocation')
+    prefix = 'FND-' + task + '-'
+    numbers = [int(record['id'][len(prefix):]) for record in all_records(data)
+               if record['id'].startswith(prefix) and record['id'][len(prefix):].isdigit()]
+    return prefix + f'{max(numbers, default=0) + 1:03d}'
+
+
+def create(task, filename):
+    import task_store
+    with task_store.lifecycle_lock(ROOT):
+        _, state = task_store.selected_state(ROOT, task)
+        if state.get('status') not in ('active', 'blocked'):
+            raise ValueError('findings creation requires an unfinished origin task')
+        branch = subprocess.run(['git', 'branch', '--show-current'], cwd=ROOT, capture_output=True, text=True)
+        if branch.returncode or branch.stdout.strip() != 'task/' + task:
+            raise ValueError('findings creation requires the matching origin task branch')
+        if not task_store.ORDERED.fullmatch(task):
+            raise ValueError('new finding origin requires a canonical ordered task ID; migrate task IDs first')
+        data = active_register()
+        if data['version'] != 2:
+            raise ValueError('migrate findings before using per-task creation')
+        with filename.open('rb') as stream:
+            raw = stream.read(MAX_BYTES + 1)
+        if len(raw) > MAX_BYTES:
+            raise ValueError('finding input exceeds 1 MiB')
+        record = task_store.loads(raw)
+        if not isinstance(record, dict) or 'id' in record:
+            raise ValueError('create input must be a finding object without its generated id')
+        record['id'] = next_task_id(data, task)
+        validate_record(record)
+        check_tasks([record], set())
+        path = local(ACTIVE_DIR + '/' + record['id'] + '.json')
+        if path.exists():
+            raise ValueError('finding destination exists')
+        task_store.atomic(path, (json.dumps(record, indent=2, allow_nan=False) + '\n').encode())
+        return record['id']
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     check = commands.add_parser("check", help="validate active/archive and task evidence")
     check.add_argument("--prune-task", action="append", default=[], help="task whose reports will be deleted")
     commands.add_parser("list", help="show active finding summaries only")
-    commands.add_parser("next-id", help="suggest the next ID without reserving or changing it")
+    next_id = commands.add_parser("next-id", help="suggest a task-scoped ID without reserving it (legacy counter in v1)")
+    next_id.add_argument('--task')
+    new = commands.add_parser('create', help='allocate and atomically create a per-task active finding')
+    new.add_argument('--task', required=True)
+    new.add_argument('--record', required=True, type=Path, help='complete finding JSON without id')
     show = commands.add_parser("show", help="explicitly read one active or archived finding")
     show.add_argument("id")
     args = parser.parse_args()
     try:
+        if args.command == "create":
+            print(create(args.task, args.record))
+            return 0
         data = active_register()
         if args.command == "list":
             output = json.dumps([{key: record[key] for key in ("id", "title", "severity", "status", "owner", "blocking")} for record in data["findings"]], indent=2)
@@ -225,9 +303,14 @@ def main():
         else:
             records = all_records(data)
             if args.command == "next-id":
-                if data["next_id"] > 999999:
+                if data['version'] == 2:
+                    if not args.task:
+                        raise ValueError('--task is required for version 2 next-id')
+                    output = next_task_id(data, args.task)
+                elif data["next_id"] > 999999:
                     raise ValueError("finding ID space exhausted; schema migration required")
-                output = f"FND-{data['next_id']:06d}"
+                else:
+                    output = f"FND-{data['next_id']:06d}"
             else:
                 if any(not matches(TASK, task) for task in args.prune_task):
                     raise ValueError("invalid prune task ID")

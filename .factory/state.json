@@ -1,9 +1,4 @@
 {
-  "version": 1,
-  "active_task": null,
-  "phase": "idle",
-  "status": "idle",
-  "assigned_role": "coordinator",
-  "next_action": "Task 012-primaluce-calibration-finalizers is complete on task/012-primaluce-calibration-finalizers (built on the unintegrated task/011 and task/010 branches); its commit awaits the requester's approval, then integration and push await the requester. Nine non-audit tasks are complete since the full review, so the recurring repository audit is due before the next unrelated task or release. Open findings FND-000046, FND-000047, FND-000048 and FND-000052 have no repair task yet.",
-  "blocker": null
+  "version": 2,
+  "task_state": "per-task"
 }

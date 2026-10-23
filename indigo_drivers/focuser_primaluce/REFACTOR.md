@@ -492,7 +492,7 @@ reproducible with the simulator and is covered by the code change only.
 
 Simulated tests: 55 run, 55 passed. Hardware tests: 0 run, 0 passed.
 
-## Protocol library extraction (2026-10-22, task 010-primalucelib)
+## Protocol library extraction (2026-10-22, task 20261022212521-61cf-primalucelib)
 
 More PrimaLuce drivers are planned, so the JSON protocol code moves out of this driver into the
 shared library `indigo_drivers/shared/primalucelib/`. This is a pure extraction: no behaviour,
@@ -607,7 +607,7 @@ Linux x86_64 only; macOS and Windows builds were not run in this environment. No
 - Hardware tests: 0 run, 0 passed in this round; the latest hardware record stays 3.0.0.25 (linux
   arm64) and 3.0.0.22 (mac arm64, USB and WiFi).
 
-## SESTO SENSO 3 support (3.0.0.27, 2026-10-23, task 011-primaluce-sestosenso3)
+## SESTO SENSO 3 support (3.0.0.27, 2026-10-23, task 20261022235021-bcb6-primaluce-sestosenso3)
 
 On the owner's SESTO SENSO 3 (application firmware 1.0.9, web 03.06.01, CP2102N on USB, delivered
 uncalibrated) `FOCUSER_POSITION` alternated between OK and ALERT and moves failed. The work followed
@@ -675,7 +675,7 @@ in the test summary below.
   manual sessions, not a `tools/run_driver_test.py --hw` run, so they produce no hardware record.
   The latest hardware records stay 3.0.0.25 (linux arm64) and 3.0.0.22 (mac arm64).
 
-## Calibration steps as finalizers (3.0.0.28, 2026-10-23, task 012-primaluce-calibration-finalizers)
+## Calibration steps as finalizers (3.0.0.28, 2026-10-23, task 20261023011844-cc6a-primaluce-calibration-finalizers)
 
 The 3.0.0.27 calibration held the device queue during its waits. START slept a second between the
 steps, and a SESTO SENSO 3 that changed direction waited up to 10 s for the restart. END polled the

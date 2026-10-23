@@ -63,12 +63,14 @@ Resolve material conflicts before writing affected paths. Routine reversible mer
 Once the target Git setup is known, create a dedicated adoption branch using routines/git.md before writing bootstrap files. Preserve the discovered target branch/remote and hosting policy in project.md. If Git is absent, record that limitation and obtain authorization before initialization; do not force Git adoption. Install only missing, nonconflicting .factory support and required helpers according to the plan. Merge shared instructions before further work. For a fresh factory state, create an adoption task such as:
 
 ```sh
-./.factory/scripts/new-task 001-adopt-ai-factory
+TASK_ID=$(./.factory/scripts/new-task adopt-ai-factory --print-id)
+# Create the matching task/$TASK_ID branch before task writes.
+./.factory/scripts/new-task "$TASK_ID"
 ```
 
-Use the resolved helper path if a collision required relocation. Copy the report template into `.factory/tasks/001-adopt-ai-factory/migration.md`, fill brief.md, and transfer read-only discovery evidence into the task. Record bootstrap changes and their before/after state.
+Use the resolved helper path if a collision required relocation. Copy the report template into `.factory/tasks/ID/migration.md`, fill brief.md, and transfer read-only discovery evidence into the task. Record bootstrap changes and their before/after state.
 
-If a compatible active factory task already covers adoption, resume it. Otherwise preserve the current active task and have the coordinator arrange a handoff; never force status to idle or complete merely to make new-task succeed. A fresh task must have its own directory and an active pointer in .factory/state.json before development or maintenance continues.
+If a compatible active factory task already covers adoption, resume it. Otherwise preserve the current active task and have the coordinator arrange a handoff; never force status to idle or complete merely to make new-task succeed. A fresh task must have its own directory and matching task-local execution state in version 2 (a global pointer in legacy version 1) before development or maintenance continues.
 
 Populate project.md with the current operating facts and concise conclusions, linking task evidence; update fields in place instead of appending adoption history. Keep detailed host checks, baseline results and migration decisions in the task's migration report, with durable decision conclusions in ADRs where needed. Keep portability.md and routines procedural. Adapt role/path references and configure checks.json from verified project commands. Commands are argument arrays executed from the repository root; use an existing script or explicit wrapper for other working directories and compound commands. Do not replace native CI or force a new package manager.
 

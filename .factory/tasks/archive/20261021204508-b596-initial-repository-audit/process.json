@@ -1,0 +1,80 @@
+{
+  "version": 2,
+  "task": "20261021204508-b596-initial-repository-audit",
+  "scope": [
+    ".factory/tasks/*",
+    ".factory/findings/active.json",
+    ".factory/state.json",
+    ".factory/maintenance.json",
+    ".factory/project.md",
+    "indigo.xcodeproj/project.pbxproj"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_*.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-buildsystem"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/findings/active.json": [
+      "100644",
+      "blob",
+      "38f45399b3f514da4ebef36f2ff21d4a605fe1e3"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "0e6d74ee803a3e48802b24e96550d0b7af51b550"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "ddcffe75234006d81839f2a47ae2c33c2ccda5e8"
+    ]
+  }
+}

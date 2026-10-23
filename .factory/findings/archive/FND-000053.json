@@ -8,16 +8,16 @@
   "blocking": false,
   "tasks": [
     {
-      "id": "011-primaluce-sestosenso3",
+      "id": "20261022235021-bcb6-primaluce-sestosenso3",
       "report": "verification.md",
       "revision": null
     }
   ],
   "summary": "Each request read the next line, so after one late reply (a SESTO SENSO 3 restart, a slow answer) every reply answered the previous request: FOCUSER_POSITION alternated OK/ALERT and moves failed on the owner's SESTO SENSO 3.",
-  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000053); owner log 2026-10-23; test_primalucelib a_duplicate_reply_is_discarded and a_late_reply_is_skipped fail with the previous library",
+  "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md (FND-000053); owner log 2026-10-23; test_primalucelib a_duplicate_reply_is_discarded and a_late_reply_is_skipped fail with the previous library",
   "resolution": {
     "kind": "fixed",
-    "evidence": "011-primaluce-sestosenso3/verification.md: pending input is discarded before each request and replies without the request verb are dropped (at most PRIMALUCE_MAX_STALE_REPLIES); 23/23 library cases and the recorded simulator run pass; hardware moves after the fix.",
+    "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md: pending input is discarded before each request and replies without the request verb are dropped (at most PRIMALUCE_MAX_STALE_REPLIES); 23/23 library cases and the recorded simulator run pass; hardware moves after the fix.",
     "approved_by": null,
     "duplicate_of": null
   }

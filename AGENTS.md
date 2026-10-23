@@ -11,7 +11,7 @@ These rules apply throughout this repository. Read applicable nested AGENTS.md f
 Write all project documents in English, including specifications, plans, task briefs, handoffs, review reports, architecture decisions, README files, and agent instructions. Use English for new code comments, identifiers where practical, and commit/PR descriptions. User-facing product localization may use the languages required by the specification. Conversation with the owner may use their preferred language.
 
 ## Task creation and existing-project adoption
-- Before starting a new development or maintenance task, the coordinator must create `.factory/tasks/<task-id>/` with `./.factory/scripts/new-task <task-id>`, populate brief.md, and verify state.json points to the task. Resume existing work in its existing directory; do not create duplicate tasks for role transitions.
+- Before starting a new development or maintenance task, the coordinator must allocate a time-prefixed ID with `./.factory/scripts/new-task SLUG --print-id`, create the matching task branch/worktree, create `.factory/tasks/<task-id>/` with `./.factory/scripts/new-task <task-id>`, populate brief.md, and verify its task-local state.json. Follow [.factory/routines/concurrent-tasks.md](.factory/routines/concurrent-tasks.md). Resume existing work in its existing directory; do not create duplicate tasks for role transitions.
 - If factory files are absent, perform only read-only discovery first and follow .factory/migration.md from the template checkout. Do not copy the template over an existing project wholesale.
 - Record the adoption in a dedicated task once minimal factory support is safely installed. Attach the migration report and discovery evidence to that task.
 - Use the repository layout recorded in .factory/project.md. Source and test paths are discovered, not assumed to be src/ and tests/.
@@ -31,8 +31,8 @@ Use .factory/bootstrap.md as the common startup and cross-host handoff protocol.
 Follow .factory/routines/model-selection.md using .factory/openai-model-policy.json or .factory/antropic-model-policy.json for the selected provider. The coordinator records risk, selected tier, actual known model/settings, retry/escalation reason, and any owner-defined budget in the handoff. Use economy for bounded reversible work, balanced for ordinary reasoning/coding, and strong for difficult/high-impact work. Reassess after at most two unsuccessful attempts on the same problem. Existing owner model choices and host permissions take precedence; this policy does not switch models automatically or authorize new charges. Do not invent missing tokens/costs or infer task costs from account quotas. Never weaken quality gates to save tokens.
 
 ## Start every work session
-1. Read .factory/project.md and .factory/state.json.
-2. Read the active task's brief.md, specification.md, plan.md, and handoff.md as available, plus .factory/findings/active.json when present. Do not load task or findings archives by default. Exclude `.factory/tasks/archive/` and `.factory/findings/archive/` from routine recursive searches and instruction discovery; read a specific archived record only for a concrete historical question.
+1. Read .factory/project.md and .factory/state.json. In version 2, resolve the assigned task from the matching task branch or explicit assignment and read .factory/tasks/<task-id>/state.json; global state is only a repository marker.
+2. Read the active task's brief.md, specification.md, plan.md, and handoff.md as available, plus active finding summaries from `./.factory/scripts/findings list` when configured. Do not load task or findings archives by default. Exclude `.factory/tasks/archive/` and `.factory/findings/archive/` from routine recursive searches and instruction discovery; read a specific archived record only for a concrete historical question.
 3. Explicitly read your assigned role from .factory/roles/. Role files are not automatically activated by their location.
 4. Inspect repository status and existing changes. Preserve other contributors' work.
 5. Confirm your task, allowed write paths, inputs, and completion criteria. Ask the coordinator to resolve missing assignments; a solo agent may act as coordinator first.
@@ -65,7 +65,7 @@ Follow .factory/routines/model-selection.md using .factory/openai-model-policy.j
 - At session start and task closure, the coordinator checks .factory/maintenance.json and follows .factory/routines/repository-review.md. This is the recurring repository audit, separate from a task's final-diff quality review.
 - Perform a full maintained-repository audit after five completed non-audit tasks or seven calendar days, whichever comes first, at the next agent session. Initial audit is due once the adopting project is configured. Explicitly load .factory/roles/repository-reviewer.md and record the full audit in its task's repository-review.md. Do not start unrelated work while an audit is overdue without owner-authorized deferral.
 - AI slop is a specific inspection area within the broader repository review, not the name or scope of the whole audit. Findings require concrete impact and evidence. Never infer AI authorship or delete useful safeguards based on style. Preserve behavior, tests, security boundaries, and accepted requirements.
-- Resolve blocking findings, track nonblocking follow-up, and reverify fixes. The coordinator alone updates maintenance tracking. A task diff review never resets the full-audit checkpoint. This rule does not create a background automation.
+- Resolve blocking findings, track nonblocking follow-up, and reverify fixes. Maintenance status is derived from durable per-task completion records; the coordinator owns policy and qualified audit declarations. A task diff review never resets the full-audit checkpoint. This rule does not create a background automation.
 
 ## Engineering
 - Make the smallest maintainable change that satisfies the specification.
@@ -90,7 +90,7 @@ Follow [.factory/routines/process-checks.md](.factory/routines/process-checks.md
 ## Handoffs and completion
 In ordinary projects, archive completed task execution with `./.factory/scripts/archive-task <task-id>` after acceptance/review gates and before the final task commit, recording integration/publication as pending until confirmed; never archive unfinished work or reuse an archived ID. See [.factory/routines/task-archive.md](.factory/routines/task-archive.md).
 
-Update the active task's handoff.md after every role transition. Include changed files, decisions, evidence, open findings, blockers, and the next concrete assignment. Keep the coordinator-owned state.json current.
+Update the active task's handoff.md after every role transition. Include changed files, decisions, evidence, open findings, blockers, and the next concrete assignment. Keep the task-local state.json current; global version 2 state is not an active-task selector.
 A task is complete only when acceptance criteria are verified, required checks pass, documentation reflects actual behavior, and security findings are fixed and reverified or explicitly accepted by the owner with rationale and follow-up. Any waived gate must identify owner authorization. Agent self-approval is not risk acceptance.
 
 
@@ -99,7 +99,7 @@ When maintaining the AI Factory template itself, follow [.factory/routines/templ
 
 
 ## Central findings and task cleanup
-Follow [.factory/routines/findings.md](.factory/routines/findings.md). The coordinator maintains project-wide FND IDs in .factory/findings/active.json; confirmed functional/security/quality findings need severity, status, owner, evidence and task references. Closed findings move to the versioned per-ID archive outside routine context. Reconcile reports and run `./.factory/scripts/findings check --prune-task <task-id>` before AND after pruning task records. Commit/pin retained reports first. Never clear active findings, next_id or the archive during task/state/maintenance cleanup. Archive is read only on a targeted request or internally by validation; it is never automatically included in context exports.
+Follow [.factory/routines/findings.md](.factory/routines/findings.md). Origin task writers allocate FND-<task-id>-<local-sequence> IDs and store individual records in .factory/findings/active/; confirmed functional/security/quality findings need severity, status, owner, evidence and task references. Closed findings move to the versioned per-ID archive outside routine context. Reconcile reports and run `./.factory/scripts/findings check --prune-task <task-id>` before AND after pruning task records. Commit/pin retained reports first. Never clear finding records or durable completion history during task/state cleanup. Preserve legacy counters in upgrade evidence; new allocations have no global counter. Archive is read only on a targeted request or internally by validation; it is never automatically included in context exports.
 
 
 ## Template updates

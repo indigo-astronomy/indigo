@@ -30,6 +30,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / '.factory/scripts'))
 spec = importlib.util.spec_from_file_location('archive_task', ROOT / '.factory/scripts/archive_task.py')
 archiver = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(archiver)
@@ -43,7 +44,7 @@ class TaskArchiveTests(unittest.TestCase):
         self.root = Path(self.temp.name) / 'project with spaces'
         self.root.mkdir()
         self.git('init', '-q')
-        for name in ('archive_task.py', 'new_task.py', 'context_export.py', 'findings.py'):
+        for name in ('task_store.py', 'maintenance.py', 'archive_task.py', 'new_task.py', 'context_export.py', 'findings.py'):
             self.put('.factory/scripts/' + name, (ROOT / '.factory/scripts' / name).read_bytes())
         shutil.copytree(ROOT / '.factory/templates/task', self.root / '.factory/templates/task')
         self.state = self.put('.factory/state.json', json.dumps({

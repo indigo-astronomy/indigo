@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Plan and apply pinned, project-local AI Factory template updates."""
 import argparse
+import task_store
 import json
 import os
 from pathlib import Path
@@ -17,7 +18,7 @@ REPOSITORY = 'https://github.com/polakovic/ai_factory'
 PROTECTED = (
     '.factory/project.md', '.factory/state.json', '.factory/maintenance.json',
     '.factory/state.yaml', '.factory/maintenance.yaml',  # Legacy instance data remains protected.
-    '.factory/checks.json', '.factory/process-policy.json', LOCK, '.factory/tasks', '.factory/findings',
+    '.factory/checks.json', '.factory/process-policy.json', LOCK, '.factory/tasks', '.factory/findings', '.factory/completions',
     '.factory/telemetry',  # Retired local data must never be overwritten by an upgrade.
     '.factory/adopters.local.json', '.factory/review-policy.json', '.factory/review.local.json',
 )
@@ -210,9 +211,7 @@ def task_guard(project, task):
     for name in ('brief.md', 'handoff.md'):
         if read(local(project, '.factory/tasks/' + task + '/' + name)) is None:
             raise ValueError('task brief and handoff must exist')
-    state = load(local(project, '.factory/state.json'))
-    if not isinstance(state, dict) or state.get('active_task') != task:
-        raise ValueError('state.json must select the requested task')
+    task_store.selected_state(project, task)
 
 
 def clean_paths(project, paths):

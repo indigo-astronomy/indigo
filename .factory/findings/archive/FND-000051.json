@@ -8,16 +8,16 @@
   "blocking": false,
   "tasks": [
     {
-      "id": "010-primalucelib",
+      "id": "20261022212521-61cf-primalucelib",
       "report": "verification.md",
       "revision": null
     }
   ],
   "summary": "handshake_timeout arms a silent MODNAME reply and asserts !context.connected right after connect_focuser() returns false. connect_focuser() gives up after 5 s, the same time the unanswered read takes, so the CONNECTION property can still be BUSY with CONNECTED on. On Linux it failed in all 5 runs (before and after the library extraction, with and without FND-000049 fixed); the macOS records pass.",
-  "evidence": "010-primalucelib/verification.md (FND-000051); integration/test_focuser_primaluce_simulator.c:605 assertion failed: !context.connected",
+  "evidence": "20261022212521-61cf-primalucelib/verification.md (FND-000051); integration/test_focuser_primaluce_simulator.c:605 assertion failed: !context.connected",
   "resolution": {
     "kind": "fixed",
-    "evidence": "010-primalucelib/verification.md: the case waits for CONNECTION ALERT before checking that the device is not connected; 3 of 3 isolated reruns and the recorded run pass.",
+    "evidence": "20261022212521-61cf-primalucelib/verification.md: the case waits for CONNECTION ALERT before checking that the device is not connected; 3 of 3 isolated reruns and the recorded run pass.",
     "approved_by": null,
     "duplicate_of": null
   }

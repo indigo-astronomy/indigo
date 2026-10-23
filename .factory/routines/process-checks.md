@@ -38,7 +38,7 @@ New tasks use version 2 `process.json`:
 ```json
 {
   "version": 2,
-  "task": "001-example",
+  "task": "20261022143012-a81f-example",
   "reviewed_content": {
     "app/example.py": ["100644", "blob", "FULL_GIT_OBJECT_ID"],
     "app/removed.py": null
@@ -55,7 +55,7 @@ New tasks use version 2 `process.json`:
 After review and archival, stage assigned source files and print their changed identities:
 
 ```sh
-python3 .factory/scripts/process_check.py --base BASE_COMMIT --task 001-example --record-content
+python3 .factory/scripts/process_check.py --base BASE_COMMIT --task 20261022143012-a81f-example --record-content
 ```
 
 Place this output object in `reviewed_content`, then stage process.json and the final reports. The recorder reads

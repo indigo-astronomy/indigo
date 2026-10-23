@@ -1,6 +1,6 @@
 # Workflow and phase gates
 
-The coordinator owns transitions. Each transition requires an updated handoff.md and state.json. If blocked, retain the phase, set status to blocked, and describe the decision or missing input. Resume only when the blocker is resolved. Do not treat elapsed time as authorization.
+The coordinator owns transitions. Each transition requires an updated handoff.md and the selected task's state.json (version 2); the global state is a schema marker. See [concurrent tasks](routines/concurrent-tasks.md). If blocked, retain the phase, set status to blocked, and describe the decision or missing input. Resume only when the blocker is resolved. Do not treat elapsed time as authorization.
 
 | Phase | Responsible role | Required output and exit gate |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ The coordinator owns transitions. Each transition requires an updated handoff.md
 | complete | coordinator | All applicable gates evidenced; final handoff includes remaining accepted limitations. |
 
 ## Entry gate: adoption and task creation
-For an existing project, complete the discovery and integration gates in [migration.md](migration.md) before unrelated feature implementation. Read-only discovery may precede factory installation; record its evidence in the adoption task once bootstrapped. For every new task, create `.factory/tasks/<task-id>/` with `./.factory/scripts/new-task <task-id>`, fill brief.md, and verify state.json. Resume existing tasks rather than recreating them.
+For an existing project, complete the discovery and integration gates in [migration.md](migration.md) before unrelated feature implementation. Read-only discovery may precede factory installation; record its evidence in the adoption task once bootstrapped. For every new task, create `.factory/tasks/<task-id>/` with `./.factory/scripts/new-task <task-id>`, fill brief.md, and verify its task-local state.json. Allocate the time-prefixed ID before creating its branch/worktree as documented in [concurrent-tasks.md](routines/concurrent-tasks.md). Resume existing tasks rather than recreating them.
 
 ## Model selection checkpoint
 Before role assignments and after stalled retries, follow [model-selection.md](routines/model-selection.md). Record the tier/risk/budget decision in handoff.md; preserve quality gates and existing model preferences. Unknown spend must not be claimed under budget.
@@ -28,7 +28,7 @@ Follow [the Git routine](routines/git.md). Create the temporary task branch befo
 ## Task quality and recurring audit gates
 Follow [the task quality routine](routines/quality-review.md) for the quality-reviewer pass on the final diff after documentation and before security sign-off. Record its scoped verdict in quality-review.md; keep exact acceptance/check/retest evidence in verification.md and concise assignments/delivery references in handoff.md. Fixes return to implementation, verification and re-review.
 
-Separately follow [Recurring repository review](routines/repository-review.md), with the repository-reviewer and a full-repository repository-review.md report when an audit is due. The coordinator records cadence decisions and maintains checkpoints; a task quality review does not reset the audit clock. A due audit must complete before the next unrelated task/release unless the owner explicitly defers it. Neither review adds a state.json phase.
+Separately follow [Recurring repository review](routines/repository-review.md), with the repository-reviewer and a full-repository repository-review.md report when an audit is due. The coordinator records cadence decisions and checks derived completion/audit status; a task quality review does not reset the audit clock. A due audit must complete before the next unrelated task/release unless the owner explicitly defers it. Neither review adds a state.json phase.
 
 ## Iteration
 - Verification findings return to implementation, then verification.
@@ -55,7 +55,7 @@ The test designer derives expected outcomes from requirements, not current imple
 
 ## Completed task archival
 
-Ordinary projects follow [task archival](routines/task-archive.md) after acceptance/review gates and before the final task commit, recording integration/publication as pending. The coordinator runs `./.factory/scripts/archive-task <task-id>` to move reports into `.factory/tasks/archive/` and clear the active pointer; it does not approve gates or deliver Git changes. Archived evidence is retained in version control, excluded from routine context, and read only by explicit selection.
+Ordinary projects follow [task archival](routines/task-archive.md) after acceptance/review gates and before the final task commit, recording integration/publication as pending. The coordinator runs `./.factory/scripts/archive-task <task-id>` to move reports into `.factory/tasks/archive/` and retain the task-local completion state (or clear the legacy active pointer); it does not approve gates or deliver Git changes. Archived evidence is retained in version control, excluded from routine context, and read only by explicit selection.
 
 ## Manual orchestration
 This is a workflow convention. There is no bundled agent scheduler or authenticated approval system. The [portable process checks](routines/process-checks.md) provide local structural evidence validation and baseline-owned diff risk rules, without requiring a hosting platform or CI service. A project may optionally invoke the same Python helper from its own CI configuration. Complete process.json from actual checks/reviews, record reviewed Git content identities (version 2; legacy source-commit evidence remains supported), and run the gate on the final committed range. It does not replace any phase, grant permissions or introduce human gates for routine work. Application checks and hosting protection remain project-specific.
@@ -66,7 +66,7 @@ For maintenance of the AI Factory template itself, [template retention](routines
 
 
 ## Central findings gate
-Use [the findings routine](routines/findings.md) and [active register](findings/active.json) at session start, review handoffs and task completion. Report findings use the coordinator-assigned canonical FND ID; register severity/status/owner/blocking, task links and evidence before closing the review phase. Deferred/blocked findings remain active; closed resolutions are archived outside automatic context. Reconcile every confirmed finding and preserve open follow-up before pruning any report. `./.factory/scripts/findings check` is required for registry changes; task cleanup additionally requires `--prune-task <task-id>` before and after deletion. The register/counter/archive survive template export-state resets. This does not waive blocking findings or owner-only risk acceptance.
+Use [the findings routine](routines/findings.md) and [active summaries](routines/findings.md) at session start, review handoffs and task completion. Report findings use the coordinator-assigned canonical FND ID; register severity/status/owner/blocking, task links and evidence before closing the review phase. Deferred/blocked findings remain active; closed resolutions are archived outside automatic context. Reconcile every confirmed finding and preserve open follow-up before pruning any report. `./.factory/scripts/findings check` is required for registry changes; task cleanup additionally requires `--prune-task <task-id>` before and after deletion. Per-record findings and durable completion history survive task cleanup; new-project export exclusions do not reset template history. This does not waive blocking findings or owner-only risk acceptance.
 
 
 ## Template upgrade and release gate

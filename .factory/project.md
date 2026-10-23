@@ -45,7 +45,7 @@ State: .factory/state.json. Maintenance cadence: five completed non-audit tasks 
 - Approved template: https://github.com/polakovic/ai_factory, baseline `11392a11253bae4d1c5d5db97e8a532917728c09`; reviewed source-to-target map: .factory/template-lock.json.
 - Persistent local registration alias: indigo. Inventory is kept in the owner-designated persistent AI Factory checkout, outside this project; do not copy its contents or other project paths into task evidence.
 - Future updates require a new owner-authorized project task and the pinned three-way template-update routine. Registration alone does not authorize an upgrade or a background automation.
-- Adoption evidence: [.factory/tasks/001-adopt-ai-factory/migration.md](tasks/archive/001-adopt-ai-factory/migration.md), [verification](tasks/archive/001-adopt-ai-factory/verification.md), [legacy findings](tasks/archive/001-adopt-ai-factory/legacy-findings.md).
+- Adoption evidence: [.factory/tasks/20261021193138-70b4-adopt-ai-factory/migration.md](tasks/archive/20261021193138-70b4-adopt-ai-factory/migration.md), [verification](tasks/archive/20261021193138-70b4-adopt-ai-factory/verification.md), [legacy findings](tasks/archive/20261021193138-70b4-adopt-ai-factory/legacy-findings.md).
 
 ## Documentation
 New project documents are English. Keep current facts here, task execution evidence under tasks/, canonical findings under findings/, and durable Factory decisions under docs/decisions/. Product/developer documentation remains under indigo_docs/. No template project task history or findings archive is imported.

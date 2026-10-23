@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Export an allowlisted local task snapshot without executing tools or writing files."""
 import argparse
+import task_store
+import findings
 from pathlib import Path
 import re
 import sys
@@ -22,15 +24,16 @@ OPTIONAL_POLICY_DOCS = (
     ".factory/openai-model-policy.json", ".factory/antropic-model-policy.json",
     ".factory/routines/model-selection.md",
     ".factory/routines/cross-review.md", ".factory/review-policy.json",
-    ".factory/routines/findings.md", ".factory/findings/active.json",
-    ".factory/routines/template-maintenance.md",
+    ".factory/routines/findings.md", ".factory/findings/active.json", ".factory/findings/registry.json",
+    ".factory/routines/template-maintenance.md", ".factory/routines/maintenance.md",
+    ".factory/routines/concurrent-tasks.md",
     ".factory/routines/task-archive.md",
     ".factory/routines/process-checks.md", ".factory/process-policy.json",
     "docs/decisions/README.md",
     ".factory/routines/template-updates.md", ".factory/template-lock.json",
 )
 REQUIRED_TASK_DOCS = ("brief.md", "specification.md", "plan.md", "handoff.md")
-OPTIONAL_TASK_DOCS = ("test-plan.md", "verification.md", "quality-review.md", "repository-review.md", "ai-slop.md", "security.md", "process.json")
+OPTIONAL_TASK_DOCS = ("test-plan.md", "verification.md", "quality-review.md", "repository-review.md", "ai-slop.md", "security.md", "process.json", "state.json")
 
 
 def local_path(value):
@@ -64,6 +67,10 @@ def read_document(relative, archived_root=None):
 def build_pack(task, role, scopes, archived=False):
     if task == "archive" or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", task):
         raise ValueError("task ID must use lowercase ASCII letters, digits, and hyphens")
+    if not archived:
+        repository = task_store.loads(task_store.read(ROOT, ROOT / '.factory/state.json'))
+        if isinstance(repository, dict) and repository.get('version') == 2:
+            task_store.selected_state(ROOT, task)
     documents = list(CORE) + [f".factory/roles/{role}.md"]
     task_root = f".factory/tasks/{'archive/' if archived else ''}{task}"
     documents.extend(f"{task_root}/{name}" for name in REQUIRED_TASK_DOCS)
@@ -97,6 +104,10 @@ def build_pack(task, role, scopes, archived=False):
             rule = directory / "AGENTS.md"
             if rule.exists() or rule.is_symlink():
                 documents.append(rule.relative_to(ROOT).as_posix())
+    marker = local_path('.factory/findings/registry.json')
+    if marker.exists() or marker.is_symlink():
+        data = findings.active_register()
+        documents.extend('.factory/findings/active/' + r['id'] + '.json' for r in data['findings'])
     documents = list(dict.fromkeys(documents))
     # Buffer and validate all inputs before emitting anything to stdout.
     sections = []

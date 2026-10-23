@@ -8,16 +8,16 @@
   "blocking": false,
   "tasks": [
     {
-      "id": "011-primaluce-sestosenso3",
+      "id": "20261022235021-bcb6-primaluce-sestosenso3",
       "report": "verification.md",
       "revision": null
     }
   ],
   "summary": "CAL_MAXPOS keeps the previous value (0 or the previous calibration) for up to about 0.65 s after StoreAsMaxPos is acknowledged, so the driver refused moves as uncalibrated or published the position beyond a stale maximum.",
-  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000056); hardware sessions 2026-10-23 (CAL_MAXPOS 0, then 15237 instead of 17197)",
+  "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md (FND-000056); hardware sessions 2026-10-23 (CAL_MAXPOS 0, then 15237 instead of 17197)",
   "resolution": {
     "kind": "fixed",
-    "evidence": "011-primaluce-sestosenso3/verification.md: END polls until the maximum changes and redefines the motion properties; sestosenso3_calibration passes and fails with the previous poll; hardware END published 30975.",
+    "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md: END polls until the maximum changes and redefines the motion properties; sestosenso3_calibration passes and fails with the previous poll; hardware END published 30975.",
     "approved_by": null,
     "duplicate_of": null
   }

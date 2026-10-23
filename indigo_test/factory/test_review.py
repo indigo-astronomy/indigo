@@ -178,6 +178,19 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual((self.root / 'app.py').read_text(), before)
         self.assertEqual((self.root / '.factory/state.json').read_bytes(), state)
 
+    def test_task_local_state_runs_fake_review_and_preserves_other_task(self):
+        self.put('.factory/state.json', '{"version":2,"task_state":"per-task"}\n')
+        self.put('.factory/tasks/' + self.task + '/state.json', json.dumps({'version': 2, 'active_task': self.task}))
+        other = self.put('.factory/tasks/other/state.json', '{"version":2,"active_task":"other","status":"blocked"}\n')
+        before = other.read_bytes()
+        code, directory, record = self.launch()
+        self.assertEqual(code, 0, record)
+        review.check(self.root, directory, self.task, self.head)
+        self.assertEqual(other.read_bytes(), before)
+        self.put('.factory/tasks/' + self.task + '/state.json', '{"active_task":"wrong"}')
+        with self.assertRaisesRegex(ValueError, 'select'):
+            self.launch()
+
     def test_failures_never_pass_and_no_raw_secret_output(self):
         for mode in ('exit', 'bad', 'identity', 'incomplete', 'findings', 'mutation', 'overflow'):
             with self.subTest(mode=mode):

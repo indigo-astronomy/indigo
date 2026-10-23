@@ -8,12 +8,12 @@
   "blocking": true,
   "tasks": [
     {
-      "id": "003-initial-repository-audit",
+      "id": "20261021204508-b596-initial-repository-audit",
       "report": "security.md",
       "revision": null
     },
     {
-      "id": "004-fix-websocket-key-overflow",
+      "id": "20261021203703-ee3d-fix-websocket-key-overflow",
       "report": "verification.md",
       "revision": null
     }
@@ -22,7 +22,7 @@
   "evidence": "48dc893491f77cddb18fc3188d400a70f67cde19:indigo_libs/indigo_server_tcp.c:129 (char websocket_key[256]), :134 (strncpy header+19, sizeof-1), :152 (strcat GUID), :158 (base64_encode back into buffer); reproducer: .factory/tasks/003-initial-repository-audit/repro-websocket-key.c; recorded results: security.md (raw ASan/control logs kept locally, ignored by .gitignore)",
   "resolution": {
     "kind": "fixed",
-    "evidence": "004-fix-websocket-key-overflow/verification.md: indigo_server_tcp.c now copies the key only when it leaves room for the 36-byte GUID and NUL and answers 400 Bad Request otherwise. New test-server-websocket passes 4/4; test-server-websocket-sanitize (real server source under ASan/UBSan) passes 4/4 with no AddressSanitizer report; the same final test built against the base server source aborts with stack-buffer-overflow at indigo_server_tcp.c:152 for the 220-byte and 900-byte keys; isolated reproducer and its fixed-logic copy confirm old overflow and new refusal; detach-abort (28/28) and its network mode (6/6) pass.",
+    "evidence": "20261021203703-ee3d-fix-websocket-key-overflow/verification.md: indigo_server_tcp.c now copies the key only when it leaves room for the 36-byte GUID and NUL and answers 400 Bad Request otherwise. New test-server-websocket passes 4/4; test-server-websocket-sanitize (real server source under ASan/UBSan) passes 4/4 with no AddressSanitizer report; the same final test built against the base server source aborts with stack-buffer-overflow at indigo_server_tcp.c:152 for the 220-byte and 900-byte keys; isolated reproducer and its fixed-logic copy confirm old overflow and new refusal; detach-abort (28/28) and its network mode (6/6) pass.",
     "approved_by": null,
     "duplicate_of": null
   }

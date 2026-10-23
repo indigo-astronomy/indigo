@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import task_store
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -75,25 +76,12 @@ def relocate_links(text, document, source, destination):
     return LINK.sub(replace, text)
 
 
-def unique_pairs(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError('duplicate JSON key')
-        result[key] = value
-    return result
-
-
-def invalid_constant(value):
-    raise ValueError('nonfinite JSON constants are not supported')
-
-
 def prepare(task):
     if task == 'archive' or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', task):
         raise ValueError('invalid or reserved task ID')
-    state_path = local(ROOT / '.factory/state.json')
+    state_path, data = task_store.selected_state(ROOT, task)
     state = read(state_path)
-    data = json.loads(state, object_pairs_hook=unique_pairs, parse_constant=invalid_constant)
+    modern = state_path != ROOT / '.factory/state.json'
     required = {'active_task', 'phase', 'status', 'assigned_role', 'next_action', 'blocker'}
     if not isinstance(data, dict) or not required <= data.keys():
         raise ValueError('state needs standard workflow fields')
@@ -130,18 +118,25 @@ def prepare(task):
         updated = relocate_links(text, document, source, destination)
         if updated != text:
             changes[document] = (text.encode('utf-8'), updated.encode('utf-8'))
-    data.update(active_task=None, phase='idle', status='idle', assigned_role='coordinator',
-                next_action='Select or create the next task.', blocker=None)
+    if not modern:
+        data.update(active_task=None, phase='idle', status='idle', assigned_role='coordinator',
+                    next_action='Select or create the next task.', blocker=None)
     idle = json.dumps(data, indent=2, allow_nan=False) + '\n'
     return source, destination, changes, state_path, state.encode('utf-8'), idle.encode('utf-8')
 
 
 def archive(task, dry_run=False):
     source, destination, changes, state_path, state, idle = prepare(task)
+    completion = None
+    config_path = ROOT / '.factory/maintenance.json'
+    if config_path.exists():
+        import maintenance
+        completion = maintenance.completion_for_archive(ROOT, task, task_store.loads(state))
     if dry_run:
         return len(changes)
     moved = False
     written = []
+    completion_written = False
     created_archive = not destination.parent.exists()
     try:
         destination.parent.mkdir(exist_ok=True)
@@ -154,14 +149,20 @@ def archive(task, dry_run=False):
             raise ValueError('state changed during planning; retry with one writer')
         source.rename(destination)
         moved = True
-        atomic(state_path, idle)
+        if state_path == ROOT / '.factory/state.json':
+            atomic(state_path, idle)
+        if completion is not None:
+            completion_written = True
+            task_store.atomic(*completion)
     except (OSError, ValueError):
         try:
+            if completion_written:
+                completion[0].unlink(missing_ok=True)
             if moved:
                 destination.rename(source)
             for path in reversed(written):
                 atomic(path, changes[path][0])
-            if moved:
+            if moved and state_path == ROOT / '.factory/state.json':
                 atomic(state_path, state)
             if created_archive:
                 destination.parent.rmdir()
@@ -177,7 +178,8 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='validate and count link updates without writing')
     args = parser.parse_args()
     try:
-        count = archive(args.task, args.dry_run)
+        with task_store.lifecycle_lock(ROOT):
+            count = archive(args.task, args.dry_run)
     except (OSError, ValueError, RuntimeError) as exc:
         print('Task archive failed: ' + str(exc), file=sys.stderr)
         return 2

@@ -8,16 +8,16 @@
   "blocking": false,
   "tasks": [
     {
-      "id": "011-primaluce-sestosenso3",
+      "id": "20261022235021-bcb6-primaluce-sestosenso3",
       "report": "verification.md",
       "revision": null
     }
   ],
   "summary": "With CAL_MAXPOS not above CAL_MINPOS the controller answers GOTO with done and stays; the driver published the move and ended it without a reason.",
-  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000054); hardware probe of the delivered unit",
+  "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md (FND-000054); hardware probe of the delivered unit",
   "resolution": {
     "kind": "fixed",
-    "evidence": "011-primaluce-sestosenso3/verification.md: such moves are refused with 'The focuser is not calibrated'; sestosenso3_uncalibrated and sestosenso3_calibration_restart pass.",
+    "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md: such moves are refused with 'The focuser is not calibrated'; sestosenso3_uncalibrated and sestosenso3_calibration_restart pass.",
     "approved_by": null,
     "duplicate_of": null
   }

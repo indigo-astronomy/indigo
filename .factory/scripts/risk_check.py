@@ -16,6 +16,8 @@ DEFAULT_POLICY = {
                                          '.factory/scripts/findings.py', '.factory/scripts/decision_index.py', '.factory/scripts/process-check',
                                          '.factory/review-policy.json', '.factory/scripts/review', '.factory/scripts/review.py',
                                          '.factory/scripts/review_adapters.py', '.factory/scripts/review_protocol.py',
+                                         '.factory/scripts/task_store.py', '.factory/scripts/task_upgrade.py',
+                                         '.factory/scripts/metadata_upgrade.py', '.factory/scripts/maintenance.py',
                                          # Historical ranges and adopters may still use legacy destinations.
                                          'scripts/process_check.py', 'scripts/risk_check.py', 'scripts/git_snapshot.py',
                                          'scripts/findings.py', 'scripts/decision_index.py', 'scripts/process-check',

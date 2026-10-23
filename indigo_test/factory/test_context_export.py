@@ -35,6 +35,8 @@ class ContextExportTests(unittest.TestCase):
         self.root = Path(self.temp.name) / "project with spaces"
         self.root.mkdir()
         self.write(".factory/scripts/context_export.py", (TEMPLATE_ROOT / ".factory/scripts/context_export.py").read_text())
+        self.write(".factory/scripts/task_store.py", (TEMPLATE_ROOT / ".factory/scripts/task_store.py").read_text())
+        self.write(".factory/scripts/findings.py", (TEMPLATE_ROOT / ".factory/scripts/findings.py").read_text())
         self.required = [
             "AGENTS.md", ".factory/bootstrap.md", ".factory/project.md",
             ".factory/state.json", ".factory/workflow.md", ".factory/maintenance.json",

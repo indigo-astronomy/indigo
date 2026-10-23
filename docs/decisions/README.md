@@ -5,4 +5,4 @@ This index is navigation; the original records contain the decisions and their a
 
 | Decision | Status | Date | Owner | Related task |
 | --- | --- | --- | --- | --- |
-| [ADR-001: Adopt AI Factory while preserving INDIGO authority](ADR-001-adopt-factory.md) | accepted | 2026-10-21 | Peter Polakovic, explicit adoption request and clarification | 001-adopt-ai-factory |
+| [ADR-001: Adopt AI Factory while preserving INDIGO authority](ADR-001-adopt-factory.md) | accepted | 2026-10-21 | Peter Polakovic, explicit adoption request and clarification | 20261021193138-70b4-adopt-ai-factory |

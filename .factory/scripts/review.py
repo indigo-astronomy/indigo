@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run explicitly authorized cross-provider reviews of immutable local commits."""
+import task_store
 import argparse
 import fnmatch
 import json
@@ -155,9 +156,7 @@ def report(record):
 def run(root, args):
     if os.environ.get('AI_FACTORY_REVIEW_CHILD'):
         raise ValueError('recursive review invocation refused')
-    state = protocol.loads(regular(root, '.factory/state.json').read_bytes())
-    if state.get('active_task') != args.task:
-        raise ValueError('selected task must be the active task')
+    task_store.selected_state(root, args.task)
     if args.role == 'security-reviewer' and args.tier != 'strong':
         raise ValueError('security-reviewer requires the strong tier')
     branch = git(root, 'symbolic-ref', '--short', 'HEAD').decode().strip()

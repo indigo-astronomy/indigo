@@ -12,18 +12,19 @@ Do not force-push, reset --hard, git clean, branch -D, bypass protection, or dis
 
 ## 1. Start safely
 
-Inspect status, branches, remotes, worktrees and factory state. Preserve existing changes. Fetch the configured remote when authorized, confirm the local integration branch can fast-forward, and create the task branch from that updated base before task writes. Preserve divergence for explicit resolution. Resume an existing task on its branch; never replace it with switch -C or branch -f. Record base/target/remote in handoff.md, then run ./.factory/scripts/new-task TASK-ID.
+Inspect status, branches, remotes, worktrees and factory state. Preserve existing changes. Fetch the configured remote when authorized, confirm the local integration branch can fast-forward, and create the task branch from that updated base before task writes. Preserve divergence for explicit resolution. Resume an existing task on its branch; never replace it with switch -C or branch -f. Record base/target/remote in handoff.md, then run ./.factory/scripts/new-task TASK-ID. Allocate the ordered ID first with `new-task SLUG --print-id`; see [concurrent-tasks.md](concurrent-tasks.md).
 
 ```sh
 git status --short --branch
 git fetch origin
 git switch main
 git merge --ff-only origin/main
-git switch -c task/001-example
-./.factory/scripts/new-task 001-example
+TASK_ID=$(./.factory/scripts/new-task example --print-id)
+git switch -c "task/$TASK_ID"
+./.factory/scripts/new-task "$TASK_ID"
 ```
 
-These branch/remote names are examples. Read-only adoption discovery can precede Git bootstrap. One writer owns the task checkout; concurrent tasks need separate branches/worktrees and file ownership. Do not update main in another writer's worktree or overwrite another active state pointer.
+These branch/remote names are examples. Read-only adoption discovery can precede Git bootstrap. One writer owns the task checkout; concurrent tasks need separate branches/worktrees and file ownership. Do not update main in another writer's worktree or overwrite another task's state.
 
 ## 2. Work and synchronize
 
@@ -54,7 +55,7 @@ Fetch immediately before integration. Compare the target against the revision in
 ```sh
 git switch main
 git merge --ff-only origin/main
-git merge --ff-only task/001-example
+git merge --ff-only task/20261022143012-a81f-example
 git push origin main
 ```
 
