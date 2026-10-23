@@ -1,0 +1,135 @@
+{
+  "version": 2,
+  "task": "20261023181210-45bf-fix-raw-selection",
+  "scope": [
+    "indigo_libs/indigo_raw_utils.c",
+    "indigo_libs/indigo/indigo_raw_utils.h",
+    "indigo_test/unit/test_raw_image.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/maintenance.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-006.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-006.json",
+    ".factory/completions/20261023181210-45bf-fix-raw-selection.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "-j4",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "build/unit/test_raw_image"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_raw_image"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-raw-image-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-imager-download"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023181210-45bf-fix-raw-selection.json": [
+      "100644",
+      "blob",
+      "d3fef62da9c5d3c4195c338098573802c5fb099b"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-006.json": null,
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-006.json": [
+      "100644",
+      "blob",
+      "0f27b7fceb183ca85a68e386af7af4ecf6bd509a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "fd419c04fcfee3e0e0aafb694a3380437bd37939"
+    ],
+    "indigo_libs/indigo/indigo_raw_utils.h": [
+      "100644",
+      "blob",
+      "8dfc5200783ce0c2d20552853b5dd1551657d3e3"
+    ],
+    "indigo_libs/indigo_raw_utils.c": [
+      "100644",
+      "blob",
+      "751d4cf037f5e79e81a7b367e151403d78847538"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "1f7b1642f4273d13971845b5e0f5ad00cc417ead"
+    ],
+    "indigo_test/unit/test_raw_image.c": [
+      "100644",
+      "blob",
+      "b468a909cc1600238cad5abf40367b4f8b3a684b"
+    ]
+  }
+}

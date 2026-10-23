@@ -394,6 +394,19 @@ $(UNIT_BUILD)/test_token: unit/test_token.c test_runner.h | $(UNIT_BUILD)
 $(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
+# Instrument the production RAW helpers as a separate object, before the static library.
+RAW_IMAGE_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer
+
+$(UNIT_BUILD)/raw_utils_sanitize.o: ../indigo_libs/indigo_raw_utils.c ../indigo_libs/indigo/indigo_raw_utils.h | $(UNIT_BUILD)
+	$(CC) $(RAW_IMAGE_SANITIZE_CFLAGS) -c $< -o $@
+
+$(UNIT_BUILD)/test_raw_image_sanitize: unit/test_raw_image.c test_runner.h $(UNIT_BUILD)/raw_utils_sanitize.o $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(RAW_IMAGE_SANITIZE_CFLAGS) -o $@ $< $(UNIT_BUILD)/raw_utils_sanitize.o $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+.PHONY: test-raw-image-sanitize
+test-raw-image-sanitize: $(UNIT_BUILD)/test_raw_image_sanitize
+	UBSAN_OPTIONS=halt_on_error=1 $(UNIT_BUILD)/test_raw_image_sanitize
+
 $(UNIT_BUILD)/test_base64: unit/test_base64.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 

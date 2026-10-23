@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261023181210-45bf-fix-raw-selection",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive and commit reviewed candidate, run committed gates, report SHA to coordinator for exact fast-forward and cleanup.",
+  "blocker": null
+}

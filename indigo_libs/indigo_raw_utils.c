@@ -429,24 +429,20 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 		return INDIGO_OK;
 	}
 
-	int xx = (int)round(x);
-	int yy = (int)round(y);
-
-	if (
-		(xx < radius) ||
-		(yy < radius) ||
-		(width - radius < xx) ||
-		(height - radius < yy) ||
-		(width <= 2 * radius + 1) ||
-		(height <= 2 * radius + 1)
-	) {
+	if (radius <= 0 || width <= 1 || height <= 1 || radius > (width - 2) / 2 || radius > (height - 2) / 2 || !isfinite(x) || !isfinite(y)) {
 		return INDIGO_FAILED;
 	}
+	double rounded_x = round(x), rounded_y = round(y);
+	if (rounded_x < radius || rounded_y < radius || rounded_x >= width - radius || rounded_y >= height - radius) {
+		return INDIGO_FAILED;
+	}
+	int xx = (int)rounded_x;
+	int yy = (int)rounded_y;
 
 	double background = 0, max = 0, value = 0;
 	int background_count = 0;
 
-	int *values = (int*)malloc(8 * radius * sizeof(int));
+	int *values = (int*)malloc(8 * (size_t)radius * sizeof(int));
 	if (values == NULL) {
 		return INDIGO_FAILED;
 	}
@@ -507,9 +503,10 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	}
 
 	/* calculate stddev */
-	int sum = 0;
+	double sum = 0;
 	for (int i = 0; i < background_count; i++) {
-		sum += (int)((values[i] - background) * (values[i] - background));
+		double deviation = values[i] - background;
+		sum += deviation * deviation;
 	}
 	free(values);
 	double stddev = sqrt(sum / background_count);
@@ -659,21 +656,20 @@ indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, 
 
 #define MAX_RADIUS 128
 indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest) {
-	const int xx = (int)round(*x);
-	const int yy = (int)round(*y);
+	if (data == NULL || x == NULL || y == NULL || digest == NULL) {
+		return INDIGO_FAILED;
+	}
+	if (radius <= 0 || radius > MAX_RADIUS || width <= 1 || height <= 1 || radius > (width - 2) / 2 || radius > (height - 2) / 2 || !isfinite(*x) || !isfinite(*y)) {
+		return INDIGO_FAILED;
+	}
+	double rounded_x = round(*x), rounded_y = round(*y);
+	if (rounded_x < radius || rounded_y < radius || rounded_x >= width - radius || rounded_y >= height - radius) {
+		return INDIGO_FAILED;
+	}
+	const int xx = (int)rounded_x;
+	const int yy = (int)rounded_y;
 	double background[MAX_RADIUS*8+2];
 	int background_count = 0;
-
-	if ((width <= 2 * radius + 1) || (height <= 2 * radius + 1) || radius > MAX_RADIUS)
-		return INDIGO_FAILED;
-	if (xx < radius || width - radius < xx) {
-		return INDIGO_FAILED;
-	}
-	if (yy < radius || height - radius < yy) {
-		return INDIGO_FAILED;
-	}
-	if ((data == NULL) || (digest == NULL))
-		return INDIGO_FAILED;
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
