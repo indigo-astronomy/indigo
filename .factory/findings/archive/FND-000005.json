@@ -1,0 +1,29 @@
+{
+  "id": "FND-000005",
+  "title": "DOCS-005: Client documentation says the remote-server example is a working sample but only warns that the simulator driver must be loaded",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261023064302-ef56-fix-doc-findings-001-005",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "DOCS-005: Client documentation says the remote-server example is a working sample but only warns that the simulator driver must be loaded. The actual examples hard-code `W11` and `indigosky` service/device names and have no bounded failure path when the service is absent. Either document those defaults and failure behavior explicitly or update the docs after the examples are made parameterized and bounded.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_docs/REVIEW.md:40; historical locations: `CLIENT_DEVELOPMENT_BASICS.md:509`, `remote_server_client.c:31`, `remote_server_client.c:163`, `remote_server_client_mount.c:30`, `remote_server_client_mount.c:177`; legacy status: Open",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023064302-ef56-fix-doc-findings-001-005/verification.md AC-005: Documented fixed W11/indigosky server and device defaults, simulator prerequisites, unchecked connection results and unbounded wait failure behavior; runtime example defects remain separately tracked.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

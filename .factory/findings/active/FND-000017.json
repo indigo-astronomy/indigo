@@ -1,0 +1,19 @@
+{
+  "id": "FND-000017",
+  "title": "LINUXDRV-004: `relay_mutex` and `port_mutex` are initialized but never destroyed before the private data is freed",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "LINUXDRV-004: `relay_mutex` and `port_mutex` are initialized but never destroyed before the private data is freed. This is unlikely to affect a single-process normal shutdown, but repeated driver load/unload cycles leak pthread mutex resources and complicate sanitizers. Destroy both mutexes during detach/delete after timers are cancelled and no callbacks can use them. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:32; historical locations: `aux_asiair/indigo_aux_asiair.c:694`, `aux_asiair/indigo_aux_asiair.c:941`, `aux_rpio/indigo_aux_rpio.c:859`, `aux_rpio/indigo_aux_rpio.c:1140`; legacy status: Open",
+  "resolution": null
+}

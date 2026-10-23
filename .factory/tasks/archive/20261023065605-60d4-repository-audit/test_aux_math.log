@@ -1,0 +1,4 @@
+Running aux math unit tests
+  PASS dewpoint_matches_magnus_reference_values
+  PASS sky_bortle_thresholds_are_stable
+aux math unit tests: all tests passed

@@ -1,0 +1,19 @@
+{
+  "id": "FND-000016",
+  "title": "LINUXDRV-003: GPIO/PWM export and unexport helpers return on the first failure without rolling back or continuing cleanup",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "LINUXDRV-003: GPIO/PWM export and unexport helpers return on the first failure without rolling back or continuing cleanup. A partial connect failure can leave some GPIOs/PWMs exported, and a disconnect can stop after one unexport error while leaving the rest of the pins exported. Track successfully exported resources during connect and perform best-effort cleanup of all resources on failure and disconnect. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:31; historical locations: `aux_asiair/indigo_aux_asiair.c:482`, `aux_asiair/indigo_aux_asiair.c:505`, `aux_rpio/indigo_aux_rpio.c:555`, `aux_rpio/indigo_aux_rpio.c:581`; legacy status: Open",
+  "resolution": null
+}

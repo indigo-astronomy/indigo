@@ -1,0 +1,115 @@
+Running dome azimuth unit tests
+  PASS map24_wraps_hours_into_day_range
+  PASS azimuth_distance_uses_shortest_arc
+  PASS dome_azimuth_solution_stays_in_valid_range
+  ha=-6.0 north=78.6839 south=101.3161 mirrored=101.3161
+  ha=-4.5 north=96.3501 south=83.6499 mirrored=83.6499
+  ha=-3.0 north=122.4723 south=57.5277 mirrored=57.5277
+  ha=-1.5 north=171.9663 south=8.0337 mirrored=8.0337
+  ha=+0.0 north=162.9068 south=17.0932 mirrored=17.0932
+  ha=+1.5 north=216.4701 south=323.5299 mirrored=323.5299
+  ha=+3.0 north=246.6142 south=293.3858 mirrored=293.3858
+  ha=+4.5 north=264.3772 south=275.6228 mirrored=275.6228
+  ha=+6.0 north=278.1976 south=261.8024 mirrored=261.8024
+  PASS dome_azimuth_mirrors_pivot_offsets_across_the_equator
+  182160 cases, worst disagreement 0.000000000 deg
+  PASS dome_azimuth_matches_the_vector_model
+  ha=-11.5 east=  21.325 west= 355.039
+  ha=-11.0 east=  29.040 west=   3.435
+  ha=-10.5 east=  36.341 west=  11.766
+  ha=-10.0 east=  43.208 west=  19.881
+  ha= -9.5 east=  49.655 west=  27.665
+  ha= -9.0 east=  55.722 west=  35.044
+  ha= -8.5 east=  61.463 west=  41.990
+  ha= -8.0 east=  66.942 west=  48.512
+  ha= -7.5 east=  72.230 west=  54.644
+  ha= -7.0 east=  77.400 west=  60.440
+  ha= -6.5 east=  82.530 west=  65.961
+  ha= -6.0 east=  87.707 west=  87.707
+  ha= -5.5 east=  76.464 west=  93.028
+  ha= -5.0 east=  81.596 west=  98.604
+  ha= -4.5 east=  86.757 west= 104.574
+  ha= -4.0 east=  92.044 west= 111.106
+  ha= -3.5 east=  97.565 west= 118.409
+  ha= -3.0 east= 103.451 west= 126.734
+  ha= -2.5 east= 109.867 west= 136.355
+  ha= -2.0 east= 117.012 west= 147.503
+  ha= -1.5 east= 125.130 west= 160.212
+  ha= -1.0 east= 134.496 west= 174.132
+  ha= -0.5 east= 145.355 west= 188.460
+  ha= +0.0 east= 157.792 west= 202.208
+  ha= +0.5 east= 171.540 west= 214.645
+  ha= +1.0 east= 185.868 west= 225.504
+  ha= +1.5 east= 199.788 west= 234.870
+  ha= +2.0 east= 212.497 west= 242.988
+  ha= +2.5 east= 223.645 west= 250.133
+  ha= +3.0 east= 233.266 west= 256.549
+  ha= +3.5 east= 241.591 west= 262.435
+  ha= +4.0 east= 248.894 west= 267.956
+  ha= +4.5 east= 255.426 west= 273.243
+  ha= +5.0 east= 261.396 west= 278.404
+  ha= +5.5 east= 266.972 west= 283.536
+  ha= +6.0 east= 272.293 west= 272.293
+  ha= +6.5 east= 294.039 west= 277.470
+  ha= +7.0 east= 299.560 west= 282.600
+  ha= +7.5 east= 305.356 west= 287.770
+  ha= +8.0 east= 311.488 west= 293.058
+  ha= +8.5 east= 318.010 west= 298.537
+  ha= +9.0 east= 324.956 west= 304.278
+  ha= +9.5 east= 332.335 west= 310.345
+  ha=+10.0 east= 340.119 west= 316.792
+  ha=+10.5 east= 348.234 west= 323.659
+  ha=+11.0 east= 356.565 west= 330.960
+  ha=+11.5 east=   4.961 west= 338.675
+  PASS dome_azimuth_keeps_the_ota_on_the_reported_side
+  before=200.3733 after=201.5907 guessed=159.6267
+  PASS dome_azimuth_follows_reported_side_of_pier_past_the_meridian
+  ha=-11.5 unknown=  17.741 matches EAST
+  ha=-11.0 unknown=  25.085 matches EAST
+  ha=-10.5 unknown=  32.104 matches EAST
+  ha=-10.0 unknown=  38.762 matches EAST
+  ha= -9.5 unknown=  45.058 matches EAST
+  ha= -9.0 unknown=  51.011 matches EAST
+  ha= -8.5 unknown=  56.658 matches EAST
+  ha= -8.0 unknown=  62.049 matches EAST
+  ha= -7.5 unknown=  67.241 matches EAST
+  ha= -7.0 unknown=  72.297 matches EAST
+  ha= -6.5 unknown=  77.288 matches EAST
+  ha= -6.0 unknown=  82.289 matches EAST
+  ha= -5.5 unknown=  87.391 matches WEST
+  ha= -5.0 unknown=  92.701 matches WEST
+  ha= -4.5 unknown=  98.350 matches WEST
+  ha= -4.0 unknown= 104.510 matches WEST
+  ha= -3.5 unknown= 111.407 matches WEST
+  ha= -3.0 unknown= 119.338 matches WEST
+  ha= -2.5 unknown= 128.685 matches WEST
+  ha= -2.0 unknown= 139.874 matches WEST
+  ha= -1.5 unknown= 153.225 matches WEST
+  ha= -1.0 unknown= 168.598 matches WEST
+  ha= -0.5 unknown= 185.034 matches WEST
+  ha= +0.0 unknown= 159.017 matches EAST
+  ha= +0.5 unknown= 174.966 matches EAST
+  ha= +1.0 unknown= 191.402 matches EAST
+  ha= +1.5 unknown= 206.775 matches EAST
+  ha= +2.0 unknown= 220.126 matches EAST
+  ha= +2.5 unknown= 231.315 matches EAST
+  ha= +3.0 unknown= 240.662 matches EAST
+  ha= +3.5 unknown= 248.593 matches EAST
+  ha= +4.0 unknown= 255.490 matches EAST
+  ha= +4.5 unknown= 261.650 matches EAST
+  ha= +5.0 unknown= 267.299 matches EAST
+  ha= +5.5 unknown= 272.609 matches EAST
+  ha= +6.0 unknown= 277.711 matches EAST
+  ha= +6.5 unknown= 282.712 matches WEST
+  ha= +7.0 unknown= 287.703 matches WEST
+  ha= +7.5 unknown= 292.759 matches WEST
+  ha= +8.0 unknown= 297.951 matches WEST
+  ha= +8.5 unknown= 303.342 matches WEST
+  ha= +9.0 unknown= 308.989 matches WEST
+  ha= +9.5 unknown= 314.942 matches WEST
+  ha=+10.0 unknown= 321.238 matches WEST
+  ha=+10.5 unknown= 327.896 matches WEST
+  ha=+11.0 unknown= 334.915 matches WEST
+  ha=+11.5 unknown= 342.259 matches WEST
+  PASS dome_azimuth_agrees_with_counterweight_down_for_a_normal_mount
+dome azimuth unit tests: all tests passed

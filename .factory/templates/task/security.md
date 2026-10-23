@@ -33,4 +33,4 @@ TODO — a clean scan alone does not complete this review.
 
 
 ## Register reconciliation
-Canonical FND IDs, current owner/status/blocking, discovery/repair task references and retained evidence: TODO. Keep unresolved entries in .factory/findings/active.json; archive terminal records after verification. Before report deletion, pin affected task references and pass the findings prune gate. Do not include archive payloads in this report.
+Canonical FND IDs, current owner/status/blocking, discovery/repair task references and retained evidence: TODO. Keep unresolved entries in the individual .factory/findings/active/ records; archive terminal records after verification. Before report deletion, pin affected task references and pass the findings prune gate. Do not include archive payloads in this report.

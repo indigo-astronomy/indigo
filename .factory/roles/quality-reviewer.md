@@ -23,4 +23,4 @@ A useful, evidence-backed report with finding dispositions, retest evidence wher
 
 
 ## Findings handoff
-Read the active register and follow [the findings routine](../routines/findings.md). Use coordinator-assigned FND IDs for confirmed findings; preserve legacy task-local labels as aliases. Hand evidence, owner/status and repair/retest updates to the coordinator for canonical registration/reconciliation before task completion. Do not silently close, drop or duplicate a finding in task prose, and do not bulk-load the archive.
+Read active summaries with findings list and follow [the findings routine](../routines/findings.md). Use origin-task-scoped FND IDs under the findings routine for confirmed findings; preserve legacy task-local labels as aliases. Hand evidence, owner/status and repair/retest updates to the coordinator for canonical registration/reconciliation before task completion. Do not silently close, drop or duplicate a finding in task prose, and do not bulk-load the archive.

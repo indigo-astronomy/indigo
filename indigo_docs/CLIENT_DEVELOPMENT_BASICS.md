@@ -182,7 +182,7 @@ int main(int argc, const char * argv[]) {
 
 	/* We want to connect to a remote indigo host indigosky.local:7624 */
 	indigo_server_entry *server;
-	indigo_connect_server("indigosky", "indigosky.local", 7624, &server);
+	indigo_connect_server("indigosky", "indigosky.local", 7624, &server, NULL);
 
 	/* We can do whatever we want here while we are waiting for
 	   the client to complete. For example we can call some GUI
@@ -267,8 +267,6 @@ indigo_change_switch_property(
 The above code snippet requests the CCD driver to change the image format in to FITS by setting the fits switch item to true.
 
 ### Handling Properties Asynchronously
-
-In some casess properties should be hangled asynchronoysly. In case of dynamic or static driver linking by the client and you need to send a change request. Functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)). To facilitate this, several functions are provided:
 
 In some cases, properties should be handled asynchronously. When dynamically or statically linking a driver by the client, and you need to send a change request, functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)). To facilitate this, several functions are provided:
 
@@ -437,7 +435,7 @@ void resolve_callback(const char *service_name, uint32_t interface_index, const 
 *service_name* is the name of the service being resolved, *interface_index* is the number of the network interface where the service is available, *host* is the host name and *port* is the TCP port where indigo service is accessible. Use *host* and *port* to connect to this service. In case of resolutuin error the callbck will have *host = NULL* and *port = 0*.
 
 ### Service discovery example
-Working example can be found in [indigo_examples/service_ddiscovery.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/service_discovery.c):
+Working example can be found in [indigo_examples/service_discovery.c](../indigo_examples/service_discovery.c):
 ```C
 #include <stdio.h>
 #include <indigo/indigo_service_discovery.h>
@@ -506,7 +504,9 @@ Dealing with the service discovery is beyond the scope of this document.
 
 ## INDIGO Imaging Client - Example
 
-The following code is a working example of INDIGO client that connects to "*indigosky.local:7624*", and uses camera named "**CCD Imager Simulator @ indigosky**" to take 5 exposures, 3 seconds each and save the images in FITS format. Please make sure that **indigo_ccd_simulator** driver is loaded on *indigosky* otherwise the example will not work because it does not check if the camera is present for simplicity.
+The following illustrative client connects to `indigosky.local:7624` and requests five three-second exposures from `CCD Imager Simulator @ indigosky`, saving the images in FITS format. It assumes that the server is reachable, advertises the service name `indigosky`, and has `indigo_ccd_simulator` loaded. Adapt both the host in `indigo_connect_server()` and the service/device names to your setup; the suffix after `@` must match the server's service name.
+
+This example does not check the connection result or impose a timeout on its exposure wait loop. If the server or camera is unavailable, or the expected completion updates never arrive, it can wait indefinitely. It is an API illustration, not a bounded connection/error-handling example.
 
 ```C
 #include <stdio.h>
@@ -655,7 +655,7 @@ int main(int argc, const char * argv[]) {
 
 	indigo_server_entry *server;
 	indigo_attach_client(&client);
-	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
+	indigo_connect_server("indigosky", "indigosky.local", 7624, &server, NULL); // Check correct host name in 2nd arg!!!
 	while (count > 0) {
 		  indigo_sleep(1);
 	}
@@ -668,11 +668,15 @@ int main(int argc, const char * argv[]) {
 
 ## More Client Examples
 
-An open source examples of client API usage are the following pieces of code:
+The checked-in remote clients use different fixed defaults from the inline imaging example above:
 
-1. [indigo_examples/remote_server_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/remote_server_client.c) - Basic API example which takes exposures with the camera
+1. [indigo_examples/remote_server_client.c](../indigo_examples/remote_server_client.c) uses `SERVICE = "W11"`, connects to `W11.local:7624` and addresses `CCD Imager Simulator @ W11`. Load `indigo_ccd_simulator` on that server and adapt `SERVICE` for your setup.
 
-1. [indigo_examples/remote_server_client_mount.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/remote_server_client_mount.c) - Basic API example which unparks and moves the mount
+1. [indigo_examples/remote_server_client_mount.c](../indigo_examples/remote_server_client_mount.c) connects to `indigosky.local:7624` with service name `indigosky` and addresses `Mount Simulator @ indigosky`. Load `indigo_mount_simulator` and adapt both the connection arguments and `MOUNT_SIMULATOR` for your setup.
+
+Both clients ignore the connection result and wait without an operation deadline (`count > 0` or `!finished`). An unavailable server/device or missing completion update can leave them waiting indefinitely. Their connection, error handling and API usage must be checked against the current headers before reuse; these are illustrative sources, not unattended test clients.
+
+Other examples and tools:
 
 1. [indigo_tools/indigo_prop_tool.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c) - Command line property management tool
 

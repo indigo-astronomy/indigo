@@ -1,0 +1,144 @@
+09:07:03.173744 Application: Attempt to reschedule timer without reference!
+09:07:03.259852 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.289180 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.301696 Application: Attempt to reschedule timer without reference!
+09:07:03.326413 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.365888 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.405396 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.442737 Application: Attempt to reschedule timer without reference!
+09:07:03.469715 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.509235 Application: Attempt to reschedule timer without reference!
+09:07:03.536271 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.574261 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.612709 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.652347 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.688689 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.726372 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.764466 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.802102 Application: Attempt to reschedule timer without reference!
+09:07:03.829218 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.868556 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.907011 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:03.944120 Application: Attempt to reschedule timer without reference!
+09:07:03.969958 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.006307 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.043083 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.080854 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.117438 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.154983 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.193180 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.230972 Application: Attempt to reschedule timer without reference!
+09:07:04.257948 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.297525 Application: Attempt to reschedule timer without reference!
+09:07:04.322263 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.360150 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.397771 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:04.423038 Application: Attempt to set timer with non-NULL reference
+09:07:06.412413 Application: Attempt to cancel timer with outdated reference!
+09:07:06.667940 Application: timer #229 - attempt to cancel timer with outdated reference!
+09:07:06.667994 Application: timer #229 - attempt to reschedule timer with outdated reference!
+09:07:12.301643 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.305388 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.305409 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.305416 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.305423 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.305428 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.305431 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.321204 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.321239 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.321253 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.334093 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.334123 Application: Attempt to reschedule timer without reference or canceled timer!
+09:07:12.353278 Application: Attempt to reschedule timer without reference!
+Running timer unit tests
+  PASS queue_drain_waits_for_running_pending_and_followup_tasks
+  PASS queue_drain_wakes_all_waiters_when_pending_tasks_are_removed
+  PASS delay_to_time_handles_zero_and_orders_positive_delays
+  PASS delay_to_time_normalizes_larger_fractional_delays
+  PASS negative_delay_runs_promptly_and_uses_normalized_time
+  PASS zero_delay_timer_runs_promptly_and_clears_reference
+  PASS nonzero_delay_timer_does_not_fire_before_deadline
+  PASS set_timer_runs_callback_and_clears_reference
+  PASS set_timer_with_data_passes_user_data
+  PASS set_timer_with_data_passes_null_user_data
+  PASS set_timer_with_mutex_runs_callback_while_mutex_is_locked
+  PASS cancel_timer_prevents_pending_callback
+  PASS cancel_timer_sync_prevents_pending_callback_and_returns_true
+  PASS cancel_timer_sync_without_reference_returns_false
+  PASS cancel_timer_sync_waits_for_running_callback
+  PASS cancel_timer_returns_false_for_running_callback_without_waiting
+  PASS completing_callback_does_not_clear_newer_timer_reference
+  PASS cancel_timer_sync_from_own_callback_does_not_deadlock
+  PASS timer_scheduler_restarts_after_fork_during_callback
+  PASS fork_discards_inherited_timer_references_and_device_links
+  PASS reschedule_timer_changes_delay_and_callback
+  PASS reschedule_pending_data_timer_to_plain_callback_discards_payload
+  PASS self_reschedule_data_timer_to_plain_callback_discards_payload
+  PASS reschedule_pending_timer_to_earlier_deadline_wakes_scheduler
+  PASS reschedule_pending_timer_to_later_deadline_prevents_old_deadline
+  PASS reschedule_timer_from_callback_repeats_until_complete
+  PASS self_reschedule_can_switch_to_different_callback
+  PASS reschedule_without_reference_fails
+  PASS cancel_racing_repeated_reschedule_leaves_one_logical_outcome
+  PASS reschedule_racing_natural_completion_never_leaves_stuck_reference
+  PASS set_timer_with_non_null_reference_fails_cleanly
+  PASS set_timer_can_reuse_reference_after_immediate_completion
+  PASS cancel_timer_twice_is_harmless
+  PASS cancel_timer_sync_twice_is_harmless
+  PASS cancel_timer_sync_with_stale_reference_returns_false
+  PASS stale_timer_handle_does_not_cancel_or_reschedule_newer_timer
+  PASS canceling_timer_blocked_on_user_mutex_does_not_block_scheduler
+  PASS cancel_many_pending_timers_out_of_deadline_order
+  PASS timers_for_same_device_run_in_parallel_by_default
+  PASS timers_with_same_mutex_are_serialized
+  PASS device_timer_is_linked_until_completion_and_unlinked_afterward
+  PASS canceling_device_timer_unlinks_it_from_device_list
+  PASS null_device_timer_is_not_linked_to_unrelated_device_list
+  PASS cancel_all_timers_for_device_prevents_callbacks
+  PASS cancel_all_timers_leaves_other_devices_untouched
+  PASS cancel_all_timers_waits_for_running_callback_and_cancels_pending
+  PASS cancel_all_timers_handles_concurrent_timer_completion
+  PASS cancel_all_timers_ignores_new_timers_created_by_running_callback
+  PASS cancel_all_timers_on_empty_device_is_harmless
+  PASS raw_timers_keep_separate_master_and_slave_device_list_ownership
+  PASS cancel_all_timers_from_timer_callback_does_not_deadlock
+  PASS queue_create_starts_worker_and_reports_ready
+  PASS queue_asap_task_runs_promptly
+  PASS queue_supports_large_sdk_stack_frame
+  PASS queue_delayed_task_does_not_run_before_due_time
+  PASS queue_executes_runnable_tasks_by_priority
+  PASS abort_dispatch_overtakes_ready_normal_and_time_tasks
+  PASS queue_executes_negative_priority_tasks_by_priority
+  PASS queue_future_high_priority_task_does_not_block_due_low_priority_task
+  PASS queue_add_initializes_data_as_null_and_uses_plain_callback
+  PASS queue_add_with_data_passes_exact_data_pointer
+  PASS queue_add_null_queue_is_harmless
+  PASS queue_set_handler_max_run_time_without_running_handler_returns_false
+  PASS queue_running_handler_can_set_own_max_run_time
+  PASS queue_pending_task_limit_is_per_queue_configurable_and_reported_once
+  PASS queue_task_with_mutex_runs_while_mutex_is_held
+  PASS queue_callbacks_are_serialized_for_one_queue
+  PASS queue_inserting_earlier_task_wakes_worker
+  PASS queue_delayed_tasks_inserted_randomly_run_in_due_time_order
+  PASS queue_repeated_asap_insertion_from_producers_does_not_lose_tasks
+  PASS queue_callback_can_enqueue_followup_without_deadlock
+  PASS queue_callback_can_enqueue_delayed_followup
+  PASS queue_remove_waits_for_matching_running_task
+  PASS queue_remove_does_not_wait_for_nonmatching_running_task
+  PASS queue_remove_from_worker_does_not_deadlock
+  PASS queue_remove_null_queue_is_harmless
+  PASS queue_delete_empty_queue_clears_reference
+  PASS queue_delete_waits_for_running_task_and_clears_reference
+  PASS queue_delete_discards_pending_delayed_tasks
+  PASS queue_remove_deletes_matching_scheduled_tasks
+  PASS queue_remove_device_null_removes_all_tasks_for_device
+  PASS queue_remove_null_device_removes_callback_across_devices
+  PASS queue_remove_null_filters_removes_all_pending_tasks
+  PASS queue_delete_from_worker_does_not_deadlock
+  PASS randomized_timer_churn_survives_many_operations
+  PASS shared_timer_slot_churn_survives_competing_producers
+  PASS timer_storm_runs_all_callbacks_and_clears_references
+  PASS cancellation_storm_cancels_delayed_timers_from_threads
+  PASS mixed_device_list_storm_survives_random_cancel_all
+  PASS randomized_queue_churn_survives_producers_and_removal
+timer unit tests: all tests passed

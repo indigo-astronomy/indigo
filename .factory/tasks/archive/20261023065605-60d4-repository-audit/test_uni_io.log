@@ -1,0 +1,61 @@
+09:07:13.348869 Application: 0 <- // /tmp/indigo-uni-io-test.Jt7zEs opened
+09:07:13.349651 Application: 0 -> ab#
+09:07:13.349659 Application: 0 <- // Closed
+09:07:13.350065 Application: 1 <- // /tmp/indigo-uni-io-test.EaW5Ky opened
+09:07:13.350075 Application: 1 -> abcd
+09:07:13.350079 Application: 1 <- // Closed
+09:07:13.350364 Application: 2 <- // /tmp/indigo-uni-io-test.7fHZIm opened
+09:07:13.350400 Application: 2 -> ab
+09:07:13.350405 Application: 2 <- // Closed
+09:07:13.350553 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+09:07:13.350564 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+09:07:13.350569 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+09:07:13.350628 Application: Failed to open /unused (Invalid argument)
+09:07:13.350738 Application: Failed to exclusively open /dev/null (Operation not supported by device)
+unit/test_uni_io.c:102: expected "Not a serial port", got "Serial device is not connected"
+09:07:13.360256 Application: 3 <- // /dev/ttys001 opened
+09:07:13.360287 Application: 3 <- // Closed
+09:07:13.361115 Application: 4 <- // /dev/ttys001 opened
+09:07:13.361132 Application: 4 <- // Closed
+09:07:13.361328 Application: 5 <- // /dev/ttys001 opened
+09:07:13.361347 Application: 5 <- // Closed
+09:07:13.361912 Application: 6 <- // /dev/ttys001 opened
+09:07:13.669642 Application: 6 -> x
+09:07:13.669796 Application: 6 <- // Closed
+09:07:13.671295 Application: 7 <- // /dev/ttys001 opened
+09:07:14.172791 Application: 7 -> // timeout
+09:07:14.172839 Application: 7 <- // Closed
+09:07:15.808267 Application: Invalid discovery target 'not an address'
+09:07:15.809420 Application: 8 <- // TCP socket connected to '127.0.0.1:53802'
+09:07:15.809482 Application: 8 <- // Closed
+09:07:15.810255 Application: Can't connect TCP socket for '127.0.0.1:53804' (Connection refused)
+09:07:15.811689 Application: 9 <- // /dev/ttys001 opened
+09:07:15.866874 Application: 9 <- // Failed to write (Input/output error)
+09:07:15.866926 Application: 9 <- // Closed
+09:07:15.867535 Application: 10 <- // TCP socket connected to '127.0.0.1:53806'
+09:07:15.922694 Application: 10 -> abc
+09:07:15.977805 Application: 10 <- // Connection closed
+09:07:15.977919 Application: 10 <- // Closed
+Running indigo_uni_io unit tests
+  PASS read_section_accepts_null_ignore_list
+  PASS read_section_accepts_null_terminator_list
+  PASS read_section_still_ignores_and_terminates
+  PASS serial_open_reports_open_error
+  PASS serial_open_reports_configuration_error
+  FAIL serial_open_reports_not_a_serial_port
+  PASS serial_open_clears_error_on_success
+  PASS serial_port_reopens_after_close
+  PASS wait_for_data_continues_after_signal
+  PASS wait_for_data_keeps_timeout_after_signal
+  PASS discover_collects_all_replies
+  PASS discover_repeats_request_for_each_poll
+  PASS discover_stops_when_callback_returns_false
+  PASS discover_without_responder_times_out
+  PASS discover_reaches_loopback_responder
+  PASS discover_rejects_invalid_arguments
+  PASS connect_with_timeout_succeeds
+  PASS connect_with_timeout_reports_refused_connection
+  PASS connect_with_timeout_is_bounded
+  PASS connection_lost_after_serial_failure
+  PASS connection_lost_after_peer_close
+indigo_uni_io unit tests: 1 test(s) failed

@@ -1,0 +1,64 @@
+[
+  {
+    "style": "macos",
+    "command": [
+      "make",
+      "-C",
+      "indigo_drivers/shared/primalucelib",
+      "BUILD_LIB=/var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T/indigo-primaluce-archive-check-mpl5rv3z/macos",
+      "all"
+    ],
+    "exit": 0,
+    "diagnostics": "",
+    "archive": true,
+    "symbol_exit": 0,
+    "symbols_present": true,
+    "symbol_diagnostics": "",
+    "failed_rebuild": {
+      "command": [
+        "make",
+        "-B",
+        "-C",
+        "indigo_drivers/shared/primalucelib",
+        "BUILD_LIB=/var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T/indigo-primaluce-archive-check-mpl5rv3z/macos",
+        "AR=/usr/bin/false",
+        "all"
+      ],
+      "exit": 2,
+      "existing_archive_preserved": true,
+      "temporary_files_removed": true
+    }
+  },
+  {
+    "style": "ar-compatible",
+    "command": [
+      "make",
+      "-C",
+      "indigo_drivers/shared/primalucelib",
+      "BUILD_LIB=/var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T/indigo-primaluce-archive-check-mpl5rv3z/ar-compatible",
+      "AR=/usr/bin/ar",
+      "ARFLAGS=-rv",
+      "all"
+    ],
+    "exit": 0,
+    "diagnostics": "a - /var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T/indigo-primaluce-archive-check-mpl5rv3z/ar-compatible/primalucelib.ntrgm3/primalucelib.o\nar: creating archive /var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T/indigo-primaluce-archive-check-mpl5rv3z/ar-compatible/primalucelib.ntrgm3/libprimalucelib.a\n",
+    "archive": true,
+    "symbol_exit": 0,
+    "symbols_present": false,
+    "symbol_diagnostics": "",
+    "failed_rebuild": {
+      "command": [
+        "make",
+        "-B",
+        "-C",
+        "indigo_drivers/shared/primalucelib",
+        "BUILD_LIB=/var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T/indigo-primaluce-archive-check-mpl5rv3z/ar-compatible",
+        "AR=/usr/bin/false",
+        "all"
+      ],
+      "exit": 2,
+      "existing_archive_preserved": true,
+      "temporary_files_removed": true
+    }
+  }
+]

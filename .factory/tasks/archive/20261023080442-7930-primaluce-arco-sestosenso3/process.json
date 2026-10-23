@@ -1,0 +1,148 @@
+{
+  "version": 2,
+  "task": "20261023080442-7930-primaluce-arco-sestosenso3",
+  "scope": [
+    "indigo_drivers/shared/primalucelib/*",
+    "indigo_drivers/focuser_primaluce/*",
+    "indigo_test/unit/test_primalucelib.c",
+    "indigo_test/integration/test_focuser_primaluce_simulator.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/tasks/*",
+    ".factory/findings/*",
+    ".factory/state.json",
+    ".factory/maintenance.json",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_primaluce"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "input-parsing": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023080442-7930-primaluce-arco-sestosenso3.json": [
+      "100644",
+      "blob",
+      "a1081fcf2598a9304b9d6abbd6744b4088c408c6"
+    ],
+    ".factory/findings/archive/FND-20261023080442-7930-primaluce-arco-sestosenso3-001.json": [
+      "100644",
+      "blob",
+      "c3bdafb186a51edc7845e6fd0bfac4f69cd04062"
+    ],
+    ".factory/findings/archive/FND-20261023080442-7930-primaluce-arco-sestosenso3-002.json": [
+      "100644",
+      "blob",
+      "6e3655a58166a7456b05011a4fad651f74164a30"
+    ],
+    ".factory/findings/archive/FND-20261023080442-7930-primaluce-arco-sestosenso3-003.json": [
+      "100644",
+      "blob",
+      "5e7633e34fecdd93ee5177beaef83ba137532efa"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "6dc60a8aec609fbdc083ca04fecd019b021b18f6"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "6767364e761f9a15f22836892da5fc454af40e6f"
+    ],
+    "indigo_drivers/focuser_primaluce/README.md": [
+      "100644",
+      "blob",
+      "50cbb545fc368eb377f527aac4dd73d02085ee99"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "100644",
+      "blob",
+      "0134f3d838e483bc99aacc19302228651fc2027c"
+    ],
+    "indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c": [
+      "100644",
+      "blob",
+      "14cd4c4a04b153bd567c321ee5e07a3ecb606e81"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": [
+      "100644",
+      "blob",
+      "6e7f126f55e44eb7b5707abef4c2615e0726321f"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": [
+      "100644",
+      "blob",
+      "48eb3be1657377dc8841c3b04cb8cdfedbb721ea"
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "8b68267ec7ea8390f34e0db2c61afad75da457b4"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "10c44ae8eb2cb9a406695c0245631dfd6ef4c9a3"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.h": [
+      "100644",
+      "blob",
+      "0a7110d597ec9144805c13dae27d5b300b165cdd"
+    ],
+    "indigo_test/integration/test_focuser_primaluce_simulator.c": [
+      "100644",
+      "blob",
+      "3e1ab28b1d72c3cff122b198e9fc6ed472cafaec"
+    ],
+    "indigo_test/unit/test_primalucelib.c": [
+      "100644",
+      "blob",
+      "f7a037a8c56c673c87ef6a2d1eed3116d8f12883"
+    ]
+  }
+}

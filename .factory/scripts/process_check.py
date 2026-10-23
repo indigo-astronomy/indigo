@@ -238,6 +238,18 @@ def inspect(root, base_ref, head_ref, requested, risk_only=False):
     except (ValueError, TypeError) as exc:
         errors.append('findings integrity failed: ' + str(exc))
     try:
+        if head.exists('.factory/maintenance.json'):
+            import maintenance
+            completions = maintenance.check(root, head)
+            if maintenance.config(root, head) is not None:
+                completed = {r['task'] for r in completions}
+                for path in head.entries:
+                    match = TASK_PATH.match(path)
+                    if match and path.endswith('/state.json') and match[1] not in completed:
+                        errors.append('published task lacks completed evidence: ' + match[1])
+    except (ValueError, TypeError, KeyError) as exc:
+        errors.append('completion integrity failed: ' + str(exc))
+    try:
         expected = decision_index.render(head.entries, head.read)
         if head.read(decision_index.INDEX) != expected:
             errors.append('decision index is stale')

@@ -1,0 +1,5 @@
+Running md5 unit tests
+  PASS known_md5_vectors_match
+  PASS partial_md5_uses_requested_prefix_length
+  PASS file_partial_md5_hashes_file_prefix
+md5 unit tests: all tests passed

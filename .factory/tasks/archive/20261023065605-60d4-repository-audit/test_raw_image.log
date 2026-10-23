@@ -1,0 +1,9 @@
+Running raw image unit tests
+  PASS raw_header_type_values_are_stable
+  PASS mono_raw_with_bayer_extension_is_detected
+  PASS raw_without_bayer_extension_is_not_bayered
+  PASS color_raw_is_not_treated_as_bayered
+  PASS bayer_channel_equalization_balances_simple_mono8_frame
+  PASS saturation_mask_marks_saturated_feature
+  PASS contrast_for_constant_frame_is_zero_and_not_saturated
+raw image unit tests: all tests passed

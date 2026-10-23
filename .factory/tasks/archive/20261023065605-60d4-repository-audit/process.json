@@ -1,0 +1,197 @@
+{
+  "version": 2,
+  "task": "20261023065605-60d4-repository-audit",
+  "scope": [
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-*.json",
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-*.json",
+    ".factory/maintenance.json",
+    ".factory/project.md",
+    ".factory/completions/20261023065605-60d4-repository-audit.json",
+    "indigo_drivers/shared/primalucelib/Makefile",
+    "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "indigo_test/unit/test_primalucelib.c",
+    "indigo_drivers/focuser_primaluce/REFACTOR.md",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c",
+    "indigo_drivers/focuser_primaluce/README.md",
+    "TEST_SUMMARY.md"
+  ],
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/findings.py",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/decision_index.py",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_*.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py",
+        "--security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023065605-60d4-repository-audit.json": [
+      "100644",
+      "blob",
+      "120c52e177ac1fe8fa9f53f28890e3f5f1be2fb6"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-003.json": [
+      "100644",
+      "blob",
+      "f306042b21cbb1e1eae2f26b7eea814bbede5912"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-004.json": [
+      "100644",
+      "blob",
+      "7984c22e453e1aab3277da8935e6b12bf7a74497"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-005.json": [
+      "100644",
+      "blob",
+      "819893029e801c59fbd04d89b8c4cb209566e4c8"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-006.json": [
+      "100644",
+      "blob",
+      "63ed220d42ec47bb8d6f2b3a2c0a21128da977a3"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-007.json": [
+      "100644",
+      "blob",
+      "c8a42aeaea0be543cfaed70d03d272d1dd8567ca"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-008.json": [
+      "100644",
+      "blob",
+      "e3c98fcb01ea3b0f7c21bd4b0de9f11c7ba1e8ea"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-009.json": [
+      "100644",
+      "blob",
+      "d174f69a3d789b806fec90568fbd5e2990dab547"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-010.json": [
+      "100644",
+      "blob",
+      "619486276930032702d86d10bc1e287b1cdbce1e"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "afc1b47ce92881989010c1505f9c46a54a72bd3c"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-012.json": [
+      "100644",
+      "blob",
+      "930742098b3588b3dd296f77fc15757533a082ab"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "fb5b568e3d37102fd8826f9ea87c0ae3af533370"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "d7c280434199d92a76f84e25e4507f92caeb24b2"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "aa9cf55341b78177cd73f1d747712501eac79073"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "4d77d2dc2d53722c4c5141a1b189f4cbc90c5589"
+    ],
+    "indigo_drivers/focuser_primaluce/README.md": [
+      "100644",
+      "blob",
+      "5bc4aa0e6e6325501ed6af93bfb497aa0672c21e"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "100644",
+      "blob",
+      "559ce234c1146900247d173e66030e324148e1fa"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": [
+      "100644",
+      "blob",
+      "d777e5589990f6f97f01dd0618324dbc9555cffe"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": [
+      "100644",
+      "blob",
+      "89827c78da361b0086cc5d015ada6a672c9a3744"
+    ],
+    "indigo_drivers/shared/primalucelib/Makefile": [
+      "100644",
+      "blob",
+      "bc0fb8c62ce9ca305e3163dd26157458d73b0804"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "c12be0f338f619a0c7ee104e4029b882f4d18fd2"
+    ],
+    "indigo_test/unit/test_primalucelib.c": [
+      "100644",
+      "blob",
+      "3a7728a9e65f8a485444706ae71cbfec3474a34c"
+    ]
+  }
+}

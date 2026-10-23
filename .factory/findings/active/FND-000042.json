@@ -1,0 +1,19 @@
+{
+  "id": "FND-000042",
+  "title": "TOOLS-007: The repair tools read whole files and then inspect or rewrite fixed offsets without first proving the file is large enough, and they do not check write results",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TOOLS-007: The repair tools read whole files and then inspect or rewrite fixed offsets without first proving the file is large enough, and they do not check write results. A small input can make `fix_fits` read past the loaded buffer at offset 5760, while `fix_xisf` can rewrite from `data + 2880` even when the file is shorter. Validate minimum sizes before fixed-offset access and check every `fwrite()`/`fputc()` result before reporting success. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:42; historical locations: `fix_fits.c:58`, `fix_fits.c:63`, `fix_fits.c:74`, `fix_xisf.c:67`, `fix_xisf.c:75`, `fix_xisf.c:90`, `fix_xisf.c:97`; legacy status: Open",
+  "resolution": null
+}

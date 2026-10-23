@@ -1,0 +1,19 @@
+{
+  "title": "Travis commands reference missing test and Windows solution paths",
+  "category": "quality",
+  "severity": "medium",
+  "blocking": false,
+  "evidence": ".travis.yml:54,56; static-inventory-checks.json",
+  "summary": "CI invokes indigo_test/test_suite.sh, which is absent, and changes into indigo_windows before invoking a solution that now lives at the repository root. Those commands fail even when compilation otherwise succeeds. Next: coordinator assigns CI command repair to current portable test and solution entry points; validate path resolution without installing dependencies or probing hosted CI.",
+  "status": "open",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023065605-60d4-repository-audit-003"
+}

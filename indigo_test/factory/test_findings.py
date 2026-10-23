@@ -288,6 +288,7 @@ class FindingsTests(unittest.TestCase):
         (self.root / ".factory/state.json").write_text(json.dumps({"active_task": None, "status": "idle"}))
         self.assertEqual(self.run_findings("check", "--prune-task", "001-demo").returncode, 0)
         self.assertEqual((self.root / ".factory/findings/active.json").read_bytes(), before)
+        shutil.copy2(ROOT / ".factory/scripts/task_store.py", self.root / ".factory/scripts/task_store.py")
         shutil.copy2(ROOT / ".factory/scripts/context_export.py", self.root / ".factory/scripts/context_export.py")
         policies = ["AGENTS.md", ".factory/bootstrap.md", ".factory/project.md", ".factory/workflow.md",
                     ".factory/maintenance.json", ".factory/routines/git.md", ".factory/routines/quality-review.md", ".factory/routines/repository-review.md",

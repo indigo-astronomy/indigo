@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "task": "20261021204508-b596-initial-repository-audit",
+  "completed_at": "2026-10-21T20:45:08+00:00",
+  "kind": "audit",
+  "audit": {
+    "reviewed_on": "2026-10-21",
+    "revision": "48dc893491f77cddb18fc3188d400a70f67cde19",
+    "covered_tasks": [
+      "20261021193138-70b4-adopt-ai-factory",
+      "20261021195453-0ff1-fix-ftdi-build"
+    ]
+  },
+  "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+}

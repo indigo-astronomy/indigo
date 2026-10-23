@@ -24,7 +24,7 @@ Messages from a *device* to a *client* are sent by *indigo_define_property()*, *
 
 Properties are within a *driver* defined by *indigo_init_XXX_property()* calls and items by *indigo_init_XXX_items()* calls.
 
-For a complete list of available functions and more detailed description see  [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_bus.h).
+For a complete list of available functions and more detailed description see  [indigo_bus.h](../indigo_libs/indigo/indigo_bus.h).
 
 ## Client API
 
@@ -32,7 +32,7 @@ Structures and helper functions for a client code are defined in *indigo_client.
 
 An open source examples of client API usage are the following pieces of code:
 
-[indigo_test/client.c - API example](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/client.c)
+[indigo_examples/client.c - API example](../indigo_examples/client.c)
 
 [indigo_tools/indigo_prop_tool.c - command line tool](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c)
 

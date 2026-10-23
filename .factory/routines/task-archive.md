@@ -2,14 +2,14 @@
 
 ## Ownership and lifecycle
 
-Ordinary projects retain completed task evidence in `.factory/tasks/archive/<task-id>/`. Live `.factory/tasks/<task-id>/` directories hold unfinished or blocked work. `state.json` remains the branch-local assignment pointer, not a queue or an index inferred from directory presence. Do not load task or findings archives during routine startup, recursive searches or scoped-instruction discovery. Use explicit archive exclusions with permitted search tools; root instructions prohibit `rg` and `ripgrep`. Read a specific archived record only for a concrete historical question or referenced checkpoint; helper integrity checks may inspect archives internally without dumping their contents into context.
+Ordinary projects retain completed task evidence in `.factory/tasks/archive/<task-id>/`. Live `.factory/tasks/<task-id>/` directories hold unfinished or blocked work. Each version 2 task retains its own `state.json`; the global repository marker never selects an active task. Legacy version 1 uses its global pointer until explicit state migration. Do not load task or findings archives during routine startup, recursive searches or scoped-instruction discovery. Use explicit archive exclusions with permitted search tools; root instructions prohibit `rg` and `ripgrep`. Read a specific archived record only for a concrete historical question or referenced checkpoint; helper integrity checks may inspect archives internally without dumping their contents into context.
 
-The coordinator first verifies all acceptance/review gates, reconciles findings, updates the real maintenance counters once, and completes handoff evidence with Git delivery still pending until confirmed externally. Archive before the single final task commit. Archival is retention housekeeping, never approval, risk acceptance or proof of publication. Never archive unfinished work. The helper checks that `active_task` selects the requested task, that both `phase` and `status` equal `"complete"`, and that `blocker` equals JSON `null`; human/coordinator gates remain responsible for the truth of that declaration.
+The coordinator first verifies all acceptance/review gates, reconciles findings, derives maintenance status from completion records, and completes handoff evidence with Git delivery still pending until confirmed externally. Archive before the single final task commit. Archival is retention housekeeping, never approval, risk acceptance or proof of publication. Never archive unfinished work. The helper checks that `active_task` selects the requested task, that both `phase` and `status` equal `"complete"`, and that `blocker` equals JSON `null`; human/coordinator gates remain responsible for the truth of that declaration.
 
 ```sh
 ./.factory/scripts/findings check
-./.factory/scripts/archive-task 001-example --dry-run
-./.factory/scripts/archive-task 001-example
+./.factory/scripts/archive-task 20261022143012-a81f-example --dry-run
+./.factory/scripts/archive-task 20261022143012-a81f-example
 ./.factory/scripts/findings check
 ```
 
@@ -30,7 +30,7 @@ The archiver uses `git ls-files` to inspect tracked and nonignored untracked Mar
 The context exporter does not traverse the task archive or load archive-scoped AGENTS files through `--path`, including symlink aliases. Historical inspection requires explicit selection:
 
 ```sh
-./.factory/scripts/context --task 001-example --archived --role coordinator
+./.factory/scripts/context --task 20261022143012-a81f-example --archived --role coordinator
 ```
 
 This includes only that archived task's standard reports alongside normal shared policy/current state. It labels the task historical and does not resume it. Without `--archived`, an archived-only task fails with no partial output. Resuming delivery of a completed execution uses its existing branch and explicitly selected archived handoff, with final outcomes recorded externally; do not create a duplicate task or claim publication from archive placement. Reopening implementation work requires a deliberate coordinator assignment and preservation of the prior evidence; do not simply point active state into the archive.
@@ -40,3 +40,7 @@ This includes only that archived task's standard reports alongside normal shared
 Preserve existing archived and live records during upgrades; `.factory/tasks/` is protected project-owned data. There is no bulk migration or automatic scheduler. For a previously completed live task, inspect its final handoff/reviews and delivery evidence first. Preserve any current assignment in its handoff and finish or explicitly hand it off; never overwrite another writer's state. As coordinator, select the verified completed ID with complete phase/status and no blocker, run the preview/move/check sequence, review links and commit under the project's policy. Repeat deliberately for other completed tasks, without recounting maintenance completions. Unfinished and blocked tasks stay live. Never mark an unfinished task complete just to enable the command.
 
 The AI Factory template itself follows [template-maintenance.md](template-maintenance.md): retain completed records in the versioned archive, excluded by template-only export attributes from new-project Git exports. It does not ship its own completed task archive into adopting projects. A new project starts without inherited task evidence, while existing projects retain their own archive and maintenance data.
+
+## Durable completion evidence
+
+With maintenance version 2, successful archival atomically adds `.factory/completions/ID.json` under the lifecycle lock and rolls it back with the move on ordinary failure. Publish the completion with the fully reviewed task, never an unfinished task. Existing records cannot be overwritten. See [maintenance.md](maintenance.md) for qualified audit metadata, derived counts and completion-state pinning before pruning; retain completion records after deleting reports.

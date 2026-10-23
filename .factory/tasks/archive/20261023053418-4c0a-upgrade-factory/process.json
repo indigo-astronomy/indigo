@@ -1,0 +1,714 @@
+{
+  "version": 2,
+  "task": "20261023053418-4c0a-upgrade-factory",
+  "scope": [
+    ".factory/*",
+    "AGENTS.md",
+    "docs/decisions/*",
+    "indigo_test/factory/*",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/focuser_primaluce/REFACTOR.md"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md",
+    "data-model": "security.md",
+    "authentication": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/bootstrap.md": [
+      "100644",
+      "blob",
+      "2dbc4b160813625a4fd43396d88661a547ac5d56"
+    ],
+    ".factory/completions/.gitkeep": [
+      "100644",
+      "blob",
+      "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    ],
+    ".factory/completions/20261021193138-70b4-adopt-ai-factory.json": [
+      "100644",
+      "blob",
+      "5697a89d11dba018f8f0a85161b0a17104d873c5"
+    ],
+    ".factory/completions/20261021195453-0ff1-fix-ftdi-build.json": [
+      "100644",
+      "blob",
+      "a3ab3aec987662adc291b8ecbc8d324f838b848e"
+    ],
+    ".factory/completions/20261021203703-ee3d-fix-websocket-key-overflow.json": [
+      "100644",
+      "blob",
+      "c70a8283a5d27c5c2940fe617ee22a1be255c4d5"
+    ],
+    ".factory/completions/20261021204508-b596-initial-repository-audit.json": [
+      "100644",
+      "blob",
+      "9a5c92ddad70b7774780212a32faa644b609cf2b"
+    ],
+    ".factory/completions/20261021211058-e043-remove-switch-target-review.json": [
+      "100644",
+      "blob",
+      "34042dc13b40bd82e70d1c8ed80d2b64a11bd359"
+    ],
+    ".factory/completions/20261021211410-d947-repoint-switch-target-citations.json": [
+      "100644",
+      "blob",
+      "ef5335ab07de1907daf04f4e196b5642ce98d42d"
+    ],
+    ".factory/completions/20261021214435-6288-never-rewrite-commits.json": [
+      "100644",
+      "blob",
+      "8671bc6bc1e53c18b811b5f21cf8a71a5a44261a"
+    ],
+    ".factory/completions/20261022162652-644c-ccd-current-temperature-filename.json": [
+      "100644",
+      "blob",
+      "de27d0d0899f9ff921735cfef1cfcbf7ba425b76"
+    ],
+    ".factory/completions/20261022182234-7b8b-commit-permission-rule.json": [
+      "100644",
+      "blob",
+      "9e2d9edca844b7ce30a658e96eef696286d568e3"
+    ],
+    ".factory/completions/20261022212521-61cf-primalucelib.json": [
+      "100644",
+      "blob",
+      "5593f4a2a33f20b5e653821aea08bfbee6a9efe3"
+    ],
+    ".factory/completions/20261022235021-bcb6-primaluce-sestosenso3.json": [
+      "100644",
+      "blob",
+      "e51068443e0d8f12c7a0fef2d607cc9980c7367c"
+    ],
+    ".factory/completions/20261023011844-cc6a-primaluce-calibration-finalizers.json": [
+      "100644",
+      "blob",
+      "94107dad18dd32cf2ae451ed6b62ac829a25b9a4"
+    ],
+    ".factory/completions/20261023053418-4c0a-upgrade-factory.json": [
+      "100644",
+      "blob",
+      "5e4c7f92abe6b7cc1d05abb1547baafe5d83360b"
+    ],
+    ".factory/findings/active.json": null,
+    ".factory/findings/active/.gitkeep": [
+      "100644",
+      "blob",
+      "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    ],
+    ".factory/findings/active/FND-000001.json": [
+      "100644",
+      "blob",
+      "e5353020d77ab26fb449b8b878a8b9c5383f914f"
+    ],
+    ".factory/findings/active/FND-000002.json": [
+      "100644",
+      "blob",
+      "5ad0218b2ca17485fe5d9b2e60e00dc8201c5671"
+    ],
+    ".factory/findings/active/FND-000003.json": [
+      "100644",
+      "blob",
+      "31d51ccb193dfc27bf1c68df4fd4c3787c073194"
+    ],
+    ".factory/findings/active/FND-000004.json": [
+      "100644",
+      "blob",
+      "1a50f20c361d2b50ce18c1836932ced73426cac0"
+    ],
+    ".factory/findings/active/FND-000005.json": [
+      "100644",
+      "blob",
+      "7e9e6a7ec712e23b0030e36a5125aad02886de91"
+    ],
+    ".factory/findings/active/FND-000006.json": [
+      "100644",
+      "blob",
+      "101e17b193b6fe259d0476bee0cd05f9f8fb3493"
+    ],
+    ".factory/findings/active/FND-000007.json": [
+      "100644",
+      "blob",
+      "5a7026969f4de38413233ced9e9e52ad86bf73f0"
+    ],
+    ".factory/findings/active/FND-000008.json": [
+      "100644",
+      "blob",
+      "d62610845abf90b2ea1d045f882d04789b35e0ee"
+    ],
+    ".factory/findings/active/FND-000009.json": [
+      "100644",
+      "blob",
+      "c026aa9418ac0835879a83e087e35b39f9136338"
+    ],
+    ".factory/findings/active/FND-000010.json": [
+      "100644",
+      "blob",
+      "d667ef061e5b0b05bd4e8d5cb8f48d4e16f9c31b"
+    ],
+    ".factory/findings/active/FND-000011.json": [
+      "100644",
+      "blob",
+      "25c4228d700de2e363b2db8557d4993990a9ac5e"
+    ],
+    ".factory/findings/active/FND-000012.json": [
+      "100644",
+      "blob",
+      "073870fc61adf8b9db3a7ee5269f0a6b70ee04fc"
+    ],
+    ".factory/findings/active/FND-000013.json": [
+      "100644",
+      "blob",
+      "558d0fea88e87a6c590565c8bbf0247a3db877f3"
+    ],
+    ".factory/findings/active/FND-000014.json": [
+      "100644",
+      "blob",
+      "029a31c0baec2b8072754f2c23315c68c6074771"
+    ],
+    ".factory/findings/active/FND-000015.json": [
+      "100644",
+      "blob",
+      "3e179c5c43193b04b9f6ad3ebccd264f3794ae75"
+    ],
+    ".factory/findings/active/FND-000016.json": [
+      "100644",
+      "blob",
+      "bec4d0b3e4c987be198bc447fc7bd40179e48ab7"
+    ],
+    ".factory/findings/active/FND-000017.json": [
+      "100644",
+      "blob",
+      "e6da6b27cf6daaa8b5d3e6ce1c33965aea8d7560"
+    ],
+    ".factory/findings/active/FND-000018.json": [
+      "100644",
+      "blob",
+      "60a9467a7c15e759cd13636234cc0e27b27ede1c"
+    ],
+    ".factory/findings/active/FND-000019.json": [
+      "100644",
+      "blob",
+      "a8845e58d11de59c6382cabbe4c81fbf089e7a5c"
+    ],
+    ".factory/findings/active/FND-000020.json": [
+      "100644",
+      "blob",
+      "6c9c3e0582369d069c849f7f3149a134d6586e29"
+    ],
+    ".factory/findings/active/FND-000021.json": [
+      "100644",
+      "blob",
+      "36a053c0acc48f648f5af5a15b72f19e977946cc"
+    ],
+    ".factory/findings/active/FND-000022.json": [
+      "100644",
+      "blob",
+      "4e9dbac3e8fedc042c3a680b167e5e8ded775470"
+    ],
+    ".factory/findings/active/FND-000023.json": [
+      "100644",
+      "blob",
+      "43be8e844d0be6905ceacfffa87eb9f0d9010fc1"
+    ],
+    ".factory/findings/active/FND-000024.json": [
+      "100644",
+      "blob",
+      "c957ca35c1de79b34da7159d2b5935ee2e787031"
+    ],
+    ".factory/findings/active/FND-000025.json": [
+      "100644",
+      "blob",
+      "6ab678577143160405b0cc149f5f0168af6f00a6"
+    ],
+    ".factory/findings/active/FND-000026.json": [
+      "100644",
+      "blob",
+      "6c249733cb817c709b7111294ce19f8756e94ff8"
+    ],
+    ".factory/findings/active/FND-000027.json": [
+      "100644",
+      "blob",
+      "994160647f58aa3d9e6f1d90237774d182b4c803"
+    ],
+    ".factory/findings/active/FND-000028.json": [
+      "100644",
+      "blob",
+      "0dd50b91393fcd86749e1c6ee96ee69b4a852c24"
+    ],
+    ".factory/findings/active/FND-000029.json": [
+      "100644",
+      "blob",
+      "c655ca097bcd07bedd5c894fc3fb18f6851b2fa5"
+    ],
+    ".factory/findings/active/FND-000030.json": [
+      "100644",
+      "blob",
+      "3f0e6bd31bf348b4447a0af9108f0db6406ddc12"
+    ],
+    ".factory/findings/active/FND-000031.json": [
+      "100644",
+      "blob",
+      "4920866ddbc392b93653adb6a96799d0d48055f0"
+    ],
+    ".factory/findings/active/FND-000032.json": [
+      "100644",
+      "blob",
+      "685c109375097ba06d5e140246637d9067d37909"
+    ],
+    ".factory/findings/active/FND-000033.json": [
+      "100644",
+      "blob",
+      "e29bf0c497aeea2003979bcbc62e2403cc68d887"
+    ],
+    ".factory/findings/active/FND-000034.json": [
+      "100644",
+      "blob",
+      "66c77b2b2df693a29efe7d23abd2f893a0fd508c"
+    ],
+    ".factory/findings/active/FND-000035.json": [
+      "100644",
+      "blob",
+      "8fbcd03452034eecab645f81ec820d03a1a86c8b"
+    ],
+    ".factory/findings/active/FND-000036.json": [
+      "100644",
+      "blob",
+      "630e72dc785034a9887e664c8df68f4ad57ad6dc"
+    ],
+    ".factory/findings/active/FND-000037.json": [
+      "100644",
+      "blob",
+      "1fd9d2548c6a05858a0884d667584c9372be9986"
+    ],
+    ".factory/findings/active/FND-000038.json": [
+      "100644",
+      "blob",
+      "0b9f218494d415d2d56064eadc243e01cb874739"
+    ],
+    ".factory/findings/active/FND-000039.json": [
+      "100644",
+      "blob",
+      "4f21082d6b10f69279e7159e8fea37a86704ced7"
+    ],
+    ".factory/findings/active/FND-000040.json": [
+      "100644",
+      "blob",
+      "e1bafcbc5540757eea21eaaac1a75115542fb74b"
+    ],
+    ".factory/findings/active/FND-000041.json": [
+      "100644",
+      "blob",
+      "168ba7fa29b73baf47772060744f2ff14756966e"
+    ],
+    ".factory/findings/active/FND-000042.json": [
+      "100644",
+      "blob",
+      "3d709dfe5d0e7331be5e4ff2f04a15fa417a8bcf"
+    ],
+    ".factory/findings/active/FND-000043.json": [
+      "100644",
+      "blob",
+      "d7dc284f41218e024e94c18ca2a384d3814f35de"
+    ],
+    ".factory/findings/active/FND-000046.json": [
+      "100644",
+      "blob",
+      "42e57321e932697dfa31921bed6317ee74d7652b"
+    ],
+    ".factory/findings/active/FND-000047.json": [
+      "100644",
+      "blob",
+      "2ba70a48d9fe7e3d0214cbbbf78fa29ea8aa8abf"
+    ],
+    ".factory/findings/active/FND-000048.json": [
+      "100644",
+      "blob",
+      "bd1a772f76dfd561bfd3b1be67a0248230ade40a"
+    ],
+    ".factory/findings/active/FND-000052.json": [
+      "100644",
+      "blob",
+      "9b0c340f4f0595bf7d6cbc311ac599c7d194f83d"
+    ],
+    ".factory/findings/archive/FND-000044.json": [
+      "100644",
+      "blob",
+      "f5fe86534cf8ad052dbdc3dc258e0e35687887fb"
+    ],
+    ".factory/findings/archive/FND-000045.json": [
+      "100644",
+      "blob",
+      "3e6353007631a892ad8029222670b04e8de584a0"
+    ],
+    ".factory/findings/archive/FND-000049.json": [
+      "100644",
+      "blob",
+      "7d7855456856fe0af47e002c6527e2b20730f2e3"
+    ],
+    ".factory/findings/archive/FND-000050.json": [
+      "100644",
+      "blob",
+      "cbe875428923d1d618f23be693516824698f4b86"
+    ],
+    ".factory/findings/archive/FND-000051.json": [
+      "100644",
+      "blob",
+      "b63765a053637271ca431453b64166551b77a7a4"
+    ],
+    ".factory/findings/archive/FND-000053.json": [
+      "100644",
+      "blob",
+      "f488a431afcb04c7b026cbf425a291ee447162a6"
+    ],
+    ".factory/findings/archive/FND-000054.json": [
+      "100644",
+      "blob",
+      "91e7d6231747698220680555a9aeb6d6917318b9"
+    ],
+    ".factory/findings/archive/FND-000055.json": [
+      "100644",
+      "blob",
+      "5e62bb3bb5f97096812c3dfccd48de971ab71cce"
+    ],
+    ".factory/findings/archive/FND-000056.json": [
+      "100644",
+      "blob",
+      "ac76a13c58e5b0dd6fc9080f071d19999271685d"
+    ],
+    ".factory/findings/archive/FND-000057.json": [
+      "100644",
+      "blob",
+      "e7594bd6abe7995b7aed23da2902302a2bb6d67d"
+    ],
+    ".factory/findings/archive/FND-000058.json": [
+      "100644",
+      "blob",
+      "74da9fe4d46757207ac0df02448c0b47a3c375b5"
+    ],
+    ".factory/findings/archive/FND-000059.json": [
+      "100644",
+      "blob",
+      "a2842c285f1a00af96ce60354c53fc5a96e7ab3e"
+    ],
+    ".factory/findings/archive/FND-000060.json": [
+      "100644",
+      "blob",
+      "b305f21100cf7b0283c58fa4bee41cfa1ada1d05"
+    ],
+    ".factory/findings/registry.json": [
+      "100644",
+      "blob",
+      "05d64b0757f15eee4cb39eea50a9f41187642885"
+    ],
+    ".factory/migration.md": [
+      "100644",
+      "blob",
+      "a546a7c100ad27efbe53475c8527ea8f9b5583b4"
+    ],
+    ".factory/portability.md": [
+      "100644",
+      "blob",
+      "78ce0c0ba698939c35c3bb5bde05687b12176d6d"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "7ff3614d7fff8b1b264bf1cb9aa17c2d07115bdd"
+    ],
+    ".factory/roles/analyst.md": [
+      "100644",
+      "blob",
+      "17679d395adff9dc566dc2fe1bcf651a4f60eafc"
+    ],
+    ".factory/roles/coordinator.md": [
+      "100644",
+      "blob",
+      "4505728e5a1948005ad43111e9c08dd4100ccb38"
+    ],
+    ".factory/roles/developer.md": [
+      "100644",
+      "blob",
+      "742eaa8676309be478b5a5a0b498e102d54d92d1"
+    ],
+    ".factory/roles/documenter.md": [
+      "100644",
+      "blob",
+      "55c51f10474d0c0cabf024cfd540dc41557776db"
+    ],
+    ".factory/roles/planner.md": [
+      "100644",
+      "blob",
+      "a7db7ffa9cee6a22213d4bf3e9f6165336a42279"
+    ],
+    ".factory/roles/quality-reviewer.md": [
+      "100644",
+      "blob",
+      "86d4569ceb9b4bf59c4b98e82f8e56b9c1f28e6c"
+    ],
+    ".factory/roles/repository-reviewer.md": [
+      "100644",
+      "blob",
+      "4d7bc66374e13831f5f913fe64bbfe61a04c6504"
+    ],
+    ".factory/roles/security-reviewer.md": [
+      "100644",
+      "blob",
+      "62d993472d6dbc1085ec912932917a88ce209850"
+    ],
+    ".factory/roles/test-designer.md": [
+      "100644",
+      "blob",
+      "413eeb4e6cb957f30f88c87ff7146700c4d6ac09"
+    ],
+    ".factory/roles/verifier.md": [
+      "100644",
+      "blob",
+      "6b5e1bdf1aba8f5f05a6b737df3371db562c65c2"
+    ],
+    ".factory/routines/concurrent-tasks.md": [
+      "100644",
+      "blob",
+      "2d647b28800592fac445819dd103294e379b54ca"
+    ],
+    ".factory/routines/findings.md": [
+      "100644",
+      "blob",
+      "b740b053789cc1c18f91dbaf2f93dae969f9d8f6"
+    ],
+    ".factory/routines/git.md": [
+      "100644",
+      "blob",
+      "f94b3fc15392dc000855b8e427499cf8cf81c4d2"
+    ],
+    ".factory/routines/maintenance.md": [
+      "100644",
+      "blob",
+      "1730314f273479df6006722a8c70b8a5397a3505"
+    ],
+    ".factory/routines/process-checks.md": [
+      "100644",
+      "blob",
+      "b5ace5907870f28ee8acd8180e581f8e8a0f26bf"
+    ],
+    ".factory/routines/quality-review.md": [
+      "100644",
+      "blob",
+      "9b2ff9af91255bdddcf023c480bda22ec49c2ed0"
+    ],
+    ".factory/routines/repository-review.md": [
+      "100644",
+      "blob",
+      "44d7b400921208af343fe451b55eec402e01a3e1"
+    ],
+    ".factory/routines/task-archive.md": [
+      "100644",
+      "blob",
+      "5633184d3e5aa7db6f1585fc1333b705574497ac"
+    ],
+    ".factory/routines/template-maintenance.md": [
+      "100644",
+      "blob",
+      "ff28735d78a1f6746d04558b2226e5e20170db4d"
+    ],
+    ".factory/routines/template-updates.md": [
+      "100644",
+      "blob",
+      "b968e442903cb430898d3620cd9d890def1f2891"
+    ],
+    ".factory/scripts/README.md": [
+      "100644",
+      "blob",
+      "3bc01b99d85d049c59718d559a6548b2310decc7"
+    ],
+    ".factory/scripts/archive_task.py": [
+      "100755",
+      "blob",
+      "8646a78c8eb9760d8138ab79b06435fecc3e507a"
+    ],
+    ".factory/scripts/context_export.py": [
+      "100755",
+      "blob",
+      "dd94788a9b608ba2016a1a9d6c6650cc2a08b87a"
+    ],
+    ".factory/scripts/findings.py": [
+      "100755",
+      "blob",
+      "926e65b4da0351f544456eb20b83dfe9f6334091"
+    ],
+    ".factory/scripts/maintenance": [
+      "100755",
+      "blob",
+      "b770c7ed3948e20dddd56599612b13463868865c"
+    ],
+    ".factory/scripts/maintenance.py": [
+      "100644",
+      "blob",
+      "3ee0d235546725009161d4223fb016716e05ac38"
+    ],
+    ".factory/scripts/metadata_upgrade.py": [
+      "100644",
+      "blob",
+      "09c7d71b85c6e52a38431518cab2a4b807df91b6"
+    ],
+    ".factory/scripts/new_task.py": [
+      "100755",
+      "blob",
+      "5103e8ec80674e79204d831693a7694caa829cae"
+    ],
+    ".factory/scripts/process_check.py": [
+      "100644",
+      "blob",
+      "149c945a0d1120dfc29b3cad61643a9128f77851"
+    ],
+    ".factory/scripts/review.py": [
+      "100644",
+      "blob",
+      "04a4753d16563da50258ad4079fed3aff482513d"
+    ],
+    ".factory/scripts/risk_check.py": [
+      "100644",
+      "blob",
+      "3f2f422202f707abe0d18157901ab2f0a69c4ba3"
+    ],
+    ".factory/scripts/task_store.py": [
+      "100644",
+      "blob",
+      "0116704219e087ce589e742e72b15de05e688b37"
+    ],
+    ".factory/scripts/task_upgrade.py": [
+      "100644",
+      "blob",
+      "bd27589665ae7ebeb757825b95b43cb2731217db"
+    ],
+    ".factory/scripts/template_update.py": [
+      "100755",
+      "blob",
+      "dfd7d4dec38a69be540c682a7bf18df517608c76"
+    ],
+    ".factory/template-lock.json": [
+      "100644",
+      "blob",
+      "33edf2268c71366017342f68148112716e6d8e0c"
+    ],
+    ".factory/templates/finding.json": [
+      "100644",
+      "blob",
+      "51539633777052f6325bb4ee27a90dbf2c9b67b3"
+    ],
+    ".factory/templates/task/security.md": [
+      "100644",
+      "blob",
+      "d73d5f3e3d3ee8576bd72cd4f802ce3e45cdf05a"
+    ],
+    ".factory/templates/task/verification.md": [
+      "100644",
+      "blob",
+      "da28b0a5669f496a8b62eece1a5281537cb8b27e"
+    ],
+    ".factory/templates/template-map.json": [
+      "100644",
+      "blob",
+      "ed945f5be8bff207a9ef3dec494a8681fec824b5"
+    ],
+    ".factory/workflow.md": [
+      "100644",
+      "blob",
+      "6dfe3731e488679024e431b94e36a63681b88dcc"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "6bc7fde33f331d993f000e46c879e631b8204d0b"
+    ],
+    "docs/decisions/ADR-001-adopt-factory.md": [
+      "100644",
+      "blob",
+      "94b55c190756b9d5c71e8fa914dd547be9b37aa1"
+    ],
+    "docs/decisions/ADR-002-factory-record-upgrade.md": [
+      "100644",
+      "blob",
+      "a9ce0f0c0f1b620c80c0a2e7f9f5ae978471947f"
+    ],
+    "docs/decisions/README.md": [
+      "100644",
+      "blob",
+      "296db530defe9fd63e0645bd400dbd54a4c016ce"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "92d2d90b654f0f0b5c5dc8763e320121ffaf6fbc"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "100644",
+      "blob",
+      "c523188643864228860bec5d501a2ddb2cd8412a"
+    ],
+    "indigo_test/factory/test_concurrent_tasks.py": [
+      "100644",
+      "blob",
+      "8148d6d91eaf328fa3ca2d4db6c9fe82026825c1"
+    ],
+    "indigo_test/factory/test_context_export.py": [
+      "100644",
+      "blob",
+      "b3bd91d52b073da3d32892c35c6e4d0f0cd64afb"
+    ],
+    "indigo_test/factory/test_findings.py": [
+      "100644",
+      "blob",
+      "ab51de1e6352e67bae289022d3bd8a2812c80e47"
+    ],
+    "indigo_test/factory/test_independent_records.py": [
+      "100644",
+      "blob",
+      "c2124e82325e50a1afbef833c551eae5127b57af"
+    ],
+    "indigo_test/factory/test_new_task.py": [
+      "100644",
+      "blob",
+      "b40a360f850307ab6a645445bebc17b9683b42a9"
+    ],
+    "indigo_test/factory/test_review.py": [
+      "100644",
+      "blob",
+      "c5f4ed94e6f36db825a50aec5e00af43f24c2ce7"
+    ],
+    "indigo_test/factory/test_task_archive.py": [
+      "100644",
+      "blob",
+      "350851a3a2e6b1cf3c5733272cc84c2a90511ccd"
+    ],
+    "indigo_test/factory/test_template_update.py": [
+      "100644",
+      "blob",
+      "ba91cc29db92a5673df244b4501a0ce34ebfacd7"
+    ]
+  }
+}

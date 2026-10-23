@@ -4,7 +4,7 @@
 
 Every task receives a review of its final diff after documentation and before security sign-off/completion. Explicitly load the [quality-reviewer role](../roles/quality-reviewer.md). Review changed files, untracked deliverables and relevant surrounding code/tests/instructions. Prefer a separate reviewer context where authorized; record same-agent limitations. This grants no delegation, provider or publication permission.
 
-This pass assesses unnecessary complexity, duplication, weak tests, misleading documentation and scope drift. Use the [evidence standard and inspection checklist](repository-review.md#inspection-checklist); judge concrete impact, never presumed authorship. A task diff review is distinct from [Recurring repository review](repository-review.md), which uses the repository-reviewer and a full-repository repository-review.md report. The coordinator retains that audit's cadence and checkpoints in maintenance.json.
+This pass assesses unnecessary complexity, duplication, weak tests, misleading documentation and scope drift. Use the [evidence standard and inspection checklist](repository-review.md#inspection-checklist); judge concrete impact, never presumed authorship. A task diff review is distinct from [Recurring repository review](repository-review.md), which uses the repository-reviewer and a full-repository repository-review.md report. The coordinator checks policy in maintenance.json and derived cadence from durable audit/completion records.
 
 ## Report responsibilities
 
@@ -19,7 +19,7 @@ Use the [task quality template](../templates/task/quality-review.md). A no-findi
 
 Apply [findings.md](findings.md): concrete location/evidence/impact, severity and separate blocking flag, minimal remediation and a reference to canonical disposition. Route implementation fixes through the coordinator/developer, then have verification.md record affected retests and reinspect changed areas for quality. Preserve behavior, security boundaries and accepted requirements. No cosmetic cleanup quota or test weakening.
 
-Block completion for unresolved blocking quality findings under existing authority; only the owner may authorize a waiver or risk acceptance. Track nonblocking follow-up with an accountable owner. Do not reset a full-audit checkpoint for this pass. The coordinator updates last_task_review_task after completion and evaluates recurring-audit due status separately.
+Block completion for unresolved blocking quality findings under existing authority; only the owner may authorize a waiver or risk acceptance. Track nonblocking follow-up with an accountable owner. Do not reset a full-audit checkpoint for this pass. The completion record determines the latest task review; the coordinator checks derived recurring-audit due status separately.
 
 ## Upgrade existing projects
 

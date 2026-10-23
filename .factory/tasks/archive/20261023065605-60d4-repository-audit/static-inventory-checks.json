@@ -1,0 +1,245 @@
+{
+  "python_syntax_errors": [
+    {
+      "path": "indigo_drivers/dome_baader/dome_baader_simulator/baader_simulator_test.py",
+      "error": "Missing parentheses in call to 'print'. Did you mean print(\"Connecting to \" + serial_port_name + \"...\")? (baader_simulator_test.py, line 17)"
+    },
+    {
+      "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_EEPROM_test.py",
+      "error": "Missing parentheses in call to 'print'. Did you mean print(command)? (nexdome_simulator_v3_EEPROM_test.py, line 7)"
+    },
+    {
+      "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_open_abort_close_abort_test.py",
+      "error": "Missing parentheses in call to 'print'. Did you mean print(\"Connecting to \")? (nexdome_simulator_v3_open_abort_close_abort_test.py, line 13)"
+    },
+    {
+      "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_open_close_test.py",
+      "error": "Missing parentheses in call to 'print'. Did you mean print(\"Connecting to \")? (nexdome_simulator_v3_open_close_test.py, line 13)"
+    },
+    {
+      "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_rotate_test.py",
+      "error": "Missing parentheses in call to 'print'. Did you mean print(\"Connecting to \")? (nexdome_simulator_v3_rotate_test.py, line 13)"
+    },
+    {
+      "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_test.py",
+      "error": "Missing parentheses in call to 'print'. Did you mean print(\"Connecting to \")? (nexdome_simulator_v3_test.py, line 13)"
+    }
+  ],
+  "broken_relative_link_candidates": [
+    {
+      "path": "HOME.md",
+      "line": 4,
+      "target": "Introduction%20to%20INDIGO.pdf"
+    },
+    {
+      "path": "HOME.md",
+      "line": 5,
+      "target": "INDI-COMPARISON.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 9,
+      "target": "../README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 10,
+      "target": "MAKEFILE.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 11,
+      "target": "PROTOCOLS.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 12,
+      "target": "PROPERTIES.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 13,
+      "target": "PROPERTY_MANIPULATION.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 16,
+      "target": "DEVELOPMENT.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 17,
+      "target": "INDIGO_SERVER_AND_DRIVERS_GUIDE.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 18,
+      "target": "DRIVER_DEVELOPMENT_BASICS.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 20,
+      "target": "CLIENT_DEVELOPMENT_BASICS.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 21,
+      "target": "INDIGO_AGENTS.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 22,
+      "target": "../indigo_drivers/agent_imager/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 23,
+      "target": "../indigo_drivers/agent_mount/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 24,
+      "target": "../indigo_drivers/agent_guider/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 25,
+      "target": "../indigo_drivers/agent_auxiliary/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 26,
+      "target": "../indigo_drivers/agent_astrometry/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 27,
+      "target": "../obsoleted_drivers/agent_astap/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 28,
+      "target": "../indigo_drivers/agent_config/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 29,
+      "target": "../indigo_drivers/agent_scripting/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 30,
+      "target": "../indigo_drivers/agent_alpaca/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 31,
+      "target": "../obsoleted_drivers/agent_snoop/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 34,
+      "target": "INDIGO_RAW_IMAGE_FORMAT.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 35,
+      "target": "CCD_DRIVER_SAVED_IMAGES.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 36,
+      "target": "PROPERTIES.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 37,
+      "target": "PROPERTY_MANIPULATION.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 38,
+      "target": "SCRIPTING_BASICS.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 39,
+      "target": "MULTI_INSTANCE_SUPPORT.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 40,
+      "target": "INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 43,
+      "target": "IMAGING_AF_TUNING.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 44,
+      "target": "POLAR_ALIGNMENT.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 45,
+      "target": "PLATE_SOLVING.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 46,
+      "target": "GUIDING_MISCONCEPTIONS.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 47,
+      "target": "GUIDING_PI_CONTROLLER_TUNING.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 50,
+      "target": "../CHANGELOG.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 51,
+      "target": "../TODO.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 52,
+      "target": "../AUTHORS.md"
+    },
+    {
+      "path": "HOME.md",
+      "line": 53,
+      "target": "../LICENSE.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_GENERATOR_BASICS.md",
+      "line": 21,
+      "target": "../indigo_drivers/AGENTS.override.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_GENERATOR_BASICS.md",
+      "line": 423,
+      "target": "../indigo_drivers/AGENTS.override.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_TESTING_BASICS.md",
+      "line": 18,
+      "target": "../indigo_drivers/AGENTS.override.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_TESTING_BASICS.md",
+      "line": 86,
+      "target": "../indigo_drivers/AGENTS.override.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_TESTING_BASICS.md",
+      "line": 367,
+      "target": "../indigo_drivers/AGENTS.override.md"
+    }
+  ]
+}

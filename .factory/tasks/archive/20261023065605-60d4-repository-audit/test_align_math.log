@@ -1,0 +1,10 @@
+Running align math unit tests
+  PASS polar_error_correction_inverts_its_application
+  PASS polar_alignment_recalculation_follows_the_polar_error
+  PASS parallactic_angle_matches_reference_values
+  PASS parallactic_angle_is_zero_on_the_meridian
+  PASS derotation_rate_equals_parallactic_angle_rate
+  PASS derotation_rate_matches_reference_values
+  PASS derotation_rate_vanishes_due_east_and_west
+  PASS derotation_rate_grows_towards_the_zenith
+align math unit tests: all tests passed

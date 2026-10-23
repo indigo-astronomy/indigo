@@ -1,0 +1,86 @@
+[
+  {
+    "old_task": "001-adopt-ai-factory",
+    "task": "20261021193138-70b4-adopt-ai-factory",
+    "archive_commit": "e5f25534910b7f51d3e1e87daace13dcd9820d90",
+    "archive_committed_at": "2026-10-21T21:31:38+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "002-fix-ftdi-build",
+    "task": "20261021195453-0ff1-fix-ftdi-build",
+    "archive_commit": "48dc893491f77cddb18fc3188d400a70f67cde19",
+    "archive_committed_at": "2026-10-21T21:54:53+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "003-initial-repository-audit",
+    "task": "20261021204508-b596-initial-repository-audit",
+    "archive_commit": "85c7c3d9207b80b35a80047cb71dcb1419ad3c7e",
+    "archive_committed_at": "2026-10-21T22:45:08+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "004-fix-websocket-key-overflow",
+    "task": "20261021203703-ee3d-fix-websocket-key-overflow",
+    "archive_commit": "93f8ae3d501279a1c6b8fe223362cb52bd804392",
+    "archive_committed_at": "2026-10-21T22:37:03+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "005-remove-switch-target-review",
+    "task": "20261021211058-e043-remove-switch-target-review",
+    "archive_commit": "c1e65cc62c4d91a3de839de84da6dca2e5b1ce66",
+    "archive_committed_at": "2026-10-21T23:10:58+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "006-repoint-switch-target-citations",
+    "task": "20261021211410-d947-repoint-switch-target-citations",
+    "archive_commit": "38e71b6472c961cd510f42f9900b9931633280de",
+    "archive_committed_at": "2026-10-21T23:14:10+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "007-never-rewrite-commits",
+    "task": "20261021214435-6288-never-rewrite-commits",
+    "archive_commit": "5129a60cc0b7a2dffeb87a76b2aa1213cc1ea3b4",
+    "archive_committed_at": "2026-10-21T23:44:35+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "008-ccd-current-temperature-filename",
+    "task": "20261022162652-644c-ccd-current-temperature-filename",
+    "archive_commit": "fb4d409dab8bd3c1dc2849f655e7a79f4e32bf86",
+    "archive_committed_at": "2026-10-22T18:26:52+02:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "009-commit-permission-rule",
+    "task": "20261022182234-7b8b-commit-permission-rule",
+    "archive_commit": "51e14099cbdbd8d413a27193bd5772af6f149735",
+    "archive_committed_at": "2026-10-22T21:22:34+03:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "010-primalucelib",
+    "task": "20261022212521-61cf-primalucelib",
+    "archive_commit": "edc01a8634817a4454899cf571bf5d86e6f1612e",
+    "archive_committed_at": "2026-10-23T00:25:21+03:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "011-primaluce-sestosenso3",
+    "task": "20261022235021-bcb6-primaluce-sestosenso3",
+    "archive_commit": "c3730a753944a0a5e262c9ee38fb9d582912707a",
+    "archive_committed_at": "2026-10-23T02:50:21+03:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  },
+  {
+    "old_task": "012-primaluce-calibration-finalizers",
+    "task": "20261023011844-cc6a-primaluce-calibration-finalizers",
+    "archive_commit": "b0c5cf377f0c68de9e0abd850b0b15e925cb8091",
+    "archive_committed_at": "2026-10-23T04:18:44+03:00",
+    "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+  }
+]

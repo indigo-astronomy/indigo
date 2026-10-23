@@ -1,0 +1,19 @@
+{
+  "id": "FND-000040",
+  "title": "TOOLS-005: Metadata tools copy paths into fixed buffers or pass paths through a shell command unsafely",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TOOLS-005: Metadata tools copy paths into fixed buffers or pass paths through a shell command unsafely. `indigo_driver_metadata` uses `strcpy()` from arbitrary CLI arguments into `name[128]`; `indigo_metadata_extractor` builds `clang -E %s` for `popen()` without quoting and then dereferences `pipe` without checking for failure. Long paths can overflow, and specially named driver paths can change shell behavior. Use `snprintf()`/length checks and fork/exec-style invocation or strict shell quoting plus `popen()` failure checks. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:40; historical locations: `indigo_driver_metadata.c:15`, `indigo_driver_metadata.c:19`, `indigo_metadata_extractor.c:83`, `indigo_metadata_extractor.c:84`, `indigo_metadata_extractor.c:85`; legacy status: Open",
+  "resolution": null
+}

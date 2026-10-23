@@ -1,0 +1,19 @@
+{
+  "id": "FND-000027",
+  "title": "OPTDRV-009: The focuser device name is initialized, but the uniqueness call is accidentally applied to `device->name` again instead of `focuser->name`",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "OPTDRV-009: The focuser device name is initialized, but the uniqueness call is accidentally applied to `device->name` again instead of `focuser->name`. Multiple RPi autofocus devices can therefore expose duplicate focuser names. Call `indigo_make_name_unique(focuser->name, ...)` for the focuser. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:38; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:1708`, `ccd_rpi/indigo_ccd_rpi.cpp:1710`, `ccd_rpi/indigo_ccd_rpi.cpp:1711`; legacy status: Open",
+  "resolution": null
+}

@@ -8,7 +8,7 @@ The versioned `.factory/template-lock.json` records `version: 1`, the approved c
 
 Use [the mapping example](../templates/template-map.json) as an inventory, not an install manifest. Adapt destinations for relocated helpers and host instructions. Include each dependency required by the selected policy; review omitted paths deliberately. Source and destination paths must be unique, nonoverlapping, plain relative paths. The helper accepts at most 256 UTF-8 text files of at most 1 MiB each, including executable text scripts. Symlinks, submodules, binary files, traversal and Git metadata cannot be transferred. Other file types require a separate manual migration.
 
-Project-owned `project.md`, `checks.json`, `process-policy.json`, `review-policy.json`, `review.local.json`, `state.json`, `maintenance.json`, tasks, findings/counter/archive, legacy telemetry data, local adopter inventory and the lock itself cannot be mapped on either side. Legacy `state.yaml` and `maintenance.yaml` remain protected too. Upstream changes to their schemas require a reviewed manual migration preserving actual project data. Other project-specific files, including approved model/budget policies, should stay outside the map when the owner wants full local ownership. Mapping shared instructions allows three-way integration; it never overrides existing project authority.
+Project-owned `project.md`, `checks.json`, `process-policy.json`, `review-policy.json`, `review.local.json`, `state.json`, `maintenance.json`, tasks, per-record findings/archive, completion history, legacy telemetry data, local adopter inventory and the lock itself cannot be mapped on either side. Legacy `state.yaml` and `maintenance.yaml` remain protected too. Upstream changes to their schemas require a reviewed manual migration preserving actual project data. Other project-specific files, including approved model/budget policies, should stay outside the map when the owner wants full local ownership. Mapping shared instructions allows three-way integration; it never overrides existing project authority.
 
 ## Register an adoption
 
@@ -16,12 +16,20 @@ New migrations use the same immutable TEMPLATE_COMMIT for installation and prove
 
 ```sh
 ./.factory/scripts/template-update init --project "$PROJECT_ROOT" --source "$TEMPLATE_CHECKOUT" \
-  --revision "$TEMPLATE_COMMIT" --map /path/to/reviewed-map.json --task 001-adopt-ai-factory
+  --revision "$TEMPLATE_COMMIT" --map /path/to/reviewed-map.json --task "$TASK_ID"
 ```
 
-Variables denote separate absolute checkout paths and a full pinned SHA, not moving refs. Run from the matching `task/001-adopt-ai-factory` branch with state.json selecting that task. Initialization writes only the lock, refuses to replace an existing lock, and preserves customized or missing target files. Commit the map decision, lock and installed baseline with the migration report before subsequent upgrades. Ensure the local inventory filename is ignored in the adopting project before using it. New empty projects exported from the template register their exact exported SHA through the same process after Git/task setup; it is not inferred from current upstream main.
+Variables denote separate absolute checkout paths and a full pinned SHA, not moving refs. Run from the matching task branch with the selected task state identifying that task (task-local in version 2). Initialization writes only the lock, refuses to replace an existing lock, and preserves customized or missing target files. Commit the map decision, lock and installed baseline with the migration report before subsequent upgrades. Ensure the local inventory filename is ignored in the adopting project before using it. New empty projects exported from the template register their exact exported SHA through the same process after Git/task setup; it is not inferred from current upstream main.
 
 For older adoptions, identify the exact original template commit from their adoption report/Git evidence, review the source-to-target inventory and initialize on a dedicated task branch. If the baseline cannot be established, perform a manual migration/inventory first; do not guess a baseline or label the current template as already integrated. A missing updater may be bootstrapped from a separately reviewed pinned release, or invoked from that trusted checkout after reviewing its code. The source passed to the helper is otherwise treated as data.
+
+## Task identity/state upgrade
+
+When upgrading from version 1, the required [task ID/state migration](concurrent-tasks.md#upgrade-existing-task-ids-and-state) renames legacy archived tasks and the active upgrade task/branch, repairs mutable references and preserves commit-pinned evidence. Install the shared state module with dependent helpers, include new mapping entries, preview/apply the migration and continue with the printed new upgrade task ID and matching renamed branch. Never overwrite project state with the template marker.
+
+## Findings and maintenance upgrade
+
+After task-ID/state migration, follow [the reviewed metadata upgrade](maintenance.md#upgrade-existing-projects). Preserve delivered legacy FND IDs, split active records, import evidenced completions/audit coverage and verify legacy counts/checkpoints before replacing them with derived status. Install all new helper dependencies and map entries while preserving protected project data. Publish only completed upgrade tasks.
 
 ## Discover and plan an update
 
@@ -46,7 +54,7 @@ The updater recognizes the historical upstream helper move from `scripts/NAME` t
 
 ```sh
 ./.factory/scripts/template-update apply --project "$PROJECT_ROOT" --source "$TEMPLATE_CHECKOUT" \
-  --revision "$TEMPLATE_COMMIT" --task 002-update-ai-factory --review-unmapped
+  --revision "$TEMPLATE_COMMIT" --task "$TASK_ID" --review-unmapped
 ```
 
 Use `--review-unmapped` only after inspecting and resolving every reported omission; omit it when no unmapped paths changed. It acknowledges deliberate exclusions/manual migrations, not automatic installation of missing dependencies. The write guard requires the matching task branch/active pointer and committed mapped files/lock. Any mapped conflict prevents **all** writes and keeps the old pin; exit 1 includes the conflict report. Invalid input, wrong source, dirty mapped paths or unavailable Git objects exit 2.
@@ -97,7 +105,7 @@ New adoptions install helpers in `.factory/scripts/`; application-owned `scripts
 
 ## Migrating workflow and maintenance data to JSON
 
-Factory-owned structured files use JSON; Markdown remains the documentation format. Native manifests belonging to external tools keep their required formats. Workflow state stays at `.factory/state.json`, outside task directories.
+Factory-owned structured files use JSON; Markdown remains the documentation format. Native manifests belonging to external tools keep their required formats. Version 2 uses task-local execution state and a global repository marker; migrate legacy IDs/state with [concurrent-tasks.md](concurrent-tasks.md#upgrade-existing-task-ids-and-state), including renamed archived tasks and the active upgrade task/branch, with mutable references repaired and commit-pinned evidence preserved.
 
 Existing adopters must migrate deliberately on their task branch before running upgraded helpers:
 

@@ -492,7 +492,7 @@ reproducible with the simulator and is covered by the code change only.
 
 Simulated tests: 55 run, 55 passed. Hardware tests: 0 run, 0 passed.
 
-## Protocol library extraction (2026-10-22, task 010-primalucelib)
+## Protocol library extraction (2026-10-22, task 20261022212521-61cf-primalucelib)
 
 More PrimaLuce drivers are planned, so the JSON protocol code moves out of this driver into the
 shared library `indigo_drivers/shared/primalucelib/`. This is a pure extraction: no behaviour,
@@ -607,7 +607,7 @@ Linux x86_64 only; macOS and Windows builds were not run in this environment. No
 - Hardware tests: 0 run, 0 passed in this round; the latest hardware record stays 3.0.0.25 (linux
   arm64) and 3.0.0.22 (mac arm64, USB and WiFi).
 
-## SESTO SENSO 3 support (3.0.0.27, 2026-10-23, task 011-primaluce-sestosenso3)
+## SESTO SENSO 3 support (3.0.0.27, 2026-10-23, task 20261022235021-bcb6-primaluce-sestosenso3)
 
 On the owner's SESTO SENSO 3 (application firmware 1.0.9, web 03.06.01, CP2102N on USB, delivered
 uncalibrated) `FOCUSER_POSITION` alternated between OK and ALERT and moves failed. The work followed
@@ -675,7 +675,7 @@ in the test summary below.
   manual sessions, not a `tools/run_driver_test.py --hw` run, so they produce no hardware record.
   The latest hardware records stay 3.0.0.25 (linux arm64) and 3.0.0.22 (mac arm64).
 
-## Calibration steps as finalizers (3.0.0.28, 2026-10-23, task 012-primaluce-calibration-finalizers)
+## Calibration steps as finalizers (3.0.0.28, 2026-10-23, task 20261023011844-cc6a-primaluce-calibration-finalizers)
 
 The 3.0.0.27 calibration held the device queue during its waits. START slept a second between the
 steps, and a SESTO SENSO 3 that changed direction waited up to 10 s for the restart. END polled the
@@ -750,15 +750,34 @@ Hardware (supervised, SESTO SENSO 3):
 - Hardware: the supervised SESTO SENSO 3 session above was manual, so it produces no hardware
   record.
 
-## ARCO on the SESTO SENSO 3 (3.0.0.29, 2026-10-23, task 013-primaluce-arco-sestosenso3)
+## Audit blocker repair (2026-10-23)
+
+Task: 20261023065605-60d4-repository-audit. Two scoped defects: the shared archive recipe hard-codes ar flags despite the macOS libtool configuration, and shared JSON lookup accepts a shorter received key as a requested longer key. The latter can confuse ABS_POS and ABS_POS_STEP units/availability. Public property schema, command bytes, queue/finalizer lifecycle and shared-open ownership remain unchanged.
+
+Baseline: audit clean archive build failed on macOS; original shared-library 24 cases passed using an explicitly constructed archive, and the actual JSON reproducer returned ABS_POS=123 for missing ABS_POS_STEP. Exact commands/results are retained in the task verification evidence. Existing simulator and protocol golden-request suites characterize supported behavior. This is a bounded defect repair, not a driver migration or transport refactor.
+
+Hardware decision: no hardware access; noninteractive serial-simulator validation only. No physical device, WiFi credentials or saved configuration will be used.
+
+Atomic plan: forward configured archiver flags and verify clean builds; add failing reply-prefix regression; require exact keys; bump driver 28 to 29 and regenerate using the unchanged generator; run full library/driver simulator checks and independent review. No generator source changes.
+
+Executed repair: the archive recipe forwards ARFLAGS and preserves atomic publication; shared parsed-reply lookup now requires equal key lengths. Added the failing-then-passing parsed serial-peer regression. Driver version increased from 28 to 29; isolated regeneration matches all three checked-in outputs. No property changes or generator modifications.
+
+## Final test summary (3.0.0.29)
+
+- `python3 tools/run_driver_test.py focuser_primaluce`: exit 0; simulated tests 61 run, 61 passed. Recorded: `2026-10-23 09:41 3.0.0.29 mac arm64 simulator 61/61 OK`. README Testing and TEST_SUMMARY were updated by the runner.
+- Library: 25 run, 25 passed; ASan/UBSan library/regression build: 25 run, 25 passed. Clean macOS/libtool and ar-compatible builds pass; forced archiver failure preserves the previous archive and removes temporary files. Linux/Windows execution remains unverified.
+- Hardware: 0 run, 0 passed in this repair task. Historical manual hardware observations above do not validate this version.
+- Independent source review: core_audit PASS; exact baseline/repair commands, logs and limits are retained in `.factory/tasks/archive/20261023065605-60d4-repository-audit/verification.md`.
+
+## ARCO on the SESTO SENSO 3 (3.0.0.30, 2026-10-23, task 20261023080442-7930-primaluce-arco-sestosenso3)
 
 The requester's SESTO SENSO 3 with an ARCO (firmware 1.0.9) had three defects, all found on hardware:
 
 | ID | Defect | Fix | Regression test |
 | --- | --- | --- | --- |
-| FND-000061 | An absolute move turned the ARCO but ended ALERT at once. The SESTO SENSO 3 acknowledges `MOVE_ABS` and `SYNC_POS` under `MOT2.DEG`, while the library expected `MOT2.STEP` and `MOT2.SYNC_POS` (SESTO SENSO 2), so sync also failed. | The library accepts either key for both. | `sestosenso3_rotator_move` and `sestosenso3_rotator_sync`; both fail without the fix. |
-| FND-000062 | A move to 15° ended ALERT at 14.99994°: the driver compared the target and the angle for equality. | The target is reached within `ROTATOR_POSITION_TOLERANCE` (0.1°, the requester's choice). | `sestosenso3_rotator_move`; fails at 44.9999 with the exact comparison. |
-| FND-000063 | After quick repeated syncs the controller printed debug text in front of the reply on the same line, so the reply failed to parse. | The library parses a reply line from its first `{`. | `test_primalucelib` `debug_text_before_a_reply_is_skipped`; `sestosenso3_rotator_sync`. |
+| FND-20261023080442-7930-primaluce-arco-sestosenso3-001 | An absolute move turned the ARCO but ended ALERT at once. The SESTO SENSO 3 acknowledges `MOVE_ABS` and `SYNC_POS` under `MOT2.DEG`, while the library expected `MOT2.STEP` and `MOT2.SYNC_POS` (SESTO SENSO 2), so sync also failed. | The library accepts either key for both. | `sestosenso3_rotator_move` and `sestosenso3_rotator_sync`; both fail without the fix. |
+| FND-20261023080442-7930-primaluce-arco-sestosenso3-002 | A move to 15° ended ALERT at 14.99994°: the driver compared the target and the angle for equality. | The target is reached within `ROTATOR_POSITION_TOLERANCE` (0.1°, the requester's choice). | `sestosenso3_rotator_move`; fails at 44.9999 with the exact comparison. |
+| FND-20261023080442-7930-primaluce-arco-sestosenso3-003 | After quick repeated syncs the controller printed debug text in front of the reply on the same line, so the reply failed to parse. | The library parses a reply line from its first `{`. | `test_primalucelib` `debug_text_before_a_reply_is_skipped`; `sestosenso3_rotator_sync`. |
 
 Simulator: the SESTO SENSO 3 profile acknowledges ARCO moves and syncs under `DEG`, the sync behind
 debug text, and reports the angle with five decimals and the step rounding (the target − 0.00006°).
@@ -767,9 +786,10 @@ Hardware (supervised): absolute moves end OK, an abort stops the ARCO and ends A
 effect without moving (three syncs in a row, one behind debug text), and moves after the sync use the
 synced angles.
 
-## Final test summary (3.0.0.29)
+## Final test summary (3.0.0.30)
 
-- Simulated tests: 63 run, 63 passed: `2026-10-23 05:01 3.0.0.29 linux x64 simulator 63/63 OK`.
-  Library unit cases: 25 of 25.
-- Hardware: the supervised SESTO SENSO 3 ARCO session above was manual, so it produces no hardware
-  record.
+- Simulated tests: 63 run, 63 passed on the tree merged with the audit repair:
+  `2026-10-23 11:07 3.0.0.30 linux x64 simulator 63/63 OK`. Library unit cases: 26 of 26.
+- Hardware: the supervised SESTO SENSO 3 ARCO session above was manual and ran before the merge
+  (local build that the merge numbers 3.0.0.30, without the audit's exact key matching), so it
+  produces no hardware record.

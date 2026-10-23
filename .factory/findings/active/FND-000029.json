@@ -1,0 +1,19 @@
+{
+  "id": "FND-000029",
+  "title": "TEST-010: `cooler_individual_failures` and `Guiding and abort during long exposure then reacquire` fail intermittently, and only under full-suite load: 11 standalone runs of the bi",
+  "category": "quality",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TEST-010: `cooler_individual_failures` and `Guiding and abort during long exposure then reacquire` fail intermittently, and only under full-suite load: 11 standalone runs of the binary were clean while the two full `make test` runs hit one each. `wait_state()` samples the property's current state every 10 ms, so a state the driver publishes and then replaces between two polls is missed; the serial harness avoids this by recording a revision per state (`property_state_revisions` in `simulator_test_common.h`). Making `wait_state()` edge triggered the same way was tried and made `cooler_individual_failures` fail more often (2 of 3 runs), so the scenario depends on the level-triggered semantics in some other way and the change was reverted. Needs diagnosis before the harness is changed. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_test/REVIEW.md:27; historical locations: `integration/test_ccd_playerone_sdk.c` (`wait_state`); legacy status: Open (intermittent; blocks a green `make -C indigo_test test`)",
+  "resolution": null
+}

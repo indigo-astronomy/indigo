@@ -24,11 +24,13 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[2] / '.factory/scripts/template_update.py'
+sys.path.insert(0, str(SCRIPT.parent))
 spec = importlib.util.spec_from_file_location('template_update', SCRIPT)
 update = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(update)
@@ -196,6 +198,19 @@ class TemplateUpdateTests(unittest.TestCase):
         self.call('apply', new)
         self.commit(self.project)
         self.call('plan', self.old, expected=2)
+
+    def test_apply_uses_task_local_state_and_preserves_other_task(self):
+        self.put(self.project, '.factory/state.json', '{"version":2,"task_state":"per-task"}\n')
+        self.put(self.project, '.factory/tasks/' + TASK + '/state.json', json.dumps({'version': 2, 'active_task': TASK}))
+        other = self.project / '.factory/tasks/other/state.json'
+        self.put(self.project, '.factory/tasks/other/state.json', '{"active_task":"other","status":"blocked"}\n')
+        before = other.read_bytes()
+        self.commit(self.project)
+        self.put(self.source, 'policy.md', self.base_text + 'New policy\n')
+        new = self.commit(self.source)
+        self.call('apply', new, expected=0)
+        self.assertIn('New policy', (self.project / 'custom/rules.md').read_text())
+        self.assertEqual(other.read_bytes(), before)
 
     def test_guard_main_active_task_and_dirty_mapping(self):
         self.git(self.project, 'switch', 'main')

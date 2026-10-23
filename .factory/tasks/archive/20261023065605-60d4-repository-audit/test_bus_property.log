@@ -1,0 +1,13 @@
+Running bus property unit tests
+  PASS properties_are_initialized_for_all_vector_types
+  PASS property_matching_works_for_all_vector_types
+  PASS copied_properties_are_independent_for_all_vector_types
+  PASS resized_properties_preserve_items_for_all_vector_types
+  PASS numeric_copy_ignores_nonfinite_inputs
+  PASS numeric_copy_still_clamps_finite_inputs
+  PASS switch_target_follows_init_and_copy
+  PASS switch_target_survives_a_poll_overwriting_the_value
+  PASS switch_targets_are_applied_after_a_poll_overwrote_the_values
+  PASS switch_target_keeps_unnamed_items_for_any_of_many
+  PASS switch_target_is_not_written_for_read_only_or_empty_requests
+bus property unit tests: all tests passed

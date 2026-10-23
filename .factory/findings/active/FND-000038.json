@@ -1,0 +1,19 @@
+{
+  "id": "FND-000038",
+  "title": "TOOLS-003: `fits_to_raw` does not check CFITSIO status after reading image parameters or pixels, accepts any non-8-bit FITS image as 16-bit output, and allocates image buffers from ",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TOOLS-003: `fits_to_raw` does not check CFITSIO status after reading image parameters or pixels, accepts any non-8-bit FITS image as 16-bit output, and allocates image buffers from unchecked axis multiplication. Bad or unsupported FITS inputs can produce corrupt RAW output or memory faults. Check `status` after every FITS call, explicitly accept only supported `bitpix` values, validate `naxis/naxes`, and verify allocation/write results. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:38; historical locations: `fits_to_raw.c:49`, `fits_to_raw.c:65`, `fits_to_raw.c:69`, `fits_to_raw.c:70`, `fits_to_raw.c:77`, `fits_to_raw.c:80`; legacy status: Open",
+  "resolution": null
+}

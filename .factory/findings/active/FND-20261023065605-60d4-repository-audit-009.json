@@ -1,0 +1,19 @@
+{
+  "title": "HTTP BLOB gzip uses an input-sized buffer and can serve an incomplete gzip stream",
+  "category": "functional",
+  "severity": "medium",
+  "blocking": false,
+  "evidence": "indigo_libs/indigo_server_tcp.c:212-224; indigo_libs/indigo_uni_io.c:2675-2702; blob-compression-repro.c; blob-compression-repro.log",
+  "summary": "The HTTP caller allocates only the uncompressed byte count for gzip output. The compressor accepts a non-final deflate result and reports partial output. For bytes 0..31 in a 32-byte buffer it returns 32 bytes; a zlib decoder returns -5 rather than Z_STREAM_END and recovers only 15/32 bytes. The HTTP caller would label and send the partial stream with 200 OK. Next: coordinator assigns bounded gzip-capacity/error-contract repair and HTTP incompressible-payload regression coverage; audit did not perform a network download.",
+  "status": "open",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023065605-60d4-repository-audit-009"
+}

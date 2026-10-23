@@ -1,0 +1,29 @@
+{
+  "title": "PrimaLuce shared archive recipe fails with the configured macOS libtool",
+  "category": "functional",
+  "severity": "high",
+  "blocking": true,
+  "evidence": "indigo_drivers/shared/primalucelib/Makefile:42; Makefile.inc:18,23; primalucelib-build.log",
+  "summary": "The recipe hard-codes ar-style rcs after $(AR), but macOS config sets AR=/usr/bin/libtool and ARFLAGS=-static -o. A clean archive build fails with libtool usage and exit 2, preventing a clean focuser_primaluce build. Reproduced with BUILD_LIB redirected to a new /tmp directory. Next: coordinator assigns a portable archive-recipe repair using configured ARFLAGS, with clean macOS and GNU-ar verification; preserve atomic publication.",
+  "status": "closed",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md: Repair verification; independent-review.md: core_audit final product review. macOS/ar-compatible archives and atomic failure preservation; parsed-key regression and 25 library cases pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023065605-60d4-repository-audit-001"
+}

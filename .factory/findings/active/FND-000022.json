@@ -1,0 +1,19 @@
+{
+  "id": "FND-000022",
+  "title": "OPTDRV-004: Raspberry Pi exposure startup sets image and exposure properties to `INDIGO_BUSY_STATE`, but if `StartExposure()` fails it only logs the error",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "OPTDRV-004: Raspberry Pi exposure startup sets image and exposure properties to `INDIGO_BUSY_STATE`, but if `StartExposure()` fails it only logs the error. No property is moved to `INDIGO_ALERT_STATE`, no failure cleanup runs, and no client update reports completion/failure. Report the failed start through `CCD_EXPOSURE_PROPERTY` and image upload properties before returning. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:33; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:1364`, `ccd_rpi/indigo_ccd_rpi.cpp:1372`, `ccd_rpi/indigo_ccd_rpi.cpp:1440`, `ccd_rpi/indigo_ccd_rpi.cpp:1445`; legacy status: Open",
+  "resolution": null
+}

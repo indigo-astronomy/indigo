@@ -1,0 +1,29 @@
+{
+  "title": "PrimaLuce reply lookup accepts shorter keys as the requested field",
+  "category": "functional",
+  "severity": "medium",
+  "blocking": true,
+  "evidence": "indigo_drivers/shared/primalucelib/primalucelib.c:355-373; primaluce-prefix-repro.c; primaluce-prefix-repro.log",
+  "summary": "primalucelib_find_token compares only the received key length with strncmp. ABS_POS therefore satisfies a request for ABS_POS_STEP; the reproducer reports present=1 and returns 123 for an absent field. Units/position-field selection can be wrong despite successful missing-field guards. Next: coordinator assigns exact-length key matching with serial/HTTP parsed-reply regression cases, existing library/driver suites and affected version bookkeeping.",
+  "status": "closed",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md: Repair verification; independent-review.md: core_audit final product review. macOS/ar-compatible archives and atomic failure preservation; parsed-key regression and 25 library cases pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023065605-60d4-repository-audit-002"
+}

@@ -1,0 +1,1289 @@
+[
+  {
+    "path": "indigo_drivers/ao_sx/indigo_ao_sx.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ao_sx.driver ...\nWriting ./indigo_ao_sx.h ...\nWriting ./indigo_ao_sx_main.c ...\nWriting ./indigo_ao_sx.c ...\n",
+    "outputs": [
+      "indigo_ao_sx_main.c",
+      "indigo_ao_sx.h",
+      "indigo_ao_sx.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_arteskyflat.driver ...\nWriting ./indigo_aux_arteskyflat.h ...\nWriting ./indigo_aux_arteskyflat_main.c ...\nWriting ./indigo_aux_arteskyflat.c ...\n",
+    "outputs": [
+      "indigo_aux_arteskyflat.h",
+      "indigo_aux_arteskyflat_main.c",
+      "indigo_aux_arteskyflat.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_astromechanics.driver ...\nWriting ./indigo_aux_astromechanics.h ...\nWriting ./indigo_aux_astromechanics_main.c ...\nWriting ./indigo_aux_astromechanics.c ...\n",
+    "outputs": [
+      "indigo_aux_astromechanics_main.c",
+      "indigo_aux_astromechanics.h",
+      "indigo_aux_astromechanics.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_cloudwatcher.driver ...\nWriting ./indigo_aux_cloudwatcher.h ...\nWriting ./indigo_aux_cloudwatcher_main.c ...\nWriting ./indigo_aux_cloudwatcher.c ...\n",
+    "outputs": [
+      "indigo_aux_cloudwatcher.c",
+      "indigo_aux_cloudwatcher_main.c",
+      "indigo_aux_cloudwatcher.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_dragonfly.driver ...\nWriting ./indigo_aux_dragonfly.h ...\nWriting ./indigo_aux_dragonfly_main.c ...\nWriting ./indigo_aux_dragonfly.c ...\n",
+    "outputs": [
+      "indigo_aux_dragonfly.c",
+      "indigo_aux_dragonfly_main.c",
+      "indigo_aux_dragonfly.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_dsusb/indigo_aux_dsusb.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_dsusb.driver ...\nWriting ./indigo_aux_dsusb.h ...\nWriting ./indigo_aux_dsusb_main.c ...\nWriting ./indigo_aux_dsusb.c ...\n",
+    "outputs": [
+      "indigo_aux_dsusb.c",
+      "indigo_aux_dsusb.h",
+      "indigo_aux_dsusb_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_fbc/indigo_aux_fbc.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_fbc.driver ...\nWriting ./indigo_aux_fbc.h ...\nWriting ./indigo_aux_fbc_main.c ...\nWriting ./indigo_aux_fbc.c ...\n",
+    "outputs": [
+      "indigo_aux_fbc.h",
+      "indigo_aux_fbc_main.c",
+      "indigo_aux_fbc.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_flatmaster/indigo_aux_flatmaster.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_flatmaster.driver ...\nWriting ./indigo_aux_flatmaster.h ...\nWriting ./indigo_aux_flatmaster_main.c ...\nWriting ./indigo_aux_flatmaster.c ...\n",
+    "outputs": [
+      "indigo_aux_flatmaster.c",
+      "indigo_aux_flatmaster_main.c",
+      "indigo_aux_flatmaster.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_flipflat.driver ...\nWriting ./indigo_aux_flipflat.h ...\nWriting ./indigo_aux_flipflat_main.c ...\nWriting ./indigo_aux_flipflat.c ...\n",
+    "outputs": [
+      "indigo_aux_flipflat.h",
+      "indigo_aux_flipflat_main.c",
+      "indigo_aux_flipflat.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_geoptikflat.driver ...\nWriting ./indigo_aux_geoptikflat.h ...\nWriting ./indigo_aux_geoptikflat_main.c ...\nWriting ./indigo_aux_geoptikflat.c ...\n",
+    "outputs": [
+      "indigo_aux_geoptikflat_main.c",
+      "indigo_aux_geoptikflat.h",
+      "indigo_aux_geoptikflat.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_mgbox/indigo_aux_mgbox.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_mgbox.driver ...\nWriting ./indigo_aux_mgbox.h ...\nWriting ./indigo_aux_mgbox_main.c ...\nWriting ./indigo_aux_mgbox.c ...\n",
+    "outputs": [
+      "indigo_aux_mgbox.c",
+      "indigo_aux_mgbox.h",
+      "indigo_aux_mgbox_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_ppb/indigo_aux_ppb.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_ppb.driver ...\nWriting ./indigo_aux_ppb.h ...\nWriting ./indigo_aux_ppb_main.c ...\nWriting ./indigo_aux_ppb.c ...\n",
+    "outputs": [
+      "indigo_aux_ppb.c",
+      "indigo_aux_ppb_main.c",
+      "indigo_aux_ppb.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_rts/indigo_aux_rts.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_rts.driver ...\nWriting ./indigo_aux_rts.h ...\nWriting ./indigo_aux_rts_main.c ...\nWriting ./indigo_aux_rts.c ...\n",
+    "outputs": [
+      "indigo_aux_rts_main.c",
+      "indigo_aux_rts.c",
+      "indigo_aux_rts.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_simulator/indigo_aux_simulator.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_simulator.driver ...\nWriting ./indigo_aux_simulator.h ...\nWriting ./indigo_aux_simulator_main.c ...\nWriting ./indigo_aux_simulator.c ...\n",
+    "outputs": [
+      "indigo_aux_simulator_main.c",
+      "indigo_aux_simulator.c",
+      "indigo_aux_simulator.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_skyalert/indigo_aux_skyalert.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_skyalert.driver ...\nWriting ./indigo_aux_skyalert.h ...\nWriting ./indigo_aux_skyalert_main.c ...\nWriting ./indigo_aux_skyalert.c ...\n",
+    "outputs": [
+      "indigo_aux_skyalert.c",
+      "indigo_aux_skyalert_main.c",
+      "indigo_aux_skyalert.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_sqm/indigo_aux_sqm.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_sqm.driver ...\nWriting ./indigo_aux_sqm.h ...\nWriting ./indigo_aux_sqm_main.c ...\nWriting ./indigo_aux_sqm.c ...\n",
+    "outputs": [
+      "indigo_aux_sqm.h",
+      "indigo_aux_sqm_main.c",
+      "indigo_aux_sqm.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_svbpowerbox.driver ...\nWriting ./indigo_aux_svbpowerbox.h ...\nWriting ./indigo_aux_svbpowerbox_main.c ...\nWriting ./indigo_aux_svbpowerbox.c ...\n",
+    "outputs": [
+      "indigo_aux_svbpowerbox.c",
+      "indigo_aux_svbpowerbox_main.c",
+      "indigo_aux_svbpowerbox.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_uch/indigo_aux_uch.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_uch.driver ...\nWriting ./indigo_aux_uch.h ...\nWriting ./indigo_aux_uch_main.c ...\nWriting ./indigo_aux_uch.c ...\n",
+    "outputs": [
+      "indigo_aux_uch.c",
+      "indigo_aux_uch_main.c",
+      "indigo_aux_uch.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_upb/indigo_aux_upb.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_upb.driver ...\nWarning: FOCUSER_REVERSE_MOTION_PROPERTY->hidden set to false\nWarning: FOCUSER_ON_POSITION_SET_PROPERTY->hidden set to false\nWarning: FOCUSER_BACKLASH_PROPERTY->hidden set to false\nWarning: FOCUSER_TEMPERATURE_PROPERTY->hidden set to false\nWarning: FOCUSER_LIMITS_PROPERTY->hidden set to false\nWriting ./indigo_aux_upb.h ...\nWriting ./indigo_aux_upb_main.c ...\nWriting ./indigo_aux_upb.c ...\n",
+    "outputs": [
+      "indigo_aux_upb.c",
+      "indigo_aux_upb_main.c",
+      "indigo_aux_upb.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_upb3/indigo_aux_upb3.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_upb3.driver ...\nWarning: FOCUSER_REVERSE_MOTION_PROPERTY->hidden set to false\nWarning: FOCUSER_BACKLASH_PROPERTY->hidden set to false\nWriting ./indigo_aux_upb3.h ...\nWriting ./indigo_aux_upb3_main.c ...\nWriting ./indigo_aux_upb3.c ...\n",
+    "outputs": [
+      "indigo_aux_upb3.c",
+      "indigo_aux_upb3_main.c",
+      "indigo_aux_upb3.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_usbdp/indigo_aux_usbdp.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_usbdp.driver ...\nWriting ./indigo_aux_usbdp.h ...\nWriting ./indigo_aux_usbdp_main.c ...\nWriting ./indigo_aux_usbdp.c ...\n",
+    "outputs": [
+      "indigo_aux_usbdp.h",
+      "indigo_aux_usbdp_main.c",
+      "indigo_aux_usbdp.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_wbplusv3/indigo_aux_wbplusv3.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_wbplusv3.driver ...\nWriting ./indigo_aux_wbplusv3.h ...\nWriting ./indigo_aux_wbplusv3_main.c ...\nWriting ./indigo_aux_wbplusv3.c ...\n",
+    "outputs": [
+      "indigo_aux_wbplusv3_main.c",
+      "indigo_aux_wbplusv3.c",
+      "indigo_aux_wbplusv3.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_wbprov3/indigo_aux_wbprov3.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_wbprov3.driver ...\nWriting ./indigo_aux_wbprov3.h ...\nWriting ./indigo_aux_wbprov3_main.c ...\nWriting ./indigo_aux_wbprov3.c ...\n",
+    "outputs": [
+      "indigo_aux_wbprov3.h",
+      "indigo_aux_wbprov3_main.c",
+      "indigo_aux_wbprov3.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_wcv4ec/indigo_aux_wcv4ec.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_wcv4ec.driver ...\nWriting ./indigo_aux_wcv4ec.h ...\nWriting ./indigo_aux_wcv4ec_main.c ...\nWriting ./indigo_aux_wcv4ec.c ...\n",
+    "outputs": [
+      "indigo_aux_wcv4ec.c",
+      "indigo_aux_wcv4ec_main.c",
+      "indigo_aux_wcv4ec.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_asi/indigo_ccd_asi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_asi.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWriting ./indigo_ccd_asi.h ...\nWriting ./indigo_ccd_asi_main.c ...\nWriting ./indigo_ccd_asi.c ...\n",
+    "outputs": [
+      "indigo_ccd_asi.c",
+      "indigo_ccd_asi_main.c",
+      "indigo_ccd_asi.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_atik/indigo_ccd_atik.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_atik.driver ...\nWarning: CCD_GAIN_PROPERTY->hidden set to false\nWarning: CCD_OFFSET_PROPERTY->hidden set to false\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_atik.h ...\nWriting ./indigo_ccd_atik_main.c ...\nWriting ./indigo_ccd_atik.c ...\n",
+    "outputs": [
+      "indigo_ccd_atik.c",
+      "indigo_ccd_atik_main.c",
+      "indigo_ccd_atik.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_dsi/indigo_ccd_dsi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_dsi.driver ...\nWarning: CCD_GAIN_PROPERTY->hidden set to false\nWarning: CCD_OFFSET_PROPERTY->hidden set to false\nWriting ./indigo_ccd_dsi.h ...\nWriting ./indigo_ccd_dsi_main.c ...\nWriting ./indigo_ccd_dsi.c ...\n",
+    "outputs": [
+      "indigo_ccd_dsi.c",
+      "indigo_ccd_dsi_main.c",
+      "indigo_ccd_dsi.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_fli/indigo_ccd_fli.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_fli.driver ...\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_fli.h ...\nWriting ./indigo_ccd_fli_main.c ...\nWriting ./indigo_ccd_fli.c ...\n",
+    "outputs": [
+      "indigo_ccd_fli_main.c",
+      "indigo_ccd_fli.h",
+      "indigo_ccd_fli.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_iidc/indigo_ccd_iidc.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_iidc.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_GAIN_PROPERTY->hidden set to false\nWarning: CCD_GAMMA_PROPERTY->hidden set to false\nWriting ./indigo_ccd_iidc.h ...\nWriting ./indigo_ccd_iidc_main.c ...\nWriting ./indigo_ccd_iidc.c ...\n",
+    "outputs": [
+      "indigo_ccd_iidc.c",
+      "indigo_ccd_iidc_main.c",
+      "indigo_ccd_iidc.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_mi/indigo_ccd_mi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_mi.driver ...\nWriting ./indigo_ccd_mi.h ...\nWriting ./indigo_ccd_mi_main.c ...\nWriting ./indigo_ccd_mi.c ...\n",
+    "outputs": [
+      "indigo_ccd_mi_main.c",
+      "indigo_ccd_mi.h",
+      "indigo_ccd_mi.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_playerone.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWriting ./indigo_ccd_playerone.h ...\nWriting ./indigo_ccd_playerone_main.c ...\nWriting ./indigo_ccd_playerone.c ...\n",
+    "outputs": [
+      "indigo_ccd_playerone.c",
+      "indigo_ccd_playerone.h",
+      "indigo_ccd_playerone_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_qhy.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_GAIN_PROPERTY->hidden set to false\nWarning: CCD_OFFSET_PROPERTY->hidden set to false\nWarning: CCD_GAMMA_PROPERTY->hidden set to false\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_qhy.h ...\nWriting ./indigo_ccd_qhy_main.c ...\nWriting ./indigo_ccd_qhy.cpp ...\n",
+    "outputs": [
+      "indigo_ccd_qhy_main.c",
+      "indigo_ccd_qhy.h",
+      "indigo_ccd_qhy.cpp"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_qhy2.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_GAIN_PROPERTY->hidden set to false\nWarning: CCD_OFFSET_PROPERTY->hidden set to false\nWarning: CCD_GAMMA_PROPERTY->hidden set to false\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_qhy2.h ...\nWriting ./indigo_ccd_qhy2_main.c ...\nWriting ./indigo_ccd_qhy2.cpp ...\n",
+    "outputs": [
+      "indigo_ccd_qhy2.h",
+      "indigo_ccd_qhy2_main.c",
+      "indigo_ccd_qhy2.cpp"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_qsi/indigo_ccd_qsi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_qsi.driver ...\nWarning: CCD_GAIN_PROPERTY->hidden set to false\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_qsi.h ...\nWriting ./indigo_ccd_qsi_main.c ...\nWriting ./indigo_ccd_qsi.cpp ...\n",
+    "outputs": [
+      "indigo_ccd_qsi.cpp",
+      "indigo_ccd_qsi.h",
+      "indigo_ccd_qsi_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_simulator.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: FOCUSER_BACKLASH_PROPERTY->hidden set to false\nWarning: FOCUSER_COMPENSATION_PROPERTY->hidden set to false\nWarning: GUIDER_RATE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_simulator.h ...\nWriting ./indigo_ccd_simulator_main.c ...\nWriting ./indigo_ccd_simulator.c ...\n",
+    "outputs": [
+      "indigo_ccd_simulator.c",
+      "indigo_ccd_simulator.h",
+      "indigo_ccd_simulator_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ssag/indigo_ccd_ssag.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_ssag.driver ...\nWriting ./indigo_ccd_ssag.h ...\nWriting ./indigo_ccd_ssag_main.c ...\nWriting ./indigo_ccd_ssag.c ...\n",
+    "outputs": [
+      "indigo_ccd_ssag_main.c",
+      "indigo_ccd_ssag.c",
+      "indigo_ccd_ssag.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_svb/indigo_ccd_svb.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_svb.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWriting ./indigo_ccd_svb.h ...\nWriting ./indigo_ccd_svb_main.c ...\nWriting ./indigo_ccd_svb.c ...\n",
+    "outputs": [
+      "indigo_ccd_svb_main.c",
+      "indigo_ccd_svb.h",
+      "indigo_ccd_svb.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_sx/indigo_ccd_sx.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_sx.driver ...\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_sx.h ...\nWriting ./indigo_ccd_sx_main.c ...\nWriting ./indigo_ccd_sx.c ...\n",
+    "outputs": [
+      "indigo_ccd_sx.c",
+      "indigo_ccd_sx_main.c",
+      "indigo_ccd_sx.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_uvc/indigo_ccd_uvc.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_uvc.driver ...\nWarning: CCD_STREAMING_PROPERTY->hidden set to false\nWarning: CCD_GAIN_PROPERTY->hidden set to false\nWarning: CCD_GAMMA_PROPERTY->hidden set to false\nWriting ./indigo_ccd_uvc.h ...\nWriting ./indigo_ccd_uvc_main.c ...\nWriting ./indigo_ccd_uvc.c ...\n",
+    "outputs": [
+      "indigo_ccd_uvc.c",
+      "indigo_ccd_uvc.h",
+      "indigo_ccd_uvc_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_baader/indigo_dome_baader.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_baader.driver ...\nWriting ./indigo_dome_baader.h ...\nWriting ./indigo_dome_baader_main.c ...\nWriting ./indigo_dome_baader.c ...\n",
+    "outputs": [
+      "indigo_dome_baader.c",
+      "indigo_dome_baader_main.c",
+      "indigo_dome_baader.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_beaver/indigo_dome_beaver.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_beaver.driver ...\nWriting ./indigo_dome_beaver.h ...\nWriting ./indigo_dome_beaver_main.c ...\nWriting ./indigo_dome_beaver.c ...\n",
+    "outputs": [
+      "indigo_dome_beaver.c",
+      "indigo_dome_beaver_main.c",
+      "indigo_dome_beaver.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_dragonfly.driver ...\nWriting ./indigo_dome_dragonfly.h ...\nWriting ./indigo_dome_dragonfly_main.c ...\nWriting ./indigo_dome_dragonfly.c ...\n",
+    "outputs": [
+      "indigo_dome_dragonfly.h",
+      "indigo_dome_dragonfly_main.c",
+      "indigo_dome_dragonfly.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_nexdome/indigo_dome_nexdome.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_nexdome.driver ...\nWriting ./indigo_dome_nexdome.h ...\nWriting ./indigo_dome_nexdome_main.c ...\nWriting ./indigo_dome_nexdome.c ...\n",
+    "outputs": [
+      "indigo_dome_nexdome.c",
+      "indigo_dome_nexdome_main.c",
+      "indigo_dome_nexdome.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_nexdome3.driver ...\nWriting ./indigo_dome_nexdome3.h ...\nWriting ./indigo_dome_nexdome3_main.c ...\nWriting ./indigo_dome_nexdome3.c ...\n",
+    "outputs": [
+      "indigo_dome_nexdome3.c",
+      "indigo_dome_nexdome3_main.c",
+      "indigo_dome_nexdome3.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_simulator/indigo_dome_simulator.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_simulator.driver ...\nWarning: DOME_STATE_PROPERTY->hidden set to false\nWriting ./indigo_dome_simulator.h ...\nWriting ./indigo_dome_simulator_main.c ...\nWriting ./indigo_dome_simulator.c ...\n",
+    "outputs": [
+      "indigo_dome_simulator.h",
+      "indigo_dome_simulator_main.c",
+      "indigo_dome_simulator.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_skyroof/indigo_dome_skyroof.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_skyroof.driver ...\nWriting ./indigo_dome_skyroof.h ...\nWriting ./indigo_dome_skyroof_main.c ...\nWriting ./indigo_dome_skyroof.c ...\n",
+    "outputs": [
+      "indigo_dome_skyroof.c",
+      "indigo_dome_skyroof_main.c",
+      "indigo_dome_skyroof.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_dome_talon6ror.driver ...\nWriting ./indigo_dome_talon6ror.h ...\nWriting ./indigo_dome_talon6ror_main.c ...\nWriting ./indigo_dome_talon6ror.c ...\n",
+    "outputs": [
+      "indigo_dome_talon6ror.c",
+      "indigo_dome_talon6ror_main.c",
+      "indigo_dome_talon6ror.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_asi/indigo_focuser_asi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_asi.driver ...\nWarning: FOCUSER_REVERSE_MOTION_PROPERTY->hidden set to false\nWarning: FOCUSER_BACKLASH_PROPERTY->hidden set to false\nWarning: FOCUSER_COMPENSATION_PROPERTY->hidden set to false\nWarning: FOCUSER_MODE_PROPERTY->hidden set to false\nWarning: FOCUSER_LIMITS_PROPERTY->hidden set to false\nWriting ./indigo_focuser_asi.h ...\nWriting ./indigo_focuser_asi_main.c ...\nWriting ./indigo_focuser_asi.c ...\n",
+    "outputs": [
+      "indigo_focuser_asi_main.c",
+      "indigo_focuser_asi.c",
+      "indigo_focuser_asi.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_askar/indigo_focuser_askar.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_askar.driver ...\nWriting ./indigo_focuser_askar.h ...\nWriting ./indigo_focuser_askar_main.c ...\nWriting ./indigo_focuser_askar.c ...\n",
+    "outputs": [
+      "indigo_focuser_askar.c",
+      "indigo_focuser_askar.h",
+      "indigo_focuser_askar_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_astroasis.driver ...\nWriting ./indigo_focuser_astroasis.h ...\nWriting ./indigo_focuser_astroasis_main.c ...\nWriting ./indigo_focuser_astroasis.c ...\n",
+    "outputs": [
+      "indigo_focuser_astroasis_main.c",
+      "indigo_focuser_astroasis.c",
+      "indigo_focuser_astroasis.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_astromechanics.driver ...\nWriting ./indigo_focuser_astromechanics.h ...\nWriting ./indigo_focuser_astromechanics_main.c ...\nWriting ./indigo_focuser_astromechanics.c ...\n",
+    "outputs": [
+      "indigo_focuser_astromechanics_main.c",
+      "indigo_focuser_astromechanics.h",
+      "indigo_focuser_astromechanics.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_dmfc.driver ...\nWarning: FOCUSER_BACKLASH_PROPERTY->hidden set to false\nWarning: FOCUSER_LIMITS_PROPERTY->hidden set to false\nWriting ./indigo_focuser_dmfc.h ...\nWriting ./indigo_focuser_dmfc_main.c ...\nWriting ./indigo_focuser_dmfc.c ...\n",
+    "outputs": [
+      "indigo_focuser_dmfc.h",
+      "indigo_focuser_dmfc.c",
+      "indigo_focuser_dmfc_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_dsd.driver ...\nWriting ./indigo_focuser_dsd.h ...\nWriting ./indigo_focuser_dsd_main.c ...\nWriting ./indigo_focuser_dsd.c ...\n",
+    "outputs": [
+      "indigo_focuser_dsd.c",
+      "indigo_focuser_dsd_main.c",
+      "indigo_focuser_dsd.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_efa/indigo_focuser_efa.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_efa.driver ...\nWriting ./indigo_focuser_efa.h ...\nWriting ./indigo_focuser_efa_main.c ...\nWriting ./indigo_focuser_efa.c ...\n",
+    "outputs": [
+      "indigo_focuser_efa.c",
+      "indigo_focuser_efa_main.c",
+      "indigo_focuser_efa.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_fc3.driver ...\nWarning: FOCUSER_LIMITS_PROPERTY->hidden set to false\nWriting ./indigo_focuser_fc3.h ...\nWriting ./indigo_focuser_fc3_main.c ...\nWriting ./indigo_focuser_fc3.c ...\n",
+    "outputs": [
+      "indigo_focuser_fc3.h",
+      "indigo_focuser_fc3.c",
+      "indigo_focuser_fc3_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_fcusb.driver ...\nWriting ./indigo_focuser_fcusb.h ...\nWriting ./indigo_focuser_fcusb_main.c ...\nWriting ./indigo_focuser_fcusb.c ...\n",
+    "outputs": [
+      "indigo_focuser_fcusb.h",
+      "indigo_focuser_fcusb.c",
+      "indigo_focuser_fcusb_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_fli/indigo_focuser_fli.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_fli.driver ...\nWriting ./indigo_focuser_fli.h ...\nWriting ./indigo_focuser_fli_main.c ...\nWriting ./indigo_focuser_fli.c ...\n",
+    "outputs": [
+      "indigo_focuser_fli.h",
+      "indigo_focuser_fli_main.c",
+      "indigo_focuser_fli.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_focusdreampro.driver ...\nWriting ./indigo_focuser_focusdreampro.h ...\nWriting ./indigo_focuser_focusdreampro_main.c ...\nWriting ./indigo_focuser_focusdreampro.c ...\n",
+    "outputs": [
+      "indigo_focuser_focusdreampro.c",
+      "indigo_focuser_focusdreampro.h",
+      "indigo_focuser_focusdreampro_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_ioptron.driver ...\nWriting ./indigo_focuser_ioptron.h ...\nWriting ./indigo_focuser_ioptron_main.c ...\nWriting ./indigo_focuser_ioptron.c ...\n",
+    "outputs": [
+      "indigo_focuser_ioptron.c",
+      "indigo_focuser_ioptron_main.c",
+      "indigo_focuser_ioptron.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_lacerta.driver ...\nWriting ./indigo_focuser_lacerta.h ...\nWriting ./indigo_focuser_lacerta_main.c ...\nWriting ./indigo_focuser_lacerta.c ...\n",
+    "outputs": [
+      "indigo_focuser_lacerta_main.c",
+      "indigo_focuser_lacerta.h",
+      "indigo_focuser_lacerta.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_lakeside.driver ...\nWriting ./indigo_focuser_lakeside.h ...\nWriting ./indigo_focuser_lakeside_main.c ...\nWriting ./indigo_focuser_lakeside.c ...\n",
+    "outputs": [
+      "indigo_focuser_lakeside.c",
+      "indigo_focuser_lakeside.h",
+      "indigo_focuser_lakeside_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_lunatico.driver ...\nWriting ./indigo_focuser_lunatico.h ...\nWriting ./indigo_focuser_lunatico_main.c ...\nWriting ./indigo_focuser_lunatico.c ...\n",
+    "outputs": [
+      "indigo_focuser_lunatico.c",
+      "indigo_focuser_lunatico_main.c",
+      "indigo_focuser_lunatico.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_mjkzz.driver ...\nWriting ./indigo_focuser_mjkzz.h ...\nWriting ./indigo_focuser_mjkzz_main.c ...\nWriting ./indigo_focuser_mjkzz.c ...\n",
+    "outputs": [
+      "indigo_focuser_mjkzz.h",
+      "indigo_focuser_mjkzz.c",
+      "indigo_focuser_mjkzz_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_moonlite.driver ...\nWriting ./indigo_focuser_moonlite.h ...\nWriting ./indigo_focuser_moonlite_main.c ...\nWriting ./indigo_focuser_moonlite.c ...\n",
+    "outputs": [
+      "indigo_focuser_moonlite.h",
+      "indigo_focuser_moonlite_main.c",
+      "indigo_focuser_moonlite.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_mypro2.driver ...\nWriting ./indigo_focuser_mypro2.h ...\nWriting ./indigo_focuser_mypro2_main.c ...\nWriting ./indigo_focuser_mypro2.c ...\n",
+    "outputs": [
+      "indigo_focuser_mypro2.c",
+      "indigo_focuser_mypro2_main.c",
+      "indigo_focuser_mypro2.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_nfocus.driver ...\nWriting ./indigo_focuser_nfocus.h ...\nWriting ./indigo_focuser_nfocus_main.c ...\nWriting ./indigo_focuser_nfocus.c ...\n",
+    "outputs": [
+      "indigo_focuser_nfocus.c",
+      "indigo_focuser_nfocus_main.c",
+      "indigo_focuser_nfocus.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_nstep.driver ...\nWarning: FOCUSER_BACKLASH_PROPERTY->hidden set to false\nWarning: FOCUSER_COMPENSATION_PROPERTY->hidden set to false\nWarning: FOCUSER_MODE_PROPERTY->hidden set to false\nWriting ./indigo_focuser_nstep.h ...\nWriting ./indigo_focuser_nstep_main.c ...\nWriting ./indigo_focuser_nstep.c ...\n",
+    "outputs": [
+      "indigo_focuser_nstep_main.c",
+      "indigo_focuser_nstep.h",
+      "indigo_focuser_nstep.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_optec/indigo_focuser_optec.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_optec.driver ...\nWriting ./indigo_focuser_optec.h ...\nWriting ./indigo_focuser_optec_main.c ...\nWriting ./indigo_focuser_optec.c ...\n",
+    "outputs": [
+      "indigo_focuser_optec.h",
+      "indigo_focuser_optec_main.c",
+      "indigo_focuser_optec.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_optecfl.driver ...\nWriting ./indigo_focuser_optecfl.h ...\nWriting ./indigo_focuser_optecfl_main.c ...\nWriting ./indigo_focuser_optecfl.c ...\n",
+    "outputs": [
+      "indigo_focuser_optecfl_main.c",
+      "indigo_focuser_optecfl.h",
+      "indigo_focuser_optecfl.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_primaluce.driver ...\nWriting ./indigo_focuser_primaluce.h ...\nWriting ./indigo_focuser_primaluce_main.c ...\nWriting ./indigo_focuser_primaluce.c ...\n",
+    "outputs": [
+      "indigo_focuser_primaluce.h",
+      "indigo_focuser_primaluce_main.c",
+      "indigo_focuser_primaluce.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_prodigy.driver ...\nWriting ./indigo_focuser_prodigy.h ...\nWriting ./indigo_focuser_prodigy_main.c ...\nWriting ./indigo_focuser_prodigy.c ...\n",
+    "outputs": [
+      "indigo_focuser_prodigy.c",
+      "indigo_focuser_prodigy_main.c",
+      "indigo_focuser_prodigy.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_qhy.driver ...\nWriting ./indigo_focuser_qhy.h ...\nWriting ./indigo_focuser_qhy_main.c ...\nWriting ./indigo_focuser_qhy.c ...\n",
+    "outputs": [
+      "indigo_focuser_qhy_main.c",
+      "indigo_focuser_qhy.c",
+      "indigo_focuser_qhy.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_robofocus.driver ...\nWriting ./indigo_focuser_robofocus.h ...\nWriting ./indigo_focuser_robofocus_main.c ...\nWriting ./indigo_focuser_robofocus.c ...\n",
+    "outputs": [
+      "indigo_focuser_robofocus.c",
+      "indigo_focuser_robofocus_main.c",
+      "indigo_focuser_robofocus.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_steeldrive2.driver ...\nWriting ./indigo_focuser_steeldrive2.h ...\nWriting ./indigo_focuser_steeldrive2_main.c ...\nWriting ./indigo_focuser_steeldrive2.c ...\n",
+    "outputs": [
+      "indigo_focuser_steeldrive2.c",
+      "indigo_focuser_steeldrive2.h",
+      "indigo_focuser_steeldrive2_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_usbv3.driver ...\nWriting ./indigo_focuser_usbv3.h ...\nWriting ./indigo_focuser_usbv3_main.c ...\nWriting ./indigo_focuser_usbv3.c ...\n",
+    "outputs": [
+      "indigo_focuser_usbv3.c",
+      "indigo_focuser_usbv3_main.c",
+      "indigo_focuser_usbv3.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_focuser_wemacro.driver ...\nWriting ./indigo_focuser_wemacro.h ...\nWriting ./indigo_focuser_wemacro_main.c ...\nWriting ./indigo_focuser_wemacro.c ...\n",
+    "outputs": [
+      "indigo_focuser_wemacro.h",
+      "indigo_focuser_wemacro_main.c",
+      "indigo_focuser_wemacro.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_gps_gpsd.driver ...\nWriting ./indigo_gps_gpsd.h ...\nWriting ./indigo_gps_gpsd_main.c ...\nWriting ./indigo_gps_gpsd.c ...\n",
+    "outputs": [
+      "indigo_gps_gpsd.h",
+      "indigo_gps_gpsd_main.c",
+      "indigo_gps_gpsd.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/gps_nmea/indigo_gps_nmea.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_gps_nmea.driver ...\nWriting ./indigo_gps_nmea.h ...\nWriting ./indigo_gps_nmea_main.c ...\nWriting ./indigo_gps_nmea.c ...\n",
+    "outputs": [
+      "indigo_gps_nmea.c",
+      "indigo_gps_nmea_main.c",
+      "indigo_gps_nmea.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/gps_simulator/indigo_gps_simulator.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_gps_simulator.driver ...\nWriting ./indigo_gps_simulator.h ...\nWriting ./indigo_gps_simulator_main.c ...\nWriting ./indigo_gps_simulator.c ...\n",
+    "outputs": [
+      "indigo_gps_simulator.h",
+      "indigo_gps_simulator_main.c",
+      "indigo_gps_simulator.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/guider_asi/indigo_guider_asi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_guider_asi.driver ...\nWriting ./indigo_guider_asi.h ...\nWriting ./indigo_guider_asi_main.c ...\nWriting ./indigo_guider_asi.c ...\n",
+    "outputs": [
+      "indigo_guider_asi.h",
+      "indigo_guider_asi_main.c",
+      "indigo_guider_asi.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_guider_cgusbst4.driver ...\nWriting ./indigo_guider_cgusbst4.h ...\nWriting ./indigo_guider_cgusbst4_main.c ...\nWriting ./indigo_guider_cgusbst4.c ...\n",
+    "outputs": [
+      "indigo_guider_cgusbst4_main.c",
+      "indigo_guider_cgusbst4.c",
+      "indigo_guider_cgusbst4.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/guider_gpusb/indigo_guider_gpusb.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_guider_gpusb.driver ...\nWriting ./indigo_guider_gpusb.h ...\nWriting ./indigo_guider_gpusb_main.c ...\nWriting ./indigo_guider_gpusb.c ...\n",
+    "outputs": [
+      "indigo_guider_gpusb_main.c",
+      "indigo_guider_gpusb.h",
+      "indigo_guider_gpusb.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_ioptron/indigo_mount_ioptron.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_ioptron.driver ...\nWarning: MOUNT_PARK_SET_PROPERTY->hidden set to false\nWarning: MOUNT_HOME_PROPERTY->hidden set to false\nWarning: MOUNT_PEC_PROPERTY->hidden set to false\nWarning: MOUNT_PEC_TRAINING_PROPERTY->hidden set to false\nWriting ./indigo_mount_ioptron.h ...\nWriting ./indigo_mount_ioptron_main.c ...\nWriting ./indigo_mount_ioptron.c ...\n",
+    "outputs": [
+      "indigo_mount_ioptron.h",
+      "indigo_mount_ioptron.c",
+      "indigo_mount_ioptron_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_lx200/indigo_mount_lx200.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_lx200.driver ...\nWarning: GUIDER_RATE_PROPERTY->hidden set to false\nWriting ./indigo_mount_lx200.h ...\nWriting ./indigo_mount_lx200_main.c ...\nWriting ./indigo_mount_lx200.c ...\n",
+    "outputs": [
+      "indigo_mount_lx200.c",
+      "indigo_mount_lx200_main.c",
+      "indigo_mount_lx200.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_nexstar.driver ...\nWarning: MOUNT_UTC_TIME_PROPERTY->hidden set to false\nWarning: MOUNT_SET_HOST_TIME_PROPERTY->hidden set to false\nWarning: MOUNT_PARK_SET_PROPERTY->hidden set to false\nWriting ./indigo_mount_nexstar.h ...\nWriting ./indigo_mount_nexstar_main.c ...\nWriting ./indigo_mount_nexstar.c ...\n",
+    "outputs": [
+      "indigo_mount_nexstar_main.c",
+      "indigo_mount_nexstar.h",
+      "indigo_mount_nexstar.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_nexstaraux.driver ...\nWarning: GUIDER_RATE_PROPERTY->hidden set to false\nWriting ./indigo_mount_nexstaraux.h ...\nWriting ./indigo_mount_nexstaraux_main.c ...\nWriting ./indigo_mount_nexstaraux.c ...\n",
+    "outputs": [
+      "indigo_mount_nexstaraux.h",
+      "indigo_mount_nexstaraux_main.c",
+      "indigo_mount_nexstaraux.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_pmc8.driver ...\nWarning: GUIDER_RATE_PROPERTY->hidden set to false\nWriting ./indigo_mount_pmc8.h ...\nWriting ./indigo_mount_pmc8_main.c ...\nWriting ./indigo_mount_pmc8.c ...\n",
+    "outputs": [
+      "indigo_mount_pmc8.c",
+      "indigo_mount_pmc8_main.c",
+      "indigo_mount_pmc8.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_rainbow/indigo_mount_rainbow.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_rainbow.driver ...\nWriting ./indigo_mount_rainbow.h ...\nWriting ./indigo_mount_rainbow_main.c ...\nWriting ./indigo_mount_rainbow.c ...\n",
+    "outputs": [
+      "indigo_mount_rainbow.c",
+      "indigo_mount_rainbow_main.c",
+      "indigo_mount_rainbow.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_simulator/indigo_mount_simulator.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_simulator.driver ...\nWarning: MOUNT_HOME_PROPERTY->hidden set to false\nWriting ./indigo_mount_simulator.h ...\nWriting ./indigo_mount_simulator_main.c ...\nWriting ./indigo_mount_simulator.c ...\n",
+    "outputs": [
+      "indigo_mount_simulator.c",
+      "indigo_mount_simulator_main.c",
+      "indigo_mount_simulator.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_starbook/indigo_mount_starbook.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_starbook.driver ...\nWriting ./indigo_mount_starbook.h ...\nWriting ./indigo_mount_starbook_main.c ...\nWriting ./indigo_mount_starbook.c ...\n",
+    "outputs": [
+      "indigo_mount_starbook.h",
+      "indigo_mount_starbook_main.c",
+      "indigo_mount_starbook.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_synscan/indigo_mount_synscan.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_synscan.driver ...\nWarning: MOUNT_PARK_SET_PROPERTY->hidden set to false\nWarning: MOUNT_PARK_POSITION_PROPERTY->hidden set to false\nWarning: MOUNT_HOME_PROPERTY->hidden set to false\nWarning: MOUNT_HOME_SET_PROPERTY->hidden set to false\nWarning: MOUNT_HOME_POSITION_PROPERTY->hidden set to false\nWarning: MOUNT_ALIGNMENT_MODE_PROPERTY->hidden set to false\nWarning: MOUNT_RAW_COORDINATES_PROPERTY->hidden set to false\nWarning: MOUNT_SIDE_OF_PIER_PROPERTY->hidden set to false\nWarning: MOUNT_PEC_PROPERTY->hidden set to false\nWarning: MOUNT_PEC_TRAINING_PROPERTY->hidden set to false\nWarning: MOUNT_STATE_PROPERTY->hidden set to false\nWarning: MOUNT_STATE_PROPERTY->hidden set to false\nWarning: MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden set to false\nWarning: MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden set to false\nWarning: GUIDER_RATE_PROPERTY->hidden set to false\nWriting ./indigo_mount_synscan.h ...\nWriting ./indigo_mount_synscan_main.c ...\nWriting ./indigo_mount_synscan.c ...\n",
+    "outputs": [
+      "indigo_mount_synscan_main.c",
+      "indigo_mount_synscan.c",
+      "indigo_mount_synscan.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/mount_temma/indigo_mount_temma.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_mount_temma.driver ...\nWriting ./indigo_mount_temma.h ...\nWriting ./indigo_mount_temma_main.c ...\nWriting ./indigo_mount_temma.c ...\n",
+    "outputs": [
+      "indigo_mount_temma.h",
+      "indigo_mount_temma_main.c",
+      "indigo_mount_temma.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_polaralign_mlastro.driver ...\nWriting ./indigo_polaralign_mlastro.h ...\nWriting ./indigo_polaralign_mlastro_main.c ...\nWriting ./indigo_polaralign_mlastro.c ...\n",
+    "outputs": [
+      "indigo_polaralign_mlastro_main.c",
+      "indigo_polaralign_mlastro.c",
+      "indigo_polaralign_mlastro.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_polaralign_simulator.driver ...\nWriting ./indigo_polaralign_simulator.h ...\nWriting ./indigo_polaralign_simulator_main.c ...\nWriting ./indigo_polaralign_simulator.c ...\n",
+    "outputs": [
+      "indigo_polaralign_simulator.h",
+      "indigo_polaralign_simulator_main.c",
+      "indigo_polaralign_simulator.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/rotator_asi/indigo_rotator_asi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_rotator_asi.driver ...\nWriting ./indigo_rotator_asi.h ...\nWriting ./indigo_rotator_asi_main.c ...\nWriting ./indigo_rotator_asi.c ...\n",
+    "outputs": [
+      "indigo_rotator_asi_main.c",
+      "indigo_rotator_asi.h",
+      "indigo_rotator_asi.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_rotator_falcon.driver ...\nWarning: ROTATOR_DIRECTION_PROPERTY->hidden set to false\nWarning: ROTATOR_RELATIVE_MOVE_PROPERTY->hidden set to false\nWriting ./indigo_rotator_falcon.h ...\nWriting ./indigo_rotator_falcon_main.c ...\nWriting ./indigo_rotator_falcon.c ...\n",
+    "outputs": [
+      "indigo_rotator_falcon.c",
+      "indigo_rotator_falcon_main.c",
+      "indigo_rotator_falcon.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_rotator_lunatico.driver ...\nWriting ./indigo_rotator_lunatico.h ...\nWriting ./indigo_rotator_lunatico_main.c ...\nWriting ./indigo_rotator_lunatico.c ...\n",
+    "outputs": [
+      "indigo_rotator_lunatico.c",
+      "indigo_rotator_lunatico_main.c",
+      "indigo_rotator_lunatico.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/rotator_optec/indigo_rotator_optec.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_rotator_optec.driver ...\nWriting ./indigo_rotator_optec.h ...\nWriting ./indigo_rotator_optec_main.c ...\nWriting ./indigo_rotator_optec.c ...\n",
+    "outputs": [
+      "indigo_rotator_optec_main.c",
+      "indigo_rotator_optec.h",
+      "indigo_rotator_optec.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/rotator_simulator/indigo_rotator_simulator.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_rotator_simulator.driver ...\nWarning: ROTATOR_DIRECTION_PROPERTY->hidden set to false\nWriting ./indigo_rotator_simulator.h ...\nWriting ./indigo_rotator_simulator_main.c ...\nWriting ./indigo_rotator_simulator.c ...\n",
+    "outputs": [
+      "indigo_rotator_simulator_main.c",
+      "indigo_rotator_simulator.c",
+      "indigo_rotator_simulator.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/rotator_wa/indigo_rotator_wa.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_rotator_wa.driver ...\nWriting ./indigo_rotator_wa.h ...\nWriting ./indigo_rotator_wa_main.c ...\nWriting ./indigo_rotator_wa.c ...\n",
+    "outputs": [
+      "indigo_rotator_wa_main.c",
+      "indigo_rotator_wa.h",
+      "indigo_rotator_wa.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_asi/indigo_wheel_asi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_asi.driver ...\nWriting ./indigo_wheel_asi.h ...\nWriting ./indigo_wheel_asi_main.c ...\nWriting ./indigo_wheel_asi.c ...\n",
+    "outputs": [
+      "indigo_wheel_asi.h",
+      "indigo_wheel_asi_main.c",
+      "indigo_wheel_asi.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_astroasis.driver ...\nWriting ./indigo_wheel_astroasis.h ...\nWriting ./indigo_wheel_astroasis_main.c ...\nWriting ./indigo_wheel_astroasis.c ...\n",
+    "outputs": [
+      "indigo_wheel_astroasis_main.c",
+      "indigo_wheel_astroasis.h",
+      "indigo_wheel_astroasis.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_atik/indigo_wheel_atik.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_atik.driver ...\nWriting ./indigo_wheel_atik.h ...\nWriting ./indigo_wheel_atik_main.c ...\nWriting ./indigo_wheel_atik.c ...\n",
+    "outputs": [
+      "indigo_wheel_atik.c",
+      "indigo_wheel_atik_main.c",
+      "indigo_wheel_atik.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_fli/indigo_wheel_fli.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_fli.driver ...\nWriting ./indigo_wheel_fli.h ...\nWriting ./indigo_wheel_fli_main.c ...\nWriting ./indigo_wheel_fli.c ...\n",
+    "outputs": [
+      "indigo_wheel_fli.c",
+      "indigo_wheel_fli.h",
+      "indigo_wheel_fli_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_indigo/indigo_wheel_indigo.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_indigo.driver ...\nWriting ./indigo_wheel_indigo.h ...\nWriting ./indigo_wheel_indigo_main.c ...\nWriting ./indigo_wheel_indigo.c ...\n",
+    "outputs": [
+      "indigo_wheel_indigo_main.c",
+      "indigo_wheel_indigo.c",
+      "indigo_wheel_indigo.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_manual/indigo_wheel_manual.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_manual.driver ...\nWriting ./indigo_wheel_manual.h ...\nWriting ./indigo_wheel_manual_main.c ...\nWriting ./indigo_wheel_manual.c ...\n",
+    "outputs": [
+      "indigo_wheel_manual.h",
+      "indigo_wheel_manual_main.c",
+      "indigo_wheel_manual.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_mi/indigo_wheel_mi.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_mi.driver ...\nWriting ./indigo_wheel_mi.h ...\nWriting ./indigo_wheel_mi_main.c ...\nWriting ./indigo_wheel_mi.c ...\n",
+    "outputs": [
+      "indigo_wheel_mi.h",
+      "indigo_wheel_mi_main.c",
+      "indigo_wheel_mi.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_optec/indigo_wheel_optec.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_optec.driver ...\nWriting ./indigo_wheel_optec.h ...\nWriting ./indigo_wheel_optec_main.c ...\nWriting ./indigo_wheel_optec.c ...\n",
+    "outputs": [
+      "indigo_wheel_optec.c",
+      "indigo_wheel_optec_main.c",
+      "indigo_wheel_optec.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_playerone.driver ...\nWriting ./indigo_wheel_playerone.h ...\nWriting ./indigo_wheel_playerone_main.c ...\nWriting ./indigo_wheel_playerone.c ...\n",
+    "outputs": [
+      "indigo_wheel_playerone.c",
+      "indigo_wheel_playerone_main.c",
+      "indigo_wheel_playerone.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_qhy/indigo_wheel_qhy.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_qhy.driver ...\nWriting ./indigo_wheel_qhy.h ...\nWriting ./indigo_wheel_qhy_main.c ...\nWriting ./indigo_wheel_qhy.c ...\n",
+    "outputs": [
+      "indigo_wheel_qhy.h",
+      "indigo_wheel_qhy.c",
+      "indigo_wheel_qhy_main.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_quantum/indigo_wheel_quantum.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_quantum.driver ...\nWriting ./indigo_wheel_quantum.h ...\nWriting ./indigo_wheel_quantum_main.c ...\nWriting ./indigo_wheel_quantum.c ...\n",
+    "outputs": [
+      "indigo_wheel_quantum_main.c",
+      "indigo_wheel_quantum.h",
+      "indigo_wheel_quantum.c"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_sx/indigo_wheel_sx.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_sx.driver ...\nWriting ./indigo_wheel_sx.h ...\nWriting ./indigo_wheel_sx_main.c ...\nWriting ./indigo_wheel_sx.c ...\n",
+    "outputs": [
+      "indigo_wheel_sx.c",
+      "indigo_wheel_sx_main.c",
+      "indigo_wheel_sx.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_trutek.driver ...\nWriting ./indigo_wheel_trutek.h ...\nWriting ./indigo_wheel_trutek_main.c ...\nWriting ./indigo_wheel_trutek.c ...\n",
+    "outputs": [
+      "indigo_wheel_trutek.c",
+      "indigo_wheel_trutek_main.c",
+      "indigo_wheel_trutek.h"
+    ]
+  },
+  {
+    "path": "indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_wheel_xagyl.driver ...\nWriting ./indigo_wheel_xagyl.h ...\nWriting ./indigo_wheel_xagyl_main.c ...\nWriting ./indigo_wheel_xagyl.c ...\n",
+    "outputs": [
+      "indigo_wheel_xagyl_main.c",
+      "indigo_wheel_xagyl.h",
+      "indigo_wheel_xagyl.c"
+    ]
+  },
+  {
+    "path": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_asiair.driver ...\nWriting ./indigo_aux_asiair.h ...\nWriting ./indigo_aux_asiair_main.c ...\nWriting ./indigo_aux_asiair.c ...\n",
+    "outputs": [
+      "indigo_aux_asiair.c",
+      "indigo_aux_asiair.h",
+      "indigo_aux_asiair_main.c"
+    ]
+  },
+  {
+    "path": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_aux_rpio.driver ...\nWriting ./indigo_aux_rpio.h ...\nWriting ./indigo_aux_rpio_main.c ...\nWriting ./indigo_aux_rpio.c ...\n",
+    "outputs": [
+      "indigo_aux_rpio.h",
+      "indigo_aux_rpio.c",
+      "indigo_aux_rpio_main.c"
+    ]
+  },
+  {
+    "path": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver",
+    "differences": [],
+    "exit": 0,
+    "diagnostic": "Reading indigo_ccd_atik2.driver ...\nWarning: CCD_COOLER_PROPERTY->hidden set to false\nWarning: CCD_TEMPERATURE_PROPERTY->hidden set to false\nWriting ./indigo_ccd_atik2.h ...\nWriting ./indigo_ccd_atik2_main.c ...\nWriting ./indigo_ccd_atik2.c ...\n",
+    "outputs": [
+      "indigo_ccd_atik2.h",
+      "indigo_ccd_atik2_main.c",
+      "indigo_ccd_atik2.c"
+    ]
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "id": "FND-000034",
+  "title": "TESTS-005: Property and range parsing is based on unanchored regular expressions over human-readable `indigo_prop_tool` output",
+  "category": "quality",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TESTS-005: Property and range parsing is based on unanchored regular expressions over human-readable `indigo_prop_tool` output. Item checks can match substrings from unrelated items, and range extraction takes the first bracketed expression from all output instead of the requested item line. Parse exact item names from structured tool output if available, or filter to the exact property item with fixed-string matching before extracting state, values, and ranges. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tests/REVIEW.md:33; historical locations: `indigo_test_framework.sh:720`, `indigo_test_framework.sh:726`, `indigo_test_framework.sh:737`, `indigo_test_framework.sh:765`, `indigo_test_framework.sh:801`; legacy status: Open",
+  "resolution": null
+}

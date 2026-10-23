@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "task": "20261022162652-644c-ccd-current-temperature-filename",
+  "scope": [
+    "indigo_libs/indigo_ccd_driver.c",
+    "indigo_docs/PROPERTIES.md",
+    ".factory/state.json",
+    ".factory/maintenance.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        ".factory/tasks/archive/20261022162652-644c-ccd-current-temperature-filename/regression.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "indigo_ccd_driver.o"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "87d362e8c9497582771e8cd9257bc45654151eab"
+    ],
+    "indigo_libs/indigo_ccd_driver.c": [
+      "100644",
+      "blob",
+      "e9cc0f2752cd9ab4eca6bbc72d63b64609a0d9c4"
+    ]
+  }
+}

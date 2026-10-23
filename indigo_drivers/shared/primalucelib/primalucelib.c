@@ -374,7 +374,7 @@ static int primalucelib_find_token(primalucelib_link *link, int start, char *pat
 		}
 		char *n = link->response + link->tokens[index].start;
 		int l = link->tokens[index].end - link->tokens[index].start;
-		if (!strncmp(n, name, l)) {
+		if (strlen(name) == (size_t)l && !strncmp(n, name, l)) {
 			index++;
 			if (*++path == NULL) {
 				return index;

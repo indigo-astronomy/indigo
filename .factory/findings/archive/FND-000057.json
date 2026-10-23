@@ -8,16 +8,16 @@
   "blocking": false,
   "tasks": [
     {
-      "id": "011-primaluce-sestosenso3",
+      "id": "20261022235021-bcb6-primaluce-sestosenso3",
       "report": "verification.md",
       "revision": null
     }
   ],
   "summary": "The generated handler sets X_CALIBRATE OK when it starts, so the BUSY guard let further requests in during the SESTO SENSO 3 restart wait; queued calibrations ran in sequence, the last cleared the calibration state and END was refused, and the run drove into the mechanical end until the owner unplugged the focuser.",
-  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000057); server log of the hardware session 2026-10-23",
+  "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md (FND-000057); server log of the hardware session 2026-10-23",
   "resolution": {
     "kind": "fixed",
-    "evidence": "011-primaluce-sestosenso3/verification.md: requests are refused while a step runs, only END is accepted during the run, END without a run is refused; sestosenso3_calibration, sestosenso3_calibration_restart, calibration_end_without_run pass; hardware calibration with refused extra clicks.",
+    "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md: requests are refused while a step runs, only END is accepted during the run, END without a run is refused; sestosenso3_calibration, sestosenso3_calibration_restart, calibration_end_without_run pass; hardware calibration with refused extra clicks.",
     "approved_by": null,
     "duplicate_of": null
   }

@@ -1,0 +1,19 @@
+{
+  "id": "FND-000041",
+  "title": "TOOLS-006: The generator assumes allocations, reallocations, file redirects, and path copies always succeed",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TOOLS-006: The generator assumes allocations, reallocations, file redirects, and path copies always succeed. `allocate()` immediately `memset()`s a possibly NULL allocation, `realloc()` results overwrite the only pointer, `freopen()` results are ignored, and `strcpy(source_file, definition_file)` can overflow `PATH_MAX`. Failures can crash the generator, read from the wrong stream, or emit partial files. Add checked allocation helpers, temporary pointers for `realloc()`, bounded path copies, and explicit `freopen()` error handling before generating output. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:41; historical locations: `indigo_generator.c:123`, `indigo_generator.c:1035`, `indigo_generator.c:2152`, `indigo_generator.c:2162`, `indigo_generator.c:2724`, `indigo_generator.c:2737`, `indigo_generator.c:2741`, `indigo_generator.c:2745`, `indigo_generator.c:2751`, `indigo_generator.c:2765`, `indigo_generator.c:2766`; legacy status: Open",
+  "resolution": null
+}

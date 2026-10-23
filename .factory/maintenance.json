@@ -1,25 +1,20 @@
 {
-  "version": 1,
+  "version": 2,
   "repository_review": {
     "review_every_task": true,
     "full_review_every_completed_tasks": 5,
     "full_review_every_calendar_days": 7,
-    "last_full_review_date": "2026-10-21",
-    "last_full_review_task": "003-initial-repository-audit",
-    "last_full_review_revision": "48dc893491f77cddb18fc3188d400a70f67cde19",
-    "completed_non_audit_tasks_since_full_review": 10,
-    "last_task_review_task": "013-primaluce-arco-sestosenso3",
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
       "date": "2026-10-21",
       "scope": "Initial full maintained-repository audit only",
       "reason": "Complete the pinned workflow adoption first; retain partial review and imported findings",
       "checkpoint": "Before the first subsequent development task or release",
-      "report_task": "001-adopt-ai-factory",
+      "report_task": "20261021193138-70b4-adopt-ai-factory",
       "report": "repository-review.md",
       "subsequent_owner_priority": {
         "date": "2026-10-21",
-        "task": "002-fix-ftdi-build",
+        "task": "20261021195453-0ff1-fix-ftdi-build",
         "authority": "Peter Polakovic explicitly requested fixing FTDI dependency construction and rebuilding before proceeding",
         "checkpoint": "After this bounded build repair, before unrelated development or release; full audit remains due"
       }
@@ -39,6 +34,31 @@
         "blocking_findings": "FND-000045 fixed and archived by task 004 before acceptance"
       },
       "counter_note": "Task 004 completed after the reviewed snapshot and is counted toward the next full audit"
+    },
+    "upgrade_audit_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection",
+      "date": "2026-10-23",
+      "task": "20261023053418-4c0a-upgrade-factory",
+      "scope": "Complete this Factory upgrade before the overdue recurring audit",
+      "checkpoint": "Audit remains due at upgrade completion and before the next unrelated task",
+      "resets_checkpoint": false
+    },
+    "documentation_findings_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection",
+      "date": "2026-10-23",
+      "task": "20261023064302-ef56-fix-doc-findings-001-005",
+      "scope": "Repair FND-000001 through FND-000005 before the overdue repository audit",
+      "checkpoint": "After these five repairs, before unrelated work or release",
+      "resets_checkpoint": false
+    },
+    "audit_repair_closure_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection",
+      "date": "2026-10-23",
+      "task": "20261023065605-60d4-repository-audit",
+      "scope": "Close verified repairs 001/002 and retain the current repository audit as partial; defer remaining full semantic audit.",
+      "checkpoint": "Complete the remaining mandatory audit in the next audit task before unrelated development or release.",
+      "resets_checkpoint": false
     }
-  }
+  },
+  "timezone": "Europe/Bratislava"
 }

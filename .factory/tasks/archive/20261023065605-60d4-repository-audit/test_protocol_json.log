@@ -1,0 +1,8 @@
+Running JSON protocol unit tests
+  PASS json_escape_handles_special_characters
+  PASS json_adapter_serializes_define_update_delete_and_blob_url
+  PASS json_adapter_escapes_device_and_item_names
+  PASS json_adapter_serializes_whole_long_text_value
+  PASS json_parser_routes_number_and_switch_fixtures
+  PASS json_parser_ignores_malformed_fixture_without_change
+JSON protocol unit tests: all tests passed

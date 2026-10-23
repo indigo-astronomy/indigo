@@ -66,5 +66,12 @@
   ".factory/templates/review-policy.json": ".factory/templates/review-policy.json",
   ".factory/roles/repository-reviewer.md": ".factory/roles/repository-reviewer.md",
   ".factory/routines/repository-review.md": ".factory/routines/repository-review.md",
-  ".factory/templates/repository-review.md": ".factory/templates/repository-review.md"
+  ".factory/templates/repository-review.md": ".factory/templates/repository-review.md",
+  ".factory/scripts/task_store.py": ".factory/scripts/task_store.py",
+  ".factory/scripts/task_upgrade.py": ".factory/scripts/task_upgrade.py",
+  ".factory/routines/concurrent-tasks.md": ".factory/routines/concurrent-tasks.md",
+  ".factory/scripts/maintenance": ".factory/scripts/maintenance",
+  ".factory/scripts/maintenance.py": ".factory/scripts/maintenance.py",
+  ".factory/scripts/metadata_upgrade.py": ".factory/scripts/metadata_upgrade.py",
+  ".factory/routines/maintenance.md": ".factory/routines/maintenance.md"
 }

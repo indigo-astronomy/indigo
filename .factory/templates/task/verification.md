@@ -32,4 +32,4 @@ TODO — acceptance coverage and remaining verification limitations; next assign
 
 
 ## Register reconciliation
-Canonical FND IDs and evidence references: TODO. Keep ownership/status in .factory/findings/active.json; preserve report pins under the findings routine. Do not duplicate registry records.
+Canonical FND IDs and evidence references: TODO. Keep ownership/status in the individual .factory/findings/active/ records; preserve report pins under the findings routine. Do not duplicate registry records.

@@ -7,11 +7,11 @@ Read and follow the root AGENTS.md and applicable nested rules. Write all docume
 Read project.md, state.json, workflow.md, the active task documents, applicable AGENTS.md files, and the repository status.
 
 ## Write scope
-Own task creation, the central findings register/counter/archive, state.json, handoff.md, and the adoption report when migrating; assign roles, scope, allowed paths, and output expectations. Do not silently perform specialist work without explicitly switching roles.
+Own task creation, finding ownership/reconciliation and per-task completion history, the selected task's state.json, handoff.md, and the adoption report when migrating; assign roles, scope, allowed paths, and output expectations. Do not silently perform specialist work without explicitly switching roles.
 
 ## Procedure
 1. For an existing project without a completed adoption record, follow .factory/migration.md: read-only discovery first, then a reviewed file-by-file integration. Record the discovered layout in project.md.
-2. Before new development or maintenance work, follow .factory/routines/git.md to create or resume the task branch, then run ./.factory/scripts/new-task <task-id>, populate brief.md, and verify the active pointer. Reuse an existing task when resuming it; never reset another active task to bypass the script's protection.
+2. Before new development or maintenance work, follow .factory/routines/git.md to create or resume the task branch, then run ./.factory/scripts/new-task <task-id>, populate brief.md, and verify the selected execution state. Reuse an existing task when resuming it; never reset another active task to bypass the script's protection.
 3. Establish the task's size, risk, missing context, and baseline.
 4. Assign the next role and explicitly load its role file. Supply input paths, allowed write paths, acceptance conditions, and blockers.
 5. Prefer sequential handoffs. Delegate or spawn agents only when permitted by the host environment and owner instructions; no role grants delegation permission.
@@ -32,7 +32,7 @@ Follow .factory/bootstrap.md and .factory/portability.md. Confirm loaded rules, 
 Own the procedure in .factory/routines/git.md: update the configured base safely, create the task branch before task writes, synchronize main into the task before final verification, and integrate the tested candidate using the allowed fast-forward or protected-branch workflow. Recheck target freshness, preserve work on conflicts/failures, confirm publication where authorized, and complete mandatory cleanup of authorized completed task branches and inspect the actual remaining branch list. Record branch/base/tested revisions and actual integration outcomes in the handoff and delivery log. A local commit or failed push is not a published result.
 
 ## Recurring quality responsibility
-Assign the quality-reviewer to every final task diff after documentation and before security sign-off using .factory/routines/quality-review.md. At session start and task closure, check .factory/maintenance.json using .factory/routines/repository-review.md; assign the repository-reviewer to any due full-repository audit. Keep these scopes and reports separate. Record cadence decisions in handoff.md and canonical checkpoints in maintenance.json, linking report evidence. Never claim a task diff review is a full audit or that a routine schedules execution. Read-only adoption discovery may precede its initial full audit.
+Assign the quality-reviewer to every final task diff after documentation and before security sign-off using .factory/routines/quality-review.md. At session start and task closure, check .factory/maintenance.json using .factory/routines/repository-review.md; assign the repository-reviewer to any due full-repository audit. Keep these scopes and reports separate. Record cadence decisions in handoff.md and qualified audit/completion evidence in durable records, linking report evidence. Never claim a task diff review is a full audit or that a routine schedules execution. Read-only adoption discovery may precede its initial full audit.
 
 ## Required output and exit condition
 Updated state.json and handoff.md, concrete next assignment, and a final delivery report with evidence and limitations.
@@ -42,14 +42,14 @@ Before handoff, record changed files, evidence, open issues, and the next action
 
 ## Ordinary project task archival
 
-Own [task archival](../routines/task-archive.md): verify acceptance/reviews, update counters and handoff with delivery pending, preview and move the selected completed task, review link changes and validate findings. Include the move and reports in the single final task commit; confirm delivery externally. Keep unfinished work live, preserve history and all registry/counter data, and exclude archives from routine context.
+Own [task archival](../routines/task-archive.md): verify acceptance/reviews, record completion evidence and handoff with delivery pending, preview and move the selected completed task, review link changes and validate findings. Include the move and reports in the single final task commit; confirm delivery externally. Keep unfinished work live, preserve history and all finding/completion data, and exclude archives from routine context.
 
 ## Template repository closure
-For the AI Factory template itself, own archive retention and clean Git exports in [template maintenance retention](../routines/template-maintenance.md). Retain completed reports in the versioned task archive in the single final commit, protect unfinished work, reset only distributable template state, and verify the final committed candidate and Git export. Use explicit archived/Git evidence for template audit cadence; retain ordinary project counters/reports after adoption.
+For the AI Factory template itself, own archive retention and clean Git exports in [template maintenance retention](../routines/template-maintenance.md). Retain completed reports in the versioned task archive in the single final commit, protect unfinished work, reset only distributable template state, and verify the final committed candidate and Git export. Use explicit archived/Git evidence for template audit cadence; retain ordinary project history/reports after adoption.
 
 
 ## Findings responsibility
-Follow [findings.md](../routines/findings.md): allocate canonical IDs, reconcile review reports with active ownership/status/evidence, preserve unresolved follow-up and archive verified terminal records outside routine context. Check the register at startup/handoff and never clear it with task/state/maintenance cleanup. Pin active AND archived task references and run the prune gate before and after removing reports. Coordinate one registry writer and ID allocation across branches; preserve existing project records during upgrades.
+Follow [findings.md](../routines/findings.md): coordinate task-scoped IDs, reconcile review reports with active ownership/status/evidence, preserve unresolved follow-up and archive verified terminal records outside routine context. Check the register at startup/handoff and never clear it with task/state/maintenance cleanup. Pin active AND archived task references and run the prune gate before and after removing reports. Assign one writer per origin task/finding; separate task namespaces allocate independently; preserve existing project records during upgrades.
 
 
 ## Template distribution responsibility

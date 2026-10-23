@@ -8,7 +8,7 @@
   "blocking": true,
   "tasks": [
     {
-      "id": "002-fix-ftdi-build",
+      "id": "20261021195453-0ff1-fix-ftdi-build",
       "report": "verification.md",
       "revision": null
     }
@@ -17,7 +17,7 @@
   "evidence": "Previous diagnostic: make -C indigo_libs all exited 2 at Makefile:220; target matched the vendor archive and retained all nine embedded libusb objects. Baseline e5f25534910b7f51d3e1e87daace13dcd9820d90:indigo_libs/Makefile:213-228.",
   "resolution": {
     "kind": "fixed",
-    "evidence": "002-fix-ftdi-build/verification.md: seven focused regression cases, successful real universal library build, all nine embedded libusb objects absent per FTDI slice, no leftover mount",
+    "evidence": "20261021195453-0ff1-fix-ftdi-build/verification.md: seven focused regression cases, successful real universal library build, all nine embedded libusb objects absent per FTDI slice, no leftover mount",
     "approved_by": null,
     "duplicate_of": null
   }

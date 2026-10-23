@@ -1,0 +1,19 @@
+{
+  "id": "FND-000023",
+  "title": "OPTDRV-005: The Raspberry Pi driver copies unbounded external strings into fixed buffers: `LIBCAMERA_LOG_LEVELS` into `previousSDKLogLevel[64]`, and libcamera camera names into `name",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "OPTDRV-005: The Raspberry Pi driver copies unbounded external strings into fixed buffers: `LIBCAMERA_LOG_LEVELS` into `previousSDKLogLevel[64]`, and libcamera camera names into `name[128]` via `strcat()`. Long environment values or camera names can overflow stack/static buffers. Use bounded copies or `std::string` construction followed by `snprintf()` into INDIGO name buffers. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:34; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:187`, `ccd_rpi/indigo_ccd_rpi.cpp:204`, `ccd_rpi/indigo_ccd_rpi.cpp:1691`, `ccd_rpi/indigo_ccd_rpi.cpp:1692`; legacy status: Open",
+  "resolution": null
+}

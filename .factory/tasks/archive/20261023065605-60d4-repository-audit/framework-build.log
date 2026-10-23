@@ -1,0 +1,11 @@
+install -d /Users/polakop/Development/indigo/build/lib
+sh "/Users/polakop/Development/indigo/tools/build_ftdi_macos.sh" "/Users/polakop/Development/indigo/bin_externals/D2XX1.4.35.dmg" "/Users/polakop/Development/indigo/build/include" "/Users/polakop/Development/indigo/build/lib/libftd2xx.a" core.o descriptor.o io.o hotplug.o sync.o strerror.o darwin_usb.o events_posix.o threads_posix.o
+hdiutil: WARNING: 'hdiutil attach -readonly -mountpoint ...' is deprecated. Please use 'diskutil image attach --readOnly --mountPoint ...' instead.
+hdiutil: attach failed - Device not configured
+hdiutil: WARNING: 'hdiutil detach ...' is deprecated. Please use 'diskutil eject ...' instead.
+hdiutil: detach failed - No such file or directory
+FTDI: normal detach failed; retrying this read-only mount with -force
+hdiutil: WARNING: 'hdiutil detach -force ...' is deprecated. Please use 'diskutil eject force ...' instead.
+hdiutil: detach failed - No such file or directory
+FTDI: mount workspace retained at /var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T//indigo_d2xx.6qAGHE; detach it before removing it
+make: *** [/Users/polakop/Development/indigo/build/lib/libftd2xx.a] Error 1

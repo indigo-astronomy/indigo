@@ -36,6 +36,7 @@ class NewTaskBoundaryTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / 'project'
         (self.root / '.factory/scripts').mkdir(parents=True)
+        shutil.copy2(ROOT / '.factory/scripts/task_store.py', self.root / '.factory/scripts/task_store.py')
         shutil.copy2(ROOT / '.factory/scripts/new_task.py', self.root / '.factory/scripts/new_task.py')
         shutil.copytree(ROOT / '.factory/templates/task', self.root / '.factory/templates/task')
         (self.root / '.factory/tasks').mkdir()

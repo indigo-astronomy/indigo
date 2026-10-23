@@ -1,0 +1,41 @@
+09:32:01.741050 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: SYS: Invalid command
+09:32:01.741763 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: bad value
+09:32:01.742122 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: unknown key
+09:32:01.742384 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: again
+09:32:12.372171 Application: test_primalucelib[primalucelib_vrequest:304]: Dropped a reply that answers another request
+09:32:12.580901 Application: test_primalucelib[primalucelib_vrequest:304]: Dropped a reply that answers another request
+09:32:12.581899 Application: test_primalucelib[primalucelib_vrequest:304]: Dropped a reply that answers another request
+09:32:12.582596 Application: test_primalucelib[primalucelib_vrequest:304]: Dropped a reply that answers another request
+09:32:12.583220 Application: test_primalucelib[primalucelib_vrequest:304]: Dropped a reply that answers another request
+09:32:13.391429 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: busy
+09:32:13.493924 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: SYS: Invalid command
+09:32:13.805090 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: no ARCO
+09:32:14.722679 Application: test_primalucelib[primalucelib_vrequest:322]: Request rejected: no panel
+09:32:14.925143 Application: test_primalucelib[primalucelib_open:134]: Malformed URL 'http://'
+Running PrimaLuce Lab protocol library
+  PASS golden requests match the original driver
+  PASS reply values are found by path
+  PASS reply keys require full names
+  PASS diagnostic lines are skipped
+  PASS refusals fail with their reason
+  PASS garbage is an answer but not a reply
+  PASS silence marks the link failed
+  PASS a duplicate reply is discarded
+  PASS a late reply is skipped
+  PASS SESTO SENSO 3 log line before LOGLEVEL
+  PASS only stale replies fail the request
+  PASS a restarting link refuses requests until probed
+  PASS moves return their acknowledgement
+  PASS focuser stop falls back to a decelerated stop
+  PASS settings need done
+  PASS stored positions guard their values
+  PASS positions and angles need their field
+  PASS environment needs the external probe field
+  PASS restart waits for the controller
+  PASS SESTO SENSO 3 extras
+  PASS flat panel commands
+  PASS cover commands
+  PASS models are recognized by prefix
+  PASS HTTP URLs are split into host and port
+  PASS HTTP links open without contact
+PrimaLuce Lab protocol library: all tests passed

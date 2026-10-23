@@ -1,0 +1,74 @@
+[
+  {
+    "title": "PrimaLuce shared archive recipe fails with the configured macOS libtool",
+    "category": "functional",
+    "severity": "high",
+    "blocking": true,
+    "evidence": "indigo_drivers/shared/primalucelib/Makefile:42; Makefile.inc:18,23; primalucelib-build.log",
+    "summary": "The recipe hard-codes ar-style rcs after $(AR), but macOS config sets AR=/usr/bin/libtool and ARFLAGS=-static -o. A clean archive build fails with libtool usage and exit 2, preventing a clean focuser_primaluce build. Reproduced with BUILD_LIB redirected to a new /tmp directory. Next: coordinator assigns a portable archive-recipe repair using configured ARFLAGS, with clean macOS and GNU-ar verification; preserve atomic publication."
+  },
+  {
+    "title": "PrimaLuce reply lookup accepts shorter keys as the requested field",
+    "category": "functional",
+    "severity": "medium",
+    "blocking": true,
+    "evidence": "indigo_drivers/shared/primalucelib/primalucelib.c:355-373; primaluce-prefix-repro.c; primaluce-prefix-repro.log",
+    "summary": "primalucelib_find_token compares only the received key length with strncmp. ABS_POS therefore satisfies a request for ABS_POS_STEP; the reproducer reports present=1 and returns 123 for an absent field. Units/position-field selection can be wrong despite successful missing-field guards. Next: coordinator assigns exact-length key matching with serial/HTTP parsed-reply regression cases, existing library/driver suites and affected version bookkeeping."
+  },
+  {
+    "title": "Travis commands reference missing test and Windows solution paths",
+    "category": "quality",
+    "severity": "medium",
+    "blocking": false,
+    "evidence": ".travis.yml:54,56; static-inventory-checks.json",
+    "summary": "CI invokes indigo_test/test_suite.sh, which is absent, and changes into indigo_windows before invoking a solution that now lives at the repository root. Those commands fail even when compilation otherwise succeeds. Next: coordinator assigns CI command repair to current portable test and solution entry points; validate path resolution without installing dependencies or probing hosted CI."
+  },
+  {
+    "title": "Driver editor omits the supported polaralign device class",
+    "category": "functional",
+    "severity": "medium",
+    "blocking": false,
+    "evidence": "indigo_tools/driver_editor/driver_format.py:26; editor.py:63-66; editor-fresh-generator-tests.log",
+    "summary": "DEVICES excludes polaralign although the generator and two checked-in definitions support it. Both polaralign definitions fail preview with no supported device. The fresh unchanged generator directly regenerates both successfully. Next: coordinator assigns editor class/catalog integration and corpus regression coverage; no generator change is needed."
+  },
+  {
+    "title": "Editor attribute catalog omits the generator-supported device id",
+    "category": "quality",
+    "severity": "low",
+    "blocking": false,
+    "evidence": "indigo_tools/template.driver device attribute catalog; indigo_tools/driver_editor/test_editor.py:209-216; editor-fresh-generator-tests.log",
+    "summary": "The template-derived device catalog does not offer id, accepted by parse_device_block and needed for named logical devices. Source-to-catalog contract test fails without any generator binary dependency. Next: coordinator assigns a template/editor catalog correction and reruns the existing attribute contract test; preserve existing DSL input."
+  },
+  {
+    "title": "Editor source mapping loses CCD properties on explicitly identified logical devices",
+    "category": "functional",
+    "severity": "low",
+    "blocking": false,
+    "evidence": "indigo_tools/driver_editor/source_map.py:110-150; indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver:898-906; editor-fresh-generator-tests.log",
+    "summary": "Mapping uses device kind for generated-function prefixes and misses explicit logical-device identifiers used by the generated CCD simulator. Corpus test finds an empty generated range for inherited CCD_EXPOSURE. Next: coordinator assigns device-identity-aware mapping and tests that select all CCD logical devices; do not alter generator output merely for highlighting."
+  },
+  {
+    "title": "Driver development guides link a removed scoped instruction filename",
+    "category": "quality",
+    "severity": "low",
+    "blocking": false,
+    "evidence": "indigo_docs/DRIVER_GENERATOR_BASICS.md:21,423; indigo_docs/DRIVER_TESTING_BASICS.md:18,86,367; static-inventory-checks.json",
+    "summary": "Five developer-facing relative links still name indigo_drivers/AGENTS.override.md, which does not exist after consolidation to AGENTS.md. Readers cannot reach the instructions the guides designate as authoritative. Next: coordinator assigns a scoped link/label update and verifies all affected local destinations."
+  },
+  {
+    "title": "Checked-in client examples do not compile against current public headers",
+    "category": "functional",
+    "severity": "medium",
+    "blocking": false,
+    "evidence": "indigo_examples/remote_server_client_mount.c:177; indigo_examples/client.c:49-85,130; analyzer-results.json",
+    "summary": "The mount example, included by the examples all target, calls indigo_connect_server with four arguments although the header requires five. The older client.c also lacks standard-name declarations and passes integer descriptors to an adapter requiring indigo_uni_handle pointers. Exact compiler diagnostics are retained; this is distinct from FND-000010 unbounded connection handling. Next: coordinator assigns example API migration and isolated compile checks; preserve separate runtime-failure findings."
+  },
+  {
+    "title": "HTTP BLOB gzip uses an input-sized buffer and can serve an incomplete gzip stream",
+    "category": "functional",
+    "severity": "medium",
+    "blocking": false,
+    "evidence": "indigo_libs/indigo_server_tcp.c:212-224; indigo_libs/indigo_uni_io.c:2675-2702; blob-compression-repro.c; blob-compression-repro.log",
+    "summary": "The HTTP caller allocates only the uncompressed byte count for gzip output. The compressor accepts a non-final deflate result and reports partial output. For bytes 0..31 in a 32-byte buffer it returns 32 bytes; a zlib decoder returns -5 rather than Z_STREAM_END and recovers only 15/32 bytes. The HTTP caller would label and send the partial stream with 200 OK. Next: coordinator assigns bounded gzip-capacity/error-contract repair and HTTP incompressible-payload regression coverage; audit did not perform a network download."
+  }
+]

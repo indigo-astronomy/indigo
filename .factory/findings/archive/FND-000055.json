@@ -8,16 +8,16 @@
   "blocking": false,
   "tasks": [
     {
-      "id": "011-primaluce-sestosenso3",
+      "id": "20261022235021-bcb6-primaluce-sestosenso3",
       "report": "verification.md",
       "revision": null
     }
   ],
   "summary": "The SESTO SENSO 2 sequence writes CAL_DIR between Init and StoreAsMinPos; firmware 1.0.9 restarts after every CAL_DIR write, so the next steps went unanswered and the calibration failed.",
-  "evidence": "011-primaluce-sestosenso3/verification.md (FND-000055); hardware session 2026-10-23",
+  "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md (FND-000055); hardware session 2026-10-23",
   "resolution": {
     "kind": "fixed",
-    "evidence": "011-primaluce-sestosenso3/verification.md: the SESTO SENSO 3 sequence sets CAL_DIR first and only when it changes, waits for the restart, then Init/StoreAsMinPos/GoOutToFindMaxPos, and END sends StopMotor; sestosenso3_calibration(_restart) pass; hardware calibrations in both directions.",
+    "evidence": "20261022235021-bcb6-primaluce-sestosenso3/verification.md: the SESTO SENSO 3 sequence sets CAL_DIR first and only when it changes, waits for the restart, then Init/StoreAsMinPos/GoOutToFindMaxPos, and END sends StopMotor; sestosenso3_calibration(_restart) pass; hardware calibrations in both directions.",
     "approved_by": null,
     "duplicate_of": null
   }

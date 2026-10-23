@@ -1,0 +1,5 @@
+Running base64 unit tests
+  PASS known_vectors_encode_correctly
+  PASS encoded_data_decodes_back_to_original
+  PASS newline_tolerant_decoder_handles_embedded_newline
+base64 unit tests: all tests passed

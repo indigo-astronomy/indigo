@@ -1,0 +1,19 @@
+{
+  "title": "Driver development guides link a removed scoped instruction filename",
+  "category": "quality",
+  "severity": "low",
+  "blocking": false,
+  "evidence": "indigo_docs/DRIVER_GENERATOR_BASICS.md:21,423; indigo_docs/DRIVER_TESTING_BASICS.md:18,86,367; static-inventory-checks.json",
+  "summary": "Five developer-facing relative links still name indigo_drivers/AGENTS.override.md, which does not exist after consolidation to AGENTS.md. Readers cannot reach the instructions the guides designate as authoritative. Next: coordinator assigns a scoped link/label update and verifies all affected local destinations.",
+  "status": "open",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023065605-60d4-repository-audit-007"
+}

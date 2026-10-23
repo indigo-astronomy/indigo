@@ -1,0 +1,2 @@
+HTTP caller buffer: 32 bytes; gzip output size: 32
+gzip decoder status: -5 (expected Z_STREAM_END = 1), recovered: 15/32

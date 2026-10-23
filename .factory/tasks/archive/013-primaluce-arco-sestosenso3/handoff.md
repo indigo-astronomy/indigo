@@ -1,5 +1,7 @@
 # Task handoff
 
+Superseded: this record was migrated to `20261023080442-7930-primaluce-arco-sestosenso3` when the Factory v2 upgrade was merged (2026-10-23). Its finding IDs FND-000061 to FND-000063 became FND-20261023080442-7930-primaluce-arco-sestosenso3-001 to -003 before publication. This copy keeps the evidence of commit `7ce125f54`; the current record is the migrated one.
+
 Keep detailed reports in their task files; this handoff owns the current assignment, concise transitions and delivery state, with links to verification.md, quality-review.md and security.md. Update project.md only with necessary current conclusions and evidence references; keep shared guides procedural. Preserve those references when archiving or pruning this task under the applicable retention routine.
 
 ## Current assignment

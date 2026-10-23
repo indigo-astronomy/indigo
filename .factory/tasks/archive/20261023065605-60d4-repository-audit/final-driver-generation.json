@@ -1,0 +1,9 @@
+{
+  "generator_exit": 0,
+  "outputs_match": {
+    "indigo_focuser_primaluce.h": true,
+    "indigo_focuser_primaluce_main.c": true,
+    "indigo_focuser_primaluce.c": true
+  },
+  "diagnostics": "Reading indigo_focuser_primaluce.driver ...\nWriting ./indigo_focuser_primaluce.h ...\nWriting ./indigo_focuser_primaluce_main.c ...\nWriting ./indigo_focuser_primaluce.c ...\n"
+}

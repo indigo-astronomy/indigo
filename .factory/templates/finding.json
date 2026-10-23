@@ -1,5 +1,5 @@
 {
-  "id": "FND-000001",
+  "id": "FND-20261022143012-a81f-example-001",
   "title": "Replace with a concise observed defect",
   "category": "functional",
   "severity": "medium",
@@ -8,7 +8,7 @@
   "blocking": false,
   "tasks": [
     {
-      "id": "001-example",
+      "id": "20261022143012-a81f-example",
       "report": "verification.md",
       "revision": null
     }

@@ -1,0 +1,122 @@
+{
+  "version": 2,
+  "task": "20261021203703-ee3d-fix-websocket-key-overflow",
+  "scope": [
+    "indigo_libs/indigo_server_tcp.c",
+    "indigo_test/integration/test_server_websocket.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/state.json",
+    ".factory/maintenance.json",
+    ".factory/findings/active.json",
+    ".factory/findings/archive/FND-000045.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-server-websocket"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-server-websocket-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-detach-abort"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-detach-abort-network"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_raw_image"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/findings/active.json": [
+      "100644",
+      "blob",
+      "38f45399b3f514da4ebef36f2ff21d4a605fe1e3"
+    ],
+    ".factory/findings/archive/FND-000045.json": [
+      "100644",
+      "blob",
+      "88dfb84cd48951aabd0d03cb3cc9b73c2e77f36d"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "b2aad8903e58c5cdbf1ba5d740f8f1e65075dda8"
+    ],
+    "indigo_libs/indigo_server_tcp.c": [
+      "100644",
+      "blob",
+      "7f56321969ab0dc7d397b35fde7d6b6f1d689162"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "8917f9ec3786be54e28a7a39ff5d28bf2490048d"
+    ],
+    "indigo_test/integration/test_server_websocket.c": [
+      "100644",
+      "blob",
+      "6301e93307bf3425e2fe2ac6b082beeff8fd9ab5"
+    ]
+  }
+}

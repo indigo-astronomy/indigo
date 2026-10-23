@@ -1,0 +1,2374 @@
+{
+  "version": 1,
+  "task": "009-upgrade-factory",
+  "new_task": "20261023053418-4c0a-upgrade-factory",
+  "branch": "task/009-upgrade-factory",
+  "head": "63798359029e8a3e056ae6c50c67e620c214a597",
+  "mapping": {
+    ".factory/tasks/009-upgrade-factory": {
+      "id": "20261023053418-4c0a-upgrade-factory",
+      "time_source": "brief.md modification time; review fallback"
+    },
+    ".factory/tasks/archive/001-adopt-ai-factory": {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/002-fix-ftdi-build": {
+      "id": "20261021195453-0ff1-fix-ftdi-build",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/003-initial-repository-audit": {
+      "id": "20261021204508-b596-initial-repository-audit",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/004-fix-websocket-key-overflow": {
+      "id": "20261021203703-ee3d-fix-websocket-key-overflow",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/005-remove-switch-target-review": {
+      "id": "20261021211058-e043-remove-switch-target-review",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/006-repoint-switch-target-citations": {
+      "id": "20261021211410-d947-repoint-switch-target-citations",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/007-never-rewrite-commits": {
+      "id": "20261021214435-6288-never-rewrite-commits",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/008-ccd-current-temperature-filename": {
+      "id": "20261022162652-644c-ccd-current-temperature-filename",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/009-commit-permission-rule": {
+      "id": "20261022182234-7b8b-commit-permission-rule",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/010-primalucelib": {
+      "id": "20261022212521-61cf-primalucelib",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/011-primaluce-sestosenso3": {
+      "id": "20261022235021-bcb6-primaluce-sestosenso3",
+      "time_source": "first retained Git addition (author time)"
+    },
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers": {
+      "id": "20261023011844-cc6a-primaluce-calibration-finalizers",
+      "time_source": "first retained Git addition (author time)"
+    }
+  },
+  "inputs": {
+    ".cursor/rules/ai-factory.mdc": [
+      "0d34a2d4d05acb6eaa441fe14a2853e6f0392970f6d5058d63c69e20c5b64a46",
+      420
+    ],
+    ".factory/antropic-model-policy.json": [
+      "4ed010f65716ced4d752996ecb70ce84b8275b19e97042b2172c8f5618e2dc5d",
+      420
+    ],
+    ".factory/bootstrap.md": [
+      "758e45f23041a2ba5554391af4145535f923b58e593ede81f062cc2f69e5898b",
+      420
+    ],
+    ".factory/checks.json": [
+      "310a67b2f51f202e0144376fe478f19015e99e9f8966534f7e66dd39d4959b00",
+      420
+    ],
+    ".factory/findings/active.json": [
+      "4f27383c6e4e63660773de69deaaeb221ec2fe0427bd3375d7bad6f760679fdb",
+      420
+    ],
+    ".factory/findings/archive/FND-000044.json": [
+      "caac9e9180d23c1a0daaeae206d729c92f1762a92f6cf52859571eaaa517c192",
+      420
+    ],
+    ".factory/findings/archive/FND-000045.json": [
+      "3912ad23ddd9c9a8f90fd0062fe0f5cbd2082a8df2244e60ef2776651b28d25f",
+      420
+    ],
+    ".factory/findings/archive/FND-000049.json": [
+      "2460803e267db8840b7ffdbb994dfa0948ad5902d1510094a10c49d907e193e1",
+      420
+    ],
+    ".factory/findings/archive/FND-000050.json": [
+      "54472bf73536f4b846b9d784f8e6541260def5d675275072816f45457fca7c3b",
+      420
+    ],
+    ".factory/findings/archive/FND-000051.json": [
+      "1ea1b7ff3e4e32e0bf2d2935e1979138074eb78815676a1581d558bd2c2ee958",
+      420
+    ],
+    ".factory/findings/archive/FND-000053.json": [
+      "9c3e36bbe3a78573638ad6a06273e3578a7a5600399083ce9af041b50aa55456",
+      420
+    ],
+    ".factory/findings/archive/FND-000054.json": [
+      "4fb3d16b970f3f164c58ba6796d66c5f74d38f7a23e5100e60929b9176e6ebed",
+      420
+    ],
+    ".factory/findings/archive/FND-000055.json": [
+      "f49e0a1f319a677286f9fcf297a54420c07eb9c3c33dda3c0c461e524679e98d",
+      420
+    ],
+    ".factory/findings/archive/FND-000056.json": [
+      "c10ff221ec3a49b9c282e05eefbae0897bd76a005efa9aead0ffe06ac77d5de3",
+      420
+    ],
+    ".factory/findings/archive/FND-000057.json": [
+      "a328361693d1b9ddb3c7fcff4d816f5e641a9996ac702acc8c2ce4081cf856af",
+      420
+    ],
+    ".factory/findings/archive/FND-000058.json": [
+      "9b69a53fef1e9a51da0e5856d354600d375bed42356331b2a52de22732bceccd",
+      420
+    ],
+    ".factory/findings/archive/FND-000059.json": [
+      "739fe16cdd837c3a373f059a94c750b1dfcd7d3dab9cc99c2bf598600316d1b0",
+      420
+    ],
+    ".factory/findings/archive/FND-000060.json": [
+      "299c583ec49d18b4e5e36077877862447c2bb4e61da9b6994a9bfa5675a5ece7",
+      420
+    ],
+    ".factory/maintenance.json": [
+      "5e022c2dbb56eac2b43b777a43bc7055c542628f6ef6588990d99326346ed38f",
+      420
+    ],
+    ".factory/migration.md": [
+      "15f8cde7d551810896ea606677751eb9ffaeb37e5816e8eb41204b48f548e6ed",
+      420
+    ],
+    ".factory/openai-model-policy.json": [
+      "e4bde5c7d9c619c5c9cb486625eb144469e41cbdc9f24abca9e97f43bbbce506",
+      420
+    ],
+    ".factory/portability.md": [
+      "7c7bb0cb02593bbfa57fe86acad328a7f2bdaa01abc6a9928c730ef5e32122fc",
+      420
+    ],
+    ".factory/project.md": [
+      "488e4f0c04f256c3a7894d9674553eef8173e6a30804e81a9bc540987b47740c",
+      420
+    ],
+    ".factory/review-policy.json": [
+      "dfe73b02a2c5bf9885a0ce9b3d62b6290e4f2ea4a5e45af0de2207a05f4ffbbb",
+      420
+    ],
+    ".factory/roles/analyst.md": [
+      "62a4a5184651b81b2341489522fb6ca4823dfb45157299977f072090c1a9275d",
+      420
+    ],
+    ".factory/roles/coordinator.md": [
+      "ae679b92db705ff0fdbfb35f4739604eafc420a64b1060bfd42d5f2ca4b912fe",
+      420
+    ],
+    ".factory/roles/developer.md": [
+      "3569e5b0638780fecd123a868354e12593955084a20148e6602e14dca85c971f",
+      420
+    ],
+    ".factory/roles/documenter.md": [
+      "11d88bf2606c1a21748c7780c871b17969672a9fa402ccf9e3d0efa8429033c8",
+      420
+    ],
+    ".factory/roles/planner.md": [
+      "6d90a65f5a1f16d66ad42bedc28fda2dea0d988c39b7f62928562662ca9ee606",
+      420
+    ],
+    ".factory/roles/quality-reviewer.md": [
+      "849095883acd2cadf943b39138b42ee1f97080e3218f55c364444861050b3324",
+      420
+    ],
+    ".factory/roles/repository-reviewer.md": [
+      "dced8985c326b801a0c5972a4472038fb6aad4299f764cfde7e06de711d9aac7",
+      420
+    ],
+    ".factory/roles/security-reviewer.md": [
+      "6ad99fd1e0753372932b57b26ae03c7a5a577b9e4d3c8944c8b16672e8ad03c3",
+      420
+    ],
+    ".factory/roles/test-designer.md": [
+      "180fb327666b32a3dbe4fe3a9ec67997a605ec67c7a7ab494d4570ccc6e2c83c",
+      420
+    ],
+    ".factory/roles/verifier.md": [
+      "32258ec71e5dc0a8be11b9cfee8615fc2678e965bfce93ad6148fd78e49d6397",
+      420
+    ],
+    ".factory/routines/concurrent-tasks.md": [
+      "6da9cb8642f1399c5763838d8f167d57c0f0bb3807bf6422cc125154237d6c6f",
+      420
+    ],
+    ".factory/routines/cross-review.md": [
+      "d6738ff77a0b2e40e3e36396894fb0afe1e2586f755c13270ab80acc347179d0",
+      420
+    ],
+    ".factory/routines/findings.md": [
+      "1d88828751c0efb4a25b49e7157a1e2584c485a71fc1e5ac543b000324cb406a",
+      420
+    ],
+    ".factory/routines/git.md": [
+      "451ca154faace4267908ba721a45cb7c79a632964cc919267f8a3b64f88015f2",
+      420
+    ],
+    ".factory/routines/maintenance.md": [
+      "dbdcff8d474ca1f9026e75055c2c7482f173f537cf54c17921e7ee1ea617303b",
+      420
+    ],
+    ".factory/routines/model-selection.md": [
+      "7e8ab9d29938b74ecbaf3ccec7eed8dc0b6c862c3ceae79024c35c8b2ef98bc7",
+      420
+    ],
+    ".factory/routines/process-checks.md": [
+      "ccffeb1f17a55247bf60d09b651104b44c6fffa4d6baf88ac6a5e2769ef4c0a0",
+      420
+    ],
+    ".factory/routines/quality-review.md": [
+      "2ecc6514c3a6e89901c60796b546efa4d98498da80fcc4fe90ea935b6f8ff199",
+      420
+    ],
+    ".factory/routines/repository-review.md": [
+      "2e5c7199fbbafdaaf5dffb6c7a4f94b971594b79d1753b1e3794b5b7dc45010e",
+      420
+    ],
+    ".factory/routines/task-archive.md": [
+      "9c9bdd8aefff4f420cba89e1578020d37e4785ccf7573ea4d118e9b1bb7f9ea9",
+      420
+    ],
+    ".factory/routines/template-maintenance.md": [
+      "71778082569a1063a32ee02158eabdfc2376bb0ae370576ad4b30b8bba0b3f94",
+      420
+    ],
+    ".factory/routines/template-updates.md": [
+      "d2b25873c95f5d8c51c738872d3da97a9391df8ba0e00aeaf02b87ea73e8c9bd",
+      420
+    ],
+    ".factory/scripts/README.md": [
+      "18b5e49be6ec49a89fb620a2f07cac0deeb937c0f1f6a6d496cc9989ffe1a1d9",
+      420
+    ],
+    ".factory/scripts/archive_task.py": [
+      "654fa266075a6603803c0ec1b1bf621c3f7a6a8151240558dbe0f58c418e682f",
+      493
+    ],
+    ".factory/scripts/context_export.py": [
+      "b1934602ea4519788a1fd2cd3d7a5d6c18f8a2f330757c6b9e808a9dabc9faff",
+      493
+    ],
+    ".factory/scripts/decision_index.py": [
+      "e0e24e55839d8b628d5fea6a1275c4af0bba29df96cbd667917748898553151f",
+      420
+    ],
+    ".factory/scripts/findings.py": [
+      "44f7869a5aacc778f10c27b0c14df75b0e5532e6fa0d3b4069712eb10c37de13",
+      493
+    ],
+    ".factory/scripts/git_snapshot.py": [
+      "57b2f1e25cb53a57e465d778662e4bc126fee58f5e97db37c770721063fbfef1",
+      420
+    ],
+    ".factory/scripts/maintenance.py": [
+      "1a0cf6c454d0522830cd4d279f9430f704b25b0c18e046ef2bf1f3a5a3828538",
+      420
+    ],
+    ".factory/scripts/metadata_upgrade.py": [
+      "e33ea26be34368e8070826e14b775edda07d081771b8fca31c92d76adfc8c3d9",
+      420
+    ],
+    ".factory/scripts/new_task.py": [
+      "92a216875db2ba70d94b0758a3f987f49367cc4533edd5ab3d839c345131f807",
+      493
+    ],
+    ".factory/scripts/process_check.py": [
+      "b7106c7524321aa33a04845da604f6c0e5108ce9af2088e3f6c1c5202a3c90ef",
+      420
+    ],
+    ".factory/scripts/review.py": [
+      "7ef69574267111167b2d537d8984162e0d442604ea6e16c5b2463659dc4ad5f6",
+      420
+    ],
+    ".factory/scripts/review_adapters.py": [
+      "c7ff775cd02be163eda09c69c61dcee31b535bdeedcd4fcf98c748eeb1fa69f7",
+      420
+    ],
+    ".factory/scripts/review_protocol.py": [
+      "7fb7e2cc51ec567c0beb53abebc45dfc406d601613902f361eb84b64bb4187b7",
+      420
+    ],
+    ".factory/scripts/risk_check.py": [
+      "0cb3716ee5566cc62fc8ff834499b1aa1e23809a3f5f03e4758c2a0b110bdb11",
+      420
+    ],
+    ".factory/scripts/run_checks.py": [
+      "7f5676402c6a2b263940cdc8e7ef69e0f3561de48b5c2be70332ee7705c947e2",
+      493
+    ],
+    ".factory/scripts/task_store.py": [
+      "2930e27246e9f9b02034fbe9ca3e8db4fb163caed0091841ec743540c27152fa",
+      420
+    ],
+    ".factory/scripts/task_upgrade.py": [
+      "9635667dd2c0cf680d23f220805f0177627aecc3db2c4a1be103220d37ed54ab",
+      420
+    ],
+    ".factory/scripts/template_update.py": [
+      "2a9b3f6b76410dd9e876d85dc5c7a20387db3124ab4b2c9da4c3a0029eded994",
+      493
+    ],
+    ".factory/scripts/validate_project.py": [
+      "b417235b7122b796cdc572bd39b478c6baff1bb3f4946568fc405cabeb52aaa9",
+      420
+    ],
+    ".factory/state.json": [
+      "1b61e7a20d8e3909a47dc44746d34df7adf69c94579cd2a133df1d175d62ffa5",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/brief.md": [
+      "5449a0baacbc95d0f80610d1b8975d74a29b4ba61f57191d36ab12bf56cffb29",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/handoff.md": [
+      "ede387638cc321f276ddd40aec8e80fe95bff3643be399de67260ccc86ddae29",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/plan.md": [
+      "f8b0a80c2cdfe23747740b590557a930d78c26d94c0b91bc52b52282a70724a8",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/pre-upgrade-findings.json": [
+      "4f27383c6e4e63660773de69deaaeb221ec2fe0427bd3375d7bad6f760679fdb",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/pre-upgrade-maintenance.json": [
+      "5e022c2dbb56eac2b43b777a43bc7055c542628f6ef6588990d99326346ed38f",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/process.json": [
+      "3e99a33ce8549d057aaa3777f278ffbf1c5cf845c8bf4c8d7bfef2f20a1c9c29",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/quality-review.md": [
+      "a84574198c83f640d6400319c8c2a72a5a5dbb48274b44f98b48664e0c938a6e",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/reviewed-map-baseline.json": [
+      "ec731f2974160556813d8f0a4093ff2bc54e165680cdee47d663f0581be8c173",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/security.md": [
+      "4adf393c516b097dbaa2f476ca9dc4f8349e28e9f7da6a2915bc35326e1d1fb1",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/specification.md": [
+      "5a0a9bfed05940991eaad9894a9ec77586b32502584f1556be28db21bdff9cdb",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/test-plan.md": [
+      "ac5832a8f6106e20358a24b537c03f7c424b9717d27a0c5ee7bde41d6262a4e9",
+      420
+    ],
+    ".factory/tasks/009-upgrade-factory/verification.md": [
+      "42e24dce817a1fd7f0bb1b3192f8087330e735813055183fa44dfd5dd68a5476",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/brief.md": [
+      "c59123e4cfdd86216be367f76445901ce29e55b6b9c6640ccaafb9fa5e5e28cb",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/discovery.md": [
+      "afe30c03f72253d78c9d48f813f8d9c96014d317cbdf807adc1c7263454f7352",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/handoff.md": [
+      "0895d90f8ad20d161dc658eff35f8cbc343f219d143f916a50eaf3feb598b734",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/integration-plan.json": [
+      "3474566204907f0291d62106dff0cab221657009b0bece62f587bfffe45ee9e5",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/legacy-findings.md": [
+      "19a917f9e8ce1e938fc38b39d45d99e31d7216b1f9fe4516352abc29d593d7a9",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/legacy-review-checkpoints.json": [
+      "a0e8cc04ff164f1ad1535a61d3de87fd3a123bf1d50e4083fb57f5fb8176ec23",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/migration.md": [
+      "e43e36cd887a5c9ada688a9a886cff7ea02fecd0a8288c8c375fe1198c165027",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/plan.md": [
+      "0d2b2504322fee9a4d93419139a50f0e5292b924c93120a63657fd0ba135fcce",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/process.json": [
+      "d79c654b0b020ecbb079fdf68ea8b55f67b3403ccf8b725e831ef0f6885bb608",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/quality-review.md": [
+      "ae49d22ca653acd76f8903ea08df4d7c327fb7ade7467c9d9cfc0bb5ab8fcc5c",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/registration.json": [
+      "5a9ddf2ac20a0b4fba9633089692a19c15a77256766f1034817a6b60708dcc3b",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/repository-review.md": [
+      "6bf85b65f5952dd3311a1b6d4bdee108ecfeb7e71f359a2608b55f0c0ef0076d",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/security.md": [
+      "5a821f6083634f42eb8217e3188d199e1407071863d3c43b9568b3efbb44f7cd",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/specification.md": [
+      "722a8fc601a9daedf562bb4733b73cdf26bc53581bdddc7b0adf2278d3c77237",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/template-map.json": [
+      "2b32793932077a14254347adf2392f03998d35889bee40842889e770cf528605",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/template-source.json": [
+      "3a6f4236dceb1549cc9144ecdb186c438bdee7eb9d2487735242f51bedc3cd66",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/test-plan.md": [
+      "430d95699fb122d1492f8e5538e8161a985bccf8083301f4355a4c765614f645",
+      420
+    ],
+    ".factory/tasks/archive/001-adopt-ai-factory/verification.md": [
+      "0b14bb82c7277c78d384bb871bf5bcd348a4ddb0da4c9a2541ac7611780b5ba7",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/artifact-validation.json": [
+      "722d2067a8b4e4131ad6c758e53df17785a4b97b22b8cca1f896262e626c71fe",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/brief.md": [
+      "f3068d7f6da41557a72d6e40939971df6179f73153e0ca11fb103480551e6a4f",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/handoff.md": [
+      "cdf960fe0b69080ba7611efc002c63c36b2f66f7ea05e61fae4f98be5414526e",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/plan.md": [
+      "811d6da8de09586111acd8fe34d0aeb233afe173f4a69fc81329f288b998ec49",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/process.json": [
+      "53f559e4f27fd1f61345a4d4c58576c8ebdf61a5507edec40c9bd71f7e9e8830",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/quality-review.md": [
+      "56e78d9393dce9d2dc3c8b4626c79189fb4b63dec2c5e98392a5946d1a662eea",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/security.md": [
+      "32008821ee7bc9c95544a36f89a53cab2bd2bb5f208fe4e94a8192725881b8f8",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/specification.md": [
+      "28f7f4ccd6b0380ba3a874c9aedb5143de01775858301007814581fa31e104c2",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/test-plan.md": [
+      "fcf5e0d05e0bca89597ab8b1a412040cd50fb8d28b20893c5a6a63354983a898",
+      420
+    ],
+    ".factory/tasks/archive/002-fix-ftdi-build/verification.md": [
+      "1b63751b66ea13802165e8f9b4141c662efa98c848dd6e248a27b76861a07103",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/boundary-candidates.txt": [
+      "39ffbbb93e8b5c1d34cb3069afb37cd85d1af647ef05b20ac6e6ed51ea904691",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/brief.md": [
+      "73ebb6b16900deee180dd2ecfce158184843a684634dfb1bf5a7e5d0b69aa7ab",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/handoff.md": [
+      "551c400347ae750c5755d5dac5a07630a477ffc1cc7ac80b167163953a1dc4aa",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/inventory-summary.json": [
+      "80860d75584bcb96832388799c75d7ce2d323ba3d1fa0e3f498d829e38f575aa",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/plan.md": [
+      "65ad3c34cbd29859950727fdab5ba8fc4509d58d0470c6fccde813fda1e41479",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/process.json": [
+      "59d555011d543692e5c7865a9881346ee2318d8495061f2824aa083a038290d2",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/quality-review.md": [
+      "2a1e6c66e9b130998d468a0cf2f902c4a5ce93caaea95528290a678a3989215e",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/repository-review.md": [
+      "94e995a214f5bf15c3e47f357a5d3609624b2bef63eaa3e050885a13651f951f",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/security.md": [
+      "c51188ee59487605a81af5167f350749f53779e589961b95c38b84d2e0e2f8c2",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/specification.md": [
+      "c98854f5ab35dc53139c16a0e8aa4958fad500a32d078d7832b24df0c622f9bd",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/test-plan.md": [
+      "77b6aef9e9f75f8aa16011e6653b83ee9e90dc9ec6b4795add6b08f8ea10f5e5",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/unit-subset-command.json": [
+      "2e00644b55796a9e024bf80d950f23b320661ddc03d5ec860c1e9b8e671ec52d",
+      420
+    ],
+    ".factory/tasks/archive/003-initial-repository-audit/verification.md": [
+      "76009175e9a126a31eb371e4604fe33c2c03ccb4ebb16e0ee20c61fb40095fb4",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/brief.md": [
+      "fbd9c81866f4226f79563f30e1ab52c337c556a44c73ba127b4db52378a422e8",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/handoff.md": [
+      "fe68b74d82623485fbb7f66e6d84e4433db7c6d0f8ee3cffa13174def63614fc",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/plan.md": [
+      "4bb63298bc28ee31071c50907e08053914a07bff07473aaf7286d23634430571",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/process.json": [
+      "4c5d991757141b64c1945d5cde381324488ba9dacdab8a63f3823e4b77803128",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/quality-review.md": [
+      "9fb58d6f21a935a6d231473cdf7ff552b1703367ac59eaa28352cbc1d8af3eb4",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/security.md": [
+      "d813525f56856df18a60bf5ab4dc8b51a6a948a9bcc4b82d4dfb327f308d8f80",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/specification.md": [
+      "f627ce7cd690a1dd7201e48cf080d5d18491f5ab7921c1c5e2da04f9e8dd9e7e",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/test-plan.md": [
+      "3db16277327196abddbde4b83865dbcf65585d320b9c33a8e331fc396654c151",
+      420
+    ],
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/verification.md": [
+      "403f9d415df1fe55ae43d0153bb53296dc7dff8b41eb02f9e623f9c65671d482",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/brief.md": [
+      "68a3bc5395c87afeab4bb7fd34b20d743055c2bd5525ed04129fa4d86cf66ba7",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/handoff.md": [
+      "5568a62d9708a9fb10e6b19f7bc1c010337a9369318060c723d980ff839a887c",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/plan.md": [
+      "920933054649db3c7c406fc5184eda3dc6a917ac0212eee734bf97924725f410",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/process.json": [
+      "924bb5d8dc0aa3dd376030eea5b0454aed0a4cf87661fb5161550bcd526facd4",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/quality-review.md": [
+      "ce2b5bfc8430046d921e5cea5ef919cf573c8799cb233b1038c5b8d2c54304bf",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/security.md": [
+      "8645402db828cad2e6f87f69addee870d5fffdb7dd16af65ad917c2cf74f15cc",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/specification.md": [
+      "67e4e52c70a8038e3e34609cc7ec5266865a07ee87e7dbd9b634ba5a3e1afb1a",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/test-plan.md": [
+      "909862f7e2ed0581f1fa916375a38896f9ada3751585c1747e25c557463aff25",
+      420
+    ],
+    ".factory/tasks/archive/005-remove-switch-target-review/verification.md": [
+      "d3c70c4dfe1509747925fccfffc371ed81183daa2ba43e4b0276acc3ce486ac3",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/brief.md": [
+      "cfae460e79a352a2e33a711f7d11cfa2acb53bf5139b000c28d7f2ba8e9c506b",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/handoff.md": [
+      "77aaade361605385c8b02ba6d00a40ffbf3c1c674139e35be6e73cd3a070a6f0",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/plan.md": [
+      "9c8ad5ca547df0020e0ad7b255eb1011fbe162b8faf5f41477761494b6d38a56",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/process.json": [
+      "c15d0af3c2ef14a0f6206c630a996e50078c22352c7a384965daca869237f4f6",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/quality-review.md": [
+      "bba7c553378147521acbd866cdad90aac9448924414b62e68bccfc94d2130b1a",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/security.md": [
+      "f2df66bf69b324c2355b3530bfada04a7d6d2ce9fa434c3a39b080ef80e011f8",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/specification.md": [
+      "ee15c1554f13749e8b6aec4d718db5820ee616b9b7d92340433cdfeeae28becb",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/test-plan.md": [
+      "4be2691d69363f2c2f9f6e08f5d17a166b565b8435256368b97b7e49ce26bbb2",
+      420
+    ],
+    ".factory/tasks/archive/006-repoint-switch-target-citations/verification.md": [
+      "897f950d6205dc2a80c0c39f1ac0e73782767aaeb0b6389630636cfabaa4cd1a",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/brief.md": [
+      "d37d34f38779e67a30d36c97e86269f21ebaf2ff5f35385e6d8dc34b084f90ab",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/handoff.md": [
+      "a81c66e053b0695454cd9c0c119ae8271300ea62df3fc76121271a62f035a02a",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/plan.md": [
+      "49a8b18ef3f1620930ea587a29bafb22210c56d2ccee2d6ca115002650200243",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/process.json": [
+      "bf5d4888dea38c3d45008eb945833df404e45b7b64a7bf874daee959c840966c",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/quality-review.md": [
+      "1d5223372ea1d6a76624d280e202308b0143478a9901316df5fe99e61a571a0d",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/security.md": [
+      "031525fd979a7e4d4d6936c7264c3cbbd9d36495ac8d21a7a618a4cec961b1aa",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/specification.md": [
+      "758c4406a9589d8a5fe876491226a573315e3f3d012e8540721f0dd7fb157a69",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/test-plan.md": [
+      "f49b5234c828705221d09cfb4837e7bc23242f28d8fc33848cd5053ecefafa2c",
+      420
+    ],
+    ".factory/tasks/archive/007-never-rewrite-commits/verification.md": [
+      "8cd6486d908f938e330616948f1992628d16d1d0c14effdfa1912dc2243fe916",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/brief.md": [
+      "526fa8e12379da551ef0806b16ba8be2c9df411f5df7d0678ad1bc02710521ff",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/handoff.md": [
+      "753b10f50bae69290995fe037a68791f6d12303bc613d0eb33fbcfe0d2aa1484",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/plan.md": [
+      "57a71ca60694041cf6cfd2859054e03eb1ce369ff989628c25d6753368f8a722",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/process.json": [
+      "f902a7101336d868a80a84280c6cfa52e02933fd09f4e25246473ba5b45e470f",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/quality-review.md": [
+      "91891710340e0a1379fea0372ea4cb815a59bbec555f92f83d590639696854bd",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/regression.py": [
+      "07f782c67c469feafde58c5ff260a794143905b7e9b47165f634650b8b24bc61",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/security.md": [
+      "192b107bc8531a273efc626f7e4fec44e6de44cbe6f76acf360382773d1a229c",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/specification.md": [
+      "71f95f4e325596d9049968ef64b154e029793e0c125ec6ca51d3fe1ed6e55b3e",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/test-plan.md": [
+      "e3493d5e26579fa15824a994aeaa5f714244bec0de3931407fb2ce05a3a07166",
+      420
+    ],
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/verification.md": [
+      "c2983e8c25adfa6961053091da7143cc3191ad9242d622c84fdea10faeeb9024",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/brief.md": [
+      "28bf35a5eb13845981557d6f0e20f07505f0aee209cc4ab63870f72979c18011",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/handoff.md": [
+      "64239065c552ec6455a21b40e75aaa0e20fd89f4bb1a139f26e12565272e0410",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/plan.md": [
+      "b03c9469f95e61a84b3a161b0c54ae67e44b757a2b3254d5bdff56f3a90d501c",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/process.json": [
+      "bf16ff444cf7ab707319d379e0e49c18f76a9b95ad01bd3e8ec613f462ec1fc9",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/quality-review.md": [
+      "2dfd04f4eabdb293a1eceb3ad69056b2e8220d1074217044501a6454f6a57540",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/security.md": [
+      "5e10b1e04faa03d49eebe5b7f9c1b7d70c1efe42cb09d6a8acefa050825d8bce",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/specification.md": [
+      "09e462da1b7514e816137cb224367512d38b2b503e42841bcbcc724f8e7a9eeb",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/test-plan.md": [
+      "13762edaea6804760fcb867cf75c01e6d9a98d5145ba8e2712fddf9c1ca16168",
+      420
+    ],
+    ".factory/tasks/archive/009-commit-permission-rule/verification.md": [
+      "824edfd2e0e3b12510abcbad088b467d1fd3ae2ef6cd4078d8d07db2d78f194c",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/brief.md": [
+      "a687dc275e1e780d3980ab6c1803bc1c1860176a0061d320bf240fc497c6d576",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/handoff.md": [
+      "5005058c31c152ad0cc049c9d326b73f45b8d4abcba013b420b841ddfabf7f0f",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/plan.md": [
+      "92d421911ee7995faf316998323184ae5c1f0c3715b26859c2711624a81e3fb5",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/process.json": [
+      "ea717b62a77118630d638eab3ce98338c098d09c609d7213dc6c035723fbeac9",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/quality-review.md": [
+      "f02304e0b40ced73620e7acbdc03336cb8f239c6c5b70821fa9c244d5b9003c5",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/security.md": [
+      "7abd1b6ddb36ae4179dd3383577c3906b3b498f7c531a15babe05921c7e0dd7b",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/specification.md": [
+      "23f4052da155050023f194b3a0fad24277b1ff371dbdbc96009df830cb3288fa",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/test-plan.md": [
+      "0bc9b6b447f3939f1e9fcdb2a3829b140e83e309fc3aa5f96f29742516e250d5",
+      420
+    ],
+    ".factory/tasks/archive/010-primalucelib/verification.md": [
+      "4e8c6dfe107e1d6b0d30ca73ad22483e0f7b9da25b77efe02480fbf987b8114a",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/brief.md": [
+      "d2c9194b49dc32d3a823e21f2bdc0a488c5b2d5a719aba61351e27e48b576b04",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/handoff.md": [
+      "24fa0d8fc4fcb06bd0e6050946ac61fa76fbaa1ed55576d668cad0be42fc4ce8",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/plan.md": [
+      "9613eb7e2ed30eea64b13f529717373d31ca781164941a14341a9b2c5d65515e",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/process.json": [
+      "01f91c5c80a2e3579b03ba2aa632311bb1e1767617e18f77879f9b35f0b13063",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/quality-review.md": [
+      "5a355391bbc01d842a0066fc9082b54e65b385b32e543eb7bd3c03dc8c2d629d",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/security.md": [
+      "c1ef7f621d9f6071bf2515f1543e12ec7371385b5eb43df929e42adb97c5af6d",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/specification.md": [
+      "04f4ce0728b3d188d0c6638c8a7a348ac2353fe734754c7ab23a72ecba2ea49c",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/test-plan.md": [
+      "cbef15e35cf07204b2b9b64ce2463e0f8dd63aa2998f107f8a33257533a1b756",
+      420
+    ],
+    ".factory/tasks/archive/011-primaluce-sestosenso3/verification.md": [
+      "93217dc739e123e9f8a7db844993bef5343afacc66485ef7925a1dec19de0fca",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/brief.md": [
+      "068c6bb01af3163bf7844a8ab2af14812fe61ae8b9dd1164d9fa2b6093d762ea",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/handoff.md": [
+      "69665c1b764cda2af01672e4df23e372798efbc563359e3ec750174cf03ffeba",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/plan.md": [
+      "f55c695fbfcdc036a7107a6650b55ff16b28c70d8800a9c81ef951459b6ae548",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/process.json": [
+      "b3844e28646b9696f472252ce3a707f7336943b7fcf8c23dc3204ef4494fc5f2",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/quality-review.md": [
+      "7bbc9f5b8e9ef0c1b0c392d76dcf4a3477ab8486aa48c1b1ec5f16132794641e",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/security.md": [
+      "59abf466ebd4605c7ee2306f5aa3d745a53b1b7faf0aa96400cac89616f26dfe",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/specification.md": [
+      "78d0a1aebdc9d187260eb3d7b0869e06a157e79fc44e8e3eae82ad1f643cad95",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/test-plan.md": [
+      "546eb48ef9196085485d792e4c98b4b33d88daffc64ae5e09e2ece02fa7efce6",
+      420
+    ],
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/verification.md": [
+      "62c4fc741cc5801a2bafebe9bc5a1f83f7714d3568c8821eb0f8df18929150f8",
+      420
+    ],
+    ".factory/template-lock.json": [
+      "9ec07b343358f8915d6b429f28714d2895ff499f7692cc634eeb2c6e7210e50c",
+      420
+    ],
+    ".factory/templates/adopters.json": [
+      "ed1e7bd4c842805384a73940d52e69419fcf8cabf68782b30aec2abf3cd19b9c",
+      420
+    ],
+    ".factory/templates/checks.json": [
+      "b86726ab35dab02b76ac368f8d5277f96ee2fc86fdff4f28f8a379f8eef0a622",
+      420
+    ],
+    ".factory/templates/finding.json": [
+      "90c071d253a50fe69aed1720c17fc2b4d2c684af3402735a0b70c57a315c7719",
+      420
+    ],
+    ".factory/templates/migration-report.md": [
+      "8a12b07b5f5f9c53105484b12d0706548e6c5743045a04d12ba3e8ef5f52282b",
+      420
+    ],
+    ".factory/templates/repository-review.md": [
+      "205feabb6ba536be4f63febede55d75385484e857eb66d50778e4d8ffb9baf4f",
+      420
+    ],
+    ".factory/templates/review-policy.json": [
+      "ed05ec14e72be1529cf7f3360b043b96587dbf3db1aea2044a77616e9404e1e9",
+      420
+    ],
+    ".factory/templates/task/brief.md": [
+      "96bc3209932525bccd874b05ee7d47282a664a0df63b626f5413595fe541b4f1",
+      420
+    ],
+    ".factory/templates/task/handoff.md": [
+      "7eabe3fa9ca30a4d607f6686cccc656d77627afd5596e69f2ce0e7bad6ccd1d9",
+      420
+    ],
+    ".factory/templates/task/plan.md": [
+      "3b79c8dff2f98cde68b23723a6dbc9a0c820f77d9afa42d1712cee2e9fc2dead",
+      420
+    ],
+    ".factory/templates/task/process.json": [
+      "acf31d01a636aff73fdde80c1ced53bbeaef2490b4df7e06a07d5db5d0b3fa49",
+      420
+    ],
+    ".factory/templates/task/quality-review.md": [
+      "a84574198c83f640d6400319c8c2a72a5a5dbb48274b44f98b48664e0c938a6e",
+      420
+    ],
+    ".factory/templates/task/security.md": [
+      "cd2de487b42b64253d26b519ebb939ea3b3795cb67a525740f9f0274bf391e7d",
+      420
+    ],
+    ".factory/templates/task/specification.md": [
+      "2f47019197c782444596b5b49c1bff2dcfa03b230c84d5d1be6a79a1cfbbc4c1",
+      420
+    ],
+    ".factory/templates/task/test-plan.md": [
+      "48d58778e8a819ccc0dc0dc661584a9b08757c51027047626aa0717e894af4ee",
+      420
+    ],
+    ".factory/templates/task/verification.md": [
+      "07c6ed6b04a953e971a1b07d3ef64185f3b7a53d96ebb4c4b31f286942c009f5",
+      420
+    ],
+    ".factory/templates/template-map.json": [
+      "c11d20808c12ba910f0be60f698221cb1267b253d1ff9a044b51d212ab944e53",
+      420
+    ],
+    ".factory/workflow.md": [
+      "221e0f15c1185e29fd08061c7e880ec9766c306fe1816a5c9d45c4594fb55919",
+      420
+    ],
+    ".github/copilot-instructions.md": [
+      "24d79d474e30f1e14ae6988f7cac81b4e36578a221f1368260f1b92cf9ecf4dc",
+      420
+    ],
+    "AGENTS.md": [
+      "42a716d66ef241f0fd7388f1aa45fa292401603ad0f5c44246524f527e1a551b",
+      420
+    ],
+    "AUTHORS.md": [
+      "ec18a96b2bb9f0ffef65f5b21ec5e9d61a0738e117227f9eafc552d7ce956d41",
+      420
+    ],
+    "CHANGELOG.md": [
+      "4b419569df63ce4df6035b5d1f29345d936763af37656d51f39d378647c71744",
+      420
+    ],
+    "CLAUDE.md": [
+      "862fe7c9dde0914be9b2e4ff70a15084018019267f6bfb36c2e29407397f7a29",
+      420
+    ],
+    "GEMINI.md": [
+      "e7bc322058d98e8fc18493d29f4229d16e44fb27a9c3515b7fc8a247d0aa8bb9",
+      420
+    ],
+    "HOME.md": [
+      "5d022b90721627dce30cbea522811c2afdaebd8571931597afc889b280581179",
+      420
+    ],
+    "LICENSE.md": [
+      "42bd26e5f9f3984cdb6ae3fbd6ef11816f88d2bb643f3920ea52afd0d0ce13bf",
+      420
+    ],
+    "MIGRATION_STATUS.md": [
+      "945c818f669435890a54e3b810a87f749cbc9acc0781585988418da79ce45a29",
+      420
+    ],
+    "README.md": [
+      "6da69a4e25d9fb3e74d2757f79a754117d66b5b89af5086450a2f0d366e38ab3",
+      420
+    ],
+    "TEST_SUMMARY.md": [
+      "f14900264bcefd77db217b402294301d287a81be71d5068b943219c0fb12cdef",
+      420
+    ],
+    "TODO.md": [
+      "4ed77ba437b2215214e1e58469618362eb037a94fdaf152f496af48d4bc28b42",
+      420
+    ],
+    "docs/decisions/ADR-001-adopt-factory.md": [
+      "72171981259ad4098bd4c60e2b4bbb717548a58213b66a9814924175f6785387",
+      420
+    ],
+    "docs/decisions/README.md": [
+      "5193a70062ddc543cbd918d75877177ddd5feeeb11bb664950be1d8552cc0f71",
+      420
+    ],
+    "docs/decisions/template.md": [
+      "4998209fae5f96bb480fbf29a830bb30ee3c724755ab7770d572155490c32bc0",
+      420
+    ],
+    "indigo_docs/AGENTS.md": [
+      "cf1b9921755960fbf525f5d84f153604a91a811f8e47f5389bf9ec5671b19e29",
+      420
+    ],
+    "indigo_docs/CCD_DRIVER_SAVED_IMAGES.md": [
+      "2c17e89e990fd732ffc5a73fa9b51961c6b083227d96ce5e03bf0732ebc3f40f",
+      420
+    ],
+    "indigo_docs/CLIENT_DEVELOPMENT_BASICS.md": [
+      "3a68931ab1d0e4596ae440a41805d08c3980e819312c1b0640d20d08b37e26ff",
+      420
+    ],
+    "indigo_docs/DEVELOPMENT.md": [
+      "e52e2517e04bb616b286d07dcbc4dd4868183fb871feafccc60a4416c749c288",
+      420
+    ],
+    "indigo_docs/DRIVER_DEVELOPMENT_BASICS.md": [
+      "021027c82b8ccbfa8db1ec11c0b25f513c9c26e1ddbc2212a11d77a149a02268",
+      420
+    ],
+    "indigo_docs/DRIVER_GENERATOR_BASICS.md": [
+      "516d30f88279d0ac72771d720e19c1b2887db98a05f6581b07780a13aa2d23e3",
+      420
+    ],
+    "indigo_docs/DRIVER_GENERATOR_MIGRATION.md": [
+      "0b67ec4e2f35dd388e99f078eed01d15fa990577d3bbab5604470cf9562df610",
+      420
+    ],
+    "indigo_docs/DRIVER_TESTING_BASICS.md": [
+      "a19acd1d65fd5d04e8b7da09202ff7f375bad7617235961aa5ec4b904ede66e8",
+      420
+    ],
+    "indigo_docs/GUIDING_CORRECTION_RESPONSE_TUNING.md": [
+      "2eee4a94a86b6df0c4bbb75ccb2ad121f368b3aecf968129837cf34b0e6b19b8",
+      420
+    ],
+    "indigo_docs/GUIDING_MISCONCEPTIONS.md": [
+      "4c694c91393dadcf244a545d883b9d990ca8162457968904db5ab571627655cd",
+      420
+    ],
+    "indigo_docs/GUIDING_PI_CONTROLLER_TUNING.md": [
+      "f63009d3c9487ef44c30937235919b3c2eebe70b35045e2900cfbefb2a612a64",
+      420
+    ],
+    "indigo_docs/HOME.md": [
+      "1e5404c9ed9fcc7612b5ce23c92a5fde675c69158d6b303360038009eff48ca2",
+      420
+    ],
+    "indigo_docs/IMAGING_AF_TUNING.md": [
+      "3e5ae7c1d466314f4cd053f24ce5063755a210e75d6b5362c272bafba6bceccf",
+      420
+    ],
+    "indigo_docs/INDI-COMPARISON.md": [
+      "a61b219db6a91d94b948a7e2d9df1a57da47d826b7e85075e83ad6308837cd9e",
+      420
+    ],
+    "indigo_docs/INDIGO_AGENTS.md": [
+      "855a99aeeae40699c1e0ff220ec9db1e0782fef2dd3888538b9d125b10ad8833",
+      420
+    ],
+    "indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md": [
+      "b3af52215999cce1d817ac9d317580f2de68356fff435e61423d4a28343e7be4",
+      420
+    ],
+    "indigo_docs/INDIGO_GUIDER_CORRECTION_MODES.md": [
+      "ae02be2c1e649fe7f1cd03936dbfd06d72f38cd6142ae3f8a6c8c23566a7d3a8",
+      420
+    ],
+    "indigo_docs/INDIGO_GUIDER_DETECTION_MODES.md": [
+      "b6bd5a04a549ad1f024d34f71a528b4ac8410fa939723e91151cc38d40e8f6d0",
+      420
+    ],
+    "indigo_docs/INDIGO_GUIDER_DITHERING.md": [
+      "74c88eb0f84d4bcdf5aa4387bc9b19e358bebb790df21f99edc5e6f048bad2f5",
+      420
+    ],
+    "indigo_docs/INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md": [
+      "2e5d4851148e1d8876bcfa8c50eb0f0decade8cbf5d5085ec714f6d551360b96",
+      420
+    ],
+    "indigo_docs/INDIGO_RAW_IMAGE_FORMAT.md": [
+      "d15a0559b47b4d9d4790838db9cdddcfd7dbc5f3d1f1972a6f944440ca9cac45",
+      420
+    ],
+    "indigo_docs/INDIGO_SCRIPT_GUIDE.md": [
+      "f915230194159d604f06a06f689be61e120874e5cf43e81512755d53bc1315d7",
+      420
+    ],
+    "indigo_docs/INDIGO_SERVER_AND_DRIVERS_GUIDE.md": [
+      "20bedd50a69a94c9fd57a064eb8ea446d1aedc4724af1dc9c9d14c478d45db69",
+      420
+    ],
+    "indigo_docs/MAKEFILES.md": [
+      "e50404bf77d722c46149579265eb2a89f4d097d4923dd21d7418f74811d470ee",
+      420
+    ],
+    "indigo_docs/MULTI-INSTANCE_SUPPORT.md": [
+      "d951ed6551947c7228598566b6ea5352bfaba5129578ef7f1b1cdc2434a5d655",
+      420
+    ],
+    "indigo_docs/PLATE_SOLVING.md": [
+      "c242f0157ce2801e2be4e195d0087fc2506be5f6b7ac94bd40941870fd51298a",
+      420
+    ],
+    "indigo_docs/POLAR_ALIGNMENT.md": [
+      "e59469b51be68b255910e48794d6ad90d1caf857d550c00394ff2fb12d74dd18",
+      420
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "9abe27c888f4892ea896f543fb6d9d59366779620c8f2ea9abc74aecf47bdc96",
+      420
+    ],
+    "indigo_docs/PROPERTY_MANIPULATION.md": [
+      "4227aa6be863072f43e6ca936b004368687ec24d6aabecebd82ca8ea6fbb2bfc",
+      420
+    ],
+    "indigo_docs/PROTOCOLS.md": [
+      "bce01e06b65f30b5c4bb6c8cafc75add4695f924320383dc040dd0132518c132",
+      420
+    ],
+    "indigo_docs/README.md": [
+      "14d82bd8c577c554626764f73784da576e96bebc1933e255eed0ac5e7da166a4",
+      420
+    ],
+    "indigo_docs/SCRIPTING_BASICS.md": [
+      "f76b67a2e4df361657db0dd976ed9def2de060c9fb0385061c38d12fea454747",
+      420
+    ],
+    "indigo_docs/SERIAL_DEVICE_SIMULATORS.md": [
+      "f1bfdc31607a02e6b62f9a1785830722b5e54d3518ce732e4aff14b785ef2cb0",
+      420
+    ],
+    "indigo_docs/TIMERS_AND_QUEUES.md": [
+      "05be5569becb47370744defc04746c5763345fd141b021cc4558120ab4da8ab1",
+      420
+    ],
+    "indigo_drivers/AGENTS.md": [
+      "4716443e99c01f153d10939fe57521f22131dd88f37e3ef8269417a3d88a3459",
+      420
+    ],
+    "indigo_drivers/agent_alpaca/README.md": [
+      "10190d519d082e932fbcba137bfc06b3f4dbed733bf981a166eef75a8d6e1756",
+      420
+    ],
+    "indigo_drivers/agent_alpaca/REFACTOR.md": [
+      "35cf766c46066907d9ab4822188f532a3bfdd3bea5af223a2220ba42b583ca9a",
+      420
+    ],
+    "indigo_drivers/agent_astrometry/README.md": [
+      "9feb0507063c04c2c2ad4308d8de19843d1bcaa8eba02b335db13c03460256e2",
+      420
+    ],
+    "indigo_drivers/agent_astrometry/REFACTOR.md": [
+      "c44cff8028655e2d73b53fb1019d23741e72b1109df5177d423be5d62b00e279",
+      420
+    ],
+    "indigo_drivers/agent_auxiliary/README.md": [
+      "410c65023a4e07b3eea6f773a647a65e3fe0492a71eca9b4e0d6e5ecb3fb7ad1",
+      420
+    ],
+    "indigo_drivers/agent_config/README.md": [
+      "5e45a1be700cf62d49c9a00b063d0aac26cd40c44bc720b201e47d3feccd6da7",
+      420
+    ],
+    "indigo_drivers/agent_guider/README.md": [
+      "3d1203e1530f7651aa25834d82ba21315d5bbe0cab2da1683a2f51a7f8459397",
+      420
+    ],
+    "indigo_drivers/agent_guider/REFACTOR.md": [
+      "dc54852496c6af5f0d26b7ce432e3376e220f6a2df1449dd83a35618072a02b9",
+      420
+    ],
+    "indigo_drivers/agent_imager/README.md": [
+      "19b00c008e1d11e15a6467e5850e3d89083917abe9dfceeeeb844e04e78ca4c7",
+      420
+    ],
+    "indigo_drivers/agent_imager/REFACTOR.md": [
+      "4446bb496e0fb6108963c6dffb77f61dd5dd8db9c7c957cdc7e81a54153d8a74",
+      420
+    ],
+    "indigo_drivers/agent_mount/README.md": [
+      "9993c961596246bca17e235ca8e29414765fee811d8a5755fb4717e4ded25158",
+      420
+    ],
+    "indigo_drivers/agent_mount/REFACTOR.md": [
+      "9e787daa39712e9164c09dfec50d56202475f012979d4e1386cc7c0c8973afa5",
+      420
+    ],
+    "indigo_drivers/agent_scripting/README.md": [
+      "03990b275aceb9c916ccbb3e4e5a11a71c9f04e3068233d0406eb378588c46a0",
+      420
+    ],
+    "indigo_drivers/agent_scripting/REFACTOR.md": [
+      "48c9ea26adba76c384424f9819c005bf8afdf496a40af8468ada3da2bad4694e",
+      420
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "1549a938f46f03866d52d1c63560f8a624e2fefb66ecaff875631f8280476247",
+      420
+    ],
+    "indigo_drivers/agent_solver/README.md": [
+      "7a68d01deed39c9f2464726893ec174e2eeca658739f9d058c6cb49213a7741c",
+      420
+    ],
+    "indigo_drivers/agent_test/README.md": [
+      "ca8e1aa545fd50d3fffb2a22899dddc9956389bd7f53433f0324b8b9542ea8a8",
+      420
+    ],
+    "indigo_drivers/ao_sx/README.md": [
+      "3ceb55a94db5ecc4a9db554a3ef25656f1588373b39aa0a6b8eb26a217993c8d",
+      420
+    ],
+    "indigo_drivers/ao_sx/REFACTOR.md": [
+      "580a3670f1b8cd656fa9d8aa017d4a40374ea82302ddb032e5353eacc75bbbe1",
+      420
+    ],
+    "indigo_drivers/aux_arteskyflat/README.md": [
+      "04e90004e171aad6907480eca081d1ab02ff65573607c391565fc086ad1555c7",
+      420
+    ],
+    "indigo_drivers/aux_arteskyflat/REFACTOR.md": [
+      "6b1a238a8f3059d1dca7252fecbb22f96feb5a8bc860492a531a5482cd4532ba",
+      420
+    ],
+    "indigo_drivers/aux_astromechanics/README.md": [
+      "a5153d82b0fc1c3af3b220a2fca6c2ded8e4c7026435fdc6c90a48d340b61053",
+      420
+    ],
+    "indigo_drivers/aux_cloudwatcher/README.md": [
+      "249f6d5b463ec7c391a404159b7727fc76d3554d03b5eaf81ce8a4de2fff4de0",
+      420
+    ],
+    "indigo_drivers/aux_cloudwatcher/REFACTOR.md": [
+      "1ea9a2f1fb8e91bfb565380b0c3d687bf189192a91f566fa5a7d55b91cba5971",
+      420
+    ],
+    "indigo_drivers/aux_dragonfly/README.md": [
+      "1cebe6162a16f93378aa7fb8eba40fe2d1b133b3b9e205000a1f45884e8b11d7",
+      420
+    ],
+    "indigo_drivers/aux_dragonfly/REFACTOR.md": [
+      "f515e4b17b4fd28d89efa7c1c542ed9d553ed9b24423f47518c36c7f266e7171",
+      420
+    ],
+    "indigo_drivers/aux_dsusb/README.md": [
+      "380512e66cd818218eabae4d7da5d9e345d3c189d33ad1b393e767bbe52785f1",
+      420
+    ],
+    "indigo_drivers/aux_dsusb/REFACTOR.md": [
+      "aa9ffea0fea3af1bc2f764b35568af2f492e40df17ac0353d084043f96725f5e",
+      420
+    ],
+    "indigo_drivers/aux_fbc/README.md": [
+      "0cbcb48155d691fb47e96ef661c97806d1e125d596233854b1a0aedc0c9f3da5",
+      420
+    ],
+    "indigo_drivers/aux_flatmaster/README.md": [
+      "cde4ca932780c88428feb835d17fd27c4dd1e5e4bd88c649a557a62eaf9c6680",
+      420
+    ],
+    "indigo_drivers/aux_flipflat/README.md": [
+      "8dffde83c1d001c8e4907c17dbea7a8fe12245ccadb2df8f797dedd89173d775",
+      420
+    ],
+    "indigo_drivers/aux_geoptikflat/README.md": [
+      "33489722b0d4f0ef955f38c19dad838e501f6b5fe3b4835d1277e77f948504bc",
+      420
+    ],
+    "indigo_drivers/aux_geoptikflat/REFACTOR.md": [
+      "04cc04cee649f8621a55c290a1b7b3075d650d3fbd4680a03561e40504b57129",
+      420
+    ],
+    "indigo_drivers/aux_joystick/README.md": [
+      "bdfd9ce75fca83e019c777d435739fb826051b9f810ccf895012ff7c27f67095",
+      420
+    ],
+    "indigo_drivers/aux_joystick/REFACTOR.md": [
+      "42dda0f72c9c2b6c29ca8b30a7b9ea858a00c7108c0be85115e655746bf0a030",
+      420
+    ],
+    "indigo_drivers/aux_mgbox/README.md": [
+      "89844b175b5cf513c5c55b87afe6efce4eff962370afc8e32abc1deed2fe603c",
+      420
+    ],
+    "indigo_drivers/aux_mgbox/REFACTOR.md": [
+      "539ce2476568bb2547b1507811204710a78ab59938f1b7756c6df2e6599d0aed",
+      420
+    ],
+    "indigo_drivers/aux_ppb/README.md": [
+      "1982acfb13bdee18def887d92534c9af0a1f02a4eff89614aad8a158eb5c517a",
+      420
+    ],
+    "indigo_drivers/aux_ppb/REFACTOR.md": [
+      "7e139a02df562ccb54e3f2b8275ae0326c5a1967f9aa107d8e358b9fbd1095c1",
+      420
+    ],
+    "indigo_drivers/aux_rts/README.md": [
+      "c5bc544ba73f21338dd104a1f25343b484929f0d1e8168cdd492ea829f9378e1",
+      420
+    ],
+    "indigo_drivers/aux_rts/REFACTOR.md": [
+      "d17f93945434aa0800ced0080ae2044f6c898b32b69bf46a94709e0e5b1c6c92",
+      420
+    ],
+    "indigo_drivers/aux_simulator/README.md": [
+      "24be0da4ce903d0377e39c16e16ac15d7c1e0ffd3f40a84e8dbf38a3de3961d8",
+      420
+    ],
+    "indigo_drivers/aux_simulator/REFACTOR.md": [
+      "d5e58241ab3508674f60699c6e60646ed75cefd590c655ec6dbbf1ddc4371a76",
+      420
+    ],
+    "indigo_drivers/aux_skyalert/README.md": [
+      "29974ec01b3ee229341c555c3293509804c3822a52aa2bf752f5becd99d54107",
+      420
+    ],
+    "indigo_drivers/aux_skyalert/REFACTOR.md": [
+      "6b233d5b0d4d9e4f4889ffa1b545ed831a6e65d92e21a4a54a9b1c293ea038c2",
+      420
+    ],
+    "indigo_drivers/aux_sqm/README.md": [
+      "f8eee85d69d1f1f43ef7c89ad47b5ad4766296a0b54a1344cb0cf1867f7e9808",
+      420
+    ],
+    "indigo_drivers/aux_sqm/REFACTOR.md": [
+      "c14be4aa39fadfe8c07781f026de16ff5301dc597eda20bfdbc3ee4d67f2cf36",
+      420
+    ],
+    "indigo_drivers/aux_svbpowerbox/PROTOCOL.md": [
+      "37ad6e13e044579f8cfaed663cda6c92bbd490168e9a2a35b3ea50488ec9e63d",
+      420
+    ],
+    "indigo_drivers/aux_svbpowerbox/README.md": [
+      "d8bd775feb8f9cc31c18c6ba0ef3dff078d2e116063c91e138c891cdd039d4b9",
+      420
+    ],
+    "indigo_drivers/aux_uch/README.md": [
+      "7c3c13749a62a9ecca6a95d51eaca42e8939308cfbd11e2d21a36483182b4e81",
+      420
+    ],
+    "indigo_drivers/aux_uch/REFACTOR.md": [
+      "74cd0588b7933908c18b77b6cad2ec9666a6a07ce42ab9cbd07c5213a8bca947",
+      420
+    ],
+    "indigo_drivers/aux_upb/README.md": [
+      "41f4306e50b13a43934e1334a53819a4725760c680babfeb3f9b604ce249d159",
+      420
+    ],
+    "indigo_drivers/aux_upb/REFACTOR.md": [
+      "555c2aa58b3c410a93c8d5a7ca553df3b6725853384724db0cdc46b22497c655",
+      420
+    ],
+    "indigo_drivers/aux_upb3/README.md": [
+      "c50e14fd13f1efd03071f9f5e725ad30fb47c99f763fc84a81e3f33734d0acab",
+      420
+    ],
+    "indigo_drivers/aux_upb3/REFACTOR.md": [
+      "de32b50721a1afc1d2e4f7a5bcb16f0efbd10f35f5818924360417531dda90e7",
+      420
+    ],
+    "indigo_drivers/aux_usbdp/README.md": [
+      "26904317e6bca2bafec65ec8c539c3e463539f2e8b364fa211e324b915892b82",
+      420
+    ],
+    "indigo_drivers/aux_usbdp/REFACTOR.md": [
+      "ce8d925dea585a9b8b0ab39d13b3d68bf3bd6ef26a71ef343759274a46eb5251",
+      420
+    ],
+    "indigo_drivers/aux_wbplusv3/README.md": [
+      "1ce168c338bd64923a7584f3de2569e551789b6c8e2daa51f47a1e9a8e7bf1cc",
+      420
+    ],
+    "indigo_drivers/aux_wbprov3/README.md": [
+      "89fa4928602375cc7f1948f806f59bbaaad75a615e3575436de3ee83a640ac71",
+      420
+    ],
+    "indigo_drivers/aux_wcv4ec/README.md": [
+      "7ba173cf18b503a22309720162ab3a02700a1616580239cff24cd34ca3f0db68",
+      420
+    ],
+    "indigo_drivers/aux_wcv4ec/REFACTOR.md": [
+      "658e5158e36a209c395aba179a0e803dcfaf658130535a53ad97cf727c2ee6a9",
+      420
+    ],
+    "indigo_drivers/ccd_altair/README.md": [
+      "88c7847822bcc9a3c6b899f5200cffc7e3fb7bad07292ce3bd2a9d6887556c16",
+      420
+    ],
+    "indigo_drivers/ccd_asi/README.md": [
+      "a01634ee2ee47a05520e97fe32f80eb674232e4fce0e860e46ff59217c176e4f",
+      420
+    ],
+    "indigo_drivers/ccd_asi/REFACTOR.md": [
+      "611bef14e1408a8f01b60a0b03f8f654180f546aff66e84d775edec4e01caf22",
+      420
+    ],
+    "indigo_drivers/ccd_atik/README.md": [
+      "6fd0fd70cb52c9b174b61c6176e2d74d15af2377facbb7de838a82607a1c4da6",
+      420
+    ],
+    "indigo_drivers/ccd_atik/REFACTOR.md": [
+      "ad2a968d8432cda5b3cac4cab8f0631554499878e6ce2ef7cbc80add971d2ca0",
+      420
+    ],
+    "indigo_drivers/ccd_baccam/README.md": [
+      "bf50e293b663396c567e14c424aff55b4213cf7490c6fc68a1d9bc8bc21c72ff",
+      420
+    ],
+    "indigo_drivers/ccd_bresser/README.md": [
+      "a1326ddd944e04b4aefe5f0d705055c1afc7635f5d7661810d8ffbe5f86608a0",
+      420
+    ],
+    "indigo_drivers/ccd_dsi/README.md": [
+      "3dfb136abc67b0320cb6509984576cd25fbe95dcaa9ad104469b119f1863c93b",
+      420
+    ],
+    "indigo_drivers/ccd_dsi/REFACTOR.md": [
+      "767711187a03ad486d9af3a8e0682e512a98584d446af032fbd521bb436bb577",
+      420
+    ],
+    "indigo_drivers/ccd_fli/README.md": [
+      "844edb5dbdc40f6da9a47cdcedeba7b49ac889065db50f1b3bd63dd3e65e75c2",
+      420
+    ],
+    "indigo_drivers/ccd_fli/REFACTOR.md": [
+      "8c4b5ed8233536765d1389acba7592ebe84a2d105dee5c05c9c7177b2ab6a429",
+      420
+    ],
+    "indigo_drivers/ccd_iidc/README.md": [
+      "7b2e7d8a444be35396456acfbf46237394b7d4bad48202ae586361ecd955258b",
+      420
+    ],
+    "indigo_drivers/ccd_iidc/REFACTOR.md": [
+      "98737fc8fecd9a0f672ae4be6204e4a5b9e463cd5888dc060f40a140851c2573",
+      420
+    ],
+    "indigo_drivers/ccd_mallin/README.md": [
+      "fd1813675d4a0cafe2b6b806b1d29c5ffc0b6e7b7218a508acd08ecca2b99731",
+      420
+    ],
+    "indigo_drivers/ccd_meade/README.md": [
+      "c6feb5a6c9c0cbecbb520f8829eb218cabe7bf35532b53664bd4aa27e34b2e05",
+      420
+    ],
+    "indigo_drivers/ccd_mi/README.md": [
+      "e66fb56c64d17d0391334a725e0d02ed04fe06a85b508019559452af7ce6afbe",
+      420
+    ],
+    "indigo_drivers/ccd_mi/REFACTOR.md": [
+      "c2bd9633f3db237f1098723943562555a0868cc9b2a3514703e4a06e99076f7d",
+      420
+    ],
+    "indigo_drivers/ccd_ogma/README.md": [
+      "18f8db0428a43dfa040d83c738c45400eede3a9e92cdd1a765152ed43ab02947",
+      420
+    ],
+    "indigo_drivers/ccd_omegonpro/README.md": [
+      "1ab5d814e0d9bb79788ef3d8036a5ac80c3f62630d8c5c9011531ef008e7ead0",
+      420
+    ],
+    "indigo_drivers/ccd_pentax/README.md": [
+      "9b4be13b43ce389d53b9e40893c2c19c59be27823f28156cab2cd4a591ff0067",
+      420
+    ],
+    "indigo_drivers/ccd_playerone/README.md": [
+      "79408c662e0f72e731e9432f6a85a467bd98050c594fea257a6106164b082607",
+      420
+    ],
+    "indigo_drivers/ccd_playerone/REFACTOR.md": [
+      "3c00234784c6ab0a82d4a9910606557b403f98611cb4f0899d6f423a069537c2",
+      420
+    ],
+    "indigo_drivers/ccd_ptp/README.md": [
+      "1b9471fa01a79ba1237371834554d2cbe6d99b39e13df87aa64bd5dc959af2fb",
+      420
+    ],
+    "indigo_drivers/ccd_ptp/REFACTOR.md": [
+      "a48ea7eec71443f153dcedb189deea71261725144710838361efd8755fbc97df",
+      420
+    ],
+    "indigo_drivers/ccd_qhy/README.md": [
+      "2e94b8a3764f546f9457259dff3a28a6b67bb2a3c665431eaad5efb142b86546",
+      420
+    ],
+    "indigo_drivers/ccd_qhy/REFACTOR.md": [
+      "0a892fe99d2acdadcd003725b0431191dc2911701e84a272ee6f073ea343e42b",
+      420
+    ],
+    "indigo_drivers/ccd_qhy2/README.md": [
+      "9ff23c02f15251e9a0d758039cf652e891426e45d199bdf411aadb52e49459fd",
+      420
+    ],
+    "indigo_drivers/ccd_qhy2/REFACTOR.md": [
+      "62f9323fe1fb8a688b19d8393debe281eab550a504efe89a5d5b921eb08ec3ae",
+      420
+    ],
+    "indigo_drivers/ccd_qsi/README.md": [
+      "603c3b0dc7aff6cdbd7f6c26fdce6adf86d4c937a53d5e2fd6eb23a1382bfe6a",
+      420
+    ],
+    "indigo_drivers/ccd_qsi/REFACTOR.md": [
+      "3cd817dcf434fab6d44d512c442e747215dc3573492c1291b8521d73c1239bb1",
+      420
+    ],
+    "indigo_drivers/ccd_rising/README.md": [
+      "0cadfcd294648740c865f00fb434468cfc2ae63caf8fae42dbf7c199ca6111f7",
+      420
+    ],
+    "indigo_drivers/ccd_simulator/README.md": [
+      "217c528df033f3e10d4776621a9d4be617fea0f1d1bd7c600ce7a437c9f3e414",
+      420
+    ],
+    "indigo_drivers/ccd_simulator/REFACTOR.md": [
+      "0808ed919894d40b60099ed99525815862840828c9aade424873f629995ec2a2",
+      420
+    ],
+    "indigo_drivers/ccd_ssag/README.md": [
+      "9a8b7fe5091b4650edb40e1dca0a28615a733b82ac7e4a4a742e129b6d94e538",
+      420
+    ],
+    "indigo_drivers/ccd_ssag/REFACTOR.md": [
+      "fa6e78ce675475b916a175cb6bdbddf8dc1ef9cae481a9cedc1f9a528fbd46de",
+      420
+    ],
+    "indigo_drivers/ccd_ssg/README.md": [
+      "0c18dd0dc7d7d75a0030b9e6437bc23437ea2184093deea704c0d13c2de58b34",
+      420
+    ],
+    "indigo_drivers/ccd_svb/README.md": [
+      "33e299d7adf6dbb57d5d7455ec415b86365b2a3056ad4a6320374ca05a0e0ab8",
+      420
+    ],
+    "indigo_drivers/ccd_svb/REFACTOR.md": [
+      "982490ca816569678cba39ee4a3a0670053f97fefeeb354c7b0ffa2296bdc79a",
+      420
+    ],
+    "indigo_drivers/ccd_svb2/README.md": [
+      "28e3613f3029c70439a7e401bf42bcfb31c2bb14a1ba4306233297ec653ae954",
+      420
+    ],
+    "indigo_drivers/ccd_sx/README.md": [
+      "baf22341b93fa0dfb119afa5a081b5f4a34120d7b6ba8f2363fbb83471912c3d",
+      420
+    ],
+    "indigo_drivers/ccd_sx/REFACTOR.md": [
+      "8bbc5a32015b6c1a6c3308da75c1792669aebd23925e78ad2bd56355a0caff30",
+      420
+    ],
+    "indigo_drivers/ccd_touptek/README.md": [
+      "cf20589ac51868c30f22f58834d6c3ebc428d2e725119919fa3cbb5b58c5c2e6",
+      420
+    ],
+    "indigo_drivers/ccd_touptek/REFACTOR.md": [
+      "5722504a3c1a4ee2a057aa0de4821c6d6204ba4711bd37efa4d8e267587dd957",
+      420
+    ],
+    "indigo_drivers/ccd_uvc/README.md": [
+      "c45fe6bebb4b5adf9c5a45e1e24071baa488b62a70ce664b5c86483de18d1ca3",
+      420
+    ],
+    "indigo_drivers/ccd_uvc/REFACTOR.md": [
+      "44b9e9335a7e87e2871b0c4d43d1ce0efaff7b4902d9c506462c0e31b8ed1e2b",
+      420
+    ],
+    "indigo_drivers/dome_baader/BAADER-PROTOCOL-LICENSE.md": [
+      "23e2d9bee7fe73d2c08a0958828ec87b406cc075ed2c61aea9ecba5b024263d0",
+      420
+    ],
+    "indigo_drivers/dome_baader/README.md": [
+      "acdc1b15da844333255373057d30ab00f5e3c445009e3d7e08e463754482edbe",
+      420
+    ],
+    "indigo_drivers/dome_baader/REFACTOR.md": [
+      "7685c6eb4e733e7f6f389285d379b3593fc2c17a262919e9d82213b7ce5facf5",
+      420
+    ],
+    "indigo_drivers/dome_beaver/README.md": [
+      "51e1765ae60d82f813630a86821fa87411304485168b5a4beede2e39ae3b36e4",
+      420
+    ],
+    "indigo_drivers/dome_beaver/REFACTOR.md": [
+      "261fb4ac0f54f90c577f5af77394cb54741372b674fcdc605560ededf72d2916",
+      420
+    ],
+    "indigo_drivers/dome_dragonfly/README.md": [
+      "eeef59bdd5c2e38a6789eef696201d54ffe0bcc9ce32852c1ee883bdc8ff1a0c",
+      420
+    ],
+    "indigo_drivers/dome_dragonfly/REFACTOR.md": [
+      "1a38803adec066983a465c0d9537aaca42dd9a8dfedc06799b3010321339426d",
+      420
+    ],
+    "indigo_drivers/dome_nexdome/README.md": [
+      "02f1ca93e09f098a1d60e224b296d44d97c724d7e99bb68cf18769ce778c2474",
+      420
+    ],
+    "indigo_drivers/dome_nexdome/REFACTOR.md": [
+      "fd3b9b770ea07a5bf4734b31faf7db0ba3dcbe38c8ae1d8f9adfe247e1721506",
+      420
+    ],
+    "indigo_drivers/dome_nexdome3/README.md": [
+      "48e042050e793ae97bc95baa67f0b04958e6f1f6edcd71eb79799c16a50a833a",
+      420
+    ],
+    "indigo_drivers/dome_nexdome3/REFACTOR.md": [
+      "44563a677fa1d2aadb4b68a1dfe07e03f3a6cf1a7372a4f44f9534aa80e93fd3",
+      420
+    ],
+    "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/Documents/Firmware-Protocol.md": [
+      "33244111e69e1ef97821cd1f20d975f30b20d0c3d0c40e9136d7dab8467ae664",
+      420
+    ],
+    "indigo_drivers/dome_simulator/README.md": [
+      "69e865b4e2b2e63fc45d8f8bc876a17fa82f77ccc75a61053751473855c06e2d",
+      420
+    ],
+    "indigo_drivers/dome_simulator/REFACTOR.md": [
+      "8015cda5bd59e17864d2e9121dfe0d564c1ec51d3f26598328c53d2450cb8309",
+      420
+    ],
+    "indigo_drivers/dome_skyroof/README.md": [
+      "f4a265e8edb8dd0757b3bb22295edd99fc7eff48766af375e6518849ec5b2721",
+      420
+    ],
+    "indigo_drivers/dome_skyroof/REFACTOR.md": [
+      "e910678d36942ceec9b772d57d2b9bb0493f1dcde4b3db06f130b61e66d3d21d",
+      420
+    ],
+    "indigo_drivers/dome_talon6ror/README.md": [
+      "9da32e64c2f93e1125a29c6313b5ac5b1c8364493654dc89e0d84e32affc707b",
+      420
+    ],
+    "indigo_drivers/dome_talon6ror/REFACTOR.md": [
+      "785dd8fd4ae6936ca7793ad8bac5c108fc9cf875bf9d41f49cbb3ae6d6f33f10",
+      420
+    ],
+    "indigo_drivers/focuser_asi/README.md": [
+      "d530f55db85296579ea9b5fb44e23bce9c3b7553a0a6a952d2efd5db25fae290",
+      420
+    ],
+    "indigo_drivers/focuser_asi/REFACTOR.md": [
+      "c2ede6af2e5ada3011e4508ee6b346faf30651d400553a41e4c9db598f3b5f97",
+      420
+    ],
+    "indigo_drivers/focuser_askar/Commands_Focuser_CDC_EN.md": [
+      "268efb0888b35a6fc84ac56e3a12e9f432926016abd88c693f034cd3fc758ee8",
+      420
+    ],
+    "indigo_drivers/focuser_askar/README.md": [
+      "f1742c9e9e2b92f0bb6d31ea150df08d83133fad627296fccb07ff4d48744540",
+      420
+    ],
+    "indigo_drivers/focuser_askar/REFACTOR.md": [
+      "f581826ea5716b671a999bf1db07f89a3004251b8e6a753b584f700b6f4f5493",
+      420
+    ],
+    "indigo_drivers/focuser_astroasis/README.md": [
+      "cf3044cba9d87e79a8d5c577ead41cf69e0d98f5d00af119f2e63ed422fabc24",
+      420
+    ],
+    "indigo_drivers/focuser_astroasis/REFACTOR.md": [
+      "32a621e3bbd0d963ab4a7918f2c99e16a9e8761903021e1cacfe7eb8adbb4a7f",
+      420
+    ],
+    "indigo_drivers/focuser_astromechanics/README.md": [
+      "bf67a5789297b3a4334159ae9e7e961a0eca00bafacfd16c85a84feb0119abef",
+      420
+    ],
+    "indigo_drivers/focuser_astromechanics/REFACTOR.md": [
+      "18212b7a4791f9939f492a48c320febdd14790f3d2811090369fe72e236cf9e3",
+      420
+    ],
+    "indigo_drivers/focuser_dmfc/README.md": [
+      "51aedc4b085f6b90c2056f78b5d789c187f38df574cdd89ec5ac6c39fff9bb80",
+      420
+    ],
+    "indigo_drivers/focuser_dmfc/REFACTOR.md": [
+      "33bf94785529819a1b3e9b50d5d2656f5a2be3cc6f7d8c8967c8908e57287380",
+      420
+    ],
+    "indigo_drivers/focuser_dsd/README.md": [
+      "b61937fe0007fb5dd6cd13c7a323887069c2766542a5ac4d82fdcc15939fd3f3",
+      420
+    ],
+    "indigo_drivers/focuser_dsd/REFACTOR.md": [
+      "b55fcbc8780968514e99b84131c6082450be540181bc4d11df2e457819eddda6",
+      420
+    ],
+    "indigo_drivers/focuser_efa/README.md": [
+      "a48cc6ad7cdb2163cfe73ad731fea2ffad5a20dfe6869aa377cd4acd3e0afd94",
+      420
+    ],
+    "indigo_drivers/focuser_efa/REFACTOR.md": [
+      "4dda4082d720036f8054b2a7a63925d90e28e2ac831efabecde514359609ff8c",
+      420
+    ],
+    "indigo_drivers/focuser_fc3/README.md": [
+      "71e657192c5c171cb33e1b0e4ed03410991beb455d37cf4b6fb865cdd56ef6f0",
+      420
+    ],
+    "indigo_drivers/focuser_fc3/REFACTOR.md": [
+      "a12e5a39c340e89c33e653babf99d8edeaa3972b5768a941267d8e44e9109fee",
+      420
+    ],
+    "indigo_drivers/focuser_fcusb/README.md": [
+      "5f861632f002e665fa50dbe9a15507b1f3031c2df9c9564d0a905221bfa440b7",
+      420
+    ],
+    "indigo_drivers/focuser_fcusb/REFACTOR.md": [
+      "633c288015c46ca9dbd2f2caf64d51eb1e9972137c1894f13f59d09835782ca0",
+      420
+    ],
+    "indigo_drivers/focuser_fli/README.md": [
+      "4621786bd57d46a75353d616003d4f12ea8a8d17201cb54166159fe79ba5609f",
+      420
+    ],
+    "indigo_drivers/focuser_fli/REFACTOR.md": [
+      "b3f18a95e41bde1b16adcfba8484b0998440becd3ee91f9faf0b359802b5c9aa",
+      420
+    ],
+    "indigo_drivers/focuser_focusdreampro/README.md": [
+      "f38d4a176135c9f22265a9cf841ae529f093ddbfa6b871059ecb9e9fba986cbe",
+      420
+    ],
+    "indigo_drivers/focuser_focusdreampro/REFACTOR.md": [
+      "01188cb7823ffaa29ff17c4aa424a25b76c512dfc58f372fd5e2bae37d232bca",
+      420
+    ],
+    "indigo_drivers/focuser_ioptron/README.md": [
+      "98000b5eaacade353c8291e3ac2af09a5850b13f99e9c2261b33100b3e8503f6",
+      420
+    ],
+    "indigo_drivers/focuser_ioptron/REFACTOR.md": [
+      "975ebd64153138645db44173e55a7153a9724a38eabfc1d8846de32157224a55",
+      420
+    ],
+    "indigo_drivers/focuser_lacerta/README.md": [
+      "210d7154cb66d2d2d4647c792f4a94c3b9e62e0e041146f8332f556976a73a0a",
+      420
+    ],
+    "indigo_drivers/focuser_lacerta/REFACTOR.md": [
+      "952f0c3894640f538cb98ae66ecb2f05c0d80bf1976dcc2c8bbea166e34d2816",
+      420
+    ],
+    "indigo_drivers/focuser_lakeside/README.md": [
+      "7e8e4a74def00468a91832a24250be2093a8bb95e2895f4ba3928c162cb3139c",
+      420
+    ],
+    "indigo_drivers/focuser_lakeside/REFACTOR.md": [
+      "afc9c05696fd8dc029e909892e0248db656dd91c304f3ffc399b1625edfbc66b",
+      420
+    ],
+    "indigo_drivers/focuser_lunatico/README.md": [
+      "ad67f5b1a3f1210a8740c6df899278ac86cb5956fc39339257f1ef4bcab50715",
+      420
+    ],
+    "indigo_drivers/focuser_lunatico/REFACTOR.md": [
+      "e0c191bcc0d6dd2742cf2dcbae946adde23bbedadc0d93f2ed8236b68cf61191",
+      420
+    ],
+    "indigo_drivers/focuser_mjkzz/README.md": [
+      "624cef2031a92157f5f7860af99cf19fefba6bd772663b79d65130dc5a2b2067",
+      420
+    ],
+    "indigo_drivers/focuser_mjkzz/REFACTOR.md": [
+      "fe91d5c9a3ed2ae6673708196dd038e6367ae90fcf0a0dfc0de8066c1cf3a1e5",
+      420
+    ],
+    "indigo_drivers/focuser_moonlite/README.md": [
+      "a4735bbcffb7259d5ffb51b86008dd38d0d1edbb20286edd08eafb85bd249ee5",
+      420
+    ],
+    "indigo_drivers/focuser_moonlite/REFACTOR.md": [
+      "f9827c9ea0a15c6908aea6dcd5af4e8c4023a03b9f9cfb50b01b934f848ca7b1",
+      420
+    ],
+    "indigo_drivers/focuser_mypro2/README.md": [
+      "2d5218bae20bbf3da4c203e022bae3c8cafea03e6d44e62db3691825babef70b",
+      420
+    ],
+    "indigo_drivers/focuser_mypro2/REFACTOR.md": [
+      "18564fab6c72153eb5f56b830967dcf99b12c6dae48dc149f72acc90670c6f18",
+      420
+    ],
+    "indigo_drivers/focuser_nfocus/README.md": [
+      "0aeda171c4064c46ff33021865996f2b2ac0ea094d97abceb6ddf7dc4752b1b7",
+      420
+    ],
+    "indigo_drivers/focuser_nfocus/REFACTOR.md": [
+      "b52e74cf9f93b29710ff8fffa5ceef9f7d529f8fb6f51ddce67b9c8a7a278088",
+      420
+    ],
+    "indigo_drivers/focuser_nstep/README.md": [
+      "ebe1dfcc1f0568811b062e3d7084dd423742dfac57a95c2361dfca5fa8365fa3",
+      420
+    ],
+    "indigo_drivers/focuser_nstep/REFACTOR.md": [
+      "a9c4c13b0f8138e57ee0ca6392b20efe2cc21800e9c122a9fc9f4763cdc0843c",
+      420
+    ],
+    "indigo_drivers/focuser_optec/README.md": [
+      "1d63f4036eab08fe4a6488c384159f7bdfe7c584cc46f131faa4901fc5da355a",
+      420
+    ],
+    "indigo_drivers/focuser_optec/REFACTOR.md": [
+      "bb25c8bfc927fb94eae1b76a77aecb98283fdbe1f7cd2a06d839662e283f8a82",
+      420
+    ],
+    "indigo_drivers/focuser_optecfl/README.md": [
+      "dc88628f0a17fd4abf96498377afc41ed640dc088488da1a5c119991d0e5eafa",
+      420
+    ],
+    "indigo_drivers/focuser_optecfl/REFACTOR.md": [
+      "71ef5193b4b7edf0f88ade95c9c7ed36e343741b423dfa2ee6c1b042653aaa60",
+      420
+    ],
+    "indigo_drivers/focuser_primaluce/README.md": [
+      "bc1ad994ee3c2191d9b9ef2adc63907518591326fea8e666920b0075d0ae199e",
+      420
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "b89508c1400c8405d1321e63595f64cf700e800ab864702354cd9a65977c3092",
+      420
+    ],
+    "indigo_drivers/focuser_prodigy/README.md": [
+      "c765d38d6e4c94a741631f4ac3e94ccfd926332da6dac89ba780a9776b4132be",
+      420
+    ],
+    "indigo_drivers/focuser_prodigy/REFACTOR.md": [
+      "014fa7dcf867e7d7f2257338312beec53423f93541c60e9027152c1a1ee16b42",
+      420
+    ],
+    "indigo_drivers/focuser_qhy/README.md": [
+      "664f1fcc73dd737dc9eb63f39d226f1f1e7dab5b222101f779301e66ad63ef3b",
+      420
+    ],
+    "indigo_drivers/focuser_qhy/REFACTOR.md": [
+      "1494d02b8a441f3c8049b857fefb8879a562d2a2baecae734b93d4a7f4531341",
+      420
+    ],
+    "indigo_drivers/focuser_robofocus/README.md": [
+      "cb3fa06c92818832adcc5a32f3c3ea2c282b7f7ba72059de9e430af18e1c603e",
+      420
+    ],
+    "indigo_drivers/focuser_robofocus/REFACTOR.md": [
+      "8dcedde4e779fe401dd17a99a7daed2560c8628f4fb57e200688c8b68f463ad6",
+      420
+    ],
+    "indigo_drivers/focuser_steeldrive2/README.md": [
+      "c776ae43a8e2bb52dbd3c7ddacf541687a88b8ed5aeb9bbd9f96098a5d90cf2e",
+      420
+    ],
+    "indigo_drivers/focuser_steeldrive2/REFACTOR.md": [
+      "d6d8ac86a9af1cea17d692babf846d7576c341e3f3b7bd073036157a0e057d55",
+      420
+    ],
+    "indigo_drivers/focuser_usbv3/README.md": [
+      "5d4448f947c925c4a24d6d3da78358ec43c9d58d9b8a0491ef64d93e20231991",
+      420
+    ],
+    "indigo_drivers/focuser_usbv3/REFACTOR.md": [
+      "22b03c63fb96495044a18f134cf44b955100495e51b93e76053989d74d34051b",
+      420
+    ],
+    "indigo_drivers/focuser_wemacro/README.md": [
+      "d33d9270eb58ef1b12ca2b511d4190a4262093e6e238d7653dee9873f80b9349",
+      420
+    ],
+    "indigo_drivers/focuser_wemacro/REFACTOR.md": [
+      "7fa9900698338fd5da111681783425aa537f2bebf2eee2163044448882392d08",
+      420
+    ],
+    "indigo_drivers/gps_gpsd/README.md": [
+      "8c30c7009b9f05c66c169a4dcb9108c0abd2eadbeb19f81dfb1ea419e8a565fc",
+      420
+    ],
+    "indigo_drivers/gps_gpsd/REFACTOR.md": [
+      "a6ca403699dc8ed6742a8c75963091f941799cb52e122cd51c852ed87f0b2952",
+      420
+    ],
+    "indigo_drivers/gps_nmea/README.md": [
+      "aff4546a41eae50f2d52e1501e30d52b0ac093c59ecc7dcc522355ea527b9714",
+      420
+    ],
+    "indigo_drivers/gps_nmea/REFACTOR.md": [
+      "83a24755776423b7a6969fedd310e38fc4591a544e3396cdb6af67e42e902b42",
+      420
+    ],
+    "indigo_drivers/gps_simulator/README.md": [
+      "447d7960a8fec57fa49f915d6242510445e358e8dc21fc074e13a8a4ef482252",
+      420
+    ],
+    "indigo_drivers/gps_simulator/REFACTOR.md": [
+      "ebced736834bb8f4defcf2c08f2248b5b1a21c75045208c7d53e0e196dee1ad3",
+      420
+    ],
+    "indigo_drivers/guider_asi/README.md": [
+      "672d3106eb1cec798360493620cbdbca31ba811820e9d6c349bd1eb5d9385f31",
+      420
+    ],
+    "indigo_drivers/guider_asi/REFACTOR.md": [
+      "f3a680ce69cf86504a4fc66be0e98bb6fcb04b4de4f05d8e581f6d9a34ec8218",
+      420
+    ],
+    "indigo_drivers/guider_cgusbst4/README.md": [
+      "aac302edbaaaadb561e812a1377397db595b0056d9523a57788c007719adede4",
+      420
+    ],
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md": [
+      "5372227b3d6bbd3e8320dfebf8750e3f4c1557eb12e8bc0a2e1553e22de7c345",
+      420
+    ],
+    "indigo_drivers/guider_gpusb/README.md": [
+      "db2cdb7c0ae1a5252d6f7c7dbbb89da5c6112a1a69cc86abb267f3a7e30f3222",
+      420
+    ],
+    "indigo_drivers/guider_gpusb/REFACTOR.md": [
+      "0afb7be53fdbdec72ae7e5c9c24f63144b880a4ada9cb95baa5f070bf4cdd119",
+      420
+    ],
+    "indigo_drivers/mount_ioptron/README.md": [
+      "d27c2b0a2e2e021e0f20eb0849fe46e8b589911a029bd9024f29bfa2926e6a65",
+      420
+    ],
+    "indigo_drivers/mount_ioptron/REFACTOR.md": [
+      "34d92ae43546a5d176ed1dfbdbda0378e3ebd162c24db6844c14cbcf29189dba",
+      420
+    ],
+    "indigo_drivers/mount_lx200/PROTOCOL.md": [
+      "baaece94ee8d0f705ad454618639fe60042e656dd8306e065e05facd1c99a33c",
+      420
+    ],
+    "indigo_drivers/mount_lx200/README.md": [
+      "bd3ef8e5f5da7ef6be7b3cb2ab444b12a6967b17a66c3dda128acd342d61344b",
+      420
+    ],
+    "indigo_drivers/mount_lx200/REFACTOR.md": [
+      "d37fad8f9a521da874d711f2738c3f513b2b171b4a4f8ea1e5e7d68652d6813f",
+      420
+    ],
+    "indigo_drivers/mount_lx200/mount_lx200_simulator/ESP32Go_bbf224a_esp32_s3.md": [
+      "c5c5e2e081480135bcc96cac497ead2eb170ab6800842cceae33744e84e79d74",
+      420
+    ],
+    "indigo_drivers/mount_lx200/mount_lx200_simulator/OnStepX_10.28x_esp32_s3.md": [
+      "14a7d8c3c867d672d6425f70681f1b0b6f31e5fe13ea3fc48e97ff466989d2a3",
+      420
+    ],
+    "indigo_drivers/mount_nexstar/README.md": [
+      "ca57fab4c64fa25342a4f9520798b20177330c2f284e562458b27b278cd3abe5",
+      420
+    ],
+    "indigo_drivers/mount_nexstar/REFACTOR.md": [
+      "af8871aecce4cbeb03dcece01b7ad209216513ab3a352d4b2ab174cc18c5ecae",
+      420
+    ],
+    "indigo_drivers/mount_nexstaraux/README.md": [
+      "f7efce784b96ff273f37312f8eae5042cfe6ab0c63a6b1a5e6758e32a3e514da",
+      420
+    ],
+    "indigo_drivers/mount_nexstaraux/REFACTOR.md": [
+      "aaeff052016b91eb2bd2df415a5052bde0d4d2c14b1f2ba9371b61fba7e1bae0",
+      420
+    ],
+    "indigo_drivers/mount_pmc8/README.md": [
+      "73d7d0e978af3439c6fc5ac5d8aef9ee408f2ad3db5967d9ed7937437f19b822",
+      420
+    ],
+    "indigo_drivers/mount_pmc8/REFACTOR.md": [
+      "ca866799f10cd852662a983a5ce90365988832fe12475629b0514c8a7307ad5f",
+      420
+    ],
+    "indigo_drivers/mount_rainbow/README.md": [
+      "d2bfc81de7ffbed94439b2c3106e24ed839faa451d5216d1c82e0f2494a93059",
+      420
+    ],
+    "indigo_drivers/mount_rainbow/REFACTOR.md": [
+      "c2925b7aeed161b24293c51afe460ecc93f0ef233453a25e85266e9f34709eeb",
+      420
+    ],
+    "indigo_drivers/mount_simulator/README.md": [
+      "fa9b9e363873cc6dc389296062a6e5b0cc38f4a02d6b3cebd9613a419b08fdf2",
+      420
+    ],
+    "indigo_drivers/mount_simulator/REFACTOR.md": [
+      "cc66778ab2cf31ebd055e0b78068d8bcb9518bac8188177ff101b4afc8e6c8fd",
+      420
+    ],
+    "indigo_drivers/mount_starbook/README.md": [
+      "3231a155632d8cadb137dc22662559bce3ae8f40414831233437d6924ca85f2b",
+      420
+    ],
+    "indigo_drivers/mount_starbook/REFACTOR.md": [
+      "6b3e624ed5063146596fe8f896dcfebfeadeaf00091a651cc0e057c1ba71cf8f",
+      420
+    ],
+    "indigo_drivers/mount_starbook/vixen-starbook-protocol.md": [
+      "2f0aa6f29bef7429d57c29f7d5faf70e0b5384eea7a4027ddecc30556c66217c",
+      420
+    ],
+    "indigo_drivers/mount_synscan/README.md": [
+      "2a243f31b6c89b56be4a71899250cdbb1e1a2e273972d05db3f06755f344b970",
+      420
+    ],
+    "indigo_drivers/mount_synscan/REFACTOR.md": [
+      "171f49315eca18e0c3a004edd71e73dbe68d23fbec7dffd6716a39e02eab4434",
+      420
+    ],
+    "indigo_drivers/mount_synscan/mount_synscan_simulator/AstroEQ_8.25_esp32_s3.md": [
+      "7246bda4b6635c68ce2953239898b112f3aa979273aefb96512f35e1fc4ace22",
+      420
+    ],
+    "indigo_drivers/mount_synscan/mount_synscan_simulator/LOGS.md": [
+      "adcc5dfce593234a2def628a27587627b6dcc7876406dda4ec81845a336d411d",
+      420
+    ],
+    "indigo_drivers/mount_temma/README.md": [
+      "2f01e4a7bf09f0109ac08a803a22594c3b569948847bd356efc8574db4c1ee28",
+      420
+    ],
+    "indigo_drivers/mount_temma/REFACTOR.md": [
+      "f95655f5cd4bb5aafd3106efea5e812fceec32e0db912f5077bb58e3e54badb7",
+      420
+    ],
+    "indigo_drivers/polaralign_mlastro/README.md": [
+      "6afab2c658f675828a8666e7d7cb5f45ffd0a23a34eb34a4828930908e06b638",
+      420
+    ],
+    "indigo_drivers/polaralign_mlastro/REFACTOR.md": [
+      "78cecf93d06544ac90ffbf5d9dd4986dc278d71ea3700791c6dc398624c3af85",
+      420
+    ],
+    "indigo_drivers/polaralign_simulator/README.md": [
+      "f6af63be09318b02a499af136966f18fe9277ec3b658d5526f63a8c16bd947d6",
+      420
+    ],
+    "indigo_drivers/polaralign_simulator/REFACTOR.md": [
+      "6a90bd55177852e232d0fed0f4e9f2609ffb64051e1332a842df9666c487991c",
+      420
+    ],
+    "indigo_drivers/rotator_asi/README.md": [
+      "f6aee588e39647e15a6ba56a8ecf6c62c2e2e193b3d94e78f4a0d518b717cb90",
+      420
+    ],
+    "indigo_drivers/rotator_asi/REFACTOR.md": [
+      "677976213d2e47e95449e9c7f45ddd50715db803bb949e726caa0a62955b48a6",
+      420
+    ],
+    "indigo_drivers/rotator_falcon/README.md": [
+      "36852b976ab152629fd17f62e4cd8f9aaadb3a38e1954602e04cd863839eef50",
+      420
+    ],
+    "indigo_drivers/rotator_falcon/REFACTOR.md": [
+      "fb0ddd6cd4707b2c506f248371eee0bf7389e2bec652a36792ca07d8f84eba11",
+      420
+    ],
+    "indigo_drivers/rotator_lunatico/README.md": [
+      "8da589da04996219d47c6299d63fa6c0f90711b32a9d0720d07fbd924241ee30",
+      420
+    ],
+    "indigo_drivers/rotator_lunatico/REFACTOR.md": [
+      "3c8bc6bd1460370728c520c92cdae1e071fed7424b4e1492fb9cab199add7567",
+      420
+    ],
+    "indigo_drivers/rotator_optec/README.md": [
+      "80cc624c9e37159e91f75bbf2ed879a48f0021ab466395585cbcdd2d18f8daa4",
+      420
+    ],
+    "indigo_drivers/rotator_optec/REFACTOR.md": [
+      "d7c29a6271874edba75eb4210da7554a0a0e67327e990f910ae4aa0155cd4566",
+      420
+    ],
+    "indigo_drivers/rotator_simulator/README.md": [
+      "351eb7b91f6071b0722020909aa8d71fff977de896ad8823b7fd3d9eabb166dc",
+      420
+    ],
+    "indigo_drivers/rotator_wa/README.md": [
+      "89425c25ca2d0f71a1f23a01b02ce4fd0e7be8b9ace3f357eeb6175a75709bbc",
+      420
+    ],
+    "indigo_drivers/rotator_wa/REFACTOR.md": [
+      "52f6ed7a757d372e4484fc25b49e2cb489c5349046313e11f2d24362d872f87d",
+      420
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "52a2ab11f47da0ef7f32c2471ca0cfc0ed7102555346ee77f61f372f6f6d437a",
+      420
+    ],
+    "indigo_drivers/system_alpaca/README.md": [
+      "1f611e37dfe81f3af888156cd2fb6bd456ab01df5535e8476f924266c1dab281",
+      420
+    ],
+    "indigo_drivers/system_alpaca/REFACTOR.md": [
+      "3846b4bb6906547b2c7cb00dea27ad4d38e5b3f3b033908382f14b702e1157cc",
+      420
+    ],
+    "indigo_drivers/wheel_asi/README.md": [
+      "ea690e872692295b2061476fbeba86e2e5a02aae30c43a772a65be6c52f45b8b",
+      420
+    ],
+    "indigo_drivers/wheel_asi/REFACTOR.md": [
+      "6817f6c372bb9fa4e5323fa1f025eb06891492b9ec5bbcc90893e0f1149529be",
+      420
+    ],
+    "indigo_drivers/wheel_astroasis/README.md": [
+      "eb2fe12227b7b9964457d7d4b33099ea256aebf7e103c43b25162c514ccdfdbf",
+      420
+    ],
+    "indigo_drivers/wheel_astroasis/REFACTOR.md": [
+      "5fc9e2c51c8a240d6097d0c89b3f46c4e36f9086f2846b9c9fb5a6090f26df37",
+      420
+    ],
+    "indigo_drivers/wheel_atik/README.md": [
+      "6d58bddb2df7dfa9f8cb6d62686a6d02d9cec39edcf9a25fdc12571b754eb781",
+      420
+    ],
+    "indigo_drivers/wheel_atik/REFACTOR.md": [
+      "ae43ed2378c07f9ebacf9db73f945c5bc2d639cb131fdd6fa4da46c355852f1d",
+      420
+    ],
+    "indigo_drivers/wheel_fli/README.md": [
+      "23299366c59b77c72112695a29afe899ae1fa1ff4743599fa319f5a9cdd7cc57",
+      420
+    ],
+    "indigo_drivers/wheel_fli/REFACTOR.md": [
+      "ae4068ebc49c773dbe1d3a2c64d1a01251b2d0741bdbfa0052b419af9790b8c3",
+      420
+    ],
+    "indigo_drivers/wheel_indigo/README.md": [
+      "116f7a51467bef920939cb9fbceb8b35e37b7c3336ecc5c00d7bb4c11637e5c8",
+      420
+    ],
+    "indigo_drivers/wheel_indigo/REFACTOR.md": [
+      "682abe6a208b49430787aea8327df1c027c21ba82b46ba4fd704e448cf764e4a",
+      420
+    ],
+    "indigo_drivers/wheel_manual/README.md": [
+      "6a3ba798c10855a2c9353465b25343fa2acf43e690c5951544d1da01bfa0f6a7",
+      420
+    ],
+    "indigo_drivers/wheel_mi/README.md": [
+      "28fbe43e661c830af34a36fbca9132f79097a7668b549b919f81dcf33be967b6",
+      420
+    ],
+    "indigo_drivers/wheel_mi/REFACTOR.md": [
+      "55b0a3311262b46a63b34427306bfa417b6f4199f612bf362544a6594988a469",
+      420
+    ],
+    "indigo_drivers/wheel_optec/README.md": [
+      "7ea9e3cef3776fac125a095e31ad1e9a5e2a8ee0be09ede18ed8c97acb1cb69d",
+      420
+    ],
+    "indigo_drivers/wheel_playerone/README.md": [
+      "fcf9a657f1b9ac63e2e90f1b6571ce084846931b1f14a5602a00dfe30187e703",
+      420
+    ],
+    "indigo_drivers/wheel_playerone/REFACTOR.md": [
+      "e5da3a7c751c6277c0571ee3b3f951c5ff25680cc7862b2d8b4e2d66ebdc55bd",
+      420
+    ],
+    "indigo_drivers/wheel_qhy/README.md": [
+      "0aac5d6af2d4989e35d3a19b1d092996aea6bf802411d1c8353b8991a034aed1",
+      420
+    ],
+    "indigo_drivers/wheel_quantum/README.md": [
+      "c4aa18c2020d99f0ea302152c4925911c0000d848407ef4310f1eba08de765a8",
+      420
+    ],
+    "indigo_drivers/wheel_sx/README.md": [
+      "3fa4836e3b56fcad436ff596e8981667931202844922a24fab25d2fcbaf145a6",
+      420
+    ],
+    "indigo_drivers/wheel_sx/REFACTOR.md": [
+      "16573b572972b2bf10d5fb60e7052ea838448792cbef59868f84007a67ade69d",
+      420
+    ],
+    "indigo_drivers/wheel_trutek/README.md": [
+      "e30487c171d55521317d7c4d5824dd6b87ddc82f2cc1e5174411e5eb41fbc6fc",
+      420
+    ],
+    "indigo_drivers/wheel_xagyl/README.md": [
+      "9e3681d97b422e046e74f98a52c4c5d77db68409121c1739bbea825925cbbade",
+      420
+    ],
+    "indigo_libs/AGENTS.md": [
+      "51bb0eafee6f967960495b023179feac74ec123ac1a040bc3f941996bedd6da7",
+      420
+    ],
+    "indigo_linux_drivers/aux_asiair/README.md": [
+      "96f7c995074218bdeb349c2c23cafc104d2c2677d0a1e6c85010000c473e6fe5",
+      420
+    ],
+    "indigo_linux_drivers/aux_asiair/REFACTOR.md": [
+      "f1b677f97bc6c15712f85a18df76caab020e67c086b53e60046f0bb7247052d3",
+      420
+    ],
+    "indigo_linux_drivers/aux_rpio/README.md": [
+      "e36b436ec035217a4115ec3e802c9f1d81f9c65567de012cf83142b2e54b1c3a",
+      420
+    ],
+    "indigo_linux_drivers/aux_rpio/REFACTOR.md": [
+      "1d345514020bde17bb350036ba780da94dabea573d139c330c20f5940159d37c",
+      420
+    ],
+    "indigo_mac_drivers/ccd_atik2/README.md": [
+      "6d952829fb4f392fc6aa61fb224b7925634c6649cb52a5a0592bf85fc885bf36",
+      420
+    ],
+    "indigo_mac_drivers/ccd_atik2/REFACTOR.md": [
+      "4be98fca0d35c9e384e1cabadbb3f52ca6368737b25864b825f04f2d244001f9",
+      420
+    ],
+    "indigo_mac_drivers/focuser_mjkzz_bt/README.md": [
+      "51ce7f063b9e7d893f0fc8db7ba5edd9fa137c621fc161b41105ec92ed06a42e",
+      420
+    ],
+    "indigo_mac_drivers/focuser_wemacro_bt/README.md": [
+      "fdb67cbeaeb8eed4550eac89d7960c0400dfd726872ad79882d60eec32a500bb",
+      420
+    ],
+    "indigo_optional_drivers/ccd_andor/README.md": [
+      "55cadaeeb3bdc8f6cce15941908dace77fbca249d3ba926d88ae33c53ceef07d",
+      420
+    ],
+    "indigo_optional_drivers/ccd_rpi/README.md": [
+      "1fcd075879ebf09cb62655725ad3eacd70c94453465c30733f463f15153a744c",
+      420
+    ],
+    "indigo_server/REFACTOR.md": [
+      "abe2e5e01a3d0c203de0b3cc61b419f4cd26615ef3004f5234409f73ea1e97e9",
+      420
+    ],
+    "indigo_server/resource/REFACTOR.md": [
+      "f38932f06b558a5ef3dd60312b68d7e9c609cc69e078521833e40b4cbb7351df",
+      420
+    ],
+    "indigo_server/resource/data/readme.md": [
+      "e112ca73fa09e51addf0dc0846212c05f97cc91dfa9bba774417cb79362bdafe",
+      420
+    ],
+    "indigo_test/AGENTS.md": [
+      "b7801e03c79055c9f226138e9f61d1c413f88e57b82f4e9ec37a22c4b48f5a26",
+      420
+    ],
+    "indigo_test/DRIVER_TESTING_RULES.md": [
+      "73efcae464690532c93385cedd7e75a7ac04fc8f564d3019abf0a5e6b8cd7ce2",
+      420
+    ],
+    "indigo_test/benchmark/TIMERS_AND_QUEUES_MERGE_REVIEW.md": [
+      "d221ab9b2e86b1e075e25f9ca35fd66ac8806033bec83e1dea4ee69529bf7808",
+      420
+    ],
+    "indigo_test/mountsim/USAGE.md": [
+      "80255579227fb90706d74720bedde8943bc93faf78d65f3d5cdf09c144e00c7b",
+      420
+    ],
+    "indigo_tools/driver_editor/AGENTS.md": [
+      "1025c0fe06b01581488a73fe5e044de3d5c6b3a5105e9def7ef0af93d848dfbe",
+      420
+    ],
+    "indigo_tools/driver_editor/DESIGN.md": [
+      "5dcd23c55d6f871013956ecc5c2f77b0b3480ab929b2545356ea60f436bd43f0",
+      420
+    ],
+    "indigo_tools/driver_editor/README.md": [
+      "dbc036f12234e6b8f7f263ad5d7e29dae0c4f650409cadb1dfda8eeb8f0089b5",
+      420
+    ],
+    "indigo_windows/README.md": [
+      "b57c9ba203b704ab4805324b4b8ea5dea5f893400a33eb80d250b677f8f80806",
+      420
+    ],
+    "indigo_windows/gcc/README.md": [
+      "de70ac2750f7bf6ad3c5cdd66f23473b351eb67347c410e6979cf94533585187",
+      420
+    ],
+    "indigo_windows/indigo_client/README.md": [
+      "0fd99f3aab735ad9c35a27bc288df4d8985113465434fb4ec6c3e206a0e72ec8",
+      420
+    ]
+  },
+  "writes": [
+    ".factory/findings/active.json",
+    ".factory/findings/archive/FND-000044.json",
+    ".factory/findings/archive/FND-000045.json",
+    ".factory/findings/archive/FND-000049.json",
+    ".factory/findings/archive/FND-000050.json",
+    ".factory/findings/archive/FND-000051.json",
+    ".factory/findings/archive/FND-000053.json",
+    ".factory/findings/archive/FND-000054.json",
+    ".factory/findings/archive/FND-000055.json",
+    ".factory/findings/archive/FND-000056.json",
+    ".factory/findings/archive/FND-000057.json",
+    ".factory/findings/archive/FND-000058.json",
+    ".factory/findings/archive/FND-000059.json",
+    ".factory/findings/archive/FND-000060.json",
+    ".factory/maintenance.json",
+    ".factory/project.md",
+    ".factory/state.json",
+    ".factory/tasks/009-upgrade-factory/pre-upgrade-findings.json",
+    ".factory/tasks/009-upgrade-factory/pre-upgrade-maintenance.json",
+    ".factory/tasks/009-upgrade-factory/process.json",
+    ".factory/tasks/009-upgrade-factory/state.json",
+    ".factory/tasks/archive/001-adopt-ai-factory/brief.md",
+    ".factory/tasks/archive/001-adopt-ai-factory/handoff.md",
+    ".factory/tasks/archive/001-adopt-ai-factory/migration.md",
+    ".factory/tasks/archive/001-adopt-ai-factory/plan.md",
+    ".factory/tasks/archive/001-adopt-ai-factory/process.json",
+    ".factory/tasks/archive/001-adopt-ai-factory/repository-review.md",
+    ".factory/tasks/archive/001-adopt-ai-factory/state.json",
+    ".factory/tasks/archive/001-adopt-ai-factory/verification.md",
+    ".factory/tasks/archive/002-fix-ftdi-build/brief.md",
+    ".factory/tasks/archive/002-fix-ftdi-build/process.json",
+    ".factory/tasks/archive/002-fix-ftdi-build/state.json",
+    ".factory/tasks/archive/003-initial-repository-audit/brief.md",
+    ".factory/tasks/archive/003-initial-repository-audit/handoff.md",
+    ".factory/tasks/archive/003-initial-repository-audit/process.json",
+    ".factory/tasks/archive/003-initial-repository-audit/repository-review.md",
+    ".factory/tasks/archive/003-initial-repository-audit/security.md",
+    ".factory/tasks/archive/003-initial-repository-audit/state.json",
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/brief.md",
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/handoff.md",
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/process.json",
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/quality-review.md",
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/security.md",
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/state.json",
+    ".factory/tasks/archive/004-fix-websocket-key-overflow/verification.md",
+    ".factory/tasks/archive/005-remove-switch-target-review/brief.md",
+    ".factory/tasks/archive/005-remove-switch-target-review/handoff.md",
+    ".factory/tasks/archive/005-remove-switch-target-review/process.json",
+    ".factory/tasks/archive/005-remove-switch-target-review/state.json",
+    ".factory/tasks/archive/005-remove-switch-target-review/verification.md",
+    ".factory/tasks/archive/006-repoint-switch-target-citations/brief.md",
+    ".factory/tasks/archive/006-repoint-switch-target-citations/handoff.md",
+    ".factory/tasks/archive/006-repoint-switch-target-citations/process.json",
+    ".factory/tasks/archive/006-repoint-switch-target-citations/state.json",
+    ".factory/tasks/archive/006-repoint-switch-target-citations/verification.md",
+    ".factory/tasks/archive/007-never-rewrite-commits/brief.md",
+    ".factory/tasks/archive/007-never-rewrite-commits/handoff.md",
+    ".factory/tasks/archive/007-never-rewrite-commits/process.json",
+    ".factory/tasks/archive/007-never-rewrite-commits/security.md",
+    ".factory/tasks/archive/007-never-rewrite-commits/state.json",
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/handoff.md",
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/process.json",
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/state.json",
+    ".factory/tasks/archive/008-ccd-current-temperature-filename/verification.md",
+    ".factory/tasks/archive/009-commit-permission-rule/brief.md",
+    ".factory/tasks/archive/009-commit-permission-rule/handoff.md",
+    ".factory/tasks/archive/009-commit-permission-rule/plan.md",
+    ".factory/tasks/archive/009-commit-permission-rule/process.json",
+    ".factory/tasks/archive/009-commit-permission-rule/state.json",
+    ".factory/tasks/archive/009-commit-permission-rule/verification.md",
+    ".factory/tasks/archive/010-primalucelib/brief.md",
+    ".factory/tasks/archive/010-primalucelib/handoff.md",
+    ".factory/tasks/archive/010-primalucelib/process.json",
+    ".factory/tasks/archive/010-primalucelib/state.json",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/brief.md",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/handoff.md",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/plan.md",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/process.json",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/quality-review.md",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/security.md",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/state.json",
+    ".factory/tasks/archive/011-primaluce-sestosenso3/verification.md",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/brief.md",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/handoff.md",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/plan.md",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/process.json",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/quality-review.md",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/security.md",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/state.json",
+    ".factory/tasks/archive/012-primaluce-calibration-finalizers/verification.md",
+    "docs/decisions/ADR-001-adopt-factory.md",
+    "docs/decisions/README.md",
+    "indigo_drivers/focuser_primaluce/REFACTOR.md"
+  ]
+}

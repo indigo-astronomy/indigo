@@ -1,0 +1,19 @@
+{
+  "id": "FND-000036",
+  "title": "TOOLS-001: The property parsers build `sscanf()` formats with field widths equal to destination buffer sizes, which still leaves room for a terminating NUL beyond the array",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TOOLS-001: The property parsers build `sscanf()` formats with field widths equal to destination buffer sizes, which still leaves room for a terminating NUL beyond the array. The remote-server parser also uses `%[^:]:%s` with no widths for `hostname[255]` and `port_str[100]`. Exact-size or long command-line arguments can overflow stack/global buffers before validation. Use bounded widths of `sizeof(buffer) - 1`, check `item_count < MAX_ITEMS` before appending parsed items, and reject overlong fields. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:36; historical locations: `indigo_prop_tool.c:181`, `indigo_prop_tool.c:202`, `indigo_prop_tool.c:214`, `indigo_prop_tool.c:224`, `indigo_prop_tool.c:251`, `indigo_prop_tool.c:262`, `indigo_prop_tool.c:937`; legacy status: Open",
+  "resolution": null
+}
