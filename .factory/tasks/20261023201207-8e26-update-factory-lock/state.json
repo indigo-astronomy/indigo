@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261023201207-8e26-update-factory-lock",
+  "phase": "specification",
+  "status": "active",
+  "assigned_role": "analyst",
+  "next_action": "Complete brief.md and produce a testable specification.",
+  "blocker": null
+}
