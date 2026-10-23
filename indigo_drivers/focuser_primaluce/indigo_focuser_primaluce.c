@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001F
+#define DRIVER_VERSION       0x03000020
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -383,6 +383,8 @@ typedef struct {
 	char preset_names[PRIMALUCE_STORED_POSITION_COUNT][INDIGO_VALUE_SIZE];
 	int rotator_calibration_polls;
 	bool is_sestosenso_3;
+	// The controller flags a motor for calibration (CALRESTART); its moves may be acknowledged and not run.
+	bool focuser_needs_calibration, rotator_needs_calibration;
 	// The controller reports a travel range (CAL_MAXPOS above CAL_MINPOS).
 	bool calibrated;
 	double position, last_position;
@@ -641,7 +643,7 @@ static void focuser_calibration_end_finalizer(indigo_device *device) {
 		focuser_calibration_failed(device, "The focuser reports a position outside the calibrated range, run the calibration again");
 		return;
 	}
-	PRIVATE_DATA->calibration_pending = false;
+	PRIVATE_DATA->calibration_pending = PRIVATE_DATA->focuser_needs_calibration = false;
 	X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 }
@@ -711,7 +713,7 @@ static void focuser_movement_finalizer(indigo_device *device) {
 			// A SESTO SENSO 3 with its motor bridges off (STATUS.HIZ after a motor fault) or outside its
 			// calibrated range acknowledges GOTO and stays where it is.
 			if (state == INDIGO_ALERT_STATE && !PRIVATE_DATA->abort_requested) {
-				message = "The focuser stopped before reaching the target";
+				message = PRIVATE_DATA->focuser_needs_calibration ? "The focuser needs calibration" : "The focuser stopped before reaching the target";
 			}
 			focuser_movement_ended(device, state);
 		}
@@ -812,6 +814,7 @@ static void rotator_calibration_poll(indigo_device *device) {
 			ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value;
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
+		PRIVATE_DATA->rotator_needs_calibration = false;
 		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 }
@@ -831,9 +834,12 @@ static void rotator_movement_finalizer(indigo_device *device) {
 				}
 			}
 			if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+				// An ARCO flagged for calibration acknowledges the move and does not turn (SESTO SENSO 3 firmware 1.0.9).
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, PRIVATE_DATA->rotator_needs_calibration ? "The rotator needs calibration" : "The rotator stopped before reaching the target");
+			} else {
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			}
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		} else {
 			// an aborted move publishes the angle it stopped at and stays ALERT, also when that is the target
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -964,7 +970,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_FOCUSER_ERROR)) && *text) {
 					indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 				}
-				if (primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_RESTART)) {
+				PRIVATE_DATA->focuser_needs_calibration = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_RESTART) != 0;
+				if (PRIVATE_DATA->focuser_needs_calibration) {
 					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
 				PRIVATE_DATA->has_abs_pos = primalucelib_reply_has_focuser_position(LINK, true);
@@ -1964,7 +1971,8 @@ static void rotator_connection_handler(indigo_device *device) {
 					if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ROTATOR_ERROR)) && *text) {
 						indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 					}
-					if (primalucelib_reply_number(LINK, PRIMALUCE_REPLY_ROTATOR_CALIBRATION_RESTART)) {
+					PRIVATE_DATA->rotator_needs_calibration = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_ROTATOR_CALIBRATION_RESTART) != 0;
+					if (PRIVATE_DATA->rotator_needs_calibration) {
 						indigo_send_message(device, BUSY_PROPERTY, "ARCO needs calibration");
 					}
 				}

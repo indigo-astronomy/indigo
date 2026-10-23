@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261023101445-b9b5-primaluce-needs-calibration-message",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit after the requester approves the plan.",
+  "blocker": null
+}

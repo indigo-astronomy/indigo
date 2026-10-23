@@ -756,6 +756,12 @@ static void needs_calibration(void) {
 	SERIAL_CHECK_TRUE(position_is(18075));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(18200));
+	// A move the controller acknowledges and does not run names the calibration as the reason.
+	SERIAL_CHECK_TRUE(fault("\"MOVE_ABS\"", "ignore"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 18300));
+	SERIAL_CHECK_TRUE(message_seen("The focuser needs calibration"));
 cleanup:
 	driver_stop();
 }
@@ -1587,6 +1593,24 @@ cleanup:
 	driver_stop();
 }
 
+// An ARCO flagged for calibration on a SESTO SENSO 3 acknowledges a move and does not turn; the move ends
+// ALERT with the reason, and moves work again after a calibration.
+static void sestosenso3_rotator_needs_calibration(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(message_seen("ARCO needs calibration"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 45, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("The rotator needs calibration"));
+	unsigned int completions = property_state_revision(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_OK_STATE, completions));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 45, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(rotator_position_is(45));
+cleanup:
+	driver_stop();
+}
+
 static void rotator_abort(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_rotator());
@@ -1766,6 +1790,7 @@ int main(void) {
 		{ "sestosenso3_rotator_move", rotator_move, "sestosenso3" },
 		// A SESTO SENSO 3 acknowledges the ARCO sync under DEG, behind debug text.
 		{ "sestosenso3_rotator_sync", rotator_sync, "sestosenso3" },
+		{ "sestosenso3_rotator_needs_calibration", sestosenso3_rotator_needs_calibration, "sestosenso3-arco-uncalibrated" },
 		{ "rotator_abort", rotator_abort, "normal" },
 		{ "rotator_calibration", rotator_calibration, "normal" },
 		{ "rotator_sync", rotator_sync, "normal" },

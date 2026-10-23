@@ -59,6 +59,8 @@ static const char *firmware = "3.10";
 static bool report_abs_pos = true;
 static bool report_speed = true;
 static int calibration_restart = 0;
+// An ARCO flagged for calibration on its own; a SESTO SENSO 3 acknowledges its moves and does not turn it.
+static int rotator_calibration_restart = 0;
 static const char *motor_error = "";
 // A unit without an external probe reports EXT_T as -127.00 (observed on a SESTO SENSO 2).
 static const char *external_temperature = "22.50";
@@ -88,6 +90,7 @@ static void usage(const char *name) {
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --profile <name>        normal, esatto, sestosenso3, sestosenso3-uncalibrated,\n");
+	printf("                          sestosenso3-arco-uncalibrated,\n");
 	printf("                          no-abs-pos, no-speed, unsupported, old-firmware,\n");
 	printf("                          needs-calibration, external-motion or no-probe,\n");
 	printf("                          default is normal\n");
@@ -145,6 +148,10 @@ static void apply_profile(void) {
 		model = "ESATTO";
 	} else if (!strcmp(options.profile, "sestosenso3")) {
 		model = "SESTOSENSO3";
+	} else if (!strcmp(options.profile, "sestosenso3-arco-uncalibrated")) {
+		// The requester's ARCO after its calibration was lost (firmware 1.0.9).
+		model = "SESTOSENSO3";
+		rotator_calibration_restart = 1;
 	} else if (!strcmp(options.profile, "sestosenso3-uncalibrated")) {
 		// The state of a SESTO SENSO 3 as delivered (firmware 1.0.9).
 		model = "SESTOSENSO3";
@@ -337,7 +344,7 @@ static void send_state(int handle) {
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%s,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart || rotator_calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart || rotator_calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -490,8 +497,10 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (strstr(command, "\"ARCO\"") != NULL) {
 		sim_printf(handle, "{\"res\":{\"set\":{\"ARCO\":\"done\"}}}\n");
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
-		rotator_target = extract_int_after(command, "\"DEG\":", rotator_target);
-		serial_motion_start(&rotate_motion, rotator_target, 90);
+		if (!(sestosenso3() && rotator_calibration_restart)) {
+			rotator_target = extract_int_after(command, "\"DEG\":", rotator_target);
+			serial_motion_start(&rotate_motion, rotator_target, 90);
+		}
 		// A SESTO SENSO 3 (firmware 1.0.9) acknowledges under DEG, a SESTO SENSO 2 under STEP.
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"%s\":\"done\"}}}}\n", sestosenso3() ? "DEG" : "STEP");
 	} else if (strstr(command, "\"SYNC_POS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
@@ -508,6 +517,9 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (strstr(command, "\"CAL_STATUS\"") != NULL) {
 		// The ARCO calibration runs for a while after it is started, and "stop" ends it at once.
 		rotator_calibration_end = strstr(command, "\"stop\"") != NULL ? 0 : serial_motion_time() + 2;
+		if (rotator_calibration_end > 0) {
+			rotator_calibration_restart = 0;
+		}
 		sim_printf(handle, "{\"res\":{\"set\":{\"MOT2\":{\"CAL_STATUS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"CAL_DIR\"") != NULL) {
 		calibration_direction = strstr(command, "\"invert\"") != NULL ? "invert" : "normal";

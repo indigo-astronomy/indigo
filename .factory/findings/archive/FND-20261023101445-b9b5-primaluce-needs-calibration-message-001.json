@@ -1,0 +1,24 @@
+{
+  "title": "focuser_primaluce ended moves of a motor flagged for calibration ALERT without the reason",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101445-b9b5-primaluce-needs-calibration-message",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "A SESTO SENSO 3 ARCO flagged for calibration (CALRESTART.MOT2 1) acknowledges MOVE_ABS and does not turn; the move ended ALERT with no message. The driver sent the calibration notice at connect only.",
+  "evidence": "20261023101445-b9b5-primaluce-needs-calibration-message/verification.md (FND); server log of the hardware session 2026-10-23",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023101445-b9b5-primaluce-needs-calibration-message/verification.md: moves of a motor flagged by CALRESTART name the calibration as the reason; sestosenso3_rotator_needs_calibration and needs_calibration pass and fail without the change; recorded run 65/65; hardware ALERT with 'The rotator needs calibration'.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101445-b9b5-primaluce-needs-calibration-message-001"
+}

@@ -821,3 +821,33 @@ not tried.
 - Simulated tests: 64 run, 64 passed: `2026-10-23 12:18 3.0.0.31 linux x64 simulator 64/64 OK`.
   Library unit cases: 26 of 26.
 - Hardware: none for this change (see above).
+
+## Calibration reason for moves that do not run (3.0.0.32, 2026-10-23, task 20261023101445-b9b5-primaluce-needs-calibration-message)
+
+The requester's ARCO on a SESTO SENSO 3 (firmware 1.0.9) was flagged for calibration
+(`CALRESTART.MOT2` 1, `MOT2.ERROR` "CalRestart; CalRestart_MaxPosEqualMinPos; "). It acknowledged
+`MOVE_ABS` with `DEG: done`, did not turn (HIZ 1), and the move ended ALERT without a message. The
+driver reported the flag at connect only (FND-20261023101445-b9b5-primaluce-needs-calibration-message-001).
+
+The driver now keeps the `CALRESTART` flag of both motors from connect. A move that ends short of
+its target says "The rotator needs calibration" or "The focuser needs calibration" when its motor
+is flagged, and "… stopped before reaching the target" otherwise. A successful ARCO or focuser
+calibration clears the flag. Moves are not refused up front, because a SESTO SENSO 2 with the flag
+set still moves (`needs_calibration`).
+
+Simulator: the `sestosenso3-arco-uncalibrated` profile flags the ARCO, acknowledges its moves
+without turning it, and clears the flag with an ARCO calibration.
+
+Regression tests (both fail without the fix):
+- `sestosenso3_rotator_needs_calibration`: ALERT with the reason; after an ARCO calibration the move
+  works.
+- `needs_calibration`, extended: a focuser move acknowledged and not run names the calibration.
+
+Hardware (supervised): rotator moves that did not run ended ALERT with "The rotator needs
+calibration", and the ARCO calibration was started.
+
+## Final test summary (3.0.0.32)
+
+- Simulated tests: 65 run, 65 passed: `2026-10-23 13:36 3.0.0.32 linux x64 simulator 65/65 OK`.
+  Library unit cases: 26 of 26.
+- Hardware: the supervised rotator check above was manual, so it produces no hardware record.
