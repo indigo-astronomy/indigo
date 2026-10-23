@@ -793,3 +793,31 @@ synced angles.
 - Hardware: the supervised SESTO SENSO 3 ARCO session above was manual and ran before the merge
   (local build that the merge numbers 3.0.0.30, without the audit's exact key matching), so it
   produces no hardware record.
+
+## Lost coordinate after a calibration (3.0.0.31, 2026-10-23, task 20261023091538-dfa4-primaluce-calibration-position-check)
+
+On the requester's SESTO SENSO 3 (firmware 1.0.9) the controller sometimes reports `ABS_POS_STEP`
+1000000 with `STATUS.HIZ` 1: after a restart, after an aborted calibration, after `Init` or
+`StoreAsMinPos`. The value lies far outside the calibrated range and is apparently the
+coordinate of a controller that lost its position. The protocol document does not describe it. Once
+the requester saw a finished calibration end OK with that value as the position (target 13995,
+value 1000000). That run was not reproduced, but the logs of five sessions contain the reading
+(FND-20261023091538-dfa4-primaluce-calibration-position-check-001).
+
+END now reads the position back with the new range. If it lies outside the range, X_CALIBRATE ends
+ALERT with "The focuser reports a position outside the calibrated range, run the calibration
+again". The controller's range is still published, and a new calibration can be started at once.
+This is the behaviour the requester asked for.
+
+Simulator: the `lostposition` fault makes the next SESTO SENSO 3 `StoreAsMaxPos` leave the
+coordinate at 1000000. Regression test: `sestosenso3_calibration_lost_position`, which fails
+without the check.
+
+Not verified on hardware: the reading could not be provoked on demand. Moves from that state were
+not tried.
+
+## Final test summary (3.0.0.31)
+
+- Simulated tests: 64 run, 64 passed: `2026-10-23 12:18 3.0.0.31 linux x64 simulator 64/64 OK`.
+  Library unit cases: 26 of 26.
+- Hardware: none for this change (see above).

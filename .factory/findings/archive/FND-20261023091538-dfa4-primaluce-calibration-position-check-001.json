@@ -1,0 +1,24 @@
+{
+  "title": "focuser_primaluce ended a SESTO SENSO 3 calibration OK while the controller reported a lost coordinate",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023091538-dfa4-primaluce-calibration-position-check",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The SESTO SENSO 3 (firmware 1.0.9) sometimes reports ABS_POS_STEP 1000000 with STATUS.HIZ 1, apparently after losing its coordinate. Once a finished calibration was published OK with that value as the position, far outside the range just stored (target 13995, value 1000000).",
+  "evidence": "20261023091538-dfa4-primaluce-calibration-position-check/verification.md (FND); requester report 2026-10-23; ABS_POS_STEP 1000000 HIZ 1 in five session logs",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023091538-dfa4-primaluce-calibration-position-check/verification.md: END checks the position against the new range and fails the calibration with a rerun message; sestosenso3_calibration_lost_position passes and fails without the check; recorded run 64/64. Not reproduced on hardware.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023091538-dfa4-primaluce-calibration-position-check-001"
+}

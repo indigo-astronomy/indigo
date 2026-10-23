@@ -617,6 +617,26 @@ cleanup:
 	driver_stop();
 }
 
+// A SESTO SENSO 3 that reports a lost coordinate (1000000) after StoreAsMaxPos fails the calibration and asks
+// for another one instead of publishing a position outside the new range as calibrated.
+static void sestosenso3_calibration_lost_position(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_in_motion(500, 1000000));
+	SERIAL_CHECK_TRUE(fault("\"StoreAsMaxPos\"", "lostposition"));
+	clear_messages();
+	unsigned int alerts = property_state_revision(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(message_seen("run the calibration again"));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1000000, 0));
+	// A new calibration is accepted and runs.
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(2, requests("\"CAL_FOCUSER\":\"Init\""));
+cleanup:
+	driver_stop();
+}
+
 // A SESTO SENSO 3 restarts after a CAL_DIR write and answers late. Requests meanwhile are refused, the
 // calibration follows the restart once, and an abort stops the run with StopMotor and stop_calib.
 static void sestosenso3_calibration_restart(void) {
@@ -1692,6 +1712,7 @@ int main(void) {
 		{ "sestosenso3_uncalibrated", sestosenso3_uncalibrated, "sestosenso3-uncalibrated" },
 		{ "sestosenso3_calibration", sestosenso3_calibration, "sestosenso3" },
 		{ "sestosenso3_calibration_restart", sestosenso3_calibration_restart, "sestosenso3" },
+		{ "sestosenso3_calibration_lost_position", sestosenso3_calibration_lost_position, "sestosenso3" },
 		{ "sestosenso3_abort_during_restart", sestosenso3_abort_during_restart, "sestosenso3" },
 		{ "no_abs_pos_profile", no_abs_pos_profile, "no-abs-pos" },
 		{ "no_speed_profile", no_speed_profile, "no-speed" },

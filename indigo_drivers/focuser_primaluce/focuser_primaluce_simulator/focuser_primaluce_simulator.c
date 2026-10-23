@@ -64,6 +64,8 @@ static const char *motor_error = "";
 static const char *external_temperature = "22.50";
 // A stalled motor keeps reporting MST "move" while the position does not change.
 static bool focus_stalled = false;
+// The next StoreAsMaxPos leaves the coordinate a SESTO SENSO 3 reports when it lost it (1000000).
+static bool lose_position = false;
 // The calibrated travel; a controller without one reports CAL_MAXPOS 0.
 static int calibration_min = 0;
 static int calibration_max = 100000;
@@ -92,7 +94,7 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_PRIMALUCE_EVENTS names a file receiving every accepted request.\n");
-	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close|slow|stall|ignore>' which is\n");
+	printf("INDIGO_PRIMALUCE_FAULT names a file holding '<key> <silent|garbage|reject|nopower|close|slow|stall|ignore|lostposition>' which is\n");
 	printf("applied once to the next request containing that key and then removed; an 'always_' prefix keeps\n");
 	printf("it armed. 'handmove <position>' moves the focuser as its hand keypad does.\n");
 }
@@ -345,6 +347,10 @@ static void dispatch_command(int handle, const char *command) {
 		fflush(events);
 	}
 	const char *fault = pending_fault(command);
+	if (fault != NULL && !strcmp(fault, "lostposition")) {
+		lose_position = true;
+		fault = NULL;
+	}
 	if (fault != NULL && !strcmp(fault, "slow")) {
 		usleep(400000);
 		update_motion();
@@ -533,6 +539,11 @@ static void dispatch_command(int handle, const char *command) {
 			calibration_max_visible = serial_motion_time() + 0.6;
 			calibration_restart = 0;
 			motor_error = "";
+			if (lose_position) {
+				lose_position = false;
+				serial_motion_sync(&focus_motion, 1000000);
+				focuser_position = focuser_target = 1000000;
+			}
 		} else if (strstr(command, "\"stop_calib\"") != NULL) {
 			serial_motion_stop(&focus_motion);
 			focuser_target = focuser_position;

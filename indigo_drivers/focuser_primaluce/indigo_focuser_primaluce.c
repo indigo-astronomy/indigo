@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001E
+#define DRIVER_VERSION       0x0300001F
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -625,12 +625,20 @@ static void focuser_calibration_end_finalizer(indigo_device *device) {
 		return;
 	}
 	focuser_set_range(device, min_position, max_position, true);
-	if (primalucelib_focuser_request_position(LINK, PRIVATE_DATA->has_abs_pos)) {
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = primalucelib_reply_focuser_position(LINK, PRIVATE_DATA->has_abs_pos);
+	double position = 0;
+	bool position_read = primalucelib_focuser_get_position(LINK, PRIVATE_DATA->has_abs_pos, &position);
+	if (position_read) {
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = position;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	}
 	if (!PRIVATE_DATA->calibrated) {
 		focuser_calibration_failed(device, "The calibration left no travel range");
+		return;
+	}
+	// A SESTO SENSO 3 that lost its coordinate reports 1000000 with the motor off (firmware 1.0.9), far outside
+	// the range it has just stored, and the calibration has to be repeated.
+	if (position_read && (position < min_position || position > max_position)) {
+		focuser_calibration_failed(device, "The focuser reports a position outside the calibrated range, run the calibration again");
 		return;
 	}
 	PRIVATE_DATA->calibration_pending = false;
