@@ -1,0 +1,24 @@
+{
+  "id": "FND-000060",
+  "title": "focuser_primaluce calibration held the device queue during its waits",
+  "category": "quality",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "012-primaluce-calibration-finalizers",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "START slept between its steps and waited up to 10 s for a SESTO SENSO 3 restart, and END polled the new range for up to 5 s, all inside the X_CALIBRATE handler. Requests queued meanwhile, an abort included, ran only after the wait, against the handler + finalizer rule. Listed as a 3.0.0.27 limitation in REFACTOR.md; the owner asked for the fix.",
+  "evidence": "012-primaluce-calibration-finalizers/verification.md (FND-000060); 3.0.0.27 driver fails sestosenso3_calibration, sestosenso3_calibration_restart and sestosenso3_abort_during_restart",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "012-primaluce-calibration-finalizers/verification.md: the waits are focuser_calibration_start/restart/end finalizers; the three cases pass and fail against the previous driver; recorded run and supervised hardware check.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

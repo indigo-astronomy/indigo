@@ -75,7 +75,7 @@ static double calibration_max_visible = 0;
 static bool calibration_run = false;
 // A SESTO SENSO 3 restarts after a CAL_DIR write; requests arriving meanwhile are answered late, after the restart.
 static double restart_end = 0;
-static char restart_queue[8][512];
+static char restart_queue[16][512];
 static int restart_queued = 0;
 static FILE *events = NULL;
 
@@ -496,12 +496,13 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (strstr(command, "\"CAL_DIR\"") != NULL) {
 		calibration_direction = strstr(command, "\"invert\"") != NULL ? "invert" : "normal";
 		sim_printf(handle, "{\"res\":{\"set\":{\"MOT1\":{\"CAL_DIR\":\"done\"}}}}\n");
-		// A SESTO SENSO 3 restarts after every CAL_DIR write (firmware 1.0.9, about 9.5 s on the unit, shortened here).
+		// A SESTO SENSO 3 restarts after every CAL_DIR write (firmware 1.0.9, about 9.5 s on the unit, shortened here
+		// but long enough to collect more late replies than the library drops per request).
 		if (sestosenso3()) {
 			serial_motion_stop(&focus_motion);
 			calibration_run = false;
 			sim_printf(handle, "ets Jul 29 2019 12:21:46\n\nrst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)\n[mLogs_DefaultSetup] \n[mLogs_DefaultSetup] \nUnable to find DS18B20\n");
-			restart_end = serial_motion_time() + 2;
+			restart_end = serial_motion_time() + 5;
 		}
 	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL && sestosenso3()) {
 		// The SESTO SENSO 3 semi-automatic calibration: StoreAsMinPos zeroes the coordinate, the run ends with
@@ -590,7 +591,7 @@ int main(int argc, char *argv[]) {
 			restart_queued = 0;
 		}
 		if (bytes > 0 && restarting) {
-			if (restart_queued < 8) {
+			if (restart_queued < 16) {
 				snprintf(restart_queue[restart_queued++], sizeof(restart_queue[0]), "%s", buffer);
 			}
 		} else if (bytes > 0) {

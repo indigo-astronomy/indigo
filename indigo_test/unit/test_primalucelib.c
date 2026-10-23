@@ -494,6 +494,32 @@ cleanup:
 	stop_peer();
 }
 
+// A restarting controller answers nothing: requests fail at once without reaching it, and a short probe
+// reopens the link when the controller is back.
+static void a_restarting_link_refuses_requests_until_probed(void) {
+	CHECK(start_peer(NULL));
+	script_silent_reply(0);
+	pthread_mutex_lock(&test_peer.mutex);
+	test_peer.replies[1] = "{\"res\":{\"get\":{\"MODNAME\":\"SESTOSENSO3\"}}}\n";
+	test_peer.replies[2] = "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"1.0.9\"}}}}\n";
+	test_peer.reply_count = 3;
+	pthread_mutex_unlock(&test_peer.mutex);
+	primalucelib_begin_restart(&test_link);
+	CHECK(primalucelib_get_firmware_version(&test_link) == NULL);
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "The controller is restarting"));
+	double start = indigo_monotonic_time();
+	CHECK(!primalucelib_probe_restart(&test_link));
+	CHECK(indigo_monotonic_time() - start < 1);
+	CHECK(primalucelib_is_restarting(&test_link));
+	CHECK(primalucelib_probe_restart(&test_link));
+	CHECK(!primalucelib_is_restarting(&test_link));
+	char *firmware = primalucelib_get_firmware_version(&test_link);
+	CHECK(firmware != NULL && !strcmp(firmware, "1.0.9"));
+cleanup:
+	primalucelib_end_restart(&test_link);
+	stop_peer();
+}
+
 // Replies that never answer the request fail it after PRIMALUCE_MAX_STALE_REPLIES lines.
 static void only_stale_replies_fail_the_request(void) {
 	CHECK(start_peer("{\"res\":{\"cmd\":{\"A\":\"done\"}}}\n{\"res\":{\"cmd\":{\"B\":\"done\"}}}\n{\"res\":{\"cmd\":{\"C\":\"done\"}}}\n{\"res\":{\"cmd\":{\"D\":\"done\"}}}\n", NULL));
@@ -754,6 +780,7 @@ int main(void) {
 		{ "a late reply is skipped", a_late_reply_is_skipped },
 		{ "SESTO SENSO 3 log line before LOGLEVEL", sestosenso3_log_line_before_loglevel },
 		{ "only stale replies fail the request", only_stale_replies_fail_the_request },
+		{ "a restarting link refuses requests until probed", a_restarting_link_refuses_requests_until_probed },
 		{ "moves return their acknowledgement", moves_return_their_acknowledgement },
 		{ "focuser stop falls back to a decelerated stop", focuser_stop_falls_back_to_a_decelerated_stop },
 		{ "settings need done", settings_need_done },

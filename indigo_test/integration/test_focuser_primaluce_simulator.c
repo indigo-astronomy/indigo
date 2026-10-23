@@ -147,8 +147,8 @@ static void print_journal(const char *reason) {
 
 // The driver publishes a property state as soon as its transaction returns, so
 // the controller may not have logged the request yet.
-static bool wait_for_requests(const char *fragment, int expected) {
-	for (int i = 0; i < 200; i++) {
+static bool wait_for_requests_within(const char *fragment, int expected, int seconds) {
+	for (int i = 0; i < seconds * 40; i++) {
 		if (requests(fragment) >= expected) {
 			return true;
 		}
@@ -158,6 +158,10 @@ static bool wait_for_requests(const char *fragment, int expected) {
 	snprintf(reason, sizeof(reason), "Fewer than %d requests containing '%s'", expected, fragment);
 	print_journal(reason);
 	return false;
+}
+
+static bool wait_for_requests(const char *fragment, int expected) {
+	return wait_for_requests_within(fragment, expected, 5);
 }
 
 // The n-th request of the journal (0 based) contains fragment.
@@ -592,9 +596,14 @@ static void sestosenso3_calibration(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(message_seen("The calibration is running"));
 	SERIAL_CHECK_EQ_INT(1, requests("\"CAL_FOCUSER\":\"Init\""));
-	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StopMotor\"", 1));
+	// END stops the run and the new range is polled by a finalizer, so the queue serves a request meanwhile.
+	unsigned int completions = property_state_revision(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMaxPos\"", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(property_state(X_CALIBRATE_F_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_OK_STATE, completions));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StopMotor\"", 1));
 	// The stale maximum the controller still reports right after StoreAsMaxPos is not taken.
 	double stopped = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	double maximum = number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
@@ -620,6 +629,15 @@ static void sestosenso3_calibration_restart(void) {
 	SERIAL_CHECK_TRUE(message_seen("restarts"));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(message_seen("A calibration step is in progress"));
+	// The restart is followed by a finalizer, and a request meanwhile is refused at once instead of waiting
+	// for the controller.
+	unsigned int led_alerts = property_state_revision(X_LEDS_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), X_LEDS_PROPERTY_NAME, X_LEDS_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen_within(X_LEDS_PROPERTY_NAME, INDIGO_ALERT_STATE, led_alerts, 1));
+	SERIAL_CHECK_TRUE(property_state(X_CALIBRATE_F_PROPERTY_NAME) == INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(0, requests("\"DIMLEDS\""));
+	// The restart lasts 5 s in the simulator, then the late replies are read away.
+	SERIAL_CHECK_TRUE(wait_for_requests_within("\"CAL_FOCUSER\":\"Init\"", 1, 15));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_property_state(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, true));
@@ -1124,6 +1142,38 @@ static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"MOT_ABORT\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_property_state(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, false));
+cleanup:
+	driver_stop();
+}
+
+// An abort while a SESTO SENSO 3 restarts for a new direction cancels the calibration before it starts.
+static void sestosenso3_abort_during_restart(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	clear_messages();
+	unsigned int busy = property_state_revision(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_BUSY_STATE, busy));
+	SERIAL_CHECK_TRUE(message_seen("restarts"));
+	unsigned int position_alerts = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	unsigned int alerts = property_state_revision(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	// The abort is served at once, within the restart (5 s in the simulator), not after it.
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, device_name(), FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(state_seen_within(X_CALIBRATE_F_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts, 1));
+	SERIAL_CHECK_TRUE(message_seen("Calibration aborted"));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, false));
+	// No step follows the restart, the focuser stays where it is and keeps its range, and the polls skipped
+	// during the restart did not turn the position ALERT.
+	indigo_usleep(4000000);
+	SERIAL_CHECK_EQ_INT(0, requests("\"CAL_FOCUSER\""));
+	SERIAL_CHECK_TRUE(property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE) == position_alerts);
+	SERIAL_CHECK_TRUE(idle_polls());
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18075, 0));
+	SERIAL_CHECK_TRUE(number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 100000);
+	// A new calibration in the direction the controller now has starts without a restart.
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_INVERTED_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, requests("\"CAL_DIR\":\"invert\""));
+	SERIAL_CHECK_EQ_INT(1, requests("\"CAL_FOCUSER\":\"Init\""));
 cleanup:
 	driver_stop();
 }
@@ -1641,6 +1691,7 @@ int main(void) {
 		{ "sestosenso3_uncalibrated", sestosenso3_uncalibrated, "sestosenso3-uncalibrated" },
 		{ "sestosenso3_calibration", sestosenso3_calibration, "sestosenso3" },
 		{ "sestosenso3_calibration_restart", sestosenso3_calibration_restart, "sestosenso3" },
+		{ "sestosenso3_abort_during_restart", sestosenso3_abort_during_restart, "sestosenso3" },
 		{ "no_abs_pos_profile", no_abs_pos_profile, "no-abs-pos" },
 		{ "no_speed_profile", no_speed_profile, "no-speed" },
 		{ "unsupported_device", unsupported_device, "unsupported" },

@@ -116,6 +116,11 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
 - **Before restarting:** a driver must not restart the controller while another logical device
   still shares the link. `indigo_focuser_primaluce` refuses the WiFi mode change while the
   rotator is connected.
+- **During a restart (HW):** a SESTO SENSO 3 (firmware 1.0.9) stays silent for about 9.5 s after a
+  `CAL_DIR` write, then answers every request it received meanwhile at once (12 late `MODNAME`
+  replies were observed). `primalucelib_begin_restart()` makes requests fail at once with "The
+  controller is restarting". `primalucelib_probe_restart()` asks with a 0.3 s read timeout, and once
+  the controller answers it reads the late replies away until the line is quiet.
 
 Full-state keys used by the focuser driver (**HW**):
 - Identity and firmware: `MODNAME`, `SN`, `SWVERS.{SWAPP,SWWEB}`.

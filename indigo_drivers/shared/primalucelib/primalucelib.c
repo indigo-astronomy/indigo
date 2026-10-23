@@ -126,6 +126,7 @@ bool primalucelib_parse_http_url(const char *url, char *host, size_t host_size, 
 
 bool primalucelib_open(primalucelib_link *link, const char *driver_name, const char *port, const char **error_message) {
 	link->driver_name = driver_name;
+	link->restarting = link->probing = false;
 	link->is_http = indigo_uni_is_url(port, "http");
 	if (link->is_http) {
 		// http://host[:port] or tcp://host[:port] reaches the controller on a WiFi network
@@ -258,6 +259,10 @@ bool primalucelib_vrequest(primalucelib_link *link, const char *format, va_list 
 	char request[PRIMALUCE_MAX_RESPONSE_SIZE];
 	char verb[16];
 	link->last_error[0] = 0;
+	if (link->restarting && !link->probing) {
+		INDIGO_COPY_VALUE(link->last_error, "The controller is restarting");
+		return false;
+	}
 	vsnprintf(request, sizeof(request), format, args);
 	if (link->is_http) {
 		if (!primalucelib_http_exchange(link, request)) {
@@ -280,7 +285,7 @@ bool primalucelib_vrequest(primalucelib_link *link, const char *format, va_list 
 		bool has_verb = primalucelib_request_verb(request, verb, sizeof(verb));
 		int stale_replies = 0;
 		while (true) {
-			long result = indigo_uni_read_section(link->handle, link->response, PRIMALUCE_MAX_RESPONSE_SIZE - 1, "\n", "\r\n", -1);
+			long result = indigo_uni_read_section(link->handle, link->response, PRIMALUCE_MAX_RESPONSE_SIZE - 1, "\n", "\r\n", link->probing ? INDIGO_DELAY(PRIMALUCE_RESTART_PROBE_TIMEOUT) : -1);
 			if (result < 1) {
 				link->link_failed = true;
 				return false;
@@ -529,6 +534,36 @@ bool primalucelib_wait_for_restart(primalucelib_link *link) {
 	}
 	INDIGO_DRIVER_ERROR(link->driver_name, "No answer after restart");
 	return false;
+}
+
+void primalucelib_begin_restart(primalucelib_link *link) {
+	link->restarting = true;
+}
+
+bool primalucelib_is_restarting(primalucelib_link *link) {
+	return link->restarting;
+}
+
+bool primalucelib_probe_restart(primalucelib_link *link) {
+	link->probing = true;
+	bool answered = primalucelib_get_model_name(link) != NULL;
+	if (answered && !link->is_http) {
+		// The controller keeps the requests it received while it restarted and answers all of them once it is
+		// back (a SESTO SENSO 3 answered 12 probes at once), which would outnumber PRIMALUCE_MAX_STALE_REPLIES for
+		// the next request; they are read away until the line is quiet.
+		for (int i = 0; i < PRIMALUCE_RESTART_POLLS && indigo_uni_read_section(link->handle, link->response, PRIMALUCE_MAX_RESPONSE_SIZE - 1, "\n", "\r\n", INDIGO_DELAY(PRIMALUCE_RESTART_PROBE_TIMEOUT)) > 0; i++) {
+			INDIGO_DRIVER_DEBUG(link->driver_name, "Dropped a late reply after the restart");
+		}
+	}
+	link->probing = false;
+	if (answered) {
+		link->restarting = false;
+	}
+	return answered;
+}
+
+void primalucelib_end_restart(primalucelib_link *link) {
+	link->restarting = false;
 }
 
 bool primalucelib_set_access_point(primalucelib_link *link, bool on) {

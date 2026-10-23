@@ -674,3 +674,78 @@ in the test summary below.
 - Hardware: the supervised SESTO SENSO 3 sessions are listed under Validation above. They were
   manual sessions, not a `tools/run_driver_test.py --hw` run, so they produce no hardware record.
   The latest hardware records stay 3.0.0.25 (linux arm64) and 3.0.0.22 (mac arm64).
+
+## Calibration steps as finalizers (3.0.0.28, 2026-10-23, task 012-primaluce-calibration-finalizers)
+
+The 3.0.0.27 calibration held the device queue during its waits. START slept a second between the
+steps, and a SESTO SENSO 3 that changed direction waited up to 10 s for the restart. END polled the
+new range for up to 5 s. Requests queued meanwhile, including an abort, ran only afterwards
+(FND-000060).
+
+The waits are now finalizers on the device queue, and each one does a single bounded transaction:
+
+- `focuser_calibration_start_finalizer` sends one start step and schedules the next one 1 s later:
+  `Init`, `CAL_DIR` (SESTO SENSO 2), `StoreAsMinPos`, `GoOutToFindMaxPos`. After the last step
+  X_CALIBRATE turns OK and only END is accepted.
+- `focuser_calibration_restart_finalizer` polls a restarting SESTO SENSO 3 with one `MODNAME` request
+  every 0.5 s, at most `PRIMALUCE_RESTART_POLLS` times, and then starts the steps. If the controller
+  does not answer, X_CALIBRATE ends ALERT "The focuser did not answer after the restart".
+- `focuser_calibration_end_finalizer` reads the range every 0.25 s, at most 20 times, until the
+  maximum differs from the one before `StoreAsMaxPos`. It then republishes the motion properties.
+
+X_CALIBRATE stays BUSY until the run starts or END completes. An abort during the start cancels the
+pending step or restart poll, and a SESTO SENSO 3 that already entered the procedure gets
+`stop_calib`. X_CALIBRATE ends ALERT "Calibration aborted". Disconnect cancels the finalizers through
+the generated `indigo_cancel_pending_handlers()`. Because the abort handler names these finalizers,
+the generator drops its prologue and epilogue, and the handler publishes its completion itself.
+
+Regression tests:
+- `sestosenso3_calibration`: a LED change during the range poll completes while X_CALIBRATE is BUSY.
+- `sestosenso3_calibration_restart`: the same during the restart.
+- `sestosenso3_abort_during_restart`: an abort during the restart cancels the calibration; no step
+  is sent, the range is kept, and the next START in the new direction starts without a restart.
+
+The three cases fail against the 3.0.0.27 driver: the LED change completes only after X_CALIBRATE
+leaves BUSY, and the abort waits behind the restart. This removes the blocking limitation listed for
+3.0.0.27.
+
+### Restart gate (found on hardware during this change)
+
+On the SESTO SENSO 3 the first finalizer version still delayed requests during the restart. The
+idle position poll and every other request waited the serial read timeout of 5 s on the silent
+controller: an abort ran only after the restart, and the timed-out polls briefly published
+FOCUSER_POSITION and X_STATE ALERT. The library now keeps a restarting state:
+
+- `primalucelib_begin_restart()` makes every request fail at once with "The controller is
+  restarting". A move shows it as "Move refused: …", and other settings end ALERT.
+- The idle polls skip while the controller restarts.
+- The restart finalizer uses `primalucelib_probe_restart()`, a `MODNAME` request with a 0.3 s read
+  timeout. An abort during the restart therefore acts at once, while the probe continues until the
+  controller answers and reopens the link.
+
+The next hardware attempt failed the calibration after the restart. The controller answers all the
+probes it received while restarting (12) at once, so Init met more stale replies than
+`PRIMALUCE_MAX_STALE_REPLIES`. After a successful probe the library now reads late replies away
+until the line has been quiet for 0.3 s.
+
+The simulator restart now lasts 5 s and replays up to 16 queued requests, which reproduces that
+failure without the drain. Regression tests:
+- `test_primalucelib` `a_restarting_link_refuses_requests_until_probed`;
+- `sestosenso3_calibration_restart`: the LED change during the restart ends ALERT within 1 s without
+  a request, and the calibration then starts;
+- `sestosenso3_abort_during_restart`: the abort ends the calibration within 1 s, during the restart,
+  and the position never turns ALERT.
+
+Hardware (supervised, SESTO SENSO 3):
+- START with a direction change: the LED change was refused within 0.3 s, 11 late replies were
+  dropped, then Init, StoreAsMinPos and GoOutToFindMaxPos followed. END published 6977 after
+  polling past the stale 18250.
+- An abort during a restart reported "Calibration aborted" in the same millisecond.
+- A move and an abort afterwards worked.
+
+## Final test summary (3.0.0.28)
+
+- Simulated tests: 61 run, 61 passed: `2026-10-23 04:02 3.0.0.28 linux x64 simulator 61/61 OK`.
+  Library unit cases: 24 of 24.
+- Hardware: the supervised SESTO SENSO 3 session above was manual, so it produces no hardware
+  record.

@@ -79,6 +79,8 @@ extern "C" {
 // After REBOOT the controller prints a boot log on the serial line; it is polled this often, this far apart.
 #define PRIMALUCE_RESTART_POLLS                   20
 #define PRIMALUCE_RESTART_POLL_INTERVAL           0.5
+// A restarting controller is asked whether it is back with this read timeout (seconds).
+#define PRIMALUCE_RESTART_PROBE_TIMEOUT           0.3
 // Replies that answer an earlier request are dropped, this many at most, before a request fails.
 #define PRIMALUCE_MAX_STALE_REPLIES               4
 
@@ -463,6 +465,9 @@ typedef struct {
 	int http_port;
 	// The last request got no answer at all (as opposed to an answer refusing it).
 	bool link_failed;
+	// The controller restarts: requests are refused at once instead of waiting for their read timeout, and only
+	// primalucelib_probe_restart() asks it, with a short timeout.
+	bool restarting, probing;
 	// The ERROR text of the last refused request, empty otherwise.
 	char last_error[INDIGO_VALUE_SIZE];
 	// The reply of the last request; string tokens are NUL-terminated in place.
@@ -535,6 +540,14 @@ extern bool primalucelib_set_lan_config(primalucelib_link *link, const char *mod
 extern bool primalucelib_reboot(primalucelib_link *link);
 // Waits for a restarted controller to answer MODNAME again over the serial line, dropping its boot log.
 extern bool primalucelib_wait_for_restart(primalucelib_link *link);
+// Marks the controller restarting: every request fails at once with the reason "The controller is restarting"
+// until primalucelib_probe_restart() gets an answer or primalucelib_end_restart() is called.
+extern void primalucelib_begin_restart(primalucelib_link *link);
+extern bool primalucelib_is_restarting(primalucelib_link *link);
+// One MODNAME request with a PRIMALUCE_RESTART_PROBE_TIMEOUT read timeout; true, and the restart is over, once
+// the controller answers.
+extern bool primalucelib_probe_restart(primalucelib_link *link);
+extern void primalucelib_end_restart(primalucelib_link *link);
 extern bool primalucelib_set_access_point(primalucelib_link *link, bool on);
 extern bool primalucelib_set_access_point_credentials(primalucelib_link *link, const char *ssid, const char *password);
 extern bool primalucelib_set_station_credentials(primalucelib_link *link, const char *ssid, const char *password);

@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001B
+#define DRIVER_VERSION       0x0300001C
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -58,6 +58,11 @@
 #define STALL_POLLS          25
 // Consecutive failed position reads tolerated during a move.
 #define MAX_POLL_FAILURES    3
+// The controller needs this long between calibration steps (seconds).
+#define CALIBRATION_STEP_INTERVAL 1.0
+// After END the new range is polled this often, this far apart (seconds).
+#define CALIBRATION_RANGE_POLLS 20
+#define CALIBRATION_RANGE_POLL_INTERVAL 0.25
 
 //- define
 
@@ -381,6 +386,12 @@ typedef struct {
 	double position, last_position;
 	int stalled_polls, poll_failures, environment_ticks;
 	bool external_motion, poll_alert, abort_requested, calibrating, calibration_pending, pending;
+	// The focuser calibration in progress: the direction it uses, the next start step, the polls of the
+	// current wait, the maximum before END, and whether the steps before the run are still pending.
+	const char *calibration_direction;
+	int calibration_step, calibration_polls;
+	double calibration_previous_max;
+	bool calibration_starting;
 	int backlash, speed;
 	indigo_item *leds_item, *hold_item, *wifi_item;
 	//- data
@@ -544,6 +555,85 @@ static void focuser_set_range(indigo_device *device, double min_position, double
 			indigo_define_property(device, X_PRESETS_PROPERTY, NULL);
 		}
 	}
+}
+
+// Ends the calibration ALERT with message, or with the reason the controller gave for the last refusal.
+static void focuser_calibration_failed(indigo_device *device, const char *message) {
+	PRIVATE_DATA->calibration_pending = PRIVATE_DATA->calibration_starting = PRIVATE_DATA->calibrating = false;
+	X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
+	X_CALIBRATE_F_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (message == NULL && *primalucelib_last_error(LINK)) {
+		message = primalucelib_last_error(LINK);
+	}
+	if (message != NULL) {
+		indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+	}
+}
+
+// Runs the next step of the calibration start. The controller needs a second between the steps, so each
+// step is a finalizer of its own and abort and disconnect are served in between. A SESTO SENSO 2 sets the
+// direction inside the calibration, a SESTO SENSO 3 before it (it restarts after the write).
+static void focuser_calibration_start_finalizer(indigo_device *device) {
+	static const char *sestosenso_2_steps[] = { PRIMALUCE_FOCUSER_CALIBRATION_INIT, PRIMALUCE_KEY_CALIBRATION_DIRECTION, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MIN, PRIMALUCE_FOCUSER_CALIBRATION_FIND_MAX, NULL };
+	static const char *sestosenso_3_steps[] = { PRIMALUCE_FOCUSER_CALIBRATION_INIT, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MIN, PRIMALUCE_FOCUSER_CALIBRATION_FIND_MAX, NULL };
+	const char **steps = PRIVATE_DATA->is_sestosenso_3 ? sestosenso_3_steps : sestosenso_2_steps;
+	const char *step = steps[PRIVATE_DATA->calibration_step++];
+	bool result = !strcmp(step, PRIMALUCE_KEY_CALIBRATION_DIRECTION) ? primalucelib_focuser_set_calibration_direction(LINK, PRIVATE_DATA->calibration_direction) : primalucelib_focuser_calibration_step(LINK, step);
+	if (!result) {
+		focuser_calibration_failed(device, NULL);
+	} else if (steps[PRIVATE_DATA->calibration_step] != NULL) {
+		indigo_execute_handler_in(device, CALIBRATION_STEP_INTERVAL, focuser_calibration_start_finalizer);
+	} else {
+		// The motor runs out to the far end until END; the property is OK so that END is accepted.
+		PRIVATE_DATA->calibration_pending = PRIVATE_DATA->calibration_starting = false;
+		PRIVATE_DATA->calibrating = true;
+		X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+	}
+}
+
+// Probes a SESTO SENSO 3 restarting after the CAL_DIR write with one short request at a time; requests of
+// other handlers fail at once meanwhile (primalucelib_begin_restart()). Once it answers the calibration
+// starts, unless it was aborted during the restart.
+static void focuser_calibration_restart_finalizer(indigo_device *device) {
+	if (primalucelib_probe_restart(LINK)) {
+		if (PRIVATE_DATA->calibration_starting) {
+			focuser_calibration_start_finalizer(device);
+		}
+	} else if (++PRIVATE_DATA->calibration_polls < PRIMALUCE_RESTART_POLLS) {
+		indigo_execute_handler_in(device, PRIMALUCE_RESTART_POLL_INTERVAL, focuser_calibration_restart_finalizer);
+	} else {
+		primalucelib_end_restart(LINK);
+		if (PRIVATE_DATA->calibration_starting) {
+			focuser_calibration_failed(device, "The focuser did not answer after the restart");
+		}
+	}
+}
+
+// The controller stores the new range a moment after it acknowledges StoreAsMaxPos: a SESTO SENSO 3 still
+// reported the previous CAL_MAXPOS (0 uncalibrated, 15237 from the calibration before) right after the
+// acknowledgement, so the range is polled until the maximum changes or the polls run out.
+static void focuser_calibration_end_finalizer(indigo_device *device) {
+	double min_position = 0, max_position = 0;
+	bool read = primalucelib_focuser_get_calibration(LINK, &min_position, &max_position);
+	if ((!read || max_position <= min_position || max_position == PRIVATE_DATA->calibration_previous_max) && ++PRIVATE_DATA->calibration_polls < CALIBRATION_RANGE_POLLS) {
+		indigo_execute_handler_in(device, CALIBRATION_RANGE_POLL_INTERVAL, focuser_calibration_end_finalizer);
+		return;
+	}
+	focuser_set_range(device, min_position, max_position, true);
+	if (primalucelib_focuser_request_position(LINK, PRIVATE_DATA->has_abs_pos)) {
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = primalucelib_reply_focuser_position(LINK, PRIVATE_DATA->has_abs_pos);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+	if (!PRIVATE_DATA->calibrated) {
+		focuser_calibration_failed(device, "The calibration left no travel range");
+		return;
+	}
+	PRIVATE_DATA->calibration_pending = false;
+	X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 }
 
 // Reads the focuser position and whether the motor runs. A reply without the position
@@ -753,6 +843,12 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	//+ focuser.on_timer
+	// A restarting controller answers nothing; it is not polled until focuser_calibration_restart_finalizer
+	// finds it back.
+	if (primalucelib_is_restarting(LINK)) {
+		indigo_execute_handler_in(device, POLL_PERIOD, focuser_timer_callback);
+		return;
+	}
 	if (PRIVATE_DATA->environment_ticks++ % ENVIRONMENT_TICKS == 0) {
 		if (primalucelib_get_environment(LINK)) {
 			double temp = primalucelib_reply_external_temperature(LINK);
@@ -872,7 +968,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = PRIVATE_DATA->backlash = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_BACKLASH);
 				PRIVATE_DATA->speed = (int)FOCUSER_SPEED_ITEM->number.value;
-				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->calibration_pending = PRIVATE_DATA->pending = false;
+				PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->calibration_pending = PRIVATE_DATA->calibration_starting = PRIVATE_DATA->pending = false;
 				PRIVATE_DATA->environment_ticks = 0;
 				// Models without stored positions report no PRESET_n.
 				bool has_presets = primalucelib_reply_has(LINK, PRIMALUCE_REPLY_FIRST_STORED_POSITION);
@@ -989,7 +1085,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop the focuser");
 			}
 		}
-		PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->calibration_pending = PRIVATE_DATA->pending = false;
+		PRIVATE_DATA->external_motion = PRIVATE_DATA->poll_alert = PRIVATE_DATA->abort_requested = PRIVATE_DATA->calibrating = PRIVATE_DATA->calibration_pending = PRIVATE_DATA->calibration_starting = PRIVATE_DATA->pending = false;
 		//- focuser.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
@@ -1288,87 +1384,55 @@ static void focuser_x_hold_curr_handler(indigo_device *device) {
 }
 
 static void focuser_x_calibrate_f_handler(indigo_device *device) {
-	X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_CALIBRATE_F.on_change
-	bool result = true;
-	bool started = X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value;
-	if (PRIVATE_DATA->is_sestosenso_3 && (X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value)) {
-		// A SESTO SENSO 3 restarts after every CAL_DIR write (firmware 1.0.9), inside a calibration as well,
-		// so the direction is set first and only when it changes, and the calibration follows the restart.
+	// The whole calibration publishes its own states: the steps run as finalizers on the device queue.
+	if (X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value) {
 		const char *direction = X_CALIBRATE_F_START_ITEM->sw.value ? PRIMALUCE_CALIBRATION_DIRECTION_NORMAL : PRIMALUCE_CALIBRATION_DIRECTION_INVERTED;
-		char *current = primalucelib_focuser_get_calibration_direction(LINK);
-		result = current != NULL;
-		if (result && strcmp(current, direction)) {
-			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_F_PROPERTY, INDIGO_BUSY_STATE, "The focuser restarts to change the calibration direction");
-			result = primalucelib_focuser_set_calibration_direction(LINK, direction) && primalucelib_wait_for_restart(LINK);
-			X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		if (result) {
-			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_INIT);
-		}
-		if (result) {
-			indigo_usleep(1000000);
-			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MIN);
-		}
-		if (result) {
-			indigo_usleep(1000000);
-			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_FIND_MAX);
-		}
-	} else if (X_CALIBRATE_F_START_ITEM->sw.value || X_CALIBRATE_F_START_INVERTED_ITEM->sw.value) {
-		// The controller needs a second between the calibration steps.
-		result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_INIT);
-		if (result) {
-			indigo_usleep(1000000);
-			result = primalucelib_focuser_set_calibration_direction(LINK, X_CALIBRATE_F_START_ITEM->sw.value ? PRIMALUCE_CALIBRATION_DIRECTION_NORMAL : PRIMALUCE_CALIBRATION_DIRECTION_INVERTED);
-		}
-		if (result) {
-			indigo_usleep(1000000);
-			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MIN);
-		}
-		if (result) {
-			indigo_usleep(1000000);
-			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_FIND_MAX);
+		PRIVATE_DATA->calibration_direction = direction;
+		PRIVATE_DATA->calibration_step = PRIVATE_DATA->calibration_polls = 0;
+		PRIVATE_DATA->calibration_starting = true;
+		if (PRIVATE_DATA->is_sestosenso_3) {
+			// A SESTO SENSO 3 restarts after every CAL_DIR write (firmware 1.0.9), inside a calibration as well,
+			// so the direction is set first and only when it changes, and the calibration follows the restart.
+			char *current = primalucelib_focuser_get_calibration_direction(LINK);
+			bool change = current != NULL && strcmp(current, direction);
+			if (current == NULL || (change && !primalucelib_focuser_set_calibration_direction(LINK, direction))) {
+				focuser_calibration_failed(device, NULL);
+			} else if (change) {
+				primalucelib_begin_restart(LINK);
+				indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "The focuser restarts to change the calibration direction");
+				indigo_execute_handler_in(device, PRIMALUCE_RESTART_POLL_INTERVAL, focuser_calibration_restart_finalizer);
+			} else {
+				focuser_calibration_start_finalizer(device);
+			}
+		} else {
+			focuser_calibration_start_finalizer(device);
 		}
 	} else if (X_CALIBRATE_F_END_ITEM->sw.value) {
 		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
+		PRIVATE_DATA->calibrating = false;
 		// A SESTO SENSO 3 stores the maximum only after the calibration run is stopped.
-		if (PRIVATE_DATA->is_sestosenso_3) {
-			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STOP_MOTOR);
-		}
-		// The controller stores the new range a moment after it acknowledges StoreAsMaxPos: a SESTO SENSO 3
-		// still reported the previous CAL_MAXPOS (0 uncalibrated, 15237 from the calibration before) right
-		// after the acknowledgement, so the range is polled until the maximum changes.
+		bool result = !PRIVATE_DATA->is_sestosenso_3 || primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STOP_MOTOR);
+		// The previous maximum tells a stale range from the new one, see focuser_calibration_end_finalizer().
 		double previous_min = 0, previous_max = 0;
 		if (result) {
 			primalucelib_focuser_get_calibration(LINK, &previous_min, &previous_max);
 			result = primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_STORE_MAX);
 		}
 		if (result) {
-			double min_position = 0, max_position = 0;
-			for (int i = 0; i < 20; i++) {
-				if (primalucelib_focuser_get_calibration(LINK, &min_position, &max_position) && max_position > min_position && max_position != previous_max) {
-					break;
-				}
-				indigo_usleep(250000);
-			}
-			focuser_set_range(device, min_position, max_position, true);
-			// A calibration that leaves no travel range has failed.
-			result = PRIVATE_DATA->calibrated;
-			if (primalucelib_focuser_request_position(LINK, PRIVATE_DATA->has_abs_pos)) {
-				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->position = primalucelib_reply_focuser_position(LINK, PRIVATE_DATA->has_abs_pos);
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			}
+			PRIVATE_DATA->calibration_previous_max = previous_max;
+			PRIVATE_DATA->calibration_polls = 0;
+			indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+			indigo_execute_handler_in(device, CALIBRATION_RANGE_POLL_INTERVAL, focuser_calibration_end_finalizer);
+		} else {
+			focuser_calibration_failed(device, NULL);
 		}
-	}
-	// The motor runs out to the far end between START and END.
-	PRIVATE_DATA->calibrating = result && started;
-	PRIVATE_DATA->calibration_pending = false;
-	if (!result) {
-		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
-		X_CALIBRATE_F_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		PRIVATE_DATA->calibration_pending = false;
+		X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 	}
 	//- focuser.X_CALIBRATE_F.on_change
-	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 }
 
 static void focuser_backlash_handler(indigo_device *device) {
@@ -1453,7 +1517,6 @@ static void focuser_speed_handler(indigo_device *device) {
 }
 
 static void focuser_abort_motion_handler(indigo_device *device) {
-	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	// A running motion is owned by the focuser movement finalizer, so the motion
 	// properties are left busy here. That finalizer observes the stop, reads the position
@@ -1463,12 +1526,22 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	bool requested = FOCUSER_ABORT_MOTION_ITEM->sw.value;
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	bool moving = PRIVATE_DATA->pending || FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE;
-	if (requested && !moving && !PRIVATE_DATA->calibrating && primalucelib_link_failed(LINK)) {
+	if (requested && PRIVATE_DATA->calibration_starting) {
+		// The calibration has not started to move yet: the pending step is cancelled, and a SESTO SENSO 3 that
+		// already entered the procedure leaves it uncalibrated. A restart in progress is still followed by
+		// focuser_calibration_restart_finalizer, which reopens the link once the controller answers.
+		indigo_cancel_pending_handler(device, focuser_calibration_start_finalizer);
+		if (PRIVATE_DATA->is_sestosenso_3 && PRIVATE_DATA->calibration_step > 0) {
+			if (primalucelib_focuser_calibration_step(LINK, PRIMALUCE_FOCUSER_CALIBRATION_AUTO_STOP)) {
+				focuser_set_range(device, 0, 0, true);
+			}
+		}
+		focuser_calibration_failed(device, "Calibration aborted");
+	} else if (requested && !moving && !PRIVATE_DATA->calibrating && primalucelib_link_failed(LINK)) {
 		// Nothing to stop, but the controller did not answer the last request.
 		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		return;
-	}
-	if (requested && PRIVATE_DATA->calibrating && PRIVATE_DATA->is_sestosenso_3) {
+	} else if (requested && PRIVATE_DATA->calibrating && PRIVATE_DATA->is_sestosenso_3) {
 		// A SESTO SENSO 3 calibration run stops only on its own StopMotor; stop_calib then leaves the
 		// procedure and the focuser uncalibrated.
 		PRIVATE_DATA->calibrating = false;
@@ -1495,8 +1568,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 			INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_F_PROPERTY, INDIGO_ALERT_STATE, "Calibration aborted");
 		}
 	}
+	// Cancelling the calibration finalizers makes this handler publish its own completion.
+	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
-	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (focuser)
