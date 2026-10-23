@@ -1,0 +1,29 @@
+{
+  "id": "FND-000004",
+  "title": "DOCS-004: Build documentation explains generated `Makefile.inc` and generator integration only briefly and contains spelling errors in names developers will copy (`Makefie.inc`, `u",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261023064302-ef56-fix-doc-findings-001-005",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "DOCS-004: Build documentation explains generated `Makefile.inc` and generator integration only briefly and contains spelling errors in names developers will copy (`Makefie.inc`, `usuall`). It also does not explain that `Makefile.drv` invokes `$(BUILD_BIN)/indigo_generator`, so a developer must build the generator before relying on automatic `.driver` regeneration. Clarify prerequisites and correct the names.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_docs/REVIEW.md:39; historical locations: `MAKEFILES.md:11`, `MAKEFILES.md:17`, `MAKEFILES.md:21`, `DRIVER_GENERATOR_MIGRATION.md:87`, `Makefile.drv:112`, `Makefile.drv:113`; legacy status: Open",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023064302-ef56-fix-doc-findings-001-005/verification.md AC-004: Corrected makefile names and explained generated configuration, forced host/path refresh, automatic generator build and serialized regeneration against current make rules.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

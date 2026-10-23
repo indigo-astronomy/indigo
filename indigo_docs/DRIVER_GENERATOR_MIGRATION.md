@@ -161,7 +161,7 @@ The generated `.c` is marked `// This file generated from …driver` at the top 
 
 The generator recognizes a GNU Lesser General Public License notice in the `.driver` source and emits the LGPL 2.1-or-later notice in the generated `.c`, `.h`, and `_main.c` files. Definitions without that notice continue to use the standard INDIGO Astronomy open-source license header. Reverse extraction preserves the recognized LGPL license family in the resulting `.driver` file.
 
-The build system picks this up automatically: `Makefile.drv` runs `indigo_generator` as a dependency of the object file whenever the `.driver` file is newer than the `.c` source.
+The build system handles regeneration through `Makefile.drv`: it runs `$(BUILD_BIN)/indigo_generator` when the `.driver` definition or generator source is newer than the generated `.c`/`.cpp` source. The generator binary is an order-only prerequisite and is built through `indigo_tools` if missing or stale. Before invoking the generator manually, prepare the root `Makefile.inc` and build directories with `make init`, then build the generator as described in [MAKEFILES.md](MAKEFILES.md#generated-drivers).
 
 ---
 
@@ -471,7 +471,7 @@ Cancelling also drops change handlers that were queued but had not run yet, and 
 * **One device block per device class.** If the driver exposes both a focuser and a rotator (like `indigo_focuser_primaluce`), there are two device blocks in the `.driver` file, each with its own `on_connect`, `on_timer`, properties, etc.
 * **Property handle vs. property name.** In `//+` markers, use the C handle **without** `_PROPERTY` (e.g. `WHEEL_SLOT`, not `WHEEL_SLOT_PROPERTY`).
 * **Re-running `-c` overwrites the `.driver` file.** Keep it under version control before running with `-c` again.
-* **Build integration.** The `Makefile.drv` already runs `indigo_generator` automatically when the `.driver` file is newer than the `.c` file. No extra make target is needed.
+* **Build integration.** The `Makefile.drv` already builds the generator if needed and runs it when the definition or generator source is newer than the generated driver source. See [MAKEFILES.md](MAKEFILES.md#generated-drivers) for component prerequisites. No driver-specific regeneration target is needed.
 
 ---
 

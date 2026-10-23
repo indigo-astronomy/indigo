@@ -1,0 +1,29 @@
+{
+  "id": "FND-000002",
+  "title": "DOCS-002: The \"Handling Properties Asynchronously\" section contains two consecutive versions of the same paragraph, one typo-heavy and one corrected",
+  "category": "quality",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261023064302-ef56-fix-doc-findings-001-005",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "DOCS-002: The \"Handling Properties Asynchronously\" section contains two consecutive versions of the same paragraph, one typo-heavy and one corrected. This makes the guidance look contradictory or accidentally duplicated in a core developer document. Remove the obsolete first paragraph and keep one edited version.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_docs/REVIEW.md:37; historical locations: `CLIENT_DEVELOPMENT_BASICS.md:271`, `CLIENT_DEVELOPMENT_BASICS.md:273`; legacy status: Open",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023064302-ef56-fix-doc-findings-001-005/verification.md AC-002: Removed obsolete duplicate asynchronous-property introduction and retained the corrected paragraph.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

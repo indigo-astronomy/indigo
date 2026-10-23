@@ -1,0 +1,150 @@
+{
+  "version": 2,
+  "task": "20261023064302-ef56-fix-doc-findings-001-005",
+  "scope": [
+    "indigo_docs/CLIENT_DEVELOPMENT_BASICS.md",
+    "indigo_docs/DEVELOPMENT.md",
+    "indigo_docs/DRIVER_GENERATOR_MIGRATION.md",
+    "indigo_docs/INDIGO_SERVER_AND_DRIVERS_GUIDE.md",
+    "indigo_docs/MAKEFILES.md",
+    ".factory/maintenance.json",
+    ".factory/completions/20261023064302-ef56-fix-doc-findings-001-005.json",
+    ".factory/findings/active/FND-000001.json",
+    ".factory/findings/archive/FND-000001.json",
+    ".factory/findings/active/FND-000002.json",
+    ".factory/findings/archive/FND-000002.json",
+    ".factory/findings/active/FND-000003.json",
+    ".factory/findings/archive/FND-000003.json",
+    ".factory/findings/active/FND-000004.json",
+    ".factory/findings/archive/FND-000004.json",
+    ".factory/findings/active/FND-000005.json",
+    ".factory/findings/archive/FND-000005.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/findings.py",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/decision_index.py",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_*.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py",
+        "--security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023064302-ef56-fix-doc-findings-001-005.json": [
+      "100644",
+      "blob",
+      "8914ffa4ba8813ab30527f55b911a966001cf903"
+    ],
+    ".factory/findings/active/FND-000001.json": null,
+    ".factory/findings/active/FND-000002.json": null,
+    ".factory/findings/active/FND-000003.json": null,
+    ".factory/findings/active/FND-000004.json": null,
+    ".factory/findings/active/FND-000005.json": null,
+    ".factory/findings/archive/FND-000001.json": [
+      "100644",
+      "blob",
+      "17e879fffe18dc586c0f164f4db1b24b7842acd9"
+    ],
+    ".factory/findings/archive/FND-000002.json": [
+      "100644",
+      "blob",
+      "9553918bcce8135278ab5e0e58d74be371f657a9"
+    ],
+    ".factory/findings/archive/FND-000003.json": [
+      "100644",
+      "blob",
+      "9388d3b507e7ea89b88b4c4ecda4a8297d2a713a"
+    ],
+    ".factory/findings/archive/FND-000004.json": [
+      "100644",
+      "blob",
+      "0879e3f4c5abec241916c0cb26faedc4c9bd98dd"
+    ],
+    ".factory/findings/archive/FND-000005.json": [
+      "100644",
+      "blob",
+      "c89c83a2b2277544f2f5d838707342501cf14761"
+    ],
+    "indigo_docs/CLIENT_DEVELOPMENT_BASICS.md": [
+      "100644",
+      "blob",
+      "32e695c692fd1613915aa21a3eff727d516cbce1"
+    ],
+    "indigo_docs/DEVELOPMENT.md": [
+      "100644",
+      "blob",
+      "6da97321ab20d562d5d51260b0c9b240497bb937"
+    ],
+    "indigo_docs/DRIVER_GENERATOR_MIGRATION.md": [
+      "100644",
+      "blob",
+      "0763a37f95087af4c463366387e60ab6be869f20"
+    ],
+    "indigo_docs/INDIGO_SERVER_AND_DRIVERS_GUIDE.md": [
+      "100644",
+      "blob",
+      "7445b16fb0fd8819a886ebd50dc45bfa7365612e"
+    ],
+    "indigo_docs/MAKEFILES.md": [
+      "100644",
+      "blob",
+      "cbed9d9d77bc4a0de942954bb6d48eee87fdcb06"
+    ]
+  }
+}

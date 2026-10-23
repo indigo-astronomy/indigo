@@ -42,6 +42,14 @@
       "scope": "Complete this Factory upgrade before the overdue recurring audit",
       "checkpoint": "Audit remains due at upgrade completion and before the next unrelated task",
       "resets_checkpoint": false
+    },
+    "documentation_findings_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection",
+      "date": "2026-10-23",
+      "task": "20261023064302-ef56-fix-doc-findings-001-005",
+      "scope": "Repair FND-000001 through FND-000005 before the overdue repository audit",
+      "checkpoint": "After these five repairs, before unrelated work or release",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

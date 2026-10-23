@@ -1,0 +1,29 @@
+{
+  "id": "FND-000003",
+  "title": "DOCS-003: Some developer-facing links point to names or paths that do not exist in the current tree",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261023064302-ef56-fix-doc-findings-001-005",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "DOCS-003: Some developer-facing links point to names or paths that do not exist in the current tree. `DEVELOPMENT.md` links `indigo_libs/indigo_bus.h`, but the header is under `indigo_libs/indigo/indigo_bus.h`; `CLIENT_DEVELOPMENT_BASICS.md` displays `indigo_examples/service_ddiscovery.c` even though the actual file is `indigo_examples/service_discovery.c`. Correct the link targets and visible labels so readers can navigate locally and on GitHub.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_docs/REVIEW.md:38; historical locations: `DEVELOPMENT.md:27`, `CLIENT_DEVELOPMENT_BASICS.md:440`; legacy status: Open",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023064302-ef56-fix-doc-findings-001-005/verification.md AC-003: Corrected bus header target, service-discovery label and client-example label; all relative links in edited guides resolve.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}
