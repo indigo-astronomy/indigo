@@ -11,9 +11,14 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
     }
   ],
-  "summary": "LINUXDRV-005: If custom property allocation fails after `indigo_aux_attach()` has already succeeded, `aux_attach()` returns `INDIGO_FAILED` without releasing any properties allocated before the failed allocation and without detaching the base AUX context. Add a single cleanup path that releases partially initialized properties, destroys initialized mutexes, and calls `indigo_aux_detach()`. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "summary": "LINUXDRV-005: If custom property allocation fails after `indigo_aux_attach()` has already succeeded, `aux_attach()` returns `INDIGO_FAILED` without releasing any properties allocated before the failed allocation and without detaching the base AUX context. Add a single cleanup path that releases partially initialized properties, destroys initialized mutexes, and calls `indigo_aux_detach()`. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current property constructors use indigo_safe_malloc, which terminates rather than returning NULL. The historical partial-attach NULL-return premise is unreachable under that contract. Next: dedicated verified disposition against the actual allocator/lifecycle, preserving historical observation.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:33; historical locations: `aux_asiair/indigo_aux_asiair.c:696`, `aux_rpio/indigo_aux_rpio.c:861`; legacy status: Open",
   "resolution": null
 }

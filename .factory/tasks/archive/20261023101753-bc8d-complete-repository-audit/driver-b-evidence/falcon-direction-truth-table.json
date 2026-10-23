@@ -1,0 +1,29 @@
+{
+  "method": "Truth table of exact Falcon direction condition; not a production executable or hardware run",
+  "rows": [
+    {
+      "transport_ok": false,
+      "reply": "FN:0",
+      "current_falcon_reports_alert": true,
+      "required_alert": true
+    },
+    {
+      "transport_ok": false,
+      "reply": "ERR",
+      "current_falcon_reports_alert": false,
+      "required_alert": true
+    },
+    {
+      "transport_ok": true,
+      "reply": "FN:0",
+      "current_falcon_reports_alert": false,
+      "required_alert": false
+    },
+    {
+      "transport_ok": true,
+      "reply": "ERR",
+      "current_falcon_reports_alert": false,
+      "required_alert": true
+    }
+  ]
+}

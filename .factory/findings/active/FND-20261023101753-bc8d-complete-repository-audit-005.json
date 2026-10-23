@@ -1,0 +1,19 @@
+{
+  "title": "RAW-to-FITS conversion lacks input and header capacity checks",
+  "category": "functional",
+  "severity": "high",
+  "summary": "indigo_fits.c:69-119, 140-179: converter reads RAW header before checking in_size, computes signed size products without validating dimensions/payload, and emits unbounded sprintf keyword cards into one fixed 2880-byte header. Embedded extension cards have no remaining-header check. Short/corrupt RAW input or large metadata can read/write beyond allocations; many cards also overwrite the data region. Called by the file converter at indigo_tools/indigo_raw_to_fits.c:185. Next: Validate minimum header, type, overflow-safe full components*pixel-byte payload and extension bounds; bounded cards with reserved END/comments or properly allocated multiple header records; preserve old allocation on realloc failure. Cover truncated data and header-capacity boundaries.",
+  "evidence": "indigo_fits.c:69-119, 140-179: converter reads RAW header before checking in_size, computes signed size products without validating dimensions/payload, and emits unbounded sprintf keyword cards into one fixed 2880-byte header. Embedded extension cards have no remaining-header check. Short/corrupt RAW input or large metadata can read/write beyond allocations; many cards also overwrite the data region. Called by the file converter at indigo_tools/indigo_raw_to_fits.c:185.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-005"
+}

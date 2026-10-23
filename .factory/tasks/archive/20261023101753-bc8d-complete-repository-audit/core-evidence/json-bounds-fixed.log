@@ -1,0 +1,10 @@
+indigo_test/unit/test_protocol_json_bounds.c:60: expected 1, got 0
+indigo_test/unit/test_protocol_json_bounds.c:60: expected 1, got 0
+indigo_test/unit/test_protocol_json_bounds.c:60: expected 1, got 0
+Running JSON parser boundaries
+  FAIL longest_name_still_parses
+  PASS oversized_name_stops_before_dispatch
+  FAIL longest_value_still_parses
+  PASS oversized_value_stops_before_dispatch
+  FAIL escaped_values_still_parse
+JSON parser boundaries: 3 test(s) failed

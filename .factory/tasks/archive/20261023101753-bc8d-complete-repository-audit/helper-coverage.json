@@ -1,0 +1,1675 @@
+{
+  "reviewer": "complete_driver_a",
+  "revision": "f019b004769072275a3d98a87c8e9740a42c19a4",
+  "scope": "Exact driver-local unmapped candidates only; indigo_libs/server assigned elsewhere",
+  "entries": [
+    {
+      "path": "indigo_drivers/agent_scripting/boot.js",
+      "sha256": "16899c613702998a21d2bf7b721639696fe49ed2f9471e9595d591d9927a0e8c",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/agent_scripting/duk_config.h",
+      "sha256": "2644ecf3b1702232957ec98f69432b7cf4f4d3009d50fff0a24899bf449fe4a9",
+      "classification": "vendor_dependency",
+      "source_owner": "Duktape embedded JavaScript engine",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Embedded upstream engine/config, separate from maintained agent binding and boot/sequencer integration."
+    },
+    {
+      "path": "indigo_drivers/agent_scripting/duktape.c",
+      "sha256": "d730575298dfcaeec172604b35004196f36dab4a47f52b5818c8c9637dd934c3",
+      "classification": "vendor_dependency",
+      "source_owner": "Duktape embedded JavaScript engine",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Embedded upstream engine/config, separate from maintained agent binding and boot/sequencer integration."
+    },
+    {
+      "path": "indigo_drivers/agent_scripting/duktape.h",
+      "sha256": "6ba93aea92510096c43ddd7c7f9e36f698225c9cd2af788bf414adf7c777deb2",
+      "classification": "vendor_dependency",
+      "source_owner": "Duktape embedded JavaScript engine",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Embedded upstream engine/config, separate from maintained agent binding and boot/sequencer integration."
+    },
+    {
+      "path": "indigo_drivers/agent_scripting/library/Sequencer.js",
+      "sha256": "918c971b4ad9dea83d1f793401615803fb013eb00365d15e2260716b132ae8fb",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.ino",
+      "sha256": "5be31d2fbc67d7da3627604f3e1a6e8198822ade0e47c8c4e67fcc6db5dadb5f",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.ino",
+      "sha256": "7290e0b54eae2438319146853a14e20c41ec8f8dddf43338a96d355c2c071b42",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.ino",
+      "sha256": "d4dc130c8755209066ea238a14c36b7c921870d64e399e433c81e94105e7b62f",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_dragonfly/relio_simulator/relio_simulator.pl",
+      "sha256": "9cfe666cb121fff313a622aaa9417d2371ae3d541f3947f5d390e97e2f401997",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_dragonfly/relio_simulator/set_sensor.pl",
+      "sha256": "e861c5271ae3329966fa03c99679989ffd3161e41bfae8f70d34658e881bc806",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_fbc/aux_fbc_simulator/aux_fbc_simulator.ino",
+      "sha256": "e10bbad5fe045a34969c1d4bc1ce75ff7c35788f3ca704b06c709aa85103f0fc",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_flatmaster/aux_flatmaster_simulator/aux_flatmaster_simulator.ino",
+      "sha256": "3c90db6910bee20f83709f1d35534d45b82ee33bcd2b989f97a2f537f3cb8c6c",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.ino",
+      "sha256": "42340f09ad2c9832b211aa3fc3c3a719fe39ab9a4810033b6009402f8873cd1e",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_joystick/indigo_aux_joystick_main.c",
+      "sha256": "6a6da64306f34efeae4a8999e3c58ec36a64ceffbe3ef2676a6b94e03a117b13",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/aux_ppb/aux_ppb_simulator/aux_ppb_simulator.ino",
+      "sha256": "730018499ea59b75270e14763098004304b75f8338cd4c2da47735be8fa4749f",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_skyalert/aux_skyalert_simulator/aux_skyalert_simulator.ino",
+      "sha256": "6647d11b52288e5683d25ee80910c36482f32e02014265885f99200ee077d468",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_sqm/aux_sqm_simulator/aux_sqm_simulator.ino",
+      "sha256": "05b79c6cd72dee37bd49cc6f6f5fc1ddbf899b502aeef1a7ff7c3f0c7e5e04b1",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.ino",
+      "sha256": "f7929ff21eb83e358f861786b08f6c3c2075691a89b61ba245331c138284c801",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/aux_usbdp/aux_usbdp_simulator/aux_usbdp_simulator.ino",
+      "sha256": "8dcf7d1934f0139e496c0cb905375f886ea2f188905aca741aeafc15c9bc5b3d",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/ccd_altair/indigo_ccd_altair_main.c",
+      "sha256": "4840661131c5f1fa60eb25c0f93d790fd77fba2a6090f5056173d3e2c39cd664",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_baccam/indigo_ccd_baccam_main.c",
+      "sha256": "0127fb0f0817b5c6c177455f31a20acea832b4675b00c97350f9b7d9fa67da17",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_bresser/indigo_ccd_bresser_main.c",
+      "sha256": "0ba3f95a3e3c48a63c41bbe0783247d1c281db6b6bf93100a0bbec74ba6305a8",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_dsi/libdsi.c",
+      "sha256": "392b6a6a2f6d70198a0b2e244d22d8c07b3318a42e336da410409c34739307d5",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO-maintained Rumen G. Bogdanovski adaptation based on Roland Roberts libdsi",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Firstparty USB adapter: enumeration/open/claim/setup, exposure command submission, bulk image decoding and close/release ownership. H01 records command-result/short-success-length propagation gap; geometry tables not hardware certified."
+    },
+    {
+      "path": "indigo_drivers/ccd_dsi/libdsi.h",
+      "sha256": "9f89b519f216dabc04aa5715867d530e06241037ee7261afa833592e3e9bcf4c",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO-maintained Rumen G. Bogdanovski adaptation based on Roland Roberts libdsi",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Firstparty USB adapter: enumeration/open/claim/setup, exposure command submission, bulk image decoding and close/release ownership. H01 records command-result/short-success-length propagation gap; geometry tables not hardware certified."
+    },
+    {
+      "path": "indigo_drivers/ccd_dsi/libdsi_firmware.h",
+      "sha256": "aba790865a278046796423c35bcaad9a0c0ed35cba8fa24308b20780f30fc452",
+      "classification": "firmware_payload",
+      "source_owner": "DSI/SSAG firmware data",
+      "status": "excluded_data_payload",
+      "contract_or_reason": "Firmware byte table consumed by existing loader; loader functional contract reviewed, no firmware execution/disassembly."
+    },
+    {
+      "path": "indigo_drivers/ccd_mallin/indigo_ccd_mallin_main.c",
+      "sha256": "cfb4ab2cb3362110e554a88061a42f1bce42bb58228f545cfc10ec9c410af7fb",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_meade/indigo_ccd_meade_main.c",
+      "sha256": "76052bb1634795b4ef8120428801857b366958e80e210357621a02c557f82cbd",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_ogma/indigo_ccd_ogma_main.c",
+      "sha256": "5257f8fb6f4f71247b70807ebca9d8a69ead1091064337ddb9ff7e71951470fa",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_omegonpro/indigo_ccd_omegonpro_main.c",
+      "sha256": "936fa663466eda04a6d0745afa4899f261007ff30c67e162134d05a679f73405",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax_main.c",
+      "sha256": "7313bc9bfcfc84624a264b18b0b2ea2db0664b772aa8994a483c0f50302f0b6e",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp_main.c",
+      "sha256": "ea70e33d5638c3ea3a3e66de65a70f341c31fb85bc1998f8306d74c34b7a048c",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_qhy/indigo_ccd_qhy.cpp",
+      "sha256": "d7935cbec783ceddf8b03d238f255bde4d91773d05598a2f11864296e9deb804",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.cpp",
+      "sha256": "e587e73dd8877f563eddd5ba32b5de68b277324ab5ed86b41e4c729abec192dc",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_drivers/ccd_qsi/indigo_ccd_qsi.cpp",
+      "sha256": "5aef224b9ce0c24bfe709d6d7d4e0408a8c43fba72410a5c3f3b6a7ca18f5814",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_drivers/ccd_qsi/indigo_ccd_qsi.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_drivers/ccd_rising/indigo_ccd_rising_main.c",
+      "sha256": "ea5073ee4f95a5cf29ba7b5a04d88c08c391bd642e72e3930f60c024997b0a28",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-1.h",
+      "sha256": "6b41098b1e7a57e357bb86cf96f918f075375a555a1d40385d62db49f28bcfce",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-10.h",
+      "sha256": "1e8ee254526e753a8b3bbfd7a180af21fc05bf2686e4ed29d358bc055e0efd5c",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-11.h",
+      "sha256": "630a13c2eca9be3fe606695baad4a2c241bc4876257ff0b46dcb7d93eb10a728",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-12.h",
+      "sha256": "5eb65cf64b8c34aa7cce065b06b80010d26868b6d5e41cea00d4265c894cd29d",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-13.h",
+      "sha256": "94d834848db2a7174e6f6d9036514481d9228b90a269a1b8a4b38f4cc2de0733",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-14.h",
+      "sha256": "6b69e3c0222869fdc9a64500a09d07fab69fa5b6b02326a98ce65085674c66e1",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-15.h",
+      "sha256": "53aef6d9a4a883fddf62df319fccf977445727adc995031c07278394b7b68e24",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-2.h",
+      "sha256": "d0ed06f0fb47da4d5413d5489e41c85ba1c9122f33cd2c86211d8552c0271cb1",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-3.h",
+      "sha256": "2bd9a2562dbfd5d275ab0cd2a96f811baf7fef34077d16866dd35852d96e48b7",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-4.h",
+      "sha256": "99e810f3ee0256606d4423cf3f59639e95dd97022083f670ab0705ca95c5b873",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-5.h",
+      "sha256": "02a5a6125b67732575c8c27365ffd73b36be3f3958c9180b858f06baf9dfd1f2",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-6.h",
+      "sha256": "54ecc3225049c65f47d02a70ade86d1a717453a34da8402204534aab99ddd1a1",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-7.h",
+      "sha256": "8fb14e7f780bf19da1c42a23dae237583a0aaf992e0d8f02253810cb13cb712a",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-8.h",
+      "sha256": "22636928a8547be9100304f42a95c0ed9f9a3c0e0e2117e460a0e96aaba8819d",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_-9.h",
+      "sha256": "9805ca250e2d05ced37f9aaec8a6a26942dd473aecceddffb796ae38ad222a69",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_0.h",
+      "sha256": "b2075d07f9a230a8bc7cc78e026977e59ae3d3883844bd97c090c4f2eca9eee9",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_1.h",
+      "sha256": "b84fc25e534335270e5dea1a171fdfc6471245fead6951303c5c9451f206525b",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_10.h",
+      "sha256": "e5d24efa056fd43fe474aad31a525e427ecabaca37e6798e60d51c37de7f4633",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_11.h",
+      "sha256": "e5e825d3bc66a32d7c4f9f2a6bb5a1a3c0f81c361f7fd040f610ee436e66ddfe",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_12.h",
+      "sha256": "3e20122359aaed0a9c5c6906af4c085707687d465557ddc674dd40eb78a6947d",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_13.h",
+      "sha256": "47ab55637292106c88d224ce4257f19217eda2bc0bdc7e11155c3f50d531806a",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_14.h",
+      "sha256": "5c8695cb87f7c46047884375698715e1102d518efd15d17efc945b1822490e75",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_15.h",
+      "sha256": "6c72a4c63339d6ce08694ced1c18c6633bc24b39bc94a1fac0ea1d9694b0faca",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_2.h",
+      "sha256": "899d8fb5340bfc1c3d038b372204c2b50f44b14428b894d7b20448d985eaa850",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_3.h",
+      "sha256": "f32aae275937c0ea06ef5e46248dc7c78d67c88171a72ef42ffb0fcfe6259f3d",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_4.h",
+      "sha256": "b47835fd1a24feee63500cf550511fd286ec67ff74ba1adf42b30262f4e03620",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_5.h",
+      "sha256": "c40f9c589c097580ad1d6f5e4039c8cf32feb33ed7b1508a7eb8a9f91a8def1d",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_6.h",
+      "sha256": "45be8ac72f5452a17f16d1ea45b72822246d2b281a634919c9906d9384954b3d",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_7.h",
+      "sha256": "50ec62c53a3680f0fa4636176c826d64268444cea70d64ab42a33169a3e9d440",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_8.h",
+      "sha256": "0e2dff8c55dfdee04b5252adb3502dda26f894949ab5720d3ad52a78d3a6b92e",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_bahtinov_9.h",
+      "sha256": "cc07da49f76a3f5da03701779f4e2dc479b6232d90b08b2bbb108dd0c307b99a",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.c",
+      "sha256": "071f302cb51540806e6f3fd55c3288fe9cdd59c78f28b9b14ac83c38af76fad9",
+      "classification": "literal_data_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "data_contract_reviewed",
+      "contract_or_reason": "Firstparty dimensions/declarations and include adapter for literal mono/RGB/Bahtinov fixtures (1600x1200; Bahtinov 500x500, range +/-15); payload headers are data, not executable algorithms."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.h",
+      "sha256": "ba33df2e9f67ba6042aa04cc304b47380e350e7af08bf86936ebe57fb85250bd",
+      "classification": "literal_data_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "data_contract_reviewed",
+      "contract_or_reason": "Firstparty dimensions/declarations and include adapter for literal mono/RGB/Bahtinov fixtures (1600x1200; Bahtinov 500x500, range +/-15); payload headers are data, not executable algorithms."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_mono.h",
+      "sha256": "e9cd3d3ab20d6a6a38bda9714ce16ea4f2a049e18a8702307e7a6449eaff084e",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator_rgb.h",
+      "sha256": "8f93e8a500fd42aa60ae5dfcff1416596d8d8f3b773277ece4d1dd227d038d9f",
+      "classification": "literal_image_data",
+      "source_owner": "CCD simulator sample image tables",
+      "status": "excluded_literal_data",
+      "contract_or_reason": "Literal image/pixel data, no independently executable behavior; consumer/storage shapes reviewed."
+    },
+    {
+      "path": "indigo_drivers/ccd_ssag/indigo_ccd_ssag_firmware.h",
+      "sha256": "0e70836e20163c716f9511849a16171435d1bfc27e86ec1e5c634e65d9f3ac91",
+      "classification": "firmware_payload",
+      "source_owner": "DSI/SSAG firmware data",
+      "status": "excluded_data_payload",
+      "contract_or_reason": "Firmware byte table consumed by existing loader; loader functional contract reviewed, no firmware execution/disassembly."
+    },
+    {
+      "path": "indigo_drivers/ccd_ssg/indigo_ccd_ssg_main.c",
+      "sha256": "fd414be98b676fb2bdecd6e3ed11cc2144e47c0e0b4d7489f38683cef529aa57",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_svb2/indigo_ccd_svb2_main.c",
+      "sha256": "2904e98c676e6ac47dcf4270163efd6cb7e4b3e7112c9d10f917765e98173930",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_touptek/indigo_ccd_touptek_main.c",
+      "sha256": "656092d0cff31a6fa997f5578fc7020f78e1c087c3db64d8f8d93592a9c18fb8",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/indigo_ccd_uvc_libuvc.c",
+      "sha256": "b5ed893be4d6808789812f08b1a87fb4fdf238293560c1f30370207b3ffb9c87",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO wrapper around imported Ken Tossell libuvc",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Firstparty uvc_sdk_open/close forwards to imported uvc_open/close; header macro renaming separates SDK functions from generated driver lifecycle names."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/indigo_ccd_uvc_libuvc.h",
+      "sha256": "6e1aacfb657e37935537e9eb94d09e78faccaa4b7122dfb3e79836d8526864fd",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO wrapper around imported Ken Tossell libuvc",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Firstparty uvc_sdk_open/close forwards to imported uvc_open/close; header macro renaming separates SDK functions from generated driver lifecycle names."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc.h",
+      "sha256": "4dc75213c20a0802722c45e8cb0fb7ad52a39c3b6dd50327bb802341bf421d99",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_config.h",
+      "sha256": "b85b2a410b7b1a5b9299e6a7bde9ce502fcc3a6165a9a1f60b62eb68bb087d9d",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_ctrl.c",
+      "sha256": "2eaa2bb4b9f5efcfcb6d7d2fbdfc69bc1449bc9219a017d29c3ea4a0f6407203",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_ctrl_gen.c",
+      "sha256": "6bae41776543c6475025ac4823064b0b56c8585925c4586e54dfb900b298afc7",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_device.c",
+      "sha256": "a7709707de080f09c4e8a0ce0d4eae8a91c6d3542b15d041788aa16209b4c2dc",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_diag.c",
+      "sha256": "ac524305c165623caed6e856a840cc6eac47eb998466bc10c247dc72812ae8c9",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_frame.c",
+      "sha256": "6d5e5b12cf584a96a53fae5b60aee1e4cd9990f9efc124b538118959b8c61326",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_frame_mjpeg.c",
+      "sha256": "bb87b71a9952dd0d81773e000783b4a8fb9085af1494370d121c28b48b08ec18",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_init.c",
+      "sha256": "0969435cee6942f13983c10c6691dae65b8f13027010c18cd591d3e40722f5a9",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_internal.h",
+      "sha256": "8a2d8cfa71c0ad502a1ec5eb6abe267c1ee26f7cd1e8d44f53877f118f02dc68",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_misc.c",
+      "sha256": "2bb49ea467af99a2c737ebbccbf6c3a1c13a52d308c338a320599514b6f9727e",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/libuvc_stream.c",
+      "sha256": "21d6191f14417a56280356584537f4a8dbeb858552f92c510eae46c3cd85cdfb",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/ccd_uvc/utlist.h",
+      "sha256": "c7a9d29f5c988d2faaa08523df9d4b6a5c71a3dc278b1b1fe2e54b3e8232b403",
+      "classification": "vendor_dependency",
+      "source_owner": "libuvc (Ken Tossell et al., BSD), utlist (Troy Hanson)",
+      "status": "excluded_vendor",
+      "contract_or_reason": "Bundled libuvc dependency with retained upstream provenance, not the INDIGO SDK shim."
+    },
+    {
+      "path": "indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.ino",
+      "sha256": "49e2a6ce8d6c08a5cb33256111cf1eb8658cabedce8190ef9695d133f37eb902",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/dome_nexdome/dome_nexdome_simulator/dome_nexdome_simulator.ino",
+      "sha256": "b939c346b580fcd69f038338ccdcfb75aea3052fb8098aac3d6fec1c43469e09",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.ino",
+      "sha256": "019779a5b4a6f42bddc0dd4e823313bf46de2436847a7379c63aa7a3667830b9",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/dome_skyroof/dome_skyroof_simulator/dome_skyroof_simulator.ino",
+      "sha256": "923a8f3f7c5bc4f56a71aa606455204ef2e32d816f0e17792414171df52b27bd",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/dome_talon6ror/dome_talon6ror_simulator/dome_talon6ror_simulator.ino",
+      "sha256": "5169d471626f8cbdf2e0ae81d9af4cc5a64806b097d659b619f958601dc88153",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_askar/focuser_askar_simulator/focuser_askar_simulator.c",
+      "sha256": "c05f1f7240b8c3561ba97cec6002f80970647f8e2aecf29e53639f176c46b463",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "F...# framing; integer parsing and firmware capability gates; bounded target/backlash and background position; silent/malformed/close/partial/overlong/stall controls; ready-file and thread join."
+    },
+    {
+      "path": "indigo_drivers/focuser_astromechanics/focuser_astromechanics_simulator/focuser_astromechanics_simulator.c",
+      "sha256": "3b5713cc6c59b27db803b34ff27ec5bd1793f089bd5faaffda4dffdf56321e55",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "P/M/A/V position, target, abort and identity; serial_motion and 0..9999 clamp; line framing, malformed/split/overlong cases and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_astromechanics/focuser_astromechanics_simulator/focuser_astromechanics_simulator.ino",
+      "sha256": "c9a98b6cb6df201541d51716b23cbe915cbbbc328849a53c2cee21e26e2598eb",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.c",
+      "sha256": "0e4056bbd98d32c267b219ad8794bffb368dc9d5b3435e58920a4f31eb3381e6",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "V/A/T/P/I identity/status/temp/position and G/M/W/H move/sync/halt; stored settings, serial_motion, fault profiles, ready-file and close."
+    },
+    {
+      "path": "indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.ino",
+      "sha256": "598cb8a79c7643dc9005db79390a50cce96c7dc13420e402579516db5e6b53e6",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_dsd/focuser_dsd_simulator/focuser_dsd_simulator.c",
+      "sha256": "f2d746c5fffdc6f37e84d5847c65276fda8c026c35124a6ea2947d67a8863367",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Bracket command grammar; AF model capabilities, GFRM/GPOS/GMOV/GTMC queries, STRG/SMOV/STOP/SPOS; bounds/step-mode checks, motion and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_efa/focuser_efa_simulator/focuser_efa_simulator.c",
+      "sha256": "bd8d2aa4da2b6c63006fa13a7b0bd83d24ccd3c7aff2c41d5d68e7346c27aef2",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "0x3B declared-length binary frames, source/destination/checksum, position/move/calibration state; malformed frame faults, bounded receive frame and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_efa/focuser_efa_simulator/focuser_efa_simulator.ino",
+      "sha256": "93669d6726b5852ecf8536f34f1711460848f82e307e13f53e35ac2af37c85a6",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c",
+      "sha256": "5568a155a3aeb8dbc176229c2d0346e57c76bba50f87dc107a7473878850622b",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "F#/FA identity/status and FN/FM/FG/FH motion/stop, FT/FI/FV/FD/SP/BL settings; threaded position, partial/split/stall controls and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_focusdreampro/focuser_focusdreampro_simulator/focuser_focusdreampro_simulator.c",
+      "sha256": "32967a51b4aad6dbf1b295553c698b3450f54a6115d10f7a188c1f06f9e56ee4",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Identity/temp/status/position queries, X/S/D settings, M/R/H move/sync/stop; timed step motion, bounds/failure profiles and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_ioptron/focuser_ioptron_simulator/focuser_ioptron_simulator.c",
+      "sha256": "55043a90892e4f0609e206ec0067f3ac8f393ff8b77097292690b57dc2d81e43",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Colon commands, position/start/abort semantics and clamped 0..99999 position; model profiles, bounded line/overlong cases and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_lacerta/focuser_lacerta_simulator/focuser_lacerta_simulator.c",
+      "sha256": "21661ce1a0901386aca3789ebd6285caea72e098a493d3ef4beab0c08abb333d",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Colon command/value parser; position/max/speed/temp and serial_motion; clamp/stop, bounded line and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_lakeside/focuser_lakeside_simulator/focuser_lakeside_simulator.c",
+      "sha256": "06165274b727aec943eeae9d80504228265bfb4105bec2971f5530bddcd593bf",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Query/settings and CI/CO relative moves/CH halt; slope banks and unsigned parsing; motion/readback faults and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_lakeside/focuser_lakeside_simulator/focuser_lakeside_simulator.ino",
+      "sha256": "17a2ab62d891e64950ff658e505a5bda6920f8456beaa3473e76fa7746fa9cef",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/focuser_lunatico_simulator.c",
+      "sha256": "8f1a1b70a8ef50b98d436d258183e39ba9b425ad7dfa85c638c2c288bf470805",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Shared SLP simulator implementation in lunatico_simulator_common.h; wrapper selects executable role and serial/UDP build mode."
+    },
+    {
+      "path": "indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/lunatico_simulator_common.h",
+      "sha256": "aa73ee34600f89efbbff0ffadc804f7c2c39465cf4f1d637c79d86714b6a5c79",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Firstparty SLP implementation despite AI-generation comment: three-port serial_motion, echo/status replies, version profiles, move/stop/sync/limits/speed/motor/power/temp/digital pins, control/event files and shared simulator ready-file delegate. Ports/arguments checked before dispatch."
+    },
+    {
+      "path": "indigo_drivers/focuser_mjkzz/focuser_mjkzz_simulator/focuser_mjkzz_simulator.c",
+      "sha256": "0d8517a98d7ff496a507f81c5ae948d3bb96816c35f947c531e210abcfa7377d",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Address/index/checksum binary messages with signed 32-bit values; registers/speed/move/stop, malformed cases and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_mjkzz/focuser_mjkzz_simulator/focuser_mjkzz_simulator.ino",
+      "sha256": "f106a15e057e7baf2cd55eb4d9794b2b9c9cbf33e1d04453f52c88f2729209a9",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_mjkzz/mjkzz_def.h",
+      "sha256": "86c8026c39cabb5e5f45631b0cf83f0c7a91594eb3c45ee12f116259dfcf9d78",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Shared firstparty command/register constants and binary address/command/index/four-byte-value/checksum message declaration; matched simulator command dispatch."
+    },
+    {
+      "path": "indigo_drivers/focuser_moonlite/focuser_moonlite_simulator/focuser_moonlite_simulator.c",
+      "sha256": "aa708864409725bed44fc9f5ccf830d5c45ad727cbe58ac46542d02751d092c4",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Fixed/hex command modes; two motor positions/targets/speeds/start/stop/sync; length checks, receive overflow reset and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_moonlite/focuser_moonlite_simulator/focuser_moonlite_simulator.ino",
+      "sha256": "de72bef691a2ef20e0c8bd596b5ee1d710de701fd1a45f8eb4bd24356f59b80b",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_mypro2/focuser_mypro2_simulator/focuser_mypro2_simulator.c",
+      "sha256": "1febe8d356abf9be5cfd5911e2b0b3e947fe75f1b22b1bff71f7090596655798",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Numeric command identity/position/max/settings/move/stop/sync and temperature-compensation state; serial_motion, framing and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_nfocus/focuser_nfocus_simulator/focuser_nfocus_simulator.c",
+      "sha256": "0113e296da9df55cdb77249e437217eabd17c32b646db27948d41313caea2ca6",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "ACK/status, fixed query and variable setting/move frame lengths; stop :F11000#, serial_motion, fault cases and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_nfocus/focuser_nfocus_simulator/focuser_nfocus_simulator.ino",
+      "sha256": "85b1bbb535e152d26d1c5f73537a651f8b5c248615a0ec38beec9d4b0ab0efe1",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_nstep/focuser_nstep_simulator/focuser_nstep_simulator.c",
+      "sha256": "6702f2c9ae08e5a0936d9bc66807300e9791ea6dae1db2ddb657c0e09632c271",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "ACK/status and temperature-compensation settings; stop :F10000#, stored position/motion, linger/implausible/stall controls and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_nstep/focuser_nstep_simulator/focuser_nstep_simulator.ino",
+      "sha256": "9aa144d714a08c73429881bbc348e4d2c691e9d35f71d0fce08b6cc67d2d0c3b",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_optec/focuser_optec_simulator/focuser_optec_simulator.c",
+      "sha256": "a51936fb26160748f96431fc29170c0763c3a5acb1c087832bebb3c7a80343a1",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Mode/wakeup/quit, position/temp/slope-bank commands; FI/FO moves, center/sleep/home; fixed frames/digits, motion and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_optec/focuser_optec_simulator/focuser_optec_simulator.ino",
+      "sha256": "1fee7fc96e32d8c1f3de82b5ea6513815e7d572c15eb2290d262951a83c7e02b",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c",
+      "sha256": "78b8c1742c704fcf71490d6c6f6d7fba0de694a4a24b4aec1eed403f835fee6e",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Two axes plus hub and model capacity/home requirements; status/config and <F...> dispatch; serial_motion, controls and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c",
+      "sha256": "e07090d9e42c7c51f01f42184331b24cf5a2c0ca06476e75107a46474d65cc6c",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Balanced JSON frames, SestoSenso3/Esatto profiles, focuser/rotator motions and presets/name/status; set/stop/calibration, controls and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.ino",
+      "sha256": "d32090c37ad94150dbde1ed3730ab004247eccbb3442e026c470c7ba6f8ac51c",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_prodigy/focuser_prodigy_simulator/focuser_prodigy_simulator.c",
+      "sha256": "8f25f18c11acb1859ba82b6d9e6f84eb0e06985c6c44b24b802966bc2b6647ff",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Identity/status/settings plus S/G/M/W/H motion/sync/stop; serial_motion and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_prodigy/focuser_prodigy_simulator/focuser_prodigy_simulator.ino",
+      "sha256": "4640efb65b80052c319be06b1638484ae80813721611373c7a1c138bc0eabcc3",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c",
+      "sha256": "cd6deeb47ddbe4c1a2d25138d6a062983a883046fdfd4fe71284b6dca6005d18",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Strict JSON command ID/integer handling, position/settings, serial_motion/stop, frame timeout/overflow and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.c",
+      "sha256": "2607a7a7e0083e4f28b5667f34c38cb56dc3d4818683c78e032e6738f7354196",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Nine-byte F/checksum/digit framing; power/config, start/stop/sync and completion; malformed/partial faults and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.ino",
+      "sha256": "7c4843441e5726d1baf866f96fbe0dc7b95d42a554d58332e8a59e9e2072bfff",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.c",
+      "sha256": "142509722e8bd4f11a9eac0591feb4823c8a9292dab3e5d064ce28732ba0b016",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "$BS line/optional CRC, numeric/settings/tempcomp and motion/reset controls; framed dispatch and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.ino",
+      "sha256": "140f91ad1a0e2ab212ccf3c1ea47c3b4e67e901a229e7aa1f86ff822bc948416",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/focuser_usbv3/focuser_usbv3_simulator/focuser_usbv3_simulator.c",
+      "sha256": "24590200925a8b004bf68fe0fb30e465f8d0c693a8335b61441e6aa41c9f8a06",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Fixed six-byte identity/position/temp/status; manual/autocomp, motor limits, relative/absolute moves and FQUIT stop; motion and ready-file."
+    },
+    {
+      "path": "indigo_drivers/focuser_wemacro/focuser_wemacro_simulator/focuser_wemacro_simulator.c",
+      "sha256": "bc19fb8b85dd04859262a03eb6ad326e1bb4f14660bb7a9c77a2683a22e28717",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Twelve-byte A55A/CRC16 frames; rail/batch/shutter phases, move duration/completion, soft/hard stop, partial timeout and ready-file."
+    },
+    {
+      "path": "indigo_drivers/gps_gpsd/gps_gpsd_simulator/gps_gpsd_simulator.c",
+      "sha256": "b83ddd72fdfbf9c397f577512410fd34cee0c14e321aa7970f5bc4800829387a",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Loopback clients and VERSION/TPV/SKY/DEVICE JSON watch responses; buffered clients, state controls and ready endpoint/close."
+    },
+    {
+      "path": "indigo_drivers/gps_nmea/gps_nmea_simulator/gps_nmea_simulator.c",
+      "sha256": "fda4e7711e14ac8ac766142c25983ba136013aec35f8e60b8eff077e89622bb4",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Checksummed NMEA cycle, banner/no-fix profiles, PTY and ready-file."
+    },
+    {
+      "path": "indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c",
+      "sha256": "b2edfa618796e45d298fe101d760f29e820a16dd6d13cb057c95b26c56cad350",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Bounded :Mg direction/duration framing; per-axis pulse deadlines with ON/OFF event recording and PTY ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/common.h",
+      "sha256": "b70596e7406910dc8abaf127475385eb9f866918d979597b3fdc044987e3e465",
+      "classification": "manual_arduino_support",
+      "source_owner": "INDIGO repository source",
+      "status": "manual_firmware_support_reviewed",
+      "contract_or_reason": "Firstparty Arduino support: millis-driven RA/Dec motion, tracking/manual rates, park/home completion and coordinate parse/format helpers; no PTY-ready-file role, build/flash/hardware not performed. Repeated copies checked by identity below."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_1.0_simulator/common.h",
+      "sha256": "b70596e7406910dc8abaf127475385eb9f866918d979597b3fdc044987e3e465",
+      "classification": "manual_arduino_support",
+      "source_owner": "INDIGO repository source",
+      "status": "manual_firmware_support_reviewed",
+      "contract_or_reason": "Firstparty Arduino support: millis-driven RA/Dec motion, tracking/manual rates, park/home completion and coordinate parse/format helpers; no PTY-ready-file role, build/flash/hardware not performed. Repeated copies checked by identity below."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_1.0_simulator/mount_ioptron_1.0_simulator.ino",
+      "sha256": "251a6ec5be8880984cb9b12a0330e334528c0cb4b77e66e91f078b2836f2184f",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_2.0_simulator/common.h",
+      "sha256": "b70596e7406910dc8abaf127475385eb9f866918d979597b3fdc044987e3e465",
+      "classification": "manual_arduino_support",
+      "source_owner": "INDIGO repository source",
+      "status": "manual_firmware_support_reviewed",
+      "contract_or_reason": "Firstparty Arduino support: millis-driven RA/Dec motion, tracking/manual rates, park/home completion and coordinate parse/format helpers; no PTY-ready-file role, build/flash/hardware not performed. Repeated copies checked by identity below."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_2.0_simulator/mount_ioptron_2.0_simulator.ino",
+      "sha256": "250c0c7a3281340858c42748a022c01cf13e35e4a8a71138724b102614dfebef",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_2.5_simulator/common.h",
+      "sha256": "b70596e7406910dc8abaf127475385eb9f866918d979597b3fdc044987e3e465",
+      "classification": "manual_arduino_support",
+      "source_owner": "INDIGO repository source",
+      "status": "manual_firmware_support_reviewed",
+      "contract_or_reason": "Firstparty Arduino support: millis-driven RA/Dec motion, tracking/manual rates, park/home completion and coordinate parse/format helpers; no PTY-ready-file role, build/flash/hardware not performed. Repeated copies checked by identity below."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_2.5_simulator/mount_ioptron_2.5_simulator.ino",
+      "sha256": "c9abc899e4e791ec1615519908ea96769487bf8219ea5f1e34543037a152d72f",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_3.0_simulator/common.h",
+      "sha256": "b70596e7406910dc8abaf127475385eb9f866918d979597b3fdc044987e3e465",
+      "classification": "manual_arduino_support",
+      "source_owner": "INDIGO repository source",
+      "status": "manual_firmware_support_reviewed",
+      "contract_or_reason": "Firstparty Arduino support: millis-driven RA/Dec motion, tracking/manual rates, park/home completion and coordinate parse/format helpers; no PTY-ready-file role, build/flash/hardware not performed. Repeated copies checked by identity below."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_3.0_simulator/mount_ioptron_3.0_simulator.ino",
+      "sha256": "42a6c83d96ef25225eb7568f09d2beff1b22bf4c01d3e17d2823f9fca030b294",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_8406_simulator/common.h",
+      "sha256": "b70596e7406910dc8abaf127475385eb9f866918d979597b3fdc044987e3e465",
+      "classification": "manual_arduino_support",
+      "source_owner": "INDIGO repository source",
+      "status": "manual_firmware_support_reviewed",
+      "contract_or_reason": "Firstparty Arduino support: millis-driven RA/Dec motion, tracking/manual rates, park/home completion and coordinate parse/format helpers; no PTY-ready-file role, build/flash/hardware not performed. Repeated copies checked by identity below."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_8406_simulator/mount_ioptron_8406_simulator.ino",
+      "sha256": "c4b615cbb33a2107db140a29216747592a4cb1cb5e308476f96617576884b4e8",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_8407_simulator/common.h",
+      "sha256": "b70596e7406910dc8abaf127475385eb9f866918d979597b3fdc044987e3e465",
+      "classification": "manual_arduino_support",
+      "source_owner": "INDIGO repository source",
+      "status": "manual_firmware_support_reviewed",
+      "contract_or_reason": "Firstparty Arduino support: millis-driven RA/Dec motion, tracking/manual rates, park/home completion and coordinate parse/format helpers; no PTY-ready-file role, build/flash/hardware not performed. Repeated copies checked by identity below."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_8407_simulator/mount_ioptron_8407_simulator.ino",
+      "sha256": "c9ad84f1918a4c42cda9a9806c1ae966b2746254ee4dc532033faba9f281df5a",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_simulator.c",
+      "sha256": "d1b311ac94e23a442199746618d11e5e6cfaaf9f33ce6827265e5b3dc99f23dc",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "8406/8407/0100/0200/0205/0300 protocol profiles; strict digits/coordinates, tracking/manual/guide overlap, date/site, slew/sync/park/home/abort; bounded stream faults and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c",
+      "sha256": "76573848026f5c2b571e25b6de35198e555ef498fa8822b755d553a00f3549e8",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Sixteen model profiles and response quirks; RA/Dec format, target/goto/sync/manual/guide/park/home/tracking/focuser, motion/clock, bounded stream/faults and ready-file. Profile tables reviewed proportionally, no model/hardware execution claim."
+    },
+    {
+      "path": "indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.ino",
+      "sha256": "c4d512b4412f71a163842103348e2c4456f47bddef6d072eb68ebf1a661c62f2",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.c",
+      "sha256": "55c1608c9dd44f4eabc2d92968910533759133429358391768aaf92b0cf4fbdd",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Per-opcode binary command lengths, HC/model dialect and passthrough axes; coordinate/motion/status handling and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.ino",
+      "sha256": "1c24f7082973cf946a7142e7d3833171592aa91fb7151ad045769fc53c84eec6",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.c",
+      "sha256": "22a8642d2d6c2afc9ba01027e0d0e275f3c294e2bbfe12437f5aff88d33024b7",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "STX/length/source/destination/checksum packets; axis position/goto/manual/guide/status/version, exact receive lengths, PTY/network modes and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.ino",
+      "sha256": "831cae0081a0bdfd1e5249b38d206cfe93eab10138304970b6f04a86c5810ed2",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_pmc8/mount_pmc8_simulator/mount_pmc8_simulator.c",
+      "sha256": "c74908420d38e473f13ec9522dc9e88eef293e88fb8b38f35012f6bdf0ab5122",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "ES...! axis commands, signed counts and tracking/manual/guide/target duration; config/version, TCP/UDP modes, faults and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.c",
+      "sha256": "937542ea0e4807343c4e64ee6872a54538b0a4405add743394ef8eeb23678798",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "LX-style coordinates/date/site/tracking, pulse/manual/goto/park/home; completion/stop-all, bounded framing/faults and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.ino",
+      "sha256": "912d15a01812c4ba658daaabc3adad575cac10a4b3c0ba3189744ee42e8904ed",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_starbook/mount_starbook_simulator/mount_starbook_simulator.c",
+      "sha256": "ce57769e14ed19a3243cb01b722bca42fde40f9df9a09a785edea0c4e653c22d",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "HTTP path/query dispatch, place/time/target/status and goto advancement; loopback listener, drop/fault control and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.c",
+      "sha256": "dc5ba6c08e50845f2a7f6c989aee3ece78c1fa6ddea7949ac013a480e74a33c9",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "24-bit little-hex axis protocol; initialized/rate/goto/stop lag/brakes/encoder/home/PPEC state; bounded socket/PTY dispatch, motion thread join and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.ino",
+      "sha256": "435f179d9c52b38618fefd29ea47fc5e3eef780fd3e3059f645fc5d7e00a0975",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c",
+      "sha256": "80896e6a4de3bf18fe0dff387b07678d994dd2d5d79d16bc967c3ccfc5b001ee",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "ASCII plus two-byte M manual commands; coordinate parsing, slew and guide/stop state; bounded receive/faults and ready-file."
+    },
+    {
+      "path": "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino",
+      "sha256": "45fc6ac3a38088f26ce6a6fb49bc5fdc7144c081aaac7c26f9ed436225cffb78",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/polaralign_mlastro/polaralign_mlastro_simulator/polaralign_mlastro_simulator.c",
+      "sha256": "9d40e8090b311278257e66ec0d3860f0b9d53350018b8c552d7ca2b40e806e7d",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Legacy/current handshake, motor capabilities, heartbeat/log push, az/alt motion, soft deceleration versus hard stop; thread join, controls and ready-file."
+    },
+    {
+      "path": "indigo_drivers/rotator_falcon/rotator_falcon_simulator/rotator_falcon_simulator.c",
+      "sha256": "ce0268ad9298d3771325b858839494fc5855f9d54b8e6f62ae98efe43570f119",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Identity/model/status and sync/move/stop/direction/firmware; threaded position and ready-file."
+    },
+    {
+      "path": "indigo_drivers/rotator_lunatico/rotator_lunatico_simulator/rotator_lunatico_simulator.c",
+      "sha256": "bc576452dd0a1dd74bf559f71a2b940a15daff2408f8b58fa62d10331edbba80",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Thin wrapper reuses focuser_lunatico shared SLP parser, three-port state/motion, limits/config and fault controls; no duplicate implementation."
+    },
+    {
+      "path": "indigo_drivers/rotator_optec/rotator_optec_simulator/rotator_optec_simulator.c",
+      "sha256": "071a4339f29d4c2f960ab6b7fa34fba12f874ba0f0c4931cf6e552abd6de4145",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Wake/link/home/position/fixed angle commands, homing/move completion, steps per degree and stall/drop faults; frame lengths and ready-file."
+    },
+    {
+      "path": "indigo_drivers/rotator_optec/rotator_optec_simulator/rotator_optec_simulator.ino",
+      "sha256": "09bb23d4b46acc4e87d0936aba5fe35047f3b981321805e5ae1aa2e08e140906",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/rotator_wa/rotator_wa_simulator/rotator_wa_simulator.c",
+      "sha256": "dcd0cf6e3aff6af45c4cddd99b72d8388333ffa31373d3f5d058dce4ec51279a",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Status/settings and asynchronous move/completion, gap and ignored-stop controls; serial_motion, feedback and ready-file."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_main.c",
+      "sha256": "3b800c51f750f0ed38c8cdb0da606812ab32faaf99bd5e903122e607fcecdfbb",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator.c",
+      "sha256": "1b8fba1d5027331979cdd98a9c5c58ffca2dfe44c1d1d65adbb4ab3ccc162623",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Firstparty simulator API tables/types and shared framework: typed parameters/replies, member capability/version/connection routing, simulated clock/motion and image serialization; HTTP/discovery start, atomic ready-file rename, mutex-serialized requests, connection thread shutdown/join and device/log cleanup."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator.h",
+      "sha256": "d03877146444ff079cff195a02828a6bfd5f9d589a5228336c72dc57cf81d911",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Firstparty simulator API tables/types and shared framework: typed parameters/replies, member capability/version/connection routing, simulated clock/motion and image serialization; HTTP/discovery start, atomic ready-file rename, mutex-serialized requests, connection thread shutdown/join and device/log cleanup."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_camera.c",
+      "sha256": "e4cfd030a9d37a8c40b58d2be7a3262a644517a59f4a28b0be3a0392a2215b88",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Default sensor/bin capabilities, exposure->readout->image-ready deadlines; ROI bounds/frame snapshot, stop preserves shortened exposure, abort discards image, pulse deadline and cooler motion."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_covercalibrator.c",
+      "sha256": "a9e6758af63de0631e5ac0d318a88a2953a56ac8137a153a4eecaf81f2d677d8",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Present/capability state, brightness/shutter commands, deadline completion and absent-device errors."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_dome.c",
+      "sha256": "ee479a5d586f8ddb29432f31043303d6490bedf8079adec3e0bb40fe077bd5c7",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Azimuth target/deadline and home/park/slaved capability gates; shutter deadline and state completion."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_filterwheel.c",
+      "sha256": "d4c59c28c8e8629e694db0e394700327abe197e89972dd9de6ed648df014666f",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Eight slot/name/offset defaults; target move deadline and index/moving checks."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_focuser.c",
+      "sha256": "0a57fa1d4927e75b31e54ebc8c009d49e3b433d48751c80c725e57e07974b04e",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Absolute/relative moves, MaxStep/MaxIncrement and legacy TempComp gates; settle/late correction/temperature compensation; Halt clears late work and settles."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_observingconditions.c",
+      "sha256": "5e26b2d71177eddc6e6854e780be11f0e1050cadf98f384a1de4703e968c77e3",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Sensor availability, reset defaults, refresh timestamps/average period and sensor report methods."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_rotator.c",
+      "sha256": "4159b34895ba165e4fe9ea9399fcb52aeaca9499412c488b052cd6f6f13b4c43",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Wrapped/mechanical angles, shortest-path delta, movement deadlines, sync/reverse and halt."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_safetymonitor.c",
+      "sha256": "8bb6f2bd0f850093e6d679bfa3f070317af7f70c8cea029727e11ae89202640e",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Version-dependent connected requirement and IsSafe capability/state."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_switch.c",
+      "sha256": "b63f12270c811b58b88664ce22879ee31d4c7a2cb5f05b3916c9e0e8db94bebb",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Channel defaults/count/ID bounds; synchronous and asynchronous value/state operations and delayed completion."
+    },
+    {
+      "path": "indigo_drivers/system_alpaca/system_alpaca_simulator/system_alpaca_simulator_telescope.c",
+      "sha256": "f5b7d8ae2bfe42e8cf1e04affe716870ef8f21ebadb1f101e396d5a913f9fc74",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Tracking/manual/guide integration, slew/park/home/unpark/flip goals, delayed starts/late busy; axis rate ranges, pulse tracking/overlap guards and AbortSlew stop delay."
+    },
+    {
+      "path": "indigo_drivers/wheel_indigo/wheel_indigo_simulator/wheel_indigo_simulator.c",
+      "sha256": "8279ba03b11613d76da657d4477fb40fa998be620637afbaac779779fe84972a",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "W# identity, WA/WF/WV status and WM slot 1..7/WR/WI home; serial_motion, -1 moving position, no-reply WQ and ready-file."
+    },
+    {
+      "path": "indigo_drivers/wheel_indigo/wheel_indigo_simulator/wheel_indigo_simulator.ino",
+      "sha256": "928b2fe316b6fff42e477bad5a9bcef346a0be6848ebc002615e1a04d5ae3e61",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/wheel_optec/wheel_optec_simulator/wheel_optec_simulator.c",
+      "sha256": "621903884171dd2c535881ade41022fc4faec1564d2778ea2cb36d809e442c96",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Fixed six-byte WSMODE/readiness/exit/home/identify/position/goto; slot validation, goto-error and reply framing, ready-file."
+    },
+    {
+      "path": "indigo_drivers/wheel_optec/wheel_optec_simulator/wheel_optec_simulator.ino",
+      "sha256": "760795a59dc073cc61895e3423d0e9868bdd38c75c7d87f7185ea5dda4523a73",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/wheel_qhy/wheel_qhy_simulator/wheel_qhy_simulator.c",
+      "sha256": "45138b332bfaf7acbbafcb62b4df478b9b8581078fa08207e5a0f7afebd95f3e",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "CFW1/2/3 NOW/VRS/MXP and hex slot commands; model-dependent same-slot acknowledgments, delayed blocking-firmware reply and ready-file."
+    },
+    {
+      "path": "indigo_drivers/wheel_qhy/wheel_qhy_simulator/wheel_qhy_simulator.ino",
+      "sha256": "dc8b639bb6a14b33696158b5f1d2641718a3fdaf2e3a57989dec13c5350e3c7c",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/wheel_quantum/wheel_quantum_simulator/wheel_quantum_simulator.c",
+      "sha256": "ff35b346e932bd1a5a353f865a98da327dce2ea612481a0823efbc936964cf2a",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "SN and parsed G slot; bounded intermediate P-slot updates and ready-file."
+    },
+    {
+      "path": "indigo_drivers/wheel_quantum/wheel_quantum_simulator/wheel_quantum_simulator.ino",
+      "sha256": "3938ba670007d52822a374a2febf6fea5188bcd2cd37f6b0157cf07a8e3dd741",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c",
+      "sha256": "3dc3cea5fe3efc93bd619eb2f2b9b037c5e4015c26895ad18db5d4e92f0bb78e",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Four-byte A5 command/value/checksum; target, moving-status zero, home reset and per-query step advancement, ready-file."
+    },
+    {
+      "path": "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.ino",
+      "sha256": "aeea760553ebf84eb6d18f0597fbb8a5dfc5890d0a57f5d5585e93c64b541822",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_drivers/wheel_xagyl/wheel_xagyl_simulator/wheel_xagyl_simulator.c",
+      "sha256": "b92c195831979dd1c1fc5ac7087110e2132b511204fdd08c0c9b0175024e09bb",
+      "classification": "maintained_helper",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Two-byte Ix queries/G slot range; position reported before advance, firmware/serial/slot-count responses and ready-file."
+    },
+    {
+      "path": "indigo_drivers/wheel_xagyl/wheel_xagyl_simulator/wheel_xagyl_simulator.ino",
+      "sha256": "0636b508a2ca27997700f81d8f0f8b0d7c70b8dda82f223a79c2561885dde9a8",
+      "classification": "manual_arduino_reference",
+      "source_owner": "INDIGO repository source",
+      "status": "delegated_to_manual_helper_review",
+      "contract_or_reason": "Read-only manual/JavaScript/script contract review assigned to independent core-B helper reviewer; see helper-manual-review.md and helper-manual-coverage.json. Not classified obsolete or executed."
+    },
+    {
+      "path": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.c",
+      "sha256": "677a698cc15e02342350c4b69641f2306b1b3339938a370c92ece1315d7434b3",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.h",
+      "sha256": "d67c2b632a5bf3e3d878113e21ba4ef0a2513760698822e3e1f19f2edf8fb073",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair_main.c",
+      "sha256": "a35fbb295e33a93f5d650d137b151bdccca77ed704c4b9b23e1ab4d06afeb9bf",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair_main.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c",
+      "sha256": "f0162aba825ac1828242fcc8b5399de86c8773f0ea6de205eb87752f5bbaf54f",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.h",
+      "sha256": "a387f1d766b9fa5c753d493adfcecb3682e99338c88a261d10b4de9d978cfa29",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio_main.c",
+      "sha256": "b3fdce78285fd21ea95cef638003be9500f33f55761194b9f5f52f78806a9cdd",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio_main.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.c",
+      "sha256": "2dc8ae8f7fd2713cf41ee0c50dd994b3b55c5c9d230449ccd2ef1656cdcd05c9",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.h",
+      "sha256": "03abcbc36591bc9b2a14c9592c026bc0f9403a1493d90d9bf51fcaa595d5525d",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2_main.c",
+      "sha256": "66f638034b627caf2ef05bb24dae7be4f91ddc5ac19a57cc49ddb33a6753e778",
+      "classification": "generated_driver_output",
+      "source_owner": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2_main.driver",
+      "status": "excluded_generated_output",
+      "contract_or_reason": "Generated from adjacent .driver source already covered in driver ledger; retained regeneration evidence owns reproducibility."
+    },
+    {
+      "path": "indigo_optional_drivers/ccd_andor/indigo_ccd_andor_main.c",
+      "sha256": "4ed3ff42aa9db3b3d43c67ab40ddbe07530aaf0b7ad2efda726ed649dfa49c88",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    },
+    {
+      "path": "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi_main.c",
+      "sha256": "0dd5ab4580565e4259846a1563d12f791ee8a9f355dec8a4a683af97a8e21ae9",
+      "classification": "executable_entry_adapter",
+      "source_owner": "INDIGO repository source",
+      "status": "functional_contract_reviewed",
+      "contract_or_reason": "Standalone INDIGO XML adapter: starts bus, initializes and attaches driver, parses stdin requests, invokes shutdown and stops bus. Reviewed BLOB mode options and Alpaca SIGPIPE exception; file without generator provenance is retained firstparty adapter, not excluded as generated."
+    }
+  ],
+  "method": "Read-only per-functional-component source/call-path review and exact-file provenance/identity reconciliation; no blanket every-line or runtime/hardware certification.",
+  "remaining_in_assigned_c_scope": [],
+  "status_counts": {
+    "delegated_to_manual_helper_review": 52,
+    "excluded_vendor": 16,
+    "functional_contract_reviewed": 83,
+    "excluded_data_payload": 2,
+    "excluded_generated_output": 12,
+    "excluded_literal_data": 33,
+    "data_contract_reviewed": 2,
+    "manual_firmware_support_reviewed": 7
+  }
+}

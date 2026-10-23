@@ -1,0 +1,425 @@
+[
+  {
+    "alias": "FF-01",
+    "title": "USB serial enumeration can exceed caller capacity on multi-interface devices",
+    "category": "functional",
+    "severity": "high",
+    "evidence": "indigo_usbserial_utils.c:100-111: macOS outer USB loop checks count < num_serial_info, but inner descendant loop writes serial_info[count] and increments for every serial endpoint without checking capacity. A multi-interface device when one slot remains overwrites caller storage. Framework indigo_driver.c:280 supplies a fixed MAX_DEVICE_PORTS array.",
+    "summary": "indigo_usbserial_utils.c:100-111: macOS outer USB loop checks count < num_serial_info, but inner descendant loop writes serial_info[count] and increments for every serial endpoint without checking capacity. A multi-interface device when one slot remains overwrites caller storage. Framework indigo_driver.c:280 supplies a fixed MAX_DEVICE_PORTS array. Next: Enforce capacity before each inner output write; stop/release iterator objects without leaks. Verify multi-endpoint device metadata with capacity one and a canary.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-02",
+    "title": "Explicit-port URL parsers do not bound the copied hostname",
+    "category": "functional",
+    "severity": "high",
+    "evidence": "indigo_uni_io.c:1584-1588 and indigo_io.c:367-370: explicit-port URL parsing copies colon-host bytes to host_name[INDIGO_NAME_SIZE] and writes a terminator at the same unbounded index. Public helpers accept longer URLs; drivers pass device URL property strings into this path. A malformed/overlong hostname corrupts stack before any network connection.",
+    "summary": "indigo_uni_io.c:1584-1588 and indigo_io.c:367-370: explicit-port URL parsing copies colon-host bytes to host_name[INDIGO_NAME_SIZE] and writes a terminator at the same unbounded index. Public helpers accept longer URLs; drivers pass device URL property strings into this path. A malformed/overlong hostname corrupts stack before any network connection. Next: Reject host segments >= sizeof(host_name) before copying and validate URL/port syntax. Cover both helpers at limit-1/limit/over-limit. No network is needed to exercise parsing rejection.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-03",
+    "title": "HID close falls through into descriptor cleanup",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_uni_io.c:2389-2409: POSIX HID close calls hid_close(copy->hid_device), then continues through socket operations and close(copy->fd). indigo_uni_handle declares fd/hid_device in the same union, so these operations use pointer bits as a descriptor. Usually EBADF; a matching descriptor can be closed spuriously. Current wheel_atik/wheel_sx open via indigo_uni_open_hid.",
+    "summary": "indigo_uni_io.c:2389-2409: POSIX HID close calls hid_close(copy->hid_device), then continues through socket operations and close(copy->fd). indigo_uni_handle declares fd/hid_device in the same union, so these operations use pointer bits as a descriptor. Usually EBADF; a matching descriptor can be closed spuriously. Current wheel_atik/wheel_sx open via indigo_uni_open_hid. Next: Make HID cleanup mutually exclusive from fd/socket cleanup. Verify synthetic tagged-handle dispatch preserves an unrelated descriptor. Correction to early reviewer message: the aliased fd is not necessarily zero; the public union layout disproves that early detail.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-04",
+    "title": "AVI and SER writers interpret failed writes and seeks as success",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_avi.c:50-79, 338-344; indigo_ser.c:96-133: bool helpers consume long-valued indigo_uni_write/seek directly. -1 is true, so disk/seek failure can be reported as success, frame count advanced and corrupt/truncated recording accepted. AVI additionally assigns realloc directly without checking at lines 328-332, risking NULL dereference/loss of offset allocation.",
+    "summary": "indigo_avi.c:50-79, 338-344; indigo_ser.c:96-133: bool helpers consume long-valued indigo_uni_write/seek directly. -1 is true, so disk/seek failure can be reported as success, frame count advanced and corrupt/truncated recording accepted. AVI additionally assigns realloc directly without checking at lines 328-332, risking NULL dereference/loss of offset allocation. Next: Compare writes with exact requested size and seeks with >= 0; keep temporary realloc and advance counts only after complete write. Inject ordinary write/seek/allocation failures and verify false/cleanup.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-05",
+    "title": "RAW-to-FITS conversion lacks input and header capacity checks",
+    "category": "functional",
+    "severity": "high",
+    "evidence": "indigo_fits.c:69-119, 140-179: converter reads RAW header before checking in_size, computes signed size products without validating dimensions/payload, and emits unbounded sprintf keyword cards into one fixed 2880-byte header. Embedded extension cards have no remaining-header check. Short/corrupt RAW input or large metadata can read/write beyond allocations; many cards also overwrite the data region. Called by the file converter at indigo_tools/indigo_raw_to_fits.c:185.",
+    "summary": "indigo_fits.c:69-119, 140-179: converter reads RAW header before checking in_size, computes signed size products without validating dimensions/payload, and emits unbounded sprintf keyword cards into one fixed 2880-byte header. Embedded extension cards have no remaining-header check. Short/corrupt RAW input or large metadata can read/write beyond allocations; many cards also overwrite the data region. Called by the file converter at indigo_tools/indigo_raw_to_fits.c:185. Next: Validate minimum header, type, overflow-safe full components*pixel-byte payload and extension bounds; bounded cards with reserved END/comments or properly allocated multiple header records; preserve old allocation on realloc failure. Cover truncated data and header-capacity boundaries.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-06",
+    "title": "RAW selection geometry permits inclusive reads outside the frame",
+    "category": "functional",
+    "severity": "high",
+    "evidence": "indigo_raw_utils.c:438-449 and 667-675: selection guards accept xx == width-radius or yy == height-radius, but inclusive loops reach index width/height. PSF accesses all formats directly; selection digest RGB/RGBA variants do too. Public APIs and imager star selection can reach frame-edge selections. Radius zero also allocates zero border storage in PSF before writing one border value. PSF lines 509-515 use int squared-deviation sum, which overflows for ordinary high-contrast 16-bit borders and corrupts HFD/FWHM thresholds.",
+    "summary": "indigo_raw_utils.c:438-449 and 667-675: selection guards accept xx == width-radius or yy == height-radius, but inclusive loops reach index width/height. PSF accesses all formats directly; selection digest RGB/RGBA variants do too. Public APIs and imager star selection can reach frame-edge selections. Radius zero also allocates zero border storage in PSF before writing one border value. PSF lines 509-515 use int squared-deviation sum, which overflows for ordinary high-contrast 16-bit borders and corrupts HFD/FWHM thresholds. Next: Require a complete positive-radius inclusive ROI (xx+radius < width, yy+radius < height); use double statistics; return failure before reads. Verify right/bottom boundary and a high-contrast mono16 border. This confirms the prior RAW/PSF boundary candidate, without assuming framework generic-number validation solves geometry.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-07",
+    "title": "PSF map iterates beyond usable stars and consumes failed measurements",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_raw_utils.c:3153-3166: last_star = used_stars-first_star is an exclusive upper bound, but loop uses k <= last_star. For 1-9 usable stars, it consumes stars[used_stars]; at capacity this reads beyond allocation, otherwise a zero-initialized unused entry contaminates edge averages. FF-06 also makes ignoring indigo_selection_psf failure at 3106 material: uninitialized outputs are used.",
+    "summary": "indigo_raw_utils.c:3153-3166: last_star = used_stars-first_star is an exclusive upper bound, but loop uses k <= last_star. For 1-9 usable stars, it consumes stars[used_stars]; at capacity this reads beyond allocation, otherwise a zero-initialized unused entry contaminates edge averages. FF-06 also makes ignoring indigo_selection_psf failure at 3106 material: uninitialized outputs are used. Next: Use k < last_star and retain stars only when PSF succeeds; handle zero/constant usable values. Verify 0/1/9 and capacity-filled star lists with map output.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-08",
+    "title": "Bahtinov processing leaks its binarized frame",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_raw_utils.c:3501-3576: indigo_bahtinov_error owns the non-NULL buffer returned by indigo_binarize, then never frees mono on either success or failure return. Agent imager calls it for repeated focus frames at indigo_agent_imager.c:1002. Leaks width*height bytes per frame.",
+    "summary": "indigo_raw_utils.c:3501-3576: indigo_bahtinov_error owns the non-NULL buffer returned by indigo_binarize, then never frees mono on either success or failure return. Agent imager calls it for repeated focus frames at indigo_agent_imager.c:1002. Leaks width*height bytes per frame. Next: Free mono after Hough construction or in common cleanup. Verify repeated success and rejected-spike frames with allocation accounting.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-09",
+    "title": "Star exclusion uses a cross instead of the configured rectangle",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_raw_utils.c:3037: excluded rectangle rejects stars where x is within its span OR y is within its span. This excludes an entire cross rather than only the configured rectangle; imager and guider both call this helper with rectangular exclusion dimensions.",
+    "summary": "indigo_raw_utils.c:3037: excluded rectangle rejects stars where x is within its span OR y is within its span. This excludes an entire cross rather than only the configured rectangle; imager and guider both call this helper with rectangular exclusion dimensions. Next: Combine the two axis-membership tests with AND; verify stars inside rectangle, same x outside y, same y outside x, outside both.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-10",
+    "title": "Bayer corner interpolation reads a pixel beyond the frame",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_stretch.cpp:60-65: red-pixel top-right Bayer interpolation includes raw[index+width+1], crossing the right edge; for a valid 2-row image this reaches past the entire allocation. Bottom-right also averages a cross-row sample at line 65. Public GRBG wrapper can place red at the top-right of an even-width frame.",
+    "summary": "indigo_stretch.cpp:60-65: red-pixel top-right Bayer interpolation includes raw[index+width+1], crossing the right edge; for a valid 2-row image this reaches past the entire allocation. Bottom-right also averages a cross-row sample at line 65. Public GRBG wrapper can place red at the top-right of an even-width frame. Next: Use only in-bounds diagonal samples at corners; verify all four patterns and corners for 2x2 and larger synthetic images.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-11",
+    "title": "Proper motion is skipped when only one axis moves",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigocat_precession.c:97: proper-motion wrapper applies motion only if BOTH pmra and pmdec are nonzero. A star with motion in one axis is treated as stationary in both before precession. Public API allows independent components and catalog accessor passes them directly.",
+    "summary": "indigocat_precession.c:97: proper-motion wrapper applies motion only if BOTH pmra and pmdec are nonzero. A star with motion in one axis is treated as stationary in both before precession. Public API allows independent components and catalog accessor passes them directly. Next: Apply when either component is nonzero (or always); verify one-axis-only motions against apply_proper_motion plus precess.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-12",
+    "title": "Small-frame Bayer equalization mixes sampling parities",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_raw_utils.c:76-128: Bayer channel estimator replaces a computed zero even step with 1. Common frames below about 447 pixels per axis therefore shift 2x2 windows through both parities and mix color channels before applying four separate parity gains. Existing 2x2 test passes because only one window exists; repeated 4x4 Bayer tiles expose the mismatch.",
+    "summary": "indigo_raw_utils.c:76-128: Bayer channel estimator replaces a computed zero even step with 1. Common frames below about 447 pixels per axis therefore shift 2x2 windows through both parities and mix color channels before applying four separate parity gains. Existing 2x2 test passes because only one window exists; repeated 4x4 Bayer tiles expose the mismatch. Next: Keep sampling steps even (minimum 2) and verify repeated tiles in mono8/16 with distinct channel levels and near-saturation values.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-13",
+    "title": "Cartesian conversion maps negative coordinate axes incorrectly",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_align.c:471-478: cartesian_to_spherical returns north pole for both signs of z when x=y=0, and returns a=0 for y=0 regardless of negative x. Thus normalized (-1,0,0) converts to the opposite longitude and (0,0,-1) to the opposite pole. Polar error apply/correct call this conversion.",
+    "summary": "indigo_align.c:471-478: cartesian_to_spherical returns north pole for both signs of z when x=y=0, and returns a=0 for y=0 regardless of negative x. Thus normalized (-1,0,0) converts to the opposite longitude and (0,0,-1) to the opposite pole. Polar error apply/correct call this conversion. Next: Use atan2 for non-pole longitude and distinguish south/north pole; clamp/normalize z according to stated unit-vector contract. Verify axis round trips and identity rotations.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-14",
+    "title": "Failed passive-discovery bind leaks its socket",
+    "category": "functional",
+    "severity": "low",
+    "evidence": "indigo_uni_io.c:1045-1077 and 1094-1116: passive-discovery bind failure logs but does not close udp_socket on either POSIX or Windows. Repeated failed discovery on an occupied/unusable port leaks a socket each attempt.",
+    "summary": "indigo_uni_io.c:1045-1077 and 1094-1116: passive-discovery bind failure logs but does not close udp_socket on either POSIX or Windows. Repeated failed discovery on an occupied/unusable port leaks a socket each attempt. Next: Close socket on every path after successful socket creation. Verify bind-failure cleanup with a controlled occupied local socket in an authorized test.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-15",
+    "title": "Solar aberration converts arcseconds to degrees incorrectly",
+    "category": "functional",
+    "severity": "low",
+    "evidence": "indigocat_sun.c:50: aberration constant 20.4898 arcseconds is divided by 360*60*60 before subtracting from sol.L in degrees. That makes correction 360 times too small (approximately 20 arcseconds lost near 1 AU). Solar accessor consumes this result.",
+    "summary": "indigocat_sun.c:50: aberration constant 20.4898 arcseconds is divided by 360*60*60 before subtracting from sol.L in degrees. That makes correction 360 times too small (approximately 20 arcseconds lost near 1 AU). Solar accessor consumes this result. Next: Convert arcseconds to degrees with 60*60 only; verify degree/radian/arcsecond units and a known reference epoch.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-16",
+    "title": "Legacy formatted writes use the untruncated length of a fixed buffer",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_io.c:481-490: legacy indigo_printf formats into INDIGO_BUFFER_SIZE but passes vsnprintf's would-have-written length to indigo_write. Output longer than the buffer reads beyond its allocation rather than sending only produced bytes. The supported public helper differs from the correctly grown unified formatter.",
+    "summary": "indigo_io.c:481-490: legacy indigo_printf formats into INDIGO_BUFFER_SIZE but passes vsnprintf's would-have-written length to indigo_write. Output longer than the buffer reads beyond its allocation rather than sending only produced bytes. The supported public helper differs from the correctly grown unified formatter. Next: Reject formatting errors and either grow/reformat or return a length-limit failure; exercise a format beyond the initial buffer in a synthetic local sink.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "A-01",
+    "title": "FBC duration handlers block queued operations",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_drivers/aux_fbc/indigo_aux_fbc.driver:131-148,162-179",
+    "summary": "Serialized handler sleeps for the requested duration up to 30 seconds, delaying disconnect and other queued requests. Next: delayed finalizers and fake-serial interruption tests.",
+    "report": "driver-a-review.md"
+  },
+  {
+    "alias": "A-02",
+    "title": "FlipFlat cover operation blocks its serialized handler",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver:151-171",
+    "summary": "Cover handler sleeps/polls for up to 30 seconds, delaying queued disconnect. Next: bounded finalizer and disconnect/stop characterization.",
+    "report": "driver-a-review.md"
+  },
+  {
+    "alias": "A-03",
+    "title": "PTP device-info decoders discard the received payload boundary",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_drivers/ccd_ptp/indigo_ptp.c:453-557,1657-1668",
+    "summary": "Device-info path passes payload without remaining length into primitive/string/array decoders. Isolated helper diagnostic demonstrates missing bounds, not full transport reachability because transport adds padding. Next: bounded cursor parsing and fake transport short/oversized count regressions.",
+    "report": "driver-a-review.md"
+  },
+  {
+    "alias": "A-04",
+    "title": "Pentax connection uses the handle after an unchecked USB open",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:823-828",
+    "summary": "libusb_open result is overwritten before checking and the handle is immediately used. Next: stop the failed attempt, reset handle and cover open failure with fake USB.",
+    "report": "driver-a-review.md"
+  },
+  {
+    "alias": "A-05",
+    "title": "Pentax readiness polling has no overall deadline",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:457-500",
+    "summary": "Successful but not-ready replies keep connect/status work running indefinitely and delay disconnect. Next: monotonic deadline/cancellation and permanently-not-ready fake replies.",
+    "report": "driver-a-review.md"
+  },
+  {
+    "alias": "A-06",
+    "title": "Imager and Alpaca image conversion omit RAW payload shape validation",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_drivers/agent_imager/indigo_agent_imager.c:577-670; indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c:1385-1490",
+    "summary": "Received RAW data is cast and dimensions consumed without minimum header and overflow-safe pixel-span checks. BLOB registry validation does not validate image shape. Next: reuse guider-style header/signature/dimension/pixel-span checks and truncated-frame fixtures.",
+    "report": "driver-a-review.md"
+  },
+  {
+    "alias": "B-01",
+    "title": "Device-reported filter counts exceed allocated property arrays",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "driver-b-review.md section B-01; exact current source paths and contract evidence in that section.",
+    "summary": "`wheel_trutek/indigo_wheel_trutek.driver:49`, `wheel_xagyl/indigo_wheel_xagyl.driver:58`, and `wheel_qhy/indigo_wheel_qhy.driver:106` assign response-derived `WHEEL_SLOT_NAME_PROPERTY->count` and `WHEEL_SLOT_OFFSET_PROPERTY->count` without checking the allocated capacities. Base wheel attach in `indigo_libs/indigo_wheel_driver.c:53` allocates16 slots. Trutek byte0xFF decodes207, Xagyl `FilterSlots 100` decodes100 and QHY `MXP` reply `Z` decodes35. Those become authoritative property counts; consumers iterate count rather than magically resizing the allocation. Corrupt/device-invalid responses can therefore expose invalid property metadata and out-of-bounds item access. `driver-b-evidence/wheel-count-contract.json` retains literal-expression examples; no malformed frame was sent to a real driver/device. Remediation: validate reply framing/checksum where applicable and the count against both `allocated_count` fields before storing or publishing; reject connection/readback on invalid counts. Add malformed-count simulator regressions proving no property publication exceeds allocation. Do not merely clamp device facts or weaken framework/client validation.",
+    "report": "driver-b-review.md"
+  },
+  {
+    "alias": "B-02",
+    "title": "Motion completion lacks an overall timeout in several wheels/mounts",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "driver-b-review.md section B-02; exact current source paths and contract evidence in that section.",
+    "summary": "`wheel_quantum/indigo_wheel_quantum.driver:36-40` repeatedly reads valid `P` positions until the requested slot; a controller continuing to report another slot never lets this synchronous handler return. Individual serial read timeout does not bound a stream of valid replies, so disconnect is queued behind it. Related asynchronous endless-BUSY shapes occur in `wheel_trutek:77-80` (slot0), `wheel_xagyl:99-102` (wrong slot), `wheel_asi:155-156` and calibration175-176 (`pos == -1`), `wheel_playerone:149-155` (the30-poll bound applies only to initial target0, not ordinary motion), `mount_pmc8:620-622` (moving park rates), and `mount_temma:297-301` (GOTO status s1; park already has a deadline). Remediation: use monotonic operation deadlines and bounded finalizers, retain last measured position and requested target, publish ALERT on expiry, and perform protocol-supported stop/recovery. Characterize stationary/wrong-target/endless-moving replies plus queued abort/disconnect. Bounded transport transactions alone are not whole-operation timeouts.",
+    "report": "driver-b-review.md"
+  },
+  {
+    "alias": "B-03",
+    "title": "Lakeside valid stationary progress replies evade the stall bound",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "driver-b-review.md section B-03; exact current source paths and contract evidence in that section.",
+    "summary": "`focuser_lakeside/indigo_focuser_lakeside.driver:177-225`: failed reads and unexpected lines increment `stalled`, but a valid repeated `P<n>` enters218-225, resets only if position changed, and otherwise reschedules without incrementing. An endless repeated position without DONE never reaches40, contradicting the comment's claimed stall bound. The handler yields, but the client remains BUSY and further motion stays excluded indefinitely. Remediation: count unchanged valid position frames or impose a separate overall deadline, send existing CH stop on expiry, preserve target and publish ALERT. Regression: repeated stationary P frames without DONE; genuine progressing P followed by DONE must still succeed.",
+    "report": "driver-b-review.md"
+  },
+  {
+    "alias": "B-04",
+    "title": "SynScan AUTOHOME blocks its own queued abort/disconnect",
+    "category": "functional",
+    "severity": "high",
+    "evidence": "driver-b-review.md section B-04; exact current source paths and contract evidence in that section.",
+    "summary": "`mount_synscan/indigo_mount_synscan.driver:2132` calls `synscan_perform_autohome()` synchronously from AUTOHOME on_change. The helper calls30-second stopped-axis loops577-595,120-second index loops644-665 and711-764, and a three-second sleep698. The loops inspect `abort_motion`, but this source sets the flag only in the queued abort handler1961 and disconnect hook1672. There is no bus-thread on_change_request setting it. These handlers share the serialized queue and cannot run while auto-home waits. Urgent priority cannot preempt the currently executing callback. A requested abort/disconnect can consequently wait through multi-stage physical homing. Remediation: staged handler/finalizer home state machine with bounded single-transaction checks and named cancellation/stop paths. Preserve documented device command order; add timed simulator assertions that abort/disconnect execute during each stage, verify actual stop-command edges and failure/timeout state, then perform authorized hardware validation in the repair task. Merely setting a volatile flag is not a substitute for queue ownership/cancellation and does not resolve the synchronous waits.",
+    "report": "driver-b-review.md"
+  },
+  {
+    "alias": "B-05",
+    "title": "Stopped-short moves are reported successful",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "driver-b-review.md section B-05; exact current source paths and contract evidence in that section.",
+    "summary": "Several authored finalizers treat idle as arrival despite having measured position and retaining a different requested target: `focuser_mypro2/indigo_focuser_mypro2.driver:333-338`, `focuser_dsd:215-217`, `focuser_dmfc:277-278`, `focuser_fc3:223-224`, `focuser_asi:207-208`, `focuser_usbv3:254-255`, and shared Lunatico rotator `focuser_lunatico/shared/lunatico_shared.c:889`. For example, mypro2 target1000, measured500 and moving0 enters the unconditional OK branch; the caller cannot distinguish target arrival from premature device stop. Shared Lunatico affects the rotator interface exposed by both focuser_lunatico and rotator_lunatico. Alpaca absolute focuser is excluded from this finding: its canonical class contract in `system_alpaca/indigo_system_alpaca_private.h` explicitly defines completion by IsMoving rather than comparing positions. Its deliberate settling window and idle completion are consistent with that accepted contract. A proposed target-equality finding there is rejected; changing the contract requires a separate explicit product decision. Remediation: distinguish commanded vs external/aborted motion, compare measured position with commanded expected position using protocol-appropriate tolerance/backlash semantics, publish ALERT on stopped-short and retain requested target. Add one early-stop regression per affected driver rather than assuming all protocols are identical. Existing exact-target handling in Astroasis, FLI, EFA, FocusDreamPro, Askar and SteelDrive2 shows a local behavior-preserving pattern.",
+    "report": "driver-b-review.md"
+  },
+  {
+    "alias": "B-06",
+    "title": "Falcon direction setter accepts failed/mismatched acknowledgements",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "driver-b-review.md section B-06; exact current source paths and contract evidence in that section.",
+    "summary": "`rotator_falcon/indigo_rotator_falcon.driver:222` tests `!falcon_command(...) && !strncmp(response, \"FN:\", 3)`. A transport-successful reply `ERR` makes the first operand false and never sets ALERT. A failed command with a different/empty reply also makes the prefix operand false. The generated prologue therefore publishes the requested reversal OK even when its acknowledgement is invalid or absent. `driver-b-evidence/falcon-direction-truth-table.json` records the exact Boolean truth table, not a hardware test. Remediation: require transport success AND valid acknowledgement (failure OR invalid prefix), preserve/read back prior direction on failure, and regress success/refusal/timeout/stale reply combinations. Keep changes in the .driver and regenerate without changing generator semantics.",
+    "report": "driver-b-review.md"
+  },
+  {
+    "alias": "T-01",
+    "title": "Approximate numeric assertion accepts NaN as a passing result",
+    "category": "quality",
+    "severity": "medium",
+    "evidence": "indigo_test/test_runner.h:102-112; root-evidence/assert-near-nan.c, failures=0 from clang/run.",
+    "summary": "ASSERT_NEAR compares fabs(expected-actual)>tolerance, which is false for NaN. A finite expected value and NaN actual pass, weakening math/driver regressions. Next: define finite-value semantics, reject nonfinite unexpected operands/tolerance and test NaN/infinity/control values.",
+    "report": "verification.md"
+  },
+  {
+    "alias": "T-02",
+    "title": "Per-device test records can say OK after the process fails",
+    "category": "quality",
+    "severity": "medium",
+    "evidence": "tools/run_driver_test.py:436,455; root-evidence/per-device-result.json and per-device-repro.py.",
+    "summary": "Real recording logic with synthetic complete tagged results and process exit1 returns aggregate failure but emits device1/1 OK. Next: incorporate command exit failure into recorded device outcomes, or retain explicit aggregate failure without falsely certifying devices; regress tagged failures and partial records.",
+    "report": "verification.md"
+  },
+  {
+    "alias": "FF-17",
+    "title": "DNS-SD callbacks use undefined fields after a discovery error",
+    "severity": "medium",
+    "category": "functional",
+    "evidence": "indigo_libs/indigo_service_discovery.c:361,402; installed Xcode dns_sd.h Browse1677-1681/Resolve1792-1796 callback contract.",
+    "summary": "Error callbacks use name/domain/full_name although SDK documents those fields undefined on nonzero errorCode. Next: handle error before consuming fields, retain requested resolve context and add ordinary callback-error fixtures.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-18",
+    "title": "Fully masked contrast produces NaN that reaches focus estimates",
+    "severity": "medium",
+    "category": "functional",
+    "evidence": "indigo_libs/indigo_raw_utils.c:1703-1753 and masked16/RGB equivalents; indigo_drivers/agent_imager/indigo_agent_imager.c:948,1695.",
+    "summary": "All saturated interior samples can be masked; dividing by real_count==0 yields NaN, while the caller only checks ==0. Next: define explicit no-valid-samples result, handle it in focus and cover fully saturated fixtures.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-19",
+    "title": "DSLR wrapper dereferences a failed LibRaw initialization",
+    "severity": "low",
+    "category": "functional",
+    "evidence": "indigo_libs/indigo_dslr_raw.c:150-153; LibRaw C init API returns NULL on allocation failure.",
+    "summary": "Wrapper accesses raw_data->params without checking the allocation result. Next: guard init, return a clear allocation error and cover injected initialization failure.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "FF-20",
+    "title": "Nutation recomputation retains the previous accumulator",
+    "severity": "low",
+    "category": "functional",
+    "evidence": "indigo_libs/indigocat/indigocat_nutation.c:183-219.",
+    "summary": "Recomputing at a new date adds the prior degree result into the series accumulator before division again, introducing tiny history-dependent numerical error. Next: reset longitude/obliquity accumulators inside recompute and verify changing-date vs fresh-state consistency; no broad astronomical accuracy claim.",
+    "report": "framework-formats-review.md"
+  },
+  {
+    "alias": "C-01",
+    "title": "Native registries fail to reject their exact capacity boundary",
+    "severity": "medium",
+    "category": "functional",
+    "evidence": "core-functional-review.md section C-01; exact source and ordinary functional proof retained there.",
+    "summary": "`indigo_libs/indigo_client.c:209`, `:400` and `:530` test `empty_slot > INDIGO_MAX_DRIVERS/SERVERS`. Arrays are declared with exactly those capacities (`:75`, `:313`, `:441`; public header defines256 drivers and10 servers). With no reusable slot, empty_slot equals the used count, so the257th distinct driver or11th live remote server/subprocess bypasses the intended TOO_MANY_ELEMENTS return and indexes the element after the registry. This is an ordinary full-capacity contract mismatch; no capacity stress or malicious-input run was performed. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; a Full evidence: C-01. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; add bounded unit fixtures at capacity-1, capacity and after removal. Treat three registries together but do not rewrite unrelated connection behavior.",
+    "report": "core-functional-review.md"
+  },
+  {
+    "alias": "C-02",
+    "title": "Partial SESSION_FEATURES update copies another client's setting",
+    "severity": "medium",
+    "category": "functional",
+    "evidence": "core-functional-review.md section C-02; exact source and ordinary functional proof retained there.",
+    "summary": "`indigo_libs/indigo_session.c:51-67` stores feature values in one shared property. Enumeration writes both fields from the enumerating client, but a change copies only named request items into that shared property and then copies **both** resulting values into the requesting client. For example A has FORCE_ITEM_UPDATES=true; B enumerates with both flags false; A sends only FORCE_PROPERTY_UPDATES=true. A's unmentioned FORCE_ITEM_UPDATES is reset to B's false value. Partial named-item updates are the normal bus contract, and these flags explicitly belong to the requesting client. Remediation: seed the shared response values from the requesting  Full evidence: C-02. Remediation: seed the shared response values from the requesting client under appropriate ownership before applying a partial update, or derive each client field independently from present request items; publish only to that client. Unit regression interleaves two clients' enumeration and one-item updates. No cross-client runtime test was run here.",
+    "report": "core-functional-review.md"
+  },
+  {
+    "alias": "C-03",
+    "title": "Browser sexagesimal conversion loses the sign below one degree",
+    "severity": "medium",
+    "category": "functional",
+    "evidence": "core-functional-review.md section C-03; exact source and ordinary functional proof retained there.",
+    "summary": "`indigo_server/resource/indigo.js:462-490`: dtos truncates signed degrees with `d | 0`, losing the minus sign when -1 < value <0. stod determines the sign using `parseInt(degrees) <0`, which is false for negative zero. Actual Node execution of the committed functions returned `dtos(-0.5) == \"0:30:00\"` and `stod(\"-0:30:00\") == +0.5`. `components.js:1124-1184` uses these functions for sexagesimal editing/display, and generic property controls use them at1418/1426/1445. `mount.html` uses those controls and dtos for picked target coordinates. Declinations/latitudes just south of zero can therefore be displayed or sent north of zero. Remediation:  Full evidence: C-03. Remediation: preserve the original sign separately from integer degree magnitude in formatting and parse the leading string sign; test positive/negative sub-degree values, zero, nonzero integer degrees and round-trip precision in ordinary coordinate widgets.",
+    "report": "core-functional-review.md"
+  },
+  {
+    "alias": "C-04",
+    "title": "Browser HOST_TIME emits malformed fractional-hour offsets",
+    "severity": "medium",
+    "category": "functional",
+    "evidence": "core-functional-review.md section C-04; exact source and ordinary functional proof retained there.",
+    "summary": "`indigo_server/resource/indigo.js:493-509` divides timezone minutes by60 and concatenates `'00'`, instead of formatting separate whole hours and remainder minutes. With getTimezoneOffset()=-330 the actual committed function produces suffix `+05.500`, whereas an ISO numeric UTC+05:30 offset is `+0530` (or `+05:30`). Every authored page calls timestamp() for initially empty Server.HOST_TIME; server setter `indigo_server.c:1540-1550` forwards the value to its existing date-management helper. Fractional-hour locales can fail first-time host clock setup. Remediation: format signed absolute hours and minutes separately, or use a validated UTC repre Full evidence: C-04. Remediation: format signed absolute hours and minutes separately, or use a validated UTC representation supported by the helper; regress \u00b130/45-minute offsets and ordinary whole-hour timezones. The test replaced only Date.getTimezoneOffset in an isolated VM; no system clock was changed.",
+    "report": "core-functional-review.md"
+  },
+  {
+    "alias": "C-05",
+    "title": "Imager deletes original file after an HTTP error response",
+    "severity": "high",
+    "category": "functional",
+    "evidence": "core-functional-review.md section C-05; exact source and ordinary functional proof retained there.",
+    "summary": "`indigo_server/resource/imager.html:507-519` handles xhr.onload by clicking a download link for any response and then sending AGENT_IMAGER_DELETE_FILE with the original filename. onload runs for completed HTTP404/500 responses too, and this callback does not inspect status. An ordinary expired/missing BLOB or server failure can therefore download an error body and then request deletion of the original image. This is a normal failure-handling issue; no server-security test was involved. The exact committed callback was executed in Node24.19.0 with a synthetic XMLHttpRequest status404 and Blob('BLOB not found!'), mocked DOM/blob URL, and captur Full evidence: C-05. Remediation: require a successful and complete image response before advancing/deleting, preserve the original and present an error/retry path on HTTP/transport/abort failures, and avoid relying on mutable global filename during asynchronous completion. Regression tests must show404/500/abort never enqueue deletion and successful transfer maintains the established sequence.",
+    "report": "core-functional-review.md"
+  },
+  {
+    "alias": "C-06",
+    "title": "Static driver UNLOAD does not clear initialized state",
+    "severity": "medium",
+    "category": "functional",
+    "evidence": "core-functional-review.md section C-06; exact source and ordinary functional proof retained there.",
+    "summary": "`indigo_server/indigo_server.c:1378-1386`: dynamic unload uses indigo_remove_driver, but static unload directly calls the entry point's SHUTDOWN and changes the visible DRIVERS switch without setting the registry entry's initialized=false. A subsequent DRIVERS enable at1275 requires `!driver->initialized` before calling INIT. Thus a statically linked driver unloaded through UNLOAD can appear re-enabled while its devices remain absent. The normal DRIVERS-disable branch already clears initialized after successful SHUTDOWN, so the alternate path is inconsistent. Remediation: clear static initialized only after successful shutdown, preserve it on Full evidence: C-06. Remediation: clear static initialized only after successful shutdown, preserve it on BUSY/failure, and regress UNLOAD followed by DRIVERS enable on a bounded stub static driver. No actual driver was unloaded during the audit.",
+    "report": "core-functional-review.md"
+  },
+  {
+    "alias": "T-03",
+    "title": "Release helpers report success after failed build or archive commands",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "tools/build_debs.sh; tools/cltools.sh; tools/make_source_tarball.sh; tooling-review.md confirmed observations.",
+    "summary": "Release helpers continue after failed Docker/download/configure/build or ignore git archive pipeline failure and finish with successful cleanup/echo. Next: propagate command and pipeline failures and publish only complete outputs; disposable fake-command failure regressions. No install/network/build command was executed by the reviewer.",
+    "report": "tooling-review.md"
+  },
+  {
+    "alias": "T-04",
+    "title": "Linked-worktree builds lose their Git revision identifier",
+    "category": "quality",
+    "severity": "low",
+    "evidence": "tools/make_indigo_build.sh:3-5; indigo_libs/Makefile:87-89; tooling-review.md.",
+    "summary": "The helper recognizes a checkout only when ../.git is a directory; linked worktrees use a regular gitdir file and are stamped production. Next: query git rev-parse context and verify normal checkout, linked worktree and exported tree with disposable fixtures.",
+    "report": "tooling-review.md"
+  },
+  {
+    "alias": "C-08",
+    "title": "Additional slave instances assign their base pointer to the master",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_libs/indigo_driver.c:1847,1863; core-functional-review.md C-08.",
+    "summary": "Additional-instance creation at indigo_driver.c:1830-1865 sets additional_device->base_device to slave_device instead of setting additional_slave_device. This corrupts cloned master/slave identity. Next: set the cloned slave base, preserve master base and cover one-master/one-slave create/enumerate/remove/recreate with private-data ownership assertions. Source-confirmed, no device lifecycle executed.",
+    "report": "core-functional-review.md"
+  },
+  {
+    "alias": "HC-H01",
+    "title": "DSI transport failures can be reported as successful acquisition",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "indigo_drivers/ccd_dsi/libdsi.c:1403-1473,1504-1574; helper-review.md H01.",
+    "summary": "dsi_start_exposure discards setup/start command failures and marks exposing success. dsi_read_image checks transfer status but not actual image byte count, allowing short successful planes to decode retained/partial contents. Next: propagate setup/start failures, commit exposing state only after accepted start, enforce exact expected plane lengths and add fake transport failed-start/short-frame regressions. Source-only, no device execution.",
+    "report": "helper-review.md"
+  },
+  {
+    "alias": "HM-01",
+    "title": "SX AO simulator fails to clamp its axis limits",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "helper-manual-review.md H-01; exact current source paths and firmware/script contracts retained there.",
+    "summary": "`indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.ino:49,58,67,76` uses comparison expressions (`dec == limit`, etc.) where movement-limit assignment is intended. A normal GN/GS/GT/GW request crossing the configured \u00b150 limit acknowledges L but leaves the stored coordinate outside the limit. Subsequent L status uses exact equality at88-96, so it reports no matching limit bit for that overrun. The west negative branch also names positive limit. Current driver sends the same six-byte directional step commands and consumes the one-byte acknowledgement/limit status. This undermines manual limit/return-to-center testing without proving a physi Full source contracts: helper-manual-review.md H-01. Remedy: assign the matching positive/negative boundary after each crossing and verify all four directions, exact limit, first step beyond it, L status and K/R center reset using an isolated firmware fixture/board. No firmware was compiled/flashed or transport opened in this audit.",
+    "report": "helper-manual-review.md"
+  },
+  {
+    "alias": "HM-02",
+    "title": "Sequencer saves a live batch alias instead of a snapshot",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "helper-manual-review.md H-02; exact current source paths and firmware/script contracts retained there.",
+    "summary": "`indigo_drivers/agent_scripting/library/Sequencer.js:1610-1622` stores `this.saved_batch = property.items`. `boot.js:114-118` updates that exact property.items object in place when the bus delivers changed values. Sequence.focus/focus_ignore_failure at373-384 deliberately expands save_batch\u2192set_batch(1,exposure)\u2192focus\u2192restore_batch. The set_batch acknowledgement overwrites the aliased COUNT/EXPOSURE; restore_batch therefore sends the focus batch values instead of restoring the original capture batch. Source proof follows actual cache mutation and the public focus wrapper; no live agent was changed. Remedy: copy the relevant primitive batch it Full source contracts: helper-manual-review.md H-02. Remedy: copy the relevant primitive batch item values into an independent object and clear/replace snapshots appropriately; test an original batch of several frames with a different exposure, focus success and ignore-failure, then assert restored original values. This is ordinary functional state restoration, not a security assessment of scripting.",
+    "report": "helper-manual-review.md"
+  },
+  {
+    "alias": "HM-03",
+    "title": "Manual Temma firmware replies no longer satisfy driver controls",
+    "category": "functional",
+    "severity": "medium",
+    "evidence": "helper-manual-review.md H-03; exact current source paths and firmware/script contracts retained there.",
+    "summary": "`indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino:215-225` replies R1 to STN-ON/OFF, and235-236 replies R1 to v1/v2. Current maintained `indigo_mount_temma.driver:149-165` requires exact stn-on/stn-off standby status and a v-prefixed version line for speed selection. Normal tracking/standby and high-speed controls therefore fail against this sketch although it acknowledges them. Its configurable STN_ON_MEANS_MOTORS_ON semantics also require reconciliation with the current driver comment that standby ON means motors OFF. The newer host simulator is a separate component; its passing evidence cannot certify this manual  Full source contracts: helper-manual-review.md H-03. Remedy: update the manual sketch to the current documented reply/state contract, verify connection/configuration, both standby transitions and both speed transitions with matching command/reply fixtures; retain explicit differences for any documented hardware variant. No manual serial session or board run was performed.",
+    "report": "helper-manual-review.md"
+  }
+]

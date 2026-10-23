@@ -1,0 +1,18 @@
+{
+  "revision": "f019b004769072275a3d98a87c8e9740a42c19a4",
+  "cwd": "/Users/polakop/Development/indigo",
+  "compile": [
+    "clang",
+    "-I.",
+    ".factory/tasks/20261023101753-bc8d-complete-repository-audit/root-evidence/assert-near-nan.c",
+    "-o",
+    "/tmp/indigo-audit-nan"
+  ],
+  "compile_exit": 0,
+  "run": [
+    "/tmp/indigo-audit-nan"
+  ],
+  "run_exit": 0,
+  "stdout": "failures=0\n",
+  "interpretation": "Bug proof: NaN actual value incorrectly passes finite approximate equality; not a product acceptance pass."
+}

@@ -1,0 +1,19 @@
+{
+  "title": "Pentax readiness polling has no overall deadline",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "Successful but not-ready replies keep connect/status work running indefinitely and delay disconnect. Next: monotonic deadline/cancellation and permanently-not-ready fake replies.",
+  "evidence": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:457-500",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-021"
+}

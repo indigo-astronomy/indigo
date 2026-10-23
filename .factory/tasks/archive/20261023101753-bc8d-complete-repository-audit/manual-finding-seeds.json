@@ -1,0 +1,20 @@
+[
+  {
+    "alias": "HM-01",
+    "title": "SX AO simulator fails to clamp its axis limits",
+    "report": "helper-manual-review.md",
+    "severity": "medium"
+  },
+  {
+    "alias": "HM-02",
+    "title": "Sequencer saves a live batch alias instead of a snapshot",
+    "report": "helper-manual-review.md",
+    "severity": "medium"
+  },
+  {
+    "alias": "HM-03",
+    "title": "Manual Temma firmware replies no longer satisfy driver controls",
+    "report": "helper-manual-review.md",
+    "severity": "medium"
+  }
+]

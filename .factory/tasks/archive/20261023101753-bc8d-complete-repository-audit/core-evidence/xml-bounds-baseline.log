@@ -1,0 +1,2 @@
+Assertion failed: (value_pointer - value_buffer <= BUFFER_SIZE), function indigo_xml_parse_with_callback, file indigo_xml.c, line 1400.
+Running XML parser boundaries

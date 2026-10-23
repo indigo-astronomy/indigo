@@ -1,0 +1,19 @@
+{
+  "title": "Device-reported filter counts exceed allocated property arrays",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "`wheel_trutek/indigo_wheel_trutek.driver:49`, `wheel_xagyl/indigo_wheel_xagyl.driver:58`, and `wheel_qhy/indigo_wheel_qhy.driver:106` assign response-derived `WHEEL_SLOT_NAME_PROPERTY->count` and `WHEEL_SLOT_OFFSET_PROPERTY->count` without checking the allocated capacities. Base wheel attach in `indigo_libs/indigo_wheel_driver.c:53` allocates16 slots. Trutek byte0xFF decodes207, Xagyl `FilterSlots 100` decodes100 and QHY `MXP` reply `Z` decodes35. Those become authoritative property counts; consumers iterate count rather than magically resizing the allocation. Corrupt/device-invalid responses can therefore expose invalid property metadata and out-of-bounds item access. `driver-b-evidence/wheel-count-contract.json` retains literal-expression examples; no malformed frame was sent to a real driver/device. Remediation: validate reply framing/checksum where applicable and the count against both `allocated_count` fields before storing or publishing; reject connection/readback on invalid counts. Add malformed-count simulator regressions proving no property publication exceeds allocation. Do not merely clamp device facts or weaken framework/client validation.",
+  "evidence": "driver-b-review.md section B-01; exact current source paths and contract evidence in that section.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-b-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-023"
+}

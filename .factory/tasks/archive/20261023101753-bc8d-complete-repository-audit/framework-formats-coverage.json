@@ -1,0 +1,859 @@
+{
+  "version": 1,
+  "reviewer": "complete_framework_formats",
+  "read_only": true,
+  "reviewed_head": "f019b004769072275a3d98a87c8e9740a42c19a4",
+  "retained_source_base": "e0139d57ceb8bb6f4421efa8849c8541690e8b2c",
+  "all_scoped_files_unchanged": true,
+  "file_count": 64,
+  "verdict": "changes required; assigned executable source/contract coverage complete",
+  "groups": [
+    {
+      "component": "align",
+      "files": [
+        "indigo_libs/indigo_align.c",
+        "indigo_libs/indigo/indigo_align.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "Epoch/time/equatorial-horizontal/cartesian/polar paths; all functions and unit-vector contract",
+      "disposition": "FF-13"
+    },
+    {
+      "component": "avi",
+      "files": [
+        "indigo_libs/indigo_avi.c",
+        "indigo_libs/indigo/indigo_avi.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "CCD streaming -> headers/index growth/frame write/close ownership and exact-byte return contract",
+      "disposition": "FF-04"
+    },
+    {
+      "component": "dome_azimuth",
+      "files": [
+        "indigo_libs/indigo_dome_azimuth.c",
+        "indigo_libs/indigo/indigo_dome_azimuth.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "Map hour angle -> hemisphere and pier geometry -> sphere intersection -> azimuth distance",
+      "disposition": "none"
+    },
+    {
+      "component": "dslr_raw",
+      "files": [
+        "indigo_libs/indigo_dslr_raw.c",
+        "indigo_libs/indigo/indigo_dslr_raw.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "CCD/astrometry -> LibRaw init/open/unpack/process -> raw margins/metadata -> cleanup",
+      "disposition": "Confirmed FF-19 / FND-20261023101753-bc8d-complete-repository-audit-033: LibRaw C API can return NULL, wrapper must handle initialization failure."
+    },
+    {
+      "component": "fits",
+      "files": [
+        "indigo_libs/indigo_fits.c",
+        "indigo_libs/indigo/indigo_fits.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "RAW file converter -> dimensions/payload/extensions -> FITS records and planar endian conversion",
+      "disposition": "FF-05"
+    },
+    {
+      "component": "gp_guider",
+      "files": [
+        "indigo_libs/indigo_gp_guider.c",
+        "indigo_libs/indigo/indigo_gp_guider.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "Session/ring buffer -> resampling/window/trend -> all kernels/LDLT/FFT -> stage gates -> response/deduce/dither",
+      "disposition": "existing GP010"
+    },
+    {
+      "component": "io",
+      "files": [
+        "indigo_libs/indigo_io.c",
+        "indigo_libs/indigo/indigo_io.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "Legacy platform serial/socket/URL -> read/write/line/format/select",
+      "disposition": "FF-02/16"
+    },
+    {
+      "component": "polynomial_fit",
+      "files": [
+        "indigo_libs/indigo_polynomial_fit.c",
+        "indigo_libs/indigo/indigo_polynomial_fit.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "Least-squares matrix -> inverse coefficients -> evaluation/derivative/extrema/unimodal minimum/string",
+      "disposition": "none in current caller domain"
+    },
+    {
+      "component": "raw_utils",
+      "files": [
+        "indigo_libs/indigo_raw_utils.c",
+        "indigo_libs/indigo/indigo_raw_utils.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "All Bayer/FFT/PSF/digest/statistics/masks/multistar/controller/star-candidate/clipping/map/Bahtinov functions and raw formats",
+      "disposition": "Confirmed FF-06/07/08/09/12 and FF-18 / FND-20261023101753-bc8d-complete-repository-audit-032 empty-mask NaN reaches focus. Other reviewed contracts/limits in report."
+    },
+    {
+      "component": "ser",
+      "files": [
+        "indigo_libs/indigo_ser.c",
+        "indigo_libs/indigo/indigo_ser.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "RAW header -> SER file metadata/frame count/write/seek/final close",
+      "disposition": "FF-04"
+    },
+    {
+      "component": "service_discovery",
+      "files": [
+        "indigo_libs/indigo_service_discovery.c",
+        "indigo_libs/indigo/indigo_service_discovery.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "Both Avahi and DNS-SD client/browser/resolver/thread retry/wakeup/grouped-count/self-stop cleanup",
+      "disposition": "Confirmed FF-17 / FND-20261023101753-bc8d-complete-repository-audit-031: SDK documents other callback fields undefined on error; ordinary error callbacks consume them. No service probing."
+    },
+    {
+      "component": "stretch",
+      "files": [
+        "indigo_libs/indigo_stretch.cpp",
+        "indigo_libs/indigo/indigo_stretch.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "All sampling/histogram/MAD, mono/RGB/Bayer templates, exported patterns and serial/parallel branches",
+      "disposition": "FF-10"
+    },
+    {
+      "component": "tiff",
+      "files": [
+        "indigo_libs/indigo_tiff.c",
+        "indigo_libs/indigo/indigo_tiff.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "CCD TIFFClientOpen wl -> memory read/write/seek/size/close; handle allocation and extent semantics",
+      "disposition": "writer-domain conclusion"
+    },
+    {
+      "component": "uni_io",
+      "files": [
+        "indigo_libs/indigo_uni_io.c",
+        "indigo_libs/indigo/indigo_uni_io.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "All platform constructors, discovery, serial/HID/TCP/UDP/file tagged ownership, wait/read/write, server worker, formats/filesystem/time/gzip/host helpers",
+      "disposition": "FF-02/03/14; existing gzip009"
+    },
+    {
+      "component": "usb_utils",
+      "files": [
+        "indigo_libs/indigo_usb_utils.c",
+        "indigo_libs/indigo/indigo_usb_utils.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "libusb port path -> native/poll event loop, retained snapshots, matching callbacks and registration teardown",
+      "disposition": "callback-reentry limitation"
+    },
+    {
+      "component": "usbserial_utils",
+      "files": [
+        "indigo_libs/indigo_usbserial_utils.c",
+        "indigo_libs/indigo/indigo_usbserial_utils.h"
+      ],
+      "coverage": "complete executable source and public contract review",
+      "call_path_contract": "All IOKit/udev/SetupAPI enumeration branches -> output capacity -> labels/ordered match",
+      "disposition": "FF-01"
+    },
+    {
+      "component": "catalog_dso",
+      "files": [
+        "indigo_libs/indigo/indigocat/indigocat_dso.h",
+        "indigo_libs/indigo/indigocat/indigocat_ss.h",
+        "indigo_libs/indigo/indigocat/indigocat_star.h",
+        "indigo_libs/indigocat/indigocat_dso.c",
+        "indigo_libs/indigocat/indigocat_ss.c",
+        "indigo_libs/indigocat/indigocat_star.c"
+      ],
+      "coverage": "complete executable algorithms; numerical datasets structurally reviewed",
+      "call_path_contract": "Sentinel accessors/lazy date update/proper motion and per-body dispatch; RA hours versus degree API",
+      "disposition": "Confirmed FF-11/15/20 including FND-20261023101753-bc8d-complete-repository-audit-034 nutation accumulator reuse; structural table checks and explicit scientific precision limits in report."
+    },
+    {
+      "component": "catalog_dynamical_time",
+      "files": [
+        "indigo_libs/indigo/indigocat/indigocat_dynamical_time.h",
+        "indigo_libs/indigo/indigocat/indigocat_nutation.h",
+        "indigo_libs/indigo/indigocat/indigocat_precession.h",
+        "indigo_libs/indigo/indigocat/indigocat_transform.h",
+        "indigo_libs/indigo/indigocat/indigocat_vsop87.h",
+        "indigo_libs/indigocat/indigocat_dynamical_time.c",
+        "indigo_libs/indigocat/indigocat_nutation.c",
+        "indigo_libs/indigocat/indigocat_precession.c",
+        "indigo_libs/indigocat/indigocat_transform.c",
+        "indigo_libs/indigocat/indigocat_vsop87.c"
+      ],
+      "coverage": "complete executable algorithms; numerical datasets structurally reviewed",
+      "call_path_contract": "Date dispatch bounds, interpolation, proper-motion/precession, nutation/obliquity, cartesian/ecliptic transformations, series and FK5",
+      "disposition": "Confirmed FF-11/15/20 including FND-20261023101753-bc8d-complete-repository-audit-034 nutation accumulator reuse; structural table checks and explicit scientific precision limits in report."
+    },
+    {
+      "component": "catalog_earth",
+      "files": [
+        "indigo_libs/indigocat/indigocat_earth.c",
+        "indigo_libs/indigocat/indigocat_jupiter.c",
+        "indigo_libs/indigocat/indigocat_mars.c",
+        "indigo_libs/indigocat/indigocat_mercury.c",
+        "indigo_libs/indigocat/indigocat_neptune.c",
+        "indigo_libs/indigocat/indigocat_pluto.c",
+        "indigo_libs/indigocat/indigocat_saturn.c",
+        "indigo_libs/indigocat/indigocat_sun.c",
+        "indigo_libs/indigocat/indigocat_uranus.c",
+        "indigo_libs/indigocat/indigocat_venus.c"
+      ],
+      "coverage": "complete executable algorithms; numerical datasets structurally reviewed",
+      "call_path_contract": "Every per-body series summation/order/time-power/FK5 function and light-time iteration; geometric Sun and apparent correction",
+      "disposition": "Confirmed FF-11/15/20 including FND-20261023101753-bc8d-complete-repository-audit-034 nutation accumulator reuse; structural table checks and explicit scientific precision limits in report."
+    },
+    {
+      "component": "catalog_moon",
+      "files": [
+        "indigo_libs/indigocat/indigocat_moon.c"
+      ],
+      "coverage": "complete executable algorithms; numerical datasets structurally reviewed",
+      "call_path_contract": "All 36 ELP evaluator bodies, precision thresholds, Laskar rotation and geocentric/ecliptic/equatorial public wrappers",
+      "disposition": "Confirmed FF-11/15/20 including FND-20261023101753-bc8d-complete-repository-audit-034 nutation accumulator reuse; structural table checks and explicit scientific precision limits in report."
+    },
+    {
+      "component": "catalog_support_and_shared_headers",
+      "files": [
+        "indigo_libs/indigo/indigocat/indigocat_solar_system.h",
+        "indigo_libs/indigocat/Makefile",
+        "indigo_libs/indigocat/example/Makefile",
+        "indigo_libs/indigocat/example/planets_test.c",
+        "indigo_libs/indigocat/example/run_example.sh"
+      ],
+      "coverage": "complete source/build/include contract read",
+      "call_path_contract": "Public coordinate structs and units, example include/link configuration, launcher -> sample printing (no assertion oracle)",
+      "disposition": "Confirmed FF-11/15/20 including FND-20261023101753-bc8d-complete-repository-audit-034 nutation accumulator reuse; structural table checks and explicit scientific precision limits in report."
+    }
+  ],
+  "files": [
+    {
+      "path": "indigo_libs/indigo_align.c",
+      "sha256": "42e3696fc704433959d14b289fe42df9166c3eb2809cfe3f42b24891871c785d",
+      "git_blob": "123f4c759f733adebed964ab85473e832a983d81",
+      "lines": 809,
+      "group": "align",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_align.h",
+      "sha256": "034fc536521ab6a99573ee8529f302a30cafe0a2226a2b96993414e6b14aec18",
+      "git_blob": "af9b64641dfba41834a73c4ddef968c5c831bad4",
+      "lines": 373,
+      "group": "align",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_avi.c",
+      "sha256": "8df5e7a217d2856e7c00d55b49c8b65b6b8be42f6efc4d6fd70b3c96731c6efb",
+      "git_blob": "10450872e8bc8e12cef6d4449ad4ff644790b8a3",
+      "lines": 378,
+      "group": "avi",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_avi.h",
+      "sha256": "bbaaa0f857c1f16a90ef5a811477172b1259ab6fd43d49db0e6f0fb9915fe1cc",
+      "git_blob": "842bf7262017af653c66a57ea85fb63e46dc5815",
+      "lines": 131,
+      "group": "avi",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_dome_azimuth.c",
+      "sha256": "af5bdec84250b2c6cd0ddef67740ed0471d14d55657f3865f830a25e472ae4eb",
+      "git_blob": "36d12e9ec8bdd9110155f437c678da54317d8006",
+      "lines": 236,
+      "group": "dome_azimuth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_dome_azimuth.h",
+      "sha256": "d61fdabcf94f60e2ef2781e7e416316dfbf3cbdf9a090bf06e47be408cffce53",
+      "git_blob": "20c389c16db2bc88955dc9da5e43e444660c2160",
+      "lines": 67,
+      "group": "dome_azimuth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_dslr_raw.c",
+      "sha256": "260b578955c0895ddd78b57ccdd4e1ea7f27d18c3135b05ea1be1ff0b3b339f3",
+      "git_blob": "14f955e8bdcdda975db1db054f96ee858e2e4270",
+      "lines": 269,
+      "group": "dslr_raw",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_dslr_raw.h",
+      "sha256": "684a5ab35c61a9dfb9f4cfe1e6afdbf42a52e2345a01e7c5299aa66513df8594",
+      "git_blob": "2e569efd27cea48c1e6464fb147a1dace818afbd",
+      "lines": 85,
+      "group": "dslr_raw",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_fits.c",
+      "sha256": "c4a11ec267ec2e8d5ce98f61f755beb0fc23c650d57495475ff3a1cc62e8b2a4",
+      "git_blob": "14c9f8c22de3637a8cb47b61775f9fa703f82110",
+      "lines": 231,
+      "group": "fits",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_fits.h",
+      "sha256": "3436e2642f9a210ec967e54080e23c8751d3c6f5c354b2bbe26a68560bdac2a7",
+      "git_blob": "a724f05059b83a770f3559b38e1a44b8a3d9f8e5",
+      "lines": 66,
+      "group": "fits",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_gp_guider.c",
+      "sha256": "03214ebb312bf16563d03a4b7da0ef9bd67a9d6aded88b96723080b9329b3f5b",
+      "git_blob": "f3482bee577c17e31da8e8ba7ee0f21ba0f07fbd",
+      "lines": 2005,
+      "group": "gp_guider",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_gp_guider.h",
+      "sha256": "4b07b6a3a2d10de8ebbbf42f043f93e735a35ef22e62bb8b166bfa1490ee10f2",
+      "git_blob": "91fea01c7bcfab5cefb11ca4d6fc1d47052472b7",
+      "lines": 194,
+      "group": "gp_guider",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_io.c",
+      "sha256": "5bb3f0cb9e293a7bacee3eaad3e60ec8de0e0b1be56eec24d21da984e38b98de",
+      "git_blob": "bad3da761ad48e693b314a347952f71b274bced4",
+      "lines": 520,
+      "group": "io",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_io.h",
+      "sha256": "3b70969593cdb53dbabafb93c426b906a8d125db79e125cbecf497e95e805e59",
+      "git_blob": "cb27b4b9845b5fcaefcfdbdbfa6ec35fc484b6d7",
+      "lines": 137,
+      "group": "io",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_polynomial_fit.c",
+      "sha256": "3d7287d5fecbb6c8dad4b7f03b7fc192c942f4502ff4c330b0ebcbfdd6062128",
+      "git_blob": "08246c83163f321c995fb26fda6fc3c56e1a21a6",
+      "lines": 218,
+      "group": "polynomial_fit",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_polynomial_fit.h",
+      "sha256": "2e859e18fd0db88f1825748eb7b5d8a925254d064370e7fd258cd7d1f862ccd4",
+      "git_blob": "7ba766d8209a50660c0ccaff267c147723d67f75",
+      "lines": 110,
+      "group": "polynomial_fit",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_raw_utils.c",
+      "sha256": "4e9935b19a569e57bfee23fa1097a528e5fb68f7e4f9042a3a8130524c5b5887",
+      "git_blob": "6a1ac246fd97a5a702be95063cad0c7bb12bd4ec",
+      "lines": 3576,
+      "group": "raw_utils",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_raw_utils.h",
+      "sha256": "ec02d51bb402ce51e2b6e1e075f4533313b34fea1bc8fa15db7757dc41106b6f",
+      "git_blob": "47e910e27943fa75978b9cd92e70fcac6dd3d573",
+      "lines": 174,
+      "group": "raw_utils",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_ser.c",
+      "sha256": "05404d3cab08f63d4d79669c015f081aebd4e864b2ff13aade35493fdb8910bb",
+      "git_blob": "6232a5fc0c8b947985644ba6135d984db9a28f1e",
+      "lines": 136,
+      "group": "ser",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_ser.h",
+      "sha256": "c084c966799fdf4b735877d629d7e3255fb2bc3650933b5f8a93c26c3c281ea3",
+      "git_blob": "36bcf485735912278cc10fd0f9ec8145630b6269",
+      "lines": 54,
+      "group": "ser",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_service_discovery.c",
+      "sha256": "35403f397644e8ce9b7456a6cb9785d09c29081a2d7993d33efd2ce3fc2ebd6a",
+      "git_blob": "41a508b4fe1040e55329883238912ed6053ce42e",
+      "lines": 649,
+      "group": "service_discovery",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_service_discovery.h",
+      "sha256": "b25976ddd8de2db28e79d46e3b84f779ec56e804e5072631b51877036deabcfa",
+      "git_blob": "5639c787f3d590d147fbb0867b3fc617e5b7175d",
+      "lines": 65,
+      "group": "service_discovery",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_stretch.cpp",
+      "sha256": "f5d31d39ff995598d5a039c5f802ad244d112003b1c63e6cc3186c6f27e8e64e",
+      "git_blob": "1cd01c59e2c6e76be41a77a9c6dd6ca36c832c78",
+      "lines": 720,
+      "group": "stretch",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_stretch.h",
+      "sha256": "40a60614100df9f137cbbe2d2e05370dfcb1eb2fdf19fbaba5393b40003c9bd2",
+      "git_blob": "ae2d16926231cfd44986861649142e4b164be780",
+      "lines": 86,
+      "group": "stretch",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_tiff.c",
+      "sha256": "10c778e176bd11e2f3ac9c042846a1152e77b9c68ab2efc0f6466c099961995d",
+      "git_blob": "6c8eb600ab0c4d4a384a2e8cf66722beac4d48c4",
+      "lines": 92,
+      "group": "tiff",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_tiff.h",
+      "sha256": "b48e6ddf39813157fe6d3dc9446cc1cb474af303ae7ef811c870e70d369effd0",
+      "git_blob": "2376e2890a364f18177b9088afde61ea206cd944",
+      "lines": 59,
+      "group": "tiff",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_uni_io.c",
+      "sha256": "3dbbd4a81b56d022fae45b43ddca4f6885a5671b22df22a17fc19f289023a938",
+      "git_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "lines": 2808,
+      "group": "uni_io",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_uni_io.h",
+      "sha256": "96b31754e95d283ddc08957f1097287f340e76932faa228db635ddc81be2b956",
+      "git_blob": "fbb3ac509fe47045a6d82890d477f4f06b69a5a1",
+      "lines": 446,
+      "group": "uni_io",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_usb_utils.c",
+      "sha256": "dac5978971fe80317da3de1cd61977e89efc56163e1e8d1767d98de500a731a8",
+      "git_blob": "6c670e56a02f6f3c5817ef1824e65cd0ad56c0a2",
+      "lines": 229,
+      "group": "usb_utils",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_usb_utils.h",
+      "sha256": "06ad512ea3725b5f40894af155f608d64dfd1e6e92a40518ceaf4c700db12af0",
+      "git_blob": "270bfdc3b78606aa30a26837bc9a2377640ba589",
+      "lines": 77,
+      "group": "usb_utils",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo_usbserial_utils.c",
+      "sha256": "9087469c4c5c8a359fca2ad87c45c0d2b3d4c9c8392f13e820eab2c23623958c",
+      "git_blob": "4ab814190384758bb22ff42168414cf4bde54da8",
+      "lines": 332,
+      "group": "usbserial_utils",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_usbserial_utils.h",
+      "sha256": "0e61c0ca19bf311fc93407185c54ff76601e62eed783987c91cff02f6c9e8130",
+      "git_blob": "7104323e649c3e5311d66aa8d1731a463b5b6573",
+      "lines": 84,
+      "group": "usbserial_utils",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_dso.h",
+      "sha256": "45c28cdcc2d6641af18a6dc4d986f482fc746780d8fc0e4c3750f377f772b8de",
+      "git_blob": "b31aeb3f1c242ae5a31120f2fe5b37d971144063",
+      "lines": 79,
+      "group": "catalog_dso",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_dynamical_time.h",
+      "sha256": "0a25b846f2108fc05851b8480008809e56d9d7b4f9f32a2671be798ce613cbc5",
+      "git_blob": "9ebd62aff6e23c2b9ee00cb4c672e924332aff0a",
+      "lines": 45,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_nutation.h",
+      "sha256": "87c3f57272fb37f7f64acd4039292c62c8b728f65b5aec0db2b07b2a02b02459",
+      "git_blob": "aa131ff6af7d945e597453d2ed635a70671c6318",
+      "lines": 46,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_precession.h",
+      "sha256": "068e620c5eae0b22ed21abef25edfb817169d32b3d44cfebaea1a0a5c776ad2e",
+      "git_blob": "1af5489d3585615cdd20f3b06023acadf853a970",
+      "lines": 45,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_solar_system.h",
+      "sha256": "1ae65c761604af9dad2b92788767448f6f44573cd252068f71070626ba7db65f",
+      "git_blob": "a2ac0ed232810ff2af3509a05afe057a89cddda3",
+      "lines": 72,
+      "group": "catalog_support_and_shared_headers",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_ss.h",
+      "sha256": "9981c9f75a642d2c7b9f59699f10ac9ee4b1583b6b55766e245996a69f1a33e3",
+      "git_blob": "a8031db24c0ebf417147ee6be8d9f7cd9aa98996",
+      "lines": 62,
+      "group": "catalog_dso",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_star.h",
+      "sha256": "5531453a87b4889f3f69cf18895ed12233a6ee8cb3c23eea2fc069b5f1602904",
+      "git_blob": "9bf1d333bcdfe4c76fca4a0aaef055f548213b6b",
+      "lines": 57,
+      "group": "catalog_dso",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_transform.h",
+      "sha256": "3f747ec303f82ce2b97da641a60e1f4069ff062fe148c6e4a0d05ceb584bd57b",
+      "git_blob": "48ca5c7e0a165a6619985bd8cbcac1c8567b043f",
+      "lines": 75,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigo/indigocat/indigocat_vsop87.h",
+      "sha256": "ab511759e2149c7abb6e62cdbf8cab470fb5c0b21118af9ab36cc66df10d2ff7",
+      "git_blob": "90835a5f5c2247ffe6a01dea6b8686d4632a6d47",
+      "lines": 50,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/Makefile",
+      "sha256": "ecbb48bb6fba0ef5804c692f2a046a0e9a64235380cd4e72a0b67db72611ba20",
+      "git_blob": "6731f2ecafda229f063f1d685acdd29dde68814f",
+      "lines": 41,
+      "group": "catalog_support_and_shared_headers",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/example/Makefile",
+      "sha256": "bfc294312fbc13468a694d3aec97667720c147cec4754a4d7f004436030750c2",
+      "git_blob": "cb18063b381f4688a83ebb0c436a54ad9e7a53cb",
+      "lines": 18,
+      "group": "catalog_support_and_shared_headers",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/example/planets_test.c",
+      "sha256": "020b7ab1e63a7a862ccf7cc4cbe1bfad2b2a47da4e12d20cae935479c5ecc114",
+      "git_blob": "1fdc76b40cd9d01135270fdf87ebbd0a95d9698e",
+      "lines": 90,
+      "group": "catalog_support_and_shared_headers",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/example/run_example.sh",
+      "sha256": "fde8c23864c779faee94c6cd74f654473b7699f90397d42e623ae1115a093150",
+      "git_blob": "7d4c079c69e8d9ebc4c432cc4dad8425b04693cc",
+      "lines": 2,
+      "group": "catalog_support_and_shared_headers",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_dso.c",
+      "sha256": "9c92fedf50ee17e960519a80afef4b2ce8d119e78bc06e457d5d2286e989e98a",
+      "git_blob": "3953c70eb8b08c3e9945461a1f8607c0cba389a6",
+      "lines": 12158,
+      "group": "catalog_dso",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_dynamical_time.c",
+      "sha256": "694294ff86652f5749a61aaa03a83780c099671cf8f055778eca4c4565204165",
+      "git_blob": "c57b64bddc42254ed0e0f88a7b85ac07a8e0e7fc",
+      "lines": 198,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_earth.c",
+      "sha256": "05758ee88145dda0c1dbe1cddc5104fee5628b487547626a9f21edaaff6d048e",
+      "git_blob": "e245fa5db7d04c19d71a6a63ebcd4b635d4b9684",
+      "lines": 2732,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_jupiter.c",
+      "sha256": "cffefb97d0d03665d3d966855938c9fc3854652e8de7c720fdcdf543b43928b2",
+      "git_blob": "3f42aed87bc16f30d363395a984a9108bc058111",
+      "lines": 3823,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_mars.c",
+      "sha256": "68327a33ad912c115595677edb17d68b864dddce8c5d50e0f00fce8b03809320",
+      "git_blob": "c74d37f2e0947cd33deffcc2b970dd05f76ca57d",
+      "lines": 6598,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_mercury.c",
+      "sha256": "b2087e6d95e1b5a7351873f12297cd7f257a276bca961bc9ceba4139ae259160",
+      "git_blob": "4d68fe3a6205e316b2f82f3a7ad61b8252e43057",
+      "lines": 7335,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_moon.c",
+      "sha256": "a759fb124e5a9b4a52a87c86510e9027f19e187ab2c9e67ffc2418480cb1eea3",
+      "git_blob": "c9b48dc0c3b324f3c2abe9f9e10af95449b19c6a",
+      "lines": 39252,
+      "group": "catalog_moon",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_neptune.c",
+      "sha256": "70ee5a4d1b8ced36a6863e712d9ef8c9b9b38557702ae2d94d71066ad9e43902",
+      "git_blob": "24688b2f7bde4288f6873ca959c707507fc2094e",
+      "lines": 2192,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_nutation.c",
+      "sha256": "a0acf330b73851ae3331e3be3d9ba417e69603dfd51f3d8bdc3ed13190e854b2",
+      "git_blob": "3f1e7e02e33569f4b89fe6be4f257950d1b021d7",
+      "lines": 241,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_pluto.c",
+      "sha256": "98469f3f2045f2f0b2c5c54a11402debea3e12c72a1fbde28682d582b16c4ee7",
+      "git_blob": "8ca0d9e6e3227c68a32824aeb698632eafd8b74c",
+      "lines": 297,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_precession.c",
+      "sha256": "bd0331f73fc82724881a15bda6b9e6ea7716af79d10b78fa51e90064d0a4d7ae",
+      "git_blob": "7e1e8b0f7f9ad8f74bf586ad234ac20d12e6bd96",
+      "lines": 111,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_saturn.c",
+      "sha256": "bfb622762cc717ef50b41036816f698f5089904ec8298d23b859a5466dd157bd",
+      "git_blob": "17f0ff9cf8757cb6872233805038fcc33097fe53",
+      "lines": 6563,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_ss.c",
+      "sha256": "f539425c0188f794cc6f08c0ff139b04538b57b276fde27879e7d3c75eabfe49",
+      "git_blob": "f0da9ff6e7051199785113639827cbaa7dc26ee3",
+      "lines": 102,
+      "group": "catalog_dso",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_star.c",
+      "sha256": "495ef07132034accbafae48ac92afc3543f47a1feecc03736a283cb54a629cef",
+      "git_blob": "c151c70b91101b3bc0fdf2ab648bb5226602e6a7",
+      "lines": 176846,
+      "group": "catalog_dso",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_sun.c",
+      "sha256": "814b817812acbae615b6709d03a3432f4d1409374a966b9fae1c41bc0a806a94",
+      "git_blob": "2b9527617176fed0b5f6a9171cc06ad976d4b324",
+      "lines": 57,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_transform.c",
+      "sha256": "9a769291808db06f901460a13da1256865d57b928b2e29ad6317e9dbbf2e4e24",
+      "git_blob": "ec704d40cfaf1f8295d2f5d63ce7f0678bee5623",
+      "lines": 89,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_uranus.c",
+      "sha256": "3697ebaff9a41843a2c33c5f1b441f7bdf09c228f67eaed7f4bb8f0f6f9b6a55",
+      "git_blob": "3358279f49df035de8e54dbce1b7415c687c7b51",
+      "lines": 5443,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_venus.c",
+      "sha256": "85765a89a833727535ce1baa2b904d109e44422cc185f342f237bf1be22871fe",
+      "git_blob": "db49cc3a039572d1fe5089352f4e78c016066daf",
+      "lines": 1908,
+      "group": "catalog_earth",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    },
+    {
+      "path": "indigo_libs/indigocat/indigocat_vsop87.c",
+      "sha256": "2132625ea219802d224fa95e08bb9f8ca93dfd0d75e7c0834f672600decf0cbf",
+      "git_blob": "089d1b78bf1236858763d3696d7f9fc6db045c02",
+      "lines": 51,
+      "group": "catalog_dynamical_time",
+      "coverage": "reviewed; see group contract",
+      "unchanged_from_retained_base": true
+    }
+  ],
+  "exclusions": [
+    "Vendor externals/bin_externals",
+    "Generated catalog numeric data: structural dimensions/consumers only; no external scientific reference validation",
+    "Core bus/protocol/server and base drivers assigned to coordinator/other reviewer",
+    "Five owner-prohibited driver directories",
+    "Task/findings archive sweeps; only explicitly named prior audit evidence read"
+  ],
+  "execution_limits": [
+    "No new native test/build/reproduction program",
+    "No hardware/network/service probing",
+    "No Linux/Windows runtime execution",
+    "Retained analyzer/native results historical and source-identity reusable; not newly executed"
+  ],
+  "report": "framework-formats-review.md",
+  "confirmed_task_local_aliases": [
+    "FF-01",
+    "FF-02",
+    "FF-03",
+    "FF-04",
+    "FF-05",
+    "FF-06",
+    "FF-07",
+    "FF-08",
+    "FF-09",
+    "FF-10",
+    "FF-11",
+    "FF-12",
+    "FF-13",
+    "FF-14",
+    "FF-15",
+    "FF-16",
+    "FF-17",
+    "FF-18",
+    "FF-19",
+    "FF-20"
+  ],
+  "coordinator_addendum": "FF17-20 were confirmed by reviewer follow-up SDK/caller contract checks and preserved in report addendum; no runtime rerun."
+}

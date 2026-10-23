@@ -1,0 +1,19 @@
+{
+  "title": "Explicit-port URL parsers do not bound the copied hostname",
+  "category": "functional",
+  "severity": "high",
+  "summary": "indigo_uni_io.c:1584-1588 and indigo_io.c:367-370: explicit-port URL parsing copies colon-host bytes to host_name[INDIGO_NAME_SIZE] and writes a terminator at the same unbounded index. Public helpers accept longer URLs; drivers pass device URL property strings into this path. A malformed/overlong hostname corrupts stack before any network connection. Next: Reject host segments >= sizeof(host_name) before copying and validate URL/port syntax. Cover both helpers at limit-1/limit/over-limit. No network is needed to exercise parsing rejection.",
+  "evidence": "indigo_uni_io.c:1584-1588 and indigo_io.c:367-370: explicit-port URL parsing copies colon-host bytes to host_name[INDIGO_NAME_SIZE] and writes a terminator at the same unbounded index. Public helpers accept longer URLs; drivers pass device URL property strings into this path. A malformed/overlong hostname corrupts stack before any network connection.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-002"
+}

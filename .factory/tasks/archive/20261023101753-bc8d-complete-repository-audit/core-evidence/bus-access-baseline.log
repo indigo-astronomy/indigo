@@ -1,0 +1,11 @@
+indigo_test/unit/test_bus_access.c:45: expected 0, got 1
+Running Bus access control
+  FAIL protected_without_master_rejects_missing_token
+  PASS protected_without_master_rejects_wrong_token
+  PASS protected_without_master_accepts_device_token
+  PASS protected_with_master_rejects_missing_token
+  PASS protected_with_master_accepts_master_token
+  PASS protected_with_master_accepts_device_token
+  PASS unprotected_accepts_request_without_token
+  PASS unprotected_accepts_request_with_token
+Bus access control: 1 test(s) failed

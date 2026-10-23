@@ -1,0 +1,19 @@
+{
+  "title": "Star exclusion uses a cross instead of the configured rectangle",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_raw_utils.c:3037: excluded rectangle rejects stars where x is within its span OR y is within its span. This excludes an entire cross rather than only the configured rectangle; imager and guider both call this helper with rectangular exclusion dimensions. Next: Combine the two axis-membership tests with AND; verify stars inside rectangle, same x outside y, same y outside x, outside both.",
+  "evidence": "indigo_raw_utils.c:3037: excluded rectangle rejects stars where x is within its span OR y is within its span. This excludes an entire cross rather than only the configured rectangle; imager and guider both call this helper with rectangular exclusion dimensions.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-009"
+}

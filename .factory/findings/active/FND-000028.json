@@ -11,9 +11,14 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-b-review.md",
+      "revision": null
     }
   ],
-  "summary": "TEST-009: The rule exists but the executable is not listed in `INTEGRATION_TESTS`, so `make test` never runs it while `MIGRATION_STATUS.md` advertised 11 cases for the driver. It currently passes 7 of 11; the four failures are the port-reconfiguration cases tracked as `DRV-195`. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "summary": "TEST-009: The rule exists but the executable is not listed in `INTEGRATION_TESTS`, so `make test` never runs it while `MIGRATION_STATUS.md` advertised 11 cases for the driver. It currently passes 7 of 11; the four failures are the port-reconfiguration cases tracked as `DRV-195`. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current Makefile registers the Lunatico simulator in default integration tests and a UDP opt-in variant. Original missing-registration shape is absent. Next: execute/retain applicable current suite evidence before verified historical closure; no fresh runtime pass inferred from registration alone.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_test/REVIEW.md:26; historical locations: `Makefile` (`test_rotator_lunatico_simulator`); legacy status: Open (unblocked 2026-09-19: `DRV-195` is fixed and the binary now passes 11 of 11, so the only remaining step is adding it to `INTEGRATION_TESTS`; still absent from that list)",
   "resolution": null
 }

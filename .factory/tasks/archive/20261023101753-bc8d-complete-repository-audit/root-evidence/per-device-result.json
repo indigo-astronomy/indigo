@@ -1,0 +1,5 @@
+{
+  "exit": 1,
+  "output": "\nFAILED: test-system-alpaca-hw\nsystem_alpaca: 1/1 Failed\nsystem_alpaca: Synthetic model 1/1 OK\nwould record in ../../../../var/folders/q3/8nxbk5cs62zcypssftb96jpm0000gq/T/indigo-audit-recorder-x9qwauhs/README.md:\n2026-10-23 12:21 3.0.0.1 mac arm64 Synthetic model 1/1 OK\n",
+  "records_OK_after_process_failure": true
+}

@@ -1,0 +1,1228 @@
+{
+  "revision": "f019b004769072275a3d98a87c8e9740a42c19a4",
+  "reviewer": "complete_driver_b",
+  "independence": "Read-only production reviewer; sole writes are assigned audit evidence",
+  "components": [
+    {
+      "component": "focuser_asi",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_asi/indigo_focuser_asi.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_asi/indigo_focuser_asi.driver": "35f527c9d319eb74d04ce29821a40983c4b86440"
+      },
+      "contract_review": "EAFOpen/Stop/Close and hotplug identity; SDK status+position finalizer retries failed reads and counts commanded stalls; compensation uses the same motion gate; stopped-short result remains a follow-up candidate.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_askar",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_askar/indigo_focuser_askar.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_askar/indigo_focuser_askar.driver": "13595b04a40aa654a56945e29aca559aae7857e6"
+      },
+      "contract_review": "Serial/TCP discovery, bounded four-frame expected-prefix replies, FE refusal and integer decoding; idle confirmation handles prematurely false FQ; pending and uncertain flags protect cross-property moves; disconnect sends stop.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_astroasis",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver": "1c4b683ba4222e9047a10141752be18f5f6b21f1"
+      },
+      "contract_review": "SDK open/config/status rollback; target clamping and compensation; finalizer distinguishes external motion from commanded target and reports stopped-short; disconnect stops motor; optional Bluetooth read failures remain localized.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_astromechanics",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.driver": "36169f0eedaf723a6ddef4749d01e3044add2167"
+      },
+      "contract_review": "38400 serial ownership and four-digit terminated position replies; second connection sample detects external movement; 100 unchanged-poll bound; aperture write error propagation; physical abort intentionally hidden.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_dmfc",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver": "6e50209249798a1290b6017e90923bbc7f4ee0b3"
+      },
+      "contract_review": "19200 serial identity/status fields and acknowledgements; I/P poll owns motion state while avoiding queued request overwrite; read retries and unchanged-position stop; stopped-short completion needs correction (B-05).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_dsd",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver": "8528c32527fc490418905246429958c3a30526d1"
+      },
+      "contract_review": "Bracket protocol and exact OK acknowledgement; open/setup rollback, compensation/ranges; position+GMOV finalizer retries/stalls and STOP; commanded idle away from target reports OK (B-05).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_efa",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_efa/indigo_focuser_efa.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_efa/indigo_focuser_efa.driver": "ae1290144f6372fbdf68fea2ffd2d11c903b757d"
+      },
+      "contract_review": "AUX packet length/checksum/address/command correlation, RTS cleanup and bounded echo/frame loops; coarse/fine move target check, 180-second calibration finalizer; abort/disconnect cancel and stop the corresponding operation.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_fc3",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver": "45dea28331112db519060f598d616a8adac4b8f6"
+      },
+      "contract_review": "FA status fields and returned setter values; private motion/pending guards; poll failure/stall stop; idle away from target reaches OK without arrival comparison (B-05).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_fcusb",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.driver": "486411348aafc2228e0839bd7db3cec418be178b"
+      },
+      "contract_review": "SDK context open/stop/close; timed motor power/frequency and stop finalizer; running flag retained on failed stop so later abort retries; position hidden for timed focuser.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_fli",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_fli/indigo_focuser_fli.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_fli/indigo_focuser_fli.driver": "efd15d43105860b0824f0a31af32adfe043875f6"
+      },
+      "contract_review": "Enumerated SDK identity and transactional open; finite homing-at-connect wait; extent-based metadata; chunked move finalizer checks steps remaining and target, bounded stalls and stop; disconnect closes only successful handle.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_focusdreampro",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver": "33b9961d57fd7090f97a81afe9a87b51245b37fe"
+      },
+      "contract_review": "Line command prefixes and numeric replies; hand-controller external motion vs pending changes; repeated poll/stall failures halt; stopped-short final outcome ALERT; absent temperature probe IDLE.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_ioptron",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver": "4744ba63aed4fc9c6e9c2067af800863e127adf0"
+      },
+      "contract_review": "115200 handshake model/firmware and exact 14-digit status; position/temperature fields bounded; finalizer checks actual target, retries through uncertainty stop; abort confirms FQ+idle and disconnect stops uncertain session.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_lacerta",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver": "c9f6f5c53982b9d112c1f7d3e34e370fd8af271c"
+      },
+      "contract_review": "FMC/MFOC identity/version ranges and CR-terminated matched replies, finite 16-frame deadline; halt acknowledgement, stalled position and target check; temperature sentinel and pending cross-property guards.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_lakeside",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver": "b95492ab8c454f42417683790b072350923262a2"
+      },
+      "contract_review": "# command/ack and streamed P/DONE movement; abort separate position-confirmation finalizer and uncertainty gate; valid stationary P frames do not advance stall bound (B-03).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_lunatico",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver",
+        "indigo_drivers/focuser_lunatico/shared/lunatico_main_shared.c",
+        "indigo_drivers/focuser_lunatico/shared/lunatico_shared.h",
+        "indigo_drivers/focuser_lunatico/shared/lunatico_shared.c"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver": "2cde0860ada2927685b2de09a15be2fba02e6e23",
+        "indigo_drivers/focuser_lunatico/shared/lunatico_main_shared.c": "ce5c413bbfa00120857784eacfccfd30f3f2c1c8",
+        "indigo_drivers/focuser_lunatico/shared/lunatico_shared.h": "34c46212e4dd9bedc26269db7a77281fd80667f3",
+        "indigo_drivers/focuser_lunatico/shared/lunatico_shared.c": "f089639347154dbb206359daaae0a5154080f1cc"
+      },
+      "contract_review": "Shared controller handle plus exclusive per-port owner across focuser/rotator/powerbox; serial/UDP framing, echoed reply parsing, power/temperature; focuser target/stall/failure finalizer; rotator idle-away-from-target reports OK (B-05).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_mjkzz",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver": "8a02ff9e9730adaaee8520e5cf583583729ba526"
+      },
+      "contract_review": "Binary address/command/checksum+fixed-length register frames; bounded position/status and speed; target/stall finalizer with STOP recovery; disconnect cancels and stops active/uncertain/external move.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_moonlite",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver": "da5a127ab12a7673652695df13b9b272ce923d7e"
+      },
+      "contract_review": "Exact fixed-width hex and # terminator; accepted target readback then FG start; external motion and uncertain-stop handling; stall/short-target finalizer; finite serial ownership and disconnect stop.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_mypro2",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver": "4e42a6b14dca6cabc5e87a5e01c0c3d7252d796d"
+      },
+      "contract_review": "Serial/TCP handle and # replies; saved settings/readback, compensation and sync finalizer; move finalizer uses motion==0 OR target reached and can report stopped-short OK (B-05); disconnect stop.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_nfocus",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver": "762a05b554290d049323a4faa817a4e715881f2d"
+      },
+      "contract_review": "Fixed-length replies, 0/1 motion and -888 absent-probe sentinel; pending timed/relative operation ownership; repeated status failures stop and keep uncertainty; abort cancels queued start/finalizer and stops.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_nstep",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver": "dc536821198bc1a885e3ec0a06ea5c4164426637"
+      },
+      "contract_review": "Fixed-length integer/settings/position replies; relative movement with status and position stall checks; no absolute-position public promise; stop confirmation, compensation/mode ownership and reconnect reset.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_optec",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_optec/indigo_focuser_optec.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_optec/indigo_focuser_optec.driver": "3f35fa06e21553ffa8583aa9dbbd47e17829f565"
+      },
+      "contract_review": "CR terminated exact commands, signed temperature/sensor sentinel; separate delayed acknowledgement and position finalizer, poll/stall bounds; no physical stop command assumed; uncertainty recovery uses position stability.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_optecfl",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver": "89c6afb0d85b055e0e56f33b93e5f4c51dacd623"
+      },
+      "contract_review": "Two logical focusers use slot-indexed state on one controller; bounded END-terminated config/status blocks; pending request reservation protects polls; target/stall/failure checks, halt on abort/disconnect.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_primaluce",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": "0975153115863aeedcbc9c994ed09c8e99daed74"
+      },
+      "contract_review": "Shared JSON link ownership, capability-dependent position registers and presets; calibration start/restart/end finalizers, measured range/position; current SESTO3 debug-prefix+DEG acknowledgements+0.1degree tolerance delta reviewed; WiFi escape issue remains FND-000052.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_prodigy",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver": "4be6bcf2382752dc996c412058d59e5d4fef1e7a"
+      },
+      "contract_review": "19200 command echo and validated status/version/ports; move, park and reboot pending gates; position-stall/target finalizer and explicit recovery; aux port operations share link, reboot retries bounded.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_qhy",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver": "64b38c87faafa2834318fd903a844e3637c7013d"
+      },
+      "contract_review": "Bounded flat JSON field parser, exact write/frame completion and idx discrimination; serial/TCP validity and lost-connection handling; target/stall-deadline finalizer with abort recovery, rolling temperature compensation.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_robofocus",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver": "11ddddc81258ffbe5f465c508c8cbdcc6aa42d91"
+      },
+      "contract_review": "9-byte checksum transport with bounded frame scan and motion byte stream; actual final FD target comparison; no-data stall and abort position recovery; range/power/settings reply bounds.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_steeldrive2",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver": "c14fa43c8bcff54c0792af555d72e91fbe50018e"
+      },
+      "contract_review": "CRC/line echo policy and full summary field parsing; shared focuser/aux ownership; position/moving finalizer validates target, retries failed summaries and stops stalls; stop at disconnect and queued-setting protections.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_usbv3",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver": "1997e2b9840a7f01ad1630b78a13fabf5dfd7c12"
+      },
+      "contract_review": "CR-command acknowledgement/configuration and direction conversion; bounded movement polls with QUIT, separate idle temperature polls; abort preserves target; measured stop without target comparison belongs B-05.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "focuser_wemacro",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver": "61fd654496c89dd3791622adb48010a530187885"
+      },
+      "contract_review": "CRC command/status frames, timed move and multi-shot batch state machine; finalizers bound missing status, batch counts and return movement; owed status settling before reuse; disconnect stops and cancels all owned callbacks.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "gps_gpsd",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver": "ff1b386641851daf0741a3eb7df0659b1882b8fd"
+      },
+      "contract_review": "libgps open/stream/close and bounded32-message poll; fix/time/coordinate availability flags; read failure disconnects through handler; IPv6 endpoint syntax not offered by this colon parser; no new functional finding.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "gps_nmea",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/gps_nmea/indigo_gps_nmea.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/gps_nmea/indigo_gps_nmea.driver": "74a9333fe80e2ff893195089a6819f6c40889bc3"
+      },
+      "contract_review": "Serial/TCP NMEA line ownership; checksum/talker and token-count/numeric validation; per-constellation satellite aggregation and fix validity; bounded transport read and disconnect, selected-system reset.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "gps_simulator",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/gps_simulator/indigo_gps_simulator.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/gps_simulator/indigo_gps_simulator.driver": "bea2f3ef42a6f28e9dfe735c1f1e998db3fca07e"
+      },
+      "contract_review": "Timer-based no-fix/2D/3D progression, finite metadata and coordinate/time publication; connect resets elapsed ticks; generator owns disconnect callback cancellation; no transport.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "guider_asi",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/guider_asi/indigo_guider_asi.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/guider_asi/indigo_guider_asi.driver": "f29ab2784c3b17387c25060ab49a2712167a7478"
+      },
+      "contract_review": "SDK lock serializes enumeration/open/relay; per-axis active direction+deadline, stop-before-replacement, failed stop retained; disconnect stops both; supported-architecture restrictions explicit.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "guider_cgusbst4",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.driver": "6111f2af204813ef9444b552622852225678f245"
+      },
+      "contract_review": "ACK A handshake and device-timed Mg requests, independent RA/DEC finalizers; accept-while-busy replacement; protocol encoding remains FND-000006 unresolved, no unsupported protocol reinterpretation.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "guider_gpusb",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/guider_gpusb/indigo_guider_gpusb.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/guider_gpusb/indigo_guider_gpusb.driver": "64c31ad976bca8e6ab3915c88a2b4c68c786e245"
+      },
+      "contract_review": "SDK relay bitmask shares two axes; stop finalizers preserve other axis; reopen clears relay mask; documented unreliable-library write-status compatibility path retained, hardware failure observability is a limit.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_ioptron",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_ioptron/indigo_mount_ioptron.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_ioptron/indigo_mount_ioptron.driver": "87b8af8c74c44f895ab3bad85380b938d22af5fa"
+      },
+      "contract_review": "Protocol generation/model detection and bounded reply decoders; physical shared mount/guider link; readback/tolerance target and status reconciliation; stop/disconnect resets operation ownership; HC8406 finalizers ignore stop-write failure (candidate for timed relay followup).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_lx200",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_lx200/indigo_mount_lx200.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_lx200/indigo_mount_lx200.driver": "ac34b0d3d41d3ba121adac64afa2477d2741148b"
+      },
+      "contract_review": "Shared mount/guider/focuser/aux transport; bounded serial baud probing, firmware-family dispatch, coordinate parsers; classic host-timed pulses and Gemini continuation stop semantics; mount poll reconciles family park/home/tracking; disconnect stops and clears owned operations.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_nexstar",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver": "a00423ddd31bd0a03af60603f66672f683d45311"
+      },
+      "contract_review": "libnexstar handle+serial mutex and optional GPS lifecycle; coordinate/location/time failure states, goto readback, asynchronous park finalizer and guiding axis ownership; abort and detach cancel owned activity.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_nexstaraux",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.driver": "56f64c1674755d56d4119b1b26d8f38ce6e65512"
+      },
+      "contract_review": "AUX packet correlation, checksum and bounded reads; axis coordinate transforms and tracking restoration; staged fast/slow approaches validate actual arrival and stop/failure; guide finalizers resume prior rates.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_pmc8",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver": "38eaeeaee6d8782ef6cfc4b36c9eae7b989f2f8a"
+      },
+      "contract_review": "Serial/TCP/UDP transport and ES reply parsing; model/rate conversions; three-pass goto validates encoder target and deadline, park waits rates/position; asynchronous guide restoration; park moving status lacks deadline (B-02).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_rainbow",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_rainbow/indigo_mount_rainbow.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_rainbow/indigo_mount_rainbow.driver": "596b3decc002fc9c67746d931283b08386959f23"
+      },
+      "contract_review": "Reader thread bounded queue and write/message mutex ownership; process unsolicited frame states on handler queue; finite goto/park/home finalizers; disconnect stops before reader cancellation; firmware-dependent guide stop retained.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_simulator",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_simulator/indigo_mount_simulator.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_simulator/indigo_mount_simulator.driver": "d181f40616fcf1326f9bcfa107227770e9dccc6b"
+      },
+      "contract_review": "Physical pointing and raw/translated RA wrap, park/home/track state; timer-stepped slew and manual movement; guidable state rejects parked/slewing pulses; abort preserves requested targets and ends operations.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_starbook",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_starbook/indigo_mount_starbook.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_starbook/indigo_mount_starbook.driver": "d2fc4e58ed041fc7a6aeb207dae5127bebdd386b"
+      },
+      "contract_review": "Per-request HTTP response/body/query parsing with field validation; goto finalizer finite deadline and STOP; guiding device-timed pulse completion; site/time permissions and tracking readback; disconnect stops owned movement.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_synscan",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_synscan/indigo_mount_synscan.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_synscan/indigo_mount_synscan.driver": "ebecac5ec8847bda426cb80d4d1be416c3616276"
+      },
+      "contract_review": "Serial/UDP framed hex commands, replay rules and axis config cache; encoder transforms, goto/park/home finalizers and guide tracking restoration; AUTOHOME synchronous multi-minute waits prevent queued abort/disconnect (B-04).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "mount_temma",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/mount_temma/indigo_mount_temma.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/mount_temma/indigo_mount_temma.driver": "f1ad6b6ef29fad0796d81c156eb65873f751a8bd"
+      },
+      "contract_review": "CRLF commands, signed coordinate and motion-bitmask readback; goto/park/manual and guide finalizers; standby/tracking ownership on reconnect; park deadline exists while goto lacks equivalent deadline (B-02).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "polaralign_mlastro",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.driver": "b9cd5b6057926f40e14e7f740bc55ccc64d0d869"
+      },
+      "contract_review": "Bounded unsolicited/telemetry lines and serial control ownership/watchdog; AzPH/AlPH positions, pending switch targets and limits; heartbeat poll and control-lost disconnect; invalid telemetry values remain robustness followup, no hardware certification.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "polaralign_simulator",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.driver": "6d1b99cf795a31e0e2a9c740b24ad57c3b55c78e"
+      },
+      "contract_review": "Two-axis independent target deltas and limits; step finalizer completes both axes; abort/disconnect freezes reached values and cancels queued movement through generator; zero reference handled per axis.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "rotator_asi",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/rotator_asi/indigo_rotator_asi.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/rotator_asi/indigo_rotator_asi.driver": "b59d53c6952b13acb8a6b8c55146da0f0e409eeb"
+      },
+      "contract_review": "CAA SDK discovery/open/close and finite angle/max-degree validation; absolute/relative target guards, moving/hand-control state, abort-pending finalizer and stop before close; no SDK hardware exercised.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "rotator_falcon",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver": "6eabc9bfc0d598b8737eac54fca0e5a285baa23a"
+      },
+      "contract_review": "Two baud/model handshakes and status layouts, absolute/relative wrap and sync; motion loop bounded120s with synchronous abort flag; direction setter combines transport+prefix with incorrect AND (B-06).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "rotator_lunatico",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver": "6b4fd4610de5a3d449c0a8c12f6613bee4133d54"
+      },
+      "contract_review": "Shared Lunatico helpers and per-port exclusive ownership; degrees/steps wrap/calibration and requested limits; motion finalizer treats not-moving as success away from target (B-05); FND-000028 registration now present.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "rotator_optec",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/rotator_optec/indigo_rotator_optec.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/rotator_optec/indigo_rotator_optec.driver": "b654dc5cfeac972f5cd2f7913b330492a641142f"
+      },
+      "contract_review": "Wake/sleep transaction ownership, line/number parsing and incremental status finalizer; home invalidates/re-establishes absolute position; direction rollback and operation guard; physical abort unsupported and hidden.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "rotator_simulator",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/rotator_simulator/indigo_rotator_simulator.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/rotator_simulator/indigo_rotator_simulator.driver": "4ed4bb6e0f3d02e6e245c591f27ee1a5da6c5899"
+      },
+      "contract_review": "Shortest wrapped delta, reverse public/private coordinate mapping; queued motion timer and zero/360 epsilon; abort freezes actual and keeps requested target; reconnect targets actual position.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "rotator_wa",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/rotator_wa/indigo_rotator_wa.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/rotator_wa/indigo_rotator_wa.driver": "c8b6d06a278584b7739b398215fe0973f8faa6d1"
+      },
+      "contract_review": "Model-specific steps/degree and strict delimited numeric status; pivot/offset absolute wrap and relative motion; finite motion deadline, stop/requery abort and reversal/backlash readback; disconnect sends stop before close.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "shared",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/shared/primalucelib/jsmn.h",
+        "indigo_drivers/shared/primalucelib/primalucelib.c",
+        "indigo_drivers/shared/primalucelib/primalucelib.h"
+      ],
+      "source_blobs": {
+        "indigo_drivers/shared/primalucelib/jsmn.h": "b3e2338c1f029df5bf75e62d9b7f73aa34ccc32a",
+        "indigo_drivers/shared/primalucelib/primalucelib.c": "10c44ae8eb2cb9a406695c0245631dfd6ef4c9a3",
+        "indigo_drivers/shared/primalucelib/primalucelib.h": "0a7110d597ec9144805c13dae27d5b300b165cdd"
+      },
+      "contract_review": "primalucelib HTTP/serial request serialization and finite payload parsing, exact token path lengths and response-buffer lifetime; jsmn token bound; archive portability prior evidence; current DEG/debug-prefix delta; unescaped WiFi credentials remains FND-000052.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "system_alpaca",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_lightbox.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_http.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_rotator.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_mount.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_switch.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_weather.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_guider.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_wheel.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_ccd.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_focuser.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_dome.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_safety.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_json.c",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca.h",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_json.h",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_private.h",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_http.h",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.h"
+      ],
+      "source_blobs": {
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_lightbox.c": "fd2bb520ca75025ddb6e241d5dd0f38ff31e1629",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_http.c": "38c94e31706f118228dacfea31f1d9bb106246b7",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_rotator.c": "e3492075998477d30f4d562f8a37ae17132067f2",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.c": "d789191b3ce3d35134dd3e213ae3fff193d7d463",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca.c": "0ffc72d48f0c77fdc4b6ac4500cd074a09d9f468",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_mount.c": "e028c5c1a64bf1180d486e41e1164c207a2854d3",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_switch.c": "491070897ec527f37268317dc5c01f0314ca8bfb",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_weather.c": "63aa003abcbd8997bb8bd0382316411b1a58e423",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_guider.c": "9e7c9db64c9838631030a9b0a562bd471cf9f40b",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_wheel.c": "ee73882b0c2227b23562eaf33ea52c9b8152c7c6",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_ccd.c": "f024e6166db8fb40785ddd512cee66e474c4ce4b",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_focuser.c": "810594fe650807eaf6490ddd5e24241f826ed256",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_dome.c": "d828f81a7ef778798162fdd22c890acdc3b98ef2",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_safety.c": "e384f729bd5714c71a942240f14b660c09a8a674",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_json.c": "cea23ed27a91c4114026b0cbd66e2918fb997141",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca.h": "5f5b536975a925b2545603908c0fcd2db019c6cf",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_json.h": "773162a961d1534033bfa7cc00183fcb7fefa6f9",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_private.h": "503c2c091ce12676fedd64a224f71a4e01b764c4",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_http.h": "212c1a2faedb2ba0e7811368b1a1e5615be076d0",
+        "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.h": "4f0c586a234d992ebfbad5bc1e934cd351288e10"
+      },
+      "contract_review": "All15 authored modules: connection/capability/discovery, HTTP/JSON/retry/transaction identity, CCD transfer queue, mount/dome/focuser/rotator/wheel/guider, safety watchdog, weather, switch/lightbox; deadline operations and class hooks traced; completion follows explicit class IsMoving contract, so target-mismatch candidate rejected; no remote endpoint or physical Alpaca test.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_asi",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_asi/indigo_wheel_asi.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_asi/indigo_wheel_asi.driver": "0d8975db1ebd0a8cb7e771fd91c83cd3cdca4894"
+      },
+      "contract_review": "SDK ID/hotplug and slotNum allocation validation; per-axis move/calibration polling, actual slot target check and reconnect; indefinite SDK moving reply has no overall deadline (B-02).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_astroasis",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver": "1296c711711aceadd71a2f07308b0ebbe79d8c28"
+      },
+      "contract_review": "SDK scan/probe references and validated slots/status;240-poll operation bound covers move/calibration; factory reset/readback and Bluetooth names; rollback closes only opened session.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_atik",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_atik/indigo_wheel_atik.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_atik/indigo_wheel_atik.driver": "35af8c4c69356c146716c5c7551dbd1073656aa2"
+      },
+      "contract_review": "HID open query validates1..9 slots, finite initialization wait;120-poll movement deadline and exact target; SDK errors ALERT, property count bounded.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_fli",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_fli/indigo_wheel_fli.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_fli/indigo_wheel_fli.driver": "6bf705e7e67caaea825bfdcd33ae5783561b0709"
+      },
+      "contract_review": "SDK enumeration identity/open, validated slot count and home-if-uninitialized; blocking SDK SetFilterPos contract treated synchronous; readback mismatch ALERT; successful handle close and unplug match.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_indigo",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_indigo/indigo_wheel_indigo.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_indigo/indigo_wheel_indigo.driver": "1df3074f6a632345800d15a8947bd82181189b7e"
+      },
+      "contract_review": "W#/WI/WV handshake and reconnect state; WM command requires eventual validated WF target;30s finalizer deadline; seven-slot metadata and atomic requests through generated queue.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_manual",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_manual/indigo_wheel_manual.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_manual/indigo_wheel_manual.driver": "8eb110f0a2912fb77ca17dcad647e051897acaaf"
+      },
+      "contract_review": "No transport; eight fixed slot-name/offset items and explicit user selection message; base framework validates target and generator performs property completion; no asynchronous hardware promise.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_mi",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_mi/indigo_wheel_mi.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_mi/indigo_wheel_mi.driver": "664c11b4a27f54b834b2ff3fad4a080ac0cf084c"
+      },
+      "contract_review": "SDK enumerate/release identity and slot capacity; synchronous move plus reserved move/reinit pending gates, reinit metadata delete/redefine; error publication and session rollback.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_optec",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_optec/indigo_wheel_optec.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_optec/indigo_wheel_optec.driver": "b70d38adc5e84f9f6ecd7ae79ae325d62fba7f28"
+      },
+      "contract_review": "WSMODE retry/! acknowledgement, WIDENT wheel types, WFILTR readback, WGOTO completion token; finite protocol read delays and WEXITS close; query range validation is robustness gap, no new duplicate finding.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_playerone",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver": "7d75e9f48273dac5f6ebcd37817615a07aa48103"
+      },
+      "contract_review": "SDK handle identity/probe/custom name, validated slots; initial30-poll positioning bound; normal-move moving status lacks bound (B-02); reset refuses during move and disconnects on success.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_qhy",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_qhy/indigo_wheel_qhy.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_qhy/indigo_wheel_qhy.driver": "9246b37a12a97b9460824c83f2be8844e305f809"
+      },
+      "contract_review": "CFW1/2/3 protocol selection, fallback and echo matching,15s move deadline; CFW3 MXP-derived metadata lacks capacity validation (B-01); configuration property targets applied synchronously.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_quantum",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_quantum/indigo_wheel_quantum.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_quantum/indigo_wheel_quantum.driver": "104b8d6cb6331af13471c92dc50d2b7646fc810f"
+      },
+      "contract_review": "Serial SN handshake and zero-based G/P conversion; goto waits synchronous P replies without total bound, including connect-to-slot1 (B-02); seven fixed slots.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_sx",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_sx/indigo_wheel_sx.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_sx/indigo_wheel_sx.driver": "177fb9c10f0c4dd4084271dd37c51ff6888b0db1"
+      },
+      "contract_review": "Two-byte HID response validates slot/count before publication; startup-in-motion target0 reconciled to actual slot;120-poll timeout; generated close/cancellation owns disconnect.",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_trutek",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver": "0859b732dd6b62d327dfc924626c3bf89a14c35d"
+      },
+      "contract_review": "Four-byte packet family handshake and zero/moving slot sentinel; finalizer re-polls movement, no deadline (B-02); count byte assigned without capacity bound (B-01).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    },
+    {
+      "component": "wheel_xagyl",
+      "status": "source-contract-reviewed",
+      "method": "Lifecycle/transport/operation/property contract tracing; proportionate review, not line-by-line proof or runtime certification",
+      "sources": [
+        "indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.driver"
+      ],
+      "source_blobs": {
+        "indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.driver": "66decb9171b69e28f9ec15e26cc652db042fe503"
+      },
+      "contract_review": "I0/I1/I3 identity chain, I8 count and P position; goto sends once then position finalizer; unbounded count (B-01) and endless wrong slot lacks deadline (B-02).",
+      "lifecycle_reviewed": true,
+      "transport_or_sdk_reviewed": true,
+      "async_abort_disconnect_reviewed": true,
+      "property_contract_reviewed": true,
+      "runtime_limit": "No fresh hardware, platform/SDK or network execution; source findings and retained evidence only."
+    }
+  ]
+}

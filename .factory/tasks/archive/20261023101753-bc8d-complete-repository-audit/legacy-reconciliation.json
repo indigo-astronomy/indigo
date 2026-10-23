@@ -1,0 +1,32 @@
+{
+  "FND-000014": {
+    "report": "driver-a-review.md",
+    "disposition": "Current source inspection finds checked PWM reads and positive period guards; original division-by-zero shape is absent. Next: run focused current sysfs failure regressions and retain closure evidence before moving this historical record.",
+    "status_change": false
+  },
+  "FND-000015": {
+    "report": "driver-a-review.md",
+    "disposition": "Current shared sysfs reader reserves the terminator and NUL-terminates at the actual count; original unterminated-read shape is absent. Next: focused short/full read regression evidence and verified historical closure.",
+    "status_change": false
+  },
+  "FND-000016": {
+    "report": "driver-a-review.md",
+    "disposition": "Current cleanup is best-effort and no longer stops at first failure. Remaining concrete ownership issue: rollback/disconnect can unexport resources already present before this driver session. Next: track per-session ownership and regress pre-exported resources plus partial setup failures; retain original provenance.",
+    "status_change": false
+  },
+  "FND-000017": {
+    "report": "driver-a-review.md",
+    "disposition": "Current generated GPIO drivers no longer own historical relay_mutex/port_mutex members. Next: capture removed-ownership and current lifecycle checks for verified historical closure; not silently closed by this audit.",
+    "status_change": false
+  },
+  "FND-000018": {
+    "report": "driver-a-review.md",
+    "disposition": "Current property constructors use indigo_safe_malloc, which terminates rather than returning NULL. The historical partial-attach NULL-return premise is unreachable under that contract. Next: dedicated verified disposition against the actual allocator/lifecycle, preserving historical observation.",
+    "status_change": false
+  },
+  "FND-000028": {
+    "report": "driver-b-review.md",
+    "disposition": "Current Makefile registers the Lunatico simulator in default integration tests and a UDP opt-in variant. Original missing-registration shape is absent. Next: execute/retain applicable current suite evidence before verified historical closure; no fresh runtime pass inferred from registration alone.",
+    "status_change": false
+  }
+}

@@ -11,9 +11,14 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
     }
   ],
-  "summary": "LINUXDRV-002: PWM sysfs reads parse buffers with `atoi()` without adding a terminating NUL after `read()`. sysfs does not append NUL bytes, so parsing can read stale stack data past the bytes returned. Capture the read length, reject full-buffer reads, append `buf[n] = '\\0'`, and use `strtol()` with validation. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "summary": "LINUXDRV-002: PWM sysfs reads parse buffers with `atoi()` without adding a terminating NUL after `read()`. sysfs does not append NUL bytes, so parsing can read stale stack data past the bytes returned. Capture the read length, reject full-buffer reads, append `buf[n] = '\\0'`, and use `strtol()` with validation. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current shared sysfs reader reserves the terminator and NUL-terminates at the actual count; original unterminated-read shape is absent. Next: focused short/full read regression evidence and verified historical closure.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:30; historical locations: `aux_asiair/indigo_aux_asiair.c:282`, `aux_asiair/indigo_aux_asiair.c:298`, `aux_rpio/indigo_aux_rpio.c:319`, `aux_rpio/indigo_aux_rpio.c:335`; legacy status: Open",
   "resolution": null
 }

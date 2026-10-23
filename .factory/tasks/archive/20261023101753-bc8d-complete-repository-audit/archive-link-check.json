@@ -1,0 +1,61 @@
+{
+  "checked": 11,
+  "missing": [],
+  "links": [
+    {
+      "file": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/driver-a-review.md",
+      "target": "driver-a-coverage.json",
+      "exists": true
+    },
+    {
+      "file": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/tooling-review.md",
+      "target": "tooling-coverage.json",
+      "exists": true
+    },
+    {
+      "file": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/tooling-review.md",
+      "target": "../20261023065605-60d4-repository-audit/independent-review.md",
+      "exists": true
+    },
+    {
+      "file": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/tooling-review.md",
+      "target": "../20261023065605-60d4-repository-audit/editor-fresh-generator-tests.log",
+      "exists": true
+    },
+    {
+      "file": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/tooling-review.md",
+      "target": "../20261023065605-60d4-repository-audit/buildsystem-tests.log",
+      "exists": true
+    },
+    {
+      "file": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/tooling-review.md",
+      "target": "../20261023065605-60d4-repository-audit/verification.md",
+      "exists": true
+    },
+    {
+      "file": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/tooling-review.md",
+      "target": "../20261023065605-60d4-repository-audit/static-inventory-checks.json",
+      "exists": true
+    },
+    {
+      "file": ".factory/project.md",
+      "target": "tasks/archive/20261023101753-bc8d-complete-repository-audit/repository-review.md",
+      "exists": true
+    },
+    {
+      "file": ".factory/project.md",
+      "target": "tasks/archive/20261021193138-70b4-adopt-ai-factory/migration.md",
+      "exists": true
+    },
+    {
+      "file": ".factory/project.md",
+      "target": "tasks/archive/20261021193138-70b4-adopt-ai-factory/verification.md",
+      "exists": true
+    },
+    {
+      "file": ".factory/project.md",
+      "target": "tasks/archive/20261021193138-70b4-adopt-ai-factory/legacy-findings.md",
+      "exists": true
+    }
+  ]
+}

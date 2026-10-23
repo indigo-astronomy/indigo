@@ -1,0 +1,27 @@
+{
+  "previous_audit_commit": "0cf556f8f70b595c159b7dc355169e5ef25ea684",
+  "current_source": "f019b004769072275a3d98a87c8e9740a42c19a4",
+  "changed_maintained_paths": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo_drivers/focuser_primaluce/README.md",
+    "indigo_drivers/focuser_primaluce/REFACTOR.md",
+    "indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver",
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md",
+    "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "indigo_drivers/shared/primalucelib/primalucelib.h",
+    "indigo_test/integration/test_focuser_primaluce_simulator.c",
+    "indigo_test/unit/test_primalucelib.c"
+  ],
+  "unchanged_components": [
+    "framework/server/catalogs",
+    "tools/editor/examples",
+    "Factory helper code and config",
+    "build/project/CI files except test result summary",
+    "unit suites except PrimaLuce regression",
+    "documentation except PrimaLuce reports"
+  ],
+  "reuse": "Prior results retain their exact source scope; changed PrimaLuce inputs require current task delta review and latest recorded tests, not old counts."
+}
