@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "task": "20261023203453-a5d2-fix-fnd-000047",
+  "scope": [
+    "indigo_test/unit/test_uni_io.c",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/findings/active/FND-000047.json",
+    ".factory/findings/archive/FND-000047.json",
+    ".factory/maintenance.json",
+    ".factory/completions/20261023203453-a5d2-fix-fnd-000047.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023203453-a5d2-fix-fnd-000047.json": [
+      "100644",
+      "blob",
+      "bd2b0eaff60bde64764baa77297b94d73d088e8b"
+    ],
+    ".factory/findings/active/FND-000047.json": null,
+    ".factory/findings/archive/FND-000047.json": [
+      "100644",
+      "blob",
+      "b830965539a3c08667d0a0be120306721c2b91b7"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "d1f27baefc151cc44473c0d5da01fda30cadc128"
+    ],
+    "indigo_test/unit/test_uni_io.c": [
+      "100644",
+      "blob",
+      "ae9dc7f417a2200f4a885cc38262559796c0c73c"
+    ]
+  }
+}

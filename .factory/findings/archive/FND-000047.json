@@ -3,7 +3,7 @@
   "title": "TEST-011: serial_open_reports_not_a_serial_port expects ENOTTY from /dev/null, macOS 27 returns ENODEV, so make test-unit fails and skips the remaining unit suites",
   "category": "quality",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -16,9 +16,19 @@
       "id": "20261021203703-ee3d-fix-websocket-key-overflow",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261023203453-a5d2-fix-fnd-000047",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "indigo_test/unit/test_uni_io.c:97 asserts the message 'Not a serial port', which needs the OS to fail TIOCEXCL or tcsetattr on /dev/null with ENOTTY. On macOS 27 both fail with ENODEV, which indigo_uni_io.c correctly maps to 'Serial device is not connected'. The test-unit loop exits on the first failing suite, so every run on this host fails and the RAW image suite never runs. Next action: make the expectation platform-independent (for example a regular file or a pty pair where ENOTTY is guaranteed, or accept the documented ENODEV mapping), without weakening the error-message contract.",
   "evidence": "20261021204508-b596-initial-repository-audit/verification.md (corrected); 20261021203703-ee3d-fix-websocket-key-overflow/verification.md; probe on macOS 27: open(/dev/null) then TIOCEXCL and tcsetattr fail with errno 19",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023203453-a5d2-fix-fnd-000047/verification.md: strict ENOTTY message passes using an isolated regular file; full 21-executable unit target passes on Darwin 27.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

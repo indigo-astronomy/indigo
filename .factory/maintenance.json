@@ -100,6 +100,14 @@
       "scope": "Fix audit finding 002 after authorized repairs 039/026/006/005",
       "checkpoint": "After fixes 039/026/006/005/002, before next unrelated task or release",
       "resets_checkpoint": false
+    },
+    "fnd_000047_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit reply in this chat",
+      "date": "2026-10-23",
+      "task": "20261023203453-a5d2-fix-fnd-000047",
+      "scope": "Repair FND-000047 before the due full repository audit",
+      "checkpoint": "After this repair, before unrelated work or release",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

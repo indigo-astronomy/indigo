@@ -95,9 +95,18 @@ static void serial_open_reports_configuration_error(void) {
 }
 
 static void serial_open_reports_not_a_serial_port(void) {
+	// A regular file produces ENOTTY; /dev/null can produce ENODEV on macOS.
+	char path[] = "/tmp/indigo-uni-io-nonserial.XXXXXX";
+	int descriptor = mkstemp(path);
+	ASSERT_TRUE(descriptor >= 0);
+	close(descriptor);
 	const char *error_message = NULL;
-	indigo_uni_handle *handle = indigo_uni_open_serial2("/dev/null", INDIGO_LOG_ERROR, &error_message);
-	ASSERT_TRUE(handle == NULL);
+	indigo_uni_handle *handle = indigo_uni_open_serial2(path, INDIGO_LOG_ERROR, &error_message);
+	bool open_failed = handle == NULL;
+	indigo_uni_close(&handle);
+	int unlink_result = unlink(path);
+	ASSERT_EQ_INT(0, unlink_result);
+	ASSERT_TRUE(open_failed);
 	ASSERT_TRUE(error_message != NULL);
 	ASSERT_STREQ("Not a serial port", error_message);
 }
