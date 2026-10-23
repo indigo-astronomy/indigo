@@ -1,14 +1,9 @@
 {
-  "version": 1,
+  "version": 2,
   "repository_review": {
     "review_every_task": true,
     "full_review_every_completed_tasks": 5,
     "full_review_every_calendar_days": 7,
-    "last_full_review_date": "2026-10-21",
-    "last_full_review_task": "20261021204508-b596-initial-repository-audit",
-    "last_full_review_revision": "48dc893491f77cddb18fc3188d400a70f67cde19",
-    "completed_non_audit_tasks_since_full_review": 9,
-    "last_task_review_task": "20261023011844-cc6a-primaluce-calibration-finalizers",
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
       "date": "2026-10-21",

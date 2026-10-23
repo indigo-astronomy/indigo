@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "task": "20261023053418-4c0a-upgrade-factory",
+  "head": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce",
+  "manifest": {
+    "version": 1,
+    "template_export_baseline": false,
+    "records": [
+      {
+        "version": 1,
+        "task": "20261021193138-70b4-adopt-ai-factory",
+        "completed_at": "2026-10-21T19:31:38+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261021195453-0ff1-fix-ftdi-build",
+        "completed_at": "2026-10-21T19:54:53+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261021204508-b596-initial-repository-audit",
+        "completed_at": "2026-10-21T20:45:08+00:00",
+        "kind": "audit",
+        "audit": {
+          "reviewed_on": "2026-10-21",
+          "revision": "48dc893491f77cddb18fc3188d400a70f67cde19",
+          "covered_tasks": [
+            "20261021193138-70b4-adopt-ai-factory",
+            "20261021195453-0ff1-fix-ftdi-build"
+          ]
+        },
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261021203703-ee3d-fix-websocket-key-overflow",
+        "completed_at": "2026-10-21T20:37:03+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261021211058-e043-remove-switch-target-review",
+        "completed_at": "2026-10-21T21:10:58+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261021211410-d947-repoint-switch-target-citations",
+        "completed_at": "2026-10-21T21:14:10+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261021214435-6288-never-rewrite-commits",
+        "completed_at": "2026-10-21T21:44:35+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261022162652-644c-ccd-current-temperature-filename",
+        "completed_at": "2026-10-22T16:26:52+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261022182234-7b8b-commit-permission-rule",
+        "completed_at": "2026-10-22T18:22:34+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261022212521-61cf-primalucelib",
+        "completed_at": "2026-10-22T21:25:21+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261022235021-bcb6-primaluce-sestosenso3",
+        "completed_at": "2026-10-22T23:50:21+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      },
+      {
+        "version": 1,
+        "task": "20261023011844-cc6a-primaluce-calibration-finalizers",
+        "completed_at": "2026-10-23T01:18:44+00:00",
+        "kind": "work",
+        "audit": null,
+        "evidence_revision": "c25de00654ab2badd2f97aa942ccc7d16ff7e4ce"
+      }
+    ]
+  },
+  "inputs": {
+    ".factory/findings/archive/FND-000044.json": [
+      "83f15160953958405b82256d772ab0612a89d21ef4411e906088be075b6f6180",
+      420
+    ],
+    ".factory/findings/archive/FND-000059.json": [
+      "3af81bda06af2a677de765fe5ce99bf3d9967f0de8f26db4369833bce11e1c42",
+      420
+    ],
+    ".factory/findings/.DS_Store": [
+      "37d7e0ae5c9584b32bc786db86a6dc7d5a2e1b510252d12e7b67666cd89a5c42",
+      420
+    ],
+    ".factory/findings/archive/FND-000058.json": [
+      "95c68ecc25396642b616bb6dc1970bca1b444196094b3750baf2bd6a00a575e4",
+      420
+    ],
+    ".factory/findings/archive/FND-000045.json": [
+      "b99370c0f2a409b24961ad891ff10d1e483653bf45d48e8334e9caedfa70555a",
+      420
+    ],
+    ".factory/findings/archive/.gitkeep": [
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      420
+    ],
+    ".factory/findings/archive/FND-000057.json": [
+      "eee2e87a12806a438ded3fc13b4c097f6e98afd96c6e3a5e6c6c1986ee861199",
+      420
+    ],
+    ".factory/findings/archive/FND-000051.json": [
+      "9cf9a4377e83ae2088ac7844c84d93be47494efd407667bffa80b31509e54166",
+      420
+    ],
+    ".factory/findings/archive/FND-000060.json": [
+      "e4751379d379589a55e76841f8e309f75d9ad83411a018f624973b3801eeb22e",
+      420
+    ],
+    ".factory/findings/archive/FND-000056.json": [
+      "6fbd5a1f0308820b5e5827dcf806bdf2b11e46bb53f4f06af0915bb7a75cf6df",
+      420
+    ],
+    ".factory/findings/archive/FND-000049.json": [
+      "f56fa4c3aa3f514ef103558f0df9786e766382458213576d48181ff7112faa03",
+      420
+    ],
+    ".factory/findings/archive/FND-000053.json": [
+      "282ab041bd89b60b6a695de5ee3761c3d986dd9706d5b291b2acc80805193ecb",
+      420
+    ],
+    ".factory/maintenance.json": [
+      "2fb4b7ce46ab0f0fe3232d6610970e10a42b52bc4f09aa7cf6fd1cf532ec122d",
+      420
+    ],
+    ".factory/findings/registry.json": null,
+    ".factory/findings/archive/FND-000054.json": [
+      "38460822eed953cbe7cdaa79c3199bb2763133b1d4c03003334d526765696a4e",
+      420
+    ],
+    ".factory/findings/archive/FND-000050.json": [
+      "5746f11524c481443f3e4a824fd4f588596616ef5e1f7faa30620a6d10fd655a",
+      420
+    ],
+    ".factory/findings/active.json": [
+      "d5af22741883c3f2b1dd81f187a84c26938011468eb39d12001e5e406ce393f2",
+      420
+    ],
+    ".factory/findings/archive/FND-000055.json": [
+      "111a064757a4d1d75eeeb21ccedaa36c805c45483cdadd85b1d2e312b93b1ebb",
+      420
+    ]
+  },
+  "writes": {
+    ".factory/tasks/20261023053418-4c0a-upgrade-factory/legacy-findings.json": "d5af22741883c3f2b1dd81f187a84c26938011468eb39d12001e5e406ce393f2",
+    ".factory/findings/active/FND-000001.json": "8e9e0a3a3191d3c1231f70fb95039e8665ce005a7808293669547befb32bf961",
+    ".factory/findings/active/FND-000002.json": "65eb70bbad5129ddf8eed5ba02f6c95d12f5e8b18c11c457a8ef5353bae89185",
+    ".factory/findings/active/FND-000003.json": "a7f29b1d7bb7329b56d5fcc59d269d7223a3b9ae94cf4b9ddcfd3161cd69c5e1",
+    ".factory/findings/active/FND-000004.json": "b8c24fad8ca191c864ba7a38005059ccba06329f4bd8f830b04465fa24945865",
+    ".factory/findings/active/FND-000005.json": "1d2e49858b22fce2b85d60b7501dea3d4a30a64d19bc611abeff82afc75fb48a",
+    ".factory/findings/active/FND-000006.json": "2564d944042b7003b0ccdc3089212a49ffec02b72928fdb035c1f335e31544ae",
+    ".factory/findings/active/FND-000007.json": "a1046af58960662495b212d71a8b1a666859bb3ae5a34603800da274afdc2206",
+    ".factory/findings/active/FND-000008.json": "e2752e2880f63e074b0e9ef14ae81502b68f4ddbfc98a18f7f0c1484df6a9685",
+    ".factory/findings/active/FND-000009.json": "bd9085579611e2a25b61e0aaba1b3ebfee4068827a9455c68682ac0c3404cde4",
+    ".factory/findings/active/FND-000010.json": "59308459d45ff3cdb24bb426ef7347269e2b5617e99e2357b0c4e51f6ee5a8c2",
+    ".factory/findings/active/FND-000011.json": "4e7c2048e92db861c9a404c7401b592338abc2eec685529e94a3263d0cf6cd20",
+    ".factory/findings/active/FND-000012.json": "66566b61c2333e09d7d269f9e7aed6be203f7da6189d2c77de38e9f6d2b48900",
+    ".factory/findings/active/FND-000013.json": "e1a1f0d418ff54f38d1df5d469461766f13af60e734c179298cd78afadc41fc7",
+    ".factory/findings/active/FND-000014.json": "2a919ea5ebd628e02fddd89de56eb1b7d1551326efac70f573a612a10923aaca",
+    ".factory/findings/active/FND-000015.json": "53965a9d2a1cd37924f8ee1b0f92d4858c8a6faeebc00eb75c4a7c23363163b5",
+    ".factory/findings/active/FND-000016.json": "b55c266041f00f3f76a591fedd5dec26f35abe010729f56b966c014568f0141b",
+    ".factory/findings/active/FND-000017.json": "ced6446df937e6fc8f0fa80459eff3cf34928efacc30279ba0ea26b929af4abd",
+    ".factory/findings/active/FND-000018.json": "c0ea27f7b5c8c5dc5b7d989802058e3c8b0932db07c98e021b5dda09b59e0573",
+    ".factory/findings/active/FND-000019.json": "230b2f231f107f8bdd8df28ba21096c0e1429d3436b6c63ada9f55bd41cd2e9f",
+    ".factory/findings/active/FND-000020.json": "8e16487f3d9d0396524a07d7be46deb5585226c49e1a78b206f134a4f48b6af4",
+    ".factory/findings/active/FND-000021.json": "90cde4d601c0d75e5478f127653a45ec0ab147ce1d448c74808e358f3cc79195",
+    ".factory/findings/active/FND-000022.json": "16b05e8f5aa7d910eafe674c6b69aeaac1959c7c99343f3fe2223138ee3fc54d",
+    ".factory/findings/active/FND-000023.json": "c8224914ab1ef7a1df61c11280b0ef9afa198819f6d982a7e2c295b096ed08f6",
+    ".factory/findings/active/FND-000024.json": "e50db0dc7e1a07afc36837dc23e41508b08d9f1a1bce34a303224d833d6af5e0",
+    ".factory/findings/active/FND-000025.json": "8e5e1da6912e42d3e1ade0808f4b9da1d7fa409091e8a68400964374b531a9ee",
+    ".factory/findings/active/FND-000026.json": "76369771910b1802c3aaefae3bfc1ad757104fbaaee37d8288b953b8b1596e15",
+    ".factory/findings/active/FND-000027.json": "c0466ff17331189df31b46ed9f886b54299d5fdfe9ed37d09c4f2b1860e4b251",
+    ".factory/findings/active/FND-000028.json": "9da1c2428a5aacfdfc72430dbfb9577ac22f014e131cd3e9f4c50720678973bd",
+    ".factory/findings/active/FND-000029.json": "158261d57348525e2bcda621261df45b25aa146554da26c458e0c883331ffe23",
+    ".factory/findings/active/FND-000030.json": "51621ef980a8352822c0ec391302159a2974b82b2cc1121e56acb67cacda8fc3",
+    ".factory/findings/active/FND-000031.json": "55bc450465f0de46bc77b6030cb6a81a25af3e288b20c8f1640887f945b1dac6",
+    ".factory/findings/active/FND-000032.json": "3015aab8bc94bc718b66411d1ba74bf0341e00b2d27d6d4197a98b5b4a19ef81",
+    ".factory/findings/active/FND-000033.json": "aba1b73f930b489275548d3b92b46d925bdc7c919680d59fde65c30a0ca9462b",
+    ".factory/findings/active/FND-000034.json": "505fb3ce8768d50cb1ecc8ca0980d84d20ecd230b01f3a869607bb3106f61377",
+    ".factory/findings/active/FND-000035.json": "ff6c978ddb85ef14a689d98b8ccf26884283fe52a8a42d7b524998bf758dc134",
+    ".factory/findings/active/FND-000036.json": "7fcc0056753ea108000cec210493628f0bd9ed4b0e7ca593af1e6763868543e4",
+    ".factory/findings/active/FND-000037.json": "dce09727f8b5e3b712421289c72525ae9f42e1a360326d4f9ab8f27b2b5234fc",
+    ".factory/findings/active/FND-000038.json": "86c38a55354688013fa895b9f121494fd70a57a3d2a395288c8d9f842a94bbd9",
+    ".factory/findings/active/FND-000039.json": "ec6b47caecc7e48a2c2b18f4357d7ce34179d4ffdc809591f2cc9154a62f7f1f",
+    ".factory/findings/active/FND-000040.json": "22fbce11dac5cce6f358f4931b901be357b0ccbd3f8551a70402cb5510e00932",
+    ".factory/findings/active/FND-000041.json": "7a022059b52dd1e027b5521a894f0c484abd4c6ce323a3d84567e8fbf7924716",
+    ".factory/findings/active/FND-000042.json": "b091bd25a03e3a430a23d20a7db181b8f5a643275d5cb8c67184d06dd22ce5a1",
+    ".factory/findings/active/FND-000043.json": "53ed7acc2963eb1c97e45e4702f4fca0a8127a7fe998ab51760beb078f29e0a3",
+    ".factory/findings/active/FND-000046.json": "8534a86dbb8385812db09deed9bfa5f603294e1f3ffca73e408cfaf152e2a2de",
+    ".factory/findings/active/FND-000047.json": "7abb07aaee887aa324e0c1d148bd9147ce35cdb97de068da8994dfeb50c35be7",
+    ".factory/findings/active/FND-000048.json": "5a2cf573dfbc2745e3b31dcc32d80c4242e16d43b0fc15b17918a6d65f457e03",
+    ".factory/findings/active/FND-000052.json": "f991f7085f584adf3299cfc54216f3715981daf60828e6fd593e5c69e67a7c87",
+    ".factory/findings/active/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".factory/findings/registry.json": "985d1a5291f7476ee1962e77c2dc7a623b00d0375cd3b4e3abc9f369a1260eaa",
+    ".factory/tasks/20261023053418-4c0a-upgrade-factory/legacy-maintenance.json": "2fb4b7ce46ab0f0fe3232d6610970e10a42b52bc4f09aa7cf6fd1cf532ec122d",
+    ".factory/completions/20261021193138-70b4-adopt-ai-factory.json": "cf47052fd4df74ff0b64eb5408adf9f35553b3d305df6f977085eba7ae730dac",
+    ".factory/completions/20261021195453-0ff1-fix-ftdi-build.json": "068c88fb3579dd9a8821f77488acacc48f44de0402786551cec61041ecefc43d",
+    ".factory/completions/20261021204508-b596-initial-repository-audit.json": "dc1b3e9bafe0ceca603babfe1d62608500f4bfffa1e5deeb3d814d078ce598db",
+    ".factory/completions/20261021203703-ee3d-fix-websocket-key-overflow.json": "ffc0fd2ab037cbec5e318629e26bd5e9605165b40b749da1261a05f7a38e118c",
+    ".factory/completions/20261021211058-e043-remove-switch-target-review.json": "2556a573adb3e4e4e85ad8466f065750b97a375177a6c197929bbd238da3545a",
+    ".factory/completions/20261021211410-d947-repoint-switch-target-citations.json": "decc55cde9df0954227a216adfb061e2eed06a084a3b5c114527f0e074ac8240",
+    ".factory/completions/20261021214435-6288-never-rewrite-commits.json": "55ca68a91f024517a01c5f2700ea56d7e828e87a2c04c358b3c66fb950c95a27",
+    ".factory/completions/20261022162652-644c-ccd-current-temperature-filename.json": "6dd543f9af53b8269ebc1c8b17155908465e535fe3abe7ceb94bcf9edeedac0b",
+    ".factory/completions/20261022182234-7b8b-commit-permission-rule.json": "809651530be8dca9298e19d6be16aeb6244d0e3cefaa68df93d2263e9d33c35c",
+    ".factory/completions/20261022212521-61cf-primalucelib.json": "e06591b274e430f3ff589b8b7454469340b41e14ee2a9a0dcc912b825e35b5f1",
+    ".factory/completions/20261022235021-bcb6-primaluce-sestosenso3.json": "a605d28ff01fc626539c77aef2907d7c01efb080300abbd027a488634204e457",
+    ".factory/completions/20261023011844-cc6a-primaluce-calibration-finalizers.json": "cfa9a89e7b3c985d3f365a4d4a27366fab8aae88706fdccd9d1fe84d5a5d9f37",
+    ".factory/completions/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".factory/maintenance.json": "9ca89db788cb85673e4156c89b93e4cc3525e15e10a3324ad5376823005c0dbf"
+  },
+  "deletes": [
+    ".factory/findings/active.json"
+  ]
+}

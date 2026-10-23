@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "active_task": "20261023053418-4c0a-upgrade-factory",
-  "phase": "implementation",
-  "status": "active",
-  "assigned_role": "developer",
-  "next_action": "Integrate pinned template and migrate ordered task/state and record storage.",
-  "blocker": null
-}

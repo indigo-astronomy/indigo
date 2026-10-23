@@ -1,0 +1,19 @@
+{
+  "id": "FND-000039",
+  "title": "TOOLS-004: The RAW-to-FITS utility has fragile file handling",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TOOLS-004: The RAW-to-FITS utility has fragile file handling. `write()` is treated as a one-shot full write, input allocation/reallocation is unchecked, `fseek()`/`ftell()` and `fread()` failures are ignored, and each glob pattern is evaluated repeatedly in separate `glob()` calls before `globfree()`. This can mis-handle partial I/O, leave uninitialized data in conversions, or leak glob state. Use checked `size_t` file sizes, loop until all output bytes are written, call `glob()` once per pattern, and check all I/O results. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:39; historical locations: `indigo_raw_to_fits.c:46`, `indigo_raw_to_fits.c:64`, `indigo_raw_to_fits.c:68`, `indigo_raw_to_fits.c:70`, `indigo_raw_to_fits.c:72`, `indigo_raw_to_fits.c:160`, `indigo_raw_to_fits.c:161`, `indigo_raw_to_fits.c:165`; legacy status: Open",
+  "resolution": null
+}

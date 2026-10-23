@@ -1,0 +1,19 @@
+{
+  "id": "FND-000019",
+  "title": "OPTDRV-001: Andor initialization allocates `private_data` and `device`, locks `driver_mutex`, then breaks out of the camera loop when `Initialize()` fails without unlocking the mutex",
+  "category": "functional",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "OPTDRV-001: Andor initialization allocates `private_data` and `device`, locks `driver_mutex`, then breaks out of the camera loop when `Initialize()` fails without unlocking the mutex or freeing the just-allocated objects. A missing or invalid SDK path can leave the global mutex permanently locked and leak the partially constructed device. Use a cleanup path that unlocks the mutex, frees partial allocations, and continues or aborts cleanly. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:30; historical locations: `ccd_andor/indigo_ccd_andor.c:1492`, `ccd_andor/indigo_ccd_andor.c:1496`, `ccd_andor/indigo_ccd_andor.c:1503`, `ccd_andor/indigo_ccd_andor.c:1534`; legacy status: Open",
+  "resolution": null
+}

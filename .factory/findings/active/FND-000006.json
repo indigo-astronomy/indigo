@@ -1,0 +1,19 @@
+{
+  "id": "FND-000006",
+  "title": "DRV-095: Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation.",
+  "category": "functional",
+  "severity": "medium",
+  "status": "blocked",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "DRV-095: Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_drivers/REVIEW.md:134; historical locations: `guider_cgusbst4/indigo_guider_cgusbst4.driver:110`; legacy status: Open (protocol confirmation needed)",
+  "resolution": null
+}

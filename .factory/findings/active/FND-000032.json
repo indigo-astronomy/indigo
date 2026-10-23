@@ -1,0 +1,19 @@
+{
+  "id": "FND-000032",
+  "title": "TESTS-003: Most compliance scripts save `WAS_CONNECTED` from `test_connection_battery()` and then ignore it, always disconnecting the target device at the end",
+  "category": "quality",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TESTS-003: Most compliance scripts save `WAS_CONNECTED` from `test_connection_battery()` and then ignore it, always disconnecting the target device at the end. Manual runs against already-connected hardware will leave devices disconnected and may disrupt an active setup. Restore the original connection state like `gps_compliance.sh` attempts to do, and fix the framework comment at `indigo_test_framework.sh:527` because the function returns original state, not final state. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tests/REVIEW.md:31; historical locations: `ao_compliance.sh:53`, `ao_compliance.sh:133`, `filter_wheel_compliance.sh:70`, `filter_wheel_compliance.sh:196`, `focuser_compliance.sh:53`, `focuser_compliance.sh:377`, `guider_compliance.sh:53`, `guider_compliance.sh:207`, `rotator_compliance.sh:53`, `rotator_compliance.sh:438`; legacy status: Open",
+  "resolution": null
+}

@@ -130,7 +130,7 @@ Read the relevant documentation before changing behavior:
 - `indigo_docs/SERIAL_DEVICE_SIMULATORS.md` documents the host-side serial simulator contract and ready-file convention.
 - `indigo_drivers/*/README.md` files document driver-specific hardware, prerequisites, connection details, limitations, and operational notes.
 - `indigo_test/AGENTS.md` documents automated-test layout, harness conventions, simulator integration rules, and test cleanup.
-- `.factory/findings/active.json` is the central findings register; adoption evidence retains the legacy review baselines and aliases.
+- `.factory/findings/active/` contains the central finding records; adoption evidence retains the legacy review baselines and aliases.
 
 ## Properties reference
 

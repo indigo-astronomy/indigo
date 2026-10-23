@@ -1,0 +1,19 @@
+{
+  "id": "FND-000020",
+  "title": "OPTDRV-002: Andor shutdown destroys the static global `driver_mutex` inside the per-device loop after using it for the current device",
+  "category": "functional",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "OPTDRV-002: Andor shutdown destroys the static global `driver_mutex` inside the per-device loop after using it for the current device. With multiple cameras, the next iteration locks a destroyed mutex; after one shutdown/init cycle, future SDK operations can also use an invalid mutex. Do not destroy this static process-lifetime mutex per camera. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:31; historical locations: `ccd_andor/indigo_ccd_andor.c:1564`, `ccd_andor/indigo_ccd_andor.c:1567`, `ccd_andor/indigo_ccd_andor.c:1573`; legacy status: Open",
+  "resolution": null
+}

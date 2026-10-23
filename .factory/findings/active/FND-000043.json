@@ -1,0 +1,19 @@
+{
+  "id": "FND-000043",
+  "title": "TOOLS-008: The tools build target produces `indigo_drivers`, `indigo_driver_metadata`, and `indigo_scan_drivers`, but `install`, `uninstall`, and `clean` omit some of those binaries",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TOOLS-008: The tools build target produces `indigo_drivers`, `indigo_driver_metadata`, and `indigo_scan_drivers`, but `install`, `uninstall`, and `clean` omit some of those binaries. This can leave stale build artifacts and makes packaging behavior differ from `all`. Decide which helper tools are intentionally private; then either exclude them from `all` or handle them consistently in install/uninstall/clean rules. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:43; historical locations: `indigo_tools/Makefile:33`, `indigo_tools/Makefile:35`, `indigo_tools/Makefile:42`, `indigo_tools/Makefile:48`; legacy status: Open",
+  "resolution": null
+}

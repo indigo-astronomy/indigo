@@ -1,0 +1,19 @@
+{
+  "id": "FND-000021",
+  "title": "OPTDRV-003: Raspberry Pi exposure completion can block forever",
+  "category": "functional",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "OPTDRV-003: Raspberry Pi exposure completion can block forever. `exposure_timer_callback()` polls `IsAnyRequestComplete()` with no timeout while `state` never changes, and then `ReadFrame()` waits on `m_cv` with no cancellation/timeout. If libcamera drops a completion, a request was never queued, or the camera is stopped during the wait, the INDIGO timer callback can hang and leave exposure properties busy. Add a bounded wait and fail the exposure with cleanup. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:32; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:971`, `ccd_rpi/indigo_ccd_rpi.cpp:973`, `ccd_rpi/indigo_ccd_rpi.cpp:980`, `ccd_rpi/indigo_ccd_rpi.cpp:610`; legacy status: Open",
+  "resolution": null
+}

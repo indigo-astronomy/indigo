@@ -1,0 +1,19 @@
+{
+  "id": "FND-000007",
+  "title": "DRV-204: `selection subframe restore` fails deterministically: after guiding with `AGENT_GUIDER_SELECTION.SUBFRAME` set, aborting leaves `CCD_FRAME.WIDTH` at the subframe width (4",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "DRV-204: `selection subframe restore` fails deterministically: after guiding with `AGENT_GUIDER_SELECTION.SUBFRAME` set, aborting leaves `CCD_FRAME.WIDTH` at the subframe width (400) instead of restoring the full frame (1600), so the camera stays subframed after the agent stops. Reproduce with `build/integration/test_agent_guider \"selection subframe restore\"`. Verified pre-existing: it reproduces with `indigo_libs/` reverted to `6c28c23c6`, before this session's changes. Agents were outside the requested sweep, so it is recorded rather than fixed. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_drivers/REVIEW.md:243; historical locations: `agent_guider/indigo_agent_guider.c`; legacy status: Open",
+  "resolution": null
+}

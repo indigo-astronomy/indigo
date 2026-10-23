@@ -1,0 +1,19 @@
+{
+  "id": "FND-000035",
+  "title": "TESTS-006: Framework documentation is out of sync with the implementation: `print_test_summary()` now counts skipped tests, but the early example and prose still describe only passe",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "TESTS-006: Framework documentation is out of sync with the implementation: `print_test_summary()` now counts skipped tests, but the early example and prose still describe only passed/failed counts. Update the documentation so manual test operators understand skipped optional properties and do not mistake skips for missing coverage. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tests/REVIEW.md:34; historical locations: `INDIGO_TEST_FRAMEWORK.md:47`, `INDIGO_TEST_FRAMEWORK.md:592`, `indigo_test_framework.sh:71`, `indigo_test_framework.sh:72`, `indigo_test_framework.sh:75`; legacy status: Open",
+  "resolution": null
+}

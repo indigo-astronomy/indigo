@@ -1,0 +1,23 @@
+# Reviewed Factory upgrade
+
+Source: https://github.com/polakovic/ai_factory, published pin 495c6914325d1c1313fb18f4d93fa61b877e44fe. Prior pin 11392a11253bae4d1c5d5db97e8a532917728c09. INDIGO base b0c5cf377f0c68de9e0abd850b0b15e925cb8091 after remote synchronization. No other source checkout is modified.
+
+## Mapping and omissions
+
+Reviewed the complete plan (template-plan.json), upstream helper/contracts and every omitted category. Nine added mappings install task_store/task_upgrade, maintenance wrapper/module, metadata_upgrade, two routines and two synthetic test modules. Existing mappings merge 42 updates without conflicts; 41 paths stay unchanged. Existing INDIGO instruction additions, disabled external review and real test destinations are retained. New test modules receive the required INDIGO license and AI notice. No source helper behavior is changed locally.
+
+The 109 unmapped upstream changes are deliberate: all template execution/completion/findings history and project-owned state/configuration are omitted; INDIGO data migrates in place. Template .gitattributes and root README are omitted (adopter histories must remain exported/versioned; application README unchanged). Template-only layout test is omitted because it asserts template retention/export defaults. ADR-009–013 and their index are source-template decisions, not copied with template task evidence; INDIGO ADR-002 records local adoption and references the published pin. State/config schemas and new directories are manually migrated through reviewed plans. No symlink adapter is introduced.
+
+## Task identities and references
+
+Task-id-migration-plan.json retains thirteen reviewed mappings. Twelve historical task IDs derive from first retained Git author addition; the uncommitted upgrade uses its brief timestamp. This also renames the active upgrade branch. Null-revision task references and current Markdown links move with task directories; process reviewed_content/reviews, full-SHA evidence and historical pins remain intact. Current project links skipped by the conservative full-SHA-line rule are repaired explicitly. Three documentary task identifiers in focuser_primaluce/REFACTOR.md and Xcode navigation references change outside workflow/docs/tests; no driver behavior or test count changes.
+
+The standard inventory first encountered repository application symlinks, then nonstandard JSON; both read-only plans failed before writes. The retained scoped runner filters the Git inventory to .factory, decisions, maintained Markdown and adapters, excludes off-limits drivers, indigo_tests, obsoleted/vendor/build trees before reads, and invokes the unchanged task_upgrade logic. Broader reference inspection uses Git inventories with the same exclusions. No validation assertion is weakened. Targeted Git reference inspection also identified Xcode PBXGroup paths; these are renamed, and persistent workflow/record/evidence/test/decision files are registered as navigation references without build-phase or setting changes.
+
+## Findings and completion proof
+
+Metadata plan preserves 47 active and 13 closed INDIGO findings. Legacy IDs and statuses remain stable. Task-ID migration changes mutable task references; storage splitting makes no further changes to record content or closed-record bytes. Legacy raw inputs and original pre-upgrade inputs are retained separately. Never import template findings.
+
+Completion manifest imports twelve actual completed tasks using retained archive-addition commit timestamps and evidence states pinned to c25de00654ab2badd2f97aa942ccc7d16ff7e4ce. The audit-only task preserves the owner-accepted 2026-10-21 audit at 48dc893491f77cddb18fc3188d400a70f67cde19 and covers only tasks 001/002 present in that reviewed source; tasks 004–012 remain nine uncovered work completions. Its existing prose pass verdict was normalized to one exact machine verdict without changing its rationale/limitations/owner acceptance. The helper verifies exact parity with legacy count/checkpoint fields using template_export_baseline=false; custom audit acceptance/deferral fields survive. Config timezone is Europe/Bratislava as previously recorded by the owner. Repeat metadata planning yields no writes/deletions.
+
+Two meaningful local migration checkpoints are required: committed reviewed map before updater apply, and retained renamed completed states before metadata import. They do not authorize publication of partial tasks. No history rewriting. Final outcome adds this task's completion (ten uncovered work tasks), preserves the audit deferral through upgrade only, and leaves the audit due. Delivery checks/report are in verification.md and handoff.md.

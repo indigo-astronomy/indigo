@@ -1,0 +1,19 @@
+{
+  "id": "FND-000026",
+  "title": "OPTDRV-008: `X_CCD_ADVANCED_PROPERTY` is deleted on disconnect but not released or nulled, then reconnect defines the stale pointer before overwriting it with a newly allocated prope",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "OPTDRV-008: `X_CCD_ADVANCED_PROPERTY` is deleted on disconnect but not released or nulled, then reconnect defines the stale pointer before overwriting it with a newly allocated property. Detach only releases it while connected. This leaks the advanced property on disconnect/reconnect and leaves stale property state reachable. Release and null the property on disconnect, and allocate before defining it on connect. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:37; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:1212`, `ccd_rpi/indigo_ccd_rpi.cpp:1216`, `ccd_rpi/indigo_ccd_rpi.cpp:1269`, `ccd_rpi/indigo_ccd_rpi.cpp:1624`; legacy status: Open",
+  "resolution": null
+}
