@@ -1,0 +1,12 @@
+12:24:57.411281 Application: XML Parser: syntax error
+12:24:57.430749 Application: XML Parser: syntax error
+12:24:57.431446 Application: XML Parser: syntax error
+12:24:57.432537 Application: XML Parser: syntax error
+Running XML parser boundaries
+  PASS oversized_attribute_stops_before_dispatch
+  PASS longest_attribute_still_parses
+  PASS oversized_tag_stops_before_dispatch
+  PASS oversized_attribute_name_stops_before_dispatch
+  PASS oversized_entity_stops_before_dispatch
+  PASS known_entities_still_parse
+XML parser boundaries: all tests passed

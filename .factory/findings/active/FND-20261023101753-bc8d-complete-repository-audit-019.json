@@ -1,0 +1,19 @@
+{
+  "title": "PTP device-info decoders discard the received payload boundary",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "Device-info path passes payload without remaining length into primitive/string/array decoders. Isolated helper diagnostic demonstrates missing bounds, not full transport reachability because transport adds padding. Next: bounded cursor parsing and fake transport short/oversized count regressions.",
+  "evidence": "indigo_drivers/ccd_ptp/indigo_ptp.c:453-557,1657-1668",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-019"
+}

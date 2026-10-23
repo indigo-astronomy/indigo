@@ -1,0 +1,1617 @@
+{
+  "reviewer": "complete_driver_a",
+  "revision": "f019b004769072275a3d98a87c8e9740a42c19a4",
+  "mode": "read-only source/contract review; root sole source writer",
+  "prior_evidence_identity": "git diff 0cf556f8f..f019b004 -- assigned production paths shows no changes; PrimaLuce changes belong driver_b. Prior generated/native results retained with original scope, not rerun here.",
+  "entries": [
+    {
+      "component": "indigo_drivers/agent_alpaca",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c",
+          "sha256": "a4d5710da2f4d35fb9277b2af3e3b20b8b8b9b0e372d4ab3619812497715c68b"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_agent_alpaca.h",
+          "sha256": "bad183a9c884e88a1c064ce646a5cc526cd447e0eccfa077276f76fe2ca26891"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c",
+          "sha256": "02d04fe8d6393f03524c13176859c6cade5473bb1c0dc3e3150840b7fa847010"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_common.c",
+          "sha256": "e89ddf070792053a86d8b004456a1410c23238cae0c837b2636db69c56b01bfb"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_common.h",
+          "sha256": "cc5d43faa3bfd297df523664204357545e7f6b1ea846fe7781cc3bd28e061d22"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_dome.c",
+          "sha256": "9992cb1a3bc3811b4319507bed22a028a22d6b0e2573a6bfa563feed0d8be299"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_focuser.c",
+          "sha256": "bf1134928c852ff4859e134db0d5ac8b219551d648683816803c00221315facf"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_guider.c",
+          "sha256": "e6bde6fecbde1bc491ad8512205d95f667067062110f14c6b4cac903dc500fe4"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_lightbox.c",
+          "sha256": "352caf36fd08cf64a2ccc8aecc5c3ea5325efe9edad0690a2de1bfb125709a2c"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_mount.c",
+          "sha256": "68338182293c22853e1633ae71364af430818dffae5fd03e5e5dbfd746f39327"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_rotator.c",
+          "sha256": "d1e5d8383198c6dbedf985e497e934b1e86bb829e00a0f54bbcb9f110afcad4e"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_switch.c",
+          "sha256": "0efe954b4628be6b53a4e671de9d853d059f92846a490e967da4c1a337f5a35b"
+        },
+        {
+          "path": "indigo_drivers/agent_alpaca/indigo_alpaca_wheel.c",
+          "sha256": "8927471b6927244e151a8935110880701de21def4f5992c37b4154ee335bdfbc"
+        }
+      ],
+      "contract_notes": "API member/parameter dispatch, deferred device retirement, connection/paired guider references and imagearray conversion reviewed; RAW payload boundary observation pending disposition.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_astrometry",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c",
+          "sha256": "5df9f15f7da8c00afd536f06f4dca3cf8048b339145d4d98fb4926a73e1475ce"
+        },
+        {
+          "path": "indigo_drivers/agent_astrometry/indigo_agent_astrometry.h",
+          "sha256": "1082965d3a6ca16652dd403b95b4884564feabfa51f30f63832492489f680716"
+        }
+      ],
+      "contract_notes": "Cross-platform process handle/group ownership; bounded line parsing; abort and index/config writer cleanup.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_auxiliary",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c",
+          "sha256": "7241fc25edf048aee937347f2f08551193e26bea4d4b2330ad345b80c91e3010"
+        },
+        {
+          "path": "indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h",
+          "sha256": "b5047aa5af547904f7d20611f6e28117b2fe90dc5d54827a398ff4a5e1d7a1a3"
+        }
+      ],
+      "contract_notes": "Filter property ownership, allowed related-agent validation, pending handlers/timers cancelled on detach.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_config",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_config/indigo_agent_config.c",
+          "sha256": "bff7a5dda858faa9c2453767b187b45cbdb2abbc3a2a0f17510601c8ff0bbf1d"
+        },
+        {
+          "path": "indigo_drivers/agent_config/indigo_agent_config.h",
+          "sha256": "9e3c08a2ee7da308e0ed5426501e7751488b1d34ba9cc0dd6d558fe128d04907"
+        }
+      ],
+      "contract_notes": "Configuration name validation; restore/data mutex separation, bounded driver/profile restore acknowledgement and cleanup.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_guider",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_guider/indigo_agent_guider.c",
+          "sha256": "01ce89feeb4d3ac48a95914017484dcf9cd0e40449f657c0c0654b4d684d531d"
+        },
+        {
+          "path": "indigo_drivers/agent_guider/indigo_agent_guider.h",
+          "sha256": "2e2410701e8fcce9dc0991dc2bcb06caffabda7e73315452e35b4e6163ac94b3"
+        }
+      ],
+      "contract_notes": "Exposure RAW size validation; calibration/pulses; saved subframe and abort/recovery ownership. Existing FND-000007 retained pending rerun.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_imager",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_imager/indigo_agent_imager.c",
+          "sha256": "acf1671a81e4be89c93cea9f3a7848643d9f99eea2f93a95d279a42619d5e932"
+        },
+        {
+          "path": "indigo_drivers/agent_imager/indigo_agent_imager.h",
+          "sha256": "43c4bb42d9bd294f2c4228c83ad4bc65f2141fdf7edfc22ce7f4323490ade5d6"
+        }
+      ],
+      "contract_notes": "Capture retry/abort/pause and aux shutter forwarding; focus/move and saved-frame restore; detach releases pause before timer join. RAW payload span validation missing, separate defensive finding.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_mount",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_mount/indigo_agent_mount.c",
+          "sha256": "5fae5a75d92dc16d590ae13a4b4e610ebf7db715908212d60c6356f24a8a8a6b"
+        },
+        {
+          "path": "indigo_drivers/agent_mount/indigo_agent_mount.h",
+          "sha256": "da77aa6d699a2d9601d18060ac8644f5206b1728b3da91a963114b10731acc3a"
+        }
+      ],
+      "contract_notes": "Mount/dome/rotator abort forwarding; unpark acknowledgement before coordinates,180s completion and actual target-distance check; snooped capability/state ownership and teardown.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_scripting",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_scripting/indigo_agent_scripting.c",
+          "sha256": "febd580c184569668c1f8f5e4f19189e2f3bf0426604049fcaebf9d3eb675c16"
+        },
+        {
+          "path": "indigo_drivers/agent_scripting/indigo_agent_scripting.h",
+          "sha256": "8d975e330a9bcce44c8da0ae24286121460e7d67387b2402ea7b308b4992fe0b"
+        }
+      ],
+      "contract_notes": "Duktape owned by mutex; dynamically resized cached properties; queued bus calls; timer ID bounds/cancel and synchronous timer shutdown before heap destruction. Local scripting intentionally controls files/devices; no sandbox claim.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_solver",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_solver/indigo_agent_solver.c",
+          "sha256": "4a4658c4478b7112bfb2467a0195de02b20ed0ec69e494543413c3fdf8fab1db"
+        },
+        {
+          "path": "indigo_drivers/agent_solver/indigo_agent_solver.h",
+          "sha256": "174e2945d40398999a190bb0cfc7af90dc725ec9c7ecea794aab20f24eae37a1"
+        }
+      ],
+      "contract_notes": "Solver callback is explicit false stub; platesolver base owns request lifecycle; verify build/public availability before treating stub as advertised feature defect.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/agent_test",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/agent_test/indigo_agent_test.c",
+          "sha256": "18e479726bc212cf31a951a060295c4762a55c8876fb6f2c4dd63d79b208257b"
+        },
+        {
+          "path": "indigo_drivers/agent_test/indigo_agent_test.h",
+          "sha256": "de2e8c29ffe85233efd766ce16185fe4db61db44b86bc74e069e441804972f84"
+        }
+      ],
+      "contract_notes": "Intentional queued-handler demonstration; property BUSY guard and dynamic allocation/detach; test-only delays not device motion.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ao_sx",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ao_sx/indigo_ao_sx.driver",
+          "sha256": "64d2ff94c91047749e3aaa87d8e509826d664caaa3a6ca29803899e37488b707"
+        }
+      ],
+      "contract_notes": "Shared master owns serial identity/handle; fixed-size response checks; AO reset/guide completion and shared guider semantics.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c",
+          "sha256": "3fea804d7b94ebdbb64cb64c73b0d23a809bf6e3b3e5dac9b0ebb177be554410",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_arteskyflat",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.driver",
+          "sha256": "fa4b83ed0fe6deaa1e637a2ee3c3d5dd7ba59d9e159a2e25f80b1f823998ac27"
+        }
+      ],
+      "contract_notes": "ACK operation/value and exact8-byte response validated; switch rollback restores last confirmed light state.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.c",
+          "sha256": "e70adda796d0850e76382c17d96210f67a07ec88708eefca895ef80ef8b4b7ae",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_astromechanics",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver",
+          "sha256": "fcb663901cc0e939438431bf98c1e92394decb1e4a254cba28c74e7a33b59f7b"
+        }
+      ],
+      "contract_notes": "Measurement request sent once; bounded130s deadline with halfsecond callbacks; serial close rollback.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c",
+          "sha256": "dc5379a0b68f78743ab2c8f303a532c43624f147626bc82358704a1035861067",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_cloudwatcher",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver",
+          "sha256": "ac9b4620a491e8b5e419d6ca252c546b3eebbaee30be0577bc2fbed32e6179c0"
+        }
+      ],
+      "contract_notes": "Fixed-length command framing; weather data/filter/heater cycle and switch readback; serial/TCP open rollback.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_cloudwatcher/aux_cloudwatcher_simulator/aux_cloudwatcher_simulator.c",
+          "sha256": "dd7bdb7fec5f8976827779bc91bdbb52545f8ec9e474cb986cd1ade71aec6661",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_dragonfly",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.driver",
+          "sha256": "72fab1db44fe3db1d0012c0778c0610bf463ac09bc52da2124f8ba3530be7d40"
+        }
+      ],
+      "contract_notes": "Shared Dragonfly transport/controller state; output versus sensor poll, connection initialization and release.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_dragonfly/shared/dragonfly_shared.h",
+          "sha256": "17b6bba3c154cae4b6fe32d59649614b8238bc0e5d036bf87960f739716e2ae3",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c",
+          "sha256": "17f2205471dcb565e9991656e0c235fe2bb555afa0de6b64b3407bb5c7c06867",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/aux_dragonfly_simulator.c",
+          "sha256": "493ac82c1c772ecbc86d569ee577b3a2d7da0ae545e1397590045b2fa8b0d51e",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/aux_dragonfly/aux_dragonfly_simulator/dragonfly_simulator_common.h",
+          "sha256": "29f18a04675fd77d96a31a3053b6fb0ab345d2dc304163d5c6b0c03a1a87c845",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_dsusb",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_dsusb/indigo_aux_dsusb.driver",
+          "sha256": "3e2c8c5e5196691f9c7b3226abf26285050582a6470047841f4e607247ef79fe"
+        }
+      ],
+      "contract_notes": "USB SDK context open/close; optional pre-focus finalizer; monotonic shutter end; abort cancels pending start/finalizer.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_fbc",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_fbc/indigo_aux_fbc.driver",
+          "sha256": "50c28431a6256a01113f42079833d34d6f909c4c4caed30a8e7ca24f7dc98c2d"
+        }
+      ],
+      "contract_notes": "Open identification/SerialMode rollback; outgoing intensity/error state; duration loops hold handler queue up to30s (new observation).",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_fbc/aux_fbc_simulator/aux_fbc_simulator.c",
+          "sha256": "a0a2fd521cfe1b2156e9214d493ee59e9ee6030e293b1dcee3cf6ad83b5a749f",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_flatmaster",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_flatmaster/indigo_aux_flatmaster.driver",
+          "sha256": "2a8da8500e0a1c2ff855ae479c9d11bb71c89fb7b6a367f8555c4b6628c4ccc4"
+        }
+      ],
+      "contract_notes": "Identification/version selects intensity mapping; connect applies stored outputs; disconnect light-off; transport failures ALERT.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_flatmaster/aux_flatmaster_simulator/aux_flatmaster_simulator.c",
+          "sha256": "12c025213e43fb033553600bf769b9ca9026d51254608f0ec7f43ef66c6fc120",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_flipflat",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver",
+          "sha256": "ae95f44abad31766dd831c9da50212aa093c7e9293f03b903259a712a8d3aa27"
+        }
+      ],
+      "contract_notes": "Device-type capability gating; cover status polling holds queue up to30s (new observation); serial open rollback.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.c",
+          "sha256": "38663833cb52570d018d2a6910e5b7386c364bd8a03bb4fc49846e058630eaea",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_geoptikflat",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.driver",
+          "sha256": "4374de8ad9e4f9becbdf59039e0e220ddab9765bc6e1025569b507c7f4fea319"
+        }
+      ],
+      "contract_notes": "Echoed operation check; minimum version payload size; open rollback; switch/brightness transport failures ALERT.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_geoptikflat/aux_geoptikflat_simulator/aux_geoptikflat_simulator.c",
+          "sha256": "292f86e8f54d89b7721ca9ee5c5f31adc04ccb95b80663a5ac490ee03e451a6a",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_joystick",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_joystick/indigo_aux_joystick.c",
+          "sha256": "e14f9a25bce6f03d382d4c49caf7a0c73897a4f55c76cbe74458fde25583f8b9"
+        },
+        {
+          "path": "indigo_drivers/aux_joystick/indigo_aux_joystick.h",
+          "sha256": "29c259c75974ac164a128eca3cfedf2abdd673207633ef3cf7aece681f17c7ed"
+        },
+        {
+          "path": "indigo_drivers/aux_joystick/indigo_aux_joystick.m",
+          "sha256": "240e8a69108f17bc179ee64ec1b9b978ba2e7f9b0482bc0955fd7acef4ad151d"
+        }
+      ],
+      "contract_notes": "OS-specific HID/joystick callbacks, Linux nonblocking reader thread ownership and close/join; AUX forwarding detach.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_mgbox",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_mgbox/indigo_aux_mgbox.driver",
+          "sha256": "5c35f6ebdf66be91c31a0c9b31be870f9325217a731f615cc3bf4f0e8bc31d6b"
+        }
+      ],
+      "contract_notes": "Shared GPS/weather reader and transport_failed latch; calibration/forwarding bounded finalizers; shared close.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_mgbox/aux_mgbox_simulator/aux_mgbox_simulator.c",
+          "sha256": "8cd5975b60e92127cb2c5218319296ed487b3c234e0dc1d8834d12e64d3ee7cd",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_ppb",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_ppb/indigo_aux_ppb.driver",
+          "sha256": "8fb31094a2ba3bf41fb6d5aa202fde2d56a1cfd5d8dc720ca9e9932b6f7b23c3"
+        }
+      ],
+      "contract_notes": "Model-specific port/capability setup; polling respects pending BUSY request; readback/change handlers.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_ppb/aux_ppb_simulator/aux_ppb_simulator.c",
+          "sha256": "54873b288a6699f8b0bb4a2d455371997aad5a53e04a0049ad0c31e4e83664e9",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_rts",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_rts/indigo_aux_rts.driver",
+          "sha256": "0c4907efe797cdfee589a2de48100f68cb38f9b47f47028eddd4000126bbe60d"
+        }
+      ],
+      "contract_notes": "Initial RTS lowered transactionally; precise target/countdown; abort/stop failure ALERT and close.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_simulator",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_simulator/indigo_aux_simulator.driver",
+          "sha256": "b0cd4043fa37845ab91da439c2a83b6c9dd4bed55ca72825996d2526df7ed42e"
+        }
+      ],
+      "contract_notes": "Environment/GPIO/lightbox/cover logical devices; simulated delayed cover and disconnect state reset.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_skyalert",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_skyalert/indigo_aux_skyalert.driver",
+          "sha256": "d69fd005826e4f2c710e2638457134e05a6dbc008635d256e2cf658d3fdc8037"
+        }
+      ],
+      "contract_notes": "Nine-line record mapping preserves successful fields and separately alerts weather/info; periodic request refresh.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_skyalert/aux_skyalert_simulator/aux_skyalert_simulator.c",
+          "sha256": "c7d18f97386efc744fa4b4cc437161bb61c4f220bc507fcaeae3e5eaf5b81964",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_sqm",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_sqm/indigo_aux_sqm.driver",
+          "sha256": "d3f182787eac1d3b83b5cb07a4c212340678c3be289577cc5154014c735bf357"
+        }
+      ],
+      "contract_notes": "Skips limited unsolicited lines; finite five-field sensor parsing; identify/close rollback.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_sqm/aux_sqm_simulator/aux_sqm_simulator.c",
+          "sha256": "77f99f6a01a4206323d665b0358cf5031cdaf2734176365f6d7ccd7b0ae28fb8",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_svbpowerbox",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.driver",
+          "sha256": "ddb2f5ea51e56697c50577bb824f05baec972a36bc3ea7463857d06225b0d330"
+        }
+      ],
+      "contract_notes": "Binary framed length/checksum; sensor-present states; queued output ownership and dew control.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_svbpowerbox/aux_svbpowerbox_simulator/aux_svbpowerbox_simulator.c",
+          "sha256": "d7191d88dbd88537c33d9841fd08eaa076b4f6704fa9e48058139b2b4f6e83de",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_uch",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_uch/indigo_aux_uch.driver",
+          "sha256": "2a86311113b984ae5e08ba86ab8d83ecac510fee079add54ea663901fd6720ca"
+        }
+      ],
+      "contract_notes": "Serial identify rollback; voltage/uptime/USB readback; BUSY ownership protects pending output.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_uch/aux_uch_simulator/aux_uch_simulator.c",
+          "sha256": "862079596190555b040f19bc70ab88622100e1ff2bd0b228f7f5b892e6372bd1",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_upb",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_upb/indigo_aux_upb.driver",
+          "sha256": "9683cb88ae72792c37518d409d83fd3954bb3490d5d7e30ff97b4a598a599c64"
+        }
+      ],
+      "contract_notes": "Shared AUX/focuser references and USB hub handle; polling/request ownership. Existing FND-000048 reconfirmed source-current.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_upb/aux_upb_simulator/aux_upb_simulator.c",
+          "sha256": "fe86355f90567ea96907b154b9c0436a8f068a97e4fe657301cb5e559592cfa2",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_upb3",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_upb3/indigo_aux_upb3.driver",
+          "sha256": "f96ee7029a527e8bd8a89f906e8389432fbe7bb7233deaf7e40a9492aba55e6b"
+        }
+      ],
+      "contract_notes": "Firmware feature gate; AUX/focuser shared handle; update/state parsing and request handlers.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_upb3/aux_upb3_simulator/aux_upb3_simulator.c",
+          "sha256": "4f2924d25b032c7ae17f2a1e4e0de0f0478f6c7e673a55f2dd706e604ccdfa61",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_usbdp",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_usbdp/indigo_aux_usbdp.driver",
+          "sha256": "f141f9c300e4300c6d7e39c3eaecfae9424c192be42e9fb4afa163f6a0b53ba9"
+        }
+      ],
+      "contract_notes": "Protocol version-specific status parsing/capabilities; pending request adoption prevents polling completion churn.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_usbdp/aux_usbdp_simulator/aux_usbdp_simulator.c",
+          "sha256": "20c1c45642e8b0daf622dda84b6dad5bbd9cfdb969b019149b2c9f8d361eef21",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_wbplusv3",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_wbplusv3/indigo_aux_wbplusv3.driver",
+          "sha256": "0413b7fec28e493d87f316f2e06f0e00014af9fbb0a66ef5a693d1a849595382"
+        }
+      ],
+      "contract_notes": "Delimited status requires all fields; sensor nan sentinels; automatic dew/hysteresis and pending-output guards.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_wbplusv3/aux_wbplusv3_simulator/aux_wbplusv3_simulator.c",
+          "sha256": "be088ddbf56f1a8ce144824ae64bf855e8551e0d63d7cd22aa1e953f4f4bd3e0",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_wbprov3",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_wbprov3/indigo_aux_wbprov3.driver",
+          "sha256": "2ff80cedd61875cb7e1e0af87537922c7b0da335831ae124dbf106a30069553b"
+        }
+      ],
+      "contract_notes": "Multi-sensor/dew status parser and fields; pending-output guards; transactional identification/close.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_wbprov3/aux_wbprov3_simulator/aux_wbprov3_simulator.c",
+          "sha256": "6cc35707dbf23c447fe344ddf3182c1a56be496770ede2a22dcd5901a717346e",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/aux_wcv4ec",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/aux_wcv4ec/indigo_aux_wcv4ec.driver",
+          "sha256": "8a44710e568682246a36ce2294dcc214fc3cfd15db0baf045d2cdcf596209352"
+        }
+      ],
+      "contract_notes": "Cover acknowledgement/status parsing, queued versus running operation guard,60s timeout, disconnect cancellation.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/aux_wcv4ec/aux_wcv4ec_simulator/aux_wcv4ec_simulator.c",
+          "sha256": "d8951c15b83fe1e5af50e2d2d08d64edfb95bd0be07d2279e7af6329ca983b2d",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_altair",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_altair/indigo_ccd_altair.c",
+          "sha256": "b9af96be19f78b61631e0c8eda791ddccc3aef75d8b86b13defe60225d3ecc6c"
+        },
+        {
+          "path": "indigo_drivers/ccd_altair/indigo_ccd_altair.h",
+          "sha256": "9d23c0cf0fe1877c6e8aa83b47400e77905b14b1e4b183f23b316ca98febd00e"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_asi",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_asi/indigo_ccd_asi.driver",
+          "sha256": "db27b8bc7d21b08bc6b4c1da6b79e048bb6daef0549fe9ce2830278c2d7bba2d"
+        }
+      ],
+      "contract_notes": "Open+Init rollback; ROI readback bounds; bounded acquisition/retry finalizers; stream/abort stop and shared guider.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_atik",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_atik/indigo_ccd_atik.driver",
+          "sha256": "bedcf23d739dc18501d0606f04c210da55c98e10bb7208edfd27c01d24bce355"
+        }
+      ],
+      "contract_notes": "Serial-based SDK selection; flushing/readout state+deadline; validated image geometry/buffer copy; disconnect cleanup.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_baccam",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_baccam/indigo_ccd_baccam.c",
+          "sha256": "705437c2ca758d290301f428289e41c118de992dc18064a4bd0859e9c3ed3a63"
+        },
+        {
+          "path": "indigo_drivers/ccd_baccam/indigo_ccd_baccam.h",
+          "sha256": "93f9600237b102882aec19710012333aa4703985e1ba1d305fc1bb61fb83cf72"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_bresser",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_bresser/indigo_ccd_bresser.c",
+          "sha256": "ff55a7296e046468c173f3a282e27067827512921f89bc1a816c7e73b618a2b2"
+        },
+        {
+          "path": "indigo_drivers/ccd_bresser/indigo_ccd_bresser.h",
+          "sha256": "855afeec1d033f63cc655486931293675465db40e699fe96d4b46bf264e3cdeb"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_dsi",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_dsi/indigo_ccd_dsi.driver",
+          "sha256": "526f61eb456df9dfe8ed0e9df0c29cd07770a594883a2e786efce38d84955b3f"
+        }
+      ],
+      "contract_notes": "Library device/buffer rollback; readout-finalizer retry and failure cleanup; temperature gate and disconnect.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_fli",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_fli/indigo_ccd_fli.driver",
+          "sha256": "327b074b22792291b7a4c5f5e7ec70639ec0fad008c2513ebba7b4a8b0732734"
+        }
+      ],
+      "contract_notes": "SDK geometry/open rollback; row readout and partial failure; RBI phases/abort; bounded flush polling.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_iidc",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_iidc/indigo_ccd_iidc.driver",
+          "sha256": "92236fc0a043c321a7863c643d052002c8d96299a8eb61bf0f6bf0ea26c73761"
+        }
+      ],
+      "contract_notes": "Mode map allocation/release; nonblocking capture dequeue+deadline; frame validation and queue return; stream stop.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_mallin",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_mallin/indigo_ccd_mallin.c",
+          "sha256": "b27334cc66fe27f69755b639972fb0b0eec25721da4c0ce4b091a65ec6aa2b55"
+        },
+        {
+          "path": "indigo_drivers/ccd_mallin/indigo_ccd_mallin.h",
+          "sha256": "1ac728dcd88f779be8d8f69be98b69bd7cfa5bed2428cafee701c9fb8f76e957"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_meade",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_meade/indigo_ccd_meade.c",
+          "sha256": "d48742880103bbe434925b991dd28dc34448a597bb55cad9c037b2a68ca0a607"
+        },
+        {
+          "path": "indigo_drivers/ccd_meade/indigo_ccd_meade.h",
+          "sha256": "7468cc13146ce8f91dd9a70992f4c7324c30fa9498615d261f467d74ce84cbc2"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_mi",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_mi/indigo_ccd_mi.driver",
+          "sha256": "b1b2151b1927b46cf523dddf191d59c0f63ad007c23cb4f664e0e88d6f65f7b1"
+        }
+      ],
+      "contract_notes": "SDK camera reference and buffer lifecycle; image readiness deadline/read failure; shared guider teardown.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_ogma",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_ogma/indigo_ccd_ogma.c",
+          "sha256": "d38690e8a9039b399e80e8bb204b2a7736911f819e579db3c74e281ebdbfb0fb"
+        },
+        {
+          "path": "indigo_drivers/ccd_ogma/indigo_ccd_ogma.h",
+          "sha256": "382f69c90f05a7baede8829c150e32f2fb662a043d3825eded38d7fa0bdeb656"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_omegonpro",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_omegonpro/indigo_ccd_omegonpro.c",
+          "sha256": "4337f2b1db4d5c412baf03735f4f47be5720ac570414f8ad071a4bf8993f95b4"
+        },
+        {
+          "path": "indigo_drivers/ccd_omegonpro/indigo_ccd_omegonpro.h",
+          "sha256": "b140804dca689ac6e89f3c2c2754f10e750086e252f0a33fb0460d8e038e4921"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_pentax",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c",
+          "sha256": "e88e33115f4f45442fabd650afc95204602b6c65a1cce244471aa64e72620079"
+        },
+        {
+          "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.h",
+          "sha256": "af0e25fea4de02a85c7fee07ff122e12e0df9aeef2c15749f4a4bd1dc237aded"
+        }
+      ],
+      "contract_notes": "USB SCSI request/status tags and transfer-length paths; connect/state polling and ISO request rollback; hotplug/disconnect/timer ownership. Failed libusb_open return guard and unbounded ready polling are source-confirmed follow-ups.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_playerone",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver",
+          "sha256": "2a627ea55197496a07bee6a2eea38fa892aa1386a4313646a16c13d4050006c2"
+        }
+      ],
+      "contract_notes": "SDK open/init+geometry bounds; bounded acquisition; stop failure propagation; guide relay finalizers.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_ptp",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.c",
+          "sha256": "bc354f6ab3633ae39aaa00d938f83f21d306864dab8219cf102c4f6db3f8073a"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.h",
+          "sha256": "26daef1b51802e91c29e9793d5f1d914dfec668c84544ea0898b5ddd1c0a4b36"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.m",
+          "sha256": "3c96e026636f6de58150b41795506346d55c678550cc9dc268e6733c6d0a500d"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp.c",
+          "sha256": "b827b8620e745a334df1e244433f52e2a079aff564120fb573b5f36a6d48069a"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp.h",
+          "sha256": "7a105258153eb7b87b39f0b7049c63b05ccfcfd19fffb7e3005ef1fb3cfa9e74"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp.m",
+          "sha256": "bd1efb63d0e0d9bb7f34562ce7ff1b7b61272c6796c14f0de9bed89f5ec229a1"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.c",
+          "sha256": "a6a8b90177a949f81ec460ccd036de7b3cecf4ef953f79241a64b5a83f5e04d6"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.h",
+          "sha256": "1fbf45eba56865cd4fdd594ba9e8fba6ba217ae39c13d27af4044d0c3ba8c24a"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.m",
+          "sha256": "1b84fea3d3fb636af7fbc7a3aad7596c212edf4de8e1812f3f8ccf76a7187189"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c",
+          "sha256": "b46b6e44e71fd4b4cd49a2514fadc286b3cb30d0ccdf06ed2dcc132fde5edbe0"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.h",
+          "sha256": "e44648c309fb5bc414bc9d66eb79bd577c8cf941bbbda5a0fa877b91d936b217"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.m",
+          "sha256": "49f04a4c20af8a6af233589c700f7f068c9bcb5577f6ed3e16660c7f4017e27b"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_ica.h",
+          "sha256": "98136263a25ff303f614c84a8c53999381e6d83b37d7644db0f8b9711c1b8067"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.c",
+          "sha256": "82127b38c4f39d39cb428ab1be408668f8cbcb1ebf576adf2329a4dc3f002ab7"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.h",
+          "sha256": "21c7903f3e54a5232f4253484e0ed0864188afbe6bba93942becbd25f14ecf27"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.m",
+          "sha256": "07720390acb531d972642ddc1891e9e3100acafb8aa36b32cc9cdfc0c3717154"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.c",
+          "sha256": "c61e62d7274354c0678df1af6a30aebddf9ce402f26d4c206a9a36c5d48351fb"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.h",
+          "sha256": "611f02c6eed4e9073f7be2132c93ddcdf48cfa4fa7e1e5e31552708c676708ea"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.m",
+          "sha256": "7314aae1223e31356b72c64a22af38b594c012c1583e9530ebacb39421e6e363"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.c",
+          "sha256": "862b879cb04eaaa2e1d07d05eef1c3b45a3666c78299d0ef6feaa9baec493d32"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.h",
+          "sha256": "9bed0d418d788558718aa6824ee2b6f81d391541393d37ed419ff679e14462f1"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.m",
+          "sha256": "5a81088511fd7e77abc107eae401c510b868dfc2f554ca91d19fe8dd90656810"
+        },
+        {
+          "path": "indigo_drivers/ccd_ptp/ptp_camera_model.h",
+          "sha256": "66ab6520bb92091e6ee04956ff634f4dcdb5e3c92f0dc9db2bf39dfc35c18d1c"
+        }
+      ],
+      "contract_notes": "Generic USB/macOS transport framing/deadline and payload ownership; queued set-property retry, exposure/stream stop+abort; vendor Canon/Fuji/Nikon/Olympus/Sony phases and event payload decoding. Missing payload bounds retained as finding.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_qhy",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver",
+          "sha256": "af960a5c65a2dd1fe860fe2793e8e3b05ab33719ec5ba8386abdd648288908f1"
+        }
+      ],
+      "contract_notes": "SDK geometry/large transfer reserve; acquisition readback shape validation/deadline; shared wheel/guider ownership.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_qhy2",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver",
+          "sha256": "b791b63f7d9749336bbfa3f2a0126aefe20398bca8cc04f912053a3f6a2684ff"
+        }
+      ],
+      "contract_notes": "QHY2 hot-unplug-specific close behavior; deadline/image geometry/transfer bounds; shared wheel/guider.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_qsi",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_qsi/indigo_ccd_qsi.driver",
+          "sha256": "7e46884a2c89fbc5f81b84b9884bc3be982b6f65e7797060498728c11236b375"
+        }
+      ],
+      "contract_notes": "C++ SDK exception boundary; adopted connection rollback; image-ready/deadline+array size checks; wheel moving state.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_rising",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_rising/indigo_ccd_rising.c",
+          "sha256": "2a381109556ef5efed28734e25436a6598d84c0147a2b20401179f5de7653fd1"
+        },
+        {
+          "path": "indigo_drivers/ccd_rising/indigo_ccd_rising.h",
+          "sha256": "bb183a6094d35c841c7250540e705c7aa747562e404545079f2e39daf04a69fe"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_simulator",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver",
+          "sha256": "e6c4ad5248b477d277f6a08f68d8fbcfc4b45134982edd70e3ad8c782525415b"
+        }
+      ],
+      "contract_notes": "Per-logical-device exposure/stream flags+deadlines; file-image ownership; disconnect cancels starts/finalizers; wheel/focuser simulation.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_ssag",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_ssag/indigo_ccd_ssag.driver",
+          "sha256": "43c8c76ee624550833dd0bab34b64622fa7cf47fbffdb543042eb66d7b275083"
+        }
+      ],
+      "contract_notes": "USB interface claim/reset/firmware setup rollback; atomic cancelled exposure drain; guider timers and disconnect.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_ssg",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_ssg/indigo_ccd_ssg.c",
+          "sha256": "1011b6f3809c314f25f3a90871879435723a9927723d005226710131e9387289"
+        },
+        {
+          "path": "indigo_drivers/ccd_ssg/indigo_ccd_ssg.h",
+          "sha256": "6c74a54af39229594ca37041932c5609e7cbbfbb1015f56ea56a7080690a7ee3"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_svb",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_svb/indigo_ccd_svb.driver",
+          "sha256": "7ae108f13e98d0426a27e7a142734c569c2aea074529ce0d5c43ffe30be97821"
+        }
+      ],
+      "contract_notes": "Camera/trigger-init rollback; bounded video acquisition/stop; frame ownership and guider teardown.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_svb2",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_svb2/indigo_ccd_svb2.c",
+          "sha256": "b9202e0efda2092db263076275bd82cb4461672ae4fabcc537dd4170d4212e3c"
+        },
+        {
+          "path": "indigo_drivers/ccd_svb2/indigo_ccd_svb2.h",
+          "sha256": "e37e2f2edbccaec68f5f68a33b59e9ff5a375341185c857477dc9b695c252fa5"
+        }
+      ],
+      "contract_notes": "OEM selector wrapper includes ccd_touptek shared implementation; no separate device lifecycle; vendor-specific compile selection reviewed.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_sx",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_sx/indigo_ccd_sx.driver",
+          "sha256": "8649dfa3e9c4a6f5cd5b305304e4db4e2da08aeb5d84ff33bdb51b01540be35f"
+        }
+      ],
+      "contract_notes": "USB exact transfer checks/model geometry; image buffers, exposure/abort/readout; relay masks/finalizer stop and detach.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_touptek",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_touptek/indigo_ccd_touptek.c",
+          "sha256": "512b4a54785e48371ffe32ba8b663095d6a8e12a56b1be213692053aac649cd9"
+        },
+        {
+          "path": "indigo_drivers/ccd_touptek/indigo_ccd_touptek.h",
+          "sha256": "07635e69baad372c04028bfd1e7551e3d6248f0525046143995b8675e7c9cda4"
+        },
+        {
+          "path": "indigo_drivers/ccd_touptek/indigo_ccd_touptek_vendors.h",
+          "sha256": "e60c7bc920d7da521152018cd92e8bbab73b7fbe2f5301bec938d5d9c071cde6"
+        }
+      ],
+      "contract_notes": "Shared OEM implementation: generation-tagged callback dispatch; exposure watchdog; abort/SDK stop outside callback; four logical device refs/hot-unplug.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/ccd_uvc",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/ccd_uvc/indigo_ccd_uvc.driver",
+          "sha256": "e10499f74d2b9a57160273cc13b3e514a9dbb41897ff68adbe848fe271a1a0e2"
+        }
+      ],
+      "contract_notes": "Native/converted formats and dynamic modes; size-checked frame buffer; deadline dequeue/finalize/stop cleanup.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_baader",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_baader/indigo_dome_baader.driver",
+          "sha256": "4b7da74f49bf1fc906331ca7588a629ccf41c1b28d6a97180c04b104668ae597"
+        }
+      ],
+      "contract_notes": "Fixed frame parser and typed readers; pending rotation/shutter/flap ownership; emergency flags/readback and abort state.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/dome_baader/dome_baader_simulator/dome_baader_simulator.c",
+          "sha256": "19bce07c08770ac006fc8363ee2752998be157bf23ed109cc92ad7c904bc5695",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/dome_baader/dome_baader_simulator/baader_simulator_test.py",
+          "sha256": "68e78da956dae45459db42def982f529c0050b57b8ce2c366e5f029c8bd77440",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_beaver",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_beaver/indigo_dome_beaver.driver",
+          "sha256": "482f022d379c676253c12230e03521f31b9d517f55ea89c6953d433dc4d2f6a9"
+        }
+      ],
+      "contract_notes": "Echoed protocol response and typed parsers; safety/current request reconciliation; shutter/calibration/park/home state.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/dome_beaver/dome_beaver_simulator/dome_beaver_simulator.c",
+          "sha256": "9211d758cdaf54973da1043e418b7950500c377c2ce20f8b558049e5b91c3a17",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_dragonfly",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.driver",
+          "sha256": "ee8128d8c34412f86571aec91c12650962021e84a13d580f16e94cd91b16fbe6"
+        }
+      ],
+      "contract_notes": "Roof state seeded from limit sensors; directional relay release; bounded shutter finalizer and opposing-limit error.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/dome_dragonfly/dome_dragonfly_simulator/dome_dragonfly_simulator.c",
+          "sha256": "3677399170f2a08b05bb22d83cf9061d4211069898209bb869d261fd213b4e27",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_nexdome",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_nexdome/indigo_dome_nexdome.driver",
+          "sha256": "48e081ab5a896cdf6faeb24f8e5aacc861228c230b5065ff4c93e31b2b4d3aad"
+        }
+      ],
+      "contract_notes": "Reply kind/frame numeric parse; rotation/shutter state readback; shared status poll and reset finalizer.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/dome_nexdome/dome_nexdome_simulator/dome_nexdome_simulator.c",
+          "sha256": "b83f40b5b89cd7c0a73746718ec5711523397581148956ad38cf2c701f182797",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_nexdome3",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.driver",
+          "sha256": "b8d7d9d23eef992d33a0db3f5ed9e00fe1f6eadc4af347b5f4fc9ea5ab54a4df"
+        }
+      ],
+      "contract_notes": "Reader thread/message queue+mutex lifecycle; matched reply/position handlers; bounded no-motion/stall/shutter finalizers.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_open_abort_close_abort_test.py",
+          "sha256": "3d849208b270f768c28ffa1b4c0a8b7381328c1d3d6385340468128595fa44f3",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_EEPROM_test.py",
+          "sha256": "63c1874460b978d554f1b91f4d6de18483abac98049bbc1f849c1b625e460e87",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_test.py",
+          "sha256": "7b5a2c316ce3e0ce5930e30c5b0ed17b51d9db6f52d98e9d24a8f09768db0cb8",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_rotate_test.py",
+          "sha256": "df500333247cb6f37df7a4d5bd5854da23b4a56b1bea59fc8f3a6e43c1f15c7f",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/nexdome_simulator_v3_open_close_test.py",
+          "sha256": "9a5545bb0fa790427086794462822b8ac0c00fa7aa9eede7b0cd767d612589d8",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.c",
+          "sha256": "0b717fa4afaaed6757d0b5e1dfc1fc007560adcc3bd34221cd8d2b299017e42d",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_simulator",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_simulator/indigo_dome_simulator.driver",
+          "sha256": "5cf5be5af5e0558b17651811ab384773b4e24f1de3d62a6467e9e16b3412d99c"
+        }
+      ],
+      "contract_notes": "Simulated azimuth/shutter delayed completion and park state; disconnect clears active motion/BUSY.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_skyroof",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_skyroof/indigo_dome_skyroof.driver",
+          "sha256": "24af2f9a432c3bf451236b9177379e72891c2334d817207b992aecfa3a15bb0a"
+        }
+      ],
+      "contract_notes": "Allowed exact status set on connect; repeated bounded shutter checks; park interlock and abort.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/dome_skyroof/dome_skyroof_simulator/dome_skyroof_simulator.c",
+          "sha256": "eaead843b54019542a11bc4f319365eeea1a5293ed5cdfea0e94cfccc05892e6",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_drivers/dome_talon6ror",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.driver",
+          "sha256": "96af6d2394c490d04e24510f3e83feac4746400bddcd3120cd2a9e4883dae273"
+        }
+      ],
+      "contract_notes": "Framed binary/checksum/status length validation; settings rollback; requested action/status/sensor reconciliation.",
+      "remaining": null,
+      "runtime_limit": "No fresh component suite or hardware/SDK/platform certification in this source review.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_drivers/dome_talon6ror/dome_talon6ror_simulator/dome_talon6ror_simulator.c",
+          "sha256": "1d4c4eac528067a987c2baeae4e59a2972b946ea734c9dc5250c138c78e7cde2",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_linux_drivers/aux_asiair",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver",
+          "sha256": "12bc36619112ce8f016c8b7cb28754b47888a161895f858ad03ae469eb5f1f7e"
+        }
+      ],
+      "contract_notes": "GPIO/PWM generated lifecycle; shared sysfs NUL/read/period guards and best-effort rollback.14/15/17 obsolete source shapes;16 ownership issue remains;18 allocation-null premise invalid; relay OFF011 current.",
+      "remaining": null,
+      "runtime_limit": "SDK/hardware/host platform not exercised.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_linux_drivers/aux_rpio",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver",
+          "sha256": "006fa2e52f3848b154ec9fa2511bfb00926bd128d6ac9ac7506ec408977628e1"
+        }
+      ],
+      "contract_notes": "Same shared sysfs contracts; input/outlet direction/export, PWM mapping and pulse timers inspected. Same historical dispositions as ASIAIR.",
+      "remaining": null,
+      "runtime_limit": "SDK/hardware/host platform not exercised.",
+      "associated_source_contracts": [
+        {
+          "path": "indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h",
+          "sha256": "26f3a046f6b3d94216513c1839e3950a1640b19818fe3ef8a8d68ec6ec0838c2",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        },
+        {
+          "path": "indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c",
+          "sha256": "da43e6bc614e759e434fb43ff218954fe70af9e46f87feec159a78032a76c4e2",
+          "review_focus": "Protocol dispatch/framing, model transitions, fault hooks and private ready-file lifecycle; host-side helper contracts; no execution claim."
+        }
+      ],
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_mac_drivers/ccd_atik2",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver",
+          "sha256": "19ef6b1907e009e18b66b4824aca9a105b3d5cf577345e61421efc3131adc80f"
+        }
+      ],
+      "contract_notes": "SDK open/close, frame allocation/read-image, deadline/readout, guider relay finalizers and wheel slot bounds reviewed.",
+      "remaining": null,
+      "runtime_limit": "SDK/hardware/host platform not exercised.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_mac_drivers/focuser_mjkzz_bt",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.h",
+          "sha256": "decd6cdff7a30b8748486e441e17c3c8090f7abc16581be3a53e17f0a7c2288e"
+        },
+        {
+          "path": "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m",
+          "sha256": "0f6aa82835802dc08be475893ec8ea9fe06267cf33f6f0531cbd91611285a578"
+        },
+        {
+          "path": "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_main_bt.c",
+          "sha256": "6cbbc1ce0c6d4e635ecae124431b4dfecd76094b2ce27671ee6dea9bd6f3d6a8"
+        }
+      ],
+      "contract_notes": "Bluetooth discovery/peripheral delegate ownership, notification>=message size, position/speed/stop state, serialized command writes, scan stop/disconnect/delete on shutdown. No Bluetooth device run.",
+      "remaining": null,
+      "runtime_limit": "SDK/hardware/host platform not exercised.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_mac_drivers/focuser_wemacro_bt",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.h",
+          "sha256": "6737a01b4a01f7963b91bec2007581fe982c742574545d6598711689b32ede57"
+        },
+        {
+          "path": "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m",
+          "sha256": "483b2d838a188d9da29bbeb9264057b94c32500a4f096c75ce6ac7891da48380"
+        },
+        {
+          "path": "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_main_bt.c",
+          "sha256": "028eaf1793cad3f21169707dca915aab53f1e8626bc9ae42c56fc4c8468fa290"
+        }
+      ],
+      "contract_notes": "Bluetooth discovery and service/characteristic connection;3-byte notification bound, rail count/completion and command CRC; disconnect removes custom properties, scan stop/device delete at shutdown. No Bluetooth device run.",
+      "remaining": null,
+      "runtime_limit": "SDK/hardware/host platform not exercised.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_optional_drivers/ccd_andor",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_optional_drivers/ccd_andor/indigo_ccd_andor.c",
+          "sha256": "43553bd036381ed4aa2a358a54d37fc656e5ed58728662d32d4f782b9688259c"
+        },
+        {
+          "path": "indigo_optional_drivers/ccd_andor/indigo_ccd_andor.h",
+          "sha256": "7b98f7d6f727e0ca4fb3152ec77781037633f91ad048e71bb67b295bfaa3aa14"
+        }
+      ],
+      "contract_notes": "Global SDK mutex init/shutdown and camera array; prior19/20 remain source-current. SDK error paths and exposure reviewed.",
+      "remaining": null,
+      "runtime_limit": "SDK/hardware/host platform not exercised.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    },
+    {
+      "component": "indigo_optional_drivers/ccd_rpi",
+      "status": "source_contract_reviewed",
+      "sources": [
+        {
+          "path": "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp",
+          "sha256": "a023b2b56c2da202463f0bcf9e8ffb02870726a8d27599a7a902ace96fa07502"
+        },
+        {
+          "path": "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.h",
+          "sha256": "fa87416aa9fa745f6793bd3b35292ba38ee84d9e9c5d33aed9a53e5e061ec1c4"
+        }
+      ],
+      "contract_notes": "libcamera exposure request/readiness/mapping/mode/property/focuser lifecycle; prior21-27 remain source-current.",
+      "remaining": null,
+      "runtime_limit": "SDK/hardware/host platform not exercised.",
+      "review_depth": "Component contract review: resource/lifecycle paths, operation start/completion/cancellation, input-to-property/state boundaries; proportional control-flow and call-site inspection, not line-by-line verification of vendor tables or generated boilerplate."
+    }
+  ],
+  "remaining_component_gaps": [],
+  "limitations": [
+    "No fresh complete driver suites, vendor SDK, physical hardware, Linux/Windows or Bluetooth execution by this reviewer.",
+    "Source-contract coverage is an audit, not proof every path is defect-free or every protocol is hardware-compatible.",
+    "Inherited prior tests/generation diagnostics only retain their original revision/scope and are not counted as fresh reviewer runs.",
+    "Embedded Duktape, DDHidLib under singular external/, bundled vendor SDK and generated driver boilerplate are excluded.",
+    "Firmware/model realism beyond reviewed current driver contracts remains a test-development concern, not hardware certification."
+  ]
+}

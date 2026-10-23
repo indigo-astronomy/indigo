@@ -1,0 +1,19 @@
+{
+  "title": "SynScan AUTOHOME blocks its own queued abort/disconnect",
+  "category": "functional",
+  "severity": "high",
+  "summary": "`mount_synscan/indigo_mount_synscan.driver:2132` calls `synscan_perform_autohome()` synchronously from AUTOHOME on_change. The helper calls30-second stopped-axis loops577-595,120-second index loops644-665 and711-764, and a three-second sleep698. The loops inspect `abort_motion`, but this source sets the flag only in the queued abort handler1961 and disconnect hook1672. There is no bus-thread on_change_request setting it. These handlers share the serialized queue and cannot run while auto-home waits. Urgent priority cannot preempt the currently executing callback. A requested abort/disconnect can consequently wait through multi-stage physical homing. Remediation: staged handler/finalizer home state machine with bounded single-transaction checks and named cancellation/stop paths. Preserve documented device command order; add timed simulator assertions that abort/disconnect execute during each stage, verify actual stop-command edges and failure/timeout state, then perform authorized hardware validation in the repair task. Merely setting a volatile flag is not a substitute for queue ownership/cancellation and does not resolve the synchronous waits.",
+  "evidence": "driver-b-review.md section B-04; exact current source paths and contract evidence in that section.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-b-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-026"
+}

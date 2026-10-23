@@ -1,0 +1,19 @@
+{
+  "title": "Per-device test records can say OK after the process fails",
+  "category": "quality",
+  "severity": "medium",
+  "summary": "Real recording logic with synthetic complete tagged results and process exit1 returns aggregate failure but emits device1/1 OK. Next: incorporate command exit failure into recorded device outcomes, or retain explicit aggregate failure without falsely certifying devices; regress tagged failures and partial records.",
+  "evidence": "tools/run_driver_test.py:436,455; root-evidence/per-device-result.json and per-device-repro.py.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-030"
+}

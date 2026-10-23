@@ -1,0 +1,19 @@
+{
+  "title": "Release helpers report success after failed build or archive commands",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "Release helpers continue after failed Docker/download/configure/build or ignore git archive pipeline failure and finish with successful cleanup/echo. Next: propagate command and pipeline failures and publish only complete outputs; disposable fake-command failure regressions. No install/network/build command was executed by the reviewer.",
+  "evidence": "tools/build_debs.sh; tools/cltools.sh; tools/make_source_tarball.sh; tooling-review.md confirmed observations.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "tooling-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-041"
+}

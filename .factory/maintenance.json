@@ -58,6 +58,14 @@
       "scope": "Close verified repairs 001/002 and retain the current repository audit as partial; defer remaining full semantic audit.",
       "checkpoint": "Complete the remaining mandatory audit in the next audit task before unrelated development or release.",
       "resets_checkpoint": false
+    },
+    "owner_directed_scope": {
+      "approved_by": "Peter Polakovic, explicit conversation instruction",
+      "date": "2026-10-23",
+      "task": "20261023101753-bc8d-complete-repository-audit",
+      "scope": "Full maintained functional/source-contract repository audit; server security audits explicitly excluded at owner request.",
+      "exclusion": "No server-security certification, risk acceptance, penetration testing or claim of completed excluded investigations.",
+      "report": "repository-review.md"
     }
   },
   "timezone": "Europe/Bratislava"

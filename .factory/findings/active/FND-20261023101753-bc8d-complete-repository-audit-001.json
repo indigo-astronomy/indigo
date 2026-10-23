@@ -1,0 +1,19 @@
+{
+  "title": "USB serial enumeration can exceed caller capacity on multi-interface devices",
+  "category": "functional",
+  "severity": "high",
+  "summary": "indigo_usbserial_utils.c:100-111: macOS outer USB loop checks count < num_serial_info, but inner descendant loop writes serial_info[count] and increments for every serial endpoint without checking capacity. A multi-interface device when one slot remains overwrites caller storage. Framework indigo_driver.c:280 supplies a fixed MAX_DEVICE_PORTS array. Next: Enforce capacity before each inner output write; stop/release iterator objects without leaks. Verify multi-endpoint device metadata with capacity one and a canary.",
+  "evidence": "indigo_usbserial_utils.c:100-111: macOS outer USB loop checks count < num_serial_info, but inner descendant loop writes serial_info[count] and increments for every serial endpoint without checking capacity. A multi-interface device when one slot remains overwrites caller storage. Framework indigo_driver.c:280 supplies a fixed MAX_DEVICE_PORTS array.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-001"
+}

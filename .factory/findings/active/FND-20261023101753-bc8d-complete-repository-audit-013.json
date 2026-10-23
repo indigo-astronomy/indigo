@@ -1,0 +1,19 @@
+{
+  "title": "Cartesian conversion maps negative coordinate axes incorrectly",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_align.c:471-478: cartesian_to_spherical returns north pole for both signs of z when x=y=0, and returns a=0 for y=0 regardless of negative x. Thus normalized (-1,0,0) converts to the opposite longitude and (0,0,-1) to the opposite pole. Polar error apply/correct call this conversion. Next: Use atan2 for non-pole longitude and distinguish south/north pole; clamp/normalize z according to stated unit-vector contract. Verify axis round trips and identity rotations.",
+  "evidence": "indigo_align.c:471-478: cartesian_to_spherical returns north pole for both signs of z when x=y=0, and returns a=0 for y=0 regardless of negative x. Thus normalized (-1,0,0) converts to the opposite longitude and (0,0,-1) to the opposite pole. Polar error apply/correct call this conversion.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-013"
+}

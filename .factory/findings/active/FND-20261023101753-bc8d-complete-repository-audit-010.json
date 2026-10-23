@@ -1,0 +1,19 @@
+{
+  "title": "Bayer corner interpolation reads a pixel beyond the frame",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_stretch.cpp:60-65: red-pixel top-right Bayer interpolation includes raw[index+width+1], crossing the right edge; for a valid 2-row image this reaches past the entire allocation. Bottom-right also averages a cross-row sample at line 65. Public GRBG wrapper can place red at the top-right of an even-width frame. Next: Use only in-bounds diagonal samples at corners; verify all four patterns and corners for 2x2 and larger synthetic images.",
+  "evidence": "indigo_stretch.cpp:60-65: red-pixel top-right Bayer interpolation includes raw[index+width+1], crossing the right edge; for a valid 2-row image this reaches past the entire allocation. Bottom-right also averages a cross-row sample at line 65. Public GRBG wrapper can place red at the top-right of an even-width frame.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-010"
+}

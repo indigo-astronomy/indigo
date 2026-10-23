@@ -1,0 +1,19 @@
+{
+  "title": "Linked-worktree builds lose their Git revision identifier",
+  "category": "quality",
+  "severity": "low",
+  "summary": "The helper recognizes a checkout only when ../.git is a directory; linked worktrees use a regular gitdir file and are stamped production. Next: query git rev-parse context and verify normal checkout, linked worktree and exported tree with disposable fixtures.",
+  "evidence": "tools/make_indigo_build.sh:3-5; indigo_libs/Makefile:87-89; tooling-review.md.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "tooling-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-042"
+}

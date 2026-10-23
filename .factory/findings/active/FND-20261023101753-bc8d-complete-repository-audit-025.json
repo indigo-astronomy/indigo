@@ -1,0 +1,19 @@
+{
+  "title": "Lakeside valid stationary progress replies evade the stall bound",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "`focuser_lakeside/indigo_focuser_lakeside.driver:177-225`: failed reads and unexpected lines increment `stalled`, but a valid repeated `P<n>` enters218-225, resets only if position changed, and otherwise reschedules without incrementing. An endless repeated position without DONE never reaches40, contradicting the comment's claimed stall bound. The handler yields, but the client remains BUSY and further motion stays excluded indefinitely. Remediation: count unchanged valid position frames or impose a separate overall deadline, send existing CH stop on expiry, preserve target and publish ALERT. Regression: repeated stationary P frames without DONE; genuine progressing P followed by DONE must still succeed.",
+  "evidence": "driver-b-review.md section B-03; exact current source paths and contract evidence in that section.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-b-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-025"
+}

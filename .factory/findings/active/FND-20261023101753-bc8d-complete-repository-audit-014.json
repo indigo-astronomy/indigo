@@ -1,0 +1,19 @@
+{
+  "title": "Failed passive-discovery bind leaks its socket",
+  "category": "functional",
+  "severity": "low",
+  "summary": "indigo_uni_io.c:1045-1077 and 1094-1116: passive-discovery bind failure logs but does not close udp_socket on either POSIX or Windows. Repeated failed discovery on an occupied/unusable port leaks a socket each attempt. Next: Close socket on every path after successful socket creation. Verify bind-failure cleanup with a controlled occupied local socket in an authorized test.",
+  "evidence": "indigo_uni_io.c:1045-1077 and 1094-1116: passive-discovery bind failure logs but does not close udp_socket on either POSIX or Windows. Repeated failed discovery on an occupied/unusable port leaks a socket each attempt.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-014"
+}

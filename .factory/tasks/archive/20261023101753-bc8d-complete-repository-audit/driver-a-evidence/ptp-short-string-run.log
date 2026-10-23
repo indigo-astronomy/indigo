@@ -1,0 +1,61 @@
+=================================================================
+==33878==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x602000000b31 at pc 0x0001048d8924 bp 0x00016b5265d0 sp 0x00016b5265c8
+READ of size 1 at 0x602000000b31 thread T0
+==33878==WARNING: external symbolizer didn't start up correctly!
+==33878==WARNING: Can't read from symbolizer at fd 3
+==33878==WARNING: atos failed to symbolize address "0x1048d8920"
+==33878==WARNING: Can't read from symbolizer at fd 3
+==33878==WARNING: atos failed to symbolize address "0x1048d8a4c"
+==33878==WARNING: Can't read from symbolizer at fd 3
+==33878==WARNING: atos failed to symbolize address "0x19902be7c"
+    #0 0x0001048d8920 in ptp_decode_string+0x258 (/private/tmp/indigo-audit-driver-a-ptp-short-string:arm64+0x100000920)
+    #1 0x0001048d8a4c in main+0x10c (/private/tmp/indigo-audit-driver-a-ptp-short-string:arm64+0x100000a4c)
+    #2 0x00019902be7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x602000000b31 is located 0 bytes after 1-byte region [0x602000000b30,0x602000000b31)
+allocated by thread T0 here:
+==33878==WARNING: Can't read from symbolizer at fd 3
+==33878==WARNING: atos failed to symbolize address "0x105125274"
+==33878==WARNING: Can't read from symbolizer at fd 3
+==33878==WARNING: atos failed to symbolize address "0x1048d8a0c"
+==33878==WARNING: Can't read from symbolizer at fd 3
+==33878==WARNING: atos failed to symbolize address "0x19902be7c"
+    #0 0x000105125274 in malloc+0x78 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x0001048d8a0c in main+0xcc (/private/tmp/indigo-audit-driver-a-ptp-short-string:arm64+0x100000a0c)
+    #2 0x00019902be7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+==33878==WARNING: Can't read from symbolizer at fd 3
+==33878==WARNING: atos failed to symbolize address "0x1048d8920"
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/private/tmp/indigo-audit-driver-a-ptp-short-string:arm64+0x100000920) in ptp_decode_string+0x258
+Shadow bytes around the buggy address:
+  0x602000000880: fa fa 00 00 fa fa 00 00 fa fa 00 00 fa fa 00 00
+  0x602000000900: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fd
+  0x602000000980: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fa
+  0x602000000a00: fa fa fd fd fa fa fd fa fa fa fd fa fa fa fd fa
+  0x602000000a80: fa fa fd fa fa fa 00 07 fa fa 00 06 fa fa 00 fa
+=>0x602000000b00: fa fa fd fd fa fa[01]fa fa fa fa fa fa fa fa fa
+  0x602000000b80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000c00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000c80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000d00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000d80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==33878==ABORTING

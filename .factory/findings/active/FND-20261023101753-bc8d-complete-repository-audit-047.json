@@ -1,0 +1,19 @@
+{
+  "title": "Manual Temma firmware replies no longer satisfy driver controls",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "helper-manual-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "`indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino:215-225` replies R1 to STN-ON/OFF, and235-236 replies R1 to v1/v2. Current maintained `indigo_mount_temma.driver:149-165` requires exact stn-on/stn-off standby status and a v-prefixed version line for speed selection. Normal tracking/standby and high-speed controls therefore fail against this sketch although it acknowledges them. Its configurable STN_ON_MEANS_MOTORS_ON semantics also require reconciliation with the current driver comment that standby ON means motors OFF. The newer host simulator is a separate component; its passing evidence cannot certify this manual  Full source contracts: helper-manual-review.md H-03. Remedy: update the manual sketch to the current documented reply/state contract, verify connection/configuration, both standby transitions and both speed transitions with matching command/reply fixtures; retain explicit differences for any documented hardware variant. No manual serial session or board run was performed.",
+  "evidence": "helper-manual-review.md H-03; exact current source paths and firmware/script contracts retained there.",
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-047"
+}

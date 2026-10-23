@@ -1,0 +1,19 @@
+{
+  "title": "Imager deletes original file after an HTTP error response",
+  "category": "functional",
+  "severity": "high",
+  "summary": "`indigo_server/resource/imager.html:507-519` handles xhr.onload by clicking a download link for any response and then sending AGENT_IMAGER_DELETE_FILE with the original filename. onload runs for completed HTTP404/500 responses too, and this callback does not inspect status. An ordinary expired/missing BLOB or server failure can therefore download an error body and then request deletion of the original image. This is a normal failure-handling issue; no server-security test was involved. The exact committed callback was executed in Node24.19.0 with a synthetic XMLHttpRequest status404 and Blob('BLOB not found!'), mocked DOM/blob URL, and captur Full evidence: C-05. Remediation: require a successful and complete image response before advancing/deleting, preserve the original and present an error/retry path on HTTP/transport/abort failures, and avoid relying on mutable global filename during asynchronous completion. Regression tests must show404/500/abort never enqueue deletion and successful transfer maintains the established sequence.",
+  "evidence": "core-functional-review.md section C-05; exact source and ordinary functional proof retained there.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "core-functional-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-039"
+}

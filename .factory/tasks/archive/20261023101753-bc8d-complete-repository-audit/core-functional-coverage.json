@@ -1,0 +1,880 @@
+{
+  "revision": "f019b004769072275a3d98a87c8e9740a42c19a4",
+  "reader": "complete_driver_b",
+  "independence": "Read-only source; source read with git show pinned base; write scope only these2 reports",
+  "security_scope": "SERVER SECURITY explicitly excluded at owner direction, including malicious-input/penetration/exploit testing and defensive candidate patches",
+  "components": [
+    {
+      "component": "bus",
+      "path": "indigo_libs/indigo_bus.c",
+      "reviewed_base_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "prior_audit_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "unchanged_since_prior": true,
+      "anchors": "657-880;940-1201;1227-1502;1824-2013;2075-2297",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Start/session/background queue and stop; publish-before-attach known FND13; device/client detach and generation refs; per-client event callbacks, changed-item suppression and forced updates; WO state-only updates and BLOB cache ownership; copy values vs targets and name matching; public convenience calls preserve bus routing.",
+      "finding_references": [
+        "FND-000013"
+      ]
+    },
+    {
+      "component": "json-protocol",
+      "path": "indigo_libs/indigo_json.c",
+      "reviewed_base_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "prior_audit_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "unchanged_since_prior": true,
+      "anchors": "161-330;661-978",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Ordinary getProperties negotiation and new text/number/switch dispatch; bus adapter output serializes all5 public vector types, writable number target/value, dirty-item filtering, remote-reshare setting, BLOB URLs and messages; WebSocket/raw output selection. Security/framing-adversarial review excluded.",
+      "finding_references": []
+    },
+    {
+      "component": "xml-protocol",
+      "path": "indigo_libs/indigo_xml.c",
+      "reviewed_base_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "prior_audit_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "unchanged_since_prior": true,
+      "anchors": "452-535;797-863;1200-1348;1851-2286",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Ordinary version/name translation and remote device suffixes, definition cache, item-matched partial updates and delete-all cleanup, BLOB metadata/value ownership; messages preserve state; enumerate/change/enable-BLOB outputs, legacy vs2.0 target attributes/base64/url modes; transport parser callback cleanup. Security review excluded.",
+      "finding_references": []
+    },
+    {
+      "component": "json-adapter",
+      "path": "indigo_libs/indigo_driver_json.c",
+      "reviewed_base_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "prior_audit_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "unchanged_since_prior": true,
+      "anchors": "39-65",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Allocates distinct bus client/context, chooses TCP remote marker, attaches caller-owned I/O; releases context/client without owning handle; callback delegation matches JSON output roles.",
+      "finding_references": []
+    },
+    {
+      "component": "xml-device-adapter",
+      "path": "indigo_libs/indigo_driver_xml.c",
+      "reviewed_base_blob": "2184c8dfe9e163ca9066c3496d8549fce4ef5942",
+      "prior_audit_blob": "2184c8dfe9e163ca9066c3496d8549fce4ef5942",
+      "unchanged_since_prior": true,
+      "anchors": "47-77",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Allocates version-negotiating client/context; input/output borrowed; release frees per-client enableBLOB records plus adapter; owning server worker closes shared I/O afterward.",
+      "finding_references": []
+    },
+    {
+      "component": "xml-client-adapter",
+      "path": "indigo_libs/indigo_client_xml.c",
+      "reviewed_base_blob": "1974825033f6b2df50e72ee4358be35066810de3",
+      "prior_audit_blob": "1974825033f6b2df50e72ee4358be35066810de3",
+      "unchanged_since_prior": true,
+      "anchors": "35-59",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Remote bus device delegates enumerate/change/BLOB enable, carries service suffix/url prefix, borrows I/O; loader/server thread detaches before release.",
+      "finding_references": []
+    },
+    {
+      "component": "native-client-loader / native-client-connections",
+      "path": "indigo_libs/indigo_client.c",
+      "reviewed_base_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "prior_audit_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "unchanged_since_prior": true,
+      "anchors": "178-313;313-572",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Driver duplicate detection, metadata, optional INIT and shutdown refusal preserve loaded entry; dynamic library ownership and initialized state; boundary capacity guard C01. Subprocess and remote-server registry, duplicate/connection-id semantics, parser adapter attach/detach, disconnected-state publication and retry delays; ownership of pipes/sockets and child reaping; registry capacity C01.",
+      "finding_references": [
+        "C-01"
+      ]
+    },
+    {
+      "component": "session",
+      "path": "indigo_libs/indigo_session.c",
+      "reviewed_base_blob": "1fef9eab6c3b9a332163a45dca4b567d10eb00e7",
+      "prior_audit_blob": "1fef9eab6c3b9a332163a45dca4b567d10eb00e7",
+      "unchanged_since_prior": true,
+      "anchors": "30-71",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Per-client force-property/force-item features exposed through shared session property and targeted events; partial changes fail to reseed other field from requesting client (C02).",
+      "finding_references": [
+        "C-02"
+      ]
+    },
+    {
+      "component": "token-functional-storage",
+      "path": "indigo_libs/indigo_token.c",
+      "reviewed_base_blob": "20bde6478d892807dcc13815bbaf31236ae4f643",
+      "prior_audit_blob": "20bde6478d892807dcc13815bbaf31236ae4f643",
+      "unchanged_since_prior": true,
+      "anchors": "45-217",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Functional token conversion/add/remove/get, master fallback and device-token file persistence/error returns; no authorization assessment, secret extraction, malformed-input testing or security clearance.",
+      "finding_references": []
+    },
+    {
+      "component": "tcp-server-routing",
+      "path": "indigo_libs/indigo_server_tcp.c",
+      "reviewed_base_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "prior_audit_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "unchanged_since_prior": true,
+      "anchors": "63-122;190-290;395-584",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Ordinary XML/JSON worker adapter lifetime, HTTP/BLOB/resource and handler routing, copy-vs-borrow resource registration, buffered copy/per-entry lock, failure cleanup, Bonjour registration and listener shutdown; existing compression defect referenced, no security review.",
+      "finding_references": [
+        "FND-20261023065605-60d4-repository-audit-009"
+      ]
+    },
+    {
+      "component": "server-manager / server-process-resources",
+      "path": "indigo_server/indigo_server.c",
+      "reviewed_base_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "prior_audit_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "unchanged_since_prior": true,
+      "anchors": "1070-1629;1706-2216;534-666",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Server property attach/enumeration/release, queued driver requests snapshot caller values, load/unload and pending completion, persistent enabled driver settings; static unload initialized flag C06. RPi management commands traced as existing feature actions but never executed. Command-line configuration, static UI resource registration, catalogs/routes and shared script resources; driver/subprocess teardown, signal worker/supervisor ownership and explicit child reaping; no server-security claims.",
+      "finding_references": [
+        "C-06"
+      ]
+    },
+    {
+      "component": "ui-state",
+      "path": "indigo_server/resource/indigo.js",
+      "reviewed_base_blob": "f346bac16e8d26b450d46b26fe5310b7c6a992e8",
+      "prior_audit_blob": "f346bac16e8d26b450d46b26fe5310b7c6a992e8",
+      "unchanged_since_prior": true,
+      "anchors": "1-509",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Vue reactive model, WebSocket open/message/close reconnect, define/update/delete dispatch, property type conversion and partial changed items; script dirty/save/execute selection; number/time conversions C03/C04 reproduced from committed functions.",
+      "finding_references": [
+        "C-03",
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-components",
+      "path": "indigo_server/resource/components.js",
+      "reviewed_base_blob": "b9127b02c952327f95433afacec3954d4b557f52",
+      "prior_audit_blob": "b9127b02c952327f95433afacec3954d4b557f52",
+      "unchanged_since_prior": true,
+      "anchors": "1-3200",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Selection and multi-selection, number/text/sexagesimal editors, stepper, generic5-vector controller, charts/overlays, script editor, database picker, sky map and management widgets; listener/ResizeObserver setup+unmount cleanup, target-vs-value handling and shared property dispatch; no browser runtime claim.",
+      "finding_references": [
+        "C-03"
+      ]
+    },
+    {
+      "component": "ui-control",
+      "path": "indigo_server/resource/ctrl.html",
+      "reviewed_base_blob": "0990495efeeca1689ce207c6be7b20c699b4d37b",
+      "prior_audit_blob": "0990495efeeca1689ce207c6be7b20c699b4d37b",
+      "unchanged_since_prior": true,
+      "anchors": "1-63",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Generic control app binds all devices, HOST_TIME bootstrap, define/update/delete refresh and shared component lifetime.",
+      "finding_references": [
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-manager",
+      "path": "indigo_server/resource/mng.html",
+      "reviewed_base_blob": "36fff3572830bda2b30093b6e16e29f2070f377d",
+      "prior_audit_blob": "36fff3572830bda2b30093b6e16e29f2070f377d",
+      "unchanged_since_prior": true,
+      "anchors": "1-103",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Server driver controls and management widgets, time bootstrap and explicit upgrade prompt state; render wiring shared state/events.",
+      "finding_references": [
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-astrometry",
+      "path": "indigo_server/resource/astrometry.html",
+      "reviewed_base_blob": "60e9b5315b5012d1252e4b6a6892a2edfb9f2b3a",
+      "prior_audit_blob": "60e9b5315b5012d1252e4b6a6892a2edfb9f2b3a",
+      "unchanged_since_prior": true,
+      "anchors": "1-340",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Solver/related-agent binding, preview output choice/visibility, auto-load bootstrap, process buttons and tooltip refresh; delete preview handling; uses shared WebSocket model.",
+      "finding_references": [
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-guider",
+      "path": "indigo_server/resource/guider.html",
+      "reviewed_base_blob": "f453744ca2bc27c0076a830d4d6796571000d5c8",
+      "prior_audit_blob": "f453744ca2bc27c0076a830d4d6796571000d5c8",
+      "unchanged_since_prior": true,
+      "anchors": "1-526",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Selected camera preview/histogram, calibration/guiding/abort commands, start-item state and statistics-to-graph coupling; preview0/1 feature wiring; uses shared widgets/conversions.",
+      "finding_references": [
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-imager",
+      "path": "indigo_server/resource/imager.html",
+      "reviewed_base_blob": "1f2db3a68217bee30b608b00f54c40dd02b4bba6",
+      "prior_audit_blob": "1f2db3a68217bee30b608b00f54c40dd02b4bba6",
+      "unchanged_since_prior": true,
+      "anchors": "1-624",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Agent vs selected camera behavior, preview/batch/autofocus/focuser-motion ownership, related-agent binding, download sequence/object URL lifetime and delete-after-download; HTTP failure deletion C05.",
+      "finding_references": [
+        "C-05",
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-mount",
+      "path": "indigo_server/resource/mount.html",
+      "reviewed_base_blob": "619c8cc2eb11c7103c1cfbdfad38522691173556",
+      "prior_audit_blob": "619c8cc2eb11c7103c1cfbdfad38522691173556",
+      "unchanged_since_prior": true,
+      "anchors": "1-618",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Agent current vs target coordinate properties, goto/sync order, map-selected target, site/epoch transforms, park/home/manual/abort and related agent control; actual sexagesimal sign-loss C03.",
+      "finding_references": [
+        "C-03",
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-scripting",
+      "path": "indigo_server/resource/script.html",
+      "reviewed_base_blob": "4dd778d8e90fd805b3f539b4ce6f17cd48098b5a",
+      "prior_audit_blob": "4dd778d8e90fd805b3f539b4ce6f17cd48098b5a",
+      "unchanged_since_prior": true,
+      "anchors": "1-172",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Agent bootstrap and script component selection/save/execute/delete state; sequence pause/abort/stats hooks; canonical Sequencer resource served from agent_scripting source already assigned driverA.",
+      "finding_references": [
+        "C-04"
+      ]
+    },
+    {
+      "component": "ui-styles",
+      "path": "indigo_server/resource/indigo.css",
+      "reviewed_base_blob": "9852fdbc9609a502daa2a4e9a9c5e508b81e791f",
+      "prior_audit_blob": "9852fdbc9609a502daa2a4e9a9c5e508b81e791f",
+      "unchanged_since_prior": true,
+      "anchors": "1-695",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Light/dark theme, status/state colors, control/chart/image overlay positioning, responsive forms and script layout match shared components; no behavior removal from stylistic preference.",
+      "finding_references": []
+    },
+    {
+      "component": "ui-sky-styles",
+      "path": "indigo_server/resource/celestial.css",
+      "reviewed_base_blob": "5b8796674bd62ec998b456a9547e42ed0b7ef4a3",
+      "prior_audit_blob": "5b8796674bd62ec998b456a9547e42ed0b7ef4a3",
+      "unchanged_since_prior": true,
+      "anchors": "1-99",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Celestial map container/control layout used by sky-map component; third-party runtime/data remains dependency-owned.",
+      "finding_references": []
+    },
+    {
+      "component": "server-build",
+      "path": "indigo_server/Makefile",
+      "reviewed_base_blob": "05fe7155a706bc54b2e749c1c69a07cd61aa9678",
+      "prior_audit_blob": "05fe7155a706bc54b2e749c1c69a07cd61aa9678",
+      "unchanged_since_prior": true,
+      "anchors": "25-90",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Resource .data gzip generation, Sequencer canonical source dependency, library/resource prerequisites and platform link flags; no shared build performed.",
+      "finding_references": []
+    },
+    {
+      "component": "agent-public-header",
+      "path": "indigo_libs/indigo/indigo_agent.h",
+      "reviewed_base_blob": "fc4f4382a60741ed33bf60468acdeb779497852c",
+      "prior_audit_blob": "fc4f4382a60741ed33bf60468acdeb779497852c",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Agent base delegates attach/enum/change/detach to common device; hidden CONNECTION and instance defaults; agent interface INFO/config lifecycle. No device transport or motion state owned by this base. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "ao_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_ao_driver.h",
+      "reviewed_base_blob": "4366ee0e70d31a3d717e29dd71b983719fae066f",
+      "prior_audit_blob": "4366ee0e70d31a3d717e29dd71b983719fae066f",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "AO property allocation and header item offsets; connected-only guide/reset properties, reset/config dispatch and release. Concrete drivers own pulses/abort; no hidden transport loop in this base. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "aux_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_aux_driver.h",
+      "reviewed_base_blob": "39997561570b694586bab6687e4d2c7859593fad",
+      "prior_audit_blob": "39997561570b694586bab6687e4d2c7859593fad",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "AUX interface composition and common lifecycle delegation; dewpoint helper expects physical RH; brightness-to-Bortle threshold table and inverse ordering inspected. No base hardware resource. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "base64-public-header",
+      "path": "indigo_libs/indigo/indigo_base64.h",
+      "reviewed_base_blob": "7f4748d7ea10a119931eef169e6b7d97510f3cb4",
+      "prior_audit_blob": "7f4748d7ea10a119931eef169e6b7d97510f3cb4",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Encoding triple/padding/NUL and returned size; pair lookup decoder and final padding accounting; newline variant has a narrower canonical encoded-input contract. Lookup table is data dependency, not independently certified on big-endian/alignment platforms. Existing parser/native evidence reusable only for unchanged tested paths; no adversarial-input testing. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "base64_luts-public-header",
+      "path": "indigo_libs/indigo/indigo_base64_luts.h",
+      "reviewed_base_blob": "5e4f956a4adb5a0e691de651b369c69f3fc5a0a6",
+      "prior_audit_blob": "5e4f956a4adb5a0e691de651b369c69f3fc5a0a6",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Lookup data dependency of pair encoder/decoder. Table declarations, alphabet and indexing contract examined with implementation; exhaustive value-by-value mathematical certification not claimed.",
+      "finding_references": []
+    },
+    {
+      "component": "bus-public-header",
+      "path": "indigo_libs/indigo/indigo_bus.h",
+      "reviewed_base_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "prior_audit_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded bus implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "ccd_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_ccd_driver.h",
+      "reviewed_base_blob": "0a83f6685486f5ddd508c1a433f79ae6f6dee577",
+      "prior_audit_blob": "0a83f6685486f5ddd508c1a433f79ae6f6dee577",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Exposure countdown background cancellation and suspend/resume; bias minimum; property count/hidden/perms/connected definition and config; busy exposure/setup/failure/abort cleanup; preview JPEG/histogram buffer ownership, typed/endian conversion, FITS/XISF/RAW/TIFF/JPEG outputs and BLOB pointers; upload local/client/both and stream finalization. C-07 exact-length write result defect. Shared AVI/SER format implementation reviewed separately. SDK/real frames unavailable; image-format scientific fidelity not newly hardware-tested. Header checked against implementation and concrete usage above.",
+      "finding_references": [
+        "C-07"
+      ]
+    },
+    {
+      "component": "client-public-header",
+      "path": "indigo_libs/indigo/indigo_client.h",
+      "reviewed_base_blob": "fa0d007d72a6c3a553edf7e7074a680c14dfb1d7",
+      "prior_audit_blob": "fa0d007d72a6c3a553edf7e7074a680c14dfb1d7",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded client implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "client_xml-public-header",
+      "path": "indigo_libs/indigo/indigo_client_xml.h",
+      "reviewed_base_blob": "6c5b5d1a83164598bda3e87cc226e17ce44f30b9",
+      "prior_audit_blob": "6c5b5d1a83164598bda3e87cc226e17ce44f30b9",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded client_xml implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "config-public-header",
+      "path": "indigo_libs/indigo/indigo_config.h",
+      "reviewed_base_blob": "866e4c0acc739f67fc4ac5e432f739aaf16ec38a",
+      "prior_audit_blob": "866e4c0acc739f67fc4ac5e432f739aaf16ec38a",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Build/version/logging and platform export macros; version getters/legacy adapters consume these values. No runtime state or new build executed.",
+      "finding_references": []
+    },
+    {
+      "component": "dome_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_dome_driver.h",
+      "reviewed_base_blob": "460ec87028970deffcd0e3bf0d6e1951cdad8b31",
+      "prior_audit_blob": "460ec87028970deffcd0e3bf0d6e1951cdad8b31",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Dome property/context allocation, matching enumeration and connected-only deletion, dimension fit clipping/scaling, config save and detach ownership. Concrete drivers own slaving movement and deadlines. Geometry domain constraints are driver-specific and base sanitation preserves a fit margin. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "driver-public-header",
+      "path": "indigo_libs/indigo/indigo_driver.h",
+      "reviewed_base_blob": "c6973de32ed74a03c444fa6f2097aa963fc24607",
+      "prior_audit_blob": "c6973de32ed74a03c444fa6f2097aa963fc24607",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Common mandatory CONNECTION/INFO and optional config/profile/port/instances property lifecycle. Config restore observes asynchronous acknowledgements with total deadline and ordered replay. Serial inventory hotplug worker coalesces events, lists/claims guarded by bus mutex, master group shares claim; missing physical port disconnects previously connected group and ends ALERT; network URLs unaffected. Queue master/device mutex ownership, priority/deadline and pending cancellation; detach drains background/queue/timers and frees base context. C-08 additional slave clone base pointer assignment. Header checked against implementation and concrete usage above.",
+      "finding_references": [
+        "C-08"
+      ]
+    },
+    {
+      "component": "driver_json-public-header",
+      "path": "indigo_libs/indigo/indigo_driver_json.h",
+      "reviewed_base_blob": "9339269701bb15a165254a150acd664d58ecaa03",
+      "prior_audit_blob": "9339269701bb15a165254a150acd664d58ecaa03",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded driver_json implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "driver_xml-public-header",
+      "path": "indigo_libs/indigo/indigo_driver_xml.h",
+      "reviewed_base_blob": "ba445dfd884f5893ce1aa29349886f7d2236c13f",
+      "prior_audit_blob": "ba445dfd884f5893ce1aa29349886f7d2236c13f",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded driver_xml implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "filter-public-header",
+      "path": "indigo_libs/indigo/indigo_filter.h",
+      "reviewed_base_blob": "dc385959dc59f4eb430f4a467cb13814c1c35a58",
+      "prior_audit_blob": "dc385959dc59f4eb430f4a467cb13814c1c35a58",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "13 device-role lists, related-agent callbacks and per-client cache ownership; connect/config/enumeration/READY selection phases with deadline and rollback; properties not defined until READY; cloned proxy property names translated and changes restored to original source; definition/update/delete lifecycle and text deep copy, detach clears cache and disconnects selections. Additional paired client/device instance lifecycle. Cache saturation logs error, not success evidence for unlimited devices. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "focuser_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_focuser_driver.h",
+      "reviewed_base_blob": "6242882daf46d6431be48af1a29631cec0127651",
+      "prior_audit_blob": "6242882daf46d6431be48af1a29631cec0127651",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Focuser property defaults/offset macros/hidden capabilities; connected definitions and manual/automatic mode define/delete; config writes and ordered min/max limit adjustments; detach releases each allocated property. Concrete driver owns position completion/transport and abort; no base wait loop. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "gps_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_gps_driver.h",
+      "reviewed_base_blob": "a56f10124e65042b45ecc130919dbfd8c0a8ba4b",
+      "prior_audit_blob": "a56f10124e65042b45ecc130919dbfd8c0a8ba4b",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "GPS geographic/time/status/advanced properties and finite fixed item counts; connected-only publication, configuration and coordinate handling, detach allocations. Concrete receiver owns serial/network and fix readiness. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "guider_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_guider_driver.h",
+      "reviewed_base_blob": "87a27d0898fa521b56ab055b4fa2bea54dc12b0c",
+      "prior_audit_blob": "87a27d0898fa521b56ab055b4fa2bea54dc12b0c",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Two timed guide-axis vectors and optional rate properties, connected definitions/deletes, config save, detach release; concrete driver owns timed pulse stop and abort. No falsely inferred base completion from mere property copy. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "json-public-header",
+      "path": "indigo_libs/indigo/indigo_json.h",
+      "reviewed_base_blob": "96791f090b7fa6a141a3a4befe29af5afac07edf",
+      "prior_audit_blob": "96791f090b7fa6a141a3a4befe29af5afac07edf",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded json implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "md5-public-header",
+      "path": "indigo_libs/indigo/indigo_md5.h",
+      "reviewed_base_blob": "8f8573d2643b447085e740c100ef9b8dc4bdb9ef",
+      "prior_audit_blob": "8f8573d2643b447085e740c100ef9b8dc4bdb9ef",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Fixed 64-byte block accumulation, little-endian word construction, standard rotations/constants and 64-bit bit-length final padding; 33-byte hex digest includes NUL. Partial memory clamps to available data; file partial reads bounded prefix from current FILE position then frees buffer. File read errors have no status in public void API, an existing limitation; no cryptographic/security assessment. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "mount_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_mount_driver.h",
+      "reviewed_base_blob": "dbbb5290cb2d088cff2b1fccc93880017788cabb",
+      "prior_audit_blob": "dbbb5290cb2d088cff2b1fccc93880017788cabb",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Motion client-generation record/commit and detach abort registration; UTC item targets kept separately; connected property lifecycle/config/alignment file semantics; nearest/single alignment transforms normalize RA/DEC and controller is identity; multipoint remains placeholder and hidden by default, exposure-dependent candidate retained, not called confirmed active failure; coordinates calculate horizontal/LST/epoch. Shared simulator state mutex/owner and guide offset clearing reviewed. Actual mount slew/park/hardware completion belongs concrete driver. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "names-public-header",
+      "path": "indigo_libs/indigo/indigo_names.h",
+      "reviewed_base_blob": "9f39c62fb27fc706278210f528f65cf5cccc3bc4",
+      "prior_audit_blob": "9f39c62fb27fc706278210f528f65cf5cccc3bc4",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Canonical standard vector/item names and groups used by base classes/adapters/UI; this constants-only file owns no resources or execution. Driver custom X_ conventions reviewed in driver ledger; no property schema change proposed.",
+      "finding_references": []
+    },
+    {
+      "component": "platesolver-public-header",
+      "path": "indigo_libs/indigo/indigo_platesolver.h",
+      "reviewed_base_blob": "8a1eafee131c2ae22f1dd4c7c8802630a0e7bbd5",
+      "prior_audit_blob": "8a1eafee131c2ae22f1dd4c7c8802630a0e7bbd5",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Solver task owns copied/downloaded image, frees after solver callback and uses abort generation to discard stale download tasks; abort dispatched separately asynchronously and forwards abort to related exposure/mount; process BUSY guards, bounded start/mount wait, solve/sync/center/three-reference polar alignment and epoch conversions; related-agent updates supply capture/pointing state; properties/config/preview ownership and detach. Base assumes derived solver controls shutdown concurrency; no actual solver executable or camera/mount workflow run. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "polaralign_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_polaralign_driver.h",
+      "reviewed_base_blob": "3b90e143fd0651b236316d4f074ee2260ccbafdf",
+      "prior_audit_blob": "3b90e143fd0651b236316d4f074ee2260ccbafdf",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Polar-align axis/step/rate/abort properties, hidden capability defaults; connection-gated definition/deletion, config persistence, detach release. Concrete driver owns mechanical progress and cancellation. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "rotator_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_rotator_driver.h",
+      "reviewed_base_blob": "45d99cdddaa958ed76afe35a4b195721140043e0",
+      "prior_audit_blob": "45d99cdddaa958ed76afe35a4b195721140043e0",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Normalized angle and signed shortest difference helpers; position/direction/limits/backlash/offset/calibration properties, connected definitions and offset-based position target updates; calibration config load/save and detach. Native driver owns physical movement/deadline. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "server_tcp-public-header",
+      "path": "indigo_libs/indigo/indigo_server_tcp.h",
+      "reviewed_base_blob": "50726038938dfa3e5f2bd917cbe242f33db91ab0",
+      "prior_audit_blob": "50726038938dfa3e5f2bd917cbe242f33db91ab0",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded server_tcp implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "session-public-header",
+      "path": "indigo_libs/indigo/indigo_session.h",
+      "reviewed_base_blob": "cf5a568e763460e6aea65ec37c5835a381a7a53b",
+      "prior_audit_blob": "cf5a568e763460e6aea65ec37c5835a381a7a53b",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded session implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "timer-public-header",
+      "path": "indigo_libs/indigo/indigo_timer.h",
+      "reviewed_base_blob": "2d65688e96625c39f9bca478471e97d976ca8c8c",
+      "prior_audit_blob": "2d65688e96625c39f9bca478471e97d976ca8c8c",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Timer reschedule/cancel semantics, sync cancel avoids self-wait and waits for foreign callback; cancel-all snapshots ownership. Queue ready-time/priority serial worker is nonpreemptive; handler run-time limit logs overrun, not forced interruption. Queue remove does not cancel running work; drain waits, delete from own callback defers reclamation. Public header documents worker-owned callbacks/data; real race stress not performed anew. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "token-public-header",
+      "path": "indigo_libs/indigo/indigo_token.h",
+      "reviewed_base_blob": "af46837cb64270ddde26969e86fd7cfa1c04e102",
+      "prior_audit_blob": "af46837cb64270ddde26969e86fd7cfa1c04e102",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded token implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "version-public-header",
+      "path": "indigo_libs/indigo/indigo_version.h",
+      "reviewed_base_blob": "f6ad10c8621bd65650896295a8f3ebcb61640eda",
+      "prior_audit_blob": "f6ad10c8621bd65650896295a8f3ebcb61640eda",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Version-dependent legacy property/item name mapping in both directions and current-name passthrough; table protocol compatibility dependency read for dispatch semantics. No new claim that every historic external INDI alias was executed. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "wheel_driver-public-header",
+      "path": "indigo_libs/indigo/indigo_wheel_driver.h",
+      "reviewed_base_blob": "bf6279976a99d915180facc6f0af7c2d9bc6dc32",
+      "prior_audit_blob": "bf6279976a99d915180facc6f0af7c2d9bc6dc32",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Fixed 16 slot-name/offset allocation, connected property lifecycle, slot/config data-copy handlers and detach; concrete driver must keep count within allocation. B-01 references count mutations violating this contract; no unsolicited property schema change. Header checked against implementation and concrete usage above.",
+      "finding_references": []
+    },
+    {
+      "component": "xml-public-header",
+      "path": "indigo_libs/indigo/indigo_xml.h",
+      "reviewed_base_blob": "93df50eb546bda772dbe746693c152b3c69eab05",
+      "prior_audit_blob": "93df50eb546bda772dbe746693c152b3c69eab05",
+      "unchanged_since_prior": true,
+      "anchors": "Public declarations, context/property item macros and ownership comments",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Public declarations, callback roles and context ownership matched to already recorded xml implementation ledger. No independent runtime or platform claim added.",
+      "finding_references": []
+    },
+    {
+      "component": "agent",
+      "path": "indigo_libs/indigo_agent.c",
+      "reviewed_base_blob": "41b10644c3d62a3386bf208c279028fa821fde51",
+      "prior_audit_blob": "41b10644c3d62a3386bf208c279028fa821fde51",
+      "unchanged_since_prior": true,
+      "anchors": "31-105",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Agent base delegates attach/enum/change/detach to common device; hidden CONNECTION and instance defaults; agent interface INFO/config lifecycle. No device transport or motion state owned by this base.",
+      "finding_references": []
+    },
+    {
+      "component": "ao_driver",
+      "path": "indigo_libs/indigo_ao_driver.c",
+      "reviewed_base_blob": "75bdd3aad424a367fa119e18ef45b6aaf1579de6",
+      "prior_audit_blob": "75bdd3aad424a367fa119e18ef45b6aaf1579de6",
+      "unchanged_since_prior": true,
+      "anchors": "37-111",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "AO property allocation and header item offsets; connected-only guide/reset properties, reset/config dispatch and release. Concrete drivers own pulses/abort; no hidden transport loop in this base.",
+      "finding_references": []
+    },
+    {
+      "component": "aux_driver",
+      "path": "indigo_libs/indigo_aux_driver.c",
+      "reviewed_base_blob": "cb2fae901753fd5e6f0f2d970f2d5f9d59af346a",
+      "prior_audit_blob": "cb2fae901753fd5e6f0f2d970f2d5f9d59af346a",
+      "unchanged_since_prior": true,
+      "anchors": "34-78",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "AUX interface composition and common lifecycle delegation; dewpoint helper expects physical RH; brightness-to-Bortle threshold table and inverse ordering inspected. No base hardware resource.",
+      "finding_references": []
+    },
+    {
+      "component": "base64",
+      "path": "indigo_libs/indigo_base64.c",
+      "reviewed_base_blob": "c1f89f4cf8d84091c4caf71f7ed689b9d6f9d147",
+      "prior_audit_blob": "c1f89f4cf8d84091c4caf71f7ed689b9d6f9d147",
+      "unchanged_since_prior": true,
+      "anchors": "28-176",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Encoding triple/padding/NUL and returned size; pair lookup decoder and final padding accounting; newline variant has a narrower canonical encoded-input contract. Lookup table is data dependency, not independently certified on big-endian/alignment platforms. Existing parser/native evidence reusable only for unchanged tested paths; no adversarial-input testing.",
+      "finding_references": []
+    },
+    {
+      "component": "ccd_driver",
+      "path": "indigo_libs/indigo_ccd_driver.c",
+      "reviewed_base_blob": "e9cc0f2752cd9ab4eca6bbc72d63b64609a0d9c4",
+      "prior_audit_blob": "e9cc0f2752cd9ab4eca6bbc72d63b64609a0d9c4",
+      "unchanged_since_prior": true,
+      "anchors": "87-145;143-473;473-1019;1069-1260;1440-1500;1795-1980;2140-2410;2480-2570;2707-2752",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Exposure countdown background cancellation and suspend/resume; bias minimum; property count/hidden/perms/connected definition and config; busy exposure/setup/failure/abort cleanup; preview JPEG/histogram buffer ownership, typed/endian conversion, FITS/XISF/RAW/TIFF/JPEG outputs and BLOB pointers; upload local/client/both and stream finalization. C-07 exact-length write result defect. Shared AVI/SER format implementation reviewed separately. SDK/real frames unavailable; image-format scientific fidelity not newly hardware-tested.",
+      "finding_references": [
+        "C-07"
+      ]
+    },
+    {
+      "component": "dome_driver",
+      "path": "indigo_libs/indigo_dome_driver.c",
+      "reviewed_base_blob": "6a609850d549b3cbb0aa7c9c05063c5cab2ce2b0",
+      "prior_audit_blob": "6a609850d549b3cbb0aa7c9c05063c5cab2ce2b0",
+      "unchanged_since_prior": true,
+      "anchors": "43-79;79-249;249-379",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Dome property/context allocation, matching enumeration and connected-only deletion, dimension fit clipping/scaling, config save and detach ownership. Concrete drivers own slaving movement and deadlines. Geometry domain constraints are driver-specific and base sanitation preserves a fit margin.",
+      "finding_references": []
+    },
+    {
+      "component": "driver",
+      "path": "indigo_libs/indigo_driver.c",
+      "reviewed_base_blob": "6c2b437b23554613a5fcbd3c8d81c67e2725e9fd",
+      "prior_audit_blob": "6c2b437b23554613a5fcbd3c8d81c67e2725e9fd",
+      "unchanged_since_prior": true,
+      "anchors": "136-390;472-744;943-1035;1108-1409;1456-1915;2055-2284",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Common mandatory CONNECTION/INFO and optional config/profile/port/instances property lifecycle. Config restore observes asynchronous acknowledgements with total deadline and ordered replay. Serial inventory hotplug worker coalesces events, lists/claims guarded by bus mutex, master group shares claim; missing physical port disconnects previously connected group and ends ALERT; network URLs unaffected. Queue master/device mutex ownership, priority/deadline and pending cancellation; detach drains background/queue/timers and frees base context. C-08 additional slave clone base pointer assignment.",
+      "finding_references": [
+        "C-08"
+      ]
+    },
+    {
+      "component": "filter",
+      "path": "indigo_libs/indigo_filter.c",
+      "reviewed_base_blob": "2488d9e07fc2e567065de20b41be98e6e50fbeba",
+      "prior_audit_blob": "2488d9e07fc2e567065de20b41be98e6e50fbeba",
+      "unchanged_since_prior": true,
+      "anchors": "42-296;453-676;800-1097;1126-1200",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "13 device-role lists, related-agent callbacks and per-client cache ownership; connect/config/enumeration/READY selection phases with deadline and rollback; properties not defined until READY; cloned proxy property names translated and changes restored to original source; definition/update/delete lifecycle and text deep copy, detach clears cache and disconnects selections. Additional paired client/device instance lifecycle. Cache saturation logs error, not success evidence for unlimited devices.",
+      "finding_references": []
+    },
+    {
+      "component": "focuser_driver",
+      "path": "indigo_libs/indigo_focuser_driver.c",
+      "reviewed_base_blob": "1af18d4e379b215d6c78024a26b3303eb000bf82",
+      "prior_audit_blob": "1af18d4e379b215d6c78024a26b3303eb000bf82",
+      "unchanged_since_prior": true,
+      "anchors": "34-289",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Focuser property defaults/offset macros/hidden capabilities; connected definitions and manual/automatic mode define/delete; config writes and ordered min/max limit adjustments; detach releases each allocated property. Concrete driver owns position completion/transport and abort; no base wait loop.",
+      "finding_references": []
+    },
+    {
+      "component": "gps_driver",
+      "path": "indigo_libs/indigo_gps_driver.c",
+      "reviewed_base_blob": "dc48928c23b2f33e6a2663cb9165fac6d546e6b3",
+      "prior_audit_blob": "dc48928c23b2f33e6a2663cb9165fac6d546e6b3",
+      "unchanged_since_prior": true,
+      "anchors": "35-172",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "GPS geographic/time/status/advanced properties and finite fixed item counts; connected-only publication, configuration and coordinate handling, detach allocations. Concrete receiver owns serial/network and fix readiness.",
+      "finding_references": []
+    },
+    {
+      "component": "guider_driver",
+      "path": "indigo_libs/indigo_guider_driver.c",
+      "reviewed_base_blob": "968682c7b2d03d77429cd1016739e0d7c521b628",
+      "prior_audit_blob": "968682c7b2d03d77429cd1016739e0d7c521b628",
+      "unchanged_since_prior": true,
+      "anchors": "35-113",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Two timed guide-axis vectors and optional rate properties, connected definitions/deletes, config save, detach release; concrete driver owns timed pulse stop and abort. No falsely inferred base completion from mere property copy.",
+      "finding_references": []
+    },
+    {
+      "component": "md5",
+      "path": "indigo_libs/indigo_md5.c",
+      "reviewed_base_blob": "54cf737404e117a23c85789f5f8793f474a4c733",
+      "prior_audit_blob": "54cf737404e117a23c85789f5f8793f474a4c733",
+      "unchanged_since_prior": true,
+      "anchors": "40-272",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Fixed 64-byte block accumulation, little-endian word construction, standard rotations/constants and 64-bit bit-length final padding; 33-byte hex digest includes NUL. Partial memory clamps to available data; file partial reads bounded prefix from current FILE position then frees buffer. File read errors have no status in public void API, an existing limitation; no cryptographic/security assessment.",
+      "finding_references": []
+    },
+    {
+      "component": "mount_driver",
+      "path": "indigo_libs/indigo_mount_driver.c",
+      "reviewed_base_blob": "920038fb6a1845732a4b90b7cf7788c68b21b1f3",
+      "prior_audit_blob": "920038fb6a1845732a4b90b7cf7788c68b21b1f3",
+      "unchanged_since_prior": true,
+      "anchors": "43-157;333-381;425-635;755-996;1090-1410",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Motion client-generation record/commit and detach abort registration; UTC item targets kept separately; connected property lifecycle/config/alignment file semantics; nearest/single alignment transforms normalize RA/DEC and controller is identity; multipoint remains placeholder and hidden by default, exposure-dependent candidate retained, not called confirmed active failure; coordinates calculate horizontal/LST/epoch. Shared simulator state mutex/owner and guide offset clearing reviewed. Actual mount slew/park/hardware completion belongs concrete driver.",
+      "finding_references": []
+    },
+    {
+      "component": "platesolver",
+      "path": "indigo_libs/indigo_platesolver.c",
+      "reviewed_base_blob": "1af0406f0dda0a49d83370806eaf33fdddddcb6d",
+      "prior_audit_blob": "1af0406f0dda0a49d83370806eaf33fdddddcb6d",
+      "unchanged_since_prior": true,
+      "anchors": "56-329;388-760;762-998;1030-1402",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Solver task owns copied/downloaded image, frees after solver callback and uses abort generation to discard stale download tasks; abort dispatched separately asynchronously and forwards abort to related exposure/mount; process BUSY guards, bounded start/mount wait, solve/sync/center/three-reference polar alignment and epoch conversions; related-agent updates supply capture/pointing state; properties/config/preview ownership and detach. Base assumes derived solver controls shutdown concurrency; no actual solver executable or camera/mount workflow run.",
+      "finding_references": []
+    },
+    {
+      "component": "polaralign_driver",
+      "path": "indigo_libs/indigo_polaralign_driver.c",
+      "reviewed_base_blob": "2218cac2ed300dd4e4d1ffb912b6770dfc56142c",
+      "prior_audit_blob": "2218cac2ed300dd4e4d1ffb912b6770dfc56142c",
+      "unchanged_since_prior": true,
+      "anchors": "36-207",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Polar-align axis/step/rate/abort properties, hidden capability defaults; connection-gated definition/deletion, config persistence, detach release. Concrete driver owns mechanical progress and cancellation.",
+      "finding_references": []
+    },
+    {
+      "component": "rotator_driver",
+      "path": "indigo_libs/indigo_rotator_driver.c",
+      "reviewed_base_blob": "e45adf4dab1045be980ae2bf1d3ea562e8decece",
+      "prior_audit_blob": "e45adf4dab1045be980ae2bf1d3ea562e8decece",
+      "unchanged_since_prior": true,
+      "anchors": "36-301",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Normalized angle and signed shortest difference helpers; position/direction/limits/backlash/offset/calibration properties, connected definitions and offset-based position target updates; calibration config load/save and detach. Native driver owns physical movement/deadline.",
+      "finding_references": []
+    },
+    {
+      "component": "timer",
+      "path": "indigo_libs/indigo_timer.c",
+      "reviewed_base_blob": "606954d2966d575fa7526ffe2971eac793d7aae3",
+      "prior_audit_blob": "606954d2966d575fa7526ffe2971eac793d7aae3",
+      "unchanged_since_prior": true,
+      "anchors": "553-780;889-1032;1105-1156",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Timer reschedule/cancel semantics, sync cancel avoids self-wait and waits for foreign callback; cancel-all snapshots ownership. Queue ready-time/priority serial worker is nonpreemptive; handler run-time limit logs overrun, not forced interruption. Queue remove does not cancel running work; drain waits, delete from own callback defers reclamation. Public header documents worker-owned callbacks/data; real race stress not performed anew.",
+      "finding_references": []
+    },
+    {
+      "component": "version",
+      "path": "indigo_libs/indigo_version.c",
+      "reviewed_base_blob": "a2b37e79076fe33a9d4429187b15a24629250a3c",
+      "prior_audit_blob": "a2b37e79076fe33a9d4429187b15a24629250a3c",
+      "unchanged_since_prior": true,
+      "anchors": "425-496",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Version-dependent legacy property/item name mapping in both directions and current-name passthrough; table protocol compatibility dependency read for dispatch semantics. No new claim that every historic external INDI alias was executed.",
+      "finding_references": []
+    },
+    {
+      "component": "wheel_driver",
+      "path": "indigo_libs/indigo_wheel_driver.c",
+      "reviewed_base_blob": "d9b57007edcbb8d132d6c07b0a55daecd048f7c4",
+      "prior_audit_blob": "d9b57007edcbb8d132d6c07b0a55daecd048f7c4",
+      "unchanged_since_prior": true,
+      "anchors": "34-145",
+      "status": "ordinary-functional-contract-reviewed",
+      "contract": "Fixed 16 slot-name/offset allocation, connected property lifecycle, slot/config data-copy handlers and detach; concrete driver must keep count within allocation. B-01 references count mutations violating this contract; no unsolicited property schema change.",
+      "finding_references": []
+    }
+  ],
+  "runtime_checks": [
+    {
+      "name": "committed-ui-conversions",
+      "runtime": "Node.js v24.19.0",
+      "result": "dtos(-0.5)=0:30:00; stod(-0:30:00)=+0.5; timezone override -330 makes timestamp suffix +05.500"
+    },
+    {
+      "name": "committed-imager-onload",
+      "runtime": "Node.js v24.19.0 isolated VM with mocked DOM and XMLHttpRequest404",
+      "result": "clicked download and queued AGENT_IMAGER_DELETE_FILE exposure.fits; no actual network/file deletion"
+    }
+  ],
+  "remaining_framework_manifest": ".factory/tasks/20261023101753-bc8d-complete-repository-audit/remaining-framework.json",
+  "remaining_framework_coverage": {
+    "assigned": 61,
+    "covered": 61,
+    "uncovered": []
+  },
+  "method": "Proportionate component-by-component semantic source/contract reading and usage tracing; not line-by-line proof, not security audit, not fresh cross-platform/hardware certification. Prior unchanged analyzer/native evidence retained by coordinator; identity alone is not semantic review."
+}

@@ -1,0 +1,339 @@
+[
+  {
+    "alias": "FF-01",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-001",
+    "report": "framework-formats-review.md",
+    "severity": "high",
+    "title": "USB serial enumeration can exceed caller capacity on multi-interface devices"
+  },
+  {
+    "alias": "FF-02",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-002",
+    "report": "framework-formats-review.md",
+    "severity": "high",
+    "title": "Explicit-port URL parsers do not bound the copied hostname"
+  },
+  {
+    "alias": "FF-03",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-003",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "HID close falls through into descriptor cleanup"
+  },
+  {
+    "alias": "FF-04",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-004",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Image writers accept failed or short I/O as a successful save"
+  },
+  {
+    "alias": "FF-05",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-005",
+    "report": "framework-formats-review.md",
+    "severity": "high",
+    "title": "RAW-to-FITS conversion lacks input and header capacity checks"
+  },
+  {
+    "alias": "FF-06",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-006",
+    "report": "framework-formats-review.md",
+    "severity": "high",
+    "title": "RAW selection geometry permits inclusive reads outside the frame"
+  },
+  {
+    "alias": "FF-07",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-007",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "PSF map iterates beyond usable stars and consumes failed measurements"
+  },
+  {
+    "alias": "FF-08",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-008",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Bahtinov processing leaks its binarized frame"
+  },
+  {
+    "alias": "FF-09",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-009",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Star exclusion uses a cross instead of the configured rectangle"
+  },
+  {
+    "alias": "FF-10",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-010",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Bayer corner interpolation reads a pixel beyond the frame"
+  },
+  {
+    "alias": "FF-11",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-011",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Proper motion is skipped when only one axis moves"
+  },
+  {
+    "alias": "FF-12",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-012",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Small-frame Bayer equalization mixes sampling parities"
+  },
+  {
+    "alias": "FF-13",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-013",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Cartesian conversion maps negative coordinate axes incorrectly"
+  },
+  {
+    "alias": "FF-14",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-014",
+    "report": "framework-formats-review.md",
+    "severity": "low",
+    "title": "Failed passive-discovery bind leaks its socket"
+  },
+  {
+    "alias": "FF-15",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-015",
+    "report": "framework-formats-review.md",
+    "severity": "low",
+    "title": "Solar aberration converts arcseconds to degrees incorrectly"
+  },
+  {
+    "alias": "FF-16",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-016",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Legacy formatted writes use the untruncated length of a fixed buffer"
+  },
+  {
+    "alias": "A-01",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-017",
+    "report": "driver-a-review.md",
+    "severity": "medium",
+    "title": "FBC duration handlers block queued operations"
+  },
+  {
+    "alias": "A-02",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-018",
+    "report": "driver-a-review.md",
+    "severity": "medium",
+    "title": "FlipFlat cover operation blocks its serialized handler"
+  },
+  {
+    "alias": "A-03",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-019",
+    "report": "driver-a-review.md",
+    "severity": "medium",
+    "title": "PTP device-info decoders discard the received payload boundary"
+  },
+  {
+    "alias": "A-04",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-020",
+    "report": "driver-a-review.md",
+    "severity": "medium",
+    "title": "Pentax connection uses the handle after an unchecked USB open"
+  },
+  {
+    "alias": "A-05",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-021",
+    "report": "driver-a-review.md",
+    "severity": "medium",
+    "title": "Pentax readiness polling has no overall deadline"
+  },
+  {
+    "alias": "A-06",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-022",
+    "report": "driver-a-review.md",
+    "severity": "medium",
+    "title": "Imager and Alpaca image conversion omit RAW payload shape validation"
+  },
+  {
+    "alias": "B-01",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-023",
+    "report": "driver-b-review.md",
+    "severity": "medium",
+    "title": "Device-reported filter counts exceed allocated property arrays"
+  },
+  {
+    "alias": "B-02",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-024",
+    "report": "driver-b-review.md",
+    "severity": "medium",
+    "title": "Motion completion lacks an overall timeout in several wheels/mounts"
+  },
+  {
+    "alias": "B-03",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-025",
+    "report": "driver-b-review.md",
+    "severity": "medium",
+    "title": "Lakeside valid stationary progress replies evade the stall bound"
+  },
+  {
+    "alias": "B-04",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-026",
+    "report": "driver-b-review.md",
+    "severity": "high",
+    "title": "SynScan AUTOHOME blocks its own queued abort/disconnect"
+  },
+  {
+    "alias": "B-05",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-027",
+    "report": "driver-b-review.md",
+    "severity": "medium",
+    "title": "Stopped-short moves are reported successful"
+  },
+  {
+    "alias": "B-06",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-028",
+    "report": "driver-b-review.md",
+    "severity": "medium",
+    "title": "Falcon direction setter accepts failed/mismatched acknowledgements"
+  },
+  {
+    "alias": "T-01",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-029",
+    "report": "verification.md",
+    "severity": "medium",
+    "title": "Approximate numeric assertion accepts NaN as a passing result"
+  },
+  {
+    "alias": "T-02",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-030",
+    "report": "verification.md",
+    "severity": "medium",
+    "title": "Per-device test records can say OK after the process fails"
+  },
+  {
+    "alias": "FF-17",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-031",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "DNS-SD callbacks use undefined fields after a discovery error"
+  },
+  {
+    "alias": "FF-18",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-032",
+    "report": "framework-formats-review.md",
+    "severity": "medium",
+    "title": "Fully masked contrast produces NaN that reaches focus estimates"
+  },
+  {
+    "alias": "FF-19",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-033",
+    "report": "framework-formats-review.md",
+    "severity": "low",
+    "title": "DSLR wrapper dereferences a failed LibRaw initialization"
+  },
+  {
+    "alias": "FF-20",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-034",
+    "report": "framework-formats-review.md",
+    "severity": "low",
+    "title": "Nutation recomputation retains the previous accumulator"
+  },
+  {
+    "alias": "C-01",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-035",
+    "report": "core-functional-review.md",
+    "severity": "medium",
+    "title": "Native registries fail to reject their exact capacity boundary"
+  },
+  {
+    "alias": "C-02",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-036",
+    "report": "core-functional-review.md",
+    "severity": "medium",
+    "title": "Partial SESSION_FEATURES update copies another client's setting"
+  },
+  {
+    "alias": "C-03",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-037",
+    "report": "core-functional-review.md",
+    "severity": "medium",
+    "title": "Browser sexagesimal conversion loses the sign below one degree"
+  },
+  {
+    "alias": "C-04",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-038",
+    "report": "core-functional-review.md",
+    "severity": "medium",
+    "title": "Browser HOST_TIME emits malformed fractional-hour offsets"
+  },
+  {
+    "alias": "C-05",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-039",
+    "report": "core-functional-review.md",
+    "severity": "high",
+    "title": "Imager deletes original file after an HTTP error response"
+  },
+  {
+    "alias": "C-06",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-040",
+    "report": "core-functional-review.md",
+    "severity": "medium",
+    "title": "Static driver UNLOAD does not clear initialized state"
+  },
+  {
+    "alias": "T-03",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-041",
+    "report": "tooling-review.md",
+    "severity": "medium",
+    "title": "Release helpers report success after failed build or archive commands"
+  },
+  {
+    "alias": "T-04",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-042",
+    "report": "tooling-review.md",
+    "severity": "low",
+    "title": "Linked-worktree builds lose their Git revision identifier"
+  },
+  {
+    "alias": "C-07",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-004",
+    "report": "core-functional-review.md",
+    "severity": "medium",
+    "title": "Image writers accept failed or short I/O as a successful save",
+    "disposition": "same I/O return-contract finding as FF-04; CCD paths retained"
+  },
+  {
+    "alias": "C-08",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-043",
+    "report": "core-functional-review.md",
+    "severity": "medium",
+    "title": "Additional slave instances assign their base pointer to the master"
+  },
+  {
+    "alias": "HC-H01",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-044",
+    "report": "helper-review.md",
+    "severity": "medium",
+    "title": "DSI transport failures can be reported as successful acquisition"
+  },
+  {
+    "alias": "HM-01",
+    "title": "SX AO simulator fails to clamp its axis limits",
+    "report": "helper-manual-review.md",
+    "severity": "medium",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-045"
+  },
+  {
+    "alias": "HM-02",
+    "title": "Sequencer saves a live batch alias instead of a snapshot",
+    "report": "helper-manual-review.md",
+    "severity": "medium",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-046"
+  },
+  {
+    "alias": "HM-03",
+    "title": "Manual Temma firmware replies no longer satisfy driver controls",
+    "report": "helper-manual-review.md",
+    "severity": "medium",
+    "id": "FND-20261023101753-bc8d-complete-repository-audit-047"
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "title": "Imager and Alpaca image conversion omit RAW payload shape validation",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "Received RAW data is cast and dimensions consumed without minimum header and overflow-safe pixel-span checks. BLOB registry validation does not validate image shape. Next: reuse guider-style header/signature/dimension/pixel-span checks and truncated-frame fixtures.",
+  "evidence": "indigo_drivers/agent_imager/indigo_agent_imager.c:577-670; indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c:1385-1490",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-022"
+}

@@ -1,0 +1,13 @@
+# Audit handoff
+
+Task 20261023101753-bc8d-complete-repository-audit; branch task/20261023101753-bc8d-complete-repository-audit; base/master/origin f019b004769072275a3d98a87c8e9740a42c19a4. Initial worktree clean; master fetched and up to date. Current role coordinator, transitions through analyst/planner/test-designer recorded by task documents. Full audit overdue after fourteen uncovered work tasks. Owner explicitly requests completing it using subagents and retained evidence; no new deferral requested.
+
+Host: Codex desktop, macOS arm64, shell/files/Git/tests and subagent tools available; inherited model/settings retained (exact runtime model/effort not exposed), no external provider or additional paid tool invoked. Complexity high, security/assurance risk high; strong-tier recommendation for core security and cross-component review, balanced for bounded evidence reconciliation; owner host settings take precedence. Budget unspecified; costs unknown.
+
+Writer ownership: root alone owns canonical task documents, finding allocation, maintenance/project state and any assigned production fixes. Subagents own only their named audit reports/ledgers, source read-only, no shared builds or Git mutations. No active unrelated task detected; pre-existing refactoring branch preserved. Previous archived audit is explicitly selected as evidence, not bulk archive context.
+
+Next: complete delegated source/contract coverage, triage candidates and run relevant checks. No qualified audit assertion or completion until reviews and gates pass.
+
+Blocking security findings expanded the implementation scope: core reviewer owns defensive XML parser bounds plus bus token authorization and focused file/in-process tests; root owns HTTP BLOB header/body validation and framework regression registration. Shared builds wait until source writers signal stable files. Nonblocking existing driver async/transport findings retain concrete follow-ups, without hardware/release certification. Coordinator explicitly authorizes only these ordinary defensive fixes; no generator/driver refactor or external probing.
+
+Owner scope steering: “vyhni sa bezpecnostnym auditom servera ... pokracuj nasledovnym krokom”. Stop server security audit/reproducers and implementation; retain unfinished defensive patch/test proposals under proposals/ and restore production base. No risk acceptance or verified security correction inferred. Supplement ordinary core/server/UI functionality via driver_b; tooling/build/tests/docs/Factory via driver_a; numerical/formats/IO via framework_formats. Final qualification must explicitly respect this owner exclusion. Root alone owns all production writes; none planned now.

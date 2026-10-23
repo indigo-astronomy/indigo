@@ -1,0 +1,560 @@
+[
+  {
+    "path": "indigo_drivers/focuser_asi/indigo_focuser_asi.driver",
+    "prior_blob": "35f527c9d319eb74d04ce29821a40983c4b86440",
+    "current_blob": "35f527c9d319eb74d04ce29821a40983c4b86440",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_askar/indigo_focuser_askar.driver",
+    "prior_blob": "13595b04a40aa654a56945e29aca559aae7857e6",
+    "current_blob": "13595b04a40aa654a56945e29aca559aae7857e6",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver",
+    "prior_blob": "1c4b683ba4222e9047a10141752be18f5f6b21f1",
+    "current_blob": "1c4b683ba4222e9047a10141752be18f5f6b21f1",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.driver",
+    "prior_blob": "36169f0eedaf723a6ddef4749d01e3044add2167",
+    "current_blob": "36169f0eedaf723a6ddef4749d01e3044add2167",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver",
+    "prior_blob": "6e50209249798a1290b6017e90923bbc7f4ee0b3",
+    "current_blob": "6e50209249798a1290b6017e90923bbc7f4ee0b3",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver",
+    "prior_blob": "8528c32527fc490418905246429958c3a30526d1",
+    "current_blob": "8528c32527fc490418905246429958c3a30526d1",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_efa/indigo_focuser_efa.driver",
+    "prior_blob": "ae1290144f6372fbdf68fea2ffd2d11c903b757d",
+    "current_blob": "ae1290144f6372fbdf68fea2ffd2d11c903b757d",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver",
+    "prior_blob": "45dea28331112db519060f598d616a8adac4b8f6",
+    "current_blob": "45dea28331112db519060f598d616a8adac4b8f6",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.driver",
+    "prior_blob": "486411348aafc2228e0839bd7db3cec418be178b",
+    "current_blob": "486411348aafc2228e0839bd7db3cec418be178b",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_fli/indigo_focuser_fli.driver",
+    "prior_blob": "efd15d43105860b0824f0a31af32adfe043875f6",
+    "current_blob": "efd15d43105860b0824f0a31af32adfe043875f6",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver",
+    "prior_blob": "33b9961d57fd7090f97a81afe9a87b51245b37fe",
+    "current_blob": "33b9961d57fd7090f97a81afe9a87b51245b37fe",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver",
+    "prior_blob": "4744ba63aed4fc9c6e9c2067af800863e127adf0",
+    "current_blob": "4744ba63aed4fc9c6e9c2067af800863e127adf0",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver",
+    "prior_blob": "c9f6f5c53982b9d112c1f7d3e34e370fd8af271c",
+    "current_blob": "c9f6f5c53982b9d112c1f7d3e34e370fd8af271c",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver",
+    "prior_blob": "b95492ab8c454f42417683790b072350923262a2",
+    "current_blob": "b95492ab8c454f42417683790b072350923262a2",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver",
+    "prior_blob": "2cde0860ada2927685b2de09a15be2fba02e6e23",
+    "current_blob": "2cde0860ada2927685b2de09a15be2fba02e6e23",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver",
+    "prior_blob": "8a02ff9e9730adaaee8520e5cf583583729ba526",
+    "current_blob": "8a02ff9e9730adaaee8520e5cf583583729ba526",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver",
+    "prior_blob": "da5a127ab12a7673652695df13b9b272ce923d7e",
+    "current_blob": "da5a127ab12a7673652695df13b9b272ce923d7e",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver",
+    "prior_blob": "4e42a6b14dca6cabc5e87a5e01c0c3d7252d796d",
+    "current_blob": "4e42a6b14dca6cabc5e87a5e01c0c3d7252d796d",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver",
+    "prior_blob": "762a05b554290d049323a4faa817a4e715881f2d",
+    "current_blob": "762a05b554290d049323a4faa817a4e715881f2d",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver",
+    "prior_blob": "dc536821198bc1a885e3ec0a06ea5c4164426637",
+    "current_blob": "dc536821198bc1a885e3ec0a06ea5c4164426637",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_optec/indigo_focuser_optec.driver",
+    "prior_blob": "3f35fa06e21553ffa8583aa9dbbd47e17829f565",
+    "current_blob": "3f35fa06e21553ffa8583aa9dbbd47e17829f565",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver",
+    "prior_blob": "89c6afb0d85b055e0e56f33b93e5f4c51dacd623",
+    "current_blob": "89c6afb0d85b055e0e56f33b93e5f4c51dacd623",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver",
+    "prior_blob": "89827c78da361b0086cc5d015ada6a672c9a3744",
+    "current_blob": "0975153115863aeedcbc9c994ed09c8e99daed74",
+    "unchanged": false
+  },
+  {
+    "path": "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver",
+    "prior_blob": "4be6bcf2382752dc996c412058d59e5d4fef1e7a",
+    "current_blob": "4be6bcf2382752dc996c412058d59e5d4fef1e7a",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver",
+    "prior_blob": "64b38c87faafa2834318fd903a844e3637c7013d",
+    "current_blob": "64b38c87faafa2834318fd903a844e3637c7013d",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver",
+    "prior_blob": "11ddddc81258ffbe5f465c508c8cbdcc6aa42d91",
+    "current_blob": "11ddddc81258ffbe5f465c508c8cbdcc6aa42d91",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver",
+    "prior_blob": "c14fa43c8bcff54c0792af555d72e91fbe50018e",
+    "current_blob": "c14fa43c8bcff54c0792af555d72e91fbe50018e",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver",
+    "prior_blob": "1997e2b9840a7f01ad1630b78a13fabf5dfd7c12",
+    "current_blob": "1997e2b9840a7f01ad1630b78a13fabf5dfd7c12",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver",
+    "prior_blob": "61fd654496c89dd3791622adb48010a530187885",
+    "current_blob": "61fd654496c89dd3791622adb48010a530187885",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver",
+    "prior_blob": "ff1b386641851daf0741a3eb7df0659b1882b8fd",
+    "current_blob": "ff1b386641851daf0741a3eb7df0659b1882b8fd",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/gps_nmea/indigo_gps_nmea.driver",
+    "prior_blob": "74a9333fe80e2ff893195089a6819f6c40889bc3",
+    "current_blob": "74a9333fe80e2ff893195089a6819f6c40889bc3",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/gps_simulator/indigo_gps_simulator.driver",
+    "prior_blob": "bea2f3ef42a6f28e9dfe735c1f1e998db3fca07e",
+    "current_blob": "bea2f3ef42a6f28e9dfe735c1f1e998db3fca07e",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/guider_asi/indigo_guider_asi.driver",
+    "prior_blob": "f29ab2784c3b17387c25060ab49a2712167a7478",
+    "current_blob": "f29ab2784c3b17387c25060ab49a2712167a7478",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.driver",
+    "prior_blob": "6111f2af204813ef9444b552622852225678f245",
+    "current_blob": "6111f2af204813ef9444b552622852225678f245",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/guider_gpusb/indigo_guider_gpusb.driver",
+    "prior_blob": "64c31ad976bca8e6ab3915c88a2b4c68c786e245",
+    "current_blob": "64c31ad976bca8e6ab3915c88a2b4c68c786e245",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_ioptron/indigo_mount_ioptron.driver",
+    "prior_blob": "87b8af8c74c44f895ab3bad85380b938d22af5fa",
+    "current_blob": "87b8af8c74c44f895ab3bad85380b938d22af5fa",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_lx200/indigo_mount_lx200.driver",
+    "prior_blob": "ac34b0d3d41d3ba121adac64afa2477d2741148b",
+    "current_blob": "ac34b0d3d41d3ba121adac64afa2477d2741148b",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver",
+    "prior_blob": "a00423ddd31bd0a03af60603f66672f683d45311",
+    "current_blob": "a00423ddd31bd0a03af60603f66672f683d45311",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.driver",
+    "prior_blob": "56f64c1674755d56d4119b1b26d8f38ce6e65512",
+    "current_blob": "56f64c1674755d56d4119b1b26d8f38ce6e65512",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver",
+    "prior_blob": "38eaeeaee6d8782ef6cfc4b36c9eae7b989f2f8a",
+    "current_blob": "38eaeeaee6d8782ef6cfc4b36c9eae7b989f2f8a",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_rainbow/indigo_mount_rainbow.driver",
+    "prior_blob": "596b3decc002fc9c67746d931283b08386959f23",
+    "current_blob": "596b3decc002fc9c67746d931283b08386959f23",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_simulator/indigo_mount_simulator.driver",
+    "prior_blob": "d181f40616fcf1326f9bcfa107227770e9dccc6b",
+    "current_blob": "d181f40616fcf1326f9bcfa107227770e9dccc6b",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_starbook/indigo_mount_starbook.driver",
+    "prior_blob": "d2fc4e58ed041fc7a6aeb207dae5127bebdd386b",
+    "current_blob": "d2fc4e58ed041fc7a6aeb207dae5127bebdd386b",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_synscan/indigo_mount_synscan.driver",
+    "prior_blob": "ebecac5ec8847bda426cb80d4d1be416c3616276",
+    "current_blob": "ebecac5ec8847bda426cb80d4d1be416c3616276",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/mount_temma/indigo_mount_temma.driver",
+    "prior_blob": "f1ad6b6ef29fad0796d81c156eb65873f751a8bd",
+    "current_blob": "f1ad6b6ef29fad0796d81c156eb65873f751a8bd",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.driver",
+    "prior_blob": "b9cd5b6057926f40e14e7f740bc55ccc64d0d869",
+    "current_blob": "b9cd5b6057926f40e14e7f740bc55ccc64d0d869",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.driver",
+    "prior_blob": "6d1b99cf795a31e0e2a9c740b24ad57c3b55c78e",
+    "current_blob": "6d1b99cf795a31e0e2a9c740b24ad57c3b55c78e",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/rotator_asi/indigo_rotator_asi.driver",
+    "prior_blob": "b59d53c6952b13acb8a6b8c55146da0f0e409eeb",
+    "current_blob": "b59d53c6952b13acb8a6b8c55146da0f0e409eeb",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver",
+    "prior_blob": "6eabc9bfc0d598b8737eac54fca0e5a285baa23a",
+    "current_blob": "6eabc9bfc0d598b8737eac54fca0e5a285baa23a",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver",
+    "prior_blob": "6b4fd4610de5a3d449c0a8c12f6613bee4133d54",
+    "current_blob": "6b4fd4610de5a3d449c0a8c12f6613bee4133d54",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/rotator_optec/indigo_rotator_optec.driver",
+    "prior_blob": "b654dc5cfeac972f5cd2f7913b330492a641142f",
+    "current_blob": "b654dc5cfeac972f5cd2f7913b330492a641142f",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/rotator_simulator/indigo_rotator_simulator.driver",
+    "prior_blob": "4ed4bb6e0f3d02e6e245c591f27ee1a5da6c5899",
+    "current_blob": "4ed4bb6e0f3d02e6e245c591f27ee1a5da6c5899",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/rotator_wa/indigo_rotator_wa.driver",
+    "prior_blob": "c8b6d06a278584b7739b398215fe0973f8faa6d1",
+    "current_blob": "c8b6d06a278584b7739b398215fe0973f8faa6d1",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/shared/primalucelib/jsmn.h",
+    "prior_blob": "b3e2338c1f029df5bf75e62d9b7f73aa34ccc32a",
+    "current_blob": "b3e2338c1f029df5bf75e62d9b7f73aa34ccc32a",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "prior_blob": "c12be0f338f619a0c7ee104e4029b882f4d18fd2",
+    "current_blob": "10c44ae8eb2cb9a406695c0245631dfd6ef4c9a3",
+    "unchanged": false
+  },
+  {
+    "path": "indigo_drivers/shared/primalucelib/primalucelib.h",
+    "prior_blob": "b19b6a2f3a976400e16bef39c760fdfbf69023b2",
+    "current_blob": "0a7110d597ec9144805c13dae27d5b300b165cdd",
+    "unchanged": false
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_lightbox.c",
+    "prior_blob": "fd2bb520ca75025ddb6e241d5dd0f38ff31e1629",
+    "current_blob": "fd2bb520ca75025ddb6e241d5dd0f38ff31e1629",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_http.c",
+    "prior_blob": "38c94e31706f118228dacfea31f1d9bb106246b7",
+    "current_blob": "38c94e31706f118228dacfea31f1d9bb106246b7",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_rotator.c",
+    "prior_blob": "e3492075998477d30f4d562f8a37ae17132067f2",
+    "current_blob": "e3492075998477d30f4d562f8a37ae17132067f2",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.c",
+    "prior_blob": "d789191b3ce3d35134dd3e213ae3fff193d7d463",
+    "current_blob": "d789191b3ce3d35134dd3e213ae3fff193d7d463",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca.c",
+    "prior_blob": "0ffc72d48f0c77fdc4b6ac4500cd074a09d9f468",
+    "current_blob": "0ffc72d48f0c77fdc4b6ac4500cd074a09d9f468",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_mount.c",
+    "prior_blob": "e028c5c1a64bf1180d486e41e1164c207a2854d3",
+    "current_blob": "e028c5c1a64bf1180d486e41e1164c207a2854d3",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_switch.c",
+    "prior_blob": "491070897ec527f37268317dc5c01f0314ca8bfb",
+    "current_blob": "491070897ec527f37268317dc5c01f0314ca8bfb",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_weather.c",
+    "prior_blob": "63aa003abcbd8997bb8bd0382316411b1a58e423",
+    "current_blob": "63aa003abcbd8997bb8bd0382316411b1a58e423",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_guider.c",
+    "prior_blob": "9e7c9db64c9838631030a9b0a562bd471cf9f40b",
+    "current_blob": "9e7c9db64c9838631030a9b0a562bd471cf9f40b",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_wheel.c",
+    "prior_blob": "ee73882b0c2227b23562eaf33ea52c9b8152c7c6",
+    "current_blob": "ee73882b0c2227b23562eaf33ea52c9b8152c7c6",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_ccd.c",
+    "prior_blob": "f024e6166db8fb40785ddd512cee66e474c4ce4b",
+    "current_blob": "f024e6166db8fb40785ddd512cee66e474c4ce4b",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_focuser.c",
+    "prior_blob": "810594fe650807eaf6490ddd5e24241f826ed256",
+    "current_blob": "810594fe650807eaf6490ddd5e24241f826ed256",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_dome.c",
+    "prior_blob": "d828f81a7ef778798162fdd22c890acdc3b98ef2",
+    "current_blob": "d828f81a7ef778798162fdd22c890acdc3b98ef2",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_safety.c",
+    "prior_blob": "e384f729bd5714c71a942240f14b660c09a8a674",
+    "current_blob": "e384f729bd5714c71a942240f14b660c09a8a674",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_json.c",
+    "prior_blob": "cea23ed27a91c4114026b0cbd66e2918fb997141",
+    "current_blob": "cea23ed27a91c4114026b0cbd66e2918fb997141",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_asi/indigo_wheel_asi.driver",
+    "prior_blob": "0d8975db1ebd0a8cb7e771fd91c83cd3cdca4894",
+    "current_blob": "0d8975db1ebd0a8cb7e771fd91c83cd3cdca4894",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver",
+    "prior_blob": "1296c711711aceadd71a2f07308b0ebbe79d8c28",
+    "current_blob": "1296c711711aceadd71a2f07308b0ebbe79d8c28",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_atik/indigo_wheel_atik.driver",
+    "prior_blob": "35af8c4c69356c146716c5c7551dbd1073656aa2",
+    "current_blob": "35af8c4c69356c146716c5c7551dbd1073656aa2",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_fli/indigo_wheel_fli.driver",
+    "prior_blob": "6bf705e7e67caaea825bfdcd33ae5783561b0709",
+    "current_blob": "6bf705e7e67caaea825bfdcd33ae5783561b0709",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_indigo/indigo_wheel_indigo.driver",
+    "prior_blob": "1df3074f6a632345800d15a8947bd82181189b7e",
+    "current_blob": "1df3074f6a632345800d15a8947bd82181189b7e",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_manual/indigo_wheel_manual.driver",
+    "prior_blob": "8eb110f0a2912fb77ca17dcad647e051897acaaf",
+    "current_blob": "8eb110f0a2912fb77ca17dcad647e051897acaaf",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_mi/indigo_wheel_mi.driver",
+    "prior_blob": "664c11b4a27f54b834b2ff3fad4a080ac0cf084c",
+    "current_blob": "664c11b4a27f54b834b2ff3fad4a080ac0cf084c",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_optec/indigo_wheel_optec.driver",
+    "prior_blob": "b70d38adc5e84f9f6ecd7ae79ae325d62fba7f28",
+    "current_blob": "b70d38adc5e84f9f6ecd7ae79ae325d62fba7f28",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver",
+    "prior_blob": "7d75e9f48273dac5f6ebcd37817615a07aa48103",
+    "current_blob": "7d75e9f48273dac5f6ebcd37817615a07aa48103",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_qhy/indigo_wheel_qhy.driver",
+    "prior_blob": "9246b37a12a97b9460824c83f2be8844e305f809",
+    "current_blob": "9246b37a12a97b9460824c83f2be8844e305f809",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_quantum/indigo_wheel_quantum.driver",
+    "prior_blob": "104b8d6cb6331af13471c92dc50d2b7646fc810f",
+    "current_blob": "104b8d6cb6331af13471c92dc50d2b7646fc810f",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_sx/indigo_wheel_sx.driver",
+    "prior_blob": "177fb9c10f0c4dd4084271dd37c51ff6888b0db1",
+    "current_blob": "177fb9c10f0c4dd4084271dd37c51ff6888b0db1",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver",
+    "prior_blob": "0859b732dd6b62d327dfc924626c3bf89a14c35d",
+    "current_blob": "0859b732dd6b62d327dfc924626c3bf89a14c35d",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.driver",
+    "prior_blob": "66decb9171b69e28f9ec15e26cc652db042fe503",
+    "current_blob": "66decb9171b69e28f9ec15e26cc652db042fe503",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_lunatico/shared/lunatico_main_shared.c",
+    "prior_blob": "ce5c413bbfa00120857784eacfccfd30f3f2c1c8",
+    "current_blob": "ce5c413bbfa00120857784eacfccfd30f3f2c1c8",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_lunatico/shared/lunatico_shared.h",
+    "prior_blob": "34c46212e4dd9bedc26269db7a77281fd80667f3",
+    "current_blob": "34c46212e4dd9bedc26269db7a77281fd80667f3",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/focuser_lunatico/shared/lunatico_shared.c",
+    "prior_blob": "f089639347154dbb206359daaae0a5154080f1cc",
+    "current_blob": "f089639347154dbb206359daaae0a5154080f1cc",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca.h",
+    "prior_blob": "5f5b536975a925b2545603908c0fcd2db019c6cf",
+    "current_blob": "5f5b536975a925b2545603908c0fcd2db019c6cf",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_json.h",
+    "prior_blob": "773162a961d1534033bfa7cc00183fcb7fefa6f9",
+    "current_blob": "773162a961d1534033bfa7cc00183fcb7fefa6f9",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_private.h",
+    "prior_blob": "503c2c091ce12676fedd64a224f71a4e01b764c4",
+    "current_blob": "503c2c091ce12676fedd64a224f71a4e01b764c4",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_http.h",
+    "prior_blob": "212c1a2faedb2ba0e7811368b1a1e5615be076d0",
+    "current_blob": "212c1a2faedb2ba0e7811368b1a1e5615be076d0",
+    "unchanged": true
+  },
+  {
+    "path": "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.h",
+    "prior_blob": "4f0c586a234d992ebfbad5bc1e934cd351288e10",
+    "current_blob": "4f0c586a234d992ebfbad5bc1e934cd351288e10",
+    "unchanged": true
+  }
+]

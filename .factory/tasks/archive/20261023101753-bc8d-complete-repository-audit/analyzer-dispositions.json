@@ -1,0 +1,277 @@
+[
+  {
+    "source": "indigo_examples/dynamic_driver_client.c",
+    "diagnostic": "Stream pointer might be NULL [unix.Stream]",
+    "disposition": "Existing FND-000011 stream-result handling; source-current example review and old compiler diagnostics retained, not a new duplicate."
+  },
+  {
+    "source": "indigo_examples/executable_driver_client.c",
+    "diagnostic": "Stream pointer might be NULL [unix.Stream]",
+    "disposition": "Existing FND-000011 stream-result handling; source-current example review and old compiler diagnostics retained, not a new duplicate."
+  },
+  {
+    "source": "indigo_examples/remote_server_client.c",
+    "diagnostic": "Stream pointer might be NULL [unix.Stream]",
+    "disposition": "Existing FND-000011 stream-result handling; source-current example review and old compiler diagnostics retained, not a new duplicate."
+  },
+  {
+    "source": "indigo_libs/indigo_driver.c",
+    "diagnostic": "Access to field 'property_save_file_handle' results in a dereference of a null pointer (loaded from field 'device_context') [core.NullDereference]",
+    "disposition": "Attached-device context precondition/caller contract inspected in prior selected review and current base-driver functional pass; no normal NULL-context caller established."
+  },
+  {
+    "source": "indigo_libs/indigo_driver.c",
+    "diagnostic": "Value stored to 'file_handle' is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_fits.c",
+    "diagnostic": "Value stored to 'extension_length' is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_gp_guider.c",
+    "diagnostic": "Assigned value is uninitialized [core.uninitialized.Assign]",
+    "disposition": "Confirmed existing GP allocation-failure finding FND-20261023065605-60d4-repository-audit-010; no duplicate."
+  },
+  {
+    "source": "indigo_libs/indigo_gp_guider.c",
+    "diagnostic": "Assigned value is uninitialized [core.uninitialized.Assign]",
+    "disposition": "Confirmed existing GP allocation-failure finding FND-20261023065605-60d4-repository-audit-010; no duplicate."
+  },
+  {
+    "source": "indigo_libs/indigo_json.c",
+    "diagnostic": "Although the value stored to 'property' is used in the enclosing expression, the value is never actually read from 'property' [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_json.c",
+    "diagnostic": "Although the value stored to 'property' is used in the enclosing expression, the value is never actually read from 'property' [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_json.c",
+    "diagnostic": "Although the value stored to 'property' is used in the enclosing expression, the value is never actually read from 'property' [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_json.c",
+    "diagnostic": "Although the value stored to 'property' is used in the enclosing expression, the value is never actually read from 'property' [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_json.c",
+    "diagnostic": "Although the value stored to 'property' is used in the enclosing expression, the value is never actually read from 'property' [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_json.c",
+    "diagnostic": "Although the value stored to 'property' is used in the enclosing expression, the value is never actually read from 'property' [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_json.c",
+    "diagnostic": "Dereference of null pointer (loaded from variable 'out') [core.NullDereference]",
+    "disposition": "Prior selected review: safe allocation contract terminates on allocation failure, not NULL-return continuation. Current adapter allocation/dispatch functional contracts unchanged; no new finding from this warning."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Value stored to 'k' is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Value stored to 'k' is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Division by zero [core.DivideZero]",
+    "disposition": "Reconciled FF-06 ROI/statistics, FF-07 failed PSF/map outputs and FF-18 empty masked contrast; canonical mapping retains actual contract findings rather than every warning."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Result of 'calloc' is converted to a pointer of type 'double[2]', which is incompatible with sizeof operand type 'double' [unix.MallocSizeof]",
+    "disposition": "Rejected: complex-double arrays intentionally allocate two double elements per sample; byte totals equivalent."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Result of 'calloc' is converted to a pointer of type 'double[2]', which is incompatible with sizeof operand type 'double' [unix.MallocSizeof]",
+    "disposition": "Rejected: complex-double arrays intentionally allocate two double elements per sample; byte totals equivalent."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Result of 'calloc' is converted to a pointer of type 'double[2]', which is incompatible with sizeof operand type 'double' [unix.MallocSizeof]",
+    "disposition": "Rejected: complex-double arrays intentionally allocate two double elements per sample; byte totals equivalent."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Result of 'calloc' is converted to a pointer of type 'double[2]', which is incompatible with sizeof operand type 'double' [unix.MallocSizeof]",
+    "disposition": "Rejected: complex-double arrays intentionally allocate two double elements per sample; byte totals equivalent."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Assigned value is uninitialized [core.uninitialized.Assign]",
+    "disposition": "Reconciled FF-06 ROI/statistics, FF-07 failed PSF/map outputs and FF-18 empty masked contrast; canonical mapping retains actual contract findings rather than every warning."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Assigned value is uninitialized [core.uninitialized.Assign]",
+    "disposition": "Reconciled FF-06 ROI/statistics, FF-07 failed PSF/map outputs and FF-18 empty masked contrast; canonical mapping retains actual contract findings rather than every warning."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Value stored to 'label' during its initialization is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Assigned value is uninitialized [core.uninitialized.Assign]",
+    "disposition": "Reconciled FF-06 ROI/statistics, FF-07 failed PSF/map outputs and FF-18 empty masked contrast; canonical mapping retains actual contract findings rather than every warning."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Assigned value is uninitialized [core.uninitialized.Assign]",
+    "disposition": "Reconciled FF-06 ROI/statistics, FF-07 failed PSF/map outputs and FF-18 empty masked contrast; canonical mapping retains actual contract findings rather than every warning."
+  },
+  {
+    "source": "indigo_libs/indigo_raw_utils.c",
+    "diagnostic": "Assigned value is uninitialized [core.uninitialized.Assign]",
+    "disposition": "Reconciled FF-06 ROI/statistics, FF-07 failed PSF/map outputs and FF-18 empty masked contrast; canonical mapping retains actual contract findings rather than every warning."
+  },
+  {
+    "source": "indigo_libs/indigo_server_tcp.c",
+    "diagnostic": "Although the value stored to 'res' is used in the enclosing expression, the value is never actually read from 'res' [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigo_server_tcp.c",
+    "diagnostic": "Potential leak of memory pointed to by 'working_copy' [unix.Malloc]",
+    "disposition": "Ordinary resource ownership: prior selected review plus current core-functional pass identify free_on_exit cleanup of working copy. No leak reproduction; server security explicitly excluded."
+  },
+  {
+    "source": "indigo_libs/indigo_xml.c",
+    "diagnostic": "Use of memory allocated with size zero [unix.Malloc]",
+    "disposition": "Prior selected review/current functional adapter construction: initial property allocation/capacity supplied before resize. No ordinary zero-capacity caller established; no speculative finding."
+  },
+  {
+    "source": "indigo_libs/indigo_xml.c",
+    "diagnostic": "Value stored to 'pointer' is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_libs/indigocat/indigocat_dynamical_time.c",
+    "diagnostic": "The left operand of '-' is a garbage value due to array index out of bounds [core.UndefinedBinaryOperatorResult]",
+    "disposition": "Rejected for public call path: date dispatch constrains i to0..185, i+2 <=187 below192 terms; component report has exact arithmetic."
+  },
+  {
+    "source": "indigo_tools/fix_fits.c",
+    "diagnostic": "The 1st argument to 'fread' is a buffer with size 0 but should be a buffer with size equal to or greater than the value of the 2nd argument (which is 1) times the 3rd argument (which is 18446744073709551615) [unix.StdCLibraryFunctions]",
+    "disposition": "Existing FND-000042 file size/fixed-offset/read-write contract, including failed seek/size paths. CLI-exit allocation cleanup alone has no separate persistent memory-growth evidence."
+  },
+  {
+    "source": "indigo_tools/fix_fits.c",
+    "diagnostic": "Potential leak of memory pointed to by 'data' [unix.Malloc]",
+    "disposition": "Existing FND-000042 file size/fixed-offset/read-write contract, including failed seek/size paths. CLI-exit allocation cleanup alone has no separate persistent memory-growth evidence."
+  },
+  {
+    "source": "indigo_tools/fix_xisf.c",
+    "diagnostic": "The 1st argument to 'fread' is a buffer with size 0 but should be a buffer with size equal to or greater than the value of the 2nd argument (which is 1) times the 3rd argument (which is 18446744073709551615) [unix.StdCLibraryFunctions]",
+    "disposition": "Existing FND-000042 file size/fixed-offset/read-write contract, including failed seek/size paths. CLI-exit allocation cleanup alone has no separate persistent memory-growth evidence."
+  },
+  {
+    "source": "indigo_tools/fix_xisf.c",
+    "diagnostic": "Potential leak of memory pointed to by 'data' [unix.Malloc]",
+    "disposition": "Existing FND-000042 file size/fixed-offset/read-write contract, including failed seek/size paths. CLI-exit allocation cleanup alone has no separate persistent memory-growth evidence."
+  },
+  {
+    "source": "indigo_tools/fix_xisf.c",
+    "diagnostic": "Potential leak of memory pointed to by 'ptr' [unix.Malloc]",
+    "disposition": "Existing FND-000042 file size/fixed-offset/read-write contract, including failed seek/size paths. CLI-exit allocation cleanup alone has no separate persistent memory-growth evidence."
+  },
+  {
+    "source": "indigo_tools/fix_xisf.c",
+    "diagnostic": "Value stored to 'data_len' during its initialization is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'code' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'reject' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'property' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'libusb' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'hid' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'sdk' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'pattern' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'serial' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'definition' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Value stored to 'size' during its initialization is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_tools/indigo_generator.c",
+    "diagnostic": "Potential leak of memory pointed to by 'code' [unix.Malloc]",
+    "disposition": "Allocation/tree lifetime is a one-shot CLI process, also spawned per editor preview; no long-lived accumulation shown. Existing FND-000041 unchecked allocation/path/file outcomes retained; no extra process-exit leak quota."
+  },
+  {
+    "source": "indigo_tools/indigo_prop_tool.c",
+    "diagnostic": "Value stored to 'finished' is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_tools/indigo_prop_tool.c",
+    "diagnostic": "Value stored to 'finished' is never read [deadcode.DeadStores]",
+    "disposition": "No demonstrated contract failure: dead assignment alone is not an actionable finding. Side effects and current functional call paths retained; no style-only cleanup."
+  },
+  {
+    "source": "indigo_tools/indigo_raw_crop.c",
+    "diagnostic": "File position of the stream might be 'indeterminate' after a failed operation. Can cause undefined behavior [unix.Stream]",
+    "disposition": "Existing FND-000037 input/header/ROI/read contract; stream failure is not newly duplicated."
+  },
+  {
+    "source": "indigo_tools/indigo_raw_crop.c",
+    "diagnostic": "Read function called when stream is in EOF state. Function has no effect [unix.Stream]",
+    "disposition": "Existing FND-000037 input/header/ROI/read contract; stream failure is not newly duplicated."
+  },
+  {
+    "source": "indigo_tools/indigo_raw_to_fits.c",
+    "diagnostic": "The 1st argument to 'fread' is a buffer with size 0 but should be a buffer with size equal to or greater than the value of the 2nd argument (which is 18446744073709551615) times the 3rd argument (which is 1) [unix.StdCLibraryFunctions]",
+    "disposition": "Existing FND-000039 file I/O and size contract; converter bounds separately mapped FF-05."
+  }
+]

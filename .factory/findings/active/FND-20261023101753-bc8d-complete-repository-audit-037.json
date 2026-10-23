@@ -1,0 +1,19 @@
+{
+  "title": "Browser sexagesimal conversion loses the sign below one degree",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "`indigo_server/resource/indigo.js:462-490`: dtos truncates signed degrees with `d | 0`, losing the minus sign when -1 < value <0. stod determines the sign using `parseInt(degrees) <0`, which is false for negative zero. Actual Node execution of the committed functions returned `dtos(-0.5) == \"0:30:00\"` and `stod(\"-0:30:00\") == +0.5`. `components.js:1124-1184` uses these functions for sexagesimal editing/display, and generic property controls use them at1418/1426/1445. `mount.html` uses those controls and dtos for picked target coordinates. Declinations/latitudes just south of zero can therefore be displayed or sent north of zero. Remediation:  Full evidence: C-03. Remediation: preserve the original sign separately from integer degree magnitude in formatting and parse the leading string sign; test positive/negative sub-degree values, zero, nonzero integer degrees and round-trip precision in ordinary coordinate widgets.",
+  "evidence": "core-functional-review.md section C-03; exact source and ordinary functional proof retained there.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "core-functional-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-037"
+}

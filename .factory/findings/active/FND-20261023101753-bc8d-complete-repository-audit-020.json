@@ -1,0 +1,19 @@
+{
+  "title": "Pentax connection uses the handle after an unchecked USB open",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "libusb_open result is overwritten before checking and the handle is immediately used. Next: stop the failed attempt, reset handle and cover open failure with fake USB.",
+  "evidence": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:823-828",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-020"
+}

@@ -1,0 +1,19 @@
+{
+  "title": "Browser HOST_TIME emits malformed fractional-hour offsets",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "`indigo_server/resource/indigo.js:493-509` divides timezone minutes by60 and concatenates `'00'`, instead of formatting separate whole hours and remainder minutes. With getTimezoneOffset()=-330 the actual committed function produces suffix `+05.500`, whereas an ISO numeric UTC+05:30 offset is `+0530` (or `+05:30`). Every authored page calls timestamp() for initially empty Server.HOST_TIME; server setter `indigo_server.c:1540-1550` forwards the value to its existing date-management helper. Fractional-hour locales can fail first-time host clock setup. Remediation: format signed absolute hours and minutes separately, or use a validated UTC repre Full evidence: C-04. Remediation: format signed absolute hours and minutes separately, or use a validated UTC representation supported by the helper; regress \u00b130/45-minute offsets and ordinary whole-hour timezones. The test replaced only Date.getTimezoneOffset in an isolated VM; no system clock was changed.",
+  "evidence": "core-functional-review.md section C-04; exact source and ordinary functional proof retained there.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "core-functional-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-038"
+}

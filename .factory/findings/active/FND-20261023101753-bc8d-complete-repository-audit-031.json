@@ -1,0 +1,19 @@
+{
+  "title": "DNS-SD callbacks use undefined fields after a discovery error",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "Error callbacks use name/domain/full_name although SDK documents those fields undefined on nonzero errorCode. Next: handle error before consuming fields, retain requested resolve context and add ordinary callback-error fixtures.",
+  "evidence": "indigo_libs/indigo_service_discovery.c:361,402; installed Xcode dns_sd.h Browse1677-1681/Resolve1792-1796 callback contract.",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": null,
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-031"
+}
