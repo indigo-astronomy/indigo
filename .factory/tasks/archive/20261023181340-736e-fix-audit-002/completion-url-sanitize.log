@@ -1,0 +1,13 @@
+21:38:11.010684 Application: Can't connect TCP socket for 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1234' (Operation not permitted)
+21:38:11.011506 Application: Can't connect TCP socket for 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1234' (Operation not permitted)
+21:38:11.011537 Application: Can't connect TCP socket for 'localhost:1' (Operation not permitted)
+21:38:11.011542 Application: Can't connect UDP socket for '127.0.0.1:65535' (Operation not permitted)
+21:38:11.011546 Application: Can't connect TCP socket for 'device-name.local:80' (Operation not permitted)
+21:38:11.011552 Application: Can't connect UDP socket for 'device_name:1234' (Operation not permitted)
+21:38:11.011556 Application: Can't connect TCP socket for 'localhost:1234' (Operation not permitted)
+21:38:11.011560 Application: Can't connect UDP socket for 'localhost:65535' (Operation not permitted)
+Running network_url
+  PASS hostname_boundaries
+  PASS rejects_malformed_authorities
+  PASS preserves_protocol_and_ports
+network_url: all tests passed

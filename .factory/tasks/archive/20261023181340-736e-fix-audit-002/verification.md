@@ -25,3 +25,5 @@ The extra whole-unit diagnostic remains failed and is not recorded as a passing 
 
 ## Limits and delivery
 No Linux/Windows runtime or hardware certification. Native local PTY/loopback tests required sandbox permission; URL regressions perform no real DNS lookup or remote connection. Same-agent review limitations remain. Final metadata archival/registration does not change the tested production sources. Exact committed-candidate targeted and configured checks must pass before local fast-forward integration; report their SHA/results in the external delivery log. Publication is not authorized by this task completion.
+
+Retained completion logs normalize trailing line whitespace only; raw external output remains in the named /private/tmp result directories. A final retention inspection found the *.log ignore pattern had omitted them from the first completion commit. The separate evidence repair commit retains these logs explicitly without changing tested sources; final committed gates are refreshed on that retained-evidence candidate.

@@ -1,0 +1,15 @@
+COMMAND: make -B Makefile.inc
+PASS: make-config.log
+COMMAND: make init
+PASS: init.log
+COMMAND: make -C indigo_libs -j4 all
+PASS: build-core.log
+COMMAND: make -C indigo_test build/unit/test_network_url
+PASS: url-build.log
+COMMAND: ./indigo_test/build/unit/test_network_url
+PASS: url-unit.log
+COMMAND: /usr/bin/clang -g -O1 -fsanitize=address\,undefined -fno-omit-frame-pointer -DINDIGO_MACOS -DINDIGO_CLIENT -Dgetaddrinfo=indigo_test_getaddrinfo -Iindigo_libs -Ibuild/include -o /private/tmp/indigo-002-final-verification/test_network_url_sanitize indigo_test/unit/test_network_url.c indigo_libs/indigo_io.c indigo_libs/indigo_uni_io.c -L/private/tmp/indigo-20261023181340-736e-fix-audit-002/build/lib -Wl\,-rpath\,/private/tmp/indigo-20261023181340-736e-fix-audit-002/build/lib -lindigo -lm -lpthread -lz
+PASS: sanitize-build.log
+COMMAND: env UBSAN_OPTIONS=halt_on_error=1 /private/tmp/indigo-002-final-verification/test_network_url_sanitize
+PASS: url-sanitize.log
+COMMAND: make -C indigo_test test-unit

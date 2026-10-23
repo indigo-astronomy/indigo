@@ -1,0 +1,8 @@
+Working directory: /private/tmp/indigo-20261023181340-736e-fix-audit-002
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+...............................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 175 tests in 100.465s
+
+OK
+Configured test commands passed. Assess coverage separately.
