@@ -75,6 +75,14 @@
       "checkpoint": "After both authorized fixes, before the next unrelated task or release",
       "resets_checkpoint": false,
       "expanded_authorization": "Peter Polakovic explicitly approved extending the deferral to 026 on 2026-10-23"
+    },
+    "network_url_fix_deferral": {
+      "approved_by": "Peter Polakovic, direct human reply verified in coordinator chat 01a169ed-63c1-7443-a96e-007a7872884e",
+      "date": "2026-10-23",
+      "task": "20261023181340-736e-fix-audit-002",
+      "scope": "Fix audit finding 002 after authorized repairs 039/026/006/005",
+      "checkpoint": "After fixes 039/026/006/005/002, before next unrelated task or release",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

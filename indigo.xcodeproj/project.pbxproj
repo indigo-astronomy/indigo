@@ -6308,6 +6308,17 @@
 		96FCE073F2AE5053F195D873 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
 		A23AA4DD6992737D276206C5 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		D3C22800B0993357E97A493C /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		AA962949773AAF60E258ECBB /* test_network_url.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_network_url.c"; sourceTree = "<group>"; };
+		04E5073192E392B2AEF2514F /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		1F145A7F691B34286AB552DC /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		7E57C35B490CB4293AEB98FB /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		5C046D321B02AABA073DDEA7 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		2D9171F76D718C552C0EE0C2 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		372F1D4F21D9F5979CC2254A /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		19B2F867908CABDD20A78FB3 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		33E6CC7406AEC56A046983B9 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		874303BECCB740CA6A60C1F8 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		25440BFE3D1CD34CD4650D5D /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6562,6 +6573,7 @@
 		19C1F488A3228D2B4B97E714 /* tasks */ = {
 			isa = PBXGroup;
 			children = (
+				C3A4E98800C413BA92394F00 /* 20261023181340-736e-fix-audit-002 */,
 				5D81F456588D799E5C20FF68 /* archive */,
 			);
 			path = tasks;
@@ -14872,6 +14884,7 @@
 		59FA7BE9301D35FD00A35CFB /* unit */ = {
 			isa = PBXGroup;
 			children = (
+				AA962949773AAF60E258ECBB /* test_network_url.c */,
 				D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */,
 				C1709E72227841389E72BABD /* test_transport_cache_security.c */,
 				59FA7C0C301DD71000A35CFB /* test_timer.c */,
@@ -17980,6 +17993,23 @@
 				D3C22800B0993357E97A493C /* verification.md */,
 			);
 			path = "20261023180252-b61d-fix-imager-download";
+			sourceTree = "<group>";
+		};
+		C3A4E98800C413BA92394F00 /* 20261023181340-736e-fix-audit-002 */ = {
+			isa = PBXGroup;
+			children = (
+				04E5073192E392B2AEF2514F /* brief.md */,
+				1F145A7F691B34286AB552DC /* handoff.md */,
+				7E57C35B490CB4293AEB98FB /* plan.md */,
+				5C046D321B02AABA073DDEA7 /* process.json */,
+				2D9171F76D718C552C0EE0C2 /* quality-review.md */,
+				372F1D4F21D9F5979CC2254A /* security.md */,
+				19B2F867908CABDD20A78FB3 /* specification.md */,
+				33E6CC7406AEC56A046983B9 /* state.json */,
+				874303BECCB740CA6A60C1F8 /* test-plan.md */,
+				25440BFE3D1CD34CD4650D5D /* verification.md */,
+			);
+			path = "20261023181340-736e-fix-audit-002";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

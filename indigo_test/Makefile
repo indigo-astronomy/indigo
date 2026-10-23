@@ -48,6 +48,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_uni_io \
+	$(UNIT_BUILD)/test_network_url \
 	$(UNIT_BUILD)/test_primalucelib \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image
@@ -3444,3 +3445,7 @@ $(SECURITY_BUILD)/indigo_bus_alloc_failure.o: ../indigo_libs/indigo_bus.c ../ind
 
 $(SECURITY_BUILD)/test_transport_cache_alloc_failure: unit/test_transport_cache_security.c test_runner.h $(SECURITY_BUILD)/indigo_bus_alloc_failure.o $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
 	$(CC) $(SECURITY_CFLAGS) -DINDIGO_TRANSPORT_ALLOC_FAILURE -o $@ $< $(SECURITY_BUILD)/indigo_bus_alloc_failure.o $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+# Compile both URL implementations with a synthetic resolver; no DNS or socket I/O.
+$(UNIT_BUILD)/test_network_url: unit/test_network_url.c test_runner.h ../indigo_libs/indigo_io.c ../indigo_libs/indigo_uni_io.c | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -DINDIGO_CLIENT -Dgetaddrinfo=indigo_test_getaddrinfo -o $@ $< ../indigo_libs/indigo_io.c ../indigo_libs/indigo_uni_io.c $(TEST_LDFLAGS) -lz

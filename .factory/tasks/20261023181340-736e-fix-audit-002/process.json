@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "task": "20261023181340-736e-fix-audit-002",
+  "scope": [
+    "indigo_libs/indigo_io.c",
+    "indigo_libs/indigo_uni_io.c",
+    "indigo_test/unit/test_network_url.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/maintenance.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-002.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-002.json",
+    ".factory/completions/20261023181340-736e-fix-audit-002.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_network_url"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process_policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {}
+}
