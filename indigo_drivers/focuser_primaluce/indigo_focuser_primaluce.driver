@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 34;
+	version = 35;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -2006,8 +2006,11 @@ driver primaluce {
 		// on_timer { }
 		on_connect {
 			char *text;
-			if (primalucelib_rotator_enable(LINK, true)) {
-				if (primalucelib_get_state(LINK)) {
+			// Switching the ARCO off and on again loses its calibration (SESTO SENSO 3 firmware 1.0.9), so the port
+			// is switched on only when it is off, and it stays on after a disconnect, as INDI keeps it.
+			bool enabled = primalucelib_get_state(LINK) && primalucelib_reply_has(LINK, PRIMALUCE_REPLY_ROTATOR_ENABLED) && primalucelib_reply_number(LINK, PRIMALUCE_REPLY_ROTATOR_ENABLED) != 0;
+			if (enabled || primalucelib_rotator_enable(LINK, true)) {
+				if (enabled || primalucelib_get_state(LINK)) {
 					if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ROTATOR_ERROR)) && *text) {
 						indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 					}
@@ -2023,9 +2026,8 @@ driver primaluce {
 				connection_result = false;
 			}
 		}
-		on_disconnect {
-			primalucelib_rotator_enable(LINK, false);
-		}
+		// The ARCO port stays on after a disconnect, see on_connect.
+		// on_disconnect { }
 		// on_attach { }
 		// on_detach { }
 		switch X_CALIBRATE_R {

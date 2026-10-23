@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000022
+#define DRIVER_VERSION       0x03000023
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -1972,8 +1972,11 @@ static void rotator_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ rotator.on_connect
 			char *text;
-			if (primalucelib_rotator_enable(LINK, true)) {
-				if (primalucelib_get_state(LINK)) {
+			// Switching the ARCO off and on again loses its calibration (SESTO SENSO 3 firmware 1.0.9), so the port
+			// is switched on only when it is off, and it stays on after a disconnect, as INDI keeps it.
+			bool enabled = primalucelib_get_state(LINK) && primalucelib_reply_has(LINK, PRIMALUCE_REPLY_ROTATOR_ENABLED) && primalucelib_reply_number(LINK, PRIMALUCE_REPLY_ROTATOR_ENABLED) != 0;
+			if (enabled || primalucelib_rotator_enable(LINK, true)) {
+				if (enabled || primalucelib_get_state(LINK)) {
 					if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ROTATOR_ERROR)) && *text) {
 						indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 					}
@@ -2008,9 +2011,6 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
-		//+ rotator.on_disconnect
-		primalucelib_rotator_enable(LINK, false);
-		//- rotator.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			X_CALIBRATE_R_PROPERTY,

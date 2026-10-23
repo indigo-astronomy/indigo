@@ -1,0 +1,24 @@
+{
+  "title": "focuser_primaluce switched the ARCO off at every rotator disconnect, so the next connect lost the ARCO calibration",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023193406-58c7-primaluce-arco-keep-enabled",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The rotator disconnect sent {\"set\":{\"ARCO\":0}} and the connect {\"set\":{\"ARCO\":1}}. On a SESTO SENSO 3 (firmware 1.0.9) switching the ARCO port on again sets CALRESTART.MOT2, so the ARCO needed calibration after almost every connect. INDI only enables the ARCO.",
+  "evidence": "20261023193406-58c7-primaluce-arco-keep-enabled/verification.md (FND); session logs 2026-10-23 (ARCO 0 then 1, CALRESTART.MOT2 0 then 1)",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261023193406-58c7-primaluce-arco-keep-enabled/verification.md: the connect switches the ARCO on only when the full state reports it off and the disconnect leaves it on; rotator_lifecycle and sestosenso3_arco_stays_calibrated pass and fail with the old disconnect; recorded run 67/67; hardware: three disconnect/reconnect cycles kept CALRESTART.MOT2 at 0 with no ARCO switch-off.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023193406-58c7-primaluce-arco-keep-enabled-001"
+}

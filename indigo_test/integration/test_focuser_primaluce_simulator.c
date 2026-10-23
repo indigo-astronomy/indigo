@@ -1614,15 +1614,34 @@ cleanup:
 	driver_stop();
 }
 
-// Disconnecting the rotator switches the ARCO port off again.
+// The ARCO port is switched on once and stays on: a disconnect leaves it on (switching it off loses the ARCO
+// calibration on a SESTO SENSO 3), and a reconnect finds it on and does not switch it again.
 static void rotator_lifecycle(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":1", 1));
 	disconnect_serial_device(&primaluce_rotator);
 	SERIAL_CHECK_TRUE(!context.connected);
-	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":0", 1));
 	SERIAL_CHECK_TRUE(connect_rotator());
-	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":1", 2));
+	SERIAL_CHECK_EQ_INT(0, requests("\"ARCO\":0"));
+	SERIAL_CHECK_EQ_INT(1, requests("\"ARCO\":1"));
+cleanup:
+	driver_stop();
+}
+
+// A SESTO SENSO 3 keeps the ARCO calibrated across a rotator disconnect and reconnect.
+static void sestosenso3_arco_stays_calibrated(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	disconnect_serial_device(&primaluce_rotator);
+	clear_messages();
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 45, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(rotator_position_is(45));
+	pthread_mutex_lock(&message_mutex);
+	bool needs_calibration = strstr(messages, "needs calibration") != NULL;
+	pthread_mutex_unlock(&message_mutex);
+	SERIAL_CHECK_TRUE(!needs_calibration);
 cleanup:
 	driver_stop();
 }
@@ -1871,6 +1890,7 @@ int main(void) {
 		// A SESTO SENSO 3 acknowledges the ARCO sync under DEG, behind debug text.
 		{ "sestosenso3_rotator_sync", rotator_sync, "sestosenso3" },
 		{ "sestosenso3_rotator_needs_calibration", sestosenso3_rotator_needs_calibration, "sestosenso3-arco-uncalibrated" },
+		{ "sestosenso3_arco_stays_calibrated", sestosenso3_arco_stays_calibrated, "sestosenso3" },
 		{ "rotator_abort", rotator_abort, "normal" },
 		{ "rotator_calibration", rotator_calibration, "normal" },
 		{ "rotator_sync", rotator_sync, "normal" },

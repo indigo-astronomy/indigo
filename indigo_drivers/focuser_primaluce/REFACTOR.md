@@ -925,3 +925,42 @@ before START.
 - Simulated tests: 66 run, 66 passed: `2026-10-23 16:31 3.0.0.34 linux x64 simulator 66/66 OK`.
   Library unit cases: 27 of 27.
 - Hardware: none for this change; the refusal cannot be provoked on demand.
+
+## ARCO kept enabled (3.0.0.35, 2026-10-23, task 20261023193406-58c7-primaluce-arco-keep-enabled)
+
+On the requester's SESTO SENSO 3 the ARCO needed calibration after almost every connect (FND-20261023193406-58c7-primaluce-arco-keep-enabled-001).
+
+**Cause:** the rotator disconnect switched the ARCO port off with `{"set":{"ARCO":0}}`, and the next
+connect switched it on again with `"ARCO":1`. This dates from the original ARCO support. The unit
+keeps the ARCO calibration while the port is off, and switching the port on clears it. In the log,
+`"ARCO":0` with `CALRESTART.MOT2` 0 became `"ARCO":1` with `CALRESTART.MOT2` 1. INDI only ever
+enables the ARCO.
+
+**Fix:** the connect reads the port switch from the full state (`"ARCO"`) and switches the port on
+only when it is off. The disconnect leaves it on. After an INDIGO disconnect the ARCO therefore
+stays enabled.
+
+**Simulator:** the ARCO port starts off. On the SESTO SENSO 3 profile, switching it off sets the
+ARCO calibration flag.
+
+**Tests:**
+- `rotator_lifecycle` now expects one switch-on and no switch-off, a reconnect without another
+  switch-on, and no `"ARCO":0`. Its earlier expectation, a switch-off on every disconnect,
+  described the behaviour this task removes.
+- `sestosenso3_arco_stays_calibrated` moves after a rotator reconnect without the calibration flag.
+- Both fail with the old disconnect.
+
+**Hardware (requester's unit, cycles driven with `indigo_prop_tool`):**
+- At the first connect the port was off, left that way by the old driver. The single switch-on set
+  the flag.
+- The ARCO was calibrated (with the requester watching), and then three cycles ran: a rotator
+  disconnect and reconnect, a focuser and rotator disconnect that closed the serial port and
+  reconnected, and another rotator cycle.
+- Each reconnect read `"ARCO":1` and `CALRESTART.MOT2` 0. No `"ARCO":0` was sent, no further
+  switch-on was sent, and no calibration notice appeared.
+
+## Final test summary (3.0.0.35)
+
+- Simulated tests: 67 run, 67 passed: `2026-10-23 22:43 3.0.0.35 linux x64 simulator 67/67 OK`.
+  Library unit cases: 27 of 27.
+- Hardware: the scripted connect/disconnect cycles above; not a `--hw` record.
