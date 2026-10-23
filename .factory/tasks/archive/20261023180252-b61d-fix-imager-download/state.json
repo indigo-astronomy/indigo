@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261023180252-b61d-fix-imager-download",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive, commit and verify candidate, then integrate locally in order before finding 026.",
+  "blocker": null
+}

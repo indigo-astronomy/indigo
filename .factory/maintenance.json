@@ -66,6 +66,15 @@
       "scope": "Full maintained functional/source-contract repository audit; server security audits explicitly excluded at owner request.",
       "exclusion": "No server-security certification, risk acceptance, penetration testing or claim of completed excluded investigations.",
       "report": "repository-review.md"
+    },
+    "imager_download_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection",
+      "date": "2026-10-23",
+      "task": "20261023180252-b61d-fix-imager-download",
+      "scope": "Fix FND-20261023101753-bc8d-complete-repository-audit-039 and FND-20261023101753-bc8d-complete-repository-audit-026 before the due audit",
+      "checkpoint": "After both authorized fixes, before the next unrelated task or release",
+      "resets_checkpoint": false,
+      "expanded_authorization": "Peter Polakovic explicitly approved extending the deferral to 026 on 2026-10-23"
     }
   },
   "timezone": "Europe/Bratislava"

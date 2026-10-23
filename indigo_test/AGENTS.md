@@ -62,6 +62,7 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 - `make -C indigo_test test` runs all automated unit and integration tests.
 - `make -C indigo_test test-unit` runs unit tests only.
 - `make -C indigo_test test-integration` runs bus and simulator-driver integration tests only.
+- `make -C indigo_test test-imager-download` runs the browser download regression with Node.js 18+ and its built-in test runner; it needs no native build. The full `test` target includes this check.
 - `make -C indigo_test benchmark` builds and runs the benchmarks. They are not part of `test`.
 - `make -C indigo_test test-clean` removes generated `indigo_test/build` binaries and dSYM files.
 - Setting `INDIGO_SIMULATOR_TRACE_DIR=<dir>` on a serial simulator test run copies every fixture's simulator command event log into that directory as `<test case>-<n>.events`. Use it to record a reference trace before a driver refactoring and to compare the ordered protocol interactions afterwards.

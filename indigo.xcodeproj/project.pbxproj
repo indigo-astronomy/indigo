@@ -6295,6 +6295,19 @@
 		CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_cache.c; sourceTree = "<group>"; };
 		48931A9C9D9E4BFAB7A87777 /* test_server_management_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_management_security.c; sourceTree = "<group>"; };
 		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
+		D953B0583D568EBDF4A6B59C /* test_imager_download.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "test_imager_download.js"; sourceTree = "<group>"; };
+		01465DBD43F9BA6178E5A4DF /* 20261023180252-b61d-fix-imager-download.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261023180252-b61d-fix-imager-download.json"; sourceTree = "<group>"; };
+		8E474CDDDF840E041D14272B /* FND-20261023101753-bc8d-complete-repository-audit-039.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261023101753-bc8d-complete-repository-audit-039.json"; sourceTree = "<group>"; };
+		9A49F89E24952E1F1250AB27 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		5F46299B160D01DA2D27F53D /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		95D8F3330EB45A3950DBECD2 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		9DCBA1741DB5AA0B80B60F88 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		8DC301BB22ECEF4FD0EBA486 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		66C8B2030B713456D0D784CC /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		8C711C3760C1F9BE5B03EBA1 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		96FCE073F2AE5053F195D873 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		A23AA4DD6992737D276206C5 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		D3C22800B0993357E97A493C /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6557,6 +6570,7 @@
 		266F3967ACFB9DBEEAF8366A /* .github */ = {
 			isa = PBXGroup;
 			children = (
+				A671866D9379F67151B3EFA7 /* 20261023180252-b61d-fix-imager-download */,
 				C681D632B6D3592436C4369C /* copilot-instructions.md */,
 			);
 			path = .github;
@@ -6636,6 +6650,7 @@
 		43FC55CCDD648364C6BDAB7D /* findings */ = {
 			isa = PBXGroup;
 			children = (
+				01465DBD43F9BA6178E5A4DF /* 20261023180252-b61d-fix-imager-download.json */,
 				7408BDCC962B55A84CDB553C /* archive */,
 				E4AEE37682BCB91ADDE76C3C /* active */,
 				3FDC8ED80DA3AC9312AF4B29 /* registry.json */,
@@ -6646,6 +6661,7 @@
 		4B00CB1392F9F549E171A7F6 /* 20261022212521-61cf-primalucelib */ = {
 			isa = PBXGroup;
 			children = (
+				8E474CDDDF840E041D14272B /* FND-20261023101753-bc8d-complete-repository-audit-039.json */,
 				63A9C5D1E2D208445D1DF196 /* brief.md */,
 				1925C4DCB92F22D7C75BA4DB /* handoff.md */,
 				90132ED092D4E4021CD2FDA5 /* plan.md */,
@@ -7732,6 +7748,7 @@
 		592C3357304BE541004D5AE6 /* benchmark */ = {
 			isa = PBXGroup;
 			children = (
+				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
 				592C3354304BE541004D5AE6 /* bench_queue.c */,
 				592C3355304BE541004D5AE6 /* bench_timer.c */,
 				592C3356304BE541004D5AE6 /* TIMERS_AND_QUEUES_MERGE_REVIEW.md */,
@@ -17946,6 +17963,23 @@
 				57EF51D50C114C36BDA05461 /* run_server_management_security.py */,
 			);
 			path = security;
+			sourceTree = "<group>";
+		};
+		A671866D9379F67151B3EFA7 /* 20261023180252-b61d-fix-imager-download */ = {
+			isa = PBXGroup;
+			children = (
+				9A49F89E24952E1F1250AB27 /* brief.md */,
+				5F46299B160D01DA2D27F53D /* handoff.md */,
+				95D8F3330EB45A3950DBECD2 /* plan.md */,
+				9DCBA1741DB5AA0B80B60F88 /* process.json */,
+				8DC301BB22ECEF4FD0EBA486 /* quality-review.md */,
+				66C8B2030B713456D0D784CC /* security.md */,
+				8C711C3760C1F9BE5B03EBA1 /* specification.md */,
+				96FCE073F2AE5053F195D873 /* state.json */,
+				A23AA4DD6992737D276206C5 /* test-plan.md */,
+				D3C22800B0993357E97A493C /* verification.md */,
+			);
+			path = "20261023180252-b61d-fix-imager-download";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
