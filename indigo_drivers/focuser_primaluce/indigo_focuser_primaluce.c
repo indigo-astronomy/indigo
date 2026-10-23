@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000023
+#define DRIVER_VERSION       0x03000024
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -589,6 +589,10 @@ static void focuser_calibration_start_finalizer(indigo_device *device) {
 	const char **steps = PRIVATE_DATA->is_sestosenso_3 ? sestosenso_3_steps : sestosenso_2_steps;
 	const char *step = steps[PRIVATE_DATA->calibration_step++];
 	bool result = !strcmp(step, PRIMALUCE_KEY_CALIBRATION_DIRECTION) ? primalucelib_focuser_set_calibration_direction(LINK, PRIVATE_DATA->calibration_direction) : primalucelib_focuser_calibration_step(LINK, step);
+	if (result && PRIVATE_DATA->calibration_step == 1) {
+		// StoreAsMinPos takes the position the draw tube has, so the client is reminded that it has to be fully in.
+		indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "The current position is stored as the innermost one");
+	}
 	if (!result) {
 		focuser_calibration_failed(device, NULL);
 	} else if (steps[PRIVATE_DATA->calibration_step] != NULL) {
@@ -1775,7 +1779,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		}
 		indigo_init_switch_item(X_HOLD_CURR_OFF_ITEM, X_HOLD_CURR_OFF_ITEM_NAME, "Off", true);
 		indigo_init_switch_item(X_HOLD_CURR_ON_ITEM, X_HOLD_CURR_ON_ITEM_NAME, "On", false);
-		X_CALIBRATE_F_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_F_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Calibrate focuser", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		X_CALIBRATE_F_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_F_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Calibrate focuser (fully in first)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_CALIBRATE_F_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}

@@ -1215,6 +1215,10 @@ cleanup:
 // finishes by reading the new coordinate back.
 static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	// The property says that the draw tube has to be fully in, and START repeats it.
+	indigo_property *calibrate = find_cached_property(X_CALIBRATE_F_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(calibrate != NULL && strstr(calibrate->label, "fully in") != NULL);
+	clear_messages();
 	unsigned int busy = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
 	double start = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE));
@@ -1222,6 +1226,7 @@ static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_DIR\":\"normal\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMinPos\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"", 1));
+	SERIAL_CHECK_TRUE(message_seen("The current position is stored as the innermost one"));
 	// The calibration run moves the draw tube while the idle poll follows it: the run is the driver's
 	// own motion, so the position never turns BUSY and END is accepted to stop it.
 	indigo_usleep(5000000);

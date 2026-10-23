@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 35;
+	version = 36;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -261,6 +261,10 @@ driver primaluce {
 				const char **steps = PRIVATE_DATA->is_sestosenso_3 ? sestosenso_3_steps : sestosenso_2_steps;
 				const char *step = steps[PRIVATE_DATA->calibration_step++];
 				bool result = !strcmp(step, PRIMALUCE_KEY_CALIBRATION_DIRECTION) ? primalucelib_focuser_set_calibration_direction(LINK, PRIVATE_DATA->calibration_direction) : primalucelib_focuser_calibration_step(LINK, step);
+				if (result && PRIVATE_DATA->calibration_step == 1) {
+					// StoreAsMinPos takes the position the draw tube has, so the client is reminded that it has to be fully in.
+					indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "The current position is stored as the innermost one");
+				}
 				if (!result) {
 					focuser_calibration_failed(device, NULL);
 				} else if (steps[PRIVATE_DATA->calibration_step] != NULL) {
@@ -1732,7 +1736,8 @@ driver primaluce {
 			// on_detach { }
 			name = "X_CALIBRATE";
 			group = FOCUSER_ADVANCED_GROUP;
-			label = "Calibrate focuser";
+			// The calibration stores the current position as the minimum (it does not search the closed end).
+			label = "Calibrate focuser (fully in first)";
 			// asynchronous_change = false;
 			item X_CALIBRATE_F_START {
 				name = "START";

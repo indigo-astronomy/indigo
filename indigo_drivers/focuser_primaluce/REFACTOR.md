@@ -964,3 +964,24 @@ ARCO calibration flag.
 - Simulated tests: 67 run, 67 passed: `2026-10-23 22:43 3.0.0.35 linux x64 simulator 67/67 OK`.
   Library unit cases: 27 of 27.
 - Hardware: the scripted connect/disconnect cycles above; not a `--hw` record.
+
+## Calibration hint (3.0.0.36, 2026-10-23, task 20261023202204-7851-primaluce-calibration-hint)
+
+Item 2 of the protocol review: the semi-automatic calibration in the document first finds the closed
+end (`GoInToFindMinPos`, or the `MoveIn`/`MoveOut` steps), then sends `StopMotor` and
+`StoreAsMinPos`. The driver sends `StoreAsMinPos` right after `Init`, so the position at START
+becomes the minimum. This is the SESTO SENSO 2 flow. If the tube is not fully in, the stored range
+is shorter than the travel, and the inner part of the travel becomes unreachable.
+
+The requester chose to keep the flow and make the precondition visible, option (a). The X_CALIBRATE
+label is now "Calibrate focuser (fully in first)", which still starts with the label the README
+refers to. The first successful start step publishes "The current position is stored as the
+innermost one". This applies to both models and to both START items.
+
+Regression test: `focuser_calibration` checks the label and the message. It fails without either
+of them.
+
+## Final test summary (3.0.0.36)
+
+- Simulated tests: 67 run, 67 passed: `2026-10-23 23:25 3.0.0.36 linux x64 simulator 67/67 OK`.
+- Hardware: none for this change; it affects text only.
