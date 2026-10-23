@@ -1,0 +1,142 @@
+{
+  "version": 2,
+  "task": "20261023112118-8e5e-server-security-audit",
+  "scope": [
+    ".factory/project.md",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-*.json",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/completions/20261023112118-8e5e-server-security-audit.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023112118-8e5e-server-security-audit.json": [
+      "100644",
+      "blob",
+      "921da8f2f409719db1fa4ea5b67a4ceed4ba6cfb"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-001.json": [
+      "100644",
+      "blob",
+      "364cb7d600a03b67f16cfebfc0024421ff10206d"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-002.json": [
+      "100644",
+      "blob",
+      "9a349e2e2b009e678615a917ec6604889e63404a"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-003.json": [
+      "100644",
+      "blob",
+      "ec6b7bc1f56bb578933fc982c12dfa06886ee57f"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-004.json": [
+      "100644",
+      "blob",
+      "431eb6495444af6914bf115037c13d5e76b0de7b"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-005.json": [
+      "100644",
+      "blob",
+      "e1ff1183291f36a3683d98be99ab1428a0dccf22"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-006.json": [
+      "100644",
+      "blob",
+      "7fb20dc04c1443375da6b4b267426a19c09d5d1c"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json": [
+      "100644",
+      "blob",
+      "3cee98c996583ac152ef6d86040daaf044fa070a"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-008.json": [
+      "100644",
+      "blob",
+      "bc803cd67a127d4d7a409a221e2703b8470e2d12"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-009.json": [
+      "100644",
+      "blob",
+      "8a253fd289780de8e419ab43e4db0c7e3017a172"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-010.json": [
+      "100644",
+      "blob",
+      "781ca6543beba7b54b0341ae8426e71d21e927c4"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-011.json": [
+      "100644",
+      "blob",
+      "d09cf84f1b9954babcc59770662bde06abd4c2f0"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-012.json": [
+      "100644",
+      "blob",
+      "dcce72e4702bf1da74cb7125b28b4c464afba5c3"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-013.json": [
+      "100644",
+      "blob",
+      "7d26b2e41e4c1e92a17d30185cd4ab8ccf42678f"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-014.json": [
+      "100644",
+      "blob",
+      "5a063f27635660d50538a574a0fd555bef0b7b18"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-015.json": [
+      "100644",
+      "blob",
+      "45c7d67b999cc436a7171bd2f6a2bd66297e9b6f"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-016.json": [
+      "100644",
+      "blob",
+      "1d1e496756b22ebb83c51300322033bce54dfb2e"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-017.json": [
+      "100644",
+      "blob",
+      "342d51466d592945b578b270f665d9e14171e2b8"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-018.json": [
+      "100644",
+      "blob",
+      "4ee8fb1a8a10d6e78427cb96f9f0d3a3be0c5f0b"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "109c3bb328f08c746a8100bd38b285fe597e2438"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "a3de5301dbb0faba284c35a18df9952a97ffec52"
+    ]
+  }
+}

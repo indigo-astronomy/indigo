@@ -1,0 +1,199 @@
+{
+  "task": "20261023112118-8e5e-server-security-audit",
+  "revision": "cb3c392e9f8833ddb6d29744a34cfae618b04fc8",
+  "reviewer": "server_parsers",
+  "role": "security-reviewer",
+  "verdict": "changes_required",
+  "method": "current-source contract review; no runtime validation",
+  "files": [
+    {
+      "path": "indigo_libs/indigo_xml.c",
+      "git_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "working_tree_sha256": "63d8c26e08b80224ca68b255c0f5753c7c6eee8e8f652c176fc0318217942f91",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_json.c",
+      "git_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "working_tree_sha256": "4bb6fa23311e5913162a1c893d27d43d1e43879cbbedd9519edccc9ba9441d6a",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_client_xml.c",
+      "git_blob": "1974825033f6b2df50e72ee4358be35066810de3",
+      "working_tree_sha256": "a4532a54a758e491db3cd08388b481e2ad5dae73f7e1eb218562ca2b6d171ddf",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_driver_xml.c",
+      "git_blob": "2184c8dfe9e163ca9066c3496d8549fce4ef5942",
+      "working_tree_sha256": "77a0d270648a14352c0f344b387fc1356e725a8b4eecf354c83dde08dfbd240c",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_driver_json.c",
+      "git_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "working_tree_sha256": "139eb3a22f943d12328eea596893e0baf570f5f3425e462af36c62e3d261368a",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_xml.h",
+      "git_blob": "93df50eb546bda772dbe746693c152b3c69eab05",
+      "working_tree_sha256": "3c3dceb9767d0d9517d484e5615581f381711d7b88bdc2b004055b61c05a1887",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_json.h",
+      "git_blob": "96791f090b7fa6a141a3a4befe29af5afac07edf",
+      "working_tree_sha256": "b5a291e753544bb015e40d9a37d2481be21f92036e1b46f475e77d565249582a",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_client_xml.h",
+      "git_blob": "6c5b5d1a83164598bda3e87cc226e17ce44f30b9",
+      "working_tree_sha256": "cb28c3ee95ba8a2ea38401e7632b01d19e364ecc4a3eb90d9178d9e45cf55fd8",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_driver_xml.h",
+      "git_blob": "ba445dfd884f5893ce1aa29349886f7d2236c13f",
+      "working_tree_sha256": "e8c0f3b948d9fd1070e67cfdf8038be80edd2c308fd274e9c8ff687481dadce0",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_driver_json.h",
+      "git_blob": "9339269701bb15a165254a150acd664d58ecaa03",
+      "working_tree_sha256": "e0c32eabf9367f7aee11119d6effb40a839450e976b40cb946975b8c0cec9390",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo/indigo_bus.h",
+      "git_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "working_tree_sha256": "5dc10bf7eead089c5d20d90913812920b4541cd5a20bf05efa6f37f7967389c6",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_bus.c",
+      "git_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "working_tree_sha256": "4e169bc5c2aa8e851352b913f2bcfbdc715d0f0801bfae198d7fdafba85fc54c",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_uni_io.c",
+      "git_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "working_tree_sha256": "3dbbd4a81b56d022fae45b43ddca4f6885a5671b22df22a17fc19f289023a938",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_base64.c",
+      "git_blob": "c1f89f4cf8d84091c4caf71f7ed689b9d6f9d147",
+      "working_tree_sha256": "b2fff99039d1cc0f0edb17a9cc55807cc3d106d356511d4b2641eaa04255ac4c",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_client.c",
+      "git_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "working_tree_sha256": "089ca999378c3e0414fd55fb4500f6f64b97d742d2a0b8aa08a53e654fa61030",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_libs/indigo_server_tcp.c",
+      "git_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "working_tree_sha256": "ddc4d68707525a9a3877fc336aab1c534a6f750c0dfd34054bd50d315bf93a7c",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_test/unit/test_protocol_xml.c",
+      "git_blob": "c5fe0af485d0e87320dfae08a85be82e3e85388e",
+      "working_tree_sha256": "13b802ee41930c4d16261d7518cb7b25c14bee21427374b6eb421d211c13dc6c",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    },
+    {
+      "path": "indigo_test/unit/test_protocol_json.c",
+      "git_blob": "04fbbc590b2962fc65afad82dc077274e984d16a",
+      "working_tree_sha256": "dcf9ce4ba76ef40512f815d9c19d2a860c466d1a398ceda4f90aa96b16687e95",
+      "extent": "full parser/adapter or targeted supporting contract inspection; see areas"
+    }
+  ],
+  "areas": [
+    "XML lexical state machine and dispatch",
+    "JSON lexical state machine and handlers",
+    "WebSocket frame reads",
+    "XML inline BLOB decode and pending-item ownership",
+    "Adapter constructors and release functions",
+    "Serialization and escaping (bounded review)",
+    "Bus property allocation, clearing, text ownership; I/O exact/short-read contracts",
+    "Protocol tests inspected for conventions only"
+  ],
+  "exclusions": [
+    "all prohibited drivers",
+    "indigo_tests",
+    "vendor/SDK implementations",
+    "broad archive discovery",
+    "HTTP transport and authorization owned by peer reviewers",
+    "live services and external probing",
+    "runtime/sanitizer/fuzz execution",
+    "full cross-platform validation"
+  ],
+  "findings": [
+    {
+      "alias": "P01",
+      "severity": "high",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    },
+    {
+      "alias": "P02",
+      "severity": "high",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    },
+    {
+      "alias": "P03",
+      "severity": "high",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    },
+    {
+      "alias": "P04",
+      "severity": "high",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    },
+    {
+      "alias": "P05",
+      "severity": "high",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    },
+    {
+      "alias": "P06",
+      "severity": "high",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    },
+    {
+      "alias": "P07",
+      "severity": "high",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    },
+    {
+      "alias": "P08",
+      "severity": "medium",
+      "status": "confirmed_source_contract",
+      "canonical_id": null
+    }
+  ],
+  "unconfirmed_leads": [
+    "serializer metadata escaping",
+    "cached update vector type mismatch",
+    "XML adapter name formatting",
+    "BLOB cache lifetime race referred to transport reviewer"
+  ],
+  "changed_files": [
+    "parsers-security.md",
+    "parsers-coverage.json"
+  ],
+  "runtime_checks": []
+}

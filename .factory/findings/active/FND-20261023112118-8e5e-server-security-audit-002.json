@@ -1,0 +1,19 @@
+{
+  "title": "Incomplete BLOB uploads expose unpublished allocation contents",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "transport-security.md",
+      "revision": null
+    }
+  ],
+  "summary": "Registered BLOB; incomplete/error body; following GET before producer replaces cache. Source-contract confirmed; runtime unverified. Next: Receive privately and publish atomically only after exact read count",
+  "evidence": "indigo_libs/indigo_server_tcp.c:366-380; indigo_libs/indigo_server_tcp.c:194-243; indigo_libs/indigo_uni_io.c:1916-1944; transport-security.md section T02",
+  "resolution": null,
+  "id": "FND-20261023112118-8e5e-server-security-audit-002"
+}

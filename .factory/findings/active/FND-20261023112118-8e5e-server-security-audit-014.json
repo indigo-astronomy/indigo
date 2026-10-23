@@ -1,0 +1,19 @@
+{
+  "title": "XML dispatch accepts response-only handlers on inbound clients",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "parsers-security.md",
+      "revision": null
+    }
+  ],
+  "summary": "Inbound XML has NULL device context but dispatches response-only handlers that dereference/assert device, allowing a small invalid-direction element to terminate server. Next: enforce direction-specific allowlists and test all message forms in both directions. Confirmed by current source contracts; no fix or runtime retest claimed.",
+  "evidence": "indigo_libs/indigo_xml.c:436-445,882-899,1267-1339,1372-1395; indigo_libs/indigo_server_tcp.c:101-106; parsers-security.md section P04",
+  "resolution": null,
+  "id": "FND-20261023112118-8e5e-server-security-audit-014"
+}

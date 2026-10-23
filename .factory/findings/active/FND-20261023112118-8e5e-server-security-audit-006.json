@@ -1,0 +1,19 @@
+{
+  "title": "File-download errors leak opened file handles",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "transport-security.md",
+      "revision": null
+    }
+  ],
+  "summary": "File resource registered; output fails after open; shipped /log conditional on RPI_MANAGEMENT. Source-contract confirmed; runtime unverified. Next: Close file handle through common cleanup on every exit",
+  "evidence": "indigo_libs/indigo_server_tcp.c:312-345; indigo_libs/indigo_server_tcp.c:426-436; indigo_server/indigo_server.c:1936-1938; transport-security.md section T06",
+  "resolution": null,
+  "id": "FND-20261023112118-8e5e-server-security-audit-006"
+}

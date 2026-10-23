@@ -1,0 +1,19 @@
+{
+  "title": "XML name and entity termination writes outside exact-size buffers",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "parsers-security.md",
+      "revision": null
+    }
+  ],
+  "summary": "XML tag/attribute names and entity scans accept their full buffer capacity then append NUL beyond allocation. Next: reserve terminators, reject malformed/overlong entities safely, and test name/entity boundaries. Confirmed by current source contracts; no fix or runtime retest claimed.",
+  "evidence": "indigo_libs/indigo_xml.c:1351,1363,1420-1438,1482-1489,1691-1699; parsers-security.md section P02",
+  "resolution": null,
+  "id": "FND-20261023112118-8e5e-server-security-audit-012"
+}

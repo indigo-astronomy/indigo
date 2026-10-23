@@ -1,0 +1,362 @@
+{
+  "version": 1,
+  "task": "20261023112118-8e5e-server-security-audit",
+  "reviewer": "server_transport",
+  "source_revision": "cb3c392e9f8833ddb6d29744a34cfae618b04fc8",
+  "scope": "Defensive local source-contract transport review",
+  "verdict": "changes_required",
+  "independence": "delegated reviewer; coordinator owns canonical reconciliation",
+  "model": {
+    "requested_by_coordinator": "gpt-6-astra",
+    "requested_effort": "high",
+    "actual_settings_independently_exposed": false
+  },
+  "files": {
+    "indigo_libs/indigo_server_tcp.c": {
+      "ranges": [
+        [
+          1,
+          691
+        ]
+      ],
+      "areas": [
+        "protocol selection",
+        "HTTP request/header parsing",
+        "WebSocket handshake",
+        "BLOB GET/PUT",
+        "static/file/handler resources",
+        "worker cleanup",
+        "resource lifetime",
+        "SHA-1"
+      ],
+      "git_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "working_sha256": "ddc4d68707525a9a3877fc336aab1c534a6f750c0dfd34054bd50d315bf93a7c",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo_uni_io.c": {
+      "ranges": [
+        [
+          1603,
+          1795
+        ],
+        [
+          1823,
+          2052
+        ]
+      ],
+      "areas": [
+        "socket admission and deadlines",
+        "worker creation failure",
+        "read/peek exact return contracts"
+      ],
+      "git_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "working_sha256": "3dbbd4a81b56d022fae45b43ddca4f6885a5671b22df22a17fc19f289023a938",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo_bus.c": {
+      "ranges": [
+        [
+          767,
+          990
+        ],
+        [
+          1026,
+          1130
+        ],
+        [
+          1430,
+          1500
+        ],
+        [
+          2297,
+          2304
+        ]
+      ],
+      "areas": [
+        "authorization gate",
+        "BLOB cache allocation/update/release/lookup",
+        "global and entry locking",
+        "detached thread creation"
+      ],
+      "git_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "working_sha256": "4e169bc5c2aa8e851352b913f2bcfbdc715d0f0801bfae198d7fdafba85fc54c",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo/indigo_bus.h": {
+      "ranges": [
+        [
+          415,
+          431
+        ],
+        [
+          995,
+          1048
+        ]
+      ],
+      "areas": [
+        "cache structure",
+        "allocation failure contract"
+      ],
+      "git_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "working_sha256": "5dc10bf7eead089c5d20d90913812920b4541cd5a20bf05efa6f37f7967389c6",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo/indigo_uni_io.h": {
+      "ranges": [
+        [
+          298,
+          310
+        ]
+      ],
+      "areas": [
+        "line-reader timeout macro and API contract"
+      ],
+      "git_blob": "fbb3ac509fe47045a6d82890d477f4f06b69a5a1",
+      "working_sha256": "96b31754e95d283ddc08957f1097287f340e76932faa228db635ddc81be2b956",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo/indigo_server_tcp.h": {
+      "ranges": [
+        [
+          55,
+          90
+        ]
+      ],
+      "areas": [
+        "resource API"
+      ],
+      "git_blob": "50726038938dfa3e5f2bd917cbe242f33db91ab0",
+      "working_sha256": "072a7a1493ba9a242fa3cfe5353739f8ae4f279a6e959f0fd2817c6503cf98cb",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo_driver_json.c": {
+      "ranges": [
+        [
+          40,
+          65
+        ]
+      ],
+      "areas": [
+        "remote-client adapter context"
+      ],
+      "git_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "working_sha256": "139eb3a22f943d12328eea596893e0baf570f5f3425e462af36c62e3d261368a",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo_json.c": {
+      "ranges": [
+        [
+          750,
+          780
+        ],
+        [
+          870,
+          900
+        ]
+      ],
+      "areas": [
+        "BLOB path publication only"
+      ],
+      "git_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "working_sha256": "4bb6fa23311e5913162a1c893d27d43d1e43879cbbedd9519edccc9ba9441d6a",
+      "matches_reviewed_commit": true
+    },
+    "indigo_libs/indigo_xml.c": {
+      "ranges": [
+        [
+          395,
+          450
+        ]
+      ],
+      "line_matches": [
+        2090,
+        2187
+      ],
+      "areas": [
+        "BLOB upload consumer and advertised paths only"
+      ],
+      "git_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "working_sha256": "63d8c26e08b80224ca68b255c0f5753c7c6eee8e8f652c176fc0318217942f91",
+      "matches_reviewed_commit": true
+    },
+    "indigo_server/indigo_server.c": {
+      "ranges": [
+        [
+          1925,
+          1945
+        ],
+        [
+          1970,
+          2005
+        ]
+      ],
+      "areas": [
+        "conditional /log registration",
+        "resource cleanup during shutdown"
+      ],
+      "git_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "working_sha256": "3962d7c70093833ac95bdecc8fb9f4b2308ad97c64da8f7688abffb030190b26",
+      "matches_reviewed_commit": true
+    },
+    "indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md": {
+      "ranges": [
+        [
+          1,
+          133
+        ]
+      ],
+      "areas": [
+        "Documented nonsecurity token semantics and public read policy"
+      ],
+      "git_blob": "9194d415a46251b0dea953fb7c29f48956fd6766",
+      "working_sha256": "b3af52215999cce1d817ac9d317580f2de68356fff435e61423d4a28343e7be4",
+      "matches_reviewed_commit": true
+    }
+  },
+  "finding_candidates": [
+    {
+      "section": "T01",
+      "category": "security",
+      "severity": "high",
+      "title": "Unvalidated BLOB lengths reach a process-fatal allocator",
+      "locations": [
+        "indigo_libs/indigo_server_tcp.c:355-370",
+        "indigo_libs/indigo/indigo_bus.h:1030-1037"
+      ],
+      "prerequisites": "Network access and registered BLOB identifier",
+      "remediation": "Validate bounded decimal framing, budgets and recoverable allocation",
+      "confidence": "high-source-contract",
+      "runtime_reproduced": false,
+      "canonical_id": null
+    },
+    {
+      "section": "T02",
+      "category": "security",
+      "severity": "high",
+      "title": "Incomplete BLOB uploads expose unpublished allocation contents",
+      "locations": [
+        "indigo_libs/indigo_server_tcp.c:366-380",
+        "indigo_libs/indigo_server_tcp.c:194-243",
+        "indigo_libs/indigo_uni_io.c:1916-1944"
+      ],
+      "prerequisites": "Registered BLOB; incomplete/error body; following GET before producer replaces cache",
+      "remediation": "Receive privately and publish atomically only after exact read count",
+      "confidence": "high-source-contract",
+      "runtime_reproduced": false,
+      "canonical_id": null
+    },
+    {
+      "section": "T03",
+      "category": "security",
+      "severity": "medium",
+      "title": "BLOB PUT violates the read-only cache contract",
+      "locations": [
+        "indigo_libs/indigo_server_tcp.c:355-380",
+        "indigo_libs/indigo_bus.c:1084-1119",
+        "indigo_libs/indigo_bus.c:836-854"
+      ],
+      "prerequisites": "Network access and published BLOB identifier; token system is documented as coordination, not a confidentiality/security boundary",
+      "remediation": "Reject RO uploads and isolate writable upload staging by intended operation/client",
+      "confidence": "high-source-contract",
+      "runtime_reproduced": false,
+      "canonical_id": null
+    },
+    {
+      "section": "T04",
+      "category": "security",
+      "severity": "high",
+      "title": "BLOB lookup and deletion do not preserve entry and item lifetime",
+      "locations": [
+        "indigo_libs/indigo_bus.c:1430-1484",
+        "indigo_libs/indigo_server_tcp.c:197-202",
+        "indigo_libs/indigo_server_tcp.c:227-231",
+        "indigo_libs/indigo_xml.c:421-425"
+      ],
+      "prerequisites": "Request concurrent with property release; or stale WO cache after release; or concurrent XML consumer and PUT",
+      "remediation": "Pin entries under registry lock, retire all permissions, protect every consumer",
+      "confidence": "high-source-contract",
+      "runtime_reproduced": false,
+      "canonical_id": null
+    },
+    {
+      "section": "T05",
+      "category": "security",
+      "severity": "high",
+      "title": "A stalled BLOB body can block bus-wide publication",
+      "locations": [
+        "indigo_libs/indigo_server_tcp.c:366-375",
+        "indigo_libs/indigo_uni_io.c:1668-1675",
+        "indigo_libs/indigo_bus.c:1026-1119"
+      ],
+      "prerequisites": "Stalled PUT for registered RO cache while producer updates same BLOB",
+      "remediation": "Receive outside shared lock with progress and total deadlines",
+      "confidence": "high-source-contract",
+      "runtime_reproduced": false,
+      "canonical_id": null
+    },
+    {
+      "section": "T06",
+      "category": "security",
+      "severity": "medium",
+      "title": "File-download errors leak opened file handles",
+      "locations": [
+        "indigo_libs/indigo_server_tcp.c:312-345",
+        "indigo_libs/indigo_server_tcp.c:426-436",
+        "indigo_server/indigo_server.c:1936-1938"
+      ],
+      "prerequisites": "File resource registered; output fails after open; shipped /log conditional on RPI_MANAGEMENT",
+      "remediation": "Close file handle through common cleanup on every exit",
+      "confidence": "high-source-contract",
+      "runtime_reproduced": false,
+      "canonical_id": null
+    },
+    {
+      "section": "T07",
+      "category": "security",
+      "severity": "medium",
+      "title": "Pre-protocol connections retain unbounded workers without a deadline",
+      "locations": [
+        "indigo_libs/indigo_server_tcp.c:95-100",
+        "indigo_libs/indigo_uni_io.c:1657-1697",
+        "indigo_libs/indigo_uni_io.c:1888-1907"
+      ],
+      "prerequisites": "Ability to establish TCP connections and leave them idle",
+      "remediation": "Bound admission and initial protocol deadline; clean up failed worker creation",
+      "confidence": "high-source-contract",
+      "runtime_reproduced": false,
+      "canonical_id": null
+    }
+  ],
+  "existing_findings": [
+    "FND-000046",
+    "FND-20261023065605-60d4-repository-audit-009"
+  ],
+  "excluded": [
+    "vendor and binary products",
+    "indigo_tests",
+    "five prohibited drivers",
+    "third-party/network probing",
+    "hardware",
+    "application mutations",
+    "XML/JSON parser internals assigned to server_parsers",
+    "management/auth/browser surfaces assigned to server_access"
+  ],
+  "unperformed": [
+    "compilation",
+    "unit/integration execution",
+    "sanitizers",
+    "HTTP exchanges",
+    "resource-exhaustion experiments",
+    "concurrent lifecycle reproducers",
+    "allocation failure injection"
+  ],
+  "coordinator_checks": [
+    "configured Factory security validator",
+    "findings reconciliation and canonical allocation",
+    "final review and process gates"
+  ],
+  "specific_archived_input": ".factory/tasks/archive/20261023101753-bc8d-complete-repository-audit/proposals/unfinished-defensive-boundaries.json",
+  "prior_proposal_applied": false,
+  "report": "transport-security.md",
+  "reconciliation_input": "prior-evidence-disposition.md"
+}

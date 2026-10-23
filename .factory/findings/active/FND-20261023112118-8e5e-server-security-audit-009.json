@@ -1,0 +1,19 @@
+{
+  "title": "RPI management helper ALERT text becomes printf format",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "access-security.md",
+      "revision": null
+    }
+  ],
+  "summary": "execute_command supplies helper ALERT text as indigo_update_property format without arguments. Maintained rpi_ctrl.sh:574-578 and rpi_ctrl_v2.sh:565-569 echo failed date input from HOST_TIME, preserving percent directives despite shell quoting. Deployed s_rpi_ctrl.sh wrapper contract required; actual packaging untested. Undefined variadic reads can crash/disclose data; write directives can corrupt memory. Source-only confirmation, no exploitation run. Next: Use literal %s or raw-update API for helper output; handle absent message explicitly; test percent-containing diagnostics with stub helper.",
+  "evidence": "indigo_server/indigo_server.c:877-881;1541-1545; indigo_libs/indigo_bus.c:1078-1082; access-security.md section A-02",
+  "resolution": null,
+  "id": "FND-20261023112118-8e5e-server-security-audit-009"
+}
