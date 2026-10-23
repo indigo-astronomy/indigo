@@ -1,0 +1,15 @@
+# Handoff
+
+Single writer: this Codex desktop session in /private/tmp/indigo-20261023181250-5c67-fix-raw-fits-bounds. Primary checkout untouched. Task branch task/20261023181250-5c67-fix-raw-fits-bounds, base master 3b48146ca. Git metadata mutations need sandbox escalation; file edits, shell/compiler/test tools available. Network/hardware/delegation/push not used or authorized. Actual exact model/effort unavailable; current owner-selected host retained. Strong reasoning recommended for coupled memory bounds/security review; no model switch, external provider or additional charges authorized; budget unknown. Zero unsuccessful repair attempts.
+
+Coordinator → analyst → planner → test-designer: brief/specification/plan/test-plan complete; roles explicitly loaded. Allowed paths per brief. Same agent will perform separate verification/quality/security passes; no independent review claim. Root/scoped source and test rules loaded; test-designer scope is indigo_test only, developer separately owns assigned library paths.
+
+Maintenance status at start: due, five uncovered work tasks. Owner extension to 005 received from coordinating session on 2026-10-23 with exact question/reply recorded in brief; mandatory audit checkpoint after authorized repair sequence before unrelated task/release. Preserve all prior deferrals on sync. No audit reset.
+
+Next: write/reproduce focused regressions, implement bounded conversion. Final sync waits for coordinator post-006 master SHA; integration pending and coordinator-owned. Latest coordination order is 039 → 026 → 006 → 005 → 002. No final commit/integration evidence yet.
+
+Test-designer → developer: baseline ASan stack/heap evidence in baseline.log; production fix now implemented. Test boundary loop initially left a sentinel before its intended metadata; corrected the fixture rather than production behavior. Header numeric locale conversion performed on a terminated temporary buffer. Next: strengthened metadata and allocator regressions, then verifier pass.
+
+Developer → verifier → documenter → quality-reviewer → security-reviewer: initial focused gates pass; public API documentation updated. Review roles/routines explicitly loaded. Reports remain provisional until post-006 synchronization. Factory tests 175/175 pass; see verification.md. Xcode navigation requirement confirmed by coordinator; new persistent files will be registered, no build memberships for evidence/scripts.
+
+Coordinator update: owner now permits readiness-based integration; 006 holds the next slot and 026 is not a prerequisite. Await post-006 SHA or explicit slot release. New files have Xcode navigation references with no build membership. A recoverable checkpoint is required before synchronizing shared maintenance/Xcode/test-build changes; exception to one-commit default is justified by concurrent integration and root prohibition on history rewriting. Checkpoint is deliberately unfinished: no final process verdict, archival, integration or finding closure claimed. Final reviewed outcome commit will include synchronization, closure and evidence.

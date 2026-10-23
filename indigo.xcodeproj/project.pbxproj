@@ -6295,6 +6295,24 @@
 		CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_cache.c; sourceTree = "<group>"; };
 		48931A9C9D9E4BFAB7A87777 /* test_server_management_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_management_security.c; sourceTree = "<group>"; };
 		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
+		8C89475FC90D6302C58246A3 /* allocation-failure.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "allocation-failure.c"; sourceTree = "<group>"; };
+		F07E5435D4C46591C63F4113 /* baseline.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "baseline.log"; sourceTree = "<group>"; };
+		91A99980A5F891A44EA172B7 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		F5939DA4069C7FA649A68C60 /* check.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "check.log"; sourceTree = "<group>"; };
+		0A7F663753ACBD58958E7EA6 /* factory-test.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "factory-test.log"; sourceTree = "<group>"; };
+		EF7C670560E0B6E93D92937B /* fits-verification.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "fits-verification.log"; sourceTree = "<group>"; };
+		D095604C1880B43D0D0394BB /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		AA19D0ABFEAF09A78E4F5DF2 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		725598CAA28E503DD18644C2 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		C81753447F89FAD4D55752C8 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		A79E11941F7000E917BB07E5 /* security-check.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "security-check.log"; sourceTree = "<group>"; };
+		58B7429FAF3ABD68463D2186 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		2512CEC0C9E650DD2ABD2668 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		52142A12224C870ABB577059 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		B1D5E434D7F1F546132F7CCC /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		29C8BA32E7CE1EE445609771 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		CF40149A1105CFCD293BD53A /* verify-fits.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "verify-fits.sh"; sourceTree = "<group>"; };
+		C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_raw_to_fits.c"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6550,6 +6568,7 @@
 			isa = PBXGroup;
 			children = (
 				5D81F456588D799E5C20FF68 /* archive */,
+				54108D5BFFC6EE1BF290C59A /* 20261023181250-5c67-fix-raw-fits-bounds */,
 			);
 			path = tasks;
 			sourceTree = "<group>";
@@ -14874,6 +14893,7 @@
 				DF10000000000000000005 /* test_uni_io.c */,
 				C0DE20261022000000000006 /* test_primalucelib.c */,
 				C0DE20261001A10000000023 /* test_system_alpaca_json.c */,
+				C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */,
 			);
 			path = unit;
 			sourceTree = "<group>";
@@ -17946,6 +17966,30 @@
 				57EF51D50C114C36BDA05461 /* run_server_management_security.py */,
 			);
 			path = security;
+			sourceTree = "<group>";
+		};
+		54108D5BFFC6EE1BF290C59A /* 20261023181250-5c67-fix-raw-fits-bounds */ = {
+			isa = PBXGroup;
+			children = (
+				8C89475FC90D6302C58246A3 /* allocation-failure.c */,
+				F07E5435D4C46591C63F4113 /* baseline.log */,
+				91A99980A5F891A44EA172B7 /* brief.md */,
+				F5939DA4069C7FA649A68C60 /* check.log */,
+				0A7F663753ACBD58958E7EA6 /* factory-test.log */,
+				EF7C670560E0B6E93D92937B /* fits-verification.log */,
+				D095604C1880B43D0D0394BB /* handoff.md */,
+				AA19D0ABFEAF09A78E4F5DF2 /* plan.md */,
+				725598CAA28E503DD18644C2 /* process.json */,
+				C81753447F89FAD4D55752C8 /* quality-review.md */,
+				A79E11941F7000E917BB07E5 /* security-check.log */,
+				58B7429FAF3ABD68463D2186 /* security.md */,
+				2512CEC0C9E650DD2ABD2668 /* specification.md */,
+				52142A12224C870ABB577059 /* state.json */,
+				B1D5E434D7F1F546132F7CCC /* test-plan.md */,
+				29C8BA32E7CE1EE445609771 /* verification.md */,
+				CF40149A1105CFCD293BD53A /* verify-fits.sh */,
+			);
+			path = "20261023181250-5c67-fix-raw-fits-bounds";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

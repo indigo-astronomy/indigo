@@ -66,6 +66,15 @@
       "scope": "Full maintained functional/source-contract repository audit; server security audits explicitly excluded at owner request.",
       "exclusion": "No server-security certification, risk acceptance, penetration testing or claim of completed excluded investigations.",
       "report": "repository-review.md"
+    },
+    "raw_fits_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection relayed by coordinating session",
+      "date": "2026-10-23",
+      "task": "20261023181250-5c67-fix-raw-fits-bounds",
+      "scope": "Repair FND-20261023101753-bc8d-complete-repository-audit-005 after ordered repairs 039, 026 and 006 before due audit",
+      "authority": "Owner answered \u00c1no, odlo\u017ei\u0165 aj pre 005 to explicit extension question",
+      "checkpoint": "After authorized repairs 039/026/006/005, before unrelated work or release",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

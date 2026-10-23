@@ -57,6 +57,12 @@ typedef struct {
 	const char *comment;
 } indigo_fits_keyword;
 
+/** Convert a complete RAW1/RAW2/RAW3/RAW6 image to record-aligned FITS.
+ * Input and output allocations must be distinct. Metadata can span header records;
+ * keyword names must fit eight characters and each formatted card must fit 80 bytes.
+ * Invalid input or metadata returns INDIGO_FAILED with errno set, preserving the
+ * existing output allocation and size, including on allocation failure.
+ */
 INDIGO_EXTERN indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fits_size, indigo_fits_keyword *keywords);
 
 #ifdef __cplusplus

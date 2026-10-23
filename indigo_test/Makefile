@@ -50,7 +50,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_uni_io \
 	$(UNIT_BUILD)/test_primalucelib \
 	$(UNIT_BUILD)/test_system_alpaca_json \
-	$(UNIT_BUILD)/test_raw_image
+	$(UNIT_BUILD)/test_raw_image \
+	$(UNIT_BUILD)/test_raw_to_fits
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
 	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
@@ -384,6 +385,9 @@ $(UNIT_BUILD)/test_driver_loader: unit/test_driver_loader.c test_runner.h $(UNIT
 	$(CC) $(TEST_CFLAGS) -DLOADER_FIXTURE='"$(abspath $(UNIT_BUILD)/indigo_test_loader_driver.$(SOEXT))"' -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_token: unit/test_token.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_raw_to_fits: unit/test_raw_to_fits.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h | $(UNIT_BUILD)
