@@ -1,0 +1,29 @@
+{
+  "title": "Multiple inline XML BLOB items share a buffer that is resized before consumption",
+  "category": "security",
+  "severity": "high",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "parsers-security.md",
+      "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Pending inline XML BLOB items share parser scratch memory resized before vector consumption; upstream multi-item vectors can cause stale pointers or reads beyond resized storage. Next: stable per-item ownership and cleanup; moving/shrinking allocation regressions. Confirmed by current source contracts; no fix or runtime retest claimed.",
+  "evidence": "indigo_libs/indigo_xml.c:758-759,766-792,1669-1679,501-512; parsers-security.md section P06",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023112118-8e5e-server-security-audit-016"
+}

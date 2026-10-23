@@ -1,0 +1,3 @@
+# Audit verification plan
+
+Verify each review claim against current source and relevant positive contract; use bounded synthetic local parser/access-control checks where feasible. No network endpoints or production credentials. Reconcile existing finding IDs. Confirm no product code changes and record source Git blob identities. Run configured Factory check/security groups and required workflow regression group once on the final candidate, plus committed-range process check. These checks validate evidence/workflow only; they do not certify server security. No driver/hardware/full native test suite is justified by an evidence-only diff.

@@ -1,0 +1,317 @@
+{
+  "checks": [
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo_server_tcp.c",
+      "claimed_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "head_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "working_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo_uni_io.c",
+      "claimed_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "head_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "working_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo_bus.c",
+      "claimed_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "head_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "working_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo/indigo_bus.h",
+      "claimed_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "head_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "working_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo/indigo_uni_io.h",
+      "claimed_blob": "fbb3ac509fe47045a6d82890d477f4f06b69a5a1",
+      "head_blob": "fbb3ac509fe47045a6d82890d477f4f06b69a5a1",
+      "working_blob": "fbb3ac509fe47045a6d82890d477f4f06b69a5a1",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo/indigo_server_tcp.h",
+      "claimed_blob": "50726038938dfa3e5f2bd917cbe242f33db91ab0",
+      "head_blob": "50726038938dfa3e5f2bd917cbe242f33db91ab0",
+      "working_blob": "50726038938dfa3e5f2bd917cbe242f33db91ab0",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo_driver_json.c",
+      "claimed_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "head_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "working_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo_json.c",
+      "claimed_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "head_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "working_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_libs/indigo_xml.c",
+      "claimed_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "head_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "working_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_server/indigo_server.c",
+      "claimed_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "head_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "working_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "match": true
+    },
+    {
+      "coverage": "transport-coverage.json",
+      "path": "indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md",
+      "claimed_blob": "9194d415a46251b0dea953fb7c29f48956fd6766",
+      "head_blob": "9194d415a46251b0dea953fb7c29f48956fd6766",
+      "working_blob": "9194d415a46251b0dea953fb7c29f48956fd6766",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_libs/indigo_bus.c",
+      "claimed_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "head_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "working_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_libs/indigo_token.c",
+      "claimed_blob": "20bde6478d892807dcc13815bbaf31236ae4f643",
+      "head_blob": "20bde6478d892807dcc13815bbaf31236ae4f643",
+      "working_blob": "20bde6478d892807dcc13815bbaf31236ae4f643",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_libs/indigo_driver.c",
+      "claimed_blob": "6c2b437b23554613a5fcbd3c8d81c67e2725e9fd",
+      "head_blob": "6c2b437b23554613a5fcbd3c8d81c67e2725e9fd",
+      "working_blob": "6c2b437b23554613a5fcbd3c8d81c67e2725e9fd",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_libs/indigo_client.c",
+      "claimed_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "head_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "working_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_libs/indigo_json.c",
+      "claimed_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "head_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "working_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_server/indigo_server.c",
+      "claimed_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "head_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "working_blob": "3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_server/resource/indigo.js",
+      "claimed_blob": "f346bac16e8d26b450d46b26fe5310b7c6a992e8",
+      "head_blob": "f346bac16e8d26b450d46b26fe5310b7c6a992e8",
+      "working_blob": "f346bac16e8d26b450d46b26fe5310b7c6a992e8",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "indigo_server/resource/components.js",
+      "claimed_blob": "b9127b02c952327f95433afacec3954d4b557f52",
+      "head_blob": "b9127b02c952327f95433afacec3954d4b557f52",
+      "working_blob": "b9127b02c952327f95433afacec3954d4b557f52",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "tools/rpi_ctrl.sh",
+      "claimed_blob": "87c725e0d52b85e3058ea2f29683c195d4beb322",
+      "head_blob": "87c725e0d52b85e3058ea2f29683c195d4beb322",
+      "working_blob": "87c725e0d52b85e3058ea2f29683c195d4beb322",
+      "match": true
+    },
+    {
+      "coverage": "access-coverage.json",
+      "path": "tools/rpi_ctrl_v2.sh",
+      "claimed_blob": "979567155b46f5f8a99c831fd8b6cb6ee08c58cc",
+      "head_blob": "979567155b46f5f8a99c831fd8b6cb6ee08c58cc",
+      "working_blob": "979567155b46f5f8a99c831fd8b6cb6ee08c58cc",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_xml.c",
+      "claimed_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "head_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "working_blob": "59c0bfba59caacc7e722a9261ee069ab12ef3fe7",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_json.c",
+      "claimed_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "head_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "working_blob": "3f60504f0976ac4177d0707163bdbf9bf68e6e01",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_client_xml.c",
+      "claimed_blob": "1974825033f6b2df50e72ee4358be35066810de3",
+      "head_blob": "1974825033f6b2df50e72ee4358be35066810de3",
+      "working_blob": "1974825033f6b2df50e72ee4358be35066810de3",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_driver_xml.c",
+      "claimed_blob": "2184c8dfe9e163ca9066c3496d8549fce4ef5942",
+      "head_blob": "2184c8dfe9e163ca9066c3496d8549fce4ef5942",
+      "working_blob": "2184c8dfe9e163ca9066c3496d8549fce4ef5942",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_driver_json.c",
+      "claimed_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "head_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "working_blob": "32ffb58b1d7806a27df9bdf83df285c990cabe37",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo/indigo_xml.h",
+      "claimed_blob": "93df50eb546bda772dbe746693c152b3c69eab05",
+      "head_blob": "93df50eb546bda772dbe746693c152b3c69eab05",
+      "working_blob": "93df50eb546bda772dbe746693c152b3c69eab05",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo/indigo_json.h",
+      "claimed_blob": "96791f090b7fa6a141a3a4befe29af5afac07edf",
+      "head_blob": "96791f090b7fa6a141a3a4befe29af5afac07edf",
+      "working_blob": "96791f090b7fa6a141a3a4befe29af5afac07edf",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo/indigo_client_xml.h",
+      "claimed_blob": "6c5b5d1a83164598bda3e87cc226e17ce44f30b9",
+      "head_blob": "6c5b5d1a83164598bda3e87cc226e17ce44f30b9",
+      "working_blob": "6c5b5d1a83164598bda3e87cc226e17ce44f30b9",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo/indigo_driver_xml.h",
+      "claimed_blob": "ba445dfd884f5893ce1aa29349886f7d2236c13f",
+      "head_blob": "ba445dfd884f5893ce1aa29349886f7d2236c13f",
+      "working_blob": "ba445dfd884f5893ce1aa29349886f7d2236c13f",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo/indigo_driver_json.h",
+      "claimed_blob": "9339269701bb15a165254a150acd664d58ecaa03",
+      "head_blob": "9339269701bb15a165254a150acd664d58ecaa03",
+      "working_blob": "9339269701bb15a165254a150acd664d58ecaa03",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo/indigo_bus.h",
+      "claimed_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "head_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "working_blob": "2c8e529b3411c147395798297acfb2983ec6dc6e",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_bus.c",
+      "claimed_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "head_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "working_blob": "1dfc14770077b5120a28916709ccd4fa1eb28202",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_uni_io.c",
+      "claimed_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "head_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "working_blob": "995d00038e57904151d35f3a168b89a53e97d730",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_base64.c",
+      "claimed_blob": "c1f89f4cf8d84091c4caf71f7ed689b9d6f9d147",
+      "head_blob": "c1f89f4cf8d84091c4caf71f7ed689b9d6f9d147",
+      "working_blob": "c1f89f4cf8d84091c4caf71f7ed689b9d6f9d147",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_client.c",
+      "claimed_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "head_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "working_blob": "7d0e85cdc47b5beb0674a2192aa97fb20ef2b88f",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_libs/indigo_server_tcp.c",
+      "claimed_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "head_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "working_blob": "7f56321969ab0dc7d397b35fde7d6b6f1d689162",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_test/unit/test_protocol_xml.c",
+      "claimed_blob": "c5fe0af485d0e87320dfae08a85be82e3e85388e",
+      "head_blob": "c5fe0af485d0e87320dfae08a85be82e3e85388e",
+      "working_blob": "c5fe0af485d0e87320dfae08a85be82e3e85388e",
+      "match": true
+    },
+    {
+      "coverage": "parsers-coverage.json",
+      "path": "indigo_test/unit/test_protocol_json.c",
+      "claimed_blob": "04fbbc590b2962fc65afad82dc077274e984d16a",
+      "head_blob": "04fbbc590b2962fc65afad82dc077274e984d16a",
+      "working_blob": "04fbbc590b2962fc65afad82dc077274e984d16a",
+      "match": true
+    }
+  ],
+  "mismatches": 0
+}

@@ -71,7 +71,7 @@ Do not announce the service with Bonjour. The client should enter host and port 
 INDIGO provides 2 ways of BLOB (image) transfer. One is the legacy INDI style where the image is base64 encoded and sent to the client in plain text and the client decodes the data on its end. This makes the data volume approx. 30% larger and the encoding and decoding is CPU intensive. The second INDIGO style is to use binary image transfer over HTTP protocol avoiding encoding, decoding and data size overhead. By default the client can request any type of BLOB transfer. With this switch you can force the server to accept only legacy INDI style blob transfer.
 
 ### -d- | --disable-blob-buffering
-Disable the working-copy buffer used for HTTP BLOB downloads. Buffering is enabled by default; disabling it also disables BLOB compression.
+Disable optional HTTP BLOB buffering features, including gzip compression. Downloads always use a private snapshot so a slow client does not retain a cache lock or access a retired property. This switch no longer removes that safety copy.
 
 ### -C | --enable-blob-compression
 Enable gzip compression for HTTP BLOB downloads when the client accepts gzip. Compression requires BLOB buffering and is disabled by default; JPEG BLOBs are not compressed.

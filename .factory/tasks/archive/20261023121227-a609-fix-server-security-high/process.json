@@ -1,0 +1,360 @@
+{
+  "version": 2,
+  "task": "20261023121227-a609-fix-server-security-high",
+  "scope": [
+    ".factory/completions/20261023121227-a609-fix-server-security-high.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-001.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-002.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-004.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-005.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-008.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-009.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-011.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-012.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-013.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-014.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-015.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-016.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-017.json",
+    ".factory/findings/active/FND-20261023121227-a609-fix-server-security-high-001.json",
+    ".factory/findings/active/FND-20261023121227-a609-fix-server-security-high-002.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-001.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-002.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-004.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-005.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-008.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-009.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-011.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-012.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-013.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-014.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-015.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-016.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-017.json",
+    ".factory/findings/archive/FND-20261023121227-a609-fix-server-security-high-001.json",
+    ".factory/project.md",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/INDIGO_SERVER_AND_DRIVERS_GUIDE.md",
+    "indigo_docs/PROTOCOLS.md",
+    "indigo_drivers/agent_alpaca/README.md",
+    "indigo_drivers/agent_alpaca/REFACTOR.md",
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c",
+    "indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c",
+    "indigo_libs/indigo/indigo_bus.h",
+    "indigo_libs/indigo_bus.c",
+    "indigo_libs/indigo_json.c",
+    "indigo_libs/indigo_server_tcp.c",
+    "indigo_libs/indigo_xml.c",
+    "indigo_server/indigo_server.c",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_agent_alpaca_cache.c",
+    "indigo_test/integration/test_transport_http_security.c",
+    "indigo_test/security/run_server_management_security.py",
+    "indigo_test/security/test_server_management_security.c",
+    "indigo_test/unit/test_protocol_security.c",
+    "indigo_test/unit/test_transport_cache_security.c"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "-j4",
+        "libindigo"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_server"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "-j4",
+        "test-server-security-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "-j4",
+        "test-server-security-sanitize",
+        "SECURITY_ASSERT_FLAGS=-DNDEBUG",
+        "SECURITY_BUILD=build/security-ndebug"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-server-management-security-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_alpaca"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md",
+    "authentication": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023121227-a609-fix-server-security-high.json": [
+      "100644",
+      "blob",
+      "911e33cc6bdcfefba4cd2ad1907664325cea82d5"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-001.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-002.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-004.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-005.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-008.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-009.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-011.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-012.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-013.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-014.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-015.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-016.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-017.json": null,
+    ".factory/findings/active/FND-20261023121227-a609-fix-server-security-high-002.json": [
+      "100644",
+      "blob",
+      "03195fc6d8c90477c582b9ee0c3e6230dcc0ed7e"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-001.json": [
+      "100644",
+      "blob",
+      "b592d33d6803c8197234727717647c020f40924f"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-002.json": [
+      "100644",
+      "blob",
+      "5c598107de9cc2abfdd7035f0141fd370d1638c9"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-004.json": [
+      "100644",
+      "blob",
+      "3cdd425e507c3a0a7799838b6ed8f7799b619261"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-005.json": [
+      "100644",
+      "blob",
+      "55ae93f05621cde571000da46e3e38412de6c24f"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-008.json": [
+      "100644",
+      "blob",
+      "5305c17e093d0b2b4be54fe35ed8966914043f59"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-009.json": [
+      "100644",
+      "blob",
+      "f1f2559f418e32e43d8a6a881b0aaee36690ebfb"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-011.json": [
+      "100644",
+      "blob",
+      "8b2f023b511ca33201b3dda854242fb9855db321"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-012.json": [
+      "100644",
+      "blob",
+      "e178d677173f50925607f386790502dbce1d8b98"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-013.json": [
+      "100644",
+      "blob",
+      "8896adcd867200c2abbee05a4d59dba99ae82ca6"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-014.json": [
+      "100644",
+      "blob",
+      "f4a6ab5fe3102c99e040c2b22e775e7ed0bc9cb0"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-015.json": [
+      "100644",
+      "blob",
+      "047ef8e3cc95b9929b24e4eb64acd8b20024f909"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-016.json": [
+      "100644",
+      "blob",
+      "97a6055c8fbada5d665dfecdd4cda74888f6bc77"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-017.json": [
+      "100644",
+      "blob",
+      "450352b6ab21c345076b36a2c44d140011e31b06"
+    ],
+    ".factory/findings/archive/FND-20261023121227-a609-fix-server-security-high-001.json": [
+      "100644",
+      "blob",
+      "1f9e05805947f5b79ce3988b2ca06dd5d349db4d"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "1624c6f806fddfe8d5c9945b15ccdfc7f5dea350"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "ddc09072691672557388c77439fee5ac9213bf09"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "fa09455b5d3ad5a46825726aa9c5898540668f4e"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "00dd860093b3dc8c518a7ef9780832d65d9657cb"
+    ],
+    "indigo_docs/INDIGO_SERVER_AND_DRIVERS_GUIDE.md": [
+      "100644",
+      "blob",
+      "4e41b357c664fbd74e4eb4c8a49131b3b6acb4e2"
+    ],
+    "indigo_docs/PROTOCOLS.md": [
+      "100644",
+      "blob",
+      "6bad1f263f7f38fb2187ae6133657e5997a605d4"
+    ],
+    "indigo_drivers/agent_alpaca/README.md": [
+      "100644",
+      "blob",
+      "795d3c8e6ab12dd5981fb320b5a8d09cadd57dc6"
+    ],
+    "indigo_drivers/agent_alpaca/REFACTOR.md": [
+      "100644",
+      "blob",
+      "1e8ca5e48901371f714c18e340b00b87ab2a7748"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": [
+      "100644",
+      "blob",
+      "978512c39b275dfeb81d94b6521271107df5a485"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c": [
+      "100644",
+      "blob",
+      "0976d954da641cc6c9b2e90d6464a6bbb7b85ad4"
+    ],
+    "indigo_libs/indigo/indigo_bus.h": [
+      "100644",
+      "blob",
+      "7ab4e7fe5add9fc8ad71d44d377a51e3c13e5dc0"
+    ],
+    "indigo_libs/indigo_bus.c": [
+      "100644",
+      "blob",
+      "1c0e95a1ff16c33b7de1823f12770ea11a7569d6"
+    ],
+    "indigo_libs/indigo_json.c": [
+      "100644",
+      "blob",
+      "7cdbd0bd69c4021533d5d89af063dbdb2aad1735"
+    ],
+    "indigo_libs/indigo_server_tcp.c": [
+      "100644",
+      "blob",
+      "04262852ab6317ce101881fc3822cfa3fc0705c3"
+    ],
+    "indigo_libs/indigo_xml.c": [
+      "100644",
+      "blob",
+      "15d74445c2414189ab19835e567938687ecde148"
+    ],
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "7a70d1b9d5078a30d6150a5af0ddce60fe156c2d"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "96f0ac91f8c49161bce94b50e535766eaccbebf7"
+    ],
+    "indigo_test/integration/test_agent_alpaca_cache.c": [
+      "100644",
+      "blob",
+      "d7bdda2b06a1c5387fd31189fb1ce3345ad5be2d"
+    ],
+    "indigo_test/integration/test_transport_http_security.c": [
+      "100644",
+      "blob",
+      "50c8e4688b1266ebce963747c4ac4d4aad66d30b"
+    ],
+    "indigo_test/security/run_server_management_security.py": [
+      "100644",
+      "blob",
+      "9f83cff9f8f080a97f448129b4c30c43651814fe"
+    ],
+    "indigo_test/security/test_server_management_security.c": [
+      "100644",
+      "blob",
+      "52ca29f8452659ea1daca6e8df5dd9b56926f7b0"
+    ],
+    "indigo_test/unit/test_protocol_security.c": [
+      "100644",
+      "blob",
+      "4e871fa085f8aa6381d86647dc5abb22874c8509"
+    ],
+    "indigo_test/unit/test_transport_cache_security.c": [
+      "100644",
+      "blob",
+      "0fcb1fb73685afcf432f22d4c6f603778c5d209f"
+    ]
+  }
+}

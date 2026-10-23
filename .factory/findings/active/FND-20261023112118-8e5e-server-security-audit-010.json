@@ -1,0 +1,19 @@
+{
+  "title": "Blank ACL lines read before stack buffer",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "access-security.md",
+      "revision": null
+    }
+  ],
+  "summary": "Documented supported blank/whitespace-only ACL lines decrement len below zero in trailing-space loop. Exact extracted loader with stub setters/logging and newline-only fixture triggers UBSan index -1 and ASan stack-buffer-underflow on clean temporary Clang build. Local config availability defect, not remote security bypass. Next: Keep len >= 0 in whitespace-loop condition and regress blank, whitespace, comment and normal records under sanitizers.",
+  "evidence": "indigo_libs/indigo_token.c:169-172; access-security.md section A-03",
+  "resolution": null,
+  "id": "FND-20261023112118-8e5e-server-security-audit-010"
+}

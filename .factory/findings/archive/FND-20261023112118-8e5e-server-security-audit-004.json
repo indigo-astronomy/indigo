@@ -1,0 +1,29 @@
+{
+  "title": "BLOB lookup and deletion do not preserve entry and item lifetime",
+  "category": "security",
+  "severity": "high",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023112118-8e5e-server-security-audit",
+      "report": "transport-security.md",
+      "revision": null
+    },
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Request concurrent with property release; or stale WO cache after release; or concurrent XML consumer and PUT. Source-contract confirmed; runtime unverified. Next: Pin entries under registry lock, retire all permissions, protect every consumer",
+  "evidence": "indigo_libs/indigo_bus.c:1430-1484; indigo_libs/indigo_server_tcp.c:197-202; indigo_libs/indigo_server_tcp.c:227-231; indigo_libs/indigo_xml.c:421-425; transport-security.md section T04",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261023121227-a609-fix-server-security-high: verification.md acceptance mapping, security.md scoped sign-off and retained independent review/regression evidence.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023112118-8e5e-server-security-audit-004"
+}

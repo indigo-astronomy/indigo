@@ -43,6 +43,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_polynomial_fit \
 	$(UNIT_BUILD)/test_protocol_json \
 	$(UNIT_BUILD)/test_protocol_xml \
+	$(UNIT_BUILD)/test_protocol_security \
+	$(UNIT_BUILD)/test_transport_cache_security \
 	$(UNIT_BUILD)/test_timer \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_uni_io \
@@ -50,6 +52,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
+	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
 	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qsi_sdk \
@@ -3380,3 +3383,59 @@ $(TEST_BUILD)/hardware/test_mount_nexstar_hw: hardware/test_mount_nexstar_hw.c h
 .PHONY: test-mount-nexstar-hw
 test-mount-nexstar-hw: check-lib $(TEST_BUILD)/hardware/test_mount_nexstar_hw
 	$(TEST_BUILD)/hardware/test_mount_nexstar_hw --run
+
+# Explicit security checks keep source-extracted management code outside unit tests.
+.PHONY: test-server-management-security test-server-management-security-sanitize test-agent-alpaca-cache
+
+test-server-management-security:
+	python3 security/run_server_management_security.py
+
+test-server-management-security-sanitize:
+	python3 security/run_server_management_security.py --sanitize
+
+$(INTEGRATION_BUILD)/test_agent_alpaca_cache: integration/test_agent_alpaca_cache.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_alpaca.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_alpaca.a $(TEST_LDFLAGS) -lz
+
+test-agent-alpaca-cache: check-lib $(INTEGRATION_BUILD)/test_agent_alpaca_cache
+	$(INTEGRATION_BUILD)/test_agent_alpaca_cache
+
+$(UNIT_BUILD)/test_protocol_security: unit/test_protocol_security.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+# Build the repaired core units with instrumentation; the unchanged static archive
+# supplies remaining symbols. Small budgets and deadlines keep adversarial tests bounded.
+SECURITY_BUILD ?= $(TEST_BUILD)/security
+SECURITY_ASSERT_FLAGS ?=
+SECURITY_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(SECURITY_ASSERT_FLAGS) -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0
+SECURITY_OBJECTS = $(addprefix $(SECURITY_BUILD)/,indigo_bus.o indigo_xml.o indigo_json.o indigo_server_tcp.o)
+
+$(SECURITY_BUILD):
+	mkdir -p $@
+
+$(SECURITY_BUILD)/%.o: ../indigo_libs/%.c ../indigo_libs/indigo/indigo_bus.h Makefile | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -c $< -o $@
+
+$(SECURITY_BUILD)/test_protocol_security: unit/test_protocol_security.c test_runner.h $(SECURITY_OBJECTS) $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+$(SECURITY_BUILD)/test_transport_cache_security: unit/test_transport_cache_security.c test_runner.h $(SECURITY_OBJECTS) $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+$(SECURITY_BUILD)/test_transport_http_security: integration/test_transport_http_security.c test_runner.h $(SECURITY_OBJECTS) $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+.PHONY: test-server-security-sanitize
+test-server-security-sanitize: check-lib $(SECURITY_BUILD)/test_protocol_security $(SECURITY_BUILD)/test_transport_cache_security $(SECURITY_BUILD)/test_transport_http_security $(SECURITY_BUILD)/test_transport_cache_alloc_failure
+	$(SECURITY_BUILD)/test_protocol_security
+	$(SECURITY_BUILD)/test_transport_cache_security
+	$(SECURITY_BUILD)/test_transport_http_security
+	$(SECURITY_BUILD)/test_transport_cache_alloc_failure
+
+$(UNIT_BUILD)/test_transport_cache_security: unit/test_transport_cache_security.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(SECURITY_BUILD)/indigo_bus_alloc_failure.o: ../indigo_libs/indigo_bus.c ../indigo_libs/indigo/indigo_bus.h Makefile | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -Dmalloc=transport_test_malloc -c $< -o $@
+
+$(SECURITY_BUILD)/test_transport_cache_alloc_failure: unit/test_transport_cache_security.c test_runner.h $(SECURITY_BUILD)/indigo_bus_alloc_failure.o $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -DINDIGO_TRANSPORT_ALLOC_FAILURE -o $@ $< $(SECURITY_BUILD)/indigo_bus_alloc_failure.o $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)

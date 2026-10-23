@@ -1,0 +1,5 @@
+# Acceptance criteria
+
+Review current server trust boundaries and parser/access-control contracts using existing retained evidence without assuming unapplied proposals are fixes. Independently review transport, protocol parsers, and authorization/UI surfaces. Every confirmed finding needs current source location, prerequisites, impact, remediation, and reproducible local or source-contract evidence; reconcile existing findings instead of duplicating them. Record coverage and unperformed checks honestly. Produce security.md, verification.md, quality-review.md and central findings. Audit verdict may require changes without certifying a safe release or accepting risk.
+
+Owner-directed delivery boundary: finish and archive this audit after evidence verification; remediation belongs to a subsequent task. Preserve all 18 open records and 13 high blocking flags, and the changes-required security verdict. The owner authorizes the audit-only delivery exception to completion/process gates that otherwise require repaired findings. Publishable evidence is not product approval. Record any failed gate honestly; do not alter validators or downgrade findings.

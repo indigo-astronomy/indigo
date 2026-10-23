@@ -1,0 +1,19 @@
+{
+  "title": "XML cached read-only BLOB buffers leak at parser property retirement",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023121227-a609-fix-server-security-high",
+      "report": "preliminary-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "XML parser-owned cached RO BLOB item storage is not freed by generic property release, which intentionally frees only WO item payloads. Repeated upstream deletion/disconnect lifecycles can retain memory. Next: restrict cleanup fix to parser-owned cached properties, add deletion/disconnect leak regressions. Outside selected high-priority repair scope.",
+  "evidence": "preliminary-review.md and parser developer report trace set_property allocation through delete/EOF indigo_release_property and bus permission-dependent cleanup. Source-contract confirmed, runtime leak reproduction not run.",
+  "resolution": null,
+  "id": "FND-20261023121227-a609-fix-server-security-high-002"
+}

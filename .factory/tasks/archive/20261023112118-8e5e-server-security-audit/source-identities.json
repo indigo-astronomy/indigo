@@ -1,0 +1,14 @@
+{
+  "base": "cb3c392e9f8833ddb6d29744a34cfae618b04fc8",
+  "git_index_entries": [
+    "100644 7f56321969ab0dc7d397b35fde7d6b6f1d689162 0\tindigo_libs/indigo_server_tcp.c",
+    "100644 1dfc14770077b5120a28916709ccd4fa1eb28202 0\tindigo_libs/indigo_bus.c",
+    "100644 20bde6478d892807dcc13815bbaf31236ae4f643 0\tindigo_libs/indigo_token.c",
+    "100644 59c0bfba59caacc7e722a9261ee069ab12ef3fe7 0\tindigo_libs/indigo_xml.c",
+    "100644 3f60504f0976ac4177d0707163bdbf9bf68e6e01 0\tindigo_libs/indigo_json.c",
+    "100644 2184c8dfe9e163ca9066c3496d8549fce4ef5942 0\tindigo_libs/indigo_driver_xml.c",
+    "100644 32ffb58b1d7806a27df9bdf83df285c990cabe37 0\tindigo_libs/indigo_driver_json.c",
+    "100644 1974825033f6b2df50e72ee4358be35066810de3 0\tindigo_libs/indigo_client_xml.c",
+    "100644 3d76bc7f3b0232c2468110a4fe892fd81c4a6ccd 0\tindigo_server/indigo_server.c"
+  ]
+}

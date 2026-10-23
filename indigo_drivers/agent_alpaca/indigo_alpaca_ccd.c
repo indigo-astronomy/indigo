@@ -1384,7 +1384,7 @@ static void write_imagearray_error(indigo_uni_handle *handle, uint32_t client_tr
 
 void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
 	indigo_blob_entry *entry;
-	if (alpaca_device->ccd.imageready == NULL || (entry = indigo_validate_blob(alpaca_device->ccd.imageready)) == NULL) {
+	if (alpaca_device->ccd.imageready == NULL || (entry = indigo_acquire_blob(alpaca_device->ccd.imageready)) == NULL) {
 		write_imagearray_error(handle, client_transaction_id, server_transaction_id, indigo_alpaca_error_InvalidOperation);
 		return;
 	}
@@ -1413,6 +1413,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 			break;
 		default:
 			pthread_mutex_unlock(&entry->mutext);
+			indigo_release_blob(entry);
 			write_imagearray_error(handle, client_transaction_id, server_transaction_id, indigo_alpaca_error_InvalidOperation);
 			return;
 	}
@@ -1447,6 +1448,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 			}
 		}
 		pthread_mutex_unlock(&entry->mutext);
+		indigo_release_blob(entry);
 		indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %ld\r\n\r\n", (long)sizeof(metadata) + count * element_size);
 		handle->log_level = -abs(handle->log_level);
 		indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
@@ -1483,6 +1485,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		PRINTF("]");
 	}
 	pthread_mutex_unlock(&entry->mutext);
+	indigo_release_blob(entry);
 	PRINTF("], \"ErrorNumber\": 0, \"ErrorMessage\": \"\", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id);
 	if (use_gzip) {
 		gzclose(gzf);

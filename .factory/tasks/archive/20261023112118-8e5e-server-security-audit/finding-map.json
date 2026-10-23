@@ -1,0 +1,95 @@
+{
+  "task": "20261023112118-8e5e-server-security-audit",
+  "findings": [
+    {
+      "alias": "T01",
+      "report": "transport-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-001"
+    },
+    {
+      "alias": "T02",
+      "report": "transport-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-002"
+    },
+    {
+      "alias": "T03",
+      "report": "transport-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-003"
+    },
+    {
+      "alias": "T04",
+      "report": "transport-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-004"
+    },
+    {
+      "alias": "T05",
+      "report": "transport-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-005"
+    },
+    {
+      "alias": "T06",
+      "report": "transport-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-006"
+    },
+    {
+      "alias": "T07",
+      "report": "transport-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-007"
+    },
+    {
+      "alias": "A-01",
+      "report": "access-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-008"
+    },
+    {
+      "alias": "A-02",
+      "report": "access-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-009"
+    },
+    {
+      "alias": "A-03",
+      "report": "access-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-010"
+    },
+    {
+      "alias": "P01",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-011"
+    },
+    {
+      "alias": "P02",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-012"
+    },
+    {
+      "alias": "P03",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-013"
+    },
+    {
+      "alias": "P04",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-014"
+    },
+    {
+      "alias": "P05",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-015"
+    },
+    {
+      "alias": "P06",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-016"
+    },
+    {
+      "alias": "P07",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-017"
+    },
+    {
+      "alias": "P08",
+      "report": "parsers-security.md",
+      "canonical_id": "FND-20261023112118-8e5e-server-security-audit-018"
+    }
+  ]
+}
