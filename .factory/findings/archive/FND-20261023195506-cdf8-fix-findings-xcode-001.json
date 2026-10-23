@@ -1,0 +1,24 @@
+{
+  "title": "Finding lifecycle moves leave the Xcode navigator stale",
+  "category": "quality",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "Current task coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023195506-cdf8-fix-findings-xcode",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Manual finding archival left nonexistent active references and omitted existing records. Correct the project and use the validated lifecycle helper for future moves.",
+  "evidence": "verification.md baseline and independent PBX/filesystem comparison",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task verification.md: full tests and independent PBX inventory/object checks pass; lifecycle commands now keep navigator placement synchronized.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023195506-cdf8-fix-findings-xcode-001"
+}
