@@ -178,6 +178,11 @@ def all_records(data, snapshot=None):
         resolution = record["resolution"]
         if resolution and resolution["duplicate_of"] and resolution["duplicate_of"] not in ids:
             raise ValueError("duplicate resolution refers to an unknown finding")
+    check_duplicate_chains(records)
+    return records
+
+
+def check_duplicate_chains(records):
     by_id = {record["id"]: record for record in records}
     for record in records:
         visited = set()
@@ -186,8 +191,10 @@ def all_records(data, snapshot=None):
             if current["id"] in visited:
                 raise ValueError("duplicate resolution cycle")
             visited.add(current["id"])
-            current = by_id[current["resolution"]["duplicate_of"]]
-    return records
+            target = current["resolution"]["duplicate_of"]
+            if target not in by_id:
+                raise ValueError("duplicate resolution refers to an unknown finding")
+            current = by_id[target]
 
 
 def git_ok(*args):
@@ -267,8 +274,57 @@ def create(task, filename):
         path = local(ACTIVE_DIR + '/' + record['id'] + '.json')
         if path.exists():
             raise ValueError('finding destination exists')
-        task_store.atomic(path, (json.dumps(record, indent=2, allow_nan=False) + '\n').encode())
+        write_record(path, record)
         return record['id']
+
+
+def write_record(destination, record, source=None):
+    """Commit a finding lifecycle edit and navigator change, restoring on error."""
+    import task_store
+    import findings_project
+    project = findings_project.plan(ROOT)
+    original = source.read_bytes() if source else None
+    if destination.exists():
+        raise ValueError('finding destination exists')
+    try:
+        task_store.atomic(destination, (json.dumps(record, indent=2, allow_nan=False) + '\n').encode())
+        if source:
+            source.unlink()
+        findings_project.sync(ROOT)
+    except (OSError, ValueError):
+        if source and not source.exists():
+            task_store.atomic(source, original)
+        destination.unlink(missing_ok=True)
+        if project and project[0].read_bytes() != project[1]:
+            task_store.atomic(project[0], project[1])
+        raise
+
+
+def archive(identifier, filename):
+    import task_store
+    with task_store.lifecycle_lock(ROOT):
+        if not matches(ID, identifier):
+            raise ValueError('invalid finding ID')
+        data = active_register()
+        if data['version'] != 2:
+            raise ValueError('migrate findings before using archive')
+        records = all_records(data)
+        if not any(record['id'] == identifier for record in data['findings']):
+            raise ValueError('finding is not active')
+        with filename.open('rb') as stream:
+            raw = stream.read(MAX_BYTES + 1)
+        if len(raw) > MAX_BYTES:
+            raise ValueError('finding input exceeds 1 MiB')
+        closed = task_store.loads(raw)
+        validate_record(closed, archived=True)
+        if closed['id'] != identifier:
+            raise ValueError('archive cannot change finding identity')
+        # Validate report pins and duplicate chains against the proposed register.
+        records = [closed if record['id'] == identifier else record for record in records]
+        check_tasks(records, set())
+        check_duplicate_chains(records)
+        write_record(local(ARCHIVE + '/' + identifier + '.json'), closed, local(ACTIVE_DIR + '/' + identifier + '.json'))
+        return identifier
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -281,12 +337,28 @@ def main():
     new = commands.add_parser('create', help='allocate and atomically create a per-task active finding')
     new.add_argument('--task', required=True)
     new.add_argument('--record', required=True, type=Path, help='complete finding JSON without id')
+    close = commands.add_parser('archive', help='archive a verified closed record and update Xcode references')
+    close.add_argument('id')
+    close.add_argument('--record', required=True, type=Path)
+    sync = commands.add_parser('sync-project', help='reconcile Xcode findings navigator references')
+    sync.add_argument('--check', action='store_true')
     show = commands.add_parser("show", help="explicitly read one active or archived finding")
     show.add_argument("id")
     args = parser.parse_args()
     try:
         if args.command == "create":
             print(create(args.task, args.record))
+            return 0
+        if args.command == 'archive':
+            print(archive(args.id, args.record))
+            return 0
+        if args.command == 'sync-project':
+            import task_store
+            import findings_project
+            with task_store.lifecycle_lock(ROOT):
+                all_records(active_register())
+                changed = findings_project.sync(ROOT, args.check)
+            print('Xcode findings references updated.' if changed else 'Xcode findings references current.')
             return 0
         data = active_register()
         if args.command == "list":
@@ -315,6 +387,9 @@ def main():
                 if any(not matches(TASK, task) for task in args.prune_task):
                     raise ValueError("invalid prune task ID")
                 check_tasks(records, set(args.prune_task))
+                if any(ROOT.glob('*.xcodeproj')):
+                    import findings_project
+                    findings_project.sync(ROOT, check=True)
                 output = f"Findings valid: {len(data['findings'])} active, {len(records) - len(data['findings'])} archived; task evidence checks passed."
     except (OSError, ValueError, TypeError, RecursionError, RuntimeError) as exc:
         # Never include finding payloads or subprocess output in errors.

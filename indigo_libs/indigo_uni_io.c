@@ -1570,24 +1570,53 @@ indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo
 		return NULL;
 	}
 	char *found = strstr(url, "://");
-	if (found == NULL) {
+	if (found == NULL || found == url) {
 		indigo_debug("Malformed URL '%s'", url);
 		return NULL;
+	}
+	for (const char *part = url; part < found; part++) {
+		bool letter = (*part >= 'a' && *part <= 'z') || (*part >= 'A' && *part <= 'Z');
+		if (!letter && (part == url || !((*part >= '0' && *part <= '9') || *part == '+' || *part == '-' || *part == '.'))) {
+			return NULL;
+		}
 	}
 	if (!strncmp(url, "tcp://", 6)) {
 		protocol_hint = INDIGO_TCP_HANDLE;
 	} else if (!strncmp(url, "udp://", 6)) {
 		protocol_hint = INDIGO_UDP_HANDLE;
 	}
-	char *host = found + 3;
-	char *colon = strchr(host, ':');
-	if (colon) {
-		strncpy(host_name, host, colon - host);
-		host_name[colon - host] = 0;
-		port = atoi(colon + 1);
-	} else {
-		INDIGO_COPY_NAME(host_name, host);
+	const char *host = found + 3;
+	const char *colon = strchr(host, ':');
+	size_t host_length = colon ? (size_t)(colon - host) : strlen(host);
+	if (host_length == 0 || host_length >= sizeof(host_name)) {
+		return NULL;
 	}
+	for (size_t i = 0; i < host_length; i++) {
+		if ((unsigned char)host[i] <= ' ' || host[i] == 127 || strchr("/?#@[]", host[i]) != NULL) {
+			return NULL;
+		}
+	}
+	if (colon) {
+		const char *digit = colon + 1;
+		if (*digit == 0) {
+			return NULL;
+		}
+		port = 0;
+		while (*digit) {
+			if (*digit < '0' || *digit > '9') {
+				return NULL;
+			}
+			port = port * 10 + (*digit++ - '0');
+			if (port > 65535) {
+				return NULL;
+			}
+		}
+	}
+	if (port < 1 || port > 65535) {
+		return NULL;
+	}
+	memcpy(host_name, host, host_length);
+	host_name[host_length] = 0;
 	switch (protocol_hint) {
 		case INDIGO_TCP_HANDLE:
 			return indigo_uni_client_tcp_socket(host_name, port, log_level);

@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "task": "20261023201207-8e26-update-factory-lock",
+  "scope": [
+    ".factory/template-lock.json",
+    ".factory/project.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*20261023201207-8e26-update-factory-lock/*",
+    ".factory/completions/20261023201207-8e26-update-factory-lock.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023201207-8e26-update-factory-lock.json": [
+      "100644",
+      "blob",
+      "fbfb61dada122fed9e58e4e094a0334120c6de22"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "b8cc366c4efe7bec85324546487fc522e2e60be7"
+    ],
+    ".factory/template-lock.json": [
+      "100644",
+      "blob",
+      "e99ba45a35f9afc3144d8c9106944de8ca445c5a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "5c406e66e42e6be31276b8df424fed8e485ca025"
+    ]
+  }
+}

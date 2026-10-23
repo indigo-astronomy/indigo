@@ -1,0 +1,571 @@
+{
+  "from_revision": "9b346c67b039725783164d5fcf3274cc67d7370a",
+  "to_revision": "9b346c67b039725783164d5fcf3274cc67d7370a",
+  "files": [
+    {
+      "source": ".cursor/rules/ai-factory.mdc",
+      "target": ".cursor/rules/ai-factory.mdc",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/antropic-model-policy.json",
+      "target": ".factory/antropic-model-policy.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/bootstrap.md",
+      "target": ".factory/bootstrap.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/migration.md",
+      "target": ".factory/migration.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/openai-model-policy.json",
+      "target": ".factory/openai-model-policy.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/portability.md",
+      "target": ".factory/portability.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/analyst.md",
+      "target": ".factory/roles/analyst.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/coordinator.md",
+      "target": ".factory/roles/coordinator.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/developer.md",
+      "target": ".factory/roles/developer.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/documenter.md",
+      "target": ".factory/roles/documenter.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/planner.md",
+      "target": ".factory/roles/planner.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/quality-reviewer.md",
+      "target": ".factory/roles/quality-reviewer.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/repository-reviewer.md",
+      "target": ".factory/roles/repository-reviewer.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/security-reviewer.md",
+      "target": ".factory/roles/security-reviewer.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/test-designer.md",
+      "target": ".factory/roles/test-designer.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/roles/verifier.md",
+      "target": ".factory/roles/verifier.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/concurrent-tasks.md",
+      "target": ".factory/routines/concurrent-tasks.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/cross-review.md",
+      "target": ".factory/routines/cross-review.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/findings.md",
+      "target": ".factory/routines/findings.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/git.md",
+      "target": ".factory/routines/git.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/maintenance.md",
+      "target": ".factory/routines/maintenance.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/model-selection.md",
+      "target": ".factory/routines/model-selection.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/process-checks.md",
+      "target": ".factory/routines/process-checks.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/quality-review.md",
+      "target": ".factory/routines/quality-review.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/repository-review.md",
+      "target": ".factory/routines/repository-review.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/task-archive.md",
+      "target": ".factory/routines/task-archive.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/template-maintenance.md",
+      "target": ".factory/routines/template-maintenance.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/routines/template-updates.md",
+      "target": ".factory/routines/template-updates.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/README.md",
+      "target": ".factory/scripts/README.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/archive-task",
+      "target": ".factory/scripts/archive-task",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/archive_task.py",
+      "target": ".factory/scripts/archive_task.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/check",
+      "target": ".factory/scripts/check",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/context",
+      "target": ".factory/scripts/context",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/context_export.py",
+      "target": ".factory/scripts/context_export.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/decision_index.py",
+      "target": ".factory/scripts/decision_index.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/findings",
+      "target": ".factory/scripts/findings",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/findings.py",
+      "target": ".factory/scripts/findings.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/findings_project.py",
+      "target": ".factory/scripts/findings_project.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/git_snapshot.py",
+      "target": ".factory/scripts/git_snapshot.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/maintenance",
+      "target": ".factory/scripts/maintenance",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/maintenance.py",
+      "target": ".factory/scripts/maintenance.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/metadata_upgrade.py",
+      "target": ".factory/scripts/metadata_upgrade.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/new-task",
+      "target": ".factory/scripts/new-task",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/new_task.py",
+      "target": ".factory/scripts/new_task.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/process-check",
+      "target": ".factory/scripts/process-check",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/process_check.py",
+      "target": ".factory/scripts/process_check.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/review",
+      "target": ".factory/scripts/review",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/review.py",
+      "target": ".factory/scripts/review.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/review_adapters.py",
+      "target": ".factory/scripts/review_adapters.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/review_protocol.py",
+      "target": ".factory/scripts/review_protocol.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/risk_check.py",
+      "target": ".factory/scripts/risk_check.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/run_checks.py",
+      "target": ".factory/scripts/run_checks.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/security",
+      "target": ".factory/scripts/security",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/task_store.py",
+      "target": ".factory/scripts/task_store.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/task_upgrade.py",
+      "target": ".factory/scripts/task_upgrade.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/template-update",
+      "target": ".factory/scripts/template-update",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/template_update.py",
+      "target": ".factory/scripts/template_update.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/scripts/test",
+      "target": ".factory/scripts/test",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/adopters.json",
+      "target": ".factory/templates/adopters.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/checks.json",
+      "target": ".factory/templates/checks.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/finding.json",
+      "target": ".factory/templates/finding.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/migration-report.md",
+      "target": ".factory/templates/migration-report.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/repository-review.md",
+      "target": ".factory/templates/repository-review.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/review-policy.json",
+      "target": ".factory/templates/review-policy.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/brief.md",
+      "target": ".factory/templates/task/brief.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/handoff.md",
+      "target": ".factory/templates/task/handoff.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/plan.md",
+      "target": ".factory/templates/task/plan.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/process.json",
+      "target": ".factory/templates/task/process.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/quality-review.md",
+      "target": ".factory/templates/task/quality-review.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/security.md",
+      "target": ".factory/templates/task/security.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/specification.md",
+      "target": ".factory/templates/task/specification.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/test-plan.md",
+      "target": ".factory/templates/task/test-plan.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/task/verification.md",
+      "target": ".factory/templates/task/verification.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/templates/template-map.json",
+      "target": ".factory/templates/template-map.json",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".factory/workflow.md",
+      "target": ".factory/workflow.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": ".github/copilot-instructions.md",
+      "target": ".github/copilot-instructions.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "AGENTS.md",
+      "target": "AGENTS.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "CLAUDE.md",
+      "target": "CLAUDE.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "GEMINI.md",
+      "target": "GEMINI.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "docs/AGENTS.md",
+      "target": "indigo_docs/AGENTS.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "docs/decisions/template.md",
+      "target": "docs/decisions/template.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "src/AGENTS.md",
+      "target": "indigo_libs/AGENTS.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/AGENTS.md",
+      "target": "indigo_test/AGENTS.md",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_concurrent_tasks.py",
+      "target": "indigo_test/factory/test_concurrent_tasks.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_context_export.py",
+      "target": "indigo_test/factory/test_context_export.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_decision_index.py",
+      "target": "indigo_test/factory/test_decision_index.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_findings.py",
+      "target": "indigo_test/factory/test_findings.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_findings_project.py",
+      "target": "indigo_test/factory/test_findings_project.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_independent_records.py",
+      "target": "indigo_test/factory/test_independent_records.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_new_task.py",
+      "target": "indigo_test/factory/test_new_task.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_process_check.py",
+      "target": "indigo_test/factory/test_process_check.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_review.py",
+      "target": "indigo_test/factory/test_review.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_task_archive.py",
+      "target": "indigo_test/factory/test_task_archive.py",
+      "action": "unchanged",
+      "accepted_local": false
+    },
+    {
+      "source": "tests/unit/test_template_update.py",
+      "target": "indigo_test/factory/test_template_update.py",
+      "action": "unchanged",
+      "accepted_local": false
+    }
+  ],
+  "unmapped_changes": []
+}

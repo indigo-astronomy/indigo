@@ -1,0 +1,27 @@
+node --test unit/test_imager_download.js
+✔ HTTP 404 preserves source and permits retry (2.89775ms)
+✔ HTTP 500 preserves source and permits retry (0.388542ms)
+✔ HTTP 206 preserves source and permits retry (0.337708ms)
+✔ HTTP 0 preserves source and permits retry (0.321875ms)
+✔ onerror stops without deleting (0.327875ms)
+✔ onabort stops without deleting (0.624625ms)
+✔ ontimeout stops without deleting (0.28825ms)
+✔ empty stops without deleting (0.276541ms)
+✔ null stops without deleting (0.297375ms)
+✔ partial stops without deleting (0.322208ms)
+✔ click stops without deleting (0.328333ms)
+✔ success captures filename, deletes after dispatch, and continues once (0.8085ms)
+✔ duplicate clicks and updates start only one request (0.268875ms)
+✔ agent Alert restores retry without a transfer (0.270333ms)
+✔ failOpen preserves source and restores retry (0.269083ms)
+✔ failSend preserves source and restores retry (0.249541ms)
+✔ successful batch advances to the next file (0.273375ms)
+✔ download button is reachable by its status selector (0.126375ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 63.629875

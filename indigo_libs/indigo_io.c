@@ -347,32 +347,58 @@ bool indigo_is_device_url(const char *name, const char *prefix) {
 int indigo_open_network_device(const char *url, int default_port, indigo_network_protocol *protocol_hint) {
 	int port = default_port;
 	char host_name[INDIGO_NAME_SIZE];
-
 	INDIGO_DEBUG(indigo_debug("Trying to open TCP or UDP..."));
-
-	if (!url || !protocol_hint) return -1;
-
+	if (!url || !protocol_hint) {
+		return -1;
+	}
 	char *found = strstr(url, "://");
-	if (found == NULL) return -1;
-
+	if (found == NULL || found == url) {
+		return -1;
+	}
+	for (const char *part = url; part < found; part++) {
+		bool letter = (*part >= 'a' && *part <= 'z') || (*part >= 'A' && *part <= 'Z');
+		if (!letter && (part == url || !((*part >= '0' && *part <= '9') || *part == '+' || *part == '-' || *part == '.'))) {
+			return -1;
+		}
+	}
 	if (!strncmp(url, "tcp://", 6)) {
 		*protocol_hint = INDIGO_PROTOCOL_TCP;
 	} else if (!strncmp(url, "udp://", 6)) {
 		*protocol_hint = INDIGO_PROTOCOL_UDP;
 	}
-
-	char *host = found + 3;
-	char *colon = strchr(host, ':');
-	if (colon) {
-		strncpy(host_name, host, colon - host);
-		host_name[colon - host] = 0;
-		port = atoi(colon + 1);
-	} else {
-		INDIGO_COPY_NAME(host_name, host);
+	const char *host = found + 3;
+	const char *colon = strchr(host, ':');
+	size_t host_length = colon ? (size_t)(colon - host) : strlen(host);
+	if (host_length == 0 || host_length >= sizeof(host_name)) {
+		return -1;
 	}
-
+	for (size_t i = 0; i < host_length; i++) {
+		if ((unsigned char)host[i] <= ' ' || host[i] == 127 || strchr("/?#@[]", host[i]) != NULL) {
+			return -1;
+		}
+	}
+	if (colon) {
+		const char *digit = colon + 1;
+		if (*digit == 0) {
+			return -1;
+		}
+		port = 0;
+		while (*digit) {
+			if (*digit < '0' || *digit > '9') {
+				return -1;
+			}
+			port = port * 10 + (*digit++ - '0');
+			if (port > 65535) {
+				return -1;
+			}
+		}
+	}
+	if (port < 1 || port > 65535) {
+		return -1;
+	}
+	memcpy(host_name, host, host_length);
+	host_name[host_length] = 0;
 	INDIGO_DEBUG(indigo_debug("Trying to open: '%s', port = %d, protocol = %d", host_name, port, *protocol_hint));
-
 	switch (*protocol_hint) {
 		case INDIGO_PROTOCOL_TCP: return indigo_open_tcp(host_name, port);
 		case INDIGO_PROTOCOL_UDP: return indigo_open_udp(host_name, port);

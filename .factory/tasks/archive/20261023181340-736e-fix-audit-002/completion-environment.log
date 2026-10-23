@@ -1,0 +1,78 @@
+2026-10-23T19:38:09Z
+/private/tmp/indigo-20261023181340-736e-fix-audit-002
+98e0629eab12c33e7022f574f4c679d2f262cea8
+A  .factory/completions/20261023180923-1f46-fix-synscan-autohome.json
+A  .factory/completions/20261023181210-45bf-fix-raw-selection.json
+A  .factory/completions/20261023181250-5c67-fix-raw-fits-bounds.json
+R  .factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-005.json -> .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-005.json
+R  .factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-006.json -> .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-006.json
+R  .factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-026.json -> .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-026.json
+A  .factory/findings/archive/FND-20261023180923-1f46-fix-synscan-autohome-001.json
+M  .factory/maintenance.json
+MM .factory/tasks/20261023181340-736e-fix-audit-002/handoff.md
+MM .factory/tasks/20261023181340-736e-fix-audit-002/state.json
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/autohome-reference.json
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/brief.md
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/compare-autohome.py
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/guider-timing.json
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/handoff.md
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/plan.md
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/process.json
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/quality-review.md
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/security.md
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/specification.md
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/state.json
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/test-plan.md
+A  .factory/tasks/archive/20261023180923-1f46-fix-synscan-autohome/verification.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/baseline-sanitize.log
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/baseline.log
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/brief.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/handoff.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/plan.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/process.json
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/quality-review.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/security.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/specification.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/state.json
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/test-plan.md
+A  .factory/tasks/archive/20261023181210-45bf-fix-raw-selection/verification.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/allocation-failure.c
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/baseline.log
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/brief.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/check.log
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/factory-test.log
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/fits-verification.log
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/handoff.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/plan.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/process.json
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/quality-review.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/security-check.log
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/security.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/specification.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/state.json
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/test-plan.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/verification.md
+A  .factory/tasks/archive/20261023181250-5c67-fix-raw-fits-bounds/verify-fits.sh
+M  MIGRATION_STATUS.md
+M  TEST_SUMMARY.md
+M  indigo.xcodeproj/project.pbxproj
+M  indigo_drivers/focuser_primaluce/README.md
+M  indigo_drivers/mount_synscan/README.md
+M  indigo_drivers/mount_synscan/REFACTOR.md
+M  indigo_drivers/mount_synscan/indigo_mount_synscan.c
+M  indigo_drivers/mount_synscan/indigo_mount_synscan.driver
+M  indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.c
+M  indigo_libs/indigo/indigo_fits.h
+M  indigo_libs/indigo/indigo_raw_utils.h
+M  indigo_libs/indigo_fits.c
+M  indigo_libs/indigo_raw_utils.c
+M  indigo_test/Makefile
+M  indigo_test/integration/test_mount_synscan_simulator.c
+M  indigo_test/unit/test_raw_image.c
+A  indigo_test/unit/test_raw_to_fits.c
+Darwin arm64
+Apple clang version 21.0.0 (clang-2100.3.34.2)
+Target: arm64-apple-darwin27.0.0
+Thread model: posix
+InstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+Python 3.9.6

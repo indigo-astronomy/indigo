@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "task": "20261023195506-cdf8-fix-findings-xcode",
+  "scope": [
+    ".factory/scripts/findings.py",
+    ".factory/scripts/findings_project.py",
+    ".factory/scripts/README.md",
+    ".factory/routines/findings.md",
+    "indigo_test/factory/test_findings_project.py",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*20261023195506-cdf8-fix-findings-xcode/*",
+    ".factory/completions/20261023195506-cdf8-fix-findings-xcode.json",
+    ".factory/findings/archive/FND-20261023195506-cdf8-fix-findings-xcode-001.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023195506-cdf8-fix-findings-xcode.json": [
+      "100644",
+      "blob",
+      "17f63199c873f867c20a2fe2f02a547672e91aac"
+    ],
+    ".factory/findings/archive/FND-20261023195506-cdf8-fix-findings-xcode-001.json": [
+      "100644",
+      "blob",
+      "ba4cf149cf5be52b44aa10cea2a0d05d35c0e04f"
+    ],
+    ".factory/routines/findings.md": [
+      "100644",
+      "blob",
+      "1298dce64e2c37a2a70bbf3e5f0159b779bbd2c9"
+    ],
+    ".factory/scripts/README.md": [
+      "100644",
+      "blob",
+      "6360168cb20479a1ac2ac8a279dd41e1613c3937"
+    ],
+    ".factory/scripts/findings.py": [
+      "100755",
+      "blob",
+      "bde63af507a075f3a89fcc0f10165131a2abd97c"
+    ],
+    ".factory/scripts/findings_project.py": [
+      "100644",
+      "blob",
+      "3d42d988c1c1a33e6722d43ec26b7cc3889b09e8"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "8612e6c6ad816b57cd5953545cbded08f17ad63f"
+    ],
+    "indigo_test/factory/test_findings_project.py": [
+      "100644",
+      "blob",
+      "9e9268e57865c22b70fead7117e5e4d40400151e"
+    ]
+  }
+}
