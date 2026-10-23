@@ -1004,3 +1004,38 @@ and `rotator_calibration` check the messages. All three fail without them.
 
 - Simulated tests: 67 run, 67 passed: `2026-10-23 23:54 3.0.0.37 linux x64 simulator 67/67 OK`.
 - Hardware: none for this change; it adds messages only.
+
+## Relative rotator move (3.0.0.38, 2026-10-24, task 20261023211312-b017-primaluce-rotator-relative-move)
+
+The ARCO has no relative command. Neither the INDI command set (`MOVE_ABS` in DEG/ARCSEC/STEP,
+`SYNC_POS`, `MOT_STOP`) nor the session logs show one. As in the ZWO rotator, ROTATOR_RELATIVE_MOVE
+is now shown and computed from the current angle:
+
+- The rotator moves to the angle it has plus the offset, using the existing `MOVE_ABS`.
+  ROTATOR_POSITION takes the target, publishes the progress, and ends the move with the usual
+  reasons, such as the needs-calibration message.
+- `rotator_relative_move_ended()` ends ROTATOR_RELATIVE_MOVE with the same state, also after an
+  abort.
+- A target outside the ROTATOR_POSITION range (-180..360) is refused without a command. A refused
+  move gives the controller's reason.
+- A rotator that stands at its last target within `ROTATOR_POSITION_TOLERANCE` moves from that
+  target. Without this, the SESTO SENSO 3 rounding (29.99994 for 30) would add up over several
+  relative moves. The SESTO SENSO 3 case caught it: -20.00006 instead of -20.
+- Both moves share the BUSY guard: a relative move is refused while either one is BUSY.
+
+Regression tests: `rotator_relative_move` and `sestosenso3_rotator_relative_move`:
+- a move of +30 and then -50 (to -20);
+- a refused -170, which would end at -190;
+- an abort during a +170 move, which ends both properties ALERT.
+
+## Final test summary (3.0.0.38)
+
+- Simulated tests: 69 run, 69 passed: `2026-10-24 00:18 3.0.0.38 linux x64 simulator 69/69 OK`.
+- Hardware (requester's SESTO SENSO 3 with ARCO, moves driven with `indigo_prop_tool` while the
+  requester watched):
+  - +10 from 0 went to 10 (read back 9.99492);
+  - -20 went to -10, from the reached target;
+  - -175 (target -185) was refused without a command;
+  - +90 from -10 was aborted at -4.75, and both properties ended ALERT after `MOT_STOP`.
+  The ARCO turns at about 2°/s. A fresh connect found the ARCO still enabled and calibrated,
+  confirming the previous task on the unit. This was not a `--hw` run, so there is no hardware record.

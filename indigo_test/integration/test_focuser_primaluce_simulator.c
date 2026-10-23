@@ -1719,6 +1719,37 @@ cleanup:
 	driver_stop();
 }
 
+// A relative move goes to the current angle plus the offset, both ways; a target outside the ROTATOR_POSITION
+// range is refused without a command, and an abort ends both properties ALERT.
+static void rotator_relative_move(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(!find_cached_property(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME)->hidden);
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOVE_ABS\":{\"DEG\":30}", 1));
+	SERIAL_CHECK_TRUE(rotator_position_is(30));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -50, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOVE_ABS\":{\"DEG\":-20}", 1));
+	SERIAL_CHECK_TRUE(rotator_position_is(-20));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_OK_STATE));
+	// -20 - 170 is outside -180..360: refused, nothing is sent.
+	int moves = requests("\"MOVE_ABS\"");
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -170, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("outside the rotator range"));
+	SERIAL_CHECK_EQ_INT(moves, requests("\"MOVE_ABS\""));
+	SERIAL_CHECK_TRUE(rotator_position_is(-20));
+	// An abort during a relative move ends both properties ALERT.
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 170, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(rotator_in_motion(-20, 150));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void rotator_abort(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_rotator());
@@ -1896,6 +1927,8 @@ int main(void) {
 		{ "rotator_lifecycle", rotator_lifecycle, "normal" },
 		{ "shared_connection", shared_connection, "normal" },
 		{ "rotator_move", rotator_move, "normal" },
+		{ "rotator_relative_move", rotator_relative_move, "normal" },
+		{ "sestosenso3_rotator_relative_move", rotator_relative_move, "sestosenso3" },
 		// A SESTO SENSO 3 acknowledges the ARCO move under DEG instead of STEP.
 		{ "sestosenso3_rotator_move", rotator_move, "sestosenso3" },
 		// A SESTO SENSO 3 acknowledges the ARCO sync under DEG, behind debug text.

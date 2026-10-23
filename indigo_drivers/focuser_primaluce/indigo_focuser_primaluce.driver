@@ -22,7 +22,7 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 37;
+	version = 38;
 	serial {
 		pattern {
 			product = "CP2102N";
@@ -1975,6 +1975,14 @@ driver primaluce {
 				}
 			}
 
+			// A relative move ends with the absolute move it started.
+			static void rotator_relative_move_ended(indigo_device *device) {
+				if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE && ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+					ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
+					indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+				}
+			}
+
 			static void rotator_movement_finalizer(indigo_device *device) {
 				if (rotator_read_angle(device)) {
 					char *state = primalucelib_reply_rotator_motor_state(LINK);
@@ -2006,6 +2014,7 @@ driver primaluce {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 				}
+				rotator_relative_move_ended(device);
 			}
 		}
 		// on_timer { }
@@ -2110,9 +2119,49 @@ driver primaluce {
 			// on_attach { }
 			// on_detach { }
 		}
+		inherited ROTATOR_RELATIVE_MOVE {
+			hidden = false;
+			preserve_values = true;
+			reject_change {
+				condition = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE;
+				message = "The rotator is moving";
+			}
+			on_change {
+				// The ARCO has no relative command, so the rotator goes to the angle it has plus the offset; the
+				// absolute move publishes the progress and ends this one (rotator_relative_move_ended()).
+				char reason[INDIGO_VALUE_SIZE] = "";
+				char *state = NULL;
+				if (!rotator_read_angle(device)) {
+					snprintf(reason, sizeof(reason), "Failed to read the rotator angle");
+				} else {
+					// A rotator that stands at its last target within ROTATOR_POSITION_TOLERANCE moves from that target, so the
+					// rounding of a SESTO SENSO 3 (15 reads back as 14.99994) does not add up over several relative moves.
+					double origin = fabs(ROTATOR_POSITION_ITEM->number.target - ROTATOR_POSITION_ITEM->number.value) <= ROTATOR_POSITION_TOLERANCE ? ROTATOR_POSITION_ITEM->number.target : ROTATOR_POSITION_ITEM->number.value;
+					double target = origin + ROTATOR_RELATIVE_MOVE_ITEM->number.target;
+					if (target < ROTATOR_POSITION_ITEM->number.min || target > ROTATOR_POSITION_ITEM->number.max) {
+						snprintf(reason, sizeof(reason), "The target %g is outside the rotator range", target);
+					} else if (!primalucelib_rotator_move_to(LINK, target, &state) || !primalucelib_is_done(state)) {
+						snprintf(reason, sizeof(reason), "Move refused: %s", *primalucelib_last_error(LINK) ? primalucelib_last_error(LINK) : (state != NULL && *state ? state : "no acknowledgement"));
+					} else {
+						ROTATOR_POSITION_ITEM->number.target = target;
+						ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+						indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+						indigo_execute_handler(device, rotator_movement_finalizer);
+					}
+				}
+				if (*reason) {
+					ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, "%s", reason);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
 		inherited ROTATOR_ABORT_MOTION {
 			on_change {
 				indigo_cancel_pending_handler(device, rotator_position_handler);
+				indigo_cancel_pending_handler(device, rotator_relative_move_handler);
 				if (X_CALIBRATE_R_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_cancel_pending_handler(device, rotator_calibration_poll);
 					primalucelib_rotator_stop_calibration(LINK);
@@ -2121,6 +2170,7 @@ driver primaluce {
 				if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 					INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				}
+				rotator_relative_move_ended(device);
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 				if (!primalucelib_rotator_stop(LINK)) {
 					ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
