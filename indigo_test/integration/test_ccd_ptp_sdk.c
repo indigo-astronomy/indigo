@@ -75,6 +75,7 @@ static int fuji_action_profile;
 static atomic_int fail_once_operation;
 static int partial_profile, destination_profile, destination_failure;
 static bool combined_transfer_profile;
+static bool canon_object_added_lfn;
 static uint16_t canon_transfer_event, canon_transfer_format = 0xB108;
 static const char *canon_transfer_filename = "IMG_778.CR3";
 static int canon_transfer_fault;
@@ -155,6 +156,25 @@ static uint8_t *canon_transfer_record(uint8_t *record, uint16_t code) {
 		}
 	}
 	return record + size;
+}
+
+// Issue #778: ObjectAddedEx64LFN (0xC1B6) reports a 64-bit size at +0x1C and a counted UTF-16 name at +0x30.
+static uint8_t *canon_object_added_lfn_record(uint8_t *record) {
+	memset(record, 0, 75);
+	uint8_t *p = record;
+	word32(&p, 75);
+	word32(&p, 0xC1B6);
+	word32(&p, 1);
+	p = record + 0x1C;
+	word32(&p, (uint32_t)jpeg_size);
+	word32(&p, (uint32_t)((uint64_t)jpeg_size >> 32));
+	const char *name = "IMG_00001.CR3"; // 13 characters fill the record exactly
+	record[0x30] = (uint8_t)strlen(name);
+	uint8_t *n = record + 0x31;
+	for (const char *s = name; *s; s++) {
+		word16(&n, (uint16_t)(uint8_t)*s);
+	}
+	return record + 75;
 }
 
 static unsigned property_count(fake_camera *c) {
@@ -405,6 +425,10 @@ static void prepare(fake_camera *c) {
 			}
 		}
 		if (c->capturing && !c->bulb && !c->event_sent && !atomic_load(&c->hold_image)) {
+			if (canon_object_added_lfn) {
+				p = canon_object_added_lfn_record(p);
+				c->event_sent = true;
+			} else {
 			uint8_t *record = p;
 			memset(record, 0, 64);
 			word32(&p, 64);
@@ -432,6 +456,7 @@ static void prepare(fake_camera *c) {
 				p = record;
 			} else {
 				c->event_sent = true;
+			}
 			}
 		}
 		word32(&p, 8);
@@ -1097,6 +1122,7 @@ static void end_profile(void) {
 	partial_profile = 0;
 	destination_profile = destination_failure = 0;
 	combined_transfer_profile = false;
+	canon_object_added_lfn = false;
 	canon_transfer_event = 0;
 	canon_transfer_format = 0xB108;
 	canon_transfer_filename = "IMG_778.CR3";
@@ -2542,6 +2568,24 @@ cleanup:
 	end_profile();
 }
 
+static void canon_object_added_lfn(void) {
+	// Issue #778: card captures announced by ObjectAddedEx64LFN must be downloaded.
+	canon_object_added_lfn = true;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	((canon_private_data *)((ptp_private_data *)logical[0]->private_data)->vendor_private_data)->use_ram = false;
+	for (int i = 0; i < 2; i++) {
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == i + 1);
+		PTP_CHECK(atomic_load(&bad_blob) == 0);
+		PTP_CHECK(!strcasecmp(canon_transfer_blob_format, ".cr3"));
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_GetObject) == i + 1);
+		PTP_CHECK(atomic_load(command_count + ptp_operation_canon_GetPartialObject) == 0);
+	}
+cleanup:
+	end_profile();
+}
+
 static void canon_transfer_failure_recovery(uint16_t event, uint16_t operation) {
 	canon_transfer_event = event;
 	PTP_CHECK(begin_profile(0x04a9, 0x3218));
@@ -2763,6 +2807,7 @@ int main(void) {
 		{ "canon_transfer_empty_filename", canon_transfer_empty_filename },
 		{ "canon_transfer_large_blocks", canon_transfer_large_blocks },
 		{ "canon_transfer_combined_events", canon_transfer_combined_events },
+		{ "canon_object_added_lfn", canon_object_added_lfn },
 		{ "canon_transfer_errors", canon_transfer_errors },
 		{ "canon_transfer_malformed", canon_transfer_malformed },
 		{ "canon_combined_transfer_handshake", canon_combined_transfer_handshake },
