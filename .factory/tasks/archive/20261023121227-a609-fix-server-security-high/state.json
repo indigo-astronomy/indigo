@@ -4,6 +4,6 @@
   "phase": "complete",
   "status": "complete",
   "assigned_role": "coordinator",
-  "next_action": "Commit archived evidence and verify immutable candidate; integration/publication await owner authorization.",
+  "next_action": "Owner-authorized delivery: verify final candidate, fast-forward master, push origin/master and delete completed task branch.",
   "blocker": null
 }

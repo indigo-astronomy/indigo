@@ -29,3 +29,6 @@ New medium FND-20261023121227-a609-fix-server-security-high-002 records the pre-
 ## Limits and verdict
 
 Passing scope is the 13 selected high findings plus the coupled literal-message fix. ASan/UBSan instrumentation covers repaired core units/harnesses, not every dependency. No Linux/Windows/32-bit execution, TSan, exhaustive fuzzing, hardware, deployed RPI wrapper, broad ConformU or whole-process leak certification. Broader unit-suite pre-existing /dev/null diagnostic mismatch remains explicitly failing in verification.md; it is not an affected acceptance gate. No blocking finding remains in this repaired scope. Accepted risks: none. Integration/publication remain pending separate owner authorization.
+
+
+Delivery addendum: the owner-authored c35c056edd5d6cf3ff7fa387199cd49f8fcf16e5 changes only Xcode navigation references for five obsolete findings. Parsed object comparison confirms no build-phase/settings, source, test, dependency, transport or authorization change. Coordinator independently reviewed this low-risk delta and refreshed the project identity; previous independent substantive security review remains bound to unchanged repaired code. Scoped pass retained, with all prior limitations unchanged. Merge/push/branch cleanup are now explicitly owner-authorized.

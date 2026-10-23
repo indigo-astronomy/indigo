@@ -64,3 +64,10 @@ Final pre-archive `./.factory/scripts/check` and `./.factory/scripts/security`: 
 
 
 Archival retained the completed task and emitted its durable completion record. Post-move findings validation passes (105 active,38 archived); maintenance derives2/5 uncovered tasks and no due full audit. Archiver changed exactly two live Markdown links (project snapshot and Alpaca REFACTOR) to the archived evidence. Coordinator reviewed those link-only changes; tested behavior is unchanged. `make -C indigo_test test-clean` passed after the final pre-commit test runs. Final immutable commit SHA and post-commit checks are reported externally without a bookkeeping-only follow-up commit.
+
+
+## Delivery candidate reconciliation
+
+Owner explicitly authorized merging to master, pushing and deleting the completed task branch in the follow-up conversation. The owner added commit c35c056edd5d6cf3ff7fa387199cd49f8fcf16e5 after the previously verified e044bf7d0 candidate. Only indigo.xcodeproj/project.pbxproj changed. A parsed JSON object comparison using plutil showed exactly five removed PBXFileReference objects for obsolete FND-000001 through FND-000005 entries and removal of those five IDs from the active findings PBXGroup children. All remaining objects, build settings/phases and task test registrations are semantically unchanged; most textual churn is object ordering. The working tree was clean at delivery start. No C/header/test source changed, so previous native/sanitizer/175-test evidence still binds those exact identities. Reviewed-content and SHA256 identities now include the owner's cleaned project file. This evidence refresh is a justified additional commit for a new owner-authored candidate delta, not a rewrite of prior history or a repeated passing-check-only commit.
+
+Origin fetch confirmed master/origin/master remain 989ec8db122f65ea3813af9db13d510d18bee90e. Final candidate delivery checks are recorded externally after commit, with no source changes planned.
