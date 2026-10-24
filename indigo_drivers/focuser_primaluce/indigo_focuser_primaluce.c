@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000022
+#define DRIVER_VERSION       0x03000028
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -383,6 +383,8 @@ typedef struct {
 	char preset_names[PRIMALUCE_STORED_POSITION_COUNT][INDIGO_VALUE_SIZE];
 	int rotator_calibration_polls;
 	bool is_sestosenso_3;
+	// An ESATTO has no calibration command (protocol v4.0: CAL_FOCUSER is SESTOSENSO2 only) and homes on a hall sensor.
+	bool is_esatto;
 	// The controller flags a motor for calibration (CALRESTART); its moves may be acknowledged and not run.
 	bool focuser_needs_calibration, rotator_needs_calibration;
 	// The controller reports a travel range (CAL_MAXPOS above CAL_MINPOS).
@@ -452,6 +454,7 @@ static bool primaluce_open(indigo_device *device, const char **error_message) {
 			primalucelib_model model = primalucelib_model_from_name(text);
 			if (primalucelib_model_is_focuser(model)) {
 				PRIVATE_DATA->is_sestosenso_3 = model == PRIMALUCELIB_MODEL_SESTOSENSO3;
+				PRIVATE_DATA->is_esatto = model == PRIMALUCELIB_MODEL_ESATTO;
 				if ((text = primalucelib_get_firmware_version(LINK))) {
 					double version = atof(text);
 					if (!PRIVATE_DATA->is_sestosenso_3 && version < PRIMALUCE_MINIMUM_FIRMWARE_VERSION) {
@@ -589,6 +592,10 @@ static void focuser_calibration_start_finalizer(indigo_device *device) {
 	const char **steps = PRIVATE_DATA->is_sestosenso_3 ? sestosenso_3_steps : sestosenso_2_steps;
 	const char *step = steps[PRIVATE_DATA->calibration_step++];
 	bool result = !strcmp(step, PRIMALUCE_KEY_CALIBRATION_DIRECTION) ? primalucelib_focuser_set_calibration_direction(LINK, PRIVATE_DATA->calibration_direction) : primalucelib_focuser_calibration_step(LINK, step);
+	if (result && PRIVATE_DATA->calibration_step == 1) {
+		// StoreAsMinPos takes the position the draw tube has, so the client is reminded that it has to be fully in.
+		indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "The current position is stored as the innermost one");
+	}
 	if (!result) {
 		focuser_calibration_failed(device, NULL);
 	} else if (steps[PRIVATE_DATA->calibration_step] != NULL) {
@@ -649,7 +656,7 @@ static void focuser_calibration_end_finalizer(indigo_device *device) {
 	}
 	PRIVATE_DATA->calibration_pending = PRIVATE_DATA->focuser_needs_calibration = false;
 	X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, "Calibration complete, range %.0f to %.0f", min_position, max_position);
 }
 
 // Reads the focuser position and whether the motor runs. A reply without the position
@@ -717,7 +724,15 @@ static void focuser_movement_finalizer(indigo_device *device) {
 			// A SESTO SENSO 3 with its motor bridges off (STATUS.HIZ after a motor fault) or outside its
 			// calibrated range acknowledges GOTO and stays where it is.
 			if (state == INDIGO_ALERT_STATE && !PRIVATE_DATA->abort_requested) {
-				message = PRIVATE_DATA->focuser_needs_calibration ? "The focuser needs calibration" : "The focuser stopped before reaching the target";
+				if (PRIVATE_DATA->focuser_needs_calibration) {
+					message = "The focuser needs calibration";
+				} else if (PRIVATE_DATA->is_esatto && FOCUSER_POSITION_ITEM->number.value == 0 && FOCUSER_POSITION_ITEM->number.target > 0) {
+					// An ESATTO2 (SWAPP 3.05.28) moving inward close to its home sensor stops and resets its
+					// coordinate to 0, reporting NOPCMD.
+					message = "The focuser reached its home sensor and reset its position to 0";
+				} else {
+					message = "The focuser stopped before reaching the target";
+				}
 			}
 			focuser_movement_ended(device, state);
 		}
@@ -819,7 +834,15 @@ static void rotator_calibration_poll(indigo_device *device) {
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 		PRIVATE_DATA->rotator_needs_calibration = false;
-		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(X_CALIBRATE_R_PROPERTY, INDIGO_OK_STATE, "ARCO calibration complete");
+	}
+}
+
+// A relative move ends with the absolute move it started.
+static void rotator_relative_move_ended(indigo_device *device) {
+	if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE && ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+		ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
+		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
 	}
 }
 
@@ -854,6 +877,7 @@ static void rotator_movement_finalizer(indigo_device *device) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	}
+	rotator_relative_move_ended(device);
 }
 
 //- rotator.code
@@ -925,6 +949,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					primalucelib_model model = primalucelib_model_from_name(text);
 					if (primalucelib_model_is_sestosenso(model)) {
 						X_STATE_PROPERTY->count = 2;
+						X_CALIBRATE_F_PROPERTY->hidden = false;
 						X_CONFIG_PROPERTY->hidden = false;
 						X_RUNPRESET_PROPERTY->hidden = false;
 						X_RUNPRESET_L_PROPERTY->hidden = false;
@@ -936,6 +961,7 @@ static void focuser_connection_handler(indigo_device *device) {
 						X_HOLD_CURR_PROPERTY->hidden = false;
 					} else if (model == PRIMALUCELIB_MODEL_ESATTO) {
 						X_STATE_PROPERTY->count = 3;
+						X_CALIBRATE_F_PROPERTY->hidden = true;
 						X_CONFIG_PROPERTY->hidden = true;
 						X_RUNPRESET_PROPERTY->hidden = true;
 						X_RUNPRESET_L_PROPERTY->hidden = true;
@@ -977,7 +1003,10 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 				}
 				PRIVATE_DATA->focuser_needs_calibration = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_RESTART) != 0;
-				if (PRIVATE_DATA->focuser_needs_calibration) {
+				if (PRIVATE_DATA->focuser_needs_calibration && PRIVATE_DATA->is_esatto) {
+					// The calibration property is hidden on an ESATTO, so the message does not point to it.
+					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration, which an ESATTO cannot run from the driver", INFO_DEVICE_MODEL_ITEM->text.value);
+				} else if (PRIVATE_DATA->focuser_needs_calibration) {
 					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
 				PRIVATE_DATA->has_abs_pos = primalucelib_reply_has_focuser_position(LINK, true);
@@ -1775,7 +1804,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		}
 		indigo_init_switch_item(X_HOLD_CURR_OFF_ITEM, X_HOLD_CURR_OFF_ITEM_NAME, "Off", true);
 		indigo_init_switch_item(X_HOLD_CURR_ON_ITEM, X_HOLD_CURR_ON_ITEM_NAME, "On", false);
-		X_CALIBRATE_F_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_F_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Calibrate focuser", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		X_CALIBRATE_F_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_F_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Calibrate focuser (fully in first)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_CALIBRATE_F_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -1972,8 +2001,11 @@ static void rotator_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ rotator.on_connect
 			char *text;
-			if (primalucelib_rotator_enable(LINK, true)) {
-				if (primalucelib_get_state(LINK)) {
+			// Switching the ARCO off and on again loses its calibration (SESTO SENSO 3 firmware 1.0.9), so the port
+			// is switched on only when it is off, and it stays on after a disconnect, as INDI keeps it.
+			bool enabled = primalucelib_get_state(LINK) && primalucelib_reply_has(LINK, PRIMALUCE_REPLY_ROTATOR_ENABLED) && primalucelib_reply_number(LINK, PRIMALUCE_REPLY_ROTATOR_ENABLED) != 0;
+			if (enabled || primalucelib_rotator_enable(LINK, true)) {
+				if (enabled || primalucelib_get_state(LINK)) {
 					if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ROTATOR_ERROR)) && *text) {
 						indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 					}
@@ -2008,14 +2040,12 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
-		//+ rotator.on_disconnect
-		primalucelib_rotator_enable(LINK, false);
-		//- rotator.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			X_CALIBRATE_R_PROPERTY,
 			ROTATOR_ON_POSITION_SET_PROPERTY,
 			ROTATOR_POSITION_PROPERTY,
+			ROTATOR_RELATIVE_MOVE_PROPERTY,
 			ROTATOR_ABORT_MOTION_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
@@ -2092,10 +2122,44 @@ static void rotator_position_handler(indigo_device *device) {
 	//- rotator.ROTATOR_POSITION.on_change
 }
 
+static void rotator_relative_move_handler(indigo_device *device) {
+	//+ rotator.ROTATOR_RELATIVE_MOVE.on_change
+	// The relative MOVE of protocol v4.0 is not in the SESTO SENSO 3 document, so the rotator goes to the
+	// angle it has plus the offset on every model; the absolute move publishes the progress and ends
+	// this one (rotator_relative_move_ended()).
+	char reason[INDIGO_VALUE_SIZE] = "";
+	char *state = NULL;
+	if (!rotator_read_angle(device)) {
+		snprintf(reason, sizeof(reason), "Failed to read the rotator angle");
+	} else {
+		// A rotator that stands at its last target within ROTATOR_POSITION_TOLERANCE moves from that target, so the
+		// rounding of a SESTO SENSO 3 (15 reads back as 14.99994) does not add up over several relative moves.
+		double origin = fabs(ROTATOR_POSITION_ITEM->number.target - ROTATOR_POSITION_ITEM->number.value) <= ROTATOR_POSITION_TOLERANCE ? ROTATOR_POSITION_ITEM->number.target : ROTATOR_POSITION_ITEM->number.value;
+		double target = origin + ROTATOR_RELATIVE_MOVE_ITEM->number.target;
+		if (target < ROTATOR_POSITION_ITEM->number.min || target > ROTATOR_POSITION_ITEM->number.max) {
+			snprintf(reason, sizeof(reason), "The target %g is outside the rotator range", target);
+		} else if (!primalucelib_rotator_move_to(LINK, target, &state) || !primalucelib_is_done(state)) {
+			snprintf(reason, sizeof(reason), "Move refused: %s", *primalucelib_last_error(LINK) ? primalucelib_last_error(LINK) : (state != NULL && *state ? state : "no acknowledgement"));
+		} else {
+			ROTATOR_POSITION_ITEM->number.target = target;
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+			indigo_execute_handler(device, rotator_movement_finalizer);
+		}
+	}
+	if (*reason) {
+		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, "%s", reason);
+	}
+	//- rotator.ROTATOR_RELATIVE_MOVE.on_change
+}
+
 static void rotator_abort_motion_handler(indigo_device *device) {
 	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_ABORT_MOTION.on_change
 	indigo_cancel_pending_handler(device, rotator_position_handler);
+	indigo_cancel_pending_handler(device, rotator_relative_move_handler);
 	if (X_CALIBRATE_R_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_pending_handler(device, rotator_calibration_poll);
 		primalucelib_rotator_stop_calibration(LINK);
@@ -2104,6 +2168,7 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
+	rotator_relative_move_ended(device);
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 	if (!primalucelib_rotator_stop(LINK)) {
 		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2125,6 +2190,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		indigo_init_switch_item(X_CALIBRATE_R_START_ITEM, X_CALIBRATE_R_START_ITEM_NAME, "Start", false);
 		ROTATOR_ON_POSITION_SET_PROPERTY->hidden = false;
 		ROTATOR_POSITION_PROPERTY->hidden = false;
+		ROTATOR_RELATIVE_MOVE_PROPERTY->hidden = false;
 		ROTATOR_ABORT_MOTION_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return rotator_enumerate_properties(device, NULL, NULL);
@@ -2148,6 +2214,10 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ROTATOR_RELATIVE_MOVE_PROPERTY, property)) {
+		INDIGO_REJECT_CHANGE_IF(ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_RELATIVE_MOVE_PROPERTY, "The rotator is moving");
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(ROTATOR_RELATIVE_MOVE_PROPERTY, rotator_relative_move_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
@@ -2191,6 +2261,8 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "CP2102N");
+			patterns[0].vendor_id = 0x10c4;
+			patterns[0].product_id = 0xea60;
 			INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
 			private_data = (primaluce_private_data *)indigo_safe_malloc(sizeof(primaluce_private_data));
 			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);

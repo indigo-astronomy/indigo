@@ -1,0 +1,100 @@
+{
+  "version": 2,
+  "task": "20261023235957-e03c-primaluce-usb-pattern",
+  "scope": [
+    "indigo_drivers/focuser_primaluce/*",
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md",
+    "indigo_test/integration/test_focuser_primaluce_simulator.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_primaluce"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "input-parsing": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261023235957-e03c-primaluce-usb-pattern.json": [
+      "100644",
+      "blob",
+      "83964c017a4a3ce197e5539d58857ed33c20a995"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "19159d5bf5c05a6f8d57864bdb0f020e4533028a"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "d167f2d0ac00c957f11b6ac831ce7d5834664fd6"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "c4f121bf7c7470d809e77cda0f4323ba214dedc3"
+    ],
+    "indigo_drivers/focuser_primaluce/README.md": [
+      "100644",
+      "blob",
+      "f2af5f794f1737c7a6910b1ffce62fad8ca33c1f"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "100644",
+      "blob",
+      "fba6a6673f2454cd6a214eef2a30c7275b90066d"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": [
+      "100644",
+      "blob",
+      "396e0e8d2c01c14c5419a460d2b92e0c427a462f"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": [
+      "100644",
+      "blob",
+      "1764e50c18416a777ca3333f7a13556e7cdacea9"
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "cdc8bc51b93ba7922f9c6503968ec8bdbb4756cd"
+    ],
+    "indigo_test/integration/test_focuser_primaluce_simulator.c": [
+      "100644",
+      "blob",
+      "6538fa71dd93619319072c070c4a01f34822f833"
+    ]
+  }
+}

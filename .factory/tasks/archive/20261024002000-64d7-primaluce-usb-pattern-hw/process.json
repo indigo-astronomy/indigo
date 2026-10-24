@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "task": "20261024002000-64d7-primaluce-usb-pattern-hw",
+  "scope": [
+    "indigo_drivers/focuser_primaluce/REFACTOR.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024002000-64d7-primaluce-usb-pattern-hw.json": [
+      "100644",
+      "blob",
+      "63608f90efe7ba5741cbbc2b2aa9632e49500ec1"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "3b3ffe748ae6be62e0d89ef53561f81f663399f1"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "100644",
+      "blob",
+      "257a74015a923d7d4bd817f2a6876c9d8b2efbc5"
+    ]
+  }
+}

@@ -21,6 +21,7 @@
 #include <indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h>
 
 #include "serial_simulator_test_common.h"
+#include <indigo/indigo_usbserial_utils.h>
 #include <errno.h>
 #include <sys/wait.h>
 #include <pthread.h>
@@ -240,6 +241,16 @@ static const char *device_name(void) {
 // client does not set, so the messages of this driver are recorded here.
 static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char messages[4096];
+
+// The focuser device as the driver attached it, for the USB match pattern it registers.
+static indigo_device *attached_focuser;
+
+static indigo_result observe_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, primaluce_focuser.device_name)) {
+		attached_focuser = device;
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
 
 static indigo_result record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	// the shared harness counts BUSY refusal messages
@@ -483,6 +494,28 @@ static void driver_stop(void) {
 
 // ----------------------------------------------------------------- identity and lifecycle
 
+// The focuser prefers a port of a CP2102N bridge with the Silicon Labs VID/PID (10c4:ea60), as the SESTO SENSO 3 and
+// the ESATTO2 report; a CP2102N name behind another VID/PID, or another bridge with the same VID/PID, does not match.
+static void usb_match_pattern(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(attached_focuser != NULL);
+	SERIAL_CHECK_EQ_INT(1, attached_focuser->match_patterns_count);
+	indigo_serial_info ports[3] = { { 0 } };
+	ports[0].vendor_id = 0x0403;
+	ports[0].product_id = 0x6001;
+	strcpy(ports[0].product_string, "CP2102N USB to UART Bridge Controller");
+	ports[1].vendor_id = 0x10c4;
+	ports[1].product_id = 0xea60;
+	strcpy(ports[1].product_string, "CP2104 USB to UART Bridge Controller");
+	ports[2].vendor_id = 0x10c4;
+	ports[2].product_id = 0xea60;
+	strcpy(ports[2].product_string, "CP2102N USB to UART Bridge Controller");
+	SERIAL_CHECK_TRUE(indigo_usbserial_match(ports, 2, attached_focuser->match_patterns, attached_focuser->match_patterns_count) == NULL);
+	SERIAL_CHECK_TRUE(indigo_usbserial_match(ports, 3, attached_focuser->match_patterns, attached_focuser->match_patterns_count) == &ports[2]);
+cleanup:
+	driver_stop();
+}
+
 static void metadata(void) {
 	assert_simulator_driver_info(&primaluce_focuser);
 	SERIAL_CHECK_TRUE(driver_start());
@@ -583,10 +616,39 @@ static void esatto_profile(void) {
 	// An Esatto reports no stored positions.
 	SERIAL_CHECK_TRUE(!has_defined_property(X_PRESETS_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property(X_PRESET_GOTO_PROPERTY_NAME));
-	// The focuser calibration stays available on an Esatto.
-	SERIAL_CHECK_TRUE(has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
+	// An Esatto has no calibration command (protocol v4.0: CAL_FOCUSER is SESTOSENSO2 only; an ESATTO2 answers
+	// "Error: invalid command"), so the focuser calibration is not offered.
+	SERIAL_CHECK_TRUE(!has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 18200, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(position_is(18200));
+	SERIAL_CHECK_EQ_INT(0, requests("\"CAL_FOCUSER\""));
+cleanup:
+	driver_stop();
+}
+
+// An Esatto moving inward close to its home sensor stops and resets its coordinate to 0; the move ends ALERT
+// with that reason, and the next move runs from 0.
+static void esatto_home_reset(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 17500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(17500));
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(motion_ended(INDIGO_ALERT_STATE, 400));
+	SERIAL_CHECK_TRUE(message_seen("The focuser reached its home sensor and reset its position to 0"));
+	SERIAL_CHECK_TRUE(number_is(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 0, 0));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(500));
+cleanup:
+	driver_stop();
+}
+
+// An Esatto flagged for calibration names the reason without pointing to a calibration it cannot run.
+static void esatto_needs_calibration(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(message_seen("CalRestart_NoSensorActiveInMinPos"));
+	SERIAL_CHECK_TRUE(message_seen("needs calibration, which an ESATTO cannot run from the driver"));
+	SERIAL_CHECK_TRUE(!has_defined_property(X_CALIBRATE_F_PROPERTY_NAME));
 cleanup:
 	driver_stop();
 }
@@ -650,6 +712,9 @@ static void sestosenso3_calibration(void) {
 	double maximum = number_max(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	printf("Calibrated to %g, stopped at %g\n", maximum, stopped);
 	SERIAL_CHECK_TRUE(maximum > 1000 && maximum < 100000 && fabs(maximum - stopped) <= 1);
+	char completed[64];
+	snprintf(completed, sizeof(completed), "Calibration complete, range 0 to %.0f", maximum);
+	SERIAL_CHECK_TRUE(message_seen(completed));
 	SERIAL_CHECK_TRUE(number_max(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME) == maximum);
 	SERIAL_CHECK_TRUE(property_state(FOCUSER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 500, INDIGO_BUSY_STATE));
@@ -1215,6 +1280,10 @@ cleanup:
 // finishes by reading the new coordinate back.
 static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	// The property says that the draw tube has to be fully in, and START repeats it.
+	indigo_property *calibrate = find_cached_property(X_CALIBRATE_F_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(calibrate != NULL && strstr(calibrate->label, "fully in") != NULL);
+	clear_messages();
 	unsigned int busy = property_state_revision(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE);
 	double start = cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_OK_STATE));
@@ -1222,6 +1291,7 @@ static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_DIR\":\"normal\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMinPos\"", 1));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"", 1));
+	SERIAL_CHECK_TRUE(message_seen("The current position is stored as the innermost one"));
 	// The calibration run moves the draw tube while the idle poll follows it: the run is the driver's
 	// own motion, so the position never turns BUSY and END is accepted to stop it.
 	indigo_usleep(5000000);
@@ -1230,6 +1300,8 @@ static void focuser_calibration(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_FOCUSER\":\"StoreAsMaxPos\"", 1));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_END_ITEM_NAME, false));
+	// A finished calibration says so, with the range it stored.
+	SERIAL_CHECK_TRUE(message_seen("Calibration complete, range 0 to"));
 	// A failed step is reported instead of being published as a calibration.
 	SERIAL_CHECK_TRUE(fault("\"CAL_FOCUSER\":\"Init\"", "silent"));
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_F_PROPERTY_NAME, X_CALIBRATE_F_START_ITEM_NAME, INDIGO_ALERT_STATE));
@@ -1614,15 +1686,34 @@ cleanup:
 	driver_stop();
 }
 
-// Disconnecting the rotator switches the ARCO port off again.
+// The ARCO port is switched on once and stays on: a disconnect leaves it on (switching it off loses the ARCO
+// calibration on a SESTO SENSO 3), and a reconnect finds it on and does not switch it again.
 static void rotator_lifecycle(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":1", 1));
 	disconnect_serial_device(&primaluce_rotator);
 	SERIAL_CHECK_TRUE(!context.connected);
-	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":0", 1));
 	SERIAL_CHECK_TRUE(connect_rotator());
-	SERIAL_CHECK_TRUE(wait_for_requests("\"ARCO\":1", 2));
+	SERIAL_CHECK_EQ_INT(0, requests("\"ARCO\":0"));
+	SERIAL_CHECK_EQ_INT(1, requests("\"ARCO\":1"));
+cleanup:
+	driver_stop();
+}
+
+// A SESTO SENSO 3 keeps the ARCO calibrated across a rotator disconnect and reconnect.
+static void sestosenso3_arco_stays_calibrated(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	disconnect_serial_device(&primaluce_rotator);
+	clear_messages();
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 45, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(rotator_position_is(45));
+	pthread_mutex_lock(&message_mutex);
+	bool needs_calibration = strstr(messages, "needs calibration") != NULL;
+	pthread_mutex_unlock(&message_mutex);
+	SERIAL_CHECK_TRUE(!needs_calibration);
 cleanup:
 	driver_stop();
 }
@@ -1690,6 +1781,37 @@ cleanup:
 	driver_stop();
 }
 
+// A relative move goes to the current angle plus the offset, both ways; a target outside the ROTATOR_POSITION
+// range is refused without a command, and an abort ends both properties ALERT.
+static void rotator_relative_move(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(connect_rotator());
+	SERIAL_CHECK_TRUE(!find_cached_property(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME)->hidden);
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOVE_ABS\":{\"DEG\":30}", 1));
+	SERIAL_CHECK_TRUE(rotator_position_is(30));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -50, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"MOVE_ABS\":{\"DEG\":-20}", 1));
+	SERIAL_CHECK_TRUE(rotator_position_is(-20));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_OK_STATE));
+	// -20 - 170 is outside -180..360: refused, nothing is sent.
+	int moves = requests("\"MOVE_ABS\"");
+	clear_messages();
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -170, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("outside the rotator range"));
+	SERIAL_CHECK_EQ_INT(moves, requests("\"MOVE_ABS\""));
+	SERIAL_CHECK_TRUE(rotator_position_is(-20));
+	// An abort during a relative move ends both properties ALERT.
+	SERIAL_CHECK_TRUE(number_change(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 170, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(rotator_in_motion(-20, 150));
+	SERIAL_CHECK_TRUE(switch_change(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void rotator_abort(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	SERIAL_CHECK_TRUE(connect_rotator());
@@ -1725,6 +1847,7 @@ static void rotator_calibration(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"set\":{\"MOT2\":{\"CAL_STATUS\":\"exec\"", 1));
 	SERIAL_CHECK_TRUE(state_seen(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_OK_STATE, completions));
+	SERIAL_CHECK_TRUE(message_seen("ARCO calibration complete"));
 	SERIAL_CHECK_TRUE(switch_is(X_CALIBRATE_R_PROPERTY_NAME, X_CALIBRATE_R_START_ITEM_NAME, false));
 	// An abort stops a running calibration.
 	unsigned int alerts = property_state_revision(X_CALIBRATE_R_PROPERTY_NAME, INDIGO_ALERT_STATE);
@@ -1809,8 +1932,11 @@ static void copy_case_trace(const char *name) {
 int main(void) {
 	const simulated_case cases[] = {
 		{ "metadata", metadata, "normal" },
+		{ "usb_match_pattern", usb_match_pattern, "normal" },
 		{ "property_contract", property_contract, "normal" },
 		{ "esatto_profile", esatto_profile, "esatto" },
+		{ "esatto_home_reset", esatto_home_reset, "esatto" },
+		{ "esatto_needs_calibration", esatto_needs_calibration, "esatto-needs-calibration" },
 		{ "sestosenso3_profile", sestosenso3_profile, "sestosenso3" },
 		{ "sestosenso3_uncalibrated", sestosenso3_uncalibrated, "sestosenso3-uncalibrated" },
 		{ "sestosenso3_calibration", sestosenso3_calibration, "sestosenso3" },
@@ -1866,11 +1992,14 @@ int main(void) {
 		{ "rotator_lifecycle", rotator_lifecycle, "normal" },
 		{ "shared_connection", shared_connection, "normal" },
 		{ "rotator_move", rotator_move, "normal" },
+		{ "rotator_relative_move", rotator_relative_move, "normal" },
+		{ "sestosenso3_rotator_relative_move", rotator_relative_move, "sestosenso3" },
 		// A SESTO SENSO 3 acknowledges the ARCO move under DEG instead of STEP.
 		{ "sestosenso3_rotator_move", rotator_move, "sestosenso3" },
 		// A SESTO SENSO 3 acknowledges the ARCO sync under DEG, behind debug text.
 		{ "sestosenso3_rotator_sync", rotator_sync, "sestosenso3" },
 		{ "sestosenso3_rotator_needs_calibration", sestosenso3_rotator_needs_calibration, "sestosenso3-arco-uncalibrated" },
+		{ "sestosenso3_arco_stays_calibrated", sestosenso3_arco_stays_calibrated, "sestosenso3" },
 		{ "rotator_abort", rotator_abort, "normal" },
 		{ "rotator_calibration", rotator_calibration, "normal" },
 		{ "rotator_sync", rotator_sync, "normal" },
@@ -1879,6 +2008,7 @@ int main(void) {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	simulator_test_client.send_message = record_message;
 	simulator_test_client.update_property = observe_update;
+	simulator_test_client.define_property = observe_define;
 	if (mkdtemp(fixture_directory) == NULL) {
 		fprintf(stderr, "Cannot create fixture directory\n");
 		return 1;

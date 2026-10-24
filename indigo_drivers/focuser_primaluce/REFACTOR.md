@@ -925,3 +925,211 @@ before START.
 - Simulated tests: 66 run, 66 passed: `2026-10-23 16:31 3.0.0.34 linux x64 simulator 66/66 OK`.
   Library unit cases: 27 of 27.
 - Hardware: none for this change; the refusal cannot be provoked on demand.
+
+## ARCO kept enabled (3.0.0.35, 2026-10-23, task 20261023193406-58c7-primaluce-arco-keep-enabled)
+
+On the requester's SESTO SENSO 3 the ARCO needed calibration after almost every connect (FND-20261023193406-58c7-primaluce-arco-keep-enabled-001).
+
+**Cause:** the rotator disconnect switched the ARCO port off with `{"set":{"ARCO":0}}`, and the next
+connect switched it on again with `"ARCO":1`. This dates from the original ARCO support. The unit
+keeps the ARCO calibration while the port is off, and switching the port on clears it. In the log,
+`"ARCO":0` with `CALRESTART.MOT2` 0 became `"ARCO":1` with `CALRESTART.MOT2` 1. INDI only ever
+enables the ARCO.
+
+**Fix:** the connect reads the port switch from the full state (`"ARCO"`) and switches the port on
+only when it is off. The disconnect leaves it on. After an INDIGO disconnect the ARCO therefore
+stays enabled.
+
+**Simulator:** the ARCO port starts off. On the SESTO SENSO 3 profile, switching it off sets the
+ARCO calibration flag.
+
+**Tests:**
+- `rotator_lifecycle` now expects one switch-on and no switch-off, a reconnect without another
+  switch-on, and no `"ARCO":0`. Its earlier expectation, a switch-off on every disconnect,
+  described the behaviour this task removes.
+- `sestosenso3_arco_stays_calibrated` moves after a rotator reconnect without the calibration flag.
+- Both fail with the old disconnect.
+
+**Hardware (requester's unit, cycles driven with `indigo_prop_tool`):**
+- At the first connect the port was off, left that way by the old driver. The single switch-on set
+  the flag.
+- The ARCO was calibrated (with the requester watching), and then three cycles ran: a rotator
+  disconnect and reconnect, a focuser and rotator disconnect that closed the serial port and
+  reconnected, and another rotator cycle.
+- Each reconnect read `"ARCO":1` and `CALRESTART.MOT2` 0. No `"ARCO":0` was sent, no further
+  switch-on was sent, and no calibration notice appeared.
+
+## Final test summary (3.0.0.35)
+
+- Simulated tests: 67 run, 67 passed: `2026-10-23 22:43 3.0.0.35 linux x64 simulator 67/67 OK`.
+  Library unit cases: 27 of 27.
+- Hardware: the scripted connect/disconnect cycles above; not a `--hw` record.
+
+## Calibration hint (3.0.0.36, 2026-10-23, task 20261023202204-7851-primaluce-calibration-hint)
+
+Item 2 of the protocol review: the semi-automatic calibration in the document first finds the closed
+end (`GoInToFindMinPos`, or the `MoveIn`/`MoveOut` steps), then sends `StopMotor` and
+`StoreAsMinPos`. The driver sends `StoreAsMinPos` right after `Init`, so the position at START
+becomes the minimum. This is the SESTO SENSO 2 flow. If the tube is not fully in, the stored range
+is shorter than the travel, and the inner part of the travel becomes unreachable.
+
+The requester chose to keep the flow and make the precondition visible, option (a). The X_CALIBRATE
+label is now "Calibrate focuser (fully in first)", which still starts with the label the README
+refers to. The first successful start step publishes "The current position is stored as the
+innermost one". This applies to both models and to both START items.
+
+Regression test: `focuser_calibration` checks the label and the message. It fails without either
+of them.
+
+## Final test summary (3.0.0.36)
+
+- Simulated tests: 67 run, 67 passed: `2026-10-23 23:25 3.0.0.36 linux x64 simulator 67/67 OK`.
+- Hardware: none for this change; it affects text only.
+
+## Calibration complete messages (3.0.0.37, 2026-10-23, task 20261023205001-3f61-primaluce-calibration-complete-message)
+
+A successful calibration used to turn X_CALIBRATE OK without saying what it stored. The requester
+asked for a completion message for the focuser and for the ARCO:
+
+- A focuser END that stores a valid range publishes "Calibration complete, range <min> to <max>",
+  with the range the controller reported (both models).
+- A finished ARCO calibration publishes "ARCO calibration complete". Its range is in motor steps
+  (±1536000 on the requester's unit), so the message gives none.
+- Failed calibrations keep their existing reasons.
+
+Regression tests: `focuser_calibration`, `sestosenso3_calibration` (which checks the exact range)
+and `rotator_calibration` check the messages. All three fail without them.
+
+## Final test summary (3.0.0.37)
+
+- Simulated tests: 67 run, 67 passed: `2026-10-23 23:54 3.0.0.37 linux x64 simulator 67/67 OK`.
+- Hardware: none for this change; it adds messages only.
+
+## Relative rotator move (3.0.0.38, 2026-10-24, task 20261023211312-b017-primaluce-rotator-relative-move)
+
+The ARCO has no relative command. Neither the INDI command set (`MOVE_ABS` in DEG/ARCSEC/STEP,
+`SYNC_POS`, `MOT_STOP`) nor the session logs show one. As in the ZWO rotator, ROTATOR_RELATIVE_MOVE
+is now shown and computed from the current angle:
+
+- The rotator moves to the angle it has plus the offset, using the existing `MOVE_ABS`.
+  ROTATOR_POSITION takes the target, publishes the progress, and ends the move with the usual
+  reasons, such as the needs-calibration message.
+- `rotator_relative_move_ended()` ends ROTATOR_RELATIVE_MOVE with the same state, also after an
+  abort.
+- A target outside the ROTATOR_POSITION range (-180..360) is refused without a command. A refused
+  move gives the controller's reason.
+- A rotator that stands at its last target within `ROTATOR_POSITION_TOLERANCE` moves from that
+  target. Without this, the SESTO SENSO 3 rounding (29.99994 for 30) would add up over several
+  relative moves. The SESTO SENSO 3 case caught it: -20.00006 instead of -20.
+- Both moves share the BUSY guard: a relative move is refused while either one is BUSY.
+
+Regression tests: `rotator_relative_move` and `sestosenso3_rotator_relative_move`:
+- a move of +30 and then -50 (to -20);
+- a refused -170, which would end at -190;
+- an abort during a +170 move, which ends both properties ALERT.
+
+## Final test summary (3.0.0.38)
+
+- Simulated tests: 69 run, 69 passed: `2026-10-24 00:18 3.0.0.38 linux x64 simulator 69/69 OK`.
+- Hardware (requester's SESTO SENSO 3 with ARCO, moves driven with `indigo_prop_tool` while the
+  requester watched):
+  - +10 from 0 went to 10 (read back 9.99492);
+  - -20 went to -10, from the reached target;
+  - -175 (target -185) was refused without a command;
+  - +90 from -10 was aborted at -4.75, and both properties ended ALERT after `MOT_STOP`.
+  The ARCO turns at about 2°/s. A fresh connect found the ARCO still enabled and calibrated,
+  confirming the previous task on the unit. This was not a `--hw` run, so there is no hardware record.
+
+## ESATTO calibration and home sensor (3.0.0.39, 2026-10-24, task 20261023231027-08cd-esatto-calibration-home)
+
+Checked against the PrimaLuce Lab "Communication Protocol" v4.0 (05 Dec 2022, ESATTO, SESTOSENSO2 and
+ARCO models) and the requester's ESATTO2 log (application firmware 3.05.28, with an ARCO):
+
+- **No calibration on an ESATTO.** v4.0 lists `CAL_FOCUSER` as SESTOSENSO2 only, and the ESATTO2 answered
+  all 44 `CAL_FOCUSER` `Init` requests of the session with `"Error: invalid command"`. The ESATTO is
+  calibrated in the factory and uses hall sensors at both ends (`HSENDET`, `CAL_MIN_LO`/`HI`,
+  `CAL_MAX_LO`/`HI`). X_CALIBRATE is now hidden on an ESATTO and shown on a SESTO SENSO. The
+  `esatto_profile` expectation that the calibration stays available on an ESATTO was wrong and is
+  corrected; the document and the hardware log above are the reason.
+- **Needs calibration on an ESATTO.** A `CALRESTART` flag gives "<model> needs calibration, which an
+  ESATTO cannot run from the driver", so the message no longer points to the hidden property. The
+  controller's `ERROR` text is still sent as an alert at connect.
+- **Home sensor reset.** An inward move from 500 to 400 stopped, reported `NOPCMD` and reset the
+  coordinate to 0; moves of ±100 around 5000 ran normally. A move that ends at 0 short of a target above
+  0 on an ESATTO now ends ALERT with "The focuser reached its home sensor and reset its position to 0"
+  instead of "The focuser stopped before reaching the target". The document does not describe the
+  reset; the simulator models it on `CAL_HOMEP` (1000), which is an assumption.
+- **Relative ARCO move.** v4.0 documents a relative `MOVE` for both motors, so "the ARCO has no relative
+  command" in the previous section holds only for the SESTO SENSO 3 document. The relative rotator move
+  keeps using `MOVE_ABS` on every model, as `MOVE` is not in the SESTO SENSO 3 document and has not been
+  tried; the comment, `PROTOCOL.md` and `PROPERTIES.md` are corrected.
+- Already correct for an ESATTO: `MOVE_ABS` instead of the deprecated `GOTO`, no `SPEED`, the SESTO
+  SENSO 2-only run presets, motor settings and hold current hidden, `VIN_USB` shown, `-127` external
+  temperature treated as no reading.
+
+Simulator: the `esatto` profile refuses `CAL_FOCUSER` and re-homes an inward move to a target below
+1000; a new `esatto-needs-calibration` profile reports `CALRESTART` with a sensor error.
+
+Regression tests, each confirmed to fail without the driver change:
+- `esatto_profile`: no X_CALIBRATE and no `CAL_FOCUSER` request;
+- `esatto_home_reset`: 17500 to 400 ends ALERT at 0 with the home-sensor reason, then 500 runs normally;
+- `esatto_needs_calibration`: the sensor error and the ESATTO needs-calibration message at connect.
+
+The simulator's ESATTO profile now also acknowledges the ARCO move under `DEG`, as the unit does.
+
+Hardware check (requester's ESATTO2 with ARCO on `/dev/ttyUSB0`, application firmware 3.05.28, driven with
+`indigo_prop_tool` while the requester watched):
+- Connect: no X_CALIBRATE; the focuser stood at 1000.
+- 1000 to 500: the readback went 1270, 0 with `NOPCMD` 1, 1000, then 0; the move ended ALERT at 0 with
+  "The focuser reached its home sensor and reset its position to 0". This also fits the `CAL_HOMEP`
+  model of the simulator.
+- 0 to 400 outward ended OK at 400 (one readback of -370 on the way).
+- 400 to 60000 ran at about 12000 steps/s and finished before the abort arrived; the abort then found the
+  motor stopped, and the move ended OK at 60000.
+- 60000 to 300000, aborted after about 4 s: `MOT_ABORT` done, FOCUSER_POSITION ALERT at 107855.
+- Rotator connect: the controller's "CalRestart; CalRestart_MaxPosEqualMinPos; " and "ARCO needs
+  calibration"; the ARCO was enabled already, so no `ARCO` write was sent.
+- A 10° move of the uncalibrated ARCO: `MOVE_ABS` acknowledged under `DEG`, `HIZ` 1 and no movement;
+  ROTATOR_POSITION ended ALERT with "The rotator needs calibration".
+- Disconnect sent no `"ARCO":0`.
+
+- ARCO calibration (requested by the requester): `{"set":{"MOT2":{"CAL_STATUS":"exec"}}}` acknowledged
+  `"done"`, `CAL_STATUS` read `exec` once a second and `stop` after about 66 s; X_CALIBRATE_A ended OK
+  with "ARCO calibration complete".
+- A 10° move then turned the ARCO at about 3°/s and ended OK at 10.
+- A rotator disconnect and reconnect reported `CALRESTART` `MOT2` 0 and no notice, at 10°.
+
+This was not a `--hw` run, so there is no hardware record.
+
+## Final test summary (3.0.0.39)
+
+- Simulated tests: 71 run, 71 passed: `2026-10-24 02:22 3.0.0.39 linux x64 simulator 71/71 OK`.
+- Hardware: the requester's ESATTO2 with ARCO, see the checks above.
+
+## USB match pattern with VID/PID (3.0.0.40, 2026-10-24, task 20261023235957-e03c-primaluce-usb-pattern)
+
+The requester asked for the USB VID/PID in the serial port preference, as in the ZWO mount drivers
+(`mount_asi`, `mount_lx200`), which register `0x03C3:0x4001`.
+
+- The requester's SESTO SENSO 3 and ESATTO2 both appear as `10c4:ea60`, "CP2102N USB to UART Bridge
+  Controller": the Silicon Labs default identity, not a PrimaLuce one. A VID/PID pattern alone would also
+  pick any other CP210x bridge (CP2102, CP2104, ...), so the VID/PID is added to the existing "CP2102N"
+  product pattern. All fields of a pattern must match (`indigo_usbserial_match_index()`), so the preference
+  is now narrower than before: a CP2102N name behind another VID/PID no longer matches.
+- Windows: the port list fills only the friendly name and no VID/PID (`indigo_usbserial_utils.c`), so the
+  pattern does not match there, as before for the product string unless the friendly name contains it. The
+  port is chosen by hand on Windows. This is a framework limitation and is not changed here.
+
+Regression test `usb_match_pattern`, confirmed to fail without the change: the attached focuser registers one
+pattern; a CP2102N name behind `0403:6001` and a CP2104 behind `10c4:ea60` do not match, and a CP2102N behind
+`10c4:ea60` does.
+
+## Final test summary (3.0.0.40)
+
+- Simulated tests: 72 run, 72 passed: `2026-10-24 03:01 3.0.0.40 linux x64 simulator 72/72 OK`.
+- Hardware (follow-up, task 20261024002000-64d7-primaluce-usb-pattern-hw): with the requester's SESTO SENSO 3 on
+  `/dev/ttyUSB0` (`10c4:ea60`, "CP2102N USB to UART Bridge Controller") and an Arduino Micro on `/dev/ttyACM0`
+  (`2341:8037`), `indigo_server -vvv indigo_focuser_primaluce` logged
+  "indigo_select_matching_usbserial_device(): Selected new port for 'PrimaluceLab Focuser': auto:///dev/ttyUSB0",
+  and connecting through that port identified the SESTOSENSO3. The ESATTO2 identity is the same (earlier logs).
+  This was not a `--hw` run.

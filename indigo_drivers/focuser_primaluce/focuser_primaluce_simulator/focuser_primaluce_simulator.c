@@ -61,6 +61,8 @@ static bool report_speed = true;
 static int calibration_restart = 0;
 // An ARCO flagged for calibration on its own; a SESTO SENSO 3 acknowledges its moves and does not turn it.
 static int rotator_calibration_restart = 0;
+// The ARCO port switch; a SESTO SENSO 3 loses the ARCO calibration when it is switched off (firmware 1.0.9).
+static int arco_enabled = 0;
 static const char *motor_error = "";
 // A unit without an external probe reports EXT_T as -127.00 (observed on a SESTO SENSO 2).
 static const char *external_temperature = "22.50";
@@ -70,6 +72,8 @@ static bool focus_stalled = false;
 static bool lose_position = false;
 // The calibrated travel; a controller without one reports CAL_MAXPOS 0.
 static int calibration_min = 0;
+// CAL_HOMEP of an ESATTO; an inward move to a target below it re-homes the focuser.
+#define ESATTO_HOME_POSITION 1000
 static int calibration_max = 100000;
 static const char *calibration_direction = "normal";
 // A SESTO SENSO 3 reports the maximum stored by StoreAsMaxPos only a moment after it acknowledges it.
@@ -89,8 +93,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --profile <name>        normal, esatto, sestosenso3, sestosenso3-uncalibrated,\n");
-	printf("                          sestosenso3-arco-uncalibrated,\n");
+	printf("  --profile <name>        normal, esatto, esatto-needs-calibration, sestosenso3,\n");
+	printf("                          sestosenso3-uncalibrated, sestosenso3-arco-uncalibrated,\n");
 	printf("                          no-abs-pos, no-speed, unsupported, old-firmware,\n");
 	printf("                          needs-calibration, external-motion or no-probe,\n");
 	printf("                          default is normal\n");
@@ -146,6 +150,10 @@ static bool parse_args(int argc, char *argv[]) {
 static void apply_profile(void) {
 	if (!strcmp(options.profile, "esatto")) {
 		model = "ESATTO";
+	} else if (!strcmp(options.profile, "esatto-needs-calibration")) {
+		model = "ESATTO";
+		calibration_restart = 1;
+		motor_error = "CalRestart; CalRestart_NoSensorActiveInMinPos; ";
 	} else if (!strcmp(options.profile, "sestosenso3")) {
 		model = "SESTOSENSO3";
 	} else if (!strcmp(options.profile, "sestosenso3-arco-uncalibrated")) {
@@ -295,6 +303,10 @@ static bool sestosenso3(void) {
 	return !strcmp(model, "SESTOSENSO3");
 }
 
+static bool esatto(void) {
+	return !strncmp(model, "ESATTO", 6);
+}
+
 static void update_motion(void) {
 	focuser_position = (int)serial_motion_update(&focus_motion);
 	rotator_position = (int)serial_motion_update(&rotate_motion);
@@ -335,7 +347,7 @@ static void send_state(int handle) {
 		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"},\"LANCFG\":\"%s\","
 		"\"WIFIAP\":{\"SSID\":\"SESTOSENSO20716\",\"PWD\":\"primalucelab\",\"STATUS\":\"%s\"},"
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
-		"\"EXT_T\":\"%s\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":1,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
+		"\"EXT_T\":\"%s\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":%d,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
 		"\"MOT1\":{%s\"ABS_POS_STEP\":%d,%s\"BKLASH\":%d,"
 		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,\"CAL_MINPOS\":%d,\"CAL_MAXPOS\":%d,\"CAL_DIR\":\"%s\","
 		"\"FnRUN_ACC\":1,\"FnRUN_DEC\":1,\"FnRUN_SPD\":2,\"FnRUN_CURR_ACC\":7,\"FnRUN_CURR_DEC\":7,\"FnRUN_CURR_SPD\":7,\"FnRUN_CURR_HOLD\":3,"
@@ -344,7 +356,7 @@ static void send_state(int handle) {
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%s,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, calibration_restart, calibration_restart || rotator_calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart || rotator_calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, arco_enabled, calibration_restart, calibration_restart || rotator_calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart || rotator_calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -482,7 +494,14 @@ static void dispatch_command(int handle, const char *command) {
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		focuser_target = extract_int_after(command, "\"STEP\":", focuser_target);
 		focus_stalled = false;
-		serial_motion_start(&focus_motion, focuser_target, 1000);
+		if (esatto() && focuser_target < focuser_position && focuser_target < ESATTO_HOME_POSITION) {
+			// An ESATTO2 (SWAPP 3.05.28) moving inward close to its home sensor stops and resets its coordinate to 0
+			// (500 to 400 on the unit; around 5000 moves ran normally). The limit is modelled on CAL_HOMEP.
+			serial_motion_sync(&focus_motion, 0);
+			focuser_position = 0;
+		} else {
+			serial_motion_start(&focus_motion, focuser_target, 1000);
+		}
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"STEP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"GOTO\"") != NULL && strstr(command, "\"MOT1\"") != NULL) {
 		// An uncalibrated SESTO SENSO 3 acknowledges GOTO and does not move.
@@ -511,14 +530,19 @@ static void dispatch_command(int handle, const char *command) {
 		focuser_target = focuser_position;
 		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"ARCO\"") != NULL) {
+		int enable = extract_int_after(command, "\"ARCO\":", 1) ? 1 : 0;
+		if (sestosenso3() && arco_enabled && !enable) {
+			rotator_calibration_restart = 1;
+		}
+		arco_enabled = enable;
 		sim_printf(handle, "{\"res\":{\"set\":{\"ARCO\":\"done\"}}}\n");
 	} else if (strstr(command, "\"MOVE_ABS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		if (!(sestosenso3() && rotator_calibration_restart)) {
 			rotator_target = extract_int_after(command, "\"DEG\":", rotator_target);
 			serial_motion_start(&rotate_motion, rotator_target, 90);
 		}
-		// A SESTO SENSO 3 (firmware 1.0.9) acknowledges under DEG, a SESTO SENSO 2 under STEP.
-		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"%s\":\"done\"}}}}\n", sestosenso3() ? "DEG" : "STEP");
+		// A SESTO SENSO 3 (firmware 1.0.9) and an ESATTO2 (SWAPP 3.05.28) acknowledge under DEG, a SESTO SENSO 2 under STEP.
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT2\":{\"%s\":\"done\"}}}}\n", sestosenso3() || esatto() ? "DEG" : "STEP");
 	} else if (strstr(command, "\"SYNC_POS\"") != NULL && strstr(command, "\"MOT2\"") != NULL) {
 		int synced = extract_int_after(command, "\"DEG\":", rotator_position);
 		rotator_offset += synced - rotator_position;
@@ -548,6 +572,9 @@ static void dispatch_command(int handle, const char *command) {
 			sim_printf(handle, "ets Jul 29 2019 12:21:46\n\nrst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)\n[mLogs_DefaultSetup] \n[mLogs_DefaultSetup] \nUnable to find DS18B20\n");
 			restart_end = serial_motion_time() + 5;
 		}
+	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL && esatto()) {
+		// An ESATTO has no calibration command (protocol v4.0; ESATTO2 SWAPP 3.05.28 on the unit).
+		sim_printf(handle, "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_FOCUSER\":\"Error: invalid command\"}}}}\n");
 	} else if (strstr(command, "\"CAL_FOCUSER\"") != NULL && sestosenso3()) {
 		// The SESTO SENSO 3 semi-automatic calibration: StoreAsMinPos zeroes the coordinate, the run ends with
 		// StopMotor, StoreAsMaxPos stores the position and stop_calib leaves the focuser uncalibrated.

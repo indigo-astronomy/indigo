@@ -12,8 +12,10 @@ Each command below says how it is known:
   `indigo_drivers/focuser_primaluce/REFACTOR.md`.
 - **HW (SESTO SENSO 3)**: verified on a SESTO SENSO 3 with an ARCO (application firmware 1.0.9, web
   03.06.01) over USB, tasks 011 to 013. Evidence: `indigo_drivers/focuser_primaluce/REFACTOR.md`.
+- **DOC**: described in the PrimaLuce Lab "Communication Protocol" v4.0 (05 Dec 2022, ESATTO,
+  SESTOSENSO2 and ARCO models) and not used by `indigo_focuser_primaluce`.
 - **SIM**: used by `indigo_focuser_primaluce` and covered by its simulator, but not observed on
-  hardware. The ARCO calibration and the older angle requests remain in this class.
+  hardware. The older angle requests remain in this class.
 - **INDI**: taken from the INDI drivers (`primalucacommandset.cpp`, `alto.cpp`, `giotto.cpp`,
   `sestosenso3.cpp`). Not verified by INDIGO; no INDIGO driver uses it yet. Treat a reply format
   marked INDI as an assumption until a driver has seen it.
@@ -61,7 +63,7 @@ if (primalucelib_open(&PRIVATE_DATA->link, DRIVER_NAME, DEVICE_PORT_ITEM->text.v
 
 | | USB serial | WiFi (HTTP) |
 | --- | --- | --- |
-| Port | CP2102N bridge, 115200 baud 8N1 | `http://host[:port]` or `tcp://host[:port]`, port 80 by default |
+| Port | Silicon Labs CP2102N bridge with its default USB identity (`10c4:ea60`, product "CP2102N USB to UART Bridge Controller", seen on a SESTO SENSO 3 and an ESATTO2), 115200 baud 8N1 | `http://host[:port]` or `tcp://host[:port]`, port 80 by default |
 | Request | The JSON text, no terminator | `GET /ajax.php?jreq=<URL-encoded JSON> HTTP/1.1`, one connection per request |
 | Reply | One line ended by `\n` (a `\r` before it is ignored) | The HTTP body; the controller does not close the connection, so `Content-Length` ends the reply |
 | Noise | Lines starting with `[` are diagnostic output and are skipped. `LOGLEVEL "no output"` turns them off. After `REBOOT` an ESP32 boot log follows the acknowledgement. | none |
@@ -154,7 +156,8 @@ Full-state keys used by the focuser driver (**HW**):
 | User run preset | `{"req":{"set":{"RUNPRESET_1":{"M1ACC":..,"M1DEC":..,"M1SPD":..,"M1CACC":..,"M1CDEC":..,"M1CSPD":..,"M1HOLD":..}}}}` | | SIM |
 | Stored position | `{"req":{"set":{"PRESET_1":{"M1POS":4500}}}}` | `PRESET_1.M1POS`; `0` is refused | HW |
 | Stored position name | `{"req":{"set":{"PRESET_1":{"NAME":"Sun"}}}}` | `PRESET_1.NAME` | HW |
-| Calibration step | `{"req":{"cmd": {"MOT1": {"CAL_FOCUSER":"Init"}}}}` | | HW |
+| Relative move | `{"req":{"cmd":{"MOT1":{"MOVE":{"STEP":-1000}}}}}` | `MOVE.STEP` | DOC |
+| Calibration step | `{"req":{"cmd": {"MOT1": {"CAL_FOCUSER":"Init"}}}}` | SESTO SENSO 2 and 3 only | HW |
 | Calibration direction | `{"req":{"set": {"MOT1": {"CAL_DIR":"normal"}}}}` | `normal` / `invert` | HW |
 
 - **Position fields:**
@@ -168,7 +171,17 @@ Full-state keys used by the focuser driver (**HW**):
   A stalled motor keeps reporting `move` with an unchanged position.
 - **Travel range:** the range is `CAL_MINPOS` to `CAL_MAXPOS`. An uncalibrated controller
   reports no usable range.
-- **Calibration sequence**, SESTO SENSO 2 and ESATTO (**HW**):
+- **ESATTO calibration and home sensor:**
+  - An ESATTO has no calibration command: v4.0 lists `CAL_FOCUSER` as SESTOSENSO2 only, and an ESATTO2
+    (application firmware 3.05.28) answers every `CAL_FOCUSER` with `"Error: invalid command"` (**HW**).
+  - Its travel is calibrated in the factory. Hall sensors at both ends are described by `HSENDET`, the
+    zones `CAL_MIN_LO`/`CAL_MIN_HI` and `CAL_MAX_LO`/`CAL_MAX_HI`, `CAL_OFFMIN` and `CAL_HOMEP`
+    (0–30000 and 401668–439000 on the tested ESATTO2). Sensor errors such as
+    `CalRestart_NoSensorActiveInMinPos` appear in `ERROR`.
+  - The tested ESATTO2 stopped an inward move from 500 to 400, reported `NOPCMD`, and reset its
+    coordinate to 0 (**HW**). Moves of ±100 around 5000 ran normally. The document does not describe
+    this behaviour.
+- **Calibration sequence**, SESTO SENSO 2 (**HW**):
   1. `Init`, then `CAL_DIR`, `StoreAsMinPos` and `GoOutToFindMaxPos`, about one second apart.
   2. The draw tube runs outward until `StoreAsMaxPos`.
 - **SESTO SENSO 3 calibration** (**INDI**):
@@ -184,13 +197,17 @@ Full-state keys used by the focuser driver (**HW**):
 | Angle, synced | `{"req":{"get":{"MOT2":{"POSITION_DEG":"","STATUS":""}}}}` | `MOT2.POSITION_DEG`; a SESTO SENSO 3 reports five decimals with a step rounding (a move to 15 reads 14.99994) | HW (SESTO SENSO 3) |
 | Angle, mechanical | `{"req":{"get":{"MOT2":{"ABS_POS_DEG":"","STATUS":""}}}}` | `MOT2.ABS_POS_DEG` | SIM |
 | Angle, older firmware | `{"req":{"get":{"MOT2":{"ABS_POS":"DEG","STATUS":""}}}}` | `MOT2.ABS_POS` | SIM |
-| Move | `{"req":{"cmd":{"MOT2":{"MOVE_ABS":{"DEG":45}}}}}` | `MOT2.STEP`; a SESTO SENSO 3 answers `MOT2.DEG` | HW (SESTO SENSO 3) |
+| Move | `{"req":{"cmd":{"MOT2":{"MOVE_ABS":{"DEG":45}}}}}` | `MOT2.STEP`; a SESTO SENSO 3 and an ESATTO2 (3.05.28) answer `MOT2.DEG`. An ARCO that needs calibration acknowledges and does not turn on both | HW (SESTO SENSO 3, ESATTO2) |
 | Sync | `{"req":{"cmd":{"MOT2":{"SYNC_POS":{"DEG":45}}}}}` | `MOT2.SYNC_POS`; a SESTO SENSO 3 answers `MOT2.DEG` | HW (SESTO SENSO 3) |
+| Relative move | `{"req":{"cmd":{"MOT2":{"MOVE":{"DEG":4}}}}}` | `MOT2.MOVE` | DOC |
 | Stop | `{"req":{"cmd":{"MOT2":{"MOT_STOP":""}}}}` | `MOT2.MOT_STOP` | HW (SESTO SENSO 3) |
-| Calibrate | `{"req":{"set":{"MOT2":{"CAL_STATUS":"exec"}}}}` | `MOT2.CAL_STATUS`; poll `CAL_STATUS` until `stop`; `stop` also ends it | SIM |
+| Calibrate | `{"req":{"set":{"MOT2":{"CAL_STATUS":"exec"}}}}` | `MOT2.CAL_STATUS`; poll `CAL_STATUS` until `stop` (about 66 s on an ESATTO2); `stop` also ends it | HW (ESATTO2) |
 | Serial number | `{"req":{"get":{"ARCO_SN":""}}}` | | INDI |
 
 - **Synced angle:** `MOVE_ABS` targets the synced angle `POSITION_DEG`.
+- **Relative move:** v4.0 documents a relative `MOVE` for the ARCO of an ESATTO or a SESTO SENSO 2.
+  The SESTO SENSO 3 document v1.0 does not list it and it has not been tried, so the driver computes
+  a relative move from the current angle with `MOVE_ABS` on every model.
 - **Calibration is a `set`:** ARCO calibration is started with `set`, not `cmd`; sent as `cmd`
   it completes at once.
 - **Debug text (HW, SESTO SENSO 3 firmware 1.0.9):** after quick repeated ARCO syncs the controller
