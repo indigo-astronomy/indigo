@@ -1,0 +1,134 @@
+{
+  "version": 2,
+  "task": "20261024213010-b356-primaluce-panel-cover-firmware-bound",
+  "scope": [
+    "indigo_drivers/aux_giotto/*",
+    "indigo_drivers/aux_alto/*",
+    "indigo_test/integration/test_aux_giotto_simulator.c",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_giotto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024213010-b356-primaluce-panel-cover-firmware-bound.json": [
+      "100644",
+      "blob",
+      "e3a9aa05b508dad3e02f972eeb4e442f423758cb"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "ca9d390445cec30d83fda450fec50a5555cd5a22"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "95905ee68c8c2290bb511ca0c9a9ac0cadcf54d0"
+    ],
+    "indigo_drivers/aux_alto/README.md": [
+      "100644",
+      "blob",
+      "5b27cdd1d2b7ee16c4b8462c2cc7fff7e3ab3368"
+    ],
+    "indigo_drivers/aux_alto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "b0c3f37a1b12fd26f13e8a3e37c321f0511f1ebd"
+    ],
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c": [
+      "100644",
+      "blob",
+      "f788d263a17eaa6633077a99477a5e24f115de86"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": [
+      "100644",
+      "blob",
+      "ca17b8f902d3d88ff7809c9875c8d55cad29c24f"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver": [
+      "100644",
+      "blob",
+      "514902affe1aab1c20eb0209c646eae7b957a0de"
+    ],
+    "indigo_drivers/aux_giotto/README.md": [
+      "100644",
+      "blob",
+      "0d8c4a5b4535f3661bb40c5cc38a25f987a16d69"
+    ],
+    "indigo_drivers/aux_giotto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "aa88391979433fcc4b564f790db9b86fb963582e"
+    ],
+    "indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c": [
+      "100644",
+      "blob",
+      "ad37cd390df1f9115163ec894d2ff4ae2e52b7fd"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c": [
+      "100644",
+      "blob",
+      "a2428e1b92e70ea7c65bb1179f0b5b300d2c2c47"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.driver": [
+      "100644",
+      "blob",
+      "60cf84d7ca13b7a6fd68b86feac5b2accb79b142"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "9ece6e188de90a6fa4ced4e9976fc7b35b5bea16"
+    ],
+    "indigo_test/integration/test_aux_giotto_simulator.c": [
+      "100644",
+      "blob",
+      "57d36fbfc43ab8583de23e0280fda551819ec2bb"
+    ]
+  }
+}

@@ -394,6 +394,25 @@ cleanup:
 	driver_stop();
 }
 
+// Firmware versions longer than an INDIGO text item are cut off in INFO instead of overflowing it.
+static void long_firmware(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	char app[301], web[301], combined[700], expected[INDIGO_VALUE_SIZE];
+	memset(app, 'x', 300);
+	memcpy(app, "1.03.09", 7);
+	app[300] = 0;
+	memset(web, 'x', 300);
+	memcpy(web, "1.1", 3);
+	web[300] = 0;
+	snprintf(combined, sizeof(combined), "%s / %s", app, web);
+	memcpy(expected, combined, sizeof(expected) - 1);
+	expected[sizeof(expected) - 1] = 0;
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, expected));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "GIOTTO12000001"));
+cleanup:
+	driver_stop();
+}
+
 // A panel that is already lit at connect is shown as it is; nothing is written.
 static void connect_reads_the_panel(void) {
 	SERIAL_CHECK_TRUE(driver_up());
@@ -866,6 +885,7 @@ int main(void) {
 		{ "usb_match_pattern", usb_match_pattern, "normal" },
 		{ "property_contract", property_contract, "normal" },
 		{ "connect_reads_the_panel", connect_reads_the_panel, "normal" },
+		{ "long_firmware", long_firmware, "long-firmware" },
 		{ "unsupported_device", unsupported_device, "unsupported" },
 		{ "no_brightness_range", no_brightness_range, "no-range" },
 		{ "handshake_timeout", handshake_timeout, "normal" },

@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000004
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_aux_giotto"
 #define DRIVER_LABEL         "PrimaluceLab GIOTTO Flat Panel"
 #define AUX_DEVICE_NAME      "PrimaluceLab GIOTTO"
@@ -365,8 +365,9 @@ static void aux_connection_handler(indigo_device *device) {
 			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_APPLICATION_FIRMWARE))) {
 				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
 				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_WEB_FIRMWARE))) {
-					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
-					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+					// The web firmware is appended within the item; a long version is cut off instead of overflowing it.
+					size_t used = strlen(INFO_DEVICE_FW_REVISION_ITEM->text.value);
+					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value + used, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value) - used, " / %s", text);
 				}
 			}
 			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_SERIAL_NUMBER))) {

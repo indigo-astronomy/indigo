@@ -63,7 +63,7 @@
 |  | 2026-10-09 14:16 | 3.0.0.11 | linux arm64 | Alnitak Flip-Flat Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
 | aux_geoptikflat | 2026-09-27 20:50 | 3.0.0.9 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | aux_giotto | 2026-10-24 14:31 | 3.0.0.1 | linux x64 | GIOTTO | 8 / 8 | ✅ OK |
-|  | 2026-10-25 00:00 | 3.0.0.4 | linux x64 | simulator | 29 / 29 | ✅ OK |
+|  | 2026-10-25 00:31 | 3.0.0.5 | linux x64 | simulator | 30 / 30 | ✅ OK |
 | aux_joystick | 2026-10-19 09:53 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_mgbox | 2026-09-27 07:47 | 3.0.0.13 | linux x64 | simulator | 35 / 35 | ✅ OK |
 |  | 2026-09-27 20:51 | 3.0.0.13 | mac arm64 | simulator | 35 / 35 | ✅ OK |

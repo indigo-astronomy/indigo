@@ -51,6 +51,10 @@ static FILE *events = NULL;
 
 static const char *model = "GIOTTO";
 static const char *firmware = "1.03.09";
+static const char *web_firmware = "1.1";
+// The long-firmware profile reports 300 character application and web versions, together longer than an INDIGO
+// text item.
+static char long_firmware[2][301];
 static int max_brightness = 114;
 static int brightness = 0;
 static int light = 0;
@@ -70,7 +74,7 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --profile <name>        normal, needs-calibration, unsupported or no-range, default is normal\n");
+	printf("  --profile <name>        normal, needs-calibration, unsupported, no-range or long-firmware, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_GIOTTO_EVENTS names a file receiving every accepted request.\n");
@@ -126,6 +130,14 @@ static void apply_profile(void) {
 		model = "ALTO";
 	} else if (!strcmp(options.profile, "no-range")) {
 		max_brightness = 0;
+	} else if (!strcmp(options.profile, "long-firmware")) {
+		for (int i = 0; i < 2; i++) {
+			memset(long_firmware[i], 'x', 300);
+			memcpy(long_firmware[i], i ? "1.1" : "1.03.09", i ? 3 : 7);
+			long_firmware[i][300] = 0;
+		}
+		firmware = long_firmware[0];
+		web_firmware = long_firmware[1];
 	}
 }
 
@@ -346,7 +358,7 @@ static const char *light_status(void) {
 
 static void full_state(char *buffer) {
 	append(buffer, "{\"res\":{\"get\":{\"SWID\":\"002\",\"MODNAME\":\"%s\",\"SN\":\"GIOTTO12000001\",\"HOSTNAME\":\"GIOTTO12000001\",\"MACADDR\":\"8C:1F:64:00:00:01\",", model);
-	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"1.1\"},\"NTC_T\":\"29.74\",\"VIN_12V\":\"13.13\",\"VIN_USB\":\"5.33\",\"MOTOR\":0,", firmware);
+	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"%s\"},\"NTC_T\":\"29.74\",\"VIN_12V\":\"13.13\",\"VIN_USB\":\"5.33\",\"MOTOR\":0,", firmware, web_firmware);
 	append_lan_config(buffer);
 	append(buffer, ",");
 	append_access_point(buffer);
