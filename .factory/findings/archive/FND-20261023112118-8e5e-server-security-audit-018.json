@@ -2,7 +2,7 @@
   "title": "Streaming property items have no total request budget",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "parsers-security.md",
       "revision": null
+    },
+    {
+      "id": "20261024115039-61cc-fix-server-security-remaining",
+      "report": "security.md",
+      "revision": null
     }
   ],
   "summary": "Streaming XML/JSON property items resize indefinitely before request authorization; fixed input buffers do not bound request allocation and safe alloc failure terminates process. Next: item/message allocation budgets and isolated rejection/cleanup tests. Confirmed by current source contracts; no fix or runtime retest claimed.",
   "evidence": "indigo_libs/indigo_xml.c:283-285,324-326,365-367; indigo_libs/indigo_json.c:190-193,234-237,268-269; indigo_libs/indigo_bus.c:1393-1407; parsers-security.md section P08",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024115039-61cc-fix-server-security-remaining/verification.md and security.md: scoped implementation, independent reinspection, final sanitizer/native/leak checks passed.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-018"
 }

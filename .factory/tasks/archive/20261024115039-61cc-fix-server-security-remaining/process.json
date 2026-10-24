@@ -1,0 +1,191 @@
+{
+  "version": 2,
+  "task": "20261024115039-61cc-fix-server-security-remaining",
+  "scope": [
+    "indigo_libs/indigo/indigo_bus.h",
+    "indigo_libs/indigo_bus.c",
+    "indigo_libs/indigo_xml.c",
+    "indigo_libs/indigo_json.c",
+    "indigo_libs/indigo_server_tcp.c",
+    "indigo_libs/indigo_uni_io.c",
+    "indigo_test/Makefile",
+    "indigo_test/unit/test_protocol_security.c",
+    "indigo_test/unit/test_transport_cache_security.c",
+    "indigo_test/integration/test_transport_http_security.c",
+    "indigo_docs/PROTOCOLS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/project.md",
+    ".factory/maintenance.json",
+    ".factory/completions/20261024115039-61cc-fix-server-security-remaining.json",
+    ".factory/findings/active/FND-20261023121227-a609-fix-server-security-high-002.json",
+    ".factory/findings/archive/FND-20261023121227-a609-fix-server-security-high-002.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-018.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-018.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-006.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-006.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-003.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-003.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "libindigo"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-server-security-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "authentication": "security.md",
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024115039-61cc-fix-server-security-remaining.json": [
+      "100644",
+      "blob",
+      "01edd6c612f3604e0581e98273eb96473f57fab9"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-003.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-006.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-018.json": null,
+    ".factory/findings/active/FND-20261023121227-a609-fix-server-security-high-002.json": null,
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-003.json": [
+      "100644",
+      "blob",
+      "b7135509116d576ef2dbe2129f67ed4832690085"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-006.json": [
+      "100644",
+      "blob",
+      "158e06f2e5ea9fa3e5ef28a3088ba231aebbc01e"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json": [
+      "100644",
+      "blob",
+      "46f1997fe51ae6318bd3e5bd3f5544bdbb8c8fe3"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-018.json": [
+      "100644",
+      "blob",
+      "ec68e495f823afdb398239e17b96d456c677192f"
+    ],
+    ".factory/findings/archive/FND-20261023121227-a609-fix-server-security-high-002.json": [
+      "100644",
+      "blob",
+      "2b7fb94c41036cbd801329f62b28a97857ba47f6"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "5e04be22fc5d40cf6cc361e4e7667a99c0f12b53"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "4e3e97f6b2e668e1701478d0934e5e7460e13620"
+    ],
+    "indigo_docs/PROTOCOLS.md": [
+      "100644",
+      "blob",
+      "7143b9645c8cd89989db5e9c369b478793831d92"
+    ],
+    "indigo_libs/indigo/indigo_bus.h": [
+      "100644",
+      "blob",
+      "71a951e126f460252d55c00cb645fd9729599fa6"
+    ],
+    "indigo_libs/indigo_bus.c": [
+      "100644",
+      "blob",
+      "ebd53dba065be65f1d5f2515f8c6468ee6e9fd3c"
+    ],
+    "indigo_libs/indigo_json.c": [
+      "100644",
+      "blob",
+      "118cb706c748493cdf18b909ceb1773633831bb4"
+    ],
+    "indigo_libs/indigo_server_tcp.c": [
+      "100644",
+      "blob",
+      "bcf591ccc528b96886b1c8db7bb538f5083828ab"
+    ],
+    "indigo_libs/indigo_uni_io.c": [
+      "100644",
+      "blob",
+      "ebd30b63929b02e1c3e0377ad914a3127b18388d"
+    ],
+    "indigo_libs/indigo_xml.c": [
+      "100644",
+      "blob",
+      "2b7337c366071e805722fa0e0f3842edb1cb030e"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "e33edcdb32b1cd81989217210e2e092e5d28465b"
+    ],
+    "indigo_test/integration/test_transport_http_security.c": [
+      "100644",
+      "blob",
+      "d9d78a45cefb6f49d11ada926141d5f3dd45bac9"
+    ],
+    "indigo_test/unit/test_protocol_security.c": [
+      "100644",
+      "blob",
+      "573392442a797787317340d66f9e6bd8b1c741f3"
+    ],
+    "indigo_test/unit/test_transport_cache_security.c": [
+      "100644",
+      "blob",
+      "a8c29b4a9f7263a280080da93d1fc23746a55060"
+    ]
+  }
+}

@@ -88,6 +88,7 @@ typedef struct {
 	unsigned references;
 	bool retired;
 	bool uploaded;
+	bool writable;
 	size_t upload_charge;
 	char device[INDIGO_NAME_SIZE];
 	char property[INDIGO_NAME_SIZE];
@@ -163,6 +164,7 @@ static void retire_blob(int slot) {
 static indigo_blob_entry *create_blob(indigo_property *property, indigo_item *item) {
 	blob_record *record = indigo_safe_malloc(sizeof(blob_record));
 	memset(record, 0, sizeof(*record));
+	record->writable = property->perm == INDIGO_WO_PERM;
 	record->entry.property = property;
 	record->entry.item = item;
 	record->item = *item;
@@ -178,7 +180,7 @@ static indigo_blob_entry *create_blob(indigo_property *property, indigo_item *it
 bool indigo_publish_blob_upload(indigo_blob_entry *entry, void *buffer, size_t size) {
 	blob_record *record = (blob_record *)entry;
 	pthread_mutex_lock(&entry->mutext);
-	if (record->retired) {
+	if (record->retired || !record->writable) {
 		pthread_mutex_unlock(&entry->mutext);
 		return false;
 	}
@@ -187,6 +189,36 @@ bool indigo_publish_blob_upload(indigo_blob_entry *entry, void *buffer, size_t s
 	entry->size = (long)size;
 	record->uploaded = true;
 	record->upload_charge = size;
+	pthread_mutex_unlock(&entry->mutext);
+	return true;
+}
+
+bool indigo_blob_upload_allowed(indigo_blob_entry *entry) {
+	blob_record *record = (blob_record *)entry;
+	pthread_mutex_lock(&entry->mutext);
+	bool allowed = !record->retired && record->writable;
+	pthread_mutex_unlock(&entry->mutext);
+	return allowed;
+}
+
+bool indigo_consume_blob_upload(indigo_blob_entry *entry, indigo_item *copy, size_t limit) {
+	blob_record *record = (blob_record *)entry;
+	pthread_mutex_lock(&entry->mutext);
+	if (record->retired || !record->writable || !record->uploaded || (size_t)entry->size > limit) {
+		pthread_mutex_unlock(&entry->mutext);
+		return false;
+	}
+	void *buffer = malloc(entry->size ? (size_t)entry->size : 1);
+	if (buffer == NULL) {
+		pthread_mutex_unlock(&entry->mutext);
+		return false;
+	}
+	if (entry->size) {
+		memcpy(buffer, entry->content, entry->size);
+	}
+	copy->blob.value = buffer;
+	copy->blob.size = entry->size;
+	clear_blob_content(entry);
 	pthread_mutex_unlock(&entry->mutext);
 	return true;
 }
@@ -1010,9 +1042,32 @@ indigo_result indigo_enable_blob(indigo_client *client, indigo_property *propert
 	return INDIGO_OK;
 }
 
+// Permission publication is independent of whether a RO snapshot is ready (OK).
+static void sync_blob_permissions(indigo_property *property) {
+	if (property->type != INDIGO_BLOB_VECTOR) {
+		return;
+	}
+	bool writable = property->perm == INDIGO_WO_PERM;
+	pthread_mutex_lock(&blob_mutex);
+	for (int i = 0; i < MAX_BLOBS; i++) {
+		indigo_blob_entry *entry = blobs[i];
+		if (entry != NULL && entry->property == property) {
+			pthread_mutex_lock(&entry->mutext);
+			blob_record *record = (blob_record *)entry;
+			if (record->writable != writable) {
+				clear_blob_content(entry);
+				record->writable = writable;
+			}
+			pthread_mutex_unlock(&entry->mutext);
+		}
+	}
+	pthread_mutex_unlock(&blob_mutex);
+}
+
 indigo_result indigo_define_property_to_client(indigo_device *device, indigo_client *client, indigo_property *property, const char *format, ...) {
 	if (!is_started || property == NULL || client == NULL)
 		return INDIGO_FAILED;
+	sync_blob_permissions(property);
 	if (!property->hidden) {
 		pthread_mutex_lock(&client_mutex);
 		INDIGO_TRACE(indigo_trace_property("Define to client", client, property, true, true));
@@ -1066,6 +1121,7 @@ indigo_result indigo_define_property_to_client(indigo_device *device, indigo_cli
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
+	sync_blob_permissions(property);
 	if (!property->hidden) {
 		pthread_mutex_lock(&client_mutex);
 		INDIGO_TRACE(indigo_trace_property("Define", NULL, property, true, true));
@@ -1147,6 +1203,7 @@ indigo_result indigo_update_property_to_client(indigo_device *device, indigo_cli
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
+	sync_blob_permissions(property);
 	if (!property->hidden && !device->dont_update) {
 		pthread_mutex_lock(&client_mutex);
 		char message[INDIGO_VALUE_SIZE];

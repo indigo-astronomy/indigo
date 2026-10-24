@@ -694,6 +694,14 @@ INDIGO_EXTERN void indigo_release_blob(indigo_blob_entry *entry);
  */
 INDIGO_EXTERN bool indigo_snapshot_blob(indigo_blob_entry *entry, indigo_item *copy);
 
+/** Limits for a single client protocol request; upstream image updates are separate. */
+#ifndef INDIGO_PROTOCOL_ITEM_LIMIT
+#define INDIGO_PROTOCOL_ITEM_LIMIT 4096
+#endif
+#ifndef INDIGO_PROTOCOL_REQUEST_LIMIT
+#define INDIGO_PROTOCOL_REQUEST_LIMIT (16u * 1024u * 1024u)
+#endif
+
 #ifndef INDIGO_BLOB_UPLOAD_LIMIT
 #define INDIGO_BLOB_UPLOAD_LIMIT (64u * 1024u * 1024u)
 #endif
@@ -708,6 +716,9 @@ INDIGO_EXTERN bool indigo_snapshot_blob(indigo_blob_entry *entry, indigo_item *c
 INDIGO_EXTERN void *indigo_allocate_blob_upload(size_t size);
 INDIGO_EXTERN void indigo_free_blob_upload(void *buffer, size_t size);
 INDIGO_EXTERN bool indigo_publish_blob_upload(indigo_blob_entry *entry, void *buffer, size_t size);
+INDIGO_EXTERN bool indigo_blob_upload_allowed(indigo_blob_entry *entry);
+/** Consume writable staging once, within limit. Caller owns copy->blob.value; false leaves copy unchanged. */
+INDIGO_EXTERN bool indigo_consume_blob_upload(indigo_blob_entry *entry, indigo_item *copy, size_t limit);
 
 /** Initialize text item.
  */

@@ -41,6 +41,66 @@
 
 #define WAIT_UNTIL(condition, timeout) ({ double deadline_ = indigo_monotonic_time() + (timeout); bool ready_ = (condition); while (!ready_ && indigo_monotonic_time() < deadline_) { indigo_usleep(5000); ready_ = (condition); } ready_; })
 
+#ifdef INDIGO_HTTP_FAULT_INJECTION
+static atomic_int file_handles;
+static atomic_int file_opens;
+static atomic_int file_fault;
+static atomic_bool fail_worker;
+
+indigo_uni_handle *http_test_open_file(const char *path, int level) {
+	indigo_uni_handle *handle = indigo_uni_open_file(path, level);
+	if (handle) {
+		atomic_fetch_add(&file_handles, 1);
+		atomic_fetch_add(&file_opens, 1);
+	}
+	return handle;
+}
+
+void http_test_close(indigo_uni_handle **handle) {
+	if (*handle && (*handle)->type == INDIGO_FILE_HANDLE) {
+		atomic_fetch_sub(&file_handles, 1);
+	}
+	indigo_uni_close(handle);
+}
+
+long http_test_read_available(indigo_uni_handle *handle, void *buffer, long length) {
+	if (handle->type == INDIGO_FILE_HANDLE) {
+		int fault = atomic_load(&file_fault);
+		if (fault == 1 || fault == 2) {
+			atomic_store(&file_fault, 0);
+			return fault == 1 ? -1 : 0;
+		}
+	}
+	return indigo_uni_read_available(handle, buffer, length);
+}
+
+long http_test_printf(indigo_uni_handle *handle, const char *format, ...) {
+	if (atomic_load(&file_handles) > 0 && atomic_load(&file_fault) == 4) {
+		atomic_store(&file_fault, 0);
+		return 0;
+	}
+	va_list args;
+	va_start(args, format);
+	long result = indigo_uni_vprintf(handle, format, args);
+	va_end(args);
+	return result;
+}
+
+long http_test_write(indigo_uni_handle *handle, const char *buffer, long length) {
+	if (atomic_load(&file_handles) > 0 && atomic_exchange(&file_fault, 0) == 3) {
+		return -1;
+	}
+	return indigo_uni_write(handle, buffer, length);
+}
+
+bool http_test_async(void *fun(void *), void *data) {
+	if (atomic_exchange(&fail_worker, false)) {
+		return false;
+	}
+	return indigo_async(fun, data);
+}
+#endif
+
 static atomic_int server_client_count;
 static atomic_bool server_listening;
 static atomic_bool server_finished;
@@ -245,7 +305,6 @@ static void private_receive_does_not_block_publication(void) {
 	before = indigo_monotonic_time();
 	indigo_update_property(&fixture_device, upload_property, NULL);
 	bool responsive = indigo_monotonic_time() - before < 0.5;
-	upload_property->perm = INDIGO_WO_PERM;
 	upload_property->items[0].blob.value = NULL;
 	upload_property->items[0].blob.size = 0;
 	ASSERT_TRUE(responsive);
@@ -254,8 +313,13 @@ static void private_receive_does_not_block_publication(void) {
 	char response[1024];
 	ASSERT_TRUE(read_reply(fd, response, sizeof(response)));
 	close(fd);
-	ASSERT_TRUE(!strncmp(response, "HTTP/1.1 200 ", 13));
-	ASSERT_TRUE(download_matches("partdone", 8));
+	ASSERT_TRUE(!strncmp(response, "HTTP/1.1 404 ", 13));
+	ASSERT_TRUE(download_matches("fresh", 5));
+	ASSERT_TRUE(upload("Content-Length: 4\r\n", "bad!", 4, 403));
+	ASSERT_TRUE(download_matches("fresh", 5));
+	indigo_delete_property(&fixture_device, upload_property, NULL);
+	upload_property->perm = INDIGO_WO_PERM;
+	indigo_define_property(&fixture_device, upload_property, NULL);
 }
 
 static void stalled_body_times_out_without_publication(void) {
@@ -318,6 +382,86 @@ static void retirement_during_receive_rejects_publication(void) {
 	ASSERT_TRUE(!strncmp(response, "HTTP/1.1 404 ", 13));
 }
 
+static void idle_initial_connections_expire(void) {
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 2));
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1));
+	char byte;
+	ASSERT_EQ_INT(0, read(fd, &byte, 1));
+	close(fd);
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1));
+}
+
+static void established_xml_survives_initial_deadline(void) {
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	const char *request = "<getProperties version='3.0' device='No such fixture'/>";
+	ASSERT_EQ_INT(strlen(request), write(fd, request, strlen(request)));
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1));
+	indigo_usleep(INDIGO_SERVER_INITIAL_TIMEOUT + 100000L);
+	ASSERT_EQ_INT(1, atomic_load(&server_client_count));
+	ASSERT_EQ_INT(strlen(request), write(fd, request, strlen(request)));
+	close(fd);
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1));
+}
+
+#ifdef INDIGO_HTTP_FAULT_INJECTION
+static void admission_limit_and_spawn_failure_recover(void) {
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 2));
+	atomic_store(&fail_worker, true);
+	int rejected = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(rejected >= 0);
+	char byte;
+	ASSERT_EQ_INT(0, read(rejected, &byte, 1));
+	close(rejected);
+	int sockets[INDIGO_TCP_WORKER_LIMIT];
+	const char *request = "<getProperties version='3.0' device='No such fixture'/>";
+	for (int i = 0; i < INDIGO_TCP_WORKER_LIMIT; i++) {
+		sockets[i] = connect_loopback(indigo_server_tcp_port);
+		ASSERT_TRUE(sockets[i] >= 0);
+		ASSERT_EQ_INT(strlen(request), write(sockets[i], request, strlen(request)));
+	}
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == INDIGO_TCP_WORKER_LIMIT, 2));
+	rejected = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(rejected >= 0);
+	ASSERT_EQ_INT(0, read(rejected, &byte, 1));
+	close(rejected);
+	for (int i = 0; i < INDIGO_TCP_WORKER_LIMIT; i++) {
+		close(sockets[i]);
+	}
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 2));
+	ASSERT_TRUE(upload("Content-Length: 0\r\n", "", 0, 200));
+}
+
+static void file_download_cleanup(void) {
+	for (int fault = 0; fault <= 4; fault++) {
+		ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 2));
+		int previous = atomic_load(&file_opens);
+		atomic_store(&file_fault, fault);
+		int fd = connect_loopback(indigo_server_tcp_port);
+		ASSERT_TRUE(fd >= 0);
+		const char *request = "GET /fixture-file HTTP/1.1\r\nConnection: close\r\n\r\n";
+		ASSERT_EQ_INT(strlen(request), write(fd, request, strlen(request)));
+		char response[4096];
+		bool received = read_reply(fd, response, sizeof(response));
+		close(fd);
+		ASSERT_TRUE(received);
+		ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 2));
+		ASSERT_EQ_INT(previous + 1, atomic_load(&file_opens));
+		ASSERT_EQ_INT(0, atomic_load(&file_handles));
+		if (fault == 4) {
+			ASSERT_EQ_INT(0, strlen(response));
+			continue;
+		}
+		ASSERT_TRUE(!strncmp(response, "HTTP/1.1 200 ", 13));
+		char *body = strstr(response, "\r\n\r\n");
+		ASSERT_TRUE(body != NULL);
+		ASSERT_EQ_INT(fault == 0 ? 7 : 0, strlen(body + 4));
+	}
+}
+#endif
+
 int main(int argc, char **argv) {
 	indigo_test_use_private_home();
 	signal(SIGPIPE, SIG_IGN);
@@ -327,11 +471,24 @@ int main(int argc, char **argv) {
 	upload_property->perm = INDIGO_WO_PERM;
 	indigo_init_blob_item(upload_property->items, "ITEM", "Item");
 	indigo_define_property(NULL, upload_property, NULL);
+	char file_path[] = "/tmp/indigo-http-file-XXXXXX";
+	int file_fd = mkstemp(file_path);
+	if (file_fd < 0 || write(file_fd, "fixture", 7) != 7) {
+		return 1;
+	}
+	close(file_fd);
+	indigo_server_add_file_resource("/fixture-file", file_path, "application/octet-stream");
 	if (!start_test_server()) {
 		stop_test_server();
 		return 1;
 	}
 	indigo_test_case tests[] = {
+		{ "idle initial connections expire", idle_initial_connections_expire },
+		{ "established XML idle session", established_xml_survives_initial_deadline },
+#ifdef INDIGO_HTTP_FAULT_INJECTION
+		{ "admission limit and spawn failure", admission_limit_and_spawn_failure_recover },
+		{ "file download cleanup", file_download_cleanup },
+#endif
 		{ "malformed framing preserves cache", malformed_framing_preserves_cache },
 		{ "short EOF preserves cache", short_eof_preserves_cache },
 		{ "valid empty and whitespace length", valid_empty_and_ows_upload },
@@ -344,6 +501,7 @@ int main(int argc, char **argv) {
 	};
 	int result = indigo_run_tests("transport HTTP security", tests, sizeof(tests) / sizeof(tests[0]));
 	stop_test_server();
+	unlink(file_path);
 	indigo_release_property(upload_property);
 	indigo_stop();
 	indigo_test_remove_private_home();

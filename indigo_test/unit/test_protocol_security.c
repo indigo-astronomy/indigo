@@ -405,6 +405,101 @@ static void websocket_controls(void) {
 	}
 }
 
+static void xml_upload_staging_is_one_shot(void) {
+	indigo_use_blob_caching = true;
+	indigo_property *property = indigo_init_blob_property(NULL, "Security", "B", "Test", "Upload", INDIGO_OK_STATE, 1);
+	property->perm = INDIGO_WO_PERM;
+	indigo_init_blob_item(property->items, "A", "A");
+	indigo_define_property(&device, property, NULL);
+	indigo_blob_entry *entry = indigo_acquire_blob(property->items);
+	ASSERT_TRUE(entry != NULL);
+	void *buffer = indigo_allocate_blob_upload(4);
+	ASSERT_TRUE(buffer != NULL);
+	memcpy(buffer, "once", 4);
+	ASSERT_TRUE(indigo_publish_blob_upload(entry, buffer, 4));
+	indigo_release_blob(entry);
+	const char *request = "<newBLOBVector device='Security' name='B'><oneBLOB name='A' format='.bin'/></newBLOBVector>";
+	changes = 0;
+	xml(request);
+	ASSERT_EQ_INT(1, changes);
+	xml(request);
+	ASSERT_EQ_INT(1, changes);
+	indigo_release_property(property);
+	indigo_use_blob_caching = false;
+}
+
+static void request_item_limits(void) {
+	for (int protocol = 0; protocol < 2; protocol++) {
+		for (int extra = 0; extra < 2; extra++) {
+			size_t capacity = (size_t)(INDIGO_PROTOCOL_ITEM_LIMIT + 1) * 80 + 512;
+			char *request = malloc(capacity);
+			ASSERT_TRUE(request != NULL);
+			size_t used = snprintf(request, capacity, protocol ? "{\"newTextVector\":{\"device\":\"Security\",\"name\":\"T\",\"items\":[" : "<newTextVector device='Security' name='T'>");
+			for (int i = 0; i < INDIGO_PROTOCOL_ITEM_LIMIT + extra; i++) {
+				used += snprintf(request + used, capacity - used, protocol ? "%s{\"name\":\"V%d\",\"value\":\"ok\"}" : "%s<oneText name='V%d'>ok</oneText>", protocol && i ? "," : "", i);
+			}
+			used += snprintf(request + used, capacity - used, protocol ? "]}}" : "</newTextVector>");
+			changes = 0;
+			parse(request, used, protocol, false, INDIGO_VERSION_CURRENT);
+			free(request);
+			ASSERT_EQ_INT(extra == 0, changes);
+		}
+	}
+}
+
+static void request_text_budgets_and_reset(void) {
+	for (int protocol = 0; protocol < 2; protocol++) {
+		const size_t text_size = 200000;
+		size_t count = INDIGO_PROTOCOL_REQUEST_LIMIT / text_size;
+		for (int extra = 0; extra < 2; extra++) {
+			size_t capacity = (count + 2) * (text_size + 80) + 512;
+			char *request = malloc(capacity);
+			ASSERT_TRUE(request != NULL);
+			size_t used = snprintf(request, capacity, protocol ? "{\"newTextVector\":{\"device\":\"Security\",\"name\":\"T\",\"items\":[" : "<newTextVector device='Security' name='T'>");
+			for (size_t i = 0; i < count + extra; i++) {
+				used += snprintf(request + used, capacity - used, protocol ? "%s{\"name\":\"V%zu\",\"value\":\"" : "%s<oneText name='V%zu'>", protocol && i ? "," : "", i);
+				memset(request + used, 'a', text_size);
+				used += text_size;
+				used += snprintf(request + used, capacity - used, protocol ? "\"}" : "</oneText>");
+			}
+			used += snprintf(request + used, capacity - used, protocol ? "]}}" : "</newTextVector>");
+			changes = 0;
+			parse(request, used, protocol, false, INDIGO_VERSION_CURRENT);
+			free(request);
+			ASSERT_EQ_INT(extra == 0, changes);
+		}
+		const char *valid = protocol ? json_change : xml_change;
+		char sequence[1024];
+		snprintf(sequence, sizeof(sequence), "%s%s", valid, valid);
+		changes = 0;
+		parse(sequence, strlen(sequence), protocol, false, INDIGO_VERSION_CURRENT);
+		ASSERT_EQ_INT(2, changes);
+	}
+}
+
+static void json_repeated_items_rejected(void) {
+	const char *request = "{\"newTextVector\":{\"device\":\"Security\",\"name\":\"T\",\"items\":[{\"name\":\"V\",\"value\":\"first\"}],\"items\":[{\"name\":\"V\",\"value\":\"second\"}]}}";
+	changes = 0;
+	parse(request, strlen(request), 1, false, INDIGO_VERSION_CURRENT);
+	ASSERT_EQ_INT(0, changes);
+}
+
+static void cached_blob_retirement_lifetimes(void) {
+	const char *define = "<defBLOBVector device='Security' name='B' state='Ok' perm='ro'><defBLOB name='A'/></defBLOBVector>";
+	const char *update_blob = "<setBLOBVector device='Security' name='B' state='Ok'><oneBLOB name='A' size='6'>YWJjZGVm</oneBLOB></setBLOBVector>";
+	const char *retire[] = { "<delProperty device='Security' name='B'/>", "<delProperty device='Security'/>", "" };
+	for (size_t i = 0; i < ARRAY_SIZE(retire); i++) {
+		char request[2048];
+		snprintf(request, sizeof(request), "%s%s%s%s", define, update_blob, update_blob, retire[i]);
+		for (int iteration = 0; iteration < 20; iteration++) {
+			updates = 0;
+			parse(request, strlen(request), 0, true, INDIGO_VERSION_CURRENT);
+			ASSERT_EQ_INT(2, updates);
+			ASSERT_TRUE(!memcmp(blobs[0], "abcdef", 6));
+		}
+	}
+}
+
 int main(void) {
 	indigo_test_use_private_home();
 	indigo_autoenumerate = false;
@@ -414,6 +509,11 @@ int main(void) {
 	indigo_attach_device(&device);
 	indigo_attach_client(&observer);
 	const indigo_test_case tests[] = {
+		{ "XML upload staging one shot", xml_upload_staging_is_one_shot },
+		{ "request item limits", request_item_limits },
+		{ "request text budgets and reset", request_text_budgets_and_reset },
+		{ "JSON repeated items rejected", json_repeated_items_rejected },
+		{ "cached RO BLOB retirement", cached_blob_retirement_lifetimes },
 		{ "xml_attribute_boundaries", xml_attribute_boundaries },
 		{ "xml_name_boundaries", xml_name_boundaries },
 		{ "xml_entity_boundaries", xml_entity_boundaries },

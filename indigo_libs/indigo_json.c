@@ -211,6 +211,9 @@ static void* one_text_handler(parser_state state, char* name, char* value, indig
 		return new_text_vector_handler;
 	}
 	if (state == BEGIN_STRUCT_STATE) {
+		if (property->count >= INDIGO_PROTOCOL_ITEM_LIMIT) {
+			return NULL;
+		}
 		*property_ref = property = indigo_resize_property(property, property->count + 1);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "name")) {
 		INDIGO_COPY_NAME(property->items[property->count - 1].name, value);
@@ -224,6 +227,9 @@ static void* new_text_vector_handler(parser_state state, char* name, char* value
 	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	indigo_property* property = *property_ref;
 	if (state == BEGIN_ARRAY_STATE && !strcmp(name, "items")) {
+		if (property->count != 0) {
+			return NULL;
+		}
 		*property_ref = property = indigo_resize_property(property, 0);
 		return one_text_handler;
 	}
@@ -250,6 +256,9 @@ static void* one_number_handler(parser_state state, char* name, char* value, ind
 		return new_number_vector_handler;
 	}
 	if (state == BEGIN_STRUCT_STATE) {
+		if (property->count >= INDIGO_PROTOCOL_ITEM_LIMIT) {
+			return NULL;
+		}
 		*property_ref = property = indigo_resize_property(property, property->count + 1);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "name")) {
 		INDIGO_COPY_NAME(property->items[property->count - 1].name, value);
@@ -263,6 +272,9 @@ static void* new_number_vector_handler(parser_state state, char* name, char* val
 	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	indigo_property* property = *property_ref;
 	if (state == BEGIN_ARRAY_STATE && !strcmp(name, "items")) {
+		if (property->count != 0) {
+			return NULL;
+		}
 		*property_ref = property = indigo_resize_property(property, 0);
 		return one_number_handler;
 	}
@@ -289,6 +301,9 @@ static void* one_switch_handler(parser_state state, char* name, char* value, ind
 		return new_switch_vector_handler;
 	}
 	if (state == BEGIN_STRUCT_STATE) {
+		if (property->count >= INDIGO_PROTOCOL_ITEM_LIMIT) {
+			return NULL;
+		}
 		*property_ref = property = indigo_resize_property(property, property->count + 1);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "name")) {
 		INDIGO_COPY_NAME(property->items[property->count - 1].name, value);
@@ -302,6 +317,9 @@ static void* new_switch_vector_handler(parser_state state, char* name, char* val
 	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	indigo_property* property = *property_ref;
 	if (state == BEGIN_ARRAY_STATE && !strcmp(name, "items")) {
+		if (property->count != 0) {
+			return NULL;
+		}
 		*property_ref = property = indigo_resize_property(property, 0);
 		return one_switch_handler;
 	}
@@ -365,13 +383,14 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 	char c = 0;
 	char q = '"';
 	int depth = 0;
+	size_t request_size = 0;
 	bool is_escaped = false;
 	parser_handler handler = top_level_handler;
 	parser_state state = IDLE_STATE;
 	while (true) {
 		assert(pointer - buffer <= JSON_BUFFER_SIZE);
 		assert(name_pointer - name_buffer <= INDIGO_NAME_SIZE);
-		if (state == ERROR_STATE) {
+		if (state == ERROR_STATE || handler == NULL) {
 			indigo_error("JSON Parser: syntax error");
 			goto exit_loop;
 		}
@@ -382,6 +401,12 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 			}
 			pointer = buffer;
 			buffer[count] = 0;
+		}
+		if (state == IDLE_STATE && depth == 0) {
+			request_size = 0;
+		}
+		if (++request_size > INDIGO_PROTOCOL_REQUEST_LIMIT) {
+			goto exit_loop;
 		}
 		switch (state) {
 		case ERROR_STATE:

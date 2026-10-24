@@ -3428,8 +3428,8 @@ $(UNIT_BUILD)/test_protocol_security: unit/test_protocol_security.c test_runner.
 # supplies remaining symbols. Small budgets and deadlines keep adversarial tests bounded.
 SECURITY_BUILD ?= $(TEST_BUILD)/security
 SECURITY_ASSERT_FLAGS ?=
-SECURITY_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(SECURITY_ASSERT_FLAGS) -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0
-SECURITY_OBJECTS = $(addprefix $(SECURITY_BUILD)/,indigo_bus.o indigo_xml.o indigo_json.o indigo_server_tcp.o)
+SECURITY_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(SECURITY_ASSERT_FLAGS) -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L
+SECURITY_OBJECTS = $(addprefix $(SECURITY_BUILD)/,indigo_bus.o indigo_xml.o indigo_json.o indigo_server_tcp.o indigo_uni_io.o)
 
 $(SECURITY_BUILD):
 	mkdir -p $@
@@ -3443,8 +3443,16 @@ $(SECURITY_BUILD)/test_protocol_security: unit/test_protocol_security.c test_run
 $(SECURITY_BUILD)/test_transport_cache_security: unit/test_transport_cache_security.c test_runner.h $(SECURITY_OBJECTS) $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
 	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
 
-$(SECURITY_BUILD)/test_transport_http_security: integration/test_transport_http_security.c test_runner.h $(SECURITY_OBJECTS) $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
-	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+$(SECURITY_BUILD)/indigo_server_tcp_http.o: ../indigo_libs/indigo_server_tcp.c ../indigo_libs/indigo/indigo_bus.h Makefile | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -c $< -o $@
+
+$(SECURITY_BUILD)/indigo_uni_io_http.o: ../indigo_libs/indigo_uni_io.c Makefile | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -Dindigo_async=http_test_async -c $< -o $@
+
+HTTP_SECURITY_OBJECTS = $(filter-out $(SECURITY_BUILD)/indigo_server_tcp.o $(SECURITY_BUILD)/indigo_uni_io.o,$(SECURITY_OBJECTS)) $(SECURITY_BUILD)/indigo_server_tcp_http.o $(SECURITY_BUILD)/indigo_uni_io_http.o
+
+$(SECURITY_BUILD)/test_transport_http_security: integration/test_transport_http_security.c test_runner.h $(HTTP_SECURITY_OBJECTS) $(BUILD_LIB)/libindigo.a | $(SECURITY_BUILD)
+	$(CC) $(SECURITY_CFLAGS) -DINDIGO_HTTP_FAULT_INJECTION -o $@ $< $(HTTP_SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
 
 .PHONY: test-server-security-sanitize
 test-server-security-sanitize: check-lib $(SECURITY_BUILD)/test_protocol_security $(SECURITY_BUILD)/test_transport_cache_security $(SECURITY_BUILD)/test_transport_http_security $(SECURITY_BUILD)/test_transport_cache_alloc_failure

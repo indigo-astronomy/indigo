@@ -215,6 +215,14 @@ The hint text can be used as a tool tip for the property or the item witget in t
 
 
 
+## Server resource limits and BLOB upload ownership
+
+Client XML and JSON property requests are limited to 4096 items and 16 MiB of parsed wire input per request by default (`INDIGO_PROTOCOL_ITEM_LIMIT` and `INDIGO_PROTOCOL_REQUEST_LIMIT`). The parsers close an over-limit input without dispatching its partial property. Limits reset between requests; JSON rejects a second nonempty `items` array in the same vector. Upstream XML property updates retain their separate image limits, including the 256 MiB inline BLOB item limit.
+
+HTTP BLOB PUT accepts only write-only upload entries; read-only image snapshots cannot be replaced through PUT (HTTP 403). Uploads are staged for their published device/property/item and consumed once by the matching XML BLOB change. A change without fresh staging is rejected, so a repeated request cannot reuse an earlier upload. Each upload retains the 64 MiB limit and the shared pending/published staging budget is 256 MiB; the same budget bounds staging copied into one XML change. Compile-time settings are declared in [indigo_bus.h](../indigo_libs/indigo/indigo_bus.h). Existing BLOB identifiers select an item and do not authenticate a client; this does not introduce client authentication or isolation between clients addressing the same item.
+
+The portable TCP listener helper admits at most 128 active worker callbacks across its listeners (`INDIGO_TCP_WORKER_LIMIT`). Excess accepted connections close without starting a worker. Failed worker creation closes its socket and releases admission. INDIGO server connections must supply their initial protocol byte within five seconds (`INDIGO_SERVER_INITIAL_TIMEOUT`, microseconds). Established XML/JSON sessions retain their existing idle behavior. The deadline covers initial protocol detection, not every subsequent request; the admission bound also covers workers waiting on partial requests.
+
 ## References
 
 XML parser is implemented in [indigo_xml.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_xml.c).
