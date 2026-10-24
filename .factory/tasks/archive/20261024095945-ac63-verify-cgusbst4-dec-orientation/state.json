@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024095945-ac63-verify-cgusbst4-dec-orientation",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive completed experiment and commit records; hardware-path isolation remains tracked in the new nonblocking finding.",
+  "blocker": null
+}

@@ -1,0 +1,7 @@
+# Scoped experiment security review
+
+Verdict: pass
+
+Reviewed base 7a586b925d05a6b6ce5ed3fe7bbc5260745cc29b and task evidence, new finding/Xcode bookkeeping and REFACTOR documentation. Separate same-agent pass, no independent reviewer. Owner explicitly approved the ~20-degree excursion, short guide pulses and return to original park, confirming free space. Only the previously authorized SSH host and two identified serial devices were touched; no source deployment, system install, service change, firmware update, new dependency or third-party message. Driver mapping and all production code remain unchanged.
+
+Probe checks device identity, parked/not-tracking/R6 baseline and bounded arrival, monitors target neighborhood/stable side, uses self-timed 2 s pulses, attempts each cleanup action independently and restores original park/motors, tracking/rate and target. The success trace confirms restoration; no physical-safety certification or failure-proof remote watchdog claim is made. Explicit serial read deadlines prevent indefinite read waits. Test evidence contains device diagnostics and synthetic/nonsecret control frames, no credentials or private configuration. SSH agent forwarding is owner requested. Configured Factory security boundary validation passes; this is not a complete host/product security audit. New functional finding is setup-specific and does not assert an unsupported security or global firmware defect.

@@ -169,6 +169,12 @@ The NYX coordinate transform/pier-side inversion from the prior experiment is ou
 
 Evidence and exact commands: [repair verification](../../.factory/tasks/archive/20261024070358-5d13-fix-cgusbst4-protocol/verification.md).
 
+## Off-pole DEC orientation follow-up (2026-10-24)
+
+An owner-authorized direct serial/ST4 cross-check at DEC approximately +70 degrees and unchanged east pier side confirms that the earlier DEC polarity difference persists away from the pole: 2 s adapter codes 0/1 changed reported DEC by about -14.552/+14.530 arcsec, while direct NYX n/s changed it by about +14.947/-14.970 arcsec. Each direction was repeated twice, idle drift was -0.011 arcsec and the side stayed E. This establishes an inversion in this composite CGUSB-ST4/cable/NYX-101 firmware 1.32.1 path, without isolating the responsible component or proving west-side behavior. Driver PHD2 mapping remains unchanged at the owner's request.
+
+The experiment restored exact parked motor positions, tracking off/R6 and the original target. It is a two-link physical orientation experiment, not an additional driver acceptance-suite run; existing simulator/hardware case counts below are unchanged. Finding: FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001. Raw commands, measurements, clearance and limits: [off-pole orientation verification](../../.factory/tasks/archive/20261024095945-ac63-verify-cgusbst4-dec-orientation/verification.md).
+
 ## Final test summary — numeric protocol repair
 
 - Simulated tests: 7 executed, 7 passed; additional sanitizer variant: 2 executed, 2 passed.

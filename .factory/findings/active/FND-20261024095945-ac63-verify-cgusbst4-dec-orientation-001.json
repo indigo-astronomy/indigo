@@ -1,0 +1,19 @@
+{
+  "title": "CGUSB-ST4 / NYX-101 ST4 DEC response is inverted relative to direct NYX guiding away from pole on east side.",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024095945-ac63-verify-cgusbst4-dec-orientation",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "At DEC +70 degrees, unchanged east side and R1, adapter code 0 changes DEC about -14.552 arcsec and code 1 about +14.530 arcsec for 2 s, opposite to PHD2 nominal N/S and direct NYX n/s. Next: isolate adapter firmware, ST4 cable/pinout and NYX configuration before selecting remediation; owner requires current driver mapping unchanged.",
+  "evidence": "verification.md and orientation-probe.jsonl in task 20261024095945-ac63-verify-cgusbst4-dec-orientation; two repeats each of direct n/s and numeric 0/1, matched idle interval, stable pier side E; original park/settings restored.",
+  "resolution": null,
+  "id": "FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001"
+}

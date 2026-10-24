@@ -6811,6 +6811,7 @@
 		ED1BAC22857B9D651E95CCC1 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		66A49C98B3E3EE07085D9F9E /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		6F78A5813A358CC4B0C00143 /* 20261024002000-64d7-primaluce-usb-pattern-hw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024002000-64d7-primaluce-usb-pattern-hw.json"; sourceTree = "<group>"; };
+		991E6524B502845D91FAB7AD /* FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -18547,6 +18548,7 @@
 				E92FD4DBDD2BD678ACC20218 /* FND-20261023112118-8e5e-server-security-audit-010.json */,
 				AAA43A8123B85E90CE1A31D4 /* FND-20261023112118-8e5e-server-security-audit-018.json */,
 				305F3DD0D243773138B4E4AB /* FND-20261023121227-a609-fix-server-security-high-002.json */,
+				991E6524B502845D91FAB7AD /* FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json */,
 			);
 			path = active;
 			sourceTree = "<group>";
