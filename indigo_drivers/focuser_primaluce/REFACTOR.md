@@ -1144,3 +1144,34 @@ changed. The recorded simulator run of this version is in README.md. A first ful
 (END published ALERT instead of OK); the failure did not recur in 14 isolated runs, 6 of them with every core loaded, nor in
 the repeated full run, and calibration replies are far below the token limit, so it is an unexplained timing flake of that
 case, not an effect of this change. If it shows up again, log the driver's failure message to tell which END step refused.
+
+## Shared WiFi selection (3.0.0.42, 2026-10-24, task 20261024194838-6cb6-primaluce-panel-cover-wifi)
+
+The GIOTTO and ALTO drivers gained the same WiFi properties, so the mode selection moved into
+`primalucelib_select_wifi()` and the three drivers share it.
+
+**Fixed: OFF from station mode left the controller in station mode** (found while moving the code).
+- Impact: OFF sent only `AP_SET_STATUS` `off`; a controller in station mode stayed there, and the next connect showed
+  STA again.
+- Fix: OFF is the access point mode with the access point switched off, so from station mode it writes `LANCFG` `ap`,
+  restarts and then switches the access point off. The rotator guard now covers every change between STA and the
+  access point.
+- Regression test: `wifi_station_mode` (OFF from STA sends `LANCFG` `ap` and `AP_SET_STATUS` `off`, the reconnect shows
+  OFF); it fails on 3.0.0.41.
+
+**Fixed: credentials WiFi cannot use were sent** (found on the ALTO1, fixed in the library).
+- Impact: the firmware stores any text; a short access point password would leave an access point no client can join.
+- Fix: the library refuses an SSID over 32 characters (or an empty access point SSID), an access point password outside
+  8 to 63, a station password over 63 and `"` or `\` before sending; the driver shows the reason. `LANCFG` now needs
+  its `"done"` (the SESTO SENSO 2 acknowledges it, see D8).
+- Regression test: `controller_settings` (a 3 character password ends ALERT with the reason and is not sent); it fails
+  on 3.0.0.41.
+
+Over HTTP a mode change that restarts the controller cannot be followed by `AP_SET_STATUS`, because the controller has
+left the network the link uses: AP then succeeds (the controller starts with its access point on) and OFF fails with a
+reason. Not verified on hardware for the focuser in this task (no focuser attached).
+
+## Final test summary (3.0.0.42)
+
+- Simulated tests: 72 run, 72 passed: `2026-10-24 23:17 3.0.0.42 linux x64 simulator 72/72 OK`.
+- Hardware tests: 0 run for this change.

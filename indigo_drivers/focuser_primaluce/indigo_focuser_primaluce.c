@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000029
+#define DRIVER_VERSION       0x0300002A
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -428,23 +428,14 @@ static void restore_switch(indigo_property *property, indigo_item *item) {
 	property->state = INDIGO_ALERT_STATE;
 }
 
-// The firmware applies a new LANCFG only after a restart, so a changed mode restarts the controller.
-static bool primaluce_set_lan_cfg(indigo_device *device, const char *mode) {
-	char *text;
-	if ((text = primalucelib_get_lan_config(LINK)) == NULL) {
-		return false;
+// Publishes property with the reason the controller or the library gave for the last refusal, if there is one.
+static void update_with_refusal(indigo_device *device, indigo_property *property) {
+	const char *reason = primalucelib_last_error(LINK);
+	if (*reason) {
+		indigo_update_property(device, property, "%s", reason);
+	} else {
+		indigo_update_property(device, property, NULL);
 	}
-	if (!strcmp(text, mode)) {
-		return true;
-	}
-	if (!primalucelib_set_lan_config(LINK, mode) || !primalucelib_reboot(LINK)) {
-		return false;
-	}
-	if (primalucelib_is_http(LINK)) {
-		indigo_send_message(device, X_WIFI_PROPERTY, "The controller restarts to apply the WiFi mode and leaves its current network");
-		return true;
-	}
-	return primalucelib_wait_for_restart(LINK);
 }
 
 static bool primaluce_open(indigo_device *device, const char **error_message) {
@@ -1204,26 +1195,24 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_x_wifi_handler(indigo_device *device) {
 	X_WIFI_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_WIFI.on_change
-	bool result = false;
-	// Switching between the access point and station mode restarts the controller, which a
+	// Switching between station mode and the access point (on or off) restarts the controller, which a
 	// connected rotator shares.
-	bool restart = X_WIFI_STA_ITEM->sw.value ? PRIVATE_DATA->wifi_item != X_WIFI_STA_ITEM : (X_WIFI_AP_ITEM->sw.value && PRIVATE_DATA->wifi_item == X_WIFI_STA_ITEM);
+	bool restart = X_WIFI_STA_ITEM->sw.value != (PRIVATE_DATA->wifi_item == X_WIFI_STA_ITEM);
 	if (restart && PRIVATE_DATA->count > 1) {
 		restore_switch(X_WIFI_PROPERTY, PRIVATE_DATA->wifi_item);
 		indigo_update_property(device, X_WIFI_PROPERTY, "Changing the WiFi mode restarts the controller, disconnect the rotator first");
 		return;
 	}
-	if (X_WIFI_OFF_ITEM->sw.value) {
-		result = primalucelib_set_access_point(LINK, false);
-	} else if (X_WIFI_AP_ITEM->sw.value) {
-		result = primaluce_set_lan_cfg(device, PRIMALUCE_LAN_ACCESS_POINT) && primalucelib_set_access_point(LINK, true);
-	} else if (X_WIFI_STA_ITEM->sw.value) {
-		result = primaluce_set_lan_cfg(device, PRIMALUCE_LAN_STATION);
-	}
-	if (result) {
+	bool restarted = false;
+	if (primalucelib_select_wifi(LINK, X_WIFI_STA_ITEM->sw.value ? PRIMALUCE_WIFI_STATION : X_WIFI_AP_ITEM->sw.value ? PRIMALUCE_WIFI_ACCESS_POINT : PRIMALUCE_WIFI_OFF, &restarted)) {
 		PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+		if (restarted && primalucelib_is_http(LINK)) {
+			indigo_send_message(device, X_WIFI_PROPERTY, "The controller restarts to apply the WiFi mode and leaves its current network");
+		}
 	} else {
 		restore_switch(X_WIFI_PROPERTY, PRIVATE_DATA->wifi_item);
+		update_with_refusal(device, X_WIFI_PROPERTY);
+		return;
 	}
 	//- focuser.X_WIFI.on_change
 	indigo_update_property(device, X_WIFI_PROPERTY, NULL);
@@ -1234,6 +1223,8 @@ static void focuser_x_wifi_ap_handler(indigo_device *device) {
 	//+ focuser.X_WIFI_AP.on_change
 	if (!primalucelib_set_access_point_credentials(LINK, X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value)) {
 		X_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
+		update_with_refusal(device, X_WIFI_AP_PROPERTY);
+		return;
 	}
 	//- focuser.X_WIFI_AP.on_change
 	indigo_update_property(device, X_WIFI_AP_PROPERTY, NULL);
@@ -1244,6 +1235,8 @@ static void focuser_x_wifi_sta_handler(indigo_device *device) {
 	//+ focuser.X_WIFI_STA.on_change
 	if (!primalucelib_set_station_credentials(LINK, X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
 		X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;
+		update_with_refusal(device, X_WIFI_STA_PROPERTY);
+		return;
 	}
 	//- focuser.X_WIFI_STA.on_change
 	indigo_update_property(device, X_WIFI_STA_PROPERTY, NULL);

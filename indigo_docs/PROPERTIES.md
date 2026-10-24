@@ -1300,7 +1300,7 @@ Source: `indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver`.
 
 ### focuser_primaluce
 
-Custom properties: `X_CALIBRATE`, `X_CALIBRATE_A`, `X_CONFIG`, `X_HOLD_CURR`, `X_LEDS`, `X_RUNPRESET`, `X_RUNPRESET_1`, `X_RUNPRESET_2`, `X_RUNPRESET_3`, `X_RUNPRESET_L`, `X_RUNPRESET_M`, `X_RUNPRESET_S`, `X_STATE`, `X_WIFI`, `X_WIFI_AP`, `X_WIFI_STA`.
+Custom properties: `X_CALIBRATE`, `X_CALIBRATE_A`, `X_CONFIG`, `X_HOLD_CURR`, `X_LEDS`, `X_RUNPRESET`, `X_RUNPRESET_1`, `X_RUNPRESET_2`, `X_RUNPRESET_3`, `X_RUNPRESET_L`, `X_RUNPRESET_M`, `X_RUNPRESET_S`, `X_STATE`, `X_WIFI` (OFF, AP, STA; OFF is the access point mode with the access point switched off, and a change between STA and the access point restarts the controller, which is refused while the rotator is connected), `X_WIFI_AP` (SSID of 1–32 characters, WPA2 password of 8–63), `X_WIFI_STA` (the network to join; SSID of at most 32 characters, password of at most 63, empty for an open network).
 
 Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_POSITION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`, `ROTATOR_ABORT_MOTION`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_POSITION`, `ROTATOR_RELATIVE_MOVE` (shown; a move by the offset from the current angle, refused outside the `ROTATOR_POSITION` range, using the absolute move on every model).
 

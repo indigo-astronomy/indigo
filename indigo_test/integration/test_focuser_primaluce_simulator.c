@@ -1197,6 +1197,11 @@ static void controller_settings(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"AP_SET_STATUS\":\"off\"", 1));
 	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_SSID_ITEM_NAME, "INDIGO-AP", INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"SSID\":\"INDIGO-AP\"", 1));
+	// A password the access point cannot use is refused with a reason and not sent; the controller would store it.
+	clear_messages();
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_PASSWORD_ITEM_NAME, "abc", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("at least 8 characters"));
+	SERIAL_CHECK_EQ_INT(0, requests("\"PWD\":\"abc\""));
 	// The settings the driver reads back on the next connect must be the ones
 	// it wrote.
 	disconnect_serial_device(&primaluce_focuser);
@@ -1221,9 +1226,16 @@ static void wifi_station_mode(void) {
 	disconnect_serial_device(&primaluce_focuser);
 	SERIAL_CHECK_TRUE(connect_focuser());
 	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, INDIGO_OK_STATE));
+	// Off from station mode returns to the access point mode first, with the access point switched off.
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_OFF_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"LANCFG\":\"ap\"", 1));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"AP_SET_STATUS\":\"off\"", 1));
+	disconnect_serial_device(&primaluce_focuser);
+	SERIAL_CHECK_TRUE(connect_focuser());
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"AP_SET_STATUS\":\"on\"", 1));
+	SERIAL_CHECK_EQ_INT(1, requests("\"LANCFG\":\"ap\""));
 	disconnect_serial_device(&primaluce_focuser);
 	SERIAL_CHECK_TRUE(connect_focuser());
 	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, true));
